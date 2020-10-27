@@ -1,6 +1,7 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pulumi.Testing;
@@ -51,6 +52,7 @@ namespace Pulumi
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;
+        private readonly ConcurrentDictionary<string, bool> _featureSupport = new ConcurrentDictionary<string, bool>();
 
         private readonly ILogger _logger;
         private readonly IRunner _runner;
@@ -130,6 +132,22 @@ namespace Pulumi
         {
             get => Stack;
             set => Stack = value;
+        }
+
+        private async Task<bool> MonitorSupportsFeature(string feature)
+        {
+            if (!this._featureSupport.ContainsKey(feature))
+            {
+                var request = new Pulumirpc.SupportsFeatureRequest {Id = feature };
+                var response = await this.Monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
+                this._featureSupport[feature] = response.HasSupport;
+            }
+            return this._featureSupport[feature];
+        }
+
+        internal Task<bool> MonitorSupportsResourceReferences()
+        {
+            return MonitorSupportsFeature("resourceReferences");
         }
     }
 }

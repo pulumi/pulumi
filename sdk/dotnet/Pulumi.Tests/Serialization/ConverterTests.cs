@@ -32,7 +32,7 @@ namespace Pulumi.Tests.Serialization
         {
             var serializer = new Serializer(excessiveDebugOutput: false);
             return Serializer.CreateValue(
-                await serializer.SerializeAsync(ctx: "", value).ConfigureAwait(false));
+                await serializer.SerializeAsync(ctx: "", value, true).ConfigureAwait(false));
         }
     }
 }

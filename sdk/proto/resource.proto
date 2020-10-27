@@ -59,6 +59,7 @@ message ReadResourceRequest {
     bool acceptSecrets = 9;                // when true operations should return secrets as strongly typed.
     repeated string additionalSecretOutputs = 10;   // a list of output properties that should also be treated as secret, in addition to ones we detect.
     repeated string aliases = 11;          // a list of additional URNs that shoud be considered the same.
+    bool acceptResources = 12;             // when true operations should return resource references as strongly typed.
 }
 
 // ReadResourceResponse contains the result of reading a resource's state.
@@ -100,6 +101,7 @@ message RegisterResourceRequest {
     bool deleteBeforeReplaceDefined = 18;                       // true if the deleteBeforeReplace property should be treated as defined even if it is false.
     bool supportsPartialValues = 19;                            // true if the request is from an SDK that supports partially-known properties during preview.
     bool remote = 20;                                           // true if the resource is a plugin-managed component resource.
+    bool acceptResources = 21;                                  // when true operations should return resource references as strongly typed.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

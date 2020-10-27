@@ -490,3 +490,12 @@ export async function monitorSupportsFeature(feature: string): Promise<boolean> 
 export function monitorSupportsSecrets(): Promise<boolean> {
     return monitorSupportsFeature("secrets");
 }
+
+/**
+ * monitorSupportsResourceReferences returns a promise that when resolved tells you if the resource monitor we are
+ * connected to is able to support resouece references aross its RPC interface. When it does, we marshal resources
+ * in a special way.
+ */
+export async function monitorSupportsResourceReferences(): Promise<boolean> {
+    return monitorSupportsFeature("resourceReferences");
+}

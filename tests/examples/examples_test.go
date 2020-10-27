@@ -337,6 +337,14 @@ func getBaseOptions() integration.ProgramTestOptions {
 	}
 }
 
+func getPythonBaseOptions() integration.ProgramTestOptions {
+	return integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "sdk", "python", "env", "src"),
+		},
+	}
+}
+
 func skipIfNotNode610(t *testing.T) {
 	nodeVer, err := getNodeVersion()
 	if err != nil && nodeVer.Major == 6 && nodeVer.Minor == 10 {

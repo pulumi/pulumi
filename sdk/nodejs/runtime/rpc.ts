@@ -16,9 +16,9 @@ import * as asset from "../asset";
 import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
-import { ComponentResource, CustomResource, Resource, URN } from "../resource";
+import { ComponentResource, CustomResource, ProviderResource, Resource, URN } from "../resource";
 import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
-import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
+import { excessiveDebugOutput, isDryRun, monitorSupportsResourceReferences, monitorSupportsSecrets } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
@@ -87,7 +87,10 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
-        label: string, props: Inputs, acceptKey: (k: string) => boolean): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
+        label: string,
+        props: Inputs,
+        acceptKey: (k: string) => boolean,
+    ): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
 
     const propertyToDependentResources = new Map<string, Set<Resource>>();
 
@@ -236,6 +239,10 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
  */
 export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
+/**
+ * specialResourceSig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go.
+ */
+export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
@@ -243,7 +250,7 @@ export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
  */
 export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
     // IMPORTANT:
-    // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
+    // IMPORTANT: Keep this in sync with serializePropertiesSync in invoke.ts
     // IMPORTANT:
 
     if (prop === undefined ||
@@ -323,13 +330,24 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
     }
 
     if (CustomResource.isInstance(prop)) {
-        // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: custom resource id`);
+            log.debug(`Serialize property [${ctx}]: custom resource urn`);
         }
 
         dependentResources.add(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+        const id = await serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+
+        if (await monitorSupportsResourceReferences()) {
+            // If we are keeping resources, emit a stronly typed wrapper over the URN
+            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+            return {
+                [specialSigKey]: specialResourceSig,
+                urn: urn,
+                id: id,
+            };
+        }
+        // Else, return the id for backward compatibility.
+        return id;
     }
 
     if (ComponentResource.isInstance(prop)) {
@@ -348,9 +366,18 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // and tracked in a reasonable manner, while not causing us to compute or embed information
         // about it that is not needed, and which can lead to deadlocks.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: component resource urnid`);
+            log.debug(`Serialize property [${ctx}]: component resource urn`);
         }
 
+        if (await monitorSupportsResourceReferences()) {
+            // If we are keeping resources, emit a strongly typed wrapper over the URN
+            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+            return {
+                [specialSigKey]: specialResourceSig,
+                urn: urn,
+            };
+        }
+        // Else, return the urn for backward compatibility.
         return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
     }
 
@@ -482,6 +509,32 @@ export function deserializeProperty(prop: any): any {
                         [specialSigKey]: specialSecretSig,
                         value: deserializeProperty(prop["value"]),
                     };
+                case specialResourceSig:
+                    // Deserialize the resource into a live Resource reference
+                    const urn = prop["urn"];
+                    const version = prop["version"];
+
+                    const urnParts = urn.split("::");
+                    const qualifiedType = urnParts[2];
+
+                    const type = qualifiedType.split("$").pop()!;
+                    const typeParts = type.split(":");
+                    let pkgName = typeParts[0];
+                    const modName = typeParts.length > 1 ? typeParts[1] : "";
+                    const typName = typeParts.length > 2 ? typeParts[2] : "";
+                    const isProvider = pkgName === "pulumi" && modName === "providers";
+                    if (isProvider) {
+                        pkgName = typName;
+                    }
+
+                    const resourcePackage = resourcePackages.get(packageKey(pkgName, version || ""));
+                    if (!resourcePackage) {
+                        throw new Error(`Unable to deserialize resource URN ${urn}, no resource package is registered for type ${type}.`);
+                    }
+                    const urnName = urnParts[3];
+                    return !isProvider ?
+                        resourcePackage.construct(urnName, type, {}, { urn }) :
+                        resourcePackage.constructProvider(urnName, type, {}, { urn });
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -520,4 +573,31 @@ export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
         }
     });
     return p;
+}
+
+/**
+ * A ResourcePackage is a package that understands how to construct resources given a name, type, args, and URN.
+ */
+export type ResourcePackage = {
+    construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
+    constructProvider(name: string, type: string, args: any, opts: { urn: string }): ProviderResource;
+};
+
+const resourcePackages = new Map<string, ResourcePackage>();
+
+function packageKey(name: string, version: string): string {
+    return `${name}@${version}`;
+}
+
+/**
+ * registerResourcePackage registers a resource package that will be used to construct resources for any URNs matching
+ * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ */
+export function registerResourcePackage(pkgName: string, version: string, pkg: ResourcePackage) {
+    const key = packageKey(pkgName, version);
+    const existing = resourcePackages.get(key);
+    if (existing) {
+        throw new Error(`Cannot re-register package ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
+    }
+    resourcePackages.set(key, pkg);
 }

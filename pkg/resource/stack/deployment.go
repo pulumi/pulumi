@@ -370,6 +370,17 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		return prop.ArchiveValue().Serialize(), nil
 	}
 
+	// We serialize resource references using a map-based representation similar to assets, archives, and secrets.
+	if prop.IsResourceReference() {
+		ref := prop.ResourceReferenceValue()
+		return map[string]interface{}{
+			resource.SigKey:  resource.ResourceReferenceSig,
+			"urn":            ref.URN,
+			"id":             ref.ID,
+			"packageVersion": ref.PackageVersion,
+		}, nil
+	}
+
 	if prop.IsSecret() {
 		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
 		// "secret" so we retain that information when deserializaing the overall structure, but there is no
@@ -543,6 +554,32 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
 					}
 					return prop, nil
+				case resource.ResourceReferenceSig:
+					urnStr, ok := objmap["urn"].(string)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed resource value: missing urn")
+					}
+					urn := resource.URN(urnStr)
+
+					var id resource.ID
+					if idV, ok := objmap["id"]; ok {
+						idStr, ok := idV.(string)
+						if !ok {
+							return resource.PropertyValue{}, errors.New("malformed resource value: id must be a string")
+						}
+						id = resource.ID(idStr)
+					}
+
+					var packageVersion string
+					if packageVersionV, ok := objmap["packageVersion"]; ok {
+						packageVersion, ok = packageVersionV.(string)
+						if !ok {
+							return resource.PropertyValue{},
+								errors.New("malformed resource value: packageVersion must be a string")
+						}
+					}
+
+					return resource.MakeResourceReference(urn, id, packageVersion), nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

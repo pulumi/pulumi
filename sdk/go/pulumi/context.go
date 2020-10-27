@@ -39,18 +39,19 @@ import (
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
-	ctx         context.Context
-	info        RunInfo
-	stack       Resource
-	exports     map[string]Input
-	monitor     pulumirpc.ResourceMonitorClient
-	monitorConn *grpc.ClientConn
-	engine      pulumirpc.EngineClient
-	engineConn  *grpc.ClientConn
-	rpcs        int         // the number of outstanding RPC requests.
-	rpcsDone    *sync.Cond  // an event signaling completion of RPCs.
-	rpcsLock    *sync.Mutex // a lock protecting the RPC count and event.
-	rpcError    error       // the first error (if any) encountered during an RPC.
+	ctx           context.Context
+	info          RunInfo
+	stack         Resource
+	exports       map[string]Input
+	monitor       pulumirpc.ResourceMonitorClient
+	monitorConn   *grpc.ClientConn
+	engine        pulumirpc.EngineClient
+	engineConn    *grpc.ClientConn
+	keepResources bool        // true if resources should be marshaled as strongly-typed references.
+	rpcs          int         // the number of outstanding RPC requests.
+	rpcsDone      *sync.Cond  // an event signaling completion of RPCs.
+	rpcsLock      *sync.Mutex // a lock protecting the RPC count and event.
+	rpcError      error       // the first error (if any) encountered during an RPC.
 
 	Log Log // the logging interface for the Pulumi log stream.
 }
@@ -93,23 +94,35 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engine = &mockEngine{}
 	}
 
+	var keepResources bool
+	if monitor != nil {
+		supportsFeatureResp, err := monitor.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{
+			Id: "resourceReferences",
+		})
+		if err != nil {
+			return nil, fmt.Errorf("checking monitor features: %w", err)
+		}
+		keepResources = supportsFeatureResp.GetHasSupport()
+	}
+
 	mutex := &sync.Mutex{}
 	log := &logState{
 		engine: engine,
 		ctx:    ctx,
 	}
 	return &Context{
-		ctx:         ctx,
-		info:        info,
-		exports:     make(map[string]Input),
-		monitorConn: monitorConn,
-		monitor:     monitor,
-		engineConn:  engineConn,
-		engine:      engine,
-		rpcs:        0,
-		rpcsLock:    mutex,
-		rpcsDone:    sync.NewCond(mutex),
-		Log:         log,
+		ctx:           ctx,
+		info:          info,
+		exports:       make(map[string]Input),
+		monitorConn:   monitorConn,
+		monitor:       monitor,
+		engineConn:    engineConn,
+		engine:        engine,
+		keepResources: keepResources,
+		rpcs:          0,
+		rpcsLock:      mutex,
+		rpcsDone:      sync.NewCond(mutex),
+		Log:           log,
 	}, nil
 }
 
@@ -192,7 +205,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	keepUnknowns := ctx.DryRun()
 	rpcArgs, err := plugin.MarshalProperties(
 		resolvedArgsMap,
-		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true},
+		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true, KeepResources: ctx.keepResources},
 	)
 	if err != nil {
 		return fmt.Errorf("marshaling arguments: %w", err)
@@ -228,10 +241,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 		return ferr
 	}
 
-	// Otherwsie, simply unmarshal the output properties and return the result.
+	// Otherwise, simply unmarshal the output properties and return the result.
 	outProps, err := plugin.UnmarshalProperties(
 		resp.Return,
-		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns},
+		plugin.MarshalOptions{KeepSecrets: true, KeepResources: true, KeepUnknowns: keepUnknowns},
 	)
 	if err != nil {
 		return err
@@ -718,7 +731,7 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 	if err == nil {
 		outprops, err = plugin.UnmarshalProperties(
 			result,
-			plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: dryrun},
+			plugin.MarshalOptions{KeepSecrets: true, KeepResources: true, KeepUnknowns: dryrun},
 		)
 	}
 	if err != nil {
@@ -818,7 +831,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string,
 	keepUnknowns := ctx.DryRun()
 	rpcProps, err := plugin.MarshalProperties(
 		resolvedProps,
-		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: ctx.keepResources})
 	if err != nil {
 		return nil, fmt.Errorf("marshaling properties: %w", err)
 	}
@@ -1036,7 +1049,7 @@ func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 		keepUnknowns := ctx.DryRun()
 		outsMarshalled, err := plugin.MarshalProperties(
 			outsResolved.ObjectValue(),
-			plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true})
+			plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: ctx.keepResources})
 		if err != nil {
 			return
 		}
