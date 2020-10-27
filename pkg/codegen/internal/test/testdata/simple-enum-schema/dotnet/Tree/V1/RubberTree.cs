@@ -15,7 +15,7 @@ namespace Pulumi.PlantProvider.Tree.V1
         public Output<Pulumi.PlantProvider.Outputs.Container?> Container { get; private set; } = null!;
 
         [Output("farm")]
-        public Output<Union<Pulumi.PlantProvider.Tree.V1.Farm, string>?> Farm { get; private set; } = null!;
+        public Output<string?> Farm { get; private set; } = null!;
 
         [Output("type")]
         public Output<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety> Type { get; private set; } = null!;

@@ -12,6 +12,9 @@ namespace Pulumi.PlantProvider.Inputs
 
     public sealed class ContainerArgs : Pulumi.ResourceArgs
     {
+        [Input("brightness")]
+        public Input<Pulumi.PlantProvider.ContainerBrightness>? Brightness { get; set; }
+
         [Input("color")]
         public InputUnion<Pulumi.PlantProvider.ContainerColor, string>? Color { get; set; }
 

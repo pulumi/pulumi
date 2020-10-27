@@ -13,18 +13,22 @@ namespace Pulumi.PlantProvider.Outputs
     [OutputType]
     public sealed class Container
     {
-        public readonly Union<Pulumi.PlantProvider.ContainerColor, string>? Color;
+        public readonly Pulumi.PlantProvider.ContainerBrightness? Brightness;
+        public readonly string? Color;
         public readonly string? Material;
         public readonly Pulumi.PlantProvider.ContainerSize Size;
 
         [OutputConstructor]
         private Container(
-            Union<Pulumi.PlantProvider.ContainerColor, string>? color,
+            Pulumi.PlantProvider.ContainerBrightness? brightness,
+
+            string? color,
 
             string? material,
 
             Pulumi.PlantProvider.ContainerSize size)
         {
+            Brightness = brightness;
             Color = color;
             Material = material;
             Size = size;

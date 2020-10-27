@@ -272,6 +272,12 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		elementTypeSet := stringSet{}
 		var elementTypes []string
 		for _, e := range t.ElementTypes {
+			// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
+			// Eg. Output<string> rather than Output<Union<EnumType, string>>
+			if typ, ok := e.(*schema.EnumType); ok && !input {
+				return mod.typeString(typ.ElementType, qualifier, input, state, wrapInput, requireInitializers, optional)
+			}
+
 			et := mod.typeString(e, qualifier, input, state, false, false, false)
 			if !elementTypeSet.has(et) {
 				elementTypeSet.add(et)
@@ -1012,16 +1018,22 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	printComment(w, enum.Comment, indent)
 
 	switch enum.ElementType {
-	case schema.StringType:
+	case schema.StringType, schema.NumberType:
+		// EnumType attribute
+		fmt.Fprintf(w, "%s[EnumType]\n", indent)
 		// Open struct declaration
 		fmt.Fprintf(w, "%[1]spublic readonly struct %[2]s : IEquatable<%[2]s>\n", indent, enumName)
 		fmt.Fprintf(w, "%s{\n", indent)
 		indent := strings.Repeat(indent, 2)
 		fmt.Fprintf(w, "%sprivate readonly %s _value;\n", indent, mod.typeString(enum.ElementType, "", false, false, false, false, false))
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, enum.ElementType.String())
+		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, mod.typeString(enum.ElementType, "", false, false, false, false, false))
 		fmt.Fprintf(w, "%s{\n", indent)
-		fmt.Fprintf(w, "%s    _value = value ?? throw new ArgumentNullException(nameof(value));\n", indent)
+		fmt.Fprintf(w, "%s    _value = value", indent)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, " ?? throw new ArgumentNullException(nameof(value))")
+		}
+		fmt.Fprintf(w, ";\n")
 		fmt.Fprintf(w, "%s}\n", indent)
 		fmt.Fprintf(w, "\n")
 		for _, e := range enum.Elements {
@@ -1041,13 +1053,27 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		fmt.Fprintf(w, "%[1]spublic static bool operator !=(%[2]s left, %[2]s right) => !left.Equals(right);\n", indent, enumName)
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
-		fmt.Fprintf(w, "%spublic override bool Equals(object obj) => obj is %s other && Equals(other);\n", indent, enumName)
-		fmt.Fprintf(w, "%spublic bool Equals(%s other) => string.Equals(_value, other._value, StringComparison.Ordinal);\n", indent, enumName)
+		fmt.Fprintf(w, "%spublic override bool Equals(object? obj) => obj is %s other && Equals(other);\n", indent, enumName)
+		fmt.Fprintf(w, "%spublic bool Equals(%s other) => ", indent, enumName)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, "string.Equals(_value, other._value, StringComparison.Ordinal)")
+		} else {
+			fmt.Fprintf(w, "_value == other._value")
+		}
+		fmt.Fprintf(w, ";\n")
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
-		fmt.Fprintf(w, "%spublic override int GetHashCode() => _value?.GetHashCode() ?? 0;\n", indent)
+		fmt.Fprintf(w, "%spublic override int GetHashCode() => _value?.GetHashCode()", indent)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, " ?? 0")
+		}
+		fmt.Fprintf(w, ";\n")
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "%spublic override string ToString() => _value;\n", indent)
+		fmt.Fprintf(w, "%spublic override string ToString() => _value", indent)
+		if enum.ElementType == schema.NumberType {
+			fmt.Fprintf(w, ".ToString()")
+		}
+		fmt.Fprintf(w, ";\n")
 	case schema.IntType:
 		// Open enum declaration
 		fmt.Fprintf(w, "%spublic enum %s\n", indent, enumName)
@@ -1514,7 +1540,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Enums
 	if len(mod.enums) > 0 {
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, pulumiImports)
+		mod.genHeader(buffer, []string{"System", "System.ComponentModel", "Pulumi.Serialization"})
 
 		if err := mod.genEnums(buffer, mod.enums); err != nil {
 			return err

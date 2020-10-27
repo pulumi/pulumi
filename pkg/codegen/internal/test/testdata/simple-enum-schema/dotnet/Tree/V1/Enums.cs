@@ -2,13 +2,12 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Threading.Tasks;
+using System.ComponentModel;
 using Pulumi.Serialization;
 
 namespace Pulumi.PlantProvider.Tree.V1
 {
+    [EnumType]
     public readonly struct Farm : IEquatable<Farm>
     {
         private readonly string _value;
@@ -25,7 +24,7 @@ namespace Pulumi.PlantProvider.Tree.V1
         public static bool operator !=(Farm left, Farm right) => !left.Equals(right);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public override bool Equals(object obj) => obj is Farm other && Equals(other);
+        public override bool Equals(object? obj) => obj is Farm other && Equals(other);
         public bool Equals(Farm other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
@@ -37,6 +36,7 @@ namespace Pulumi.PlantProvider.Tree.V1
     /// <summary>
     /// types of rubber trees
     /// </summary>
+    [EnumType]
     public readonly struct RubberTreeVariety : IEquatable<RubberTreeVariety>
     {
         private readonly string _value;
@@ -63,7 +63,7 @@ namespace Pulumi.PlantProvider.Tree.V1
         public static bool operator !=(RubberTreeVariety left, RubberTreeVariety right) => !left.Equals(right);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public override bool Equals(object obj) => obj is RubberTreeVariety other && Equals(other);
+        public override bool Equals(object? obj) => obj is RubberTreeVariety other && Equals(other);
         public bool Equals(RubberTreeVariety other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
         [EditorBrowsable(EditorBrowsableState.Never)]

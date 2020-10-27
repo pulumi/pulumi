@@ -50,6 +50,9 @@
             {"$ref": "#/types/plant-provider::ContainerColor"},
             {"type": "string"}
           ]
+        },
+        "brightness": {
+          "$ref": "#/types/plant-provider::ContainerBrightness"
         }
       },
       "required": ["size"]
@@ -85,6 +88,19 @@
         },
         {
           "value": "yellow"
+        }
+      ]
+    },
+    "plant-provider::ContainerBrightness": {
+      "type": "number",
+      "enum": [
+        {
+          "name": "ZeroPointOne",
+          "value": 0.1
+        },
+        {
+          "name": "One",
+          "value": 1.0
         }
       ]
     },
