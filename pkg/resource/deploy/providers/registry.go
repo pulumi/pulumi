@@ -325,7 +325,7 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
-			return "", nil, resource.StatusPartialFailure, err
+			return "", nil, resource.StatusOK, err
 		}
 		id = resource.ID(uuid.String())
 		contract.Assert(id != UnknownID)

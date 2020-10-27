@@ -132,7 +132,7 @@ func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeo
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
-			return "", nil, resource.StatusPartialFailure, err
+			return "", nil, resource.StatusOK, err
 		}
 		return resource.ID(uuid.String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}

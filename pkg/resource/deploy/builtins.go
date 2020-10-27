@@ -120,7 +120,7 @@ func (p *builtinProvider) Create(urn resource.URN, inputs resource.PropertyMap, 
 		// generate a new uuid
 		uuid, err := uuid.NewV4()
 		if err != nil {
-			return "", nil, resource.StatusPartialFailure, err
+			return "", nil, resource.StatusOK, err
 		}
 		id = resource.ID(uuid.String())
 	}
