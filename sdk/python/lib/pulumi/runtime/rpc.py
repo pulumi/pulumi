@@ -269,22 +269,28 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             version = props_struct["version"]
 
             urn_parts = urn.split("::")
+            urn_name = urn_parts[3]
             qualified_type = urn_parts[2]
             typ = qualified_type.split("$")[-1]
+
             typ_parts = typ.split(":")
             pkg_name = typ_parts[0]
             mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
             typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
+
+            resource = None
             is_provider = pkg_name == "pulumi" and mod_name == "providers"
             if is_provider:
-                pkg_name = typ_name
+                resource_package = RESOURCE_PACKAGES.get(package_key(typ_name, version))
+                if resource_package is None:
+                    raise Exception(f"Unable to deserialize provider {urn}, no resource package is registered for {typ_name}.")
+                resource = resource_package.construct_provider(urn_name, typ, {}, {"urn": urn})
+            else:
+                resource_module = RESOURCE_PACKAGES.get(module_key(typ_name, version))
+                if resource_module is None:
+                    raise Exception(f"Unable to deserialize resource {urn}, no resource module is registered for {mod_name}.")
+                resource_module.construct(urn_name, typ, {}, {"urn": urn})
 
-            resource_package = RESOURCE_PACKAGES.get(package_key(pkg_name, version))
-            if resource_package is None:
-                raise Exception(f"Unable to deserialize resource URN {urn}, no resource package is registered for type {typ}.")
-            urn_name = urn_parts[3]
-            resource = resource_package.construct(urn_name, typ, {}, {"urn": urn}) if not is_provider \
-                else resource_package.construct_provider(urn_name, typ, {}, {"urn": urn})
             return cast('Resource', resource)
 
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
@@ -654,3 +660,15 @@ def register_resource_package(typ: str, version: str, package):
     if existing is not None:
         raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
     RESOURCE_PACKAGES[key] = package
+
+RESOURCE_MODULES: Dict[str, Any] = dict()
+
+def module_key(typ: str, version: str) -> str:
+    return f"{typ}@{version}"
+
+def register_resource_module(typ: str, version: str, module):
+    key = module_key(typ, version)
+    existing = RESOURCE_MODULES.get(key, None)
+    if existing is not None:
+        raise ValueError(f"Cannot re-register module {key}. Previous registration was {existing}, new registration was {module}.")
+    RESOURCE_MODULES[key] = module

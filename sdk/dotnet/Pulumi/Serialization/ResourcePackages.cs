@@ -11,7 +11,6 @@ namespace Pulumi
 {
     public interface IResourcePackage
     {
-        Resource Construct(string name, string type, IDictionary<string, object?>? args, string urn);
         ProviderResource ConstructProvider(string name, string type, IDictionary<string, object?>? args, string urn);
     }
 

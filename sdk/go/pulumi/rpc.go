@@ -461,27 +461,30 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 
 		resName := ref.URN.Name()
 		resType := ref.URN.Type()
-		pkgName := resType.Package()
-
-		isProvider := false
-		if tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers" {
-			pkgName, isProvider = tokens.Package(resType.Name()), true
-		}
-
-		resourcePackageV, ok := resourcePackages.Load(packageKey(string(pkgName), ref.PackageVersion))
-		if !ok {
-			err := fmt.Errorf("unable to deserialize resource URN %v, no resource package is registered for type %v",
-				ref.URN, pkgName)
-			return nil, false, err
-		}
-		resourcePackage := resourcePackageV.(ResourcePackage)
 
 		var resource Resource
 		var err error
-		if !isProvider {
-			resource, err = resourcePackage.Construct(string(resName), string(resType), nil, string(ref.URN))
-		} else {
+
+		isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"
+		if isProvider {
+			pkgName := resType.Name()
+			resourcePackageV, ok := resourcePackages.Load(packageKey(string(pkgName), ref.PackageVersion))
+			if !ok {
+				err := fmt.Errorf("unable to deserialize provider %v, no resource package is registered for %v",
+					ref.URN, pkgName)
+				return nil, false, err
+			}
+			resourcePackage := resourcePackageV.(ResourcePackage)
 			resource, err = resourcePackage.ConstructProvider(string(resName), string(resType), nil, string(ref.URN))
+		} else {
+			modName := resType.Module()
+			resourceModuleV, ok := resourceModules.Load(packageKey(string(modName), ref.PackageVersion))
+			if !ok {
+				err := fmt.Errorf("unable to deserialize resource %v, no module is registered for %v", ref.URN, modName)
+				return nil, false, err
+			}
+			resourceModule := resourceModuleV.(ResourceModule)
+			resource, err = resourceModule.Construct(string(resName), string(resType), nil, string(ref.URN))
 		}
 		if err != nil {
 			return nil, false, err
@@ -679,7 +682,6 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 }
 
 type ResourcePackage interface {
-	Construct(name, typ string, args map[string]interface{}, urn string) (Resource, error)
 	ConstructProvider(name, typ string, args map[string]interface{}, urn string) (ProviderResource, error)
 }
 
@@ -695,5 +697,24 @@ func RegisterResourcePackage(name, version string, pkg ResourcePackage) {
 	existing, hasExisting := resourcePackages.LoadOrStore(key, pkg)
 	if hasExisting {
 		panic(fmt.Errorf("a resource package for %v is already registered: %v", key, existing))
+	}
+}
+
+type ResourceModule interface {
+	Construct(name, typ string, args map[string]interface{}, urn string) (Resource, error)
+}
+
+var resourceModules sync.Map // map[string]ResourceModule
+
+func moduleKey(name, version string) string {
+	return fmt.Sprintf("%s@%s", name, version)
+}
+
+// RegisterResourceModule register a resource module with the Pulumi runtime.
+func RegisterResourceModule(name, version string, pkg ResourceModule) {
+	key := moduleKey(name, version)
+	existing, hasExisting := resourceModules.LoadOrStore(key, pkg)
+	if hasExisting {
+		panic(fmt.Errorf("a resource module for %v is already registered: %v", key, existing))
 	}
 }

@@ -231,6 +231,7 @@ namespace Pulumi.Serialization
             }
 
             var urnParts = urn.Split("::");
+            var urnName = urnParts[3];
             var qualifiedType = urnParts[2];
             var qualifiedTypeParts = qualifiedType.Split('$');
             var type = qualifiedTypeParts[qualifiedTypeParts.Length-1];
@@ -239,20 +240,24 @@ namespace Pulumi.Serialization
             var pkgName = typeParts[0];
             var modName = typeParts.Length > 1 ? typeParts[1] : "";
             var typeName = typeParts.Length > 2 ? typeParts[2] : "";
+
             var isProvider = pkgName == "pulumi" && modName == "providers";
             if (isProvider) {
-                pkgName = typeName;
+                IResourcePackage? package;
+                if (!ResourcePackages.TryGetResourcePackage(typeName, version, out package))
+                {
+                    throw new InvalidOperationException($"Unable to deserialize provider {urn}, no resource package is registered for type {typeName}.");
+                }
+                resource = package.ConstructProvider(urnName, type, null, urn);
+                return true
             }
 
-            IResourcePackage? package;
-            if (!ResourcePackages.TryGetResourcePackage(pkgName, version, out package))
+            IResourceModule? module;
+            if (!ResourceModules.TryGetResourcePackage(modName, version, out module))
             {
-                throw new InvalidOperationException($"Unable to deserialize resource URN {urn}, no resource package is registered for type {type}.");
+                throw new InvalidOperationException($"Unable to deserialize resource {urn}, no module is registered for {modName}.");
             }
-            var urnName = urnParts[3];
-            resource = !isProvider ?
-                package.Construct(urnName, type, null, urn) :
-                package.ConstructProvider(urnName, type, null, urn);
+            resource = module.Construct(urnName, type, null, urn) :
             return true;
         }
 
