@@ -14,8 +14,12 @@ namespace Pulumi.PlantProvider.Tree.V1
         [Output("container")]
         public Output<Pulumi.PlantProvider.Outputs.Container?> Container { get; private set; } = null!;
 
+        [Output("farm")]
+        public Output<Union<Pulumi.PlantProvider.Tree.V1.Farm, string>?> Farm { get; private set; } = null!;
+
         [Output("type")]
-        public Output<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety?> Type { get; private set; } = null!;
+        public Output<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety> Type { get; private set; } = null!;
+
 
         /// <summary>
         /// Create a RubberTree resource with the given unique name, arguments, and options.
@@ -24,7 +28,7 @@ namespace Pulumi.PlantProvider.Tree.V1
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public RubberTree(string name, RubberTreeArgs? args = null, CustomResourceOptions? options = null)
+        public RubberTree(string name, RubberTreeArgs args, CustomResourceOptions? options = null)
             : base("plant-provider:tree/v1:RubberTree", name, args ?? new RubberTreeArgs(), MakeResourceOptions(options, ""))
         {
         }
@@ -64,8 +68,11 @@ namespace Pulumi.PlantProvider.Tree.V1
         [Input("container")]
         public Input<Pulumi.PlantProvider.Inputs.ContainerArgs>? Container { get; set; }
 
-        [Input("type")]
-        public Input<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety>? Type { get; set; }
+        [Input("farm")]
+        public InputUnion<Pulumi.PlantProvider.Tree.V1.Farm, string>? Farm { get; set; }
+
+        [Input("type", required: true)]
+        public Input<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety> Type { get; set; } = null!;
 
         public RubberTreeArgs()
         {

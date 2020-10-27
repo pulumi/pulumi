@@ -31,6 +31,7 @@ func TestGeneratePackage(t *testing.T) {
 				"Tree/V1/Enums.cs",
 				"Enums.cs",
 				"Inputs/ContainerArgs.cs",
+				"Outputs/Container.cs",
 			},
 		},
 	}
