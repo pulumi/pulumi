@@ -387,6 +387,8 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		}
 	}
 
+	indent = strings.Repeat(indent, 2)
+
 	// Next generate the input property itself. The way this is generated depends on the type of the property:
 	// complex types like lists and maps need a backing field.
 	switch prop.Type.(type) {
@@ -395,32 +397,32 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		requireInitializers := !pt.wrapInput
 		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.wrapInput, requireInitializers, false)
 
-		fmt.Fprintf(w, "%s    [Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%s    private %s? %s;\n", indent, backingFieldType, backingFieldName)
+		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
 
 		if prop.Comment != "" {
 			fmt.Fprintf(w, "\n")
-			printComment(w, prop.Comment, indent+"    ")
+			printComment(w, prop.Comment, indent)
 		}
 		printObsoleteAttribute(w, prop.DeprecationMessage, indent)
 
 		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
 		// ensure that the user does not see warnings when initializing these properties using object or collection
 		// initializers.
-		fmt.Fprintf(w, "%s    public %s %s\n", indent, backingFieldType, propertyName)
-		fmt.Fprintf(w, "%s    {\n", indent)
-		fmt.Fprintf(w, "%s        get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
-		fmt.Fprintf(w, "%s        set => %s = value;\n", indent, backingFieldName)
-		fmt.Fprintf(w, "%s    }\n", indent)
+		fmt.Fprintf(w, "%spublic %s %s\n", indent, backingFieldType, propertyName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		fmt.Fprintf(w, "%s    get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
+		fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		fmt.Fprintf(w, "%s}\n", indent)
 	default:
 		initializer := ""
 		if prop.IsRequired && (!isValueType(prop.Type) || pt.wrapInput) {
 			initializer = " = null!;"
 		}
 
-		printComment(w, prop.Comment, indent+"    ")
-		fmt.Fprintf(w, "%s    [Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%s    public %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
+		printComment(w, prop.Comment, indent)
+		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		fmt.Fprintf(w, "%spublic %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
 	}
 }
 
