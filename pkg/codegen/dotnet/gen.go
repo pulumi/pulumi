@@ -1540,7 +1540,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Enums
 	if len(mod.enums) > 0 {
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, []string{"System", "System.ComponentModel", "Pulumi.Serialization"})
+		mod.genHeader(buffer, []string{"System", "System.ComponentModel", "Pulumi"})
 
 		if err := mod.genEnums(buffer, mod.enums); err != nil {
 			return err

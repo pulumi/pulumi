@@ -3,7 +3,7 @@
 
 using System;
 using System.ComponentModel;
-using Pulumi.Serialization;
+using Pulumi;
 
 namespace Pulumi.PlantProvider
 {
