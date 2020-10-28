@@ -333,8 +333,8 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	parts := strings.SplitN(version, "\n", 2)
 	if len(parts) == 2 {
 		// version.txt may contain two lines, in which case it's "plugin name\nversion"
-		name = parts[0]
-		version = parts[1]
+		name = strings.TrimSpace(parts[0])
+		version = strings.TrimSpace(parts[1])
 	}
 
 	if !strings.HasPrefix(version, "v") {

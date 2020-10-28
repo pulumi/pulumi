@@ -97,7 +97,7 @@ namespace {{.Namespace}}
             if (parts.Length == 2)
             {
                 // The first part is the provider name.
-                version = parts[1];
+                version = parts[1].Trim();
             }
         }
     }
