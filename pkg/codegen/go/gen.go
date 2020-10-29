@@ -876,7 +876,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "\treturn reflect.TypeOf((*%sArgs)(nil)).Elem()\n", camel(name))
 	fmt.Fprintf(w, "}\n\n")
 
-	// Emit the input types.
+	// Emit the resource input type.
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%[1]sOutput() %[1]sOutput\n", name)
@@ -884,7 +884,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "}\n\n")
 	genInputMethods(w, name, name, name, false)
 
-	// Emit the output types.
+	// Emit the resource output type.
 	fmt.Fprintf(w, "type %sOutput struct {\n", name)
 	fmt.Fprintf(w, "\t*pulumi.OutputState\n")
 	fmt.Fprintf(w, "}\n\n")
