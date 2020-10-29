@@ -249,15 +249,15 @@ namespace Pulumi.Serialization
                     throw new InvalidOperationException($"Unable to deserialize provider {urn}, no resource package is registered for type {typeName}.");
                 }
                 resource = package.ConstructProvider(urnName, type, null, urn);
-                return true
+                return true;
             }
 
             IResourceModule? module;
-            if (!ResourceModules.TryGetResourcePackage(modName, version, out module))
+            if (!ResourceModules.TryGetResourceModule(modName, version, out module))
             {
                 throw new InvalidOperationException($"Unable to deserialize resource {urn}, no module is registered for {modName}.");
             }
-            resource = module.Construct(urnName, type, null, urn) :
+            resource = module.Construct(urnName, type, null, urn);
             return true;
         }
 
