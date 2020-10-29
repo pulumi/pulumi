@@ -1287,17 +1287,17 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 	for name, spec := range properties {
 		typ, err := t.bindType(spec.TypeSpec)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error binding type for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding type for property %q", name)
 		}
 
 		cv, err := bindConstValue(spec.Const, typ)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error binding constant value for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding constant value for property %q", name)
 		}
 
 		dv, err := bindDefaultValue(spec.Default, spec.DefaultInfo, typ)
 		if err != nil {
-			return nil, nil, errors.Wrapf(err, "error binding default value for property %s", name)
+			return nil, nil, errors.Wrapf(err, "error binding default value for property %q", name)
 		}
 
 		language := make(map[string]interface{})
@@ -1323,7 +1323,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 	for _, name := range required {
 		p, ok := propertyMap[name]
 		if !ok {
-			return nil, nil, errors.Errorf("unknown required property %s", name)
+			return nil, nil, errors.Errorf("unknown required property %q", name)
 		}
 		p.IsRequired = true
 	}
