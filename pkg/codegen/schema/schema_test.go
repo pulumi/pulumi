@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// nolint: lll
 package schema
 
 import (
 	"encoding/json"
 	"io/ioutil"
+	"net/url"
 	"path/filepath"
+	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -128,7 +132,7 @@ func TestImportResourceRef(t *testing.T) {
 		validator  func(pkg *Package)
 	}{
 		{
-			"valid",
+			"simple",
 			"simple-resource-schema/schema.json",
 			false,
 			func(pkg *Package) {
@@ -137,6 +141,35 @@ func TestImportResourceRef(t *testing.T) {
 						for _, p := range r.Properties {
 							if p.Name == "foo" {
 								assert.IsType(t, &ResourceType{}, p.Type)
+							}
+						}
+					}
+				}
+			},
+		},
+		{
+			"external-ref",
+			"external-resource-schema/schema.json",
+			false,
+			func(pkg *Package) {
+				for _, r := range pkg.Resources {
+					switch r.Token {
+					case "example::Cat":
+						for _, p := range r.Properties {
+							if p.Name == "name" {
+								assert.IsType(t, &ResourceType{}, p.Type)
+
+								resource := p.Type.(*ResourceType)
+								assert.NotNil(t, resource.Resource)
+							}
+						}
+					case "example::Workload":
+						for _, p := range r.Properties {
+							if p.Name == "pod" {
+								assert.IsType(t, &ObjectType{}, p.Type)
+
+								obj := p.Type.(*ObjectType)
+								assert.NotNil(t, obj.Properties)
 							}
 						}
 					}
@@ -161,6 +194,98 @@ func TestImportResourceRef(t *testing.T) {
 				return
 			}
 			tt.validator(pkg)
+		})
+	}
+}
+
+func Test_parseTypeSpecRef(t *testing.T) {
+	toVersionPtr := func(version string) *semver.Version { v := semver.MustParse(version); return &v }
+	toURL := func(rawurl string) *url.URL {
+		parsed, err := url.Parse(rawurl)
+		assert.NoError(t, err, "failed to parse ref")
+
+		return parsed
+	}
+
+	tests := []struct {
+		name    string
+		ref     string
+		want    typeSpecRef
+		wantErr bool
+	}{
+		{
+			name: "resourceRef",
+			ref:  "#/resources/example::Resource",
+			want: typeSpecRef{
+				URL:   toURL("#/resources/example::Resource"),
+				Token: "example::Resource",
+				Kind:  "resources",
+			},
+		},
+		{
+			name: "typeRef",
+			ref:  "#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			want: typeSpecRef{
+				URL:   toURL("#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig"),
+				Token: "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				Kind:  "types",
+			},
+		},
+		{
+			name: "externalResourceRef",
+			ref:  "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
+			want: typeSpecRef{
+				externalSchemaRef: &externalSchemaRef{
+					Package: "random",
+					Version: toVersionPtr("2.3.1"),
+				},
+				URL:   toURL("/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"),
+				Token: "random:index/randomPet:RandomPet",
+				Kind:  "resources",
+			},
+		},
+		{
+			name:    "invalid externalResourceRef",
+			ref:     "/random/schema.json#/resources/random:index/randomPet:RandomPet",
+			wantErr: true,
+		},
+		{
+			name: "externalTypeRef",
+			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			want: typeSpecRef{
+				externalSchemaRef: &externalSchemaRef{
+					Package: "kubernetes",
+					Version: toVersionPtr("2.6.3"),
+				},
+				URL:   toURL("/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig"),
+				Token: "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+				Kind:  "types",
+			},
+		},
+		{
+			name: "externalHostResourceRef",
+			ref:  "https://example.com/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
+			want: typeSpecRef{
+				externalSchemaRef: &externalSchemaRef{
+					Package: "random",
+					Version: toVersionPtr("2.3.1"),
+				},
+				URL:   toURL("https://example.com/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"),
+				Token: "random:index/randomPet:RandomPet",
+				Kind:  "resources",
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := parseTypeSpecRef(tt.ref)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("parseTypeSpecRef() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("parseTypeSpecRef() got = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }
