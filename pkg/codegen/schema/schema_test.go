@@ -45,7 +45,7 @@ func TestImportSpec(t *testing.T) {
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("kubernetes.json")
 
-	pkg, err := ImportSpec(pkgSpec, nil, nil)
+	pkg, err := ImportSpec(pkgSpec, nil)
 	if err != nil {
 		t.Errorf("ImportSpec() error = %v", err)
 	}
@@ -110,7 +110,7 @@ func TestEnums(t *testing.T) {
 		t.Run(tt.filename, func(t *testing.T) {
 			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
 
-			pkg, err := ImportSpec(pkgSpec, nil, nil)
+			pkg, err := ImportSpec(pkgSpec, nil)
 			if tt.shouldError {
 				assert.Error(t, err)
 			} else {
@@ -188,7 +188,7 @@ func TestImportResourceRef(t *testing.T) {
 			err = json.Unmarshal(schemaBytes, &pkgSpec)
 			assert.NoError(t, err)
 
-			pkg, err := ImportSpec(pkgSpec, nil, nil)
+			pkg, err := ImportSpec(pkgSpec, nil)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ImportSpec() error = %v, wantErr %v", err, tt.wantErr)
 				return

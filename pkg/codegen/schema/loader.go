@@ -5,7 +5,6 @@ import (
 
 	"github.com/blang/semver"
 	jsoniter "github.com/json-iterator/go"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
@@ -62,7 +61,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, err := ImportSpec(spec, nil, l)
+	p, err := importSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
 	}

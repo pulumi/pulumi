@@ -809,8 +809,10 @@ type PackageSpec struct {
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
 
-// ImportSpec converts a serializable PackageSpec into a Package.
-func ImportSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, error) {
+// importSpec converts a serializable PackageSpec into a Package. This function includes a loader parameter which
+// works as a singleton -- if it is nil, a new loader is instantiated, else the provided loader is used. This avoids
+// breaking downstream consumers of ImportSpec while allowing us to extend schema support to external packages.
+func importSpec(spec PackageSpec, languages map[string]Language, loader Loader) (*Package, error) {
 	// Parse the version, if any.
 	var version *semver.Version
 	if spec.Version != "" {
@@ -933,6 +935,13 @@ func ImportSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 		return nil, err
 	}
 	return pkg, nil
+
+}
+
+// ImportSpec converts a serializable PackageSpec into a Package.
+func ImportSpec(spec PackageSpec, languages map[string]Language) (*Package, error) {
+	// Call the internal implementation that includes a loader parameter.
+	return importSpec(spec, languages, nil)
 }
 
 // types facilitates interning (only storing a single reference to an object) during schema processing. The fields

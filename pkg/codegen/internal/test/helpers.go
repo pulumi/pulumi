@@ -41,7 +41,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
-	pkg, err := schema.ImportSpec(pkgSpec, nil, nil)
+	pkg, err := schema.ImportSpec(pkgSpec, nil)
 	if err != nil {
 		return nil, err
 	}

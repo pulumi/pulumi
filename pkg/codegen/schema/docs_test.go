@@ -126,7 +126,7 @@ func TestParseAndRenderDocs(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil, nil)
+			pkg, err := ImportSpec(spec, nil)
 			if err != nil {
 				t.Fatalf("could not import package: %v", err)
 			}
@@ -169,7 +169,7 @@ func TestReferenceRenderer(t *testing.T) {
 			if err = json.Unmarshal(contents, &spec); err != nil {
 				t.Fatalf("could not unmarshal package spec: %v", err)
 			}
-			pkg, err := ImportSpec(spec, nil, nil)
+			pkg, err := ImportSpec(spec, nil)
 			if err != nil {
 				t.Fatalf("could not import package: %v", err)
 			}
