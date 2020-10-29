@@ -211,7 +211,7 @@ func marshalInputAndDetermineSecret(v interface{},
 				}
 
 				// Await the output.
-				ov, known, outputSecret, err := output.await(context.TODO())
+				ov, known, outputSecret, outputDeps, err := output.await(context.TODO())
 				if err != nil {
 					return resource.PropertyValue{}, nil, false, err
 				}
@@ -219,10 +219,10 @@ func marshalInputAndDetermineSecret(v interface{},
 
 				// If the value is unknown, return the appropriate sentinel.
 				if !known {
-					return resource.MakeComputed(resource.NewStringProperty("")), output.dependencies(), secret, nil
+					return resource.MakeComputed(resource.NewStringProperty("")), outputDeps, secret, nil
 				}
 
-				v, deps = ov, output.dependencies()
+				v, deps = ov, outputDeps
 			}
 		}
 
