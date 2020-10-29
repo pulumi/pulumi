@@ -39,6 +39,13 @@ func (l *pluginLoader) getPackage(key string) (*Package, bool) {
 
 // ensurePlugin downloads and installs the specified plugin if it does not already exist.
 func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
+	// TODO: schema and provider versions
+	// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
+	// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
+	if version == nil {
+		return nil
+	}
+
 	pkgPlugin := workspace.PluginInfo{
 		Kind:    workspace.ResourcePlugin,
 		Name:    pkg,
