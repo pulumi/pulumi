@@ -23,12 +23,14 @@ namespace Pulumi.PlantProvider
         public static bool operator ==(ContainerBrightness left, ContainerBrightness right) => left.Equals(right);
         public static bool operator !=(ContainerBrightness left, ContainerBrightness right) => !left.Equals(right);
 
+        public static explicit operator double(ContainerBrightness value) => value._value;
+
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object? obj) => obj is ContainerBrightness other && Equals(other);
         public bool Equals(ContainerBrightness other) => _value == other._value;
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public override int GetHashCode() => _value?.GetHashCode();
+        public override int GetHashCode() => _value.GetHashCode();
 
         public override string ToString() => _value.ToString();
     }
@@ -52,6 +54,8 @@ namespace Pulumi.PlantProvider
 
         public static bool operator ==(ContainerColor left, ContainerColor right) => left.Equals(right);
         public static bool operator !=(ContainerColor left, ContainerColor right) => !left.Equals(right);
+
+        public static explicit operator string(ContainerColor value) => value._value;
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object? obj) => obj is ContainerColor other && Equals(other);

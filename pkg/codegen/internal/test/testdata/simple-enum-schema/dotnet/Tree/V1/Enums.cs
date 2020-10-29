@@ -23,6 +23,8 @@ namespace Pulumi.PlantProvider.Tree.V1
         public static bool operator ==(Farm left, Farm right) => left.Equals(right);
         public static bool operator !=(Farm left, Farm right) => !left.Equals(right);
 
+        public static explicit operator string(Farm value) => value._value;
+
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object? obj) => obj is Farm other && Equals(other);
         public bool Equals(Farm other) => string.Equals(_value, other._value, StringComparison.Ordinal);
@@ -61,6 +63,8 @@ namespace Pulumi.PlantProvider.Tree.V1
 
         public static bool operator ==(RubberTreeVariety left, RubberTreeVariety right) => left.Equals(right);
         public static bool operator !=(RubberTreeVariety left, RubberTreeVariety right) => !left.Equals(right);
+
+        public static explicit operator string(RubberTreeVariety value) => value._value;
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object? obj) => obj is RubberTreeVariety other && Equals(other);
