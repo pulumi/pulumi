@@ -76,4 +76,22 @@ namespace Pulumi
     public sealed class OutputConstructorAttribute : Attribute
     {
     }
+
+    /// <summary>
+    /// Attribute used by a Pulumi Cloud Provider Package to mark enum types.
+    ///
+    /// Requirements for a struct-based enum to be (de)serialized are as follows.
+    /// It must:
+    ///   * Be a value type (struct) decoratted with EnumTypeAttribute.
+    ///   * Have a constructor that takes a single parameter of the underlying type.
+    ///     The constructor can be private.
+    ///   * Have an explicit conversion operator that converts the enum type to the underlying type.
+    ///   * Have an underlying type of String or Double.
+    ///   * Implementing IEquatable, adding ==/=! operators and overriding ToString isn't required,
+    ///     but is recommended and is what our codegen does.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Struct)]
+    public sealed class EnumTypeAttribute : Attribute
+    {
+    }
 }

@@ -78,6 +78,8 @@ Pulumi.DeploymentInstance.InvokeAsync<T>(string token, Pulumi.InvokeArgs args, P
 Pulumi.DeploymentInstance.IsDryRun.get -> bool
 Pulumi.DeploymentInstance.ProjectName.get -> string
 Pulumi.DeploymentInstance.StackName.get -> string
+Pulumi.EnumTypeAttribute
+Pulumi.EnumTypeAttribute.EnumTypeAttribute() -> void
 Pulumi.FileArchive
 Pulumi.FileArchive.FileArchive(string path) -> void
 Pulumi.FileAsset
