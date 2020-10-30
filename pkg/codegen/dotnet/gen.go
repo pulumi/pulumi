@@ -640,7 +640,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
 	fmt.Fprintf(w, "{\n")
 
-	// Write the docstring for the resource class
+	// Write the documentation comment for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
@@ -1016,7 +1016,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
 
-	// Print docstring
+	// Print documentation comment
 	printComment(w, enum.Comment, indent)
 
 	underlyingType := mod.typeString(enum.ElementType, "", false, false, false, false, false)
@@ -1024,13 +1024,16 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	case schema.StringType, schema.NumberType:
 		// EnumType attribute
 		fmt.Fprintf(w, "%s[EnumType]\n", indent)
+
 		// Open struct declaration
 		fmt.Fprintf(w, "%[1]spublic readonly struct %[2]s : IEquatable<%[2]s>\n", indent, enumName)
 		fmt.Fprintf(w, "%s{\n", indent)
 		indent := strings.Repeat(indent, 2)
 		fmt.Fprintf(w, "%sprivate readonly %s _value;\n", indent, underlyingType)
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, mod.typeString(enum.ElementType, "", false, false, false, false, false))
+
+		// Constructor
+		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, underlyingType)
 		fmt.Fprintf(w, "%s{\n", indent)
 		fmt.Fprintf(w, "%s    _value = value", indent)
 		if enum.ElementType == schema.StringType {
@@ -1039,6 +1042,8 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		fmt.Fprintf(w, ";\n")
 		fmt.Fprintf(w, "%s}\n", indent)
 		fmt.Fprintf(w, "\n")
+
+		// Enum values
 		for _, e := range enum.Elements {
 			printComment(w, e.Comment, indent)
 			printObsoleteAttribute(w, e.DeprecationMessage, indent)
@@ -1052,11 +1057,17 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			fmt.Fprintf(w, ");\n")
 		}
 		fmt.Fprintf(w, "\n")
+
+		// Equality and inequality operators
 		fmt.Fprintf(w, "%[1]spublic static bool operator ==(%[2]s left, %[2]s right) => left.Equals(right);\n", indent, enumName)
 		fmt.Fprintf(w, "%[1]spublic static bool operator !=(%[2]s left, %[2]s right) => !left.Equals(right);\n", indent, enumName)
 		fmt.Fprintf(w, "\n")
+
+		// Explicit conversion operator
 		fmt.Fprintf(w, "%[1]spublic static explicit operator %s(%s value) => value._value;\n", indent, underlyingType, enumName)
 		fmt.Fprintf(w, "\n")
+
+		// Equals override
 		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
 		fmt.Fprintf(w, "%spublic override bool Equals(object? obj) => obj is %s other && Equals(other);\n", indent, enumName)
 		fmt.Fprintf(w, "%spublic bool Equals(%s other) => ", indent, enumName)
@@ -1067,6 +1078,8 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		}
 		fmt.Fprintf(w, ";\n")
 		fmt.Fprintf(w, "\n")
+
+		// GetHashCode override
 		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
 		fmt.Fprintf(w, "%spublic override int GetHashCode() => _value", indent)
 		if enum.ElementType == schema.StringType {
@@ -1078,6 +1091,8 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		}
 		fmt.Fprintf(w, ";\n")
 		fmt.Fprintf(w, "\n")
+
+		// ToString override
 		fmt.Fprintf(w, "%spublic override string ToString() => _value", indent)
 		if enum.ElementType == schema.NumberType {
 			fmt.Fprintf(w, ".ToString()")
@@ -1095,6 +1110,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
 		}
 	default:
+		// Issue to implement boolean-based enums: https://github.com/pulumi/pulumi/issues/5652
 		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
 	}
 
