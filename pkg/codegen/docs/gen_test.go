@@ -157,6 +157,14 @@ func initTestPackageSpec(t *testing.T) {
 ` + codeFence + `
 {{% /example %}}
 {{% /examples %}}
+
+## Import 
+
+The import docs would be here
+
+` + codeFence + `sh
+$ pulumi import prov:module/resource:Resource test test		
+` + codeFence + `
 `,
 				},
 				InputProperties: map[string]schema.PropertySpec{
@@ -398,6 +406,9 @@ func TestExamplesProcessing(t *testing.T) {
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
 	docInfo := decomposeDocstring(description)
 	examplesSection := docInfo.examples
+	importSection := docInfo.importDetails
+
+	assert.NotEmpty(t, importSection)
 
 	// The resource under test has two examples and both have TS and Python examples.
 	assert.Equal(t, 2, len(examplesSection))

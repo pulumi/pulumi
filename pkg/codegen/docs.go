@@ -47,7 +47,8 @@ func filterExamples(source []byte, node ast.Node, lang string) {
 		next = c.NextSibling()
 		switch c := c.(type) {
 		case *ast.FencedCodeBlock:
-			if string(c.Language(source)) != lang {
+			sourceLang := string(c.Language(source))
+			if sourceLang != lang && sourceLang != "sh" {
 				node.RemoveChild(node, c)
 			}
 		case *schema.Shortcode:
