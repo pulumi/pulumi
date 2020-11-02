@@ -5688,3 +5688,83 @@ func TestLanguageClient(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Len(t, snap.Resources, 2)
 }
+
+func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
+	var urnB resource.URN
+	var idB resource.ID
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+				inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				urn, _, _, err := monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+					Parent:       parent,
+					Protect:      options.Protect,
+					Aliases:      options.Aliases,
+					Dependencies: options.Dependencies,
+				})
+				assert.NoError(t, err)
+
+				urnB, idB, _, err = monitor.RegisterResource("pkgA:m:typB", "resB", true, deploytest.ResourceOptions{
+					Parent: urn,
+					Inputs: resource.PropertyMap{
+						"bar": resource.NewStringProperty("baz"),
+					},
+				})
+				assert.NoError(t, err)
+
+				return plugin.ConstructResult{
+					URN: urn,
+					Outputs: resource.PropertyMap{
+						"foo": resource.NewStringProperty("bar"),
+						"res": resource.MakeResourceReference(urnB, idB, ""),
+					},
+				}, nil
+			}
+
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "created-id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+				ConstructF: construct,
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+			"res": resource.MakeResourceReference(urnB, idB, ""),
+		}, state)
+
+		result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
+			"urn": resource.NewStringProperty(string(urnB)),
+		}, "", "")
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"urn": resource.NewStringProperty(string(urnB)),
+			"id":  resource.NewStringProperty(string(idB)),
+			"state": resource.NewObjectProperty(resource.PropertyMap{
+				"bar": resource.NewStringProperty("baz"),
+			}),
+		}, result)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 4),
+	}
+	p.Run(t, nil)
+}

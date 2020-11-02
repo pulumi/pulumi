@@ -61,7 +61,6 @@ type stepGenerator struct {
 	pendingDeletes map[*resource.State]bool         // set of resources (not URNs!) that are pending deletion
 	providers      map[resource.URN]*resource.State // URN map of providers that we have seen so far.
 	resourceGoals  map[resource.URN]*resource.Goal  // URN map of goals for ALL resources we have seen so far.
-	resourceStates map[resource.URN]*resource.State // URN map of state for ALL resources we have seen so far.
 
 	// a map from URN to a list of property keys that caused the replacement of a dependent resource during a
 	// delete-before-replace.
@@ -256,7 +255,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
 	sg.resourceGoals[urn] = goal
-	sg.resourceStates[urn] = new
+	sg.plan.news.set(urn, new)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -1285,9 +1284,8 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 }
 
 func (sg *stepGenerator) AnalyzeResources() result.Result {
-	resourcesSeen := sg.resourceStates
-	resources := make([]plugin.AnalyzerStackResource, 0, len(resourcesSeen))
-	for urn, v := range resourcesSeen {
+	var resources []plugin.AnalyzerStackResource
+	sg.plan.news.mapRange(func(urn resource.URN, v *resource.State) bool {
 		goal := sg.resourceGoals[urn]
 		resource := plugin.AnalyzerStackResource{
 			AnalyzerResource: plugin.AnalyzerResource{
@@ -1320,7 +1318,8 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 			}
 		}
 		resources = append(resources, resource)
-	}
+		return true
+	})
 
 	analyzers := sg.plan.ctx.Host.ListAnalyzers()
 	for _, analyzer := range analyzers {
@@ -1335,7 +1334,7 @@ func (sg *stepGenerator) AnalyzeResources() result.Result {
 			// the default root stack URN.
 			var urn resource.URN
 			if d.URN != "" {
-				if _, ok := resourcesSeen[d.URN]; ok {
+				if _, ok := sg.plan.news.get(d.URN); ok {
 					urn = d.URN
 				}
 			}
@@ -1369,7 +1368,6 @@ func newStepGenerator(
 		pendingDeletes:       make(map[*resource.State]bool),
 		providers:            make(map[resource.URN]*resource.State),
 		resourceGoals:        make(map[resource.URN]*resource.Goal),
-		resourceStates:       make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
 	}

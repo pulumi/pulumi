@@ -16,17 +16,20 @@ import (
 )
 
 type builtinProvider struct {
+	context context.Context
+	cancel  context.CancelFunc
+
 	backendClient BackendClient
-	context       context.Context
-	cancel        context.CancelFunc
+	resources     *resourceMap
 }
 
-func newBuiltinProvider(backendClient BackendClient) *builtinProvider {
+func newBuiltinProvider(backendClient BackendClient, resources *resourceMap) *builtinProvider {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &builtinProvider{
-		backendClient: backendClient,
 		context:       ctx,
 		cancel:        cancel,
+		backendClient: backendClient,
+		resources:     resources,
 	}
 }
 
@@ -160,6 +163,7 @@ func (p *builtinProvider) Construct(info plugin.ConstructInfo, typ tokens.Type, 
 
 const readStackOutputs = "pulumi:pulumi:readStackOutputs"
 const readStackResourceOutputs = "pulumi:pulumi:readStackResourceOutputs"
+const getResource = "pulumi:pulumi:getResource"
 
 func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
@@ -173,6 +177,12 @@ func (p *builtinProvider) Invoke(tok tokens.ModuleMember,
 		return outs, nil, nil
 	case readStackResourceOutputs:
 		outs, err := p.readStackResourceOutputs(args)
+		if err != nil {
+			return nil, nil, err
+		}
+		return outs, nil, nil
+	case getResource:
+		outs, err := p.getResource(args)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -249,5 +259,22 @@ func (p *builtinProvider) readStackResourceOutputs(inputs resource.PropertyMap) 
 	return resource.PropertyMap{
 		"name":    name,
 		"outputs": resource.NewObjectProperty(outputs),
+	}, nil
+}
+
+func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.PropertyMap, error) {
+	urn, ok := inputs["urn"]
+	contract.Assert(ok)
+	contract.Assert(urn.IsString())
+
+	state, ok := p.resources.get(resource.URN(urn.StringValue()))
+	if !ok {
+		return nil, errors.Errorf("unknown resource %v", urn.StringValue())
+	}
+
+	return resource.PropertyMap{
+		"urn":   urn,
+		"id":    resource.NewStringProperty(string(state.ID)),
+		"state": resource.NewObjectProperty(state.Outputs),
 	}, nil
 }
