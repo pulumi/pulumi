@@ -9,7 +9,7 @@ PYENVSRC := $(PYENV)/src
 include ../../build/common.mk
 
 ensure::
-	pipenv --python 3 install --dev
+	pipenv install --dev
 	mkdir -p $(PYENVSRC)
 
 build_package::

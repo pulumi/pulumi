@@ -24,7 +24,7 @@ jobs:
       - name: Install Python
         uses: actions/setup-python@v1
         with:
-          python-version: 3.6.x
+          python-version: 3.9.x
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
       - name: Install pulumictl
