@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2020, Pulumi Corporation
 
 using System;
 using System.Collections.Concurrent;
@@ -16,7 +16,7 @@ namespace Pulumi
 
     internal static class ResourceModules
     {
-        internal static ConcurrentDictionary<string, IResourceModule> _resourceModules = new ConcurrentDictionary<string, IResourceModule>();
+        internal static readonly ConcurrentDictionary<string, IResourceModule> _resourceModules = new ConcurrentDictionary<string, IResourceModule>();
 
         private static string ModuleKey(string name, string version)
         {

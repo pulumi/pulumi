@@ -595,7 +595,7 @@ function packageKey(name: string, version: string): string {
  * registerResourcePackage registers a resource package that will be used to construct providers for any URNs matching
  * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
-export function registerResourcePackage(pkgName: string, version: string, pkg: ResourcePackage) {
+export function registerResourcePackage(name: string, version: string, pkg: ResourcePackage) {
     const key = packageKey(pkgName, version);
     const existing = resourcePackages.get(key);
     if (existing) {
@@ -621,11 +621,11 @@ function moduleKey(name: string, version: string): string {
  * registerResourceModule registers a resource module that will be used to construct resources for any URNs matching
  * the module name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
-export function registerResourceModule(pkgName: string, version: string, pkg: ResourceModule) {
-    const key = moduleKey(pkgName, version);
+export function registerResourceModule(name: string, version: string, module: ResourceModule) {
+    const key = moduleKey(name, version);
     const existing = resourceModules.get(key);
     if (existing) {
         throw new Error(`Cannot re-register module ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
     }
-    resourceModules.set(key, pkg);
+    resourceModules.set(key, module);
 }

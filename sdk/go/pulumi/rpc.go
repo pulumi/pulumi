@@ -711,9 +711,9 @@ func moduleKey(name, version string) string {
 }
 
 // RegisterResourceModule register a resource module with the Pulumi runtime.
-func RegisterResourceModule(name, version string, pkg ResourceModule) {
+func RegisterResourceModule(name, version string, module ResourceModule) {
 	key := moduleKey(name, version)
-	existing, hasExisting := resourceModules.LoadOrStore(key, pkg)
+	existing, hasExisting := resourceModules.LoadOrStore(key, module)
 	if hasExisting {
 		panic(fmt.Errorf("a resource module for %v is already registered: %v", key, existing))
 	}
