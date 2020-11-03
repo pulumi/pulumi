@@ -232,7 +232,7 @@ override Pulumi.Union<T0, T1>.ToString() -> string
 static Pulumi.ComponentResourceOptions.Merge(Pulumi.ComponentResourceOptions options1, Pulumi.ComponentResourceOptions options2) -> Pulumi.ComponentResourceOptions
 static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1, Pulumi.CustomResourceOptions options2) -> Pulumi.CustomResourceOptions
 static Pulumi.Deployment.Instance.get -> Pulumi.DeploymentInstance
-static Pulumi.Deployment.RegisterResourceModule(string name, string version, Pulumi.IResourceModule package) -> void
+static Pulumi.Deployment.RegisterResourceModule(string name, string version, Pulumi.IResourceModule module) -> void
 static Pulumi.Deployment.RegisterResourcePackage(string name, string version, Pulumi.IResourcePackage package) -> void
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
