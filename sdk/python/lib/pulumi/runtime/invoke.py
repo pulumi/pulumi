@@ -33,15 +33,13 @@ if TYPE_CHECKING:
 # Note: We hit the default maximum protobuf size in practice when processing Kubernetes CRDs. If this setting ends up
 # causing problems, it should be possible to work around it with more intelligent resource chunking in the k8s provider.
 #
-# This import was raising an exception on Windows [2], and the bug [3] it was fixing does not appear to be present on
-# Windows, so only enable this option on other platforms.
-#
 # [1] https://github.com/protocolbuffers/protobuf/blob/0a59054c30e4f0ba10f10acfc1d7f3814c63e1a7/python/google/protobuf/pyext/message.cc#L2017-L2024
-# [2] https://github.com/pulumi/pulumi/issues/3981
-# [3] https://github.com/pulumi/pulumi-kubernetes/issues/984
-if not sys.platform.startswith('win32'):
+try:
     from google.protobuf.pyext._message import SetAllowOversizeProtos  # pylint: disable-msg=E0611
     SetAllowOversizeProtos(True)
+except ImportError:
+    pass
+
 
 class InvokeResult:
     """
