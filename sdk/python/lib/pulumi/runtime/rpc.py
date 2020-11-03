@@ -661,7 +661,7 @@ def register_resource_package(typ: str, version: str, package):
         raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
     RESOURCE_PACKAGES[key] = package
 
-RESOURCE_MODULES: Dict[str, Any] = dict()
+_RESOURCE_MODULES: Dict[str, Any] = dict()
 
 def _module_key(typ: str, version: str) -> str:
     return f"{typ}@{version}"
