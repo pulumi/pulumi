@@ -9,7 +9,7 @@ namespace Pulumi
     {
         public static void RegisterResourceModule(string name, string version, IResourceModule module)
         {
-            ResourceModules.RegisterResourceModule(name, version, package);
+            ResourceModules.RegisterResourceModule(name, version, module);
         }
     }
 }

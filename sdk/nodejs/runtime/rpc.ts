@@ -581,9 +581,9 @@ export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
 /**
  * A ResourcePackage is a type that understands how to construct resource providers given a name, type, args, and URN.
  */
-export type ResourcePackage = {
+export interface ResourcePackage {
     constructProvider(name: string, type: string, args: any, opts: { urn: string }): ProviderResource;
-};
+}
 
 const resourcePackages = new Map<string, ResourcePackage>();
 
@@ -596,7 +596,7 @@ function packageKey(name: string, version: string): string {
  * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
 export function registerResourcePackage(name: string, version: string, pkg: ResourcePackage) {
-    const key = packageKey(pkgName, version);
+    const key = packageKey(name, version);
     const existing = resourcePackages.get(key);
     if (existing) {
         throw new Error(`Cannot re-register package ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
@@ -607,9 +607,9 @@ export function registerResourcePackage(name: string, version: string, pkg: Reso
 /**
  * A ResourceModule is a type that understands how to construct resources given a name, type, args, and URN.
  */
-export type ResourceModule = {
+export interface ResourceModule {
     construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
-};
+}
 
 const resourceModules = new Map<string, ResourceModule>();
 
@@ -625,7 +625,7 @@ export function registerResourceModule(name: string, version: string, module: Re
     const key = moduleKey(name, version);
     const existing = resourceModules.get(key);
     if (existing) {
-        throw new Error(`Cannot re-register module ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
+        throw new Error(`Cannot re-register module ${key}. Previous registration was ${existing}, new registration was ${module}.`);
     }
     resourceModules.set(key, module);
 }

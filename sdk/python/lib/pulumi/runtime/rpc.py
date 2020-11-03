@@ -20,6 +20,7 @@ import asyncio
 from collections import abc
 import functools
 import inspect
+from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, TYPE_CHECKING, cast
 
 from google.protobuf import struct_pb2
@@ -30,7 +31,7 @@ from .. import _types
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
-    from ..resource import Resource, CustomResource
+    from ..resource import Resource, CustomResource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
@@ -281,15 +282,15 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             resource = None
             is_provider = pkg_name == "pulumi" and mod_name == "providers"
             if is_provider:
-                resource_package = RESOURCE_PACKAGES.get(package_key(typ_name, version))
+                resource_package = _RESOURCE_PACKAGES.get(_package_key(typ_name, version))
                 if resource_package is None:
                     raise Exception(f"Unable to deserialize provider {urn}, no resource package is registered for {typ_name}.")
-                resource = resource_package.construct_provider(urn_name, typ, {}, {"urn": urn})
+                resource = resource_package.construct_provider(urn_name, typ, {}, urn)
             else:
-                resource_module = RESOURCE_PACKAGES.get(module_key(typ_name, version))
+                resource_module = _RESOURCE_MODULES.get(_module_key(typ_name, version))
                 if resource_module is None:
                     raise Exception(f"Unable to deserialize resource {urn}, no resource module is registered for {mod_name}.")
-                resource_module.construct(urn_name, typ, {}, {"urn": urn})
+                resource_module.construct(urn_name, typ, {}, urn)
 
             return cast('Resource', resource)
 
@@ -649,26 +650,36 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
         log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, None, exn)
 
-RESOURCE_PACKAGES: Dict[str, Any] = dict()
+class ResourcePackage(ABC):
+    @abstractmethod
+    def construct_provider(self, name: str, typ: str, inputs: Mapping[str, Any], urn: str) -> 'ProviderResource':
+        pass
 
-def package_key(typ: str, version: str) -> str:
+_RESOURCE_PACKAGES: Dict[str, Any] = dict()
+
+def _package_key(typ: str, version: str) -> str:
     return f"{typ}@{version}"
 
 def register_resource_package(typ: str, version: str, package):
-    key = package_key(typ, version)
-    existing = RESOURCE_PACKAGES.get(key, None)
+    key = _package_key(typ, version)
+    existing = _RESOURCE_PACKAGES.get(key, None)
     if existing is not None:
         raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
-    RESOURCE_PACKAGES[key] = package
+    _RESOURCE_PACKAGES[key] = package
 
-_RESOURCE_MODULES: Dict[str, Any] = dict()
+class ResourceModule(ABC):
+    @abstractmethod
+    def construct(self, name: str, typ: str, inputs: Mapping[str, Any], urn: str) -> 'Resource':
+        pass
+
+_RESOURCE_MODULES: Dict[str, ResourceModule] = dict()
 
 def _module_key(typ: str, version: str) -> str:
     return f"{typ}@{version}"
 
-def register_resource_module(typ: str, version: str, module):
-    key = module_key(typ, version)
-    existing = RESOURCE_MODULES.get(key, None)
+def register_resource_module(typ: str, version: str, module: ResourceModule):
+    key = _module_key(typ, version)
+    existing = _RESOURCE_MODULES.get(key, None)
     if existing is not None:
         raise ValueError(f"Cannot re-register module {key}. Previous registration was {existing}, new registration was {module}.")
-    RESOURCE_MODULES[key] = module
+    _RESOURCE_MODULES[key] = module
