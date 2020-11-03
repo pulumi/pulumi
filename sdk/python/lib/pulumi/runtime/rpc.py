@@ -663,7 +663,7 @@ def register_resource_package(typ: str, version: str, package):
 
 RESOURCE_MODULES: Dict[str, Any] = dict()
 
-def module_key(typ: str, version: str) -> str:
+def _module_key(typ: str, version: str) -> str:
     return f"{typ}@{version}"
 
 def register_resource_module(typ: str, version: str, module):
