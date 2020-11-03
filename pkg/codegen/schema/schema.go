@@ -690,7 +690,7 @@ type ObjectTypeSpec struct {
 type ComplexTypeSpec struct {
 	ObjectTypeSpec
 
-	// Enum, if present, if the list of possible values for an enum type.
+	// Enum, if present, is the list of possible values for an enum type.
 	Enum []*EnumValueSpec `json:"enum,omitempty"`
 }
 

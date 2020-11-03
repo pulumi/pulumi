@@ -42,6 +42,7 @@ func TestInputUsage(t *testing.T) {
 func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "aws", goPackage("aws"))
 	assert.Equal(t, "azure", goPackage("azure-nextgen"))
+	assert.Equal(t, "plant", goPackage("plant-provider"))
 	assert.Equal(t, "", goPackage(""))
 }
 
@@ -57,12 +58,13 @@ func TestGeneratePackage(t *testing.T) {
 		expectedFiles []string
 	}{
 		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
+			"Simple schema with enum types",
+			"simple-enum-schema",
 			[]string{
-				"example/resource.go",
-				"example/otherResource.go",
-				"example/argFunction.go",
+				filepath.Join("plant", "pulumiTypes.go"),
+				filepath.Join("plant", "pulumiEnums.go"),
+				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
+				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
 			},
 		},
 	}
@@ -70,7 +72,9 @@ func TestGeneratePackage(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), genPkgWrapper)
+				filepath.Join(testDir, tt.schemaDir, "schema.json"), func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+					return GeneratePackage(tool, pkg)
+				})
 			assert.NoError(t, err)
 
 			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)
