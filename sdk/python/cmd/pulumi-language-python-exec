@@ -9,10 +9,9 @@ import sys
 import traceback
 import runpy
 
-# python 3.9 does not have grpcio support on Windows yet [1]. Return an error suggesting a python downgrade in this
-# case. Remove this check once Windows is supported [2].
-# [1] https://github.com/grpc/grpc/issues/24344
-# [2] https://github.com/pulumi/pulumi/issues/5676
+# python 3.9 does not have grpcio support on Windows yet (https://github.com/grpc/grpc/issues/24344).
+# Return an error suggesting a python downgrade in this case.
+# TODO[pulumi/pulumi#5676]: Remove this check once Windows is supported.
 
 if sys.version_info >= (3, 9) and sys.platform.startswith("win32"):
     print("""
@@ -107,4 +106,3 @@ if __name__ == "__main__":
 
     exit_code = 0 if successful else 1
     sys.exit(exit_code)
-
