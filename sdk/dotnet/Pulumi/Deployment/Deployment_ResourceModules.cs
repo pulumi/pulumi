@@ -7,7 +7,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        public static void RegisterResourceModule(string name, string version, IResourceModule package)
+        public static void RegisterResourceModule(string name, string version, IResourceModule module)
         {
             ResourceModules.RegisterResourceModule(name, version, package);
         }
