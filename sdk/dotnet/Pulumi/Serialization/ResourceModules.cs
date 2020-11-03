@@ -28,12 +28,12 @@ namespace Pulumi
             return _resourceModules.TryGetValue(ModuleKey(name, version), out package);
         }
 
-        public static void RegisterResourceModule(string name, string version, IResourceModule package)
+        public static void RegisterResourceModule(string name, string version, IResourceModule module)
         {
             var key = ModuleKey(name, version);
-            if (!_resourceModules.TryAdd(key, package))
+            if (!_resourceModules.TryAdd(key, module))
             {
-                throw new InvalidOperationException($"Cannot re-register package {key}.");
+                throw new InvalidOperationException($"Cannot re-register module {key}.");
             }
         }
     }
