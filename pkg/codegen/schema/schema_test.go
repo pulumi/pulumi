@@ -161,7 +161,7 @@ func TestImportResourceRef(t *testing.T) {
 				assert.IsType(t, &ResourceType{}, name.Type)
 				resource := name.Type.(*ResourceType)
 				assert.NotNil(t, resource.Resource)
-				
+
 				for _, r := range pkg.Resources {
 					switch r.Token {
 					case "example::Cat":
