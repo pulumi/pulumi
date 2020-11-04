@@ -21,12 +21,15 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
     runs-on: ubuntu-latest
-
+    strategy:
+      matrix:
+        go-version: [ 1.15.x ]
+        node-version: [ 14.x ]
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.15.x
+          go-version: ${{ matrix.go-version }}
       - name: Add GOBIN to PATH
         run: |
           mkdir -p "$(go env GOPATH)/bin"
@@ -34,7 +37,7 @@ jobs:
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '12.x'
+          node-version: ${{ matrix.node-version }}
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@releases/v1
       - name: Install pulumictl
