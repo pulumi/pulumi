@@ -26,7 +26,7 @@ jobs:
         go-version: [ 1.14.x ]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
-        node-version: [ 10.x ]
+        node-version: [ 14.x ]
         language: [ "nodejs", "python", "dotnet" ]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
@@ -74,6 +74,9 @@ jobs:
     name: Publish Binaries
     runs-on: macos-latest
     needs: build-and-test
+    strategy:
+      matrix:
+        go-version: [ 1.15.x ]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
@@ -123,10 +126,11 @@ jobs:
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
-        go-version: [1.14.x]
+
+        go-version: [1.15.x]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
-        node-version: [ 10.x ]
+        node-version: [ 14.x ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set up Go ${{ matrix.go-version }}
