@@ -3,9 +3,10 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 # Export this package's modules as members:
+from ._enums import *
 from .provider import *
 from ._inputs import *
-from ._enums import *
+from . import outputs
 
 # Make subpackages available:
 from . import (

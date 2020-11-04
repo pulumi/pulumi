@@ -3,11 +3,16 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 from enum import Enum
-from typing import Literal, Union
 
 __all__ = [
-    "RubberTreeVariety",
+    'Farm',
+    'RubberTreeVariety',
 ]
+
+
+class Farm(str, Enum):
+    PULUMI_PLANTERS_INC_ = "Pulumi Planters Inc."
+    PLANTS_R_US = "Plants'R'Us"
 
 
 class RubberTreeVariety(str, Enum):
@@ -17,6 +22,3 @@ class RubberTreeVariety(str, Enum):
     BURGUNDY = "Burgundy"
     RUBY = "Ruby"
     TINEKE = "Tineke"
-
-
-_RubberTreeVariety = Union[Literal["Burgundy", "Ruby", "Tineke"], RubberTreeVariety]

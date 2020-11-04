@@ -5,9 +5,9 @@
 import warnings
 import pulumi
 import pulumi.runtime
-from enum import Enum
 from typing import Any, Mapping, Optional, Sequence, Union
-from . import _utilities, _tables, _enums
+from . import _utilities, _tables
+from . import _enums
 
 __all__ = [
     'ContainerArgs',
@@ -16,38 +16,52 @@ __all__ = [
 @pulumi.input_type
 class ContainerArgs:
     def __init__(__self__, *,
-                 size: pulumi.Input[_enums._ContainerSize],
-                 color: Optional[pulumi.Input[Union[_enums._ContainerColor, str]]] = None,
+                 size: pulumi.Input['_enums.ContainerSize'],
+                 brightness: Optional[pulumi.Input['_enums.ContainerBrightness']] = None,
+                 color: Optional[pulumi.Input[Union['_enums.ContainerColor', str]]] = None,
                  material: Optional[pulumi.Input[str]] = None):
-        pulumi.set(__self__, "size", size.value if isinstance(size, Enum) else size)
+        pulumi.set(__self__, "size", size)
+        if brightness is not None:
+            pulumi.set(__self__, "brightness", brightness)
         if color is not None:
-            pulumi.set(__self__, "color", color.value if isinstance(color, Enum) else color)
+            pulumi.set(__self__, "color", color)
         if material is not None:
             pulumi.set(__self__, "material", material)
 
-@property
-@pulumi.getter
-def size(self) -> pulumi.Input[_enums._ContainerSize]:
-    return pulumi.get(self, "size")
+    @property
+    @pulumi.getter
+    def size(self) -> pulumi.Input['_enums.ContainerSize']:
+        return pulumi.get(self, "size")
 
-@size.setter
-def size(self, value: pulumi.Input[_enums._ContainerSize]):
-    pulumi.set(self, "size", value)
+    @size.setter
+    def size(self, value: pulumi.Input['_enums.ContainerSize']):
+        pulumi.set(self, "size", value)
 
-@property
-@pulumi.getter
-def color(self) -> Optional[pulumi.Input[Union[_enums._ContainerColor, str]]]:
-    return pulumi.get(self, "color")
+    @property
+    @pulumi.getter
+    def brightness(self) -> Optional[pulumi.Input['_enums.ContainerBrightness']]:
+        return pulumi.get(self, "brightness")
 
-@color.setter
-def color(self, value: Optional[pulumi.Input[Union[_enums._ContainerColor, str]]]):
-    pulumi.set(self, "color", value)
+    @brightness.setter
+    def brightness(self, value: Optional[pulumi.Input['_enums.ContainerBrightness']]):
+        pulumi.set(self, "brightness", value)
 
-@property
-@pulumi.getter
-def material(self) -> Optional[pulumi.Input[str]]:
-    return pulumi.get(self, "material")
+    @property
+    @pulumi.getter
+    def color(self) -> Optional[pulumi.Input[Union['_enums.ContainerColor', str]]]:
+        return pulumi.get(self, "color")
 
-@material.setter
-def material(self, value: Optional[pulumi.Input[str]]):
-    pulumi.set(self, "material", value)
+    @color.setter
+    def color(self, value: Optional[pulumi.Input[Union['_enums.ContainerColor', str]]]):
+        pulumi.set(self, "color", value)
+
+    @property
+    @pulumi.getter
+    def material(self) -> Optional[pulumi.Input[str]]:
+        return pulumi.get(self, "material")
+
+    @material.setter
+    def material(self, value: Optional[pulumi.Input[str]]):
+        pulumi.set(self, "material", value)
+
+

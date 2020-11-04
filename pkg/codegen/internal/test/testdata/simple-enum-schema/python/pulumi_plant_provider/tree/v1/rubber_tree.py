@@ -5,11 +5,11 @@
 import warnings
 import pulumi
 import pulumi.runtime
-from enum import Enum
 from typing import Any, Mapping, Optional, Sequence, Union
-from .. import _utilities, _tables
-from .. import _inputs as _root_inputs
+from ... import _utilities, _tables
 from . import _enums
+from ... import _inputs as _root_inputs
+from ... import outputs as _root_outputs
 
 __all__ = ['RubberTree']
 
@@ -19,7 +19,8 @@ class RubberTree(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
-                 type: Optional[pulumi.Input[_enums._RubberTreeVariety]] = None,
+                 farm: Optional[pulumi.Input[Union['_enums.Farm', str]]] = None,
+                 type: Optional[pulumi.Input['_enums.RubberTreeVariety']] = None,
                  __props__=None,
                  __name__=None,
                  __opts__=None):
@@ -46,7 +47,10 @@ class RubberTree(pulumi.CustomResource):
             __props__ = dict()
 
             __props__['container'] = container
-            __props__['type'] = type.value if isinstance(type, Enum) else type
+            __props__['farm'] = farm
+            if type is None:
+                raise TypeError("Missing required property 'type'")
+            __props__['type'] = type
         super(RubberTree, __self__).__init__(
             'plant-provider:tree/v1:RubberTree',
             resource_name,
@@ -71,8 +75,24 @@ class RubberTree(pulumi.CustomResource):
 
         return RubberTree(resource_name, opts=opts, __props__=__props__)
 
+    @property
+    @pulumi.getter
+    def container(self) -> pulumi.Output[Optional['_root_outputs.Container']]:
+        return pulumi.get(self, "container")
+
+    @property
+    @pulumi.getter
+    def farm(self) -> pulumi.Output[Optional[str]]:
+        return pulumi.get(self, "farm")
+
+    @property
+    @pulumi.getter
+    def type(self) -> pulumi.Output['_enums.RubberTreeVariety']:
+        return pulumi.get(self, "type")
+
     def translate_output_property(self, prop):
         return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
 
     def translate_input_property(self, prop):
         return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
+

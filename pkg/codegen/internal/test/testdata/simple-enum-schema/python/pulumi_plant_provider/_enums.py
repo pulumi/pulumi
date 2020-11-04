@@ -3,12 +3,17 @@
 # *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 from enum import Enum
-from typing import Literal, Union
 
 __all__ = [
-    "ContainerColor",
-    "ContainerSize",
+    'ContainerBrightness',
+    'ContainerColor',
+    'ContainerSize',
 ]
+
+
+class ContainerBrightness(float, Enum):
+    ZERO_POINT_ONE = 0.1
+    ONE = 1.0
 
 
 class ContainerColor(str, Enum):
@@ -20,9 +25,6 @@ class ContainerColor(str, Enum):
     YELLOW = "yellow"
 
 
-_ContainerColor = Union[Literal["red", "blue", "yellow"], ContainerColor]
-
-
 class ContainerSize(int, Enum):
     """
     plant container sizes
@@ -30,6 +32,3 @@ class ContainerSize(int, Enum):
     FOUR_INCH = 4
     SIX_INCH = 6
     EIGHT_INCH = 8
-
-
-_ContainerSize = Union[Literal[4, 6, 8], ContainerSize]
