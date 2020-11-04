@@ -16,7 +16,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 func newStackHistoryCmd() *cobra.Command {
@@ -109,7 +108,9 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 			}
 			if !v.Secure() || (v.Secure() && decrypter != nil) {
 				value, err := v.Value(decrypter)
-				contract.AssertNoError(err)
+				if err != nil {
+					return err
+				}
 				configValue.Value = makeStringRef(value)
 
 				if v.Object() {
