@@ -25,7 +25,7 @@ jobs:
         platform: [windows-latest]
         go-version: [1.15.x]
         node-version: [10.x]
-        python-version: [3.9.x]
+        python-version: [3.8.x]
         dotnet: [3.1.x]
     runs-on: ${{ matrix.platform }}
     env:
