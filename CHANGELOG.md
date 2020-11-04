@@ -2,16 +2,19 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.13.0 (2020-11-04)
 
 - Add internal scaffolding for using cross-language components from Go.
   [#5558](https://github.com/pulumi/pulumi/pull/5558)
 
 - Support python 3.9.
   [#5669](https://github.com/pulumi/pulumi/pull/5669)
-  
+
 - [cli] Ensure that the CLI doesn't panic when using pulumi watch and using ComponentResources with non-standard naming
   [#5675](https://github.com/pulumi/pulumi/pull/5675)
-  
+
 - [cli] Ensure that the CLI doesn't panic when trying to assemble a graph on a stack that has no snapshot available
   [#5678](https://github.com/pulumi/pulumi/pull/5678)
 
