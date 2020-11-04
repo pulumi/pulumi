@@ -13,7 +13,7 @@ __all__ = [
 
 class ContainerBrightness(float, Enum):
     ZERO_POINT_ONE = 0.1
-    ONE = 1.0
+    ONE = 1
 
 
 class ContainerColor(str, Enum):

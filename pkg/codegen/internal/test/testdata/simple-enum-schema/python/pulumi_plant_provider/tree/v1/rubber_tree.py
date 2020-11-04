@@ -8,6 +8,7 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from ... import _utilities, _tables
 from . import _enums
+from ... import _enums as _root_enums
 from ... import _inputs as _root_inputs
 from ... import outputs as _root_outputs
 

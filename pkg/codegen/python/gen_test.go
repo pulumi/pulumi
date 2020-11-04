@@ -33,6 +33,30 @@ func TestRelPathToRelImport(t *testing.T) {
 	}
 }
 
+func TestMakeSafeEnumName(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"red", "RED"},
+		{"snake_cased_name", "SNAKE_CASED_NAME"},
+		{"8", "_8"},
+		{"Microsoft-Windows-Shell-Startup", "MICROSOFT_WINDOWS_SHELL_STARTUP"},
+		{"Microsoft.Batch", "MICROSOFT_BATCH"},
+		{"readonly", "READONLY"},
+		{"SystemAssigned, UserAssigned", "SYSTEM_ASSIGNED_USER_ASSIGNED"},
+		{"Dev(NoSLA)_Standard_D11_v2", "DEV_NO_SL_A_STANDARD_D11_V2"},
+		{"Standard_E8as_v4+1TB_PS", "STANDARD_E8AS_V4_1_T_B_PS"},
+		{"Plants'R'Us", "PLANTS_R_US"},
+		{"Pulumi Planters Inc.", "PULUMI_PLANTERS_INC_"},
+		{"ZeroPointOne", "ZERO_POINT_ONE"},
+	}
+	for _, tt := range tests {
+		result := makeSafeEnumName(tt.input)
+		assert.Equal(t, tt.expected, result)
+	}
+}
+
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -65,6 +89,7 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				filepath.Join("pulumi_plant_provider", "_enums.py"),
 				filepath.Join("pulumi_plant_provider", "_inputs.py"),
+				filepath.Join("pulumi_plant_provider", "outputs.py"),
 				filepath.Join("pulumi_plant_provider", "__init__.py"),
 				filepath.Join("pulumi_plant_provider", "tree", "__init__.py"),
 				filepath.Join("pulumi_plant_provider", "tree", "v1", "_enums.py"),
