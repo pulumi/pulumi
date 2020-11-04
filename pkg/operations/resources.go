@@ -16,6 +16,7 @@ package operations
 
 import (
 	"sort"
+	"strings"
 
 	"github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -249,6 +250,12 @@ func (ops *resourceOperations) getOperationsProvider() (Provider, error) {
 	if ops.resource == nil || ops.resource.State == nil {
 		return nil, nil
 	}
+
+	tokenSeparators := strings.Count(ops.resource.State.Type.String(), ":")
+	if tokenSeparators != 2 {
+		return nil, nil
+	}
+
 	switch ops.resource.State.Type.Package() {
 	case "cloud":
 		return CloudOperationsProvider(ops.config, ops.resource)
