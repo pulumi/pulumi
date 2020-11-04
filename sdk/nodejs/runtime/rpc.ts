@@ -516,25 +516,28 @@ export function deserializeProperty(prop: any): any {
 
                     const urnParts = urn.split("::");
                     const qualifiedType = urnParts[2];
+                    const urnName = urnParts[3];
 
                     const type = qualifiedType.split("$").pop()!;
                     const typeParts = type.split(":");
-                    let pkgName = typeParts[0];
+                    const pkgName = typeParts[0];
                     const modName = typeParts.length > 1 ? typeParts[1] : "";
                     const typName = typeParts.length > 2 ? typeParts[2] : "";
                     const isProvider = pkgName === "pulumi" && modName === "providers";
+
                     if (isProvider) {
-                        pkgName = typName;
+                        const resourcePackage = resourcePackages.get(packageKey(typName, version || ""));
+                        if (!resourcePackage) {
+                            throw new Error(`Unable to deserialize provider ${urn}, no resource package is registered for ${typName}.`);
+                        }
+                        return resourcePackage.constructProvider(urnName, type, {}, { urn });
                     }
 
-                    const resourcePackage = resourcePackages.get(packageKey(pkgName, version || ""));
-                    if (!resourcePackage) {
-                        throw new Error(`Unable to deserialize resource URN ${urn}, no resource package is registered for type ${type}.`);
+                    const resourceModule = resourceModules.get(moduleKey(modName, version || ""));
+                    if (!resourceModule) {
+                        throw new Error(`Unable to deserialize resource ${urn}, no module is registered for ${modName}.`);
                     }
-                    const urnName = urnParts[3];
-                    return !isProvider ?
-                        resourcePackage.construct(urnName, type, {}, { urn }) :
-                        resourcePackage.constructProvider(urnName, type, {}, { urn });
+                    return resourceModule.construct(urnName, type, {}, { urn });
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -576,12 +579,11 @@ export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
 }
 
 /**
- * A ResourcePackage is a package that understands how to construct resources given a name, type, args, and URN.
+ * A ResourcePackage is a type that understands how to construct resource providers given a name, type, args, and URN.
  */
-export type ResourcePackage = {
-    construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
+export interface ResourcePackage {
     constructProvider(name: string, type: string, args: any, opts: { urn: string }): ProviderResource;
-};
+}
 
 const resourcePackages = new Map<string, ResourcePackage>();
 
@@ -590,14 +592,40 @@ function packageKey(name: string, version: string): string {
 }
 
 /**
- * registerResourcePackage registers a resource package that will be used to construct resources for any URNs matching
+ * registerResourcePackage registers a resource package that will be used to construct providers for any URNs matching
  * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
-export function registerResourcePackage(pkgName: string, version: string, pkg: ResourcePackage) {
-    const key = packageKey(pkgName, version);
+export function registerResourcePackage(name: string, version: string, pkg: ResourcePackage) {
+    const key = packageKey(name, version);
     const existing = resourcePackages.get(key);
     if (existing) {
         throw new Error(`Cannot re-register package ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
     }
     resourcePackages.set(key, pkg);
+}
+
+/**
+ * A ResourceModule is a type that understands how to construct resources given a name, type, args, and URN.
+ */
+export interface ResourceModule {
+    construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
+}
+
+const resourceModules = new Map<string, ResourceModule>();
+
+function moduleKey(name: string, version: string): string {
+    return `${name}@${version}`;
+}
+
+/**
+ * registerResourceModule registers a resource module that will be used to construct resources for any URNs matching
+ * the module name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ */
+export function registerResourceModule(name: string, version: string, module: ResourceModule) {
+    const key = moduleKey(name, version);
+    const existing = resourceModules.get(key);
+    if (existing) {
+        throw new Error(`Cannot re-register module ${key}. Previous registration was ${existing}, new registration was ${module}.`);
+    }
+    resourceModules.set(key, module);
 }

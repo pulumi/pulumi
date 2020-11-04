@@ -76,7 +76,9 @@ func UnTGZ(tarball []byte, dir string) error {
 			return errors.Wrapf(err, "untarring")
 		}
 
-		// nolint:gosec
+		// TODO: check the name to ensure that it does not contain path traversal characters.
+		//
+		//nolint: gosec
 		path := filepath.Join(dir, header.Name)
 
 		switch header.Typeflag {
