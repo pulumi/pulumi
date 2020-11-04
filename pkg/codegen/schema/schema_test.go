@@ -152,15 +152,22 @@ func TestImportResourceRef(t *testing.T) {
 			"external-resource-schema/schema.json",
 			false,
 			func(pkg *Package) {
+				typ, ok := pkg.GetType("example::Pet")
+				assert.True(t, ok)
+				pet, ok := typ.(*ObjectType)
+				assert.True(t, ok)
+				name, ok := pet.Property("name")
+				assert.True(t, ok)
+				assert.IsType(t, &ResourceType{}, name.Type)
+				resource := name.Type.(*ResourceType)
+				assert.NotNil(t, resource.Resource)
+				
 				for _, r := range pkg.Resources {
 					switch r.Token {
 					case "example::Cat":
 						for _, p := range r.Properties {
 							if p.Name == "name" {
-								assert.IsType(t, &ResourceType{}, p.Type)
-
-								resource := p.Type.(*ResourceType)
-								assert.NotNil(t, resource.Resource)
+								assert.IsType(t, stringType, p.Type)
 							}
 						}
 					case "example::Workload":
