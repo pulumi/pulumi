@@ -11,6 +11,9 @@ CHANGELOG
   
 - [cli] Ensure that the CLI doesn't panic when using pulumi watch and using ComponentResources with non-standard naming
   [#5675](https://github.com/pulumi/pulumi/pull/5675)
+  
+- [cli] Ensure that the CLI doesn't panic when trying to assemble a graph on a stack that has no snapshot available
+  [#5678](https://github.com/pulumi/pulumi/pull/5678)
 
 ## 2.12.1 (2020-10-23)
 
