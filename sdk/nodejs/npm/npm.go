@@ -48,13 +48,12 @@ func Pack(dir string, stderr io.Writer) ([]byte, error) {
 	// filename.
 	var packfile string
 
-	// generate a new uuid
-	uuid, err := uuid.NewV4()
-	if err != nil {
-		return nil, err
-	}
-
 	if !npm {
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return nil, err
+		}
 		packfile = fmt.Sprintf("%s.tgz", uuid.String())
 		c.Args = append(c.Args, "--filename", packfile)
 	}
