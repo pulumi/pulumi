@@ -4,6 +4,7 @@
 package v1
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/pkg/errors"
@@ -26,7 +27,7 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 	if err := args.Type.Validate(); err != nil {
-		return nil, errors.Errorf("invalid value for required argument 'Type': %w", err)
+		return nil, fmt.Errorf("invalid value for enum 'Type': %w", err)
 	}
 	var resource RubberTree
 	err := ctx.RegisterResource("plant-provider:tree/v1:RubberTree", name, args, &resource, opts...)

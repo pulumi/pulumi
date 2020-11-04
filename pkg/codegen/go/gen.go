@@ -898,19 +898,19 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "\t}\n")
 
 	for _, p := range r.InputProperties {
-		if !p.IsRequired {
-			continue
-		}
 		switch p.Type.(type) {
 		case *schema.EnumType:
 			// We use a concrete type for strict enums
 			fmt.Fprintf(w, "\tif err := args.%s.Validate(); err != nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\treturn nil, errors.Errorf(\"invalid value for required argument '%s': %%w\", err)\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"invalid value for enum '%s': %%w\", err)\n", Title(p.Name))
+			fmt.Fprintf(w, "\t}\n")
 		default:
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
+			if p.IsRequired {
+				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+				fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
+				fmt.Fprintf(w, "\t}\n")
+			}
 		}
-		fmt.Fprintf(w, "\t}\n")
 	}
 
 	for _, p := range r.InputProperties {
@@ -1602,7 +1602,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.getImports(r, imports)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect", "fmt"}, imports)
 
 			if err := pkg.genResource(buffer, r); err != nil {
 				return nil, err
