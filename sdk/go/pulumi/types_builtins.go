@@ -2590,6 +2590,11 @@ type BoolInput interface {
 // Bool is an input type for bool values.
 type Bool bool
 
+var (
+	True = BoolPtr(true)
+	False = BoolPtr(false)
+)
+
 // ElementType returns the element type of this Input (bool).
 func (Bool) ElementType() reflect.Type {
 	return boolType
