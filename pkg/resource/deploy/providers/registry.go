@@ -19,8 +19,8 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	uuid "github.com/gofrs/uuid"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
@@ -322,7 +322,12 @@ func (r *Registry) Create(urn resource.URN, news resource.PropertyMap, timeout f
 
 	var id resource.ID
 	if !preview {
-		id = resource.ID(uuid.NewV4().String())
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return "", nil, resource.StatusOK, err
+		}
+		id = resource.ID(uuid.String())
 		contract.Assert(id != UnknownID)
 	}
 
