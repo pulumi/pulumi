@@ -4,6 +4,7 @@
 package v1
 
 import (
+	"context"
 	"fmt"
 	"reflect"
 
@@ -81,4 +82,43 @@ type RubberTreeArgs struct {
 
 func (RubberTreeArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*rubberTreeArgs)(nil)).Elem()
+}
+
+type RubberTreeInput interface {
+	pulumi.Input
+
+	ToRubberTreeOutput() RubberTreeOutput
+	ToRubberTreeOutputWithContext(ctx context.Context) RubberTreeOutput
+}
+
+func (RubberTree) ElementType() reflect.Type {
+	return reflect.TypeOf((*RubberTree)(nil)).Elem()
+}
+
+func (i RubberTree) ToRubberTreeOutput() RubberTreeOutput {
+	return i.ToRubberTreeOutputWithContext(context.Background())
+}
+
+func (i RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTreeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeOutput)
+}
+
+type RubberTreeOutput struct {
+	*pulumi.OutputState
+}
+
+func (RubberTreeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*RubberTreeOutput)(nil)).Elem()
+}
+
+func (o RubberTreeOutput) ToRubberTreeOutput() RubberTreeOutput {
+	return o
+}
+
+func (o RubberTreeOutput) ToRubberTreeOutputWithContext(ctx context.Context) RubberTreeOutput {
+	return o
+}
+
+func init() {
+	pulumi.RegisterOutputType(RubberTreeOutput{})
 }
