@@ -21,7 +21,7 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 import copy
 
 from .runtime import known_types
-from .runtime.resource import register_resource, register_resource_outputs, read_resource
+from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
@@ -608,7 +608,8 @@ class Resource:
                  props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  remote: bool = False,
-                 dependency: bool = False) -> None:
+                 dependency: bool = False,
+                 urn: Optional[str] = None) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -720,7 +721,10 @@ class Resource:
                 self._aliases.append(collapse_alias_to_urn(
                     alias, name, t, opts.parent))
 
-        if opts.id is not None:
+        if urn is not None:
+            # This is a resource that already exists. Read its state from the engine.
+            get_resource(self, custom, urn)
+        elif opts.id is not None:
             # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
                 raise Exception(
@@ -813,7 +817,8 @@ class CustomResource(Resource):
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None,
-                 dependency: bool = False) -> None:
+                 dependency: bool = False,
+                 urn: Optional[str] = None) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -822,7 +827,7 @@ class CustomResource(Resource):
                resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
-        Resource.__init__(self, t, name, True, props, opts, False, dependency)
+        Resource.__init__(self, t, name, True, props, opts, False, dependency, urn)
         self.__pulumi_type = t
 
     @property
@@ -846,7 +851,8 @@ class ComponentResource(Resource):
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None,
-                 remote: bool = False) -> None:
+                 remote: bool = False,
+                 urn: Optional[str] = None) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -855,7 +861,7 @@ class ComponentResource(Resource):
                resource.
         :param bool remote: True if this is a remote component resource.
         """
-        Resource.__init__(self, t, name, False, props, opts, remote)
+        Resource.__init__(self, t, name, False, props, opts, remote, False, urn)
         self.__dict__["id"] = None
 
     def register_outputs(self, outputs):
@@ -885,7 +891,8 @@ class ProviderResource(CustomResource):
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None,
-                 dependency: bool = False) -> None:
+                 dependency: bool = False,
+                 urn: Optional[str] = None) -> None:
         """
         :param str pkg: The package type of this provider resource.
         :param str name: The name of this resource.
@@ -900,7 +907,7 @@ class ProviderResource(CustomResource):
                 "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
-            self, f"pulumi:providers:{pkg}", name, props, opts, dependency)
+            self, f"pulumi:providers:{pkg}", name, props, opts, dependency, urn)
         self.package = pkg
 
 

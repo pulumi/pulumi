@@ -438,3 +438,16 @@ func TestConstructPython(t *testing.T) {
 	}
 	integration.ProgramTest(t, opts)
 }
+
+func TestGetResourcePython(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("get_resource", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		AllowEmptyPreviewChanges: true,
+	})
+}
