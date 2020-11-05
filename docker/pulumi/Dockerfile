@@ -75,7 +75,7 @@ RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsof
 ENV XDG_CONFIG_HOME=/root/.config
 ENV XDG_CACHE_HOME=/root/.cache
 RUN curl -L https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 | bash && \
-  helm repo add stable https://kubernetes-charts.storage.googleapis.com && \
+  helm repo add stable https://charts.helm.sh/stable && \
   helm repo update
 
 # Passing --build-arg PULUMI_VERSION=vX.Y.Z will use that version
