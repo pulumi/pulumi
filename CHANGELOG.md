@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [cli] Ensure `pulumi history` annotes when secrets are unable to be decrypted
+  [#5701](https://github.com/pulumi/pulumi/pull/5701)
 
 ## 2.13.0 (2020-11-04)
 
