@@ -23,6 +23,17 @@ func TestGeneratePackage(t *testing.T) {
 				"ArgFunction.cs",
 			},
 		},
+		{
+			"Simple schema with enum types",
+			"simple-enum-schema",
+			[]string{
+				"Tree/V1/RubberTree.cs",
+				"Tree/V1/Enums.cs",
+				"Enums.cs",
+				"Inputs/ContainerArgs.cs",
+				"Outputs/Container.cs",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {

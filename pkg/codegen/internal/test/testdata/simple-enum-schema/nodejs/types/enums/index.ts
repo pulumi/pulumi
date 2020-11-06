@@ -5,6 +5,13 @@
 import * as tree from "./tree";
 export {tree};
 
+export const ContainerBrightness = {
+    ZeroPointOne: 0.1,
+    One: 1,
+} as const;
+
+export type ContainerBrightness = (typeof ContainerBrightness)[keyof typeof ContainerBrightness];
+
 export const ContainerColor = {
     Red: "red",
     Blue: "blue",

@@ -50,6 +50,9 @@
             {"$ref": "#/types/plant-provider::ContainerColor"},
             {"type": "string"}
           ]
+        },
+        "brightness": {
+          "$ref": "#/types/plant-provider::ContainerBrightness"
         }
       },
       "required": ["size"]
@@ -88,6 +91,19 @@
         }
       ]
     },
+    "plant-provider::ContainerBrightness": {
+      "type": "number",
+      "enum": [
+        {
+          "name": "ZeroPointOne",
+          "value": 0.1
+        },
+        {
+          "name": "One",
+          "value": 1.0
+        }
+      ]
+    },
     "plant-provider:tree/v1:RubberTreeVariety": {
       "type": "string",
       "description": "types of rubber trees",
@@ -119,7 +135,12 @@
     }
   },
   "language": {
-    "csharp": {},
+    "csharp": {
+      "namespaces": {
+        "plant-provider": "PlantProvider",
+        "tree/v1": "Tree.V1"
+      }
+    },
     "go": {},
     "nodejs": {},
     "python": {}

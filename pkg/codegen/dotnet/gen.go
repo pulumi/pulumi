@@ -125,6 +125,7 @@ type modContext struct {
 	mod                    string
 	propertyNames          map[*schema.Property]string
 	types                  []*schema.ObjectType
+	enums                  []*schema.EnumType
 	resources              []*schema.Resource
 	functions              []*schema.Function
 	typeDetails            map[*schema.ObjectType]*typeDetails
@@ -199,6 +200,10 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, requireInitializers, optional bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		typ = mod.tokenToNamespace(t.Token, "")
+		typ += "."
+		typ += tokenToName(t.Token)
 	case *schema.ArrayType:
 		var listFmt string
 		switch {
@@ -267,6 +272,12 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		elementTypeSet := stringSet{}
 		var elementTypes []string
 		for _, e := range t.ElementTypes {
+			// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
+			// Eg. Output<string> rather than Output<Union<EnumType, string>>
+			if typ, ok := e.(*schema.EnumType); ok && !input {
+				return mod.typeString(typ.ElementType, qualifier, input, state, wrapInput, requireInitializers, optional)
+			}
+
 			et := mod.typeString(e, qualifier, input, state, false, false, false)
 			if !elementTypeSet.has(et) {
 				elementTypeSet.add(et)
@@ -376,6 +387,8 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		}
 	}
 
+	indent = strings.Repeat(indent, 2)
+
 	// Next generate the input property itself. The way this is generated depends on the type of the property:
 	// complex types like lists and maps need a backing field.
 	switch prop.Type.(type) {
@@ -384,34 +397,32 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		requireInitializers := !pt.wrapInput
 		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.wrapInput, requireInitializers, false)
 
-		fmt.Fprintf(w, "%s    [Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%s    private %s? %s;\n", indent, backingFieldType, backingFieldName)
+		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
 
 		if prop.Comment != "" {
 			fmt.Fprintf(w, "\n")
-			printComment(w, prop.Comment, indent+"    ")
+			printComment(w, prop.Comment, indent)
 		}
-		if prop.DeprecationMessage != "" {
-			fmt.Fprintf(w, "%s    [Obsolete(@\"%s\")]\n", indent, strings.Replace(prop.DeprecationMessage, `"`, `""`, -1))
-		}
+		printObsoleteAttribute(w, prop.DeprecationMessage, indent)
 
 		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
 		// ensure that the user does not see warnings when initializing these properties using object or collection
 		// initializers.
-		fmt.Fprintf(w, "%s    public %s %s\n", indent, backingFieldType, propertyName)
-		fmt.Fprintf(w, "%s    {\n", indent)
-		fmt.Fprintf(w, "%s        get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
-		fmt.Fprintf(w, "%s        set => %s = value;\n", indent, backingFieldName)
-		fmt.Fprintf(w, "%s    }\n", indent)
+		fmt.Fprintf(w, "%spublic %s %s\n", indent, backingFieldType, propertyName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		fmt.Fprintf(w, "%s    get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
+		fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		fmt.Fprintf(w, "%s}\n", indent)
 	default:
 		initializer := ""
 		if prop.IsRequired && (!isValueType(prop.Type) || pt.wrapInput) {
 			initializer = " = null!;"
 		}
 
-		printComment(w, prop.Comment, indent+"    ")
-		fmt.Fprintf(w, "%s    [Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%s    public %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
+		printComment(w, prop.Comment, indent)
+		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		fmt.Fprintf(w, "%spublic %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
 	}
 }
 
@@ -629,7 +640,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
 	fmt.Fprintf(w, "{\n")
 
-	// Write the TypeDoc/JSDoc for the resource class
+	// Write the documentation comment for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
@@ -964,6 +975,148 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 	// Close the namespace.
 	fmt.Fprintf(w, "}\n")
+	return nil
+}
+
+func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
+	// Open the namespace.
+	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
+	fmt.Fprintf(w, "{\n")
+
+	for i, enum := range enums {
+		err := mod.genEnum(w, enum)
+		if err != nil {
+			return err
+		}
+		if i != len(enums)-1 {
+			fmt.Fprintf(w, "\n")
+		}
+	}
+
+	// Close the namespace.
+	fmt.Fprintf(w, "}\n")
+
+	return nil
+}
+
+func printObsoleteAttribute(w io.Writer, deprecationMessage, indent string) {
+	if deprecationMessage != "" {
+		fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.Replace(deprecationMessage, `"`, `""`, -1))
+	}
+}
+
+func makeSafeEnumName(enum *schema.Enum) string {
+	if enum.Name != "" {
+		return enum.Name
+	}
+	return strings.Title(makeValidIdentifier(enum.Value.(string)))
+}
+
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
+	indent := "    "
+	enumName := tokenToName(enum.Token)
+
+	// Print documentation comment
+	printComment(w, enum.Comment, indent)
+
+	underlyingType := mod.typeString(enum.ElementType, "", false, false, false, false, false)
+	switch enum.ElementType {
+	case schema.StringType, schema.NumberType:
+		// EnumType attribute
+		fmt.Fprintf(w, "%s[EnumType]\n", indent)
+
+		// Open struct declaration
+		fmt.Fprintf(w, "%[1]spublic readonly struct %[2]s : IEquatable<%[2]s>\n", indent, enumName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		indent := strings.Repeat(indent, 2)
+		fmt.Fprintf(w, "%sprivate readonly %s _value;\n", indent, underlyingType)
+		fmt.Fprintf(w, "\n")
+
+		// Constructor
+		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, underlyingType)
+		fmt.Fprintf(w, "%s{\n", indent)
+		fmt.Fprintf(w, "%s    _value = value", indent)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, " ?? throw new ArgumentNullException(nameof(value))")
+		}
+		fmt.Fprintf(w, ";\n")
+		fmt.Fprintf(w, "%s}\n", indent)
+		fmt.Fprintf(w, "\n")
+
+		// Enum values
+		for _, e := range enum.Elements {
+			printComment(w, e.Comment, indent)
+			printObsoleteAttribute(w, e.DeprecationMessage, indent)
+			e.Name = makeSafeEnumName(e)
+			fmt.Fprintf(w, "%[1]spublic static %[2]s %[3]s { get; } = new %[2]s(", indent, enumName, e.Name)
+			if enum.ElementType == schema.StringType {
+				fmt.Fprintf(w, "%q", e.Value)
+			} else {
+				fmt.Fprintf(w, "%v", e.Value)
+			}
+			fmt.Fprintf(w, ");\n")
+		}
+		fmt.Fprintf(w, "\n")
+
+		// Equality and inequality operators
+		fmt.Fprintf(w, "%[1]spublic static bool operator ==(%[2]s left, %[2]s right) => left.Equals(right);\n", indent, enumName)
+		fmt.Fprintf(w, "%[1]spublic static bool operator !=(%[2]s left, %[2]s right) => !left.Equals(right);\n", indent, enumName)
+		fmt.Fprintf(w, "\n")
+
+		// Explicit conversion operator
+		fmt.Fprintf(w, "%[1]spublic static explicit operator %s(%s value) => value._value;\n", indent, underlyingType, enumName)
+		fmt.Fprintf(w, "\n")
+
+		// Equals override
+		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
+		fmt.Fprintf(w, "%spublic override bool Equals(object? obj) => obj is %s other && Equals(other);\n", indent, enumName)
+		fmt.Fprintf(w, "%spublic bool Equals(%s other) => ", indent, enumName)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, "string.Equals(_value, other._value, StringComparison.Ordinal)")
+		} else {
+			fmt.Fprintf(w, "_value == other._value")
+		}
+		fmt.Fprintf(w, ";\n")
+		fmt.Fprintf(w, "\n")
+
+		// GetHashCode override
+		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
+		fmt.Fprintf(w, "%spublic override int GetHashCode() => _value", indent)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, "?")
+		}
+		fmt.Fprintf(w, ".GetHashCode()")
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, " ?? 0")
+		}
+		fmt.Fprintf(w, ";\n")
+		fmt.Fprintf(w, "\n")
+
+		// ToString override
+		fmt.Fprintf(w, "%spublic override string ToString() => _value", indent)
+		if enum.ElementType == schema.NumberType {
+			fmt.Fprintf(w, ".ToString()")
+		}
+		fmt.Fprintf(w, ";\n")
+	case schema.IntType:
+		// Open enum declaration
+		fmt.Fprintf(w, "%spublic enum %s\n", indent, enumName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		for _, e := range enum.Elements {
+			indent := strings.Repeat(indent, 2)
+			printComment(w, e.Comment, indent)
+			printObsoleteAttribute(w, e.DeprecationMessage, indent)
+			e.Name = makeSafeEnumName(e)
+			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
+		}
+	default:
+		// Issue to implement boolean-based enums: https://github.com/pulumi/pulumi/issues/5652
+		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
+	}
+
+	// Close the declaration
+	fmt.Fprintf(w, "%s}\n", indent)
+
 	return nil
 }
 
@@ -1409,6 +1562,17 @@ func (mod *modContext) gen(fs fs) error {
 		}
 	}
 
+	// Enums
+	if len(mod.enums) > 0 {
+		buffer := &bytes.Buffer{}
+		mod.genHeader(buffer, []string{"System", "System.ComponentModel", "Pulumi"})
+
+		if err := mod.genEnums(buffer, mod.enums); err != nil {
+			return err
+		}
+
+		addFile("Enums.cs", buffer.String())
+	}
 	return nil
 }
 
@@ -1612,9 +1776,15 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 
 	// Find nested types.
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*schema.ObjectType); ok {
-			mod := getModFromToken(obj.Token)
-			mod.types = append(mod.types, obj)
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			mod := getModFromToken(typ.Token)
+			mod.types = append(mod.types, typ)
+		case *schema.EnumType:
+			mod := getModFromToken(typ.Token)
+			mod.enums = append(mod.enums, typ)
+		default:
+			continue
 		}
 	}
 
