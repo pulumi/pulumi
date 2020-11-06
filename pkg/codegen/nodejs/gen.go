@@ -1006,7 +1006,7 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 		if containsEnums {
 			enumsImport = ", enums"
 		}
-		imports = append(imports, fmt.Sprintf("import { input as inputs, output as outputs%s } from \"%s/types\";", enumsImport, relRoot))
+		imports = append(imports, fmt.Sprintf(`import { input as inputs, output as outputs%s } from "%s/types";`, enumsImport, relRoot))
 	}
 
 	if utilities {
