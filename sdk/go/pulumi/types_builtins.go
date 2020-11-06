@@ -2591,7 +2591,7 @@ type BoolInput interface {
 type Bool bool
 
 var (
-	True = BoolPtr(true)
+	True  = BoolPtr(true)
 	False = BoolPtr(false)
 )
 
