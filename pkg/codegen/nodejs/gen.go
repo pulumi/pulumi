@@ -85,6 +85,10 @@ type modContext struct {
 	disableUnionOutputTypes bool              // Disable unions in output types.
 }
 
+func (mod *modContext) String() string {
+	return mod.mod
+}
+
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	details, ok := mod.typeDetails[t]
 	if !ok {
@@ -1242,10 +1246,8 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	if mod.hasEnums() {
-		imports := map[string]codegen.StringSet{}
-
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, []string{}, imports)
+		mod.genHeader(buffer, []string{}, nil)
 
 		mod.genEnums(buffer, mod.enums)
 
@@ -1344,17 +1346,19 @@ func (mod *modContext) genIndex(exports []string) string {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
 
-		fmt.Fprintf(w, "export {")
-		for i, mod := range sorted {
-			if i > 0 {
-				fmt.Fprint(w, ", ")
-			}
-			fmt.Fprint(w, mod)
-		}
-		fmt.Fprintf(w, "};\n")
+		printExports(w, sorted)
 	}
 
 	return w.String()
+}
+
+func printExports(w io.Writer, exports []string) {
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "export {\n")
+	for _, mod := range exports {
+		fmt.Fprintf(w, "    %s,\n", mod)
+	}
+	fmt.Fprintf(w, "};\n")
 }
 
 func (mod *modContext) hasEnums() bool {
@@ -1366,7 +1370,9 @@ func (mod *modContext) hasEnums() bool {
 	}
 	if len(mod.children) > 0 {
 		for _, mod := range mod.children {
-			return mod.hasEnums()
+			if mod.hasEnums() {
+				return true
+			}
 		}
 	}
 	return false
@@ -1390,14 +1396,7 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 			for _, mod := range sorted {
 				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
 			}
-			fmt.Fprintf(buffer, "export {")
-			for i, mod := range sorted {
-				if i > 0 {
-					fmt.Fprint(buffer, ", ")
-				}
-				fmt.Fprint(buffer, mod)
-			}
-			fmt.Fprintf(buffer, "};\n")
+			printExports(buffer, sorted)
 		}
 	}
 	if len(enums) > 0 {
