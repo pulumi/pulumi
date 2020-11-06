@@ -211,7 +211,7 @@ async def monitor_supports_feature(feature: str) -> bool:
         if not monitor:
             return False
 
-        req = resource_pb2.SupportsFeatureRequest(id="secrets")
+        req = resource_pb2.SupportsFeatureRequest(id=feature)
         def do_rpc_call():
             try:
                 resp = monitor.SupportsFeature(req)
