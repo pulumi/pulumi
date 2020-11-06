@@ -557,11 +557,12 @@ def contains_unknowns(val: Any) -> bool:
     return impl(val, [])
 
 
-async def resolve_outputs(res: 'Resource',
-                          serialized_props: struct_pb2.Struct,
-                          outputs: struct_pb2.Struct,
-                          deps: Mapping[str, Set['Resource']],
-                          resolvers: Dict[str, Resolver]):
+def resolve_outputs(res: 'Resource',
+                    
+                    serialized_props: struct_pb2.Struct,
+                    outputs: struct_pb2.Struct,
+                    deps: Mapping[str, Set['Resource']],
+                    resolvers: Dict[str, Resolver]):
 
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -585,10 +586,9 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
-    await resolve_properties(resolvers, all_properties, deps)
+    resolve_properties(resolvers, all_properties, deps)
 
-async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
-
+def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
         if key in ["id", "urn"]:

@@ -165,33 +165,31 @@ def resolved_resource_output(res: 'Resource', value: Any, known: bool, secret: b
     return output
 
 
-def get_resource(res: 'Resource', custom: bool, urn: str) -> None:
+def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> None:
     log.debug(f"getting resource: urn={urn}")
-
-    result = invoke("pulumi:pulumi:getResource", {"urn": urn})
 
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
     log.debug("preparing get resource for RPC")
 
-    res.__dict__["urn"] = resolved_resource_output(res, urn, True, False)
+    (resolve_urn, res.__dict__["urn"]) = resource_output(res)
 
-    # If this is a custom resource, resolve the ID.
+    # If this is a custom resource, initialize its ID property.
+    resolve_id: Optional[Callable[[Any, bool, bool, Optional[Exception]], None]] = None
     if custom:
         id = result.value["id"]
         id_known = bool(id)
 
-        res.__dict__["id"] = resolved_resource_output(res, id, id_known, False)
+        (resolve_id, res.__dict__["id"]) = resolved_resource_output(res)
 
-    # Create resolved outputs for each property on res.
-    for key, value in result.value["state"].items():
-        # Skip well-known properties.
-        if key == "urn" or key == "id":
-            continue
+    async def do_get:
+        result = invoke("pulumi:pulumi:getResource", {"urn": urn})
 
-        is_known = not rpc.contains_unknowns(value)
-        is_secret = rpc.is_rpc_secret(value)
 
-        res.__dict__[key] = resolved_resource_output(res, rpc.unwrap_rpc_secret(value), is_known, is_secret)
+
+
+    # Transfer all values in props into unresolved properties on the resource, then resolve the properties.
+    resolvers = rpc.transfer_properties(res, props)
+    rpc.resolve_proprties(resolvers, result.values["state"], {})
 
 
 def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> None:
