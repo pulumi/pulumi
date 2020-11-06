@@ -3,7 +3,10 @@
 
 // Export sub-modules:
 import * as tree from "./tree";
-export {tree};
+
+export {
+    tree,
+};
 
 export const ContainerColor = {
     Red: "red",

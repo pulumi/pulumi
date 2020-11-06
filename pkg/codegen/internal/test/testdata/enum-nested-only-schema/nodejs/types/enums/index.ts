@@ -3,4 +3,7 @@
 
 // Export sub-modules:
 import * as tree from "./tree";
-export {tree};
+
+export {
+    tree,
+};
