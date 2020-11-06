@@ -43,6 +43,7 @@ func TestGeneratePackage(t *testing.T) {
 			"Only nested enums",
 			"enum-nested-only-schema",
 			[]string{
+				"tree/v1/rubberTree.ts",
 				"types/enums/index.ts",
 				"types/enums/tree/index.ts",
 				"types/enums/tree/v1/index.ts",

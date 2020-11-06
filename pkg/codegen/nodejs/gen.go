@@ -834,6 +834,8 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.MapType:
 		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+	case *schema.EnumType:
+		return true
 	case *schema.ObjectType:
 		for _, p := range t.Properties {
 			mod.getTypeImports(p.Type, recurse, imports, seen)
@@ -995,12 +997,12 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	relRoot := mod.getRelativePath()
 	if nested {
-		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
-		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
+		enumsImport := ""
 		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
 		if containsEnums {
-			imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enums\";", relRoot))
+			enumsImport = ", enums"
 		}
+		imports = append(imports, fmt.Sprintf("import { input as inputs, output as outputs%s } from \"%s/types\";", enumsImport, relRoot))
 	}
 
 	if utilities {
