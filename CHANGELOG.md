@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix a bug in the Python SDK that caused incompatibilities with versions of the CLI prior to 
+  2.13.0.
+  [#5702](https://github.com/pulumi/pulumi/pull/5702)
 
 ## 2.13.0 (2020-11-04)
 
