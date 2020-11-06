@@ -39,6 +39,15 @@ func TestGeneratePackage(t *testing.T) {
 				"types/enums/tree/v1/index.ts",
 			},
 		},
+		{
+			"Only nested enums",
+			"enum-nested-only-schema",
+			[]string{
+				"types/enums/index.ts",
+				"types/enums/tree/index.ts",
+				"types/enums/tree/v1/index.ts",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
