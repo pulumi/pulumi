@@ -532,7 +532,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	hasSupport := false
 
 	switch req.Id {
-	case "secrets", "resourceReferences":
+	case "secrets":
 		hasSupport = true
 	}
 
