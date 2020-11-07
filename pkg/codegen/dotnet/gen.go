@@ -1013,7 +1013,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	for _, e := range enum.Elements {
 		// If the enum already has a name, use it.
 		if e.Name == "" {
-			e.Name = e.Value.(string)
+			e.Name = fmt.Sprintf("%v", e.Value)
 		}
 
 		safeName, err := makeSafeEnumName(e.Name)
