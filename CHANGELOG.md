@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix a bug that was causing errors when (de)serializing custom resources.
+  [#5709](https://github.com/pulumi/pulumi/pull/5709)
 
 ## 2.13.1 (2020-11-06)
 
