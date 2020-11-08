@@ -193,9 +193,7 @@ class Server implements grpc.UntypedServiceImplementation {
             const id = req.getId();
             const props = req.getProperties().toJavaScript();
             if (this.provider.read) {
-                // If there's a read function, consult the provider. Ensure to propagate the special __provider
-                // value too, so that the provider's CRUD operations continue to function after a refresh.
-                const result: any = await this.provider.read(id, props);
+                const result: any = await this.provider.read(id, req.getUrn(), props);
                 resp.setId(result.id);
                 resp.setProperties(structproto.Struct.fromJavaScript(result.props));
             } else {
