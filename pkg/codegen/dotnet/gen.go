@@ -105,6 +105,9 @@ func isImmutableArrayType(t schema.Type, wrapInput bool) bool {
 }
 
 func isValueType(t schema.Type) bool {
+	if _, ok := t.(*schema.EnumType); ok {
+		return true
+	}
 	switch t {
 	case schema.BoolType, schema.IntType, schema.NumberType:
 		return true
