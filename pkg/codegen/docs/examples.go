@@ -124,7 +124,7 @@ func decomposeDocstring(docstring string) docInfo {
 	}
 
 	return docInfo{
-		description:   description,
+		description:   parts[0], // When we split the description above, the main part of the description is always part[0]
 		examples:      examples,
 		importDetails: importDetails,
 	}
