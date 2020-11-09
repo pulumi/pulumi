@@ -5,7 +5,6 @@ package v1
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -14,23 +13,9 @@ import (
 type Farm pulumi.String
 
 const (
-	FarmPulumi_Planters_Inc_ = Farm("Pulumi Planters Inc.")
-	FarmPlants_R_Us          = Farm("Plants'R'Us")
+	Farm_Pulumi_Planters_Inc_ = Farm("Pulumi Planters Inc.")
+	Farm_Plants_R_Us          = Farm("Plants'R'Us")
 )
-
-func (Farm) possibleValues() map[Farm]bool {
-	return map[Farm]bool{
-		FarmPulumi_Planters_Inc_: true,
-		FarmPlants_R_Us:          true,
-	}
-}
-
-func (e Farm) Validate() error {
-	if !e.possibleValues()[e] {
-		return fmt.Errorf("unexpected value: %v", e)
-	}
-	return nil
-}
 
 func (Farm) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.String)(nil)).Elem()
@@ -63,21 +48,6 @@ const (
 	// A tineke rubber tree.
 	RubberTreeVarietyTineke = RubberTreeVariety("Tineke")
 )
-
-func (RubberTreeVariety) possibleValues() map[RubberTreeVariety]bool {
-	return map[RubberTreeVariety]bool{
-		RubberTreeVarietyBurgundy: true,
-		RubberTreeVarietyRuby:     true,
-		RubberTreeVarietyTineke:   true,
-	}
-}
-
-func (e RubberTreeVariety) Validate() error {
-	if !e.possibleValues()[e] {
-		return fmt.Errorf("unexpected value: %v", e)
-	}
-	return nil
-}
 
 func (RubberTreeVariety) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.String)(nil)).Elem()

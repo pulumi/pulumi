@@ -52,11 +52,6 @@ func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "", goPackage(""))
 }
 
-// genPkgWrapper adapts the go.GeneratePackage signature to match the expected signature. The signature should be
-// standardized to match the other SDKs, but this hack fixes it for the purposes of this test.
-func genPkgWrapper(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	return GeneratePackage(tool, pkg)
-}
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
 		name          string
@@ -116,7 +111,7 @@ func TestEnumUsage(t *testing.T) {
 					Material: pulumi.String("ceramic"),
 					Size:     plant.ContainerSizeFourInch,
 				},
-				Farm: tree.FarmPlants_R_Us,
+				Farm: tree.Farm_Plants_R_Us,
 				Type: tree.RubberTreeVarietyRuby,
 			})
 			require.NoError(t, err)
@@ -151,7 +146,7 @@ func TestEnumUsage(t *testing.T) {
 					Material: pulumi.String("ceramic"),
 					Size:     plant.ContainerSize(22),
 				},
-				Farm: tree.FarmPlants_R_Us,
+				Farm: tree.Farm_Plants_R_Us,
 				Type: tree.RubberTreeVarietyRuby,
 			})
 			require.NoError(t, err)
@@ -186,7 +181,7 @@ func TestEnumUsage(t *testing.T) {
 					Material: pulumi.String("ceramic"),
 					Size:     plant.ContainerSize(22),
 				},
-				Farm: tree.FarmPlants_R_Us,
+				Farm: tree.Farm_Plants_R_Us,
 				Type: "Burgundy",
 			})
 			require.NoError(t, err)
@@ -211,22 +206,5 @@ func TestEnumUsage(t *testing.T) {
 			wg.Wait()
 			return nil
 		}, pulumi.WithMocks("project", "stack", mocks(1))))
-	})
-
-	t.Run("ValidateStrictEnum", func(t *testing.T) {
-		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
-			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
-					Color:    plant.ContainerColorRed,
-					Material: pulumi.String("ceramic"),
-				},
-				Farm: tree.FarmPlants_R_Us,
-				Type: "Mauve",
-			})
-			require.Error(t, err)
-			require.Contains(t, err.Error(), "invalid value for enum 'Type'")
-			require.Nil(t, tree)
-			return nil
-		}, pulumi.WithMocks("project", "stack", mocks(2))))
 	})
 }

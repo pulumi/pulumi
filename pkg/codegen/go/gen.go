@@ -529,7 +529,11 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 		if e.Name == "" {
 			elementName = fmt.Sprintf("%v", e.Value)
 		}
-		e.Name = name + makeSafeEnumName(elementName)
+		enumName := makeSafeEnumName(elementName)
+		if strings.Contains(enumName, "_") {
+			enumName = fmt.Sprintf("_%s", enumName)
+		}
+		e.Name = name + enumName
 		contract.Assertf(!modPkg.names.has(e.Name), "Name collision for enum constant: %s for %s",
 			e.Name, enumType.Token)
 		switch reflect.TypeOf(e.Value).Kind() {
@@ -540,7 +544,6 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 		}
 	}
 	fmt.Fprintln(w, ")")
-	genEnumValidationFunc(w, name, enumType)
 	inputType := pkg.inputType(enumType, false)
 	contract.Assertf(name == inputType,
 		"expect inputType (%s) for enums to be the same as enum type (%s)", inputType, enumType)
@@ -569,25 +572,6 @@ func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
 
 func makeSafeEnumName(name string) string {
 	return makeValidIdentifier(Title(name))
-}
-
-func genEnumValidationFunc(w io.Writer, typeName string, enum *schema.EnumType) {
-	fmt.Fprintf(w, "func (%[1]s) possibleValues() map[%[1]s]bool {\n", typeName)
-	fmt.Fprintf(w, "return map[%s]bool {\n", typeName)
-	for _, element := range enum.Elements {
-		contract.Assert(element.Name != "")
-		// element.Name should already exist as part of genEnumType
-		fmt.Fprintf(w, "\t%s: true,\n", element.Name)
-	}
-	fmt.Fprintln(w, "}") // return statement close
-	fmt.Fprintln(w, "}") // func close
-	fmt.Fprintln(w)
-	fmt.Fprintf(w, "func (e %s) Validate() error {\n", typeName)
-	fmt.Fprintln(w, "if !e.possibleValues()[e] {")
-	fmt.Fprintln(w, "return fmt.Errorf(\"unexpected value: %"+"v\", e)")
-	fmt.Fprintln(w, "}")
-	fmt.Fprintln(w, "return nil")
-	fmt.Fprintln(w, "}")
 }
 
 func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType string) {
@@ -897,22 +881,20 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 	}
 
-	// Produce the inputs.
+	// Various validation checks
 	fmt.Fprintf(w, "\tif args == nil {\n")
 	if !hasRequired {
 		fmt.Fprintf(w, "\t\targs = &%sArgs{}\n", name)
 	} else {
 		fmt.Fprintln(w, "\t\treturn nil, errors.New(\"missing one or more required arguments\")")
 	}
-	fmt.Fprintf(w, "\t}\n")
+	fmt.Fprintf(w, "\t}\n\n")
 
+	// Produce the inputs.
 	for _, p := range r.InputProperties {
 		switch p.Type.(type) {
 		case *schema.EnumType:
-			// We use a concrete type for strict enums
-			fmt.Fprintf(w, "\tif err := args.%s.Validate(); err != nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"invalid value for enum '%s': %%w\", err)\n", Title(p.Name))
-			fmt.Fprintf(w, "\t}\n")
+			// not a pointer type and already handled above
 		default:
 			if p.IsRequired {
 				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
@@ -1602,7 +1584,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.getImports(r, imports)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect", "fmt"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
 
 			if err := pkg.genResource(buffer, r); err != nil {
 				return nil, err
@@ -1651,7 +1633,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect", "fmt"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
 
 			for _, e := range pkg.enums {
 				pkg.genEnum(buffer, e)

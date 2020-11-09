@@ -5,7 +5,6 @@ package plant
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -17,20 +16,6 @@ const (
 	ContainerBrightnessZeroPointOne = ContainerBrightness(0.1)
 	ContainerBrightnessOne          = ContainerBrightness(1)
 )
-
-func (ContainerBrightness) possibleValues() map[ContainerBrightness]bool {
-	return map[ContainerBrightness]bool{
-		ContainerBrightnessZeroPointOne: true,
-		ContainerBrightnessOne:          true,
-	}
-}
-
-func (e ContainerBrightness) Validate() error {
-	if !e.possibleValues()[e] {
-		return fmt.Errorf("unexpected value: %v", e)
-	}
-	return nil
-}
 
 func (ContainerBrightness) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.Float64)(nil)).Elem()
@@ -61,21 +46,6 @@ const (
 	ContainerColorYellow = ContainerColor("yellow")
 )
 
-func (ContainerColor) possibleValues() map[ContainerColor]bool {
-	return map[ContainerColor]bool{
-		ContainerColorRed:    true,
-		ContainerColorBlue:   true,
-		ContainerColorYellow: true,
-	}
-}
-
-func (e ContainerColor) Validate() error {
-	if !e.possibleValues()[e] {
-		return fmt.Errorf("unexpected value: %v", e)
-	}
-	return nil
-}
-
 func (ContainerColor) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.String)(nil)).Elem()
 }
@@ -105,21 +75,6 @@ const (
 	// Deprecated: Eight inch pots are no longer supported.
 	ContainerSizeEightInch = ContainerSize(8)
 )
-
-func (ContainerSize) possibleValues() map[ContainerSize]bool {
-	return map[ContainerSize]bool{
-		ContainerSizeFourInch:  true,
-		ContainerSizeSixInch:   true,
-		ContainerSizeEightInch: true,
-	}
-}
-
-func (e ContainerSize) Validate() error {
-	if !e.possibleValues()[e] {
-		return fmt.Errorf("unexpected value: %v", e)
-	}
-	return nil
-}
 
 func (ContainerSize) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.Int)(nil)).Elem()
