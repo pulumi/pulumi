@@ -6,6 +6,11 @@ CHANGELOG
 - [Docs] Add support for the generation of Import documentation in the resource docs.
   This documentation will only be available if the resource is importable.
   [#5667](https://github.com/pulumi/pulumi/pull/5667)
+  
+- [codegen/go] Add support for ResourceType and isComponent to enable multi-language
+  components in Go. This change also generates Input/Output types for all resources
+  in downstream Go SDKs.
+  [#5497](https://github.com/pulumi/pulumi/pull/5497)
 
 ## 2.13.2 (2020-11-06)
 
@@ -43,11 +48,6 @@ CHANGELOG
 - [cli] Ensure that the CLI doesn't panic when using pulumi watch and policies are enabled
   [#5569](https://github.com/pulumi/pulumi/pull/5569)
   
-- [codegen/go] Add support for ResourceType and isComponent to enable multi-language
-  components in Go. This change also generates Input/Output types for all resources
-  in downstream Go SDKs.
-  [#5497](https://github.com/pulumi/pulumi/pull/5497)
-
 - [cli] Ensure that the CLI doesn't panic when using the JSON output as part of previews
   and policies are enabled
   [#5610](https://github.com/pulumi/pulumi/pull/5610)
