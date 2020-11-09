@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -105,4 +106,26 @@ func CleanDir(dirPath string, exclusions StringSet) error {
 	}
 
 	return nil
+}
+
+var commonEnumNameReplacements = map[string]string{
+	"*": "Asterisk",
+	"0": "Zero",
+	"1": "One",
+	"2": "Two",
+	"3": "Three",
+	"4": "Four",
+	"5": "Five",
+	"6": "Six",
+	"7": "Seven",
+	"8": "Eight",
+	"9": "Nine",
+}
+
+func ReplaceInvalidEnumName(name string) (string, error) {
+	replacement, ok := commonEnumNameReplacements[name]
+	if !ok {
+		return "", errors.Errorf("no replacement for %s found", name)
+	}
+	return replacement, nil
 }

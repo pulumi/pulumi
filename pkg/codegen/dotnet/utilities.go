@@ -20,6 +20,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -83,28 +84,13 @@ func propertyName(name string) string {
 }
 
 func makeSafeEnumName(name string) (string, error) {
+	var err error
 	safeName := name
 
 	// If the name is one illegal character, replace it.
 	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		enumReplacer := strings.NewReplacer(
-			"0", "Zero",
-			"1", "One",
-			"2", "Two",
-			"3", "Three",
-			"4", "Four",
-			"5", "Five",
-			"6", "Six",
-			"7", "Seven",
-			"8", "Eight",
-			"9", "Nine",
-			"*", "Asterisk",
-		)
-
-		safeName = enumReplacer.Replace(safeName)
-
-		// If it's still an illegal character (we weren't able to find a replacement), return an error.
-		if !isLegalIdentifierStart(rune(safeName[0])) {
+		safeName, err = codegen.ReplaceInvalidEnumName(safeName)
+		if err != nil {
 			return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
 		}
 	}

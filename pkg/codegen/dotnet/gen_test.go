@@ -65,6 +65,7 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"SystemAssigned, UserAssigned", "SystemAssigned_UserAssigned", false},
 		{"Dev(NoSLA)_Standard_D11_v2", "Dev_NoSLA_Standard_D11_v2", false},
 		{"Standard_E8as_v4+1TB_PS", "Standard_E8as_v4_1TB_PS", false},
+		{"Equals", "EqualsValue", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
