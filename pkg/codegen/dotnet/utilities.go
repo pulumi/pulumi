@@ -15,10 +15,11 @@
 package dotnet
 
 import (
-	"fmt"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pkg/errors"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -104,7 +105,7 @@ func makeSafeEnumName(name string) (string, error) {
 
 		// If it's still an illegal character (we weren't able to find a replacement), return an error.
 		if !isLegalIdentifierStart(rune(safeName[0])) {
-			return "", fmt.Errorf("enum name %s is not a valid identifier", safeName)
+			return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
 		}
 	}
 
@@ -117,7 +118,7 @@ func makeSafeEnumName(name string) (string, error) {
 
 	// "Equals" conflicts with a method on the EnumType struct, change it to EqualsValue.
 	if safeName == "Equals" {
-		safeName = fmt.Sprintf("%sValue", safeName)
+		safeName = "EqualsValue"
 	}
 
 	return safeName, nil
