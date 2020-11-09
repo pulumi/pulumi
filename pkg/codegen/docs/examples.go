@@ -119,7 +119,7 @@ func decomposeDocstring(docstring string) docInfo {
 	description := schema.RenderDocsToString(source, parsed)
 	importDetails := ""
 	parts := strings.Split(description, "\n\n## Import")
-	if len(parts) > 0 {
+	if len(parts) > 1 { // we only care about the Import section details here!!
 		importDetails = parts[1]
 	}
 
