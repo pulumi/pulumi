@@ -33,9 +33,6 @@ jobs:
           pulumictl create choco-deploy $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
-  # sends a repository dispatch to this repo, to build the docker images
-  # note, the tagging format is unfortunately different for the two sets of images
-  # FIXME: consolidate the tagging to always include a v
   docker:
     name: Build Slim Docker Images
     runs-on: ubuntu-latest
@@ -43,17 +40,15 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - name: Set tag version
-        run: |
-          echo "PULUMI_LATEST_TAG=$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: docker-build
-          client-payload: "{\"ref\": \"$PULUMI_LATEST_TAG\", \"sha\": \"${{ github.sha }}\"}"
-  # This sends a repository dispatch job to the docs repo
-  # chocolatey build needs to be triggered from here
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create containers $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
@@ -61,19 +56,15 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - name: Set tag version
-        run: |
-          echo "PULUMI_LATEST_TAG=$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          repository: pulumi/docs
-          event-type: pulumi-cli
-          client-payload: "{\"ref\": \"v$PULUMI_LATEST_TAG\", \"sha\": \"${{ github.sha }}\"}"
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create cli-docs-build $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
-  # Sends a repository dispatch job to the homebrew build
   homebrew:
     name: Update Homebrew
     runs-on: macos-latest
@@ -81,16 +72,15 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-      - name: Set tag version
-        run: |
-          echo "PULUMI_LATEST_TAG=$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: homebrew-bump
-          client-payload: "{\"ref\": \"v$PULUMI_LATEST_TAG\", \"sha\": \"${{ github.sha }}\"}"
-
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create homebrew-bump $(pulumictl get version --language generic -o) ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   publish-sdks:
     name: Publish SDKs
     runs-on: ubuntu-latest
