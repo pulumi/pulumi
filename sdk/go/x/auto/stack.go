@@ -255,7 +255,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	err = json.Unmarshal([]byte(stdout), &res)
 	if err != nil {
-		return res, errors.Wrap(err, "unable to unmarshal preview result")
+		return res, newAutoError(errors.Wrap(err, "unable to unmarshal preview result"), stdout, stderr, code)
 	}
 
 	return res, nil
