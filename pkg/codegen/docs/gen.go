@@ -232,6 +232,9 @@ type resourceDocArgs struct {
 	ExamplesSection    []exampleSection
 	DeprecationMessage string
 
+	// Import
+	ImportDocs string
+
 	// ConstructorParams is a map from language to the rendered HTML for the constructor's
 	// arguments.
 	ConstructorParams map[string]string
@@ -1405,6 +1408,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Comment:            docInfo.description,
 		DeprecationMessage: r.DeprecationMessage,
 		ExamplesSection:    docInfo.examples,
+		ImportDocs:         docInfo.importDetails,
 
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,

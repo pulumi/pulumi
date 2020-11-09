@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [Docs] Add support for the generation of Import documentation in the resource docs.
+  This documentation will only be available if the resource is importable.
+  [#5667](https://github.com/pulumi/pulumi/pull/5667)
 
 ## 2.13.2 (2020-11-06)
 
