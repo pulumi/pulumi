@@ -16,8 +16,11 @@ package nodejs
 
 import (
 	"io"
+	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pkg/errors"
 )
 
 // isReservedWord returns true if s is a reserved word as per ECMA-262.
@@ -97,4 +100,41 @@ func makeValidIdentifier(name string) string {
 		return "_" + name
 	}
 	return name
+}
+
+func makeSafeEnumName(name string) (string, error) {
+	safeName := name
+
+	// If the name is one illegal character, replace it.
+	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
+		enumReplacer := strings.NewReplacer(
+			"0", "Zero",
+			"1", "One",
+			"2", "Two",
+			"3", "Three",
+			"4", "Four",
+			"5", "Five",
+			"6", "Six",
+			"7", "Seven",
+			"8", "Eight",
+			"9", "Nine",
+			"*", "Asterisk",
+		)
+
+		safeName = enumReplacer.Replace(safeName)
+
+		// If it's still an illegal character (we weren't able to find a replacement), return an error.
+		if !isLegalIdentifierStart(rune(safeName[0])) {
+			return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
+		}
+	}
+
+	// Capitalize and make a valid identifier.
+	safeName = makeValidIdentifier(title(safeName))
+
+	// If there are multiple underscores in a row, replace with one.
+	regex := regexp.MustCompile(`_+`)
+	safeName = regex.ReplaceAllString(safeName, "_")
+
+	return safeName, nil
 }

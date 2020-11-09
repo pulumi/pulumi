@@ -1111,19 +1111,21 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	}
 }
 
-func makeSafeEnumName(name string) string {
-	return makeValidIdentifier(title(name))
-}
-
-func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
 	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	for _, e := range enum.Elements {
+		// If the enum doesn't have a name, set the value as the name.
 		if e.Name == "" {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
-		e.Name = makeSafeEnumName(e.Name)
+		safeName, err := makeSafeEnumName(e.Name)
+		if err != nil {
+			return err
+		}
+		e.Name = safeName
+
 		printComment(w, e.Comment, e.DeprecationMessage, indent)
 		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
@@ -1137,6 +1139,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
 
 	printComment(w, enum.Comment, "", "")
 	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
+	return nil
 }
 
 type fs map[string][]byte
@@ -1249,7 +1252,10 @@ func (mod *modContext) gen(fs fs) error {
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, []string{}, nil)
 
-		mod.genEnums(buffer, mod.enums)
+		err := mod.genEnums(buffer, mod.enums)
+		if err != nil {
+			return err
+		}
 
 		var fileName string
 		if modDir == "" {
@@ -1378,7 +1384,7 @@ func (mod *modContext) hasEnums() bool {
 	return false
 }
 
-func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) {
+func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) error {
 	if len(mod.children) > 0 {
 		children := codegen.NewStringSet()
 
@@ -1402,12 +1408,16 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 	if len(enums) > 0 {
 		fmt.Fprintf(buffer, "\n")
 		for i, enum := range enums {
-			mod.genEnum(buffer, enum)
+			err := mod.genEnum(buffer, enum)
+			if err != nil {
+				return err
+			}
 			if i != len(enums)-1 {
 				fmt.Fprintf(buffer, "\n")
 			}
 		}
 	}
+	return nil
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.

@@ -1008,16 +1008,23 @@ func printObsoleteAttribute(w io.Writer, deprecationMessage, indent string) {
 	}
 }
 
-func makeSafeEnumName(enum *schema.Enum) string {
-	if enum.Name != "" {
-		return enum.Name
-	}
-	return strings.Title(makeValidIdentifier(enum.Value.(string)))
-}
-
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
+
+	// Fix up identifiers for each enum value.
+	for _, e := range enum.Elements {
+		// If the enum doesn't have a name, set the value as the name.
+		if e.Name == "" {
+			e.Name = fmt.Sprintf("%v", e.Value)
+		}
+
+		safeName, err := makeSafeEnumName(e.Name)
+		if err != nil {
+			return err
+		}
+		e.Name = safeName
+	}
 
 	// Print documentation comment
 	printComment(w, enum.Comment, indent)
@@ -1050,7 +1057,6 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		for _, e := range enum.Elements {
 			printComment(w, e.Comment, indent)
 			printObsoleteAttribute(w, e.DeprecationMessage, indent)
-			e.Name = makeSafeEnumName(e)
 			fmt.Fprintf(w, "%[1]spublic static %[2]s %[3]s { get; } = new %[2]s(", indent, enumName, e.Name)
 			if enum.ElementType == schema.StringType {
 				fmt.Fprintf(w, "%q", e.Value)
@@ -1109,7 +1115,6 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			indent := strings.Repeat(indent, 2)
 			printComment(w, e.Comment, indent)
 			printObsoleteAttribute(w, e.DeprecationMessage, indent)
-			e.Name = makeSafeEnumName(e)
 			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
 		}
 	default:
