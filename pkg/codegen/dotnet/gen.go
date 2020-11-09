@@ -1011,7 +1011,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 
 	// Fix up identifiers for each enum value.
 	for _, e := range enum.Elements {
-		// If the enum already has a name, use it.
+		// If the enum doesn't have a name, set the value as the name.
 		if e.Name == "" {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}

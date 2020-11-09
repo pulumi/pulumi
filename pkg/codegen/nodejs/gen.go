@@ -1116,6 +1116,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	enumName := tokenToName(enum.Token)
 	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	for _, e := range enum.Elements {
+		// If the enum doesn't have a name, set the value as the name.
 		if e.Name == "" {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
