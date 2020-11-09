@@ -11,9 +11,10 @@ import (
 )
 
 type Container struct {
-	Color    *string `pulumi:"color"`
-	Material *string `pulumi:"material"`
-	Size     int     `pulumi:"size"`
+	Brightness *float64 `pulumi:"brightness"`
+	Color      *string  `pulumi:"color"`
+	Material   *string  `pulumi:"material"`
+	Size       int      `pulumi:"size"`
 }
 
 // ContainerInput is an input type that accepts ContainerArgs and ContainerOutput values.
@@ -28,9 +29,10 @@ type ContainerInput interface {
 }
 
 type ContainerArgs struct {
-	Color    pulumi.StringPtrInput `pulumi:"color"`
-	Material pulumi.StringPtrInput `pulumi:"material"`
-	Size     ContainerSize         `pulumi:"size"`
+	Brightness ContainerBrightness   `pulumi:"brightness"`
+	Color      pulumi.StringPtrInput `pulumi:"color"`
+	Material   pulumi.StringPtrInput `pulumi:"material"`
+	Size       ContainerSize         `pulumi:"size"`
 }
 
 func (ContainerArgs) ElementType() reflect.Type {
@@ -109,6 +111,10 @@ func (o ContainerOutput) ToContainerPtrOutputWithContext(ctx context.Context) Co
 		return &v
 	}).(ContainerPtrOutput)
 }
+func (o ContainerOutput) Brightness() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v Container) *float64 { return v.Brightness }).(pulumi.Float64PtrOutput)
+}
+
 func (o ContainerOutput) Color() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Container) *string { return v.Color }).(pulumi.StringPtrOutput)
 }
@@ -137,6 +143,15 @@ func (o ContainerPtrOutput) ToContainerPtrOutputWithContext(ctx context.Context)
 
 func (o ContainerPtrOutput) Elem() ContainerOutput {
 	return o.ApplyT(func(v *Container) Container { return *v }).(ContainerOutput)
+}
+
+func (o ContainerPtrOutput) Brightness() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *Container) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Brightness
+	}).(pulumi.Float64PtrOutput)
 }
 
 func (o ContainerPtrOutput) Color() pulumi.StringPtrOutput {

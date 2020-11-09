@@ -514,6 +514,9 @@ func (pkg *pkgContext) genEnum(w io.Writer, enum *schema.EnumType) {
 }
 
 func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.EnumType) {
+	mod := pkg.tokenToPackage(enumType.Token)
+	modPkg, ok := pkg.packages[mod]
+	contract.Assert(ok)
 	printCommentWithDeprecationMessage(w, enumType.Comment, "", false)
 	elementType := pkg.enumElementType(enumType.ElementType, false)
 	fmt.Fprintf(w, "type %s %s\n\n", name, elementType)
@@ -522,10 +525,13 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	for _, e := range enumType.Elements {
 		printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, true)
 		var elementName = e.Name
+		// Add the type to the name to disambiguate constants used for enum values
 		if e.Name == "" {
 			elementName = fmt.Sprintf("%v", e.Value)
 		}
-		e.Name = makeSafeEnumName(elementName)
+		e.Name = name + makeSafeEnumName(elementName)
+		contract.Assertf(!modPkg.names.has(e.Name), "Name collision for enum constant: %s for %s",
+			e.Name, enumType.Token)
 		switch reflect.TypeOf(e.Value).Kind() {
 		case reflect.String:
 			fmt.Fprintf(w, "%s = %s(\"%v\")\n", e.Name, name, e.Value)
@@ -535,7 +541,10 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	}
 	fmt.Fprintln(w, ")")
 	genEnumValidationFunc(w, name, enumType)
-	pkg.genEnumInputFuncs(w, name, enumType, elementType, pkg.inputType(enumType, false))
+	inputType := pkg.inputType(enumType, false)
+	contract.Assertf(name == inputType,
+		"expect inputType (%s) for enums to be the same as enum type (%s)", inputType, enumType)
+	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType)
 }
 
 func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
@@ -1144,16 +1153,7 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	}
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
-
-	// If the package containing the type's token already has a resource with the
-	// same name, add a `Type` suffix.
-	modPkg, ok := pkg.packages[mod]
-	contract.Assert(ok)
-
 	name = Title(name)
-	if modPkg.names.has(name) {
-		name += "Enum"
-	}
 
 	if mod == pkg.mod {
 		return name
@@ -1656,10 +1656,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			for _, e := range pkg.enums {
 				pkg.genEnum(buffer, e)
 			}
-			// pkg.genEnumTypeRegistrations(buffer, pkg.enums)
-
 			setFile(path.Join(mod, "pulumiEnums.go"), buffer.String())
-
 		}
 
 		// Utilities

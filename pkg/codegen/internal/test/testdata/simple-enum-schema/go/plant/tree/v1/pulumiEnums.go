@@ -14,14 +14,14 @@ import (
 type Farm pulumi.String
 
 const (
-	Pulumi_Planters_Inc_ = Farm("Pulumi Planters Inc.")
-	Plants_R_Us          = Farm("Plants'R'Us")
+	FarmPulumi_Planters_Inc_ = Farm("Pulumi Planters Inc.")
+	FarmPlants_R_Us          = Farm("Plants'R'Us")
 )
 
 func (Farm) possibleValues() map[Farm]bool {
 	return map[Farm]bool{
-		Pulumi_Planters_Inc_: true,
-		Plants_R_Us:          true,
+		FarmPulumi_Planters_Inc_: true,
+		FarmPlants_R_Us:          true,
 	}
 }
 
@@ -57,18 +57,18 @@ type RubberTreeVariety pulumi.String
 
 const (
 	// A burgundy rubber tree.
-	Burgundy = RubberTreeVariety("Burgundy")
+	RubberTreeVarietyBurgundy = RubberTreeVariety("Burgundy")
 	// A ruby rubber tree.
-	Ruby = RubberTreeVariety("Ruby")
+	RubberTreeVarietyRuby = RubberTreeVariety("Ruby")
 	// A tineke rubber tree.
-	Tineke = RubberTreeVariety("Tineke")
+	RubberTreeVarietyTineke = RubberTreeVariety("Tineke")
 )
 
 func (RubberTreeVariety) possibleValues() map[RubberTreeVariety]bool {
 	return map[RubberTreeVariety]bool{
-		Burgundy: true,
-		Ruby:     true,
-		Tineke:   true,
+		RubberTreeVarietyBurgundy: true,
+		RubberTreeVarietyRuby:     true,
+		RubberTreeVarietyTineke:   true,
 	}
 }
 

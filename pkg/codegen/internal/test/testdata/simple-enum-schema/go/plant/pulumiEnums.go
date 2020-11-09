@@ -11,20 +11,61 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
+type ContainerBrightness pulumi.Float64
+
+const (
+	ContainerBrightnessZeroPointOne = ContainerBrightness(0.1)
+	ContainerBrightnessOne          = ContainerBrightness(1)
+)
+
+func (ContainerBrightness) possibleValues() map[ContainerBrightness]bool {
+	return map[ContainerBrightness]bool{
+		ContainerBrightnessZeroPointOne: true,
+		ContainerBrightnessOne:          true,
+	}
+}
+
+func (e ContainerBrightness) Validate() error {
+	if !e.possibleValues()[e] {
+		return fmt.Errorf("unexpected value: %v", e)
+	}
+	return nil
+}
+
+func (ContainerBrightness) ElementType() reflect.Type {
+	return reflect.TypeOf((*pulumi.Float64)(nil)).Elem()
+}
+
+func (e ContainerBrightness) ToFloat64Output() pulumi.Float64Output {
+	return pulumi.ToOutput(pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e ContainerBrightness) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
+	return pulumi.ToOutputWithContext(ctx, pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e ContainerBrightness) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (e ContainerBrightness) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+}
+
 // plant container colors
 type ContainerColor pulumi.String
 
 const (
-	Red    = ContainerColor("red")
-	Blue   = ContainerColor("blue")
-	Yellow = ContainerColor("yellow")
+	ContainerColorRed    = ContainerColor("red")
+	ContainerColorBlue   = ContainerColor("blue")
+	ContainerColorYellow = ContainerColor("yellow")
 )
 
 func (ContainerColor) possibleValues() map[ContainerColor]bool {
 	return map[ContainerColor]bool{
-		Red:    true,
-		Blue:   true,
-		Yellow: true,
+		ContainerColorRed:    true,
+		ContainerColorBlue:   true,
+		ContainerColorYellow: true,
 	}
 }
 
@@ -59,17 +100,17 @@ func (e ContainerColor) ToStringPtrOutputWithContext(ctx context.Context) pulumi
 type ContainerSize pulumi.Int
 
 const (
-	FourInch = ContainerSize(4)
-	SixInch  = ContainerSize(6)
+	ContainerSizeFourInch = ContainerSize(4)
+	ContainerSizeSixInch  = ContainerSize(6)
 	// Deprecated: Eight inch pots are no longer supported.
-	EightInch = ContainerSize(8)
+	ContainerSizeEightInch = ContainerSize(8)
 )
 
 func (ContainerSize) possibleValues() map[ContainerSize]bool {
 	return map[ContainerSize]bool{
-		FourInch:  true,
-		SixInch:   true,
-		EightInch: true,
+		ContainerSizeFourInch:  true,
+		ContainerSizeSixInch:   true,
+		ContainerSizeEightInch: true,
 	}
 }
 

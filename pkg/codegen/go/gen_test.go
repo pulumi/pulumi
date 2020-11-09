@@ -112,12 +112,12 @@ func TestEnumUsage(t *testing.T) {
 		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
 			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
 				Container: plant.ContainerArgs{
-					Color:    plant.Red,
+					Color:    plant.ContainerColorRed,
 					Material: pulumi.String("ceramic"),
-					Size:     plant.FourInch,
+					Size:     plant.ContainerSizeFourInch,
 				},
-				Farm: tree.Plants_R_Us,
-				Type: tree.Ruby,
+				Farm: tree.FarmPlants_R_Us,
+				Type: tree.RubberTreeVarietyRuby,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, tree)
@@ -151,8 +151,8 @@ func TestEnumUsage(t *testing.T) {
 					Material: pulumi.String("ceramic"),
 					Size:     plant.ContainerSize(22),
 				},
-				Farm: tree.Plants_R_Us,
-				Type: tree.Ruby,
+				Farm: tree.FarmPlants_R_Us,
+				Type: tree.RubberTreeVarietyRuby,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, tree)
@@ -186,7 +186,7 @@ func TestEnumUsage(t *testing.T) {
 					Material: pulumi.String("ceramic"),
 					Size:     plant.ContainerSize(22),
 				},
-				Farm: tree.Plants_R_Us,
+				Farm: tree.FarmPlants_R_Us,
 				Type: "Burgundy",
 			})
 			require.NoError(t, err)
@@ -217,10 +217,10 @@ func TestEnumUsage(t *testing.T) {
 		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
 			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
 				Container: plant.ContainerArgs{
-					Color:    plant.Red,
+					Color:    plant.ContainerColorRed,
 					Material: pulumi.String("ceramic"),
 				},
-				Farm: tree.Plants_R_Us,
+				Farm: tree.FarmPlants_R_Us,
 				Type: "Mauve",
 			})
 			require.Error(t, err)
