@@ -1,0 +1,1 @@
+static Pulumi.Deployment.TestWithServiceProviderAsync<TStack>(Pulumi.Testing.IMocks mocks, System.IServiceProvider serviceProvider, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
