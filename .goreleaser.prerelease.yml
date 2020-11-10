@@ -24,6 +24,7 @@ builds:
   dir: pkg
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -35,6 +36,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -46,6 +48,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -57,6 +60,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -68,12 +72,14 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
   ldflags:
     - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
   main: ./go/pulumi-language-go
+
 
 archives:
 - id: pulumi-unix
@@ -86,6 +92,7 @@ archives:
     - pulumi-unix
   replacements:
     amd64: x64
+    arm64: arm
   files:
     - pulumi-resource-pulumi-nodejs
     - pulumi-resource-pulumi-python
