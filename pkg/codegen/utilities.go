@@ -21,7 +21,6 @@ import (
 	"reflect"
 	"sort"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -122,10 +121,9 @@ var commonEnumNameReplacements = map[string]string{
 	"9": "Nine",
 }
 
-func ReplaceInvalidEnumName(name string) (string, error) {
-	replacement, ok := commonEnumNameReplacements[name]
-	if !ok {
-		return "", errors.Errorf("no replacement for %s found", name)
+func ExpandShortEnumName(name string) string {
+	if replacement, ok := commonEnumNameReplacements[name]; ok {
+		return replacement
 	}
-	return replacement, nil
+	return name
 }

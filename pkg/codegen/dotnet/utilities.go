@@ -15,12 +15,12 @@
 package dotnet
 
 import (
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"regexp"
 	"strings"
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
 )
 
 // isReservedWord returns true if s is a C# reserved word as per
@@ -84,15 +84,12 @@ func propertyName(name string) string {
 }
 
 func makeSafeEnumName(name string) (string, error) {
-	var err error
-	safeName := name
+	// Replace common single character enum names.
+	safeName := codegen.ExpandShortEnumName(name)
 
-	// If the name is one illegal character, replace it.
+	// If the name is one illegal character, return an error.
 	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		safeName, err = codegen.ReplaceInvalidEnumName(safeName)
-		if err != nil {
-			return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
-		}
+		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
 	}
 
 	// Capitalize and make a valid identifier.
