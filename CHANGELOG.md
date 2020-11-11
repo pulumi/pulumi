@@ -18,6 +18,9 @@ CHANGELOG
 - Support python 3.9 on Windows.
   [#5739](https://github.com/pulumi/pulumi/pull/5739)
 
+- Correct error message on KeyNotFoundException against StackReference
+  [https://github.com/pulumi/pulumi/pull/5740]
+
 ## 2.13.2 (2020-11-06)
 
 - Fix a bug that was causing errors when (de)serializing custom resources.
