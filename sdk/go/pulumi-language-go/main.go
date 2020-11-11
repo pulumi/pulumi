@@ -177,9 +177,8 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 }
 
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
-// We're lenient here as this relies on the `go list` command and the use of modules.
-// If the consumer insists on using some other form of dependency management tool like
-// dep or glide, the list command fails with "go list -m: not using modules"
+// We strictly enforce the requirement for go modules support and go 1.14.0+ and fail with
+// an appropriate message if these requirements are not met.
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 
@@ -190,15 +189,23 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, errors.Wrap(err, "couldn't find go binary")
 	}
 
-	// don't wire up stderr so non-module users don't see error output from list
-	cmd := exec.Command(gobin, "list", "-m", "-json", "-mod=mod", "all")
-	cmd.Env = os.Environ()
-
+	cmd := exec.Command(gobin, "version")
 	stdout, err := cmd.Output()
 	if err != nil {
-		// will err if the project isn't using modules
-		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements: %s", err.Error())
-		return &pulumirpc.GetRequiredPluginsResponse{}, nil
+		return nil, fmt.Errorf("failed to determine go version: %w", err)
+	}
+	rawVersion := string(stdout)
+	if err = checkMinimumGoVersion(rawVersion); err != nil {
+		return nil, err
+	}
+
+	// don't wire up stderr so non-module users don't see error output from list
+	cmd = exec.Command(gobin, "list", "-m", "-json", "-mod=mod", "all")
+	cmd.Env = os.Environ()
+	stdout, err = cmd.Output()
+	if err != nil {
+		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements using go modules: %s", err.Error())
+		return nil, fmt.Errorf("failure discovering program dependencies: %w", err)
 	}
 
 	plugins := []*pulumirpc.PluginDependency{}
@@ -231,6 +238,32 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return &pulumirpc.GetRequiredPluginsResponse{
 		Plugins: plugins,
 	}, nil
+}
+
+var minGoVersion = semver.MustParse("1.14.0")
+
+// checkMinimumGoVersion checks to make sure we are running at least go 1.14.0
+// expected format of goVersionOutput: go version go<version> <os/arch>
+func checkMinimumGoVersion(goVersionOutput string) error {
+	split := strings.Split(goVersionOutput, " ")
+	if len(split) <= 2 {
+		return fmt.Errorf("unexpected format for go version output: \"%s\"", goVersionOutput)
+
+	}
+	version := strings.TrimSpace(split[2])
+	if strings.HasPrefix(version, "go") {
+		version = version[2:]
+	}
+
+	currVersion, err := semver.ParseTolerant(version)
+	if err != nil {
+		return fmt.Errorf("parsing go version failed: %w", err)
+	}
+
+	if currVersion.LT(minGoVersion) {
+		return fmt.Errorf("go version must be %s or higher (%s detected)", minGoVersion.String(), version)
+	}
+	return nil
 }
 
 // RPC endpoint for LanguageRuntimeServer::Run
