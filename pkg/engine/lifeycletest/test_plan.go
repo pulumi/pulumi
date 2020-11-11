@@ -38,7 +38,14 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 	return &u.target
 }
 
+func ImportOp(imports []deploy.Import) TestOp {
+	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
+		return Import(info, ctx, opts, imports, dryRun)
+	})
+}
+
 type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (ResourceChanges, result.Result)
+
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
 	events []Event, res result.Result) result.Result
 

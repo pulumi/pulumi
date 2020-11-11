@@ -3411,7 +3411,7 @@ func TestDetailedDiffReplace(t *testing.T) {
 	assert.Nil(t, res)
 }
 
-func TestImport(t *testing.T) {
+func TestImportOption(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return &deploytest.Provider{
@@ -5767,4 +5767,92 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
+}
+
+const importSchema = `{
+  "version": "0.0.1",
+  "name": "pkgA",
+  "resources": {
+	"pkgA:m:typA": {
+      "inputProperties": {
+	    "foo": {
+		  "type": "string"
+		}
+      },
+      "properties": {
+	    "foo": {
+		  "type": "string"
+		}
+      }
+    }
+  }
+}`
+
+func TestImport(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				GetSchemaF: func(version int) ([]byte, error) {
+					return []byte(importSchema), nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if olds["foo"].DeepEquals(news["foo"]) {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+
+					return plugin.DiffResult{
+						Changes: plugin.DiffSome,
+						DetailedDiff: map[string]plugin.PropertyDiff{
+							"foo": {Kind: plugin.DiffUpdate},
+						},
+					}, nil
+				},
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+
+					return plugin.ReadResult{
+						Inputs: resource.PropertyMap{
+							"foo": resource.NewStringProperty("bar"),
+						},
+						Outputs: resource.PropertyMap{
+							"foo": resource.NewStringProperty("bar"),
+						},
+					}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	// Run the initial update.
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	// Run an import.
+	snap, res = ImportOp([]deploy.Import{{
+		Type: "pkgA:m:typA",
+		Name: "resB",
+		ID:   "imported-id",
+	}}).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
+
+	assert.Nil(t, res)
+	assert.Len(t, snap.Resources, 4)
 }

@@ -73,8 +73,10 @@ func NewImportPlan(ctx *plugin.Context, target *Target, projectName tokens.Packa
 		return nil, err
 	}
 
+	builtins := newBuiltinProvider(nil, nil)
+
 	// Create a new provider registry.
-	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, nil)
+	reg, err := providers.NewRegistry(ctx.Host, oldResources, preview, builtins)
 	if err != nil {
 		return nil, err
 	}
