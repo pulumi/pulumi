@@ -14,6 +14,9 @@ CHANGELOG
   components in Go. This change also generates Input/Output types for all resources
   in downstream Go SDKs.
   [#5497](https://github.com/pulumi/pulumi/pull/5497)
+  
+- Support python 3.9 on Windows.
+  [#5739](https://github.com/pulumi/pulumi/pull/5739)
 
 ## 2.13.2 (2020-11-06)
 
