@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a bug that could prevent `pulumi import` from succeeding.
+  [#5730](https://github.com/pulumi/pulumi/pull/5730)
+
 - [Docs] Add support for the generation of Import documentation in the resource docs.
   This documentation will only be available if the resource is importable.
   [#5667](https://github.com/pulumi/pulumi/pull/5667)
