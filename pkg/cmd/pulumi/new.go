@@ -43,6 +43,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/nodejs/npm"
@@ -575,8 +576,7 @@ func installDependencies(proj *workspace.Project, root string) error {
 		return dotnetInstallDependenciesAndBuild(proj, root)
 	} else if strings.EqualFold(proj.Runtime.Name(), "go") {
 		if err := goInstallDependencies(); err != nil {
-			return errors.Wrapf(err, "`go mod download` failed to install dependencies; rerun manually to try again, "+
-				"then run 'pulumi up' to perform an initial deployment")
+			return err
 		}
 	}
 
@@ -649,12 +649,17 @@ func goInstallDependencies() error {
 		return err
 	}
 
+	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
+		return err
+	}
+
 	cmd := exec.Command(gobin, "mod", "download")
 	cmd.Env = os.Environ()
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return err
+		return errors.Wrapf(err, "`go mod download` failed to install dependencies; rerun manually to try again, "+
+			"then run 'pulumi up' to perform an initial deployment")
 	}
 
 	fmt.Println("Finished installing dependencies")
