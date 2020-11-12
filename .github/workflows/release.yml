@@ -266,6 +266,8 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
