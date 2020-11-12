@@ -29,7 +29,7 @@ func Test_checkMinimumGoVersion(t *testing.T) {
 		{
 			name:            "MalformedVersion",
 			goVersionOutput: "go version xyz",
-			err:             errors.New("parsing go version failed: Invalid character(s) found in major number \"xyz\""),
+			err:             errors.New("parsing go version: Invalid character(s) found in major number \"xyz\""),
 		},
 		{
 			name:            "GarbageVersionOutput",
