@@ -16,10 +16,12 @@ package plugin
 
 import (
 	"context"
+	"io/ioutil"
 
 	"github.com/opentracing/opentracing-go"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 )
 
@@ -39,6 +41,13 @@ type Context struct {
 func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
 	parentSpan opentracing.Span) (*Context, error) {
+
+	if d == nil {
+		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+	if statusD == nil {
+		statusD = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
+	}
 
 	ctx := &Context{
 		Diag:        d,

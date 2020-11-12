@@ -264,15 +264,9 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	req providers.ProviderRequest) (*registerResourceEvent, <-chan *RegisterResult, error) {
 
 	// Attempt to get the config for the package.
-	cfg, err := d.config.GetPackageConfig(req.Package())
+	inputs, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Create the inputs for the provider resource.
-	inputs := make(resource.PropertyMap)
-	for k, v := range cfg {
-		inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
 	}
 
 	// Request that the engine instantiate a specific version of this provider, if one was requested. We'll figure out

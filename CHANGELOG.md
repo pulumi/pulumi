@@ -3,6 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Propagate secretness of provider configuration through to the statefile. This ensures
+  that any configuration values marked as secret (i.e. values set with
+  `pulumi config set --secret`) that are used as inputs to providers are encrypted
+  before they are stored.
+  [#5742](https://github.com/pulumi/pulumi/pull/5742)
+
 - Fix a bug that could prevent `pulumi import` from succeeding.
   [#5730](https://github.com/pulumi/pulumi/pull/5730)
 

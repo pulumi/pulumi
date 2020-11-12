@@ -5856,3 +5856,43 @@ func TestImport(t *testing.T) {
 	assert.Nil(t, res)
 	assert.Len(t, snap.Resources, 4)
 }
+
+func TestConfigSecrets(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	crypter := config.NewSymmetricCrypter(make([]byte, 32))
+	secret, err := crypter.EncryptValue("hunter2")
+	assert.NoError(t, err)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 2),
+		Config: config.Map{
+			config.MustMakeKey("pkgA", "secret"): config.NewSecureValue(secret),
+		},
+		Decrypter: crypter,
+	}
+
+	project := p.GetProject()
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.Nil(t, res)
+
+	if !assert.Len(t, snap.Resources, 2) {
+		return
+	}
+
+	provider := snap.Resources[0]
+	assert.True(t, provider.Inputs["secret"].IsSecret())
+	assert.True(t, provider.Outputs["secret"].IsSecret())
+}
