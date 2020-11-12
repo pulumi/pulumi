@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2020, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -300,7 +300,7 @@ class ResourceOptions:
     resource.
     """
 
-    depends_on: Optional[List['Resource']]
+    depends_on: Optional['Union[Input[Resource], Input[List[Input[Resource]]]]']
     """
     If provided, the currently-constructing resource depends on the provided list of resources.
     """
@@ -381,7 +381,7 @@ class ResourceOptions:
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
-                 depends_on: Optional[List['Resource']] = None,
+                 depends_on: Optional['Union[Input[Resource], Input[List[Input[Resource]]]]'] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]] = None,
@@ -397,8 +397,8 @@ class ResourceOptions:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
-        :param Optional[List[Resource]] depends_on: If provided, the currently-constructing resource depends on the
-               provided list of resources.
+        :param Optional['Union[Input[Resource], Input[List[Input[Resource]]]]'] depends_on: If provided, the
+               currently-constructing resource depends on the provided list of resources.
         :param Optional[bool] protect: If provided and True, this resource is not allowed to be deleted.
         :param Optional[ProviderResource] provider: An optional provider to use for this resource's CRUD operations.
                If no provider is supplied, the default provider for the resource's package will be used. The default
@@ -447,11 +447,12 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
 
-        if depends_on is not None:
-            for dep in depends_on:
-                if not isinstance(dep, Resource):
-                    raise Exception(
-                        "'depends_on' was passed a value that was not a Resource.")
+        # TODO: maybe delete this
+        # if depends_on is not None:
+        #     for dep in depends_on:
+        #         if not isinstance(dep, Resource):
+        #             raise Exception(
+        #                 "'depends_on' was passed a value that was not a Resource.")
 
     def _merge_instance(self, opts: 'ResourceOptions') -> 'ResourceOptions':
         return ResourceOptions.merge(self, opts)
