@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
@@ -28,8 +29,8 @@ type Target struct {
 }
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
-func (t *Target) GetPackageConfig(pkg tokens.Package) (map[config.Key]string, error) {
-	var result map[config.Key]string
+func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
+	var result resource.PropertyMap
 	if t == nil {
 		return result, nil
 	}
@@ -38,14 +39,20 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (map[config.Key]string, er
 		if tokens.Package(k.Namespace()) != pkg {
 			continue
 		}
+
 		v, err := c.Value(t.Decrypter)
 		if err != nil {
 			return nil, err
 		}
 		if result == nil {
-			result = make(map[config.Key]string)
+			result = resource.PropertyMap{}
 		}
-		result[k] = v
+
+		propertyValue := resource.NewStringProperty(v)
+		if c.Secure() {
+			propertyValue = resource.MakeSecret(propertyValue)
+		}
+		result[resource.PropertyKey(k.Name())] = propertyValue
 	}
 	return result, nil
 }
