@@ -191,7 +191,7 @@ jobs:
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
   windows-build:
-    name: Windows Build + Test
+    name: Windows Build + Test + Publish
     strategy:
       matrix:
         go-version: [1.15.x]
@@ -202,6 +202,8 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
