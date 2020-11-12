@@ -24,6 +24,9 @@ CHANGELOG
 - Support python 3.9 on Windows.
   [#5739](https://github.com/pulumi/pulumi/pull/5739)
 
+- `pulumi-language-go` and `pulumi new` now explicitly requires Go 1.14.0.
+  [#5741](https://github.com/pulumi/pulumi/pull/5741)
+
 ## 2.13.2 (2020-11-06)
 
 - Fix a bug that was causing errors when (de)serializing custom resources.
