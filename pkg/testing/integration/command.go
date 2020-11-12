@@ -33,19 +33,6 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	command := strings.Join(args, " ")
 	fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
 
-	// Spawn a goroutine to print out "still running..." messages.
-	finished := false
-	defer func() { finished = true }()
-
-	go func() {
-		for !finished {
-			time.Sleep(120 * time.Second)
-			if !finished {
-				fprintf(opts.Stderr, "Still running command '%s' (%s)...\n", command, wd)
-			}
-		}
-	}()
-
 	env := os.Environ()
 	if opts.Env != nil {
 		env = append(env, opts.Env...)
