@@ -30,7 +30,7 @@ type Target struct {
 
 // GetPackageConfig returns the set of configuration parameters for the indicated package, if any.
 func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, error) {
-	var result resource.PropertyMap
+	result := resource.PropertyMap{}
 	if t == nil {
 		return result, nil
 	}
@@ -43,9 +43,6 @@ func (t *Target) GetPackageConfig(pkg tokens.Package) (resource.PropertyMap, err
 		v, err := c.Value(t.Decrypter)
 		if err != nil {
 			return nil, err
-		}
-		if result == nil {
-			result = resource.PropertyMap{}
 		}
 
 		propertyValue := resource.NewStringProperty(v)
