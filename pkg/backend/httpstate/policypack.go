@@ -321,15 +321,15 @@ func completeNodeJSInstall(finalDir string) error {
 }
 
 func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
-	if err := python.InstallDependencies(finalDir, false /*showOutput*/, func(virtualenv string) error {
-		// Save project with venv info.
-		proj.Runtime.SetOption("virtualenv", virtualenv)
-		if err := proj.Save(projPath); err != nil {
-			return errors.Wrapf(err, "saving project at %s", projPath)
-		}
-		return nil
-	}); err != nil {
+	const venvDir = "venv"
+	if err := python.InstallDependencies(finalDir, venvDir, false /*showOutput*/); err != nil {
 		return err
+	}
+
+	// Save project with venv info.
+	proj.Runtime.SetOption("virtualenv", venvDir)
+	if err := proj.Save(projPath); err != nil {
+		return errors.Wrapf(err, "saving project at %s", projPath)
 	}
 
 	return nil

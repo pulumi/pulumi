@@ -6,6 +6,9 @@ PYPI_VERSION     := $(shell cd ../../scripts && ./get-py-version HEAD)
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
+PROJECT_PKGS    := $(shell go list ./cmd/...)
+TESTPARALLELISM := 10
+
 include ../../build/common.mk
 
 ensure::
@@ -39,6 +42,7 @@ install_plugin:: build_plugin
 install:: install_package install_plugin
 
 test_fast:: build
+	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
 	pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py

@@ -16,6 +16,7 @@ package python
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -134,35 +135,29 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv string) error) error {
+func InstallDependencies(root, venvDir string, showOutput bool) error {
+	return InstallDependenciesWithWriters(root, venvDir, showOutput, os.Stdout, os.Stderr)
+}
+
+func InstallDependenciesWithWriters(root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
 	print := func(message string) {
 		if showOutput {
-			fmt.Println(message)
-			fmt.Println()
+			fmt.Fprintf(infoWriter, "%s\n", message)
 		}
 	}
 
 	print("Creating virtual environment...")
 
-	// Create the virtual environment by running `python -m venv venv`.
-	venvDir := filepath.Join(root, "venv")
+	// Create the virtual environment by running `python -m venv <venvDir>`.
 	cmd, err := Command("-m", "venv", venvDir)
 	if err != nil {
 		return err
 	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		if len(output) > 0 {
-			os.Stdout.Write(output)
-			fmt.Println()
+			fmt.Fprintf(errorWriter, "%s\n", string(output))
 		}
 		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
-	}
-
-	// Save project with venv info.
-	if saveProj != nil {
-		if err := saveProj("venv"); err != nil {
-			return err
-		}
 	}
 
 	print("Finished creating virtual environment")
@@ -178,8 +173,8 @@ func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv 
 
 		if showOutput {
 			// Show stdout/stderr output.
-			pipCmd.Stdout = os.Stdout
-			pipCmd.Stderr = os.Stderr
+			pipCmd.Stdout = infoWriter
+			pipCmd.Stderr = errorWriter
 			if err := pipCmd.Run(); err != nil {
 				return wrapError(err)
 			}
@@ -187,8 +182,7 @@ func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv 
 			// Otherwise, only show output if there is an error.
 			if output, err := pipCmd.CombinedOutput(); err != nil {
 				if len(output) > 0 {
-					os.Stdout.Write(output)
-					fmt.Println()
+					fmt.Fprintf(errorWriter, "%s\n", string(output))
 				}
 				return wrapError(err)
 			}

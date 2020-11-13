@@ -392,7 +392,7 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		case "python":
-			if err := python.InstallDependencies(finalDir, false /*showOutput*/, nil /*saveProj*/); err != nil {
+			if err := python.InstallDependencies(finalDir, "venv", false /*showOutput*/); err != nil {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		}

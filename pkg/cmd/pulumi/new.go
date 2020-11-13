@@ -602,14 +602,17 @@ func nodeInstallDependencies() (string, error) {
 
 // pythonInstallDependencies will create a new virtual environment and install dependencies.
 func pythonInstallDependencies(proj *workspace.Project, root string) error {
-	return python.InstallDependencies(root, true /*showOutput*/, func(virtualenv string) error {
-		// Save project with venv info.
-		proj.Runtime.SetOption("virtualenv", virtualenv)
-		if err := workspace.SaveProject(proj); err != nil {
-			return errors.Wrap(err, "saving project")
-		}
-		return nil
-	})
+	const venvDir = "venv"
+	if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
+		return err
+	}
+
+	// Save project with venv info.
+	proj.Runtime.SetOption("virtualenv", venvDir)
+	if err := workspace.SaveProject(proj); err != nil {
+		return errors.Wrap(err, "saving project")
+	}
+	return nil
 }
 
 // dotnetInstallDependenciesAndBuild will install dependencies and build the project.
