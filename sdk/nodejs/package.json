@@ -20,6 +20,7 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
+        "tail": "^2.0.4",
         "ts-node": "^7.0.1",
         "typescript": "~3.7.3",
         "upath": "^1.1.0"
@@ -32,6 +33,7 @@
         "@types/normalize-package-data": "^2.4.0",
         "@types/read-package-tree": "^5.2.0",
         "@types/semver": "^5.5.0",
+        "@types/tail": "^2.0.0",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
         "tslint": "^5.11.0"
