@@ -89,7 +89,7 @@ export enum DiffKind {
 }
 
 // PropertyDiff describes the difference between a single property's old and new values.
-export interface PropertyDiff  {
+export interface PropertyDiff {
     // Kind is the kind of difference.
     diffKind: DiffKind;
     // InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
@@ -99,9 +99,9 @@ export interface PropertyDiff  {
 // StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
 // to migrate a set of cloud resources from one state to another.
 export interface StepEventMetadata {
-	// Op is the operation being performed, a deploy.StepOp.
+    // Op is the operation being performed, a deploy.StepOp.
     op: string;
-    urn:string;
+    urn: string;
     type: string;
 
     // Old is the state of the resource before performing the step.
@@ -109,37 +109,37 @@ export interface StepEventMetadata {
     // New is the state of the resource after performing the step.
     new: StepEventStateMetadata;
 
-	// Keys causing a replacement (only applicable for "create" and "replace" Ops).
-	keys?: string[];
-	// Keys that changed with this step.
-	diffs?: string[];
+    // Keys causing a replacement (only applicable for "create" and "replace" Ops).
+    keys?: string[];
+    // Keys that changed with this step.
+    diffs?: string[];
     // The diff for this step as a list of property paths and difference types.
-    detailedDiff?: Record<string, PropertyDiff>
+    detailedDiff?: Record<string, PropertyDiff>;
     // Logical is set if the step is a logical operation in the program.
     logical?: boolean;
-	// Provider actually performing the step.
-	provider: string;
+    // Provider actually performing the step.
+    provider: string;
 }
 
 // StepEventStateMetadata is the more detailed state information for a resource as it relates to
 // a step(s) being performed.
 export interface StepEventStateMetadata {
     type: string;
-	urn: string;
+    urn: string;
 
-	// Custom indicates if the resource is managed by a plugin.
-	custom?: boolean;
-	// Delete is true when the resource is pending deletion due to a replacement.
-	delete?: boolean;
-	// ID is the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
-	id: string;
-	// Parent is an optional parent URN that this resource belongs to.
-	parent: string;
-	// Protect is true to "protect" this resource (protected resources cannot be deleted).
-	protect?: boolean;
-	// Inputs contains the resource's input properties (as specified by the program). Secrets have
-	// filtered out, and large assets have been replaced by hashes as applicable.
-	inputs: Record<string, any>;
+    // Custom indicates if the resource is managed by a plugin.
+    custom?: boolean;
+    // Delete is true when the resource is pending deletion due to a replacement.
+    delete?: boolean;
+    // ID is the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+    id: string;
+    // Parent is an optional parent URN that this resource belongs to.
+    parent: string;
+    // Protect is true to "protect" this resource (protected resources cannot be deleted).
+    protect?: boolean;
+    // Inputs contains the resource's input properties (as specified by the program). Secrets have
+    // filtered out, and large assets have been replaced by hashes as applicable.
+    inputs: Record<string, any>;
     // Outputs contains the resource's complete output state (as returned by the resource provider).
     outputs: Record<string, any>;
     // Provider is the resource's provider reference
@@ -172,13 +172,13 @@ export interface ResOpFailedEvent {
 // message. EngineEvent is a discriminated union of all possible event types, and exactly one
 // field will be non-nil.
 export interface EngineEvent {
-	// Sequence is a unique, and monotonically increasing number for each engine event sent to the
-	// Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
-	// the sequence number is to ensure events can be placed into a total ordering.
-	//
-	// - No two events can have the same sequence number.
-	// - Events with a lower sequence number must have been emitted before those with a higher
-	//   sequence number.
+    // Sequence is a unique, and monotonically increasing number for each engine event sent to the
+    // Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
+    // the sequence number is to ensure events can be placed into a total ordering.
+    //
+    // - No two events can have the same sequence number.
+    // - Events with a lower sequence number must have been emitted before those with a higher
+    //   sequence number.
     sequence: number;
 
     // Timestamp is a Unix timestamp (seconds) of when the event was emitted.

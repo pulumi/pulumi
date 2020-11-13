@@ -15,7 +15,6 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as upath from "upath";
-import * as readline from "readline";
 
 import * as grpc from "@grpc/grpc-js";
 import * as tail from "tail";
@@ -23,6 +22,7 @@ import * as tail from "tail";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
+import { EngineEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 import { EngineEvent } from "./events";
