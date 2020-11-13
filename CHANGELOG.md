@@ -27,6 +27,9 @@ CHANGELOG
 - `pulumi-language-go` and `pulumi new` now explicitly requires Go 1.14.0.
   [#5741](https://github.com/pulumi/pulumi/pull/5741)
 
+- Update .NET `Grpc` libraries to 2.33.1 and `Protobuf` to 3.13.0 (forked to increase
+  the recursion limit) [#5757](https://github.com/pulumi/pulumi/pull/5757)
+
 ## 2.13.2 (2020-11-06)
 
 - Fix a bug that was causing errors when (de)serializing custom resources.
