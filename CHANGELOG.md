@@ -30,6 +30,9 @@ CHANGELOG
 - Update .NET `Grpc` libraries to 2.33.1 and `Protobuf` to 3.13.0 (forked to increase
   the recursion limit) [#5757](https://github.com/pulumi/pulumi/pull/5757)
 
+- Fix plugin install failures on Windows.
+  [#5759](https://github.com/pulumi/pulumi/pull/5759)
+
 ## 2.13.2 (2020-11-06)
 
 - Fix a bug that was causing errors when (de)serializing custom resources.
