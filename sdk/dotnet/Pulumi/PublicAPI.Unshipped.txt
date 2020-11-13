@@ -1,0 +1,181 @@
+Pulumi.X.Automation.ConfigValue
+Pulumi.X.Automation.ConfigValue.ConfigValue(string value, bool isSecret = false) -> void
+Pulumi.X.Automation.ConfigValue.IsSecret.get -> bool
+Pulumi.X.Automation.ConfigValue.IsSecret.set -> void
+Pulumi.X.Automation.ConfigValue.Value.get -> string
+Pulumi.X.Automation.ConfigValue.Value.set -> void
+Pulumi.X.Automation.IWorkspace
+Pulumi.X.Automation.IWorkspace.CreateStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
+Pulumi.X.Automation.IWorkspace.EnvironmentVariables.set -> void
+Pulumi.X.Automation.IWorkspace.GetAllConfigAsync(string stackName) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>>
+Pulumi.X.Automation.IWorkspace.GetConfigAsync(string stackName, string key) -> System.Threading.Tasks.Task<Pulumi.X.Automation.ConfigValue>
+Pulumi.X.Automation.IWorkspace.GetProjectSettingsAsync() -> System.Threading.Tasks.Task<Pulumi.X.Automation.ProjectSettings>
+Pulumi.X.Automation.IWorkspace.GetStackAsync() -> System.Threading.Tasks.Task<Pulumi.X.Automation.StackInfo>
+Pulumi.X.Automation.IWorkspace.GetStackSettingsAsync(string stackName) -> System.Threading.Tasks.Task<Pulumi.X.Automation.StackSettings>
+Pulumi.X.Automation.IWorkspace.InstallPluginAsync(string name, string version, string kind = null) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.ListPluginsAsync() -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.X.Automation.PluginInfo>>
+Pulumi.X.Automation.IWorkspace.ListStacksAsync() -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.X.Automation.StackInfo>>
+Pulumi.X.Automation.IWorkspace.PostCommandCallbackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.Program.get -> Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.IWorkspace.Program.set -> void
+Pulumi.X.Automation.IWorkspace.PulumiHome.get -> string
+Pulumi.X.Automation.IWorkspace.RefreshConfigAsync(string stackName) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>>
+Pulumi.X.Automation.IWorkspace.RemoveAllConfigAsync(string stackName, System.Collections.Generic.IEnumerable<string> keys) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.RemoveConfigAsync(string stackName, string key) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.RemovePluginAsync(string name = null, string versionRange = null, string kind = null) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.RemoveStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.SaveProjectSettingsAsync(Pulumi.X.Automation.ProjectSettings settings) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.SaveStackSettingsAsync(string stackName, Pulumi.X.Automation.StackSettings settings) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.SecretsProvider.get -> string
+Pulumi.X.Automation.IWorkspace.SelectStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.SerializeArgsForOpAsync(string stackName) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<string>>
+Pulumi.X.Automation.IWorkspace.SetAllConfigAsync(string stackName, System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.ConfigValue> configMap) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.SetConfigAsync(string stackName, string key, Pulumi.X.Automation.ConfigValue value) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.IWorkspace.WhoAmIAsync() -> System.Threading.Tasks.Task<Pulumi.X.Automation.WhoAmIResult>
+Pulumi.X.Automation.IWorkspace.WorkDir.get -> string
+Pulumi.X.Automation.LocalWorkspace
+Pulumi.X.Automation.LocalWorkspace.CreateStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
+Pulumi.X.Automation.LocalWorkspace.EnvironmentVariables.set -> void
+Pulumi.X.Automation.LocalWorkspace.GetAllConfigAsync(string stackName) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>>
+Pulumi.X.Automation.LocalWorkspace.GetConfigAsync(string stackName, string key) -> System.Threading.Tasks.Task<Pulumi.X.Automation.ConfigValue>
+Pulumi.X.Automation.LocalWorkspace.GetProjectSettingsAsync() -> System.Threading.Tasks.Task<Pulumi.X.Automation.ProjectSettings>
+Pulumi.X.Automation.LocalWorkspace.GetStackAsync() -> System.Threading.Tasks.Task<Pulumi.X.Automation.StackInfo>
+Pulumi.X.Automation.LocalWorkspace.GetStackSettingsAsync(string stackName) -> System.Threading.Tasks.Task<Pulumi.X.Automation.StackSettings>
+Pulumi.X.Automation.LocalWorkspace.InstallPluginAsync(string name, string version, string kind = null) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.ListPluginsAsync() -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.X.Automation.PluginInfo>>
+Pulumi.X.Automation.LocalWorkspace.ListStacksAsync() -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.X.Automation.StackInfo>>
+Pulumi.X.Automation.LocalWorkspace.PostCommandCallbackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.Program.get -> Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.LocalWorkspace.Program.set -> void
+Pulumi.X.Automation.LocalWorkspace.PulumiHome.get -> string
+Pulumi.X.Automation.LocalWorkspace.RefreshConfigAsync(string stackName) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>>
+Pulumi.X.Automation.LocalWorkspace.RemoveAllConfigAsync(string stackName, System.Collections.Generic.IEnumerable<string> keys) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.RemoveConfigAsync(string stackName, string key) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.RemovePluginAsync(string name = null, string versionRange = null, string kind = null) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.RemoveStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.SaveProjectSettingsAsync(Pulumi.X.Automation.ProjectSettings settings) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.SaveStackSettingsAsync(string stackName, Pulumi.X.Automation.StackSettings settings) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.SecretsProvider.get -> string
+Pulumi.X.Automation.LocalWorkspace.SelectStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.SerializeArgsForOpAsync(string stackName) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<string>>
+Pulumi.X.Automation.LocalWorkspace.SetAllConfigAsync(string stackName, System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.ConfigValue> configMap) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.SetConfigAsync(string stackName, string key, Pulumi.X.Automation.ConfigValue value) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.LocalWorkspace.WhoAmIAsync() -> System.Threading.Tasks.Task<Pulumi.X.Automation.WhoAmIResult>
+Pulumi.X.Automation.LocalWorkspace.WorkDir.get -> string
+Pulumi.X.Automation.LocalWorkspaceOptions
+Pulumi.X.Automation.LocalWorkspaceOptions.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
+Pulumi.X.Automation.LocalWorkspaceOptions.EnvironmentVariables.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.LocalWorkspaceOptions() -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.Program.get -> Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.LocalWorkspaceOptions.Program.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.ProjectSettings.get -> Pulumi.X.Automation.ProjectSettings
+Pulumi.X.Automation.LocalWorkspaceOptions.ProjectSettings.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.PulumiHome.get -> string
+Pulumi.X.Automation.LocalWorkspaceOptions.PulumiHome.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.SecretsProvider.get -> string
+Pulumi.X.Automation.LocalWorkspaceOptions.SecretsProvider.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.StackSettings.get -> System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.StackSettings>
+Pulumi.X.Automation.LocalWorkspaceOptions.StackSettings.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.WorkDir.get -> string
+Pulumi.X.Automation.LocalWorkspaceOptions.WorkDir.set -> void
+Pulumi.X.Automation.PluginInfo
+Pulumi.X.Automation.PluginInfo.InstallTime.get -> System.DateTime
+Pulumi.X.Automation.PluginInfo.Kind.get -> Pulumi.X.Automation.PluginKind
+Pulumi.X.Automation.PluginInfo.LastUsedTime.get -> System.DateTime
+Pulumi.X.Automation.PluginInfo.Name.get -> string
+Pulumi.X.Automation.PluginInfo.Path.get -> string
+Pulumi.X.Automation.PluginInfo.PluginInfo(string name, string path, Pulumi.X.Automation.PluginKind kind, string version, long size, System.DateTime installTime, System.DateTime lastUsedTime, string serverUrl) -> void
+Pulumi.X.Automation.PluginInfo.ServerUrl.get -> string
+Pulumi.X.Automation.PluginInfo.Size.get -> long
+Pulumi.X.Automation.PluginInfo.Version.get -> string
+Pulumi.X.Automation.PluginKind
+Pulumi.X.Automation.PluginKind.Analyzer = 0 -> Pulumi.X.Automation.PluginKind
+Pulumi.X.Automation.PluginKind.Language = 1 -> Pulumi.X.Automation.PluginKind
+Pulumi.X.Automation.PluginKind.Resource = 2 -> Pulumi.X.Automation.PluginKind
+Pulumi.X.Automation.ProjectBackend
+Pulumi.X.Automation.ProjectBackend.ProjectBackend() -> void
+Pulumi.X.Automation.ProjectBackend.Url.get -> string
+Pulumi.X.Automation.ProjectBackend.Url.set -> void
+Pulumi.X.Automation.ProjectRuntime
+Pulumi.X.Automation.ProjectRuntime.Name.get -> Pulumi.X.Automation.ProjectRuntimeName
+Pulumi.X.Automation.ProjectRuntime.Name.set -> void
+Pulumi.X.Automation.ProjectRuntime.Options.get -> Pulumi.X.Automation.ProjectRuntimeOptions
+Pulumi.X.Automation.ProjectRuntime.Options.set -> void
+Pulumi.X.Automation.ProjectRuntime.ProjectRuntime(Pulumi.X.Automation.ProjectRuntimeName name) -> void
+Pulumi.X.Automation.ProjectRuntimeName
+Pulumi.X.Automation.ProjectRuntimeName.Dotnet = 3 -> Pulumi.X.Automation.ProjectRuntimeName
+Pulumi.X.Automation.ProjectRuntimeName.Go = 1 -> Pulumi.X.Automation.ProjectRuntimeName
+Pulumi.X.Automation.ProjectRuntimeName.NodeJS = 0 -> Pulumi.X.Automation.ProjectRuntimeName
+Pulumi.X.Automation.ProjectRuntimeName.Python = 2 -> Pulumi.X.Automation.ProjectRuntimeName
+Pulumi.X.Automation.ProjectRuntimeOptions
+Pulumi.X.Automation.ProjectRuntimeOptions.Binary.get -> string
+Pulumi.X.Automation.ProjectRuntimeOptions.Binary.set -> void
+Pulumi.X.Automation.ProjectRuntimeOptions.ProjectRuntimeOptions() -> void
+Pulumi.X.Automation.ProjectRuntimeOptions.TypeScript.get -> bool?
+Pulumi.X.Automation.ProjectRuntimeOptions.TypeScript.set -> void
+Pulumi.X.Automation.ProjectRuntimeOptions.VirtualEnvironment.get -> string
+Pulumi.X.Automation.ProjectRuntimeOptions.VirtualEnvironment.set -> void
+Pulumi.X.Automation.ProjectSettings
+Pulumi.X.Automation.ProjectSettings.Author.get -> string
+Pulumi.X.Automation.ProjectSettings.Author.set -> void
+Pulumi.X.Automation.ProjectSettings.Backend.get -> Pulumi.X.Automation.ProjectBackend
+Pulumi.X.Automation.ProjectSettings.Backend.set -> void
+Pulumi.X.Automation.ProjectSettings.Config.get -> string
+Pulumi.X.Automation.ProjectSettings.Config.set -> void
+Pulumi.X.Automation.ProjectSettings.Description.get -> string
+Pulumi.X.Automation.ProjectSettings.Description.set -> void
+Pulumi.X.Automation.ProjectSettings.License.get -> string
+Pulumi.X.Automation.ProjectSettings.License.set -> void
+Pulumi.X.Automation.ProjectSettings.Main.get -> string
+Pulumi.X.Automation.ProjectSettings.Main.set -> void
+Pulumi.X.Automation.ProjectSettings.Name.get -> string
+Pulumi.X.Automation.ProjectSettings.Name.set -> void
+Pulumi.X.Automation.ProjectSettings.ProjectSettings(string name, Pulumi.X.Automation.ProjectRuntime runtime) -> void
+Pulumi.X.Automation.ProjectSettings.Runtime.get -> Pulumi.X.Automation.ProjectRuntime
+Pulumi.X.Automation.ProjectSettings.Runtime.set -> void
+Pulumi.X.Automation.ProjectSettings.Template.get -> Pulumi.X.Automation.ProjectTemplate
+Pulumi.X.Automation.ProjectSettings.Template.set -> void
+Pulumi.X.Automation.ProjectSettings.Website.get -> string
+Pulumi.X.Automation.ProjectSettings.Website.set -> void
+Pulumi.X.Automation.ProjectTemplate
+Pulumi.X.Automation.ProjectTemplate.Config.get -> System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.ProjectTemplateConfigValue>
+Pulumi.X.Automation.ProjectTemplate.Config.set -> void
+Pulumi.X.Automation.ProjectTemplate.Description.get -> string
+Pulumi.X.Automation.ProjectTemplate.Description.set -> void
+Pulumi.X.Automation.ProjectTemplate.Important.get -> bool?
+Pulumi.X.Automation.ProjectTemplate.Important.set -> void
+Pulumi.X.Automation.ProjectTemplate.ProjectTemplate() -> void
+Pulumi.X.Automation.ProjectTemplate.QuickStart.get -> string
+Pulumi.X.Automation.ProjectTemplate.QuickStart.set -> void
+Pulumi.X.Automation.ProjectTemplateConfigValue
+Pulumi.X.Automation.ProjectTemplateConfigValue.Default.get -> string
+Pulumi.X.Automation.ProjectTemplateConfigValue.Default.set -> void
+Pulumi.X.Automation.ProjectTemplateConfigValue.Description.get -> string
+Pulumi.X.Automation.ProjectTemplateConfigValue.Description.set -> void
+Pulumi.X.Automation.ProjectTemplateConfigValue.ProjectTemplateConfigValue() -> void
+Pulumi.X.Automation.ProjectTemplateConfigValue.Secret.get -> bool?
+Pulumi.X.Automation.ProjectTemplateConfigValue.Secret.set -> void
+Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.StackInfo
+Pulumi.X.Automation.StackInfo.IsCurrent.get -> bool
+Pulumi.X.Automation.StackInfo.IsUpdateInProgress.get -> bool
+Pulumi.X.Automation.StackInfo.LastUpdate.get -> string
+Pulumi.X.Automation.StackInfo.Name.get -> string
+Pulumi.X.Automation.StackInfo.ResourceCount.get -> int?
+Pulumi.X.Automation.StackInfo.StackInfo(string name, bool isCurrent, string lastUpdate, bool isUpdateInProgress, int? resourceCount, string url) -> void
+Pulumi.X.Automation.StackInfo.Url.get -> string
+Pulumi.X.Automation.StackSettings
+Pulumi.X.Automation.StackSettings.Config.get -> System.Collections.Generic.IDictionary<string, string>
+Pulumi.X.Automation.StackSettings.Config.set -> void
+Pulumi.X.Automation.StackSettings.EncryptedKey.get -> string
+Pulumi.X.Automation.StackSettings.EncryptedKey.set -> void
+Pulumi.X.Automation.StackSettings.EncryptionSalt.get -> string
+Pulumi.X.Automation.StackSettings.EncryptionSalt.set -> void
+Pulumi.X.Automation.StackSettings.SecretsProvider.get -> string
+Pulumi.X.Automation.StackSettings.SecretsProvider.set -> void
+Pulumi.X.Automation.StackSettings.StackSettings() -> void
+Pulumi.X.Automation.WhoAmIResult
+Pulumi.X.Automation.WhoAmIResult.User.get -> string
+Pulumi.X.Automation.WhoAmIResult.WhoAmIResult(string user) -> void
