@@ -682,7 +682,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		parser, typDefault, typ := "nil", "\"\"", "string"
 		switch t.(type) {
 		case *schema.ArrayType:
-			parser, typDefault, typ = "parseEnvStringArray", "[]pulumi.StringInput{}", "[]pulumi.StringInput"
+			parser, typDefault, typ = "parseEnvStringArray", "pulumi.StringArray{}", "pulumi.StringArray"
 		}
 		switch t {
 		case schema.BoolType:
@@ -1483,9 +1483,9 @@ func parseEnvFloat(v string) interface{} {
 }
 
 func parseEnvStringArray(v string) interface{} {
-	var result []pulumi.StringInput
+	var result pulumi.StringArray
 	for _, item := range strings.Split(v, ";") {
-		result = append(result, pulumi.StringInput(pulumi.String(item)))
+		result = append(result, pulumi.String(item))
 	}
 	return result
 }
