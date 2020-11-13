@@ -33,6 +33,9 @@ CHANGELOG
 - Fix plugin install failures on Windows.
   [#5759](https://github.com/pulumi/pulumi/pull/5759)
 
+- .NET: Report plugin install errors during `pulumi new`.
+  [#5760](https://github.com/pulumi/pulumi/pull/5760)
+
 ## 2.13.2 (2020-11-06)
 
 - Fix a bug that was causing errors when (de)serializing custom resources.
