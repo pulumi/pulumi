@@ -220,8 +220,7 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
-		enumType := pkg.plainType(t.ElementType, optional)
-		return enumType
+		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
 		return "[]" + pkg.plainType(t.ElementType, false)
 	case *schema.MapType:
