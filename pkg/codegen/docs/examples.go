@@ -19,6 +19,7 @@
 package docs
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pgavlin/goldmark/ast"
@@ -123,8 +124,12 @@ func decomposeDocstring(docstring string) docInfo {
 		importDetails = parts[1]
 	}
 
+	// When we split the description above, the main part of the description is always part[0]
+	// the description must have a blank line after it to render the examples correctly
+	description = fmt.Sprintf("%s\n", parts[0])
+
 	return docInfo{
-		description:   parts[0], // When we split the description above, the main part of the description is always part[0]
+		description:   description,
 		examples:      examples,
 		importDetails: importDetails,
 	}
