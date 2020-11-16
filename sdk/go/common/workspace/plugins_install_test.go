@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
@@ -166,6 +167,42 @@ func TestInstallNoDeps(t *testing.T) {
 	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	assert.NoError(t, err)
 	assert.Equal(t, content, b)
+
+	testDeletePlugin(t, dir, plugin)
+}
+
+func TestConcurrentInstalls(t *testing.T) {
+	name := "foo.txt"
+	content := []byte("hello\n")
+
+	dir, tarball, plugin := prepareTestDir(t, map[string][]byte{name: content})
+	defer os.RemoveAll(dir)
+
+	assertSuccess := func() {
+		assertPluginInstalled(t, dir, plugin)
+
+		b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+		assert.NoError(t, err)
+		assert.Equal(t, content, b)
+	}
+
+	// Run several installs concurrently.
+	const iterations = 12
+	var wg sync.WaitGroup
+	for i := 0; i < iterations; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			err := plugin.Install(tarball)
+			assert.NoError(t, err)
+
+			assertSuccess()
+		}()
+	}
+	wg.Wait()
+
+	assertSuccess()
 
 	testDeletePlugin(t, dir, plugin)
 }
