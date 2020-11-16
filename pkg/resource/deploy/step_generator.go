@@ -154,6 +154,29 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 		contract.Assert(len(steps) == 0)
 		return nil, res
 	}
+
+	// Check each proposed step against the relevant resource plan, if any, and generate any output resource plans.
+	for _, s := range steps {
+		if resourcePlan, ok := sg.plan.resourcePlans[s.URN()]; ok {
+			if len(resourcePlan.Ops) == 0 {
+				return nil, result.Errorf("unexpected %v step for resource %v", s.Op(), s.URN())
+			}
+
+			constraint := resourcePlan.Ops[0]
+			if !s.Op().ConstrainedTo(constraint) {
+				return nil, result.Errorf("illegal %v step for reource %v: expected a %v step", s.Op(), s.URN(), constraint)
+			}
+			resourcePlan.Ops = resourcePlan.Ops[1:]
+		}
+
+		resourcePlan, ok := sg.plan.newResourcePlans[s.URN()]
+		if !ok {
+			resourcePlan = &ResourcePlan{Goal: event.Goal()}
+			sg.plan.newResourcePlans[s.URN()] = resourcePlan
+		}
+		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
+	}
+
 	if !sg.isTargetedUpdate() {
 		return steps, nil
 	}
@@ -245,6 +268,11 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			return nil, res
 		}
 		inputs = processedInputs
+	}
+
+	// If there is a plan for this resource, finalize its inputs.
+	if resourcePlan, ok := sg.plan.resourcePlans[urn]; ok {
+		inputs = resourcePlan.completeInputs(inputs)
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will

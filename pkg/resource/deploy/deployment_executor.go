@@ -114,7 +114,7 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
-func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) result.Result {
+func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) (map[resource.URN]*ResourcePlan, result.Result) {
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -141,10 +141,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Before doing anything else, optionally refresh each resource in the base checkpoint.
 	if opts.Refresh {
 		if res := ex.refresh(callerCtx, opts, preview); res != nil {
-			return res
+			return nil, res
 		}
 		if opts.RefreshOnly {
-			return nil
+			return nil, nil
 		}
 	}
 
@@ -156,10 +156,10 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	replaceTargetsOpt := createTargetMap(opts.ReplaceTargets)
 	destroyTargetsOpt := createTargetMap(opts.DestroyTargets)
 	if res := ex.checkTargets(opts.ReplaceTargets, OpReplace); res != nil {
-		return res
+		return nil, res
 	}
 	if res := ex.checkTargets(opts.DestroyTargets, OpDelete); res != nil {
-		return res
+		return nil, res
 	}
 
 	if (updateTargetsOpt != nil || replaceTargetsOpt != nil) && destroyTargetsOpt != nil {
@@ -169,7 +169,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	// Begin iterating the source.
 	src, res := ex.deployment.source.Iterate(callerCtx, opts, ex.deployment)
 	if res != nil {
-		return res
+		return nil, res
 	}
 
 	// Set up a step generator for this deployment.
@@ -177,7 +177,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 
 	// Retire any pending deletes that are currently present in this deployment.
 	if res := ex.retirePendingDeletes(callerCtx, opts, preview); res != nil {
-		return res
+		return nil, res
 	}
 
 	// Derive a cancellable context for this deployment. We will only cancel this context if some piece of the
@@ -268,7 +268,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 	}
 
 	if res != nil && res.IsBail() {
-		return res
+		return nil, res
 	}
 
 	// If the step generator and step executor were both successful, then we send all the resources
@@ -280,7 +280,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 				logging.V(4).Infof("deploymentExecutor.Execute(...): error analyzing resources: %v", resErr)
 				ex.reportError("", resErr)
 			}
-			return result.Bail()
+			return nil, result.Bail()
 		}
 	}
 
@@ -289,13 +289,13 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		// TODO(cyrusn): We seem to be losing any information about the original 'res's errors.  Should
 		// we be doing a merge here?
 		ex.reportExecResult("failed", preview)
-		return result.Bail()
+		return nil, result.Bail()
 	} else if canceled {
 		ex.reportExecResult("canceled", preview)
-		return result.Bail()
+		return nil, result.Bail()
 	}
 
-	return res
+	return pe.plan.newResourcePlans, res
 }
 
 func (ex *deploymentExecutor) performDeletes(
@@ -433,9 +433,9 @@ func (ex *deploymentExecutor) retirePendingDeletes(callerCtx context.Context, op
 }
 
 // import imports a list of resources into a stack.
-func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Options, preview bool) result.Result {
+func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Options, preview bool) (map[resource.URN]*ResourcePlan, result.Result) {
 	if len(ex.deployment.imports) == 0 {
-		return nil
+		return nil, nil
 	}
 
 	// Create an executor for this import.
@@ -461,12 +461,12 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Op
 		} else {
 			ex.reportExecResult("failed", preview)
 		}
-		return result.Bail()
+		return nil, result.Bail()
 	} else if canceled {
 		ex.reportExecResult("canceled", preview)
-		return result.Bail()
+		return nil, result.Bail()
 	}
-	return nil
+	return pe.plan.newResourcePlans, nil
 }
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.

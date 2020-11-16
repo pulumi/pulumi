@@ -1168,6 +1168,26 @@ func (op StepOp) Suffix() string {
 	return ""
 }
 
+// ConstrainedTo returns true if this operation is no more impactful than the constraint.
+func (op StepOp) ConstrainedTo(constraint StepOp) bool {
+	var allowed []StepOp
+	switch constraint {
+	case OpSame, OpCreate, OpDelete, OpRead, OpReadReplacement, OpRefresh, OpReadDiscard, OpDiscardReplaced,
+		OpRemovePendingReplace, OpImport, OpImportReplacement:
+		allowed = []StepOp{constraint}
+	case OpUpdate:
+		allowed = []StepOp{OpSame, OpUpdate}
+	case OpReplace, OpCreateReplacement, OpDeleteReplaced:
+		allowed = []StepOp{OpSame, OpUpdate, constraint}
+	}
+	for _, candidate := range allowed {
+		if candidate == op {
+			return true
+		}
+	}
+	return false
+}
+
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
 	if providers.IsProviderType(s.Type()) {
