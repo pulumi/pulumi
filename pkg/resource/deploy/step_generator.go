@@ -159,12 +159,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	for _, s := range steps {
 		if resourcePlan, ok := sg.plan.resourcePlans[s.URN()]; ok {
 			if len(resourcePlan.Ops) == 0 {
-				return nil, result.Errorf("unexpected %v step for resource %v", s.Op(), s.URN())
+				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 			}
 
 			constraint := resourcePlan.Ops[0]
 			if !s.Op().ConstrainedTo(constraint) {
-				return nil, result.Errorf("illegal %v step for reource %v: expected a %v step", s.Op(), s.URN(), constraint)
+				return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 			}
 			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
