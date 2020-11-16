@@ -38,6 +38,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/archive"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/httputil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
@@ -89,6 +90,7 @@ type PluginInfo struct {
 	InstallTime  time.Time       // the time the plugin was installed.
 	LastUsedTime time.Time       // the last time the plugin was used.
 	ServerURL    string          // an optional server to use when downloading this plugin.
+	PluginDir    string          // if set, will be used as the root plugin dir instead of ~/.pulumi/plugins.
 }
 
 // Dir gets the expected plugin directory for this plugin.
@@ -120,11 +122,36 @@ func (info PluginInfo) FileSuffix() string {
 
 // DirPath returns the directory where this plugin should be installed.
 func (info PluginInfo) DirPath() (string, error) {
-	dir, err := GetPluginDir()
+	var err error
+	dir := info.PluginDir
+	if dir == "" {
+		dir, err = GetPluginDir()
+		if err != nil {
+			return "", err
+		}
+	}
+
+	return filepath.Join(dir, info.Dir()), nil
+}
+
+// LockFilePath returns the full path to the plugin's lock file used during installation
+// to prevent concurrent installs.
+func (info PluginInfo) LockFilePath() (string, error) {
+	dir, err := info.DirPath()
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, info.Dir()), nil
+	return fmt.Sprintf("%s.lock", dir), nil
+}
+
+// PartialFilePath returns the full path to the plugin's partial file used during installation
+// to indicate installation of the plugin hasn't completed yet.
+func (info PluginInfo) PartialFilePath() (string, error) {
+	dir, err := info.DirPath()
+	if err != nil {
+		return "", err
+	}
+	return fmt.Sprintf("%s.partial", dir), nil
 }
 
 // FilePath returns the full path where this plugin's primary executable should be installed.
@@ -143,7 +170,14 @@ func (info PluginInfo) Delete() error {
 	if err != nil {
 		return err
 	}
-	return os.RemoveAll(dir)
+	if err := os.RemoveAll(dir); err != nil {
+		return err
+	}
+	// Attempt to delete any leftover .partial or .lock files.
+	// Don't fail the operation if we can't delete these.
+	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.partial", dir)))
+	contract.IgnoreError(os.Remove(fmt.Sprintf("%s.lock", dir)))
+	return nil
 }
 
 // SetFileMetadata adds extra metadata from the given file, representing this plugin's directory.
@@ -231,51 +265,110 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	return resp.Body, resp.ContentLength, nil
 }
 
-// Install installs a plugin's tarball into the cache.  It validates that plugin names are in the expected format.
+// installLock acquires a file lock used to prevent concurrent installs.
+func (info PluginInfo) installLock() (unlock func(), err error) {
+	finalDir, err := info.DirPath()
+	if err != nil {
+		return nil, err
+	}
+	lockFilePath := fmt.Sprintf("%s.lock", finalDir)
+
+	if err := os.MkdirAll(filepath.Dir(lockFilePath), 0700); err != nil {
+		return nil, errors.Wrap(err, "creating plugin root")
+	}
+
+	mutex := fsutil.NewFileMutex(lockFilePath)
+	if err := mutex.Lock(); err != nil {
+		return nil, err
+	}
+	return func() {
+		contract.IgnoreError(mutex.Unlock())
+	}, nil
+}
+
+// Install installs a plugin's tarball into the cache. It validates that plugin names are in the expected format.
+// Previous versions of Pulumi extracted the tarball to a temp directory first, and then renamed the temp directory
+// to the final directory. The rename operation fails often enough on Windows due to aggressive virus scanners opening
+// files in the temp directory. To address this, we now extract the tarball directly into the final directory, and use
+// file locks to prevent concurrent installs.
+// Each plugin has its own file lock, with the same name as the plugin directory, with a `.lock` suffix.
+// During installation an empty file with a `.partial` suffix is created, indicating that installation is in-progress.
+// The `.partial` file is deleted when installation is complete, indicating that the plugin has finished installing.
+// If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
+// installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
+// a fresh install.
 func (info PluginInfo) Install(tarball io.ReadCloser) error {
-	// Fetch the directory into which we will expand this tarball, and create it.
+	defer contract.IgnoreClose(tarball)
+
+	// Fetch the directory into which we will expand this tarball.
 	finalDir, err := info.DirPath()
 	if err != nil {
 		return err
 	}
-	return installPlugin(finalDir, tarball)
-}
 
-func installPlugin(finalDir string, tarball io.ReadCloser) error {
-	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure the path we're going
-	// to create the temporary folder in actually exists.
-	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
-		return errors.Wrap(err, "creating plugin root")
-	}
-
-	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	// Create a file lock file at <pluginsdir>/<kind>-<name>-<version>.lock.
+	unlock, err := info.installLock()
 	if err != nil {
-		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
+		return err
+	}
+	defer unlock()
+
+	// Cleanup any temp dirs from failed installations of this plugin from previous versions of Pulumi.
+	if err := cleanupTempDirs(finalDir); err != nil {
+		// We don't want to fail the installation if there was an error cleaning up these old temp dirs.
+		// Instead, log the error and continue on.
+		logging.V(5).Infof("Install: Error cleaning up temp dirs: %s", err.Error())
 	}
 
-	// If we early out of this function, try to remove the temp folder we created.
-	defer func() {
-		contract.IgnoreError(os.RemoveAll(tempDir))
-	}()
-
-	// Uncompress the plugin. We do this inside a function so that the `defer`'s to close files
-	// happen before we later try to rename the directory. Otherwise, the open file handles cause
-	// issues on Windows.
-	err = (func() error {
-		defer contract.IgnoreClose(tarball)
-		tarballBytes, err := ioutil.ReadAll(tarball)
-		if err != nil {
-			return err
-		}
-
-		return archive.UnTGZ(tarballBytes, tempDir)
-	})()
+	// Get the partial file path (e.g. <pluginsdir>/<kind>-<name>-<version>.partial).
+	partialFilePath, err := info.PartialFilePath()
 	if err != nil {
 		return err
 	}
 
+	// Check whether the directory exists while we were waiting on the lock.
+	_, finalDirStatErr := os.Stat(finalDir)
+	if finalDirStatErr == nil {
+		_, partialFileStatErr := os.Stat(partialFilePath)
+		if partialFileStatErr != nil {
+			if os.IsNotExist(partialFileStatErr) {
+				// finalDir exists and there's no partial file, so the plugin is already installed.
+				return nil
+			}
+			return partialFileStatErr
+		}
+
+		// The partial file exists, meaning a previous attempt at installing the plugin failed.
+		// Delete finalDir so we can try installing again. There's no need to delete the partial
+		// file since we'd just be recreating it again below anyway.
+		if err := os.RemoveAll(finalDir); err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(finalDirStatErr) {
+		return finalDirStatErr
+	}
+
+	// Create an empty partial file to indicate installation is in-progress.
+	if err := ioutil.WriteFile(partialFilePath, nil, 0600); err != nil {
+		return err
+	}
+
+	// Create the final directory.
+	if err := os.MkdirAll(finalDir, 0700); err != nil {
+		return err
+	}
+
+	// Uncompress the plugin.
+	tarballBytes, err := ioutil.ReadAll(tarball)
+	if err != nil {
+		return err
+	}
+	if err := archive.UnTGZ(tarballBytes, finalDir); err != nil {
+		return err
+	}
+
 	// Install dependencies, if needed.
-	proj, err := LoadPluginProject(filepath.Join(tempDir, "PulumiPlugin.yaml"))
+	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "loading PulumiPlugin.yaml")
 	}
@@ -287,34 +380,39 @@ func installPlugin(finalDir string, tarball io.ReadCloser) error {
 		// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 		switch runtime {
 		case "nodejs":
-			if _, err := npm.Install(tempDir, nil, os.Stderr); err != nil {
+			if _, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		case "python":
-			if err := python.InstallDependencies(tempDir, false /*showOutput*/, nil /*saveProj*/); err != nil {
+			if err := python.InstallDependencies(finalDir, false /*showOutput*/, nil /*saveProj*/); err != nil {
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		}
 	}
 
-	// If two calls to `plugin install` for the same plugin are racing, the second one will be unable to rename
-	// the directory. That's OK, just ignore the error. The temp directory created as part of the install will be
-	// cleaned up when we exit by the defer above.
-	fmt.Print("Moving plugin...")
-	logging.V(1).Infof("moving plugin from %q to %q", tempDir, finalDir)
-	if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
-		switch err.(type) {
-		case *os.LinkError:
-			// On Windows, an Access Denied error is sometimes thrown when renaming. Work around by trying the
-			// second time, which seems to work fine. See https://github.com/pulumi/pulumi/issues/2695
-			if err := os.Rename(tempDir, finalDir); err != nil && !os.IsExist(err) {
-				return errors.Wrap(err, "moving plugin")
+	// Installation is complete. Remove the partial file.
+	return os.Remove(partialFilePath)
+}
+
+// cleanupTempDirs cleans up leftover temp dirs from failed installs with previous versions of Pulumi.
+func cleanupTempDirs(finalDir string) error {
+	dir := filepath.Dir(finalDir)
+
+	infos, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, info := range infos {
+		// Temp dirs have a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number,
+		// from ioutil.TempFile.
+		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
+			path := filepath.Join(dir, info.Name())
+			if err := os.RemoveAll(path); err != nil {
+				return errors.Wrapf(err, "cleaning up temp dir %s", path)
 			}
-		default:
-			return errors.Wrap(err, "moving plugin")
 		}
 	}
-	fmt.Println(" done.")
 
 	return nil
 }
@@ -355,7 +453,12 @@ func HasPlugin(plug PluginInfo) bool {
 	if err == nil {
 		_, err := os.Stat(dir)
 		if err == nil {
-			return true
+			partialFilePath, err := plug.PartialFilePath()
+			if err == nil {
+				if _, err := os.Stat(partialFilePath); os.IsNotExist(err) {
+					return true
+				}
+			}
 		}
 	}
 	return false
@@ -433,6 +536,10 @@ func GetPlugins() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	return getPlugins(dir)
+}
+
+func getPlugins(dir string) ([]PluginInfo, error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -451,7 +558,14 @@ func GetPlugins() ([]PluginInfo, error) {
 				Kind:    kind,
 				Version: &version,
 			}
-			if err = plugin.SetFileMetadata(filepath.Join(dir, file.Name())); err != nil {
+			path := filepath.Join(dir, file.Name())
+			if _, err := os.Stat(fmt.Sprintf("%s.partial", path)); err == nil {
+				// Skip it if the partial file exists, meaning the plugin is not fully installed.
+				continue
+			} else if !os.IsNotExist(err) {
+				return nil, err
+			}
+			if err = plugin.SetFileMetadata(path); err != nil {
 				return nil, err
 			}
 			plugins = append(plugins, plugin)
@@ -671,9 +785,9 @@ var pluginRegexp = regexp.MustCompile(
 		"(?P<Name>[a-zA-Z0-9-]*[a-zA-Z0-9])-" + // NAME
 		"v(?P<Version>.*)$") // VERSION
 
-// installingPluginRegexp matches the name of folders for plugins which are being installed. During installation
-// we extract plugins to a folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
-// ioutil.TempFile. We should ignore these plugins as they have not yet been successfully installed.
+// installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted
+// plugins to a temporary folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
+// ioutil.TempFile. We should ignore these folders.
 var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
