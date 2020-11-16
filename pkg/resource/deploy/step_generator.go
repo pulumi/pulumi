@@ -159,21 +159,19 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 	for _, s := range steps {
 		if resourcePlan, ok := sg.plan.resourcePlans[s.URN()]; ok {
 			if len(resourcePlan.Ops) == 0 {
-				return nil, result.Errorf("unexpected %v step for resource %v", s.Op(), s.URN())
+				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 			}
 
 			constraint := resourcePlan.Ops[0]
 			if !s.Op().ConstrainedTo(constraint) {
-				return nil, result.Errorf("illegal %v step for reource %v: expected a %v step", s.Op(), s.URN(), constraint)
+				return nil, result.Errorf("%v is not allowed by the plan: this resource is constrained to %v", s.Op(), constraint)
 			}
 			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
 
 		resourcePlan, ok := sg.plan.newResourcePlans[s.URN()]
 		if !ok {
-			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
-			// application. However, it is necessary in the face of computed inputs.
-			resourcePlan = &ResourcePlan{Goal: event.Goal()}
+			resourcePlan = &ResourcePlan{}
 			sg.plan.newResourcePlans[s.URN()] = resourcePlan
 		}
 		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
@@ -270,13 +268,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			return nil, res
 		}
 		inputs = processedInputs
-	}
-
-	// If there is a plan for this resource, finalize its inputs.
-	if resourcePlan, ok := sg.plan.resourcePlans[urn]; ok {
-		// should really overwrite goal info completely here
-
-		inputs = resourcePlan.completeInputs(inputs)
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will

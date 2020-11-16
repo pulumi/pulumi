@@ -8,28 +8,6 @@ import (
 )
 
 func SerializeResourcePlan(plan *deploy.ResourcePlan, enc config.Encrypter, showSecrets bool) (apitype.ResourcePlanV1, error) {
-	properties, err := SerializeProperties(plan.Goal.Properties, enc, showSecrets)
-	if err != nil {
-		return apitype.ResourcePlanV1{}, err
-	}
-
-	goal := apitype.GoalV1{
-		Type:                    plan.Goal.Type,
-		Name:                    plan.Goal.Name,
-		Custom:                  plan.Goal.Custom,
-		Properties:              properties,
-		Parent:                  plan.Goal.Parent,
-		Protect:                 plan.Goal.Protect,
-		Dependencies:            plan.Goal.Dependencies,
-		Provider:                plan.Goal.Provider,
-		PropertyDependencies:    plan.Goal.PropertyDependencies,
-		DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-		IgnoreChanges:           plan.Goal.IgnoreChanges,
-		AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-		Aliases:                 plan.Goal.Aliases,
-		ID:                      plan.Goal.ID,
-		CustomTimeouts:          plan.Goal.CustomTimeouts,
-	}
 
 	steps := make([]apitype.OpType, len(plan.Ops))
 	for i, op := range plan.Ops {
@@ -37,7 +15,6 @@ func SerializeResourcePlan(plan *deploy.ResourcePlan, enc config.Encrypter, show
 	}
 
 	return apitype.ResourcePlanV1{
-		Goal:  goal,
 		Steps: steps,
 	}, nil
 }
@@ -55,37 +32,13 @@ func SerializePlan(plan map[resource.URN]*deploy.ResourcePlan, enc config.Encryp
 }
 
 func DeserializeResourcePlan(plan apitype.ResourcePlanV1, dec config.Decrypter, enc config.Encrypter) (*deploy.ResourcePlan, error) {
-	properties, err := DeserializeProperties(plan.Goal.Properties, dec, enc)
-	if err != nil {
-		return nil, err
-	}
-
-	goal := &resource.Goal{
-		Type:                    plan.Goal.Type,
-		Name:                    plan.Goal.Name,
-		Custom:                  plan.Goal.Custom,
-		Properties:              properties,
-		Parent:                  plan.Goal.Parent,
-		Protect:                 plan.Goal.Protect,
-		Dependencies:            plan.Goal.Dependencies,
-		Provider:                plan.Goal.Provider,
-		PropertyDependencies:    plan.Goal.PropertyDependencies,
-		DeleteBeforeReplace:     plan.Goal.DeleteBeforeReplace,
-		IgnoreChanges:           plan.Goal.IgnoreChanges,
-		AdditionalSecretOutputs: plan.Goal.AdditionalSecretOutputs,
-		Aliases:                 plan.Goal.Aliases,
-		ID:                      plan.Goal.ID,
-		CustomTimeouts:          plan.Goal.CustomTimeouts,
-	}
-
 	ops := make([]deploy.StepOp, len(plan.Steps))
 	for i, op := range plan.Steps {
 		ops[i] = deploy.StepOp(op)
 	}
 
 	return &deploy.ResourcePlan{
-		Goal: goal,
-		Ops:  ops,
+		Ops: ops,
 	}, nil
 }
 
