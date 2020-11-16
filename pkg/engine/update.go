@@ -145,6 +145,9 @@ type UpdateOptions struct {
 
 	// the plugin host to use for this update
 	Host plugin.Host
+
+	// The plan to use for the update, if any.
+	Plan Plan
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
@@ -164,7 +167,10 @@ func (changes ResourceChanges) HasChanges() bool {
 	return c > 0
 }
 
-func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (ResourceChanges, result.Result) {
+// Plan records planned resource changes.
+type Plan map[resource.URN]*deploy.ResourcePlan
+
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Plan, ResourceChanges, result.Result) {
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
@@ -172,13 +178,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 
 	info, err := newDeploymentContext(u, "update", ctx.ParentSpan)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer info.Close()
 
 	emitter, err := makeEventEmitter(ctx.Events, u)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer emitter.Close()
 
@@ -419,7 +425,7 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	preview bool) (ResourceChanges, result.Result) {
+	preview bool) (Plan, ResourceChanges, result.Result) {
 
 	// Refresh and Import do not execute Policy Packs.
 	policies := map[string]string{}
@@ -444,7 +450,7 @@ func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
 
 	deployment, err := newDeployment(ctx, info, opts, preview)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 	defer contract.IgnoreClose(deployment)
 
