@@ -59,10 +59,10 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Update path
         run: |
-          echo "::add-path::${{ runner.temp }}/opt/pulumi/bin"
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Set Go Dep path
         run: |
-          echo "::set-env name=PULUMI_GO_DEP_ROOT::$(dirname $(pwd))"
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
@@ -89,7 +89,7 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Configure AWS Credentials
@@ -103,7 +103,7 @@ jobs:
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       - name: Set PreRelease Version
-        run: echo "::set-env name=GORELEASER_CURRENT_TAG::v$(pulumictl get version --language generic -o)"
+        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)"
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
@@ -157,7 +157,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "::add-path::${{ runner.temp }}/opt/pulumi/bin"
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
@@ -165,7 +165,7 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Set Go Dep path
         run: |
-          echo "::set-env name=PULUMI_GO_DEP_ROOT::$(dirname $(pwd))"
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
@@ -204,6 +204,7 @@ jobs:
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
       AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
@@ -228,7 +229,7 @@ jobs:
       - name: Set Build Env Vars
         shell: bash
         run: |
-          echo "::add-path::D:\\Pulumi\\bin"
+          echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
       - name: Install AWS CLI Tools
         uses: chrislennon/action-aws-cli@v1.1
       - name: Check out scripts repo into the Go module directory

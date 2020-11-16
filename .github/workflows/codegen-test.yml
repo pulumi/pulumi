@@ -29,16 +29,16 @@ jobs:
         with:
           python-version: 3.9.x
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@b811287a6e06bb7e5d8b91132b839c67e3f9c6ed
+        uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
 
       - name: Check out source code
         uses: actions/checkout@master
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@093f43c86c9b4820e1e3c80df8feab04868890f7
+        uses: pulumi/action-test-provider-downstream@releases/v5
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
