@@ -824,7 +824,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (engine.Plan, engine.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -927,7 +927,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (engine.Plan, engine.ResourceChanges, result.Result) {
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
@@ -941,7 +941,7 @@ func (b *cloudBackend) apply(
 	update, version, token, err :=
 		b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 
 	if !op.Opts.Display.SuppressPermalink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
@@ -981,12 +981,12 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.ResourceChanges, result.Result) {
+	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.Plan, engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
 	if err != nil {
-		return nil, result.FromError(err)
+		return nil, nil, result.FromError(err)
 	}
 
 	// displayEvents renders the event to the console and Pulumi service. The processor for the
@@ -1035,19 +1035,20 @@ func (b *cloudBackend) runEngineAction(
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
+	var plan engine.Plan
 	var changes engine.ResourceChanges
 	var res result.Result
 	switch kind {
 	case apitype.PreviewUpdate:
-		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
+		plan, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
-		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.ResourceImportUpdate:
-		changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
+		_, changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
-		changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
-		changes, res = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
+		_, changes, res = engine.Destroy(u, engineCtx, op.Opts.Engine, dryRun)
 	default:
 		contract.Failf("Unrecognized update kind: %s", kind)
 	}
@@ -1073,7 +1074,7 @@ func (b *cloudBackend) runEngineAction(
 		res = result.Merge(res, result.FromError(errors.Wrap(completeErr, "failed to complete update")))
 	}
 
-	return changes, res
+	return plan, changes, res
 }
 
 func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error {
