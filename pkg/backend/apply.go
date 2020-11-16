@@ -45,7 +45,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (engine.Plan, engine.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -80,7 +80,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier) (engine.Plan, engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 
@@ -112,22 +112,22 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 		ShowLink: true,
 	}
 
-	changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
+	plan, changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
 	if res != nil {
 		close(eventsChannel)
-		return changes, res
+		return plan, changes, res
 	}
 
 	// If there are no changes, or we're auto-approving or just previewing, we can skip the confirmation prompt.
 	if op.Opts.AutoApprove || kind == apitype.PreviewUpdate {
 		close(eventsChannel)
-		return changes, nil
+		return plan, changes, nil
 	}
 
 	// Otherwise, ensure the user wants to proceed.
 	res = confirmBeforeUpdating(kind, stack, events, op.Opts)
 	close(eventsChannel)
-	return changes, res
+	return plan, changes, res
 }
 
 // confirmBeforeUpdating asks the user whether to proceed. A nil error means yes.
@@ -197,10 +197,13 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 	// Preview the operation to the user and ask them if they want to proceed.
 
 	if !op.Opts.SkipPreview {
-		changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
+		plan, changes, res := PreviewThenPrompt(ctx, kind, stack, op, apply)
 		if res != nil || kind == apitype.PreviewUpdate {
 			return changes, res
 		}
+
+		// TODO(pdg-plan): should this check for an existing plan?
+		op.Opts.Engine.Plan = plan
 	}
 
 	// Perform the change (!DryRun) and show the cloud link to the result.
@@ -209,7 +212,8 @@ func PreviewThenPromptThenExecute(ctx context.Context, kind apitype.UpdateKind, 
 		DryRun:   false,
 		ShowLink: true,
 	}
-	return apply(ctx, kind, stack, op, opts, nil /*events*/)
+	_, changes, res := apply(ctx, kind, stack, op, opts, nil /*events*/)
+	return changes, res
 }
 
 func createDiff(updateKind apitype.UpdateKind, events []engine.Event, displayOpts display.Options) string {

@@ -171,6 +171,8 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 		resourcePlan, ok := sg.plan.newResourcePlans[s.URN()]
 		if !ok {
+			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
+			// application. However, it is necessary in the face of computed inputs.
 			resourcePlan = &ResourcePlan{Goal: event.Goal()}
 			sg.plan.newResourcePlans[s.URN()] = resourcePlan
 		}
@@ -272,6 +274,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// If there is a plan for this resource, finalize its inputs.
 	if resourcePlan, ok := sg.plan.resourcePlans[urn]; ok {
+		// should really overwrite goal info completely here
+
 		inputs = resourcePlan.completeInputs(inputs)
 	}
 

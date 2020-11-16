@@ -140,7 +140,7 @@ func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.
 	return backend.RenameStack(ctx, s, newName)
 }
 
-func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+func (s *cloudStack) Preview(ctx context.Context, op backend.UpdateOperation) (engine.Plan, engine.ResourceChanges, result.Result) {
 	return backend.PreviewStack(ctx, s, op)
 }
 

@@ -36,6 +36,8 @@ func newPreviewCmd() *cobra.Command {
 	var configArray []string
 	var configPath bool
 	var client string
+	var planFilePath string
+	var showSecrets bool
 
 	// Flags for engine.UpdateOptions.
 	var jsonDisplay bool
@@ -182,7 +184,7 @@ func newPreviewCmd() *cobra.Command {
 				Display: displayOpts,
 			}
 
-			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+			plan, changes, res := s.Preview(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -198,6 +200,16 @@ func newPreviewCmd() *cobra.Command {
 			case expectNop && changes != nil && changes.HasChanges():
 				return result.FromError(errors.New("error: no changes were expected but changes were proposed"))
 			default:
+				if planFilePath != "" {
+					encrypter, err := sm.Encrypter()
+					if err != nil {
+						return result.FromError(err)
+					}
+					if err = writePlan(planFilePath, plan, encrypter, showSecrets); err != nil {
+						return result.FromError(err)
+					}
+					// TODO(pdg-plan): emit a message about how to apply the plan
+				}
 				return nil
 			}
 		}),
@@ -221,6 +233,11 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&configPath, "config-path", false,
 		"Config keys contain a path to a property in a map or list to set")
+	cmd.PersistentFlags().StringVar(
+		&planFilePath, "plan", "",
+		"Save the operations proposed by the preview to a plan file at the given path")
+	cmd.Flags().BoolVarP(
+		&showSecrets, "show-secrets", "", false, "Emit secrets in plaintext in the plan file. Defaults to `false`")
 
 	cmd.PersistentFlags().StringVar(
 		&client, "client", "", "The address of an existing language runtime host to connect to")
