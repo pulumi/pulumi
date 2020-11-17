@@ -845,8 +845,8 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			policyEvent.PolicyPackName,
 			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
-			policyEvent.ResourceURN.Name(),
-			policyEvent.ResourceURN.Type())
+			policyEvent.ResourceURN.Type(),
+			policyEvent.ResourceURN.Name())
 		display.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.
