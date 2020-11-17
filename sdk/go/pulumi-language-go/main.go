@@ -35,6 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/buildutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
@@ -179,7 +180,8 @@ func (m *modInfo) getPlugin() (*pulumirpc.PluginDependency, error) {
 // GetRequiredPlugins computes the complete set of anticipated plugins required by a program.
 // We're lenient here as this relies on the `go list` command and the use of modules.
 // If the consumer insists on using some other form of dependency management tool like
-// dep or glide, the list command fails with "go list -m: not using modules"
+// dep or glide, the list command fails with "go list -m: not using modules".
+// However, we do enforce that go 1.14.0 or higher is installed.
 func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 
@@ -190,14 +192,16 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, errors.Wrap(err, "couldn't find go binary")
 	}
 
+	if err = goversion.CheckMinimumGoVersion(gobin); err != nil {
+		return nil, err
+	}
+
 	// don't wire up stderr so non-module users don't see error output from list
 	cmd := exec.Command(gobin, "list", "-m", "-json", "-mod=mod", "all")
 	cmd.Env = os.Environ()
-
 	stdout, err := cmd.Output()
 	if err != nil {
-		// will err if the project isn't using modules
-		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements: %s", err.Error())
+		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements using go modules: %s", err.Error())
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil
 	}
 

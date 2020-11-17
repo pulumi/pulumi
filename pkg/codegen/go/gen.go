@@ -680,6 +680,10 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 		pkg.needsUtils = true
 
 		parser, typDefault, typ := "nil", "\"\"", "string"
+		switch t.(type) {
+		case *schema.ArrayType:
+			parser, typDefault, typ = "parseEnvStringArray", "pulumi.StringArray{}", "pulumi.StringArray"
+		}
 		switch t {
 		case schema.BoolType:
 			parser, typDefault, typ = "parseEnvBool", "false", "bool"
@@ -1434,7 +1438,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Utilities
 		if pkg.needsUtils {
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"os", "strconv"}, nil)
+			imports := newStringSet("github.com/pulumi/pulumi/sdk/v2/go/pulumi")
+			pkg.genHeader(buffer, []string{"os", "strconv", "strings"}, imports)
 
 			fmt.Fprintf(buffer, "%s", utilitiesFile)
 
@@ -1475,6 +1480,14 @@ func parseEnvFloat(v string) interface{} {
 		return nil
 	}
 	return f
+}
+
+func parseEnvStringArray(v string) interface{} {
+	var result pulumi.StringArray
+	for _, item := range strings.Split(v, ";") {
+		result = append(result, pulumi.String(item))
+	}
+	return result
 }
 
 func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interface{} {

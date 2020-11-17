@@ -25,7 +25,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -41,7 +41,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -57,7 +57,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -73,7 +73,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -152,7 +152,7 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Configure AWS Credentials
@@ -221,7 +221,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "::add-path::${{ runner.temp }}/opt/pulumi/bin"
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
@@ -229,7 +229,7 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Set Go Dep path
         run: |
-          echo "::set-env name=PULUMI_GO_DEP_ROOT::$(dirname $(pwd))"
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
@@ -266,6 +266,9 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
@@ -290,7 +293,7 @@ jobs:
       - name: Set Build Env Vars
         shell: bash
         run: |
-          echo "::add-path::D:\\Pulumi\\bin"
+          echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
       - name: Install AWS CLI Tools
         uses: chrislennon/action-aws-cli@v1.1
       - name: Check out scripts repo into the Go module directory

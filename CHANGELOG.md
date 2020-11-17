@@ -3,6 +3,12 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Propagate secretness of provider configuration through to the statefile. This ensures
+  that any configuration values marked as secret (i.e. values set with
+  `pulumi config set --secret`) that are used as inputs to providers are encrypted
+  before they are stored.
+  [#5742](https://github.com/pulumi/pulumi/pull/5742)
+
 - Fix a bug that could prevent `pulumi import` from succeeding.
   [#5730](https://github.com/pulumi/pulumi/pull/5730)
 
@@ -17,6 +23,18 @@ CHANGELOG
   
 - Support python 3.9 on Windows.
   [#5739](https://github.com/pulumi/pulumi/pull/5739)
+  
+- `pulumi-language-go` and `pulumi new` now explicitly requires Go 1.14.0.
+  [#5741](https://github.com/pulumi/pulumi/pull/5741)
+
+- Update .NET `Grpc` libraries to 2.33.1 and `Protobuf` to 3.13.0 (forked to increase
+  the recursion limit) [#5757](https://github.com/pulumi/pulumi/pull/5757)
+
+- Fix plugin install failures on Windows.
+  [#5759](https://github.com/pulumi/pulumi/pull/5759)
+
+- .NET: Report plugin install errors during `pulumi new`.
+  [#5760](https://github.com/pulumi/pulumi/pull/5760)
 
 - Correct error message on KeyNotFoundException against StackReference
   [https://github.com/pulumi/pulumi/pull/5740]

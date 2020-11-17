@@ -219,16 +219,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		urn := i.plan.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		cfg, err := i.plan.target.GetPackageConfig(req.Package())
+		inputs, err := i.plan.target.GetPackageConfig(req.Package())
 		if err != nil {
 			return nil, result.Errorf("failed to fetch provider config: %v", err), false
 		}
 
 		// Calculate the inputs for the provider using the ambient config.
-		inputs := resource.PropertyMap{}
-		for k, v := range cfg {
-			inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
-		}
 		if v := req.Version(); v != nil {
 			inputs["version"] = resource.NewStringProperty(v.String())
 		}

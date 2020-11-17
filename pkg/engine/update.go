@@ -189,13 +189,13 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 // RunInstallPlugins calls installPlugins and just returns the error (avoids having to export pluginSet).
 func RunInstallPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target, plugctx *plugin.Context) error {
-	_, _, err := installPlugins(proj, pwd, main, target, plugctx)
+	_, _, err := installPlugins(proj, pwd, main, target, plugctx, true /*returnInstallErrors*/)
 	return err
 }
 
 func installPlugins(
 	proj *workspace.Project, pwd, main string, target *deploy.Target,
-	plugctx *plugin.Context) (pluginSet, map[tokens.Package]*semver.Version, error) {
+	plugctx *plugin.Context, returnInstallErrors bool) (pluginSet, map[tokens.Package]*semver.Version, error) {
 
 	// Before launching the source, ensure that we have all of the plugins that we need in order to proceed.
 	//
@@ -227,8 +227,12 @@ func installPlugins(
 	// If there are any plugins that are not available, we can attempt to install them here.
 	//
 	// Note that this is purely a best-effort thing. If we can't install missing plugins, just proceed; we'll fail later
-	// with an error message indicating exactly what plugins are missing.
+	// with an error message indicating exactly what plugins are missing. If `returnInstallErrors` is set, then return
+	// the error.
 	if err := ensurePluginsAreInstalled(allPlugins); err != nil {
+		if returnInstallErrors {
+			return nil, nil, err
+		}
 		logging.V(7).Infof("newUpdateSource(): failed to install missing plugins: %v", err)
 	}
 
@@ -356,7 +360,7 @@ func newUpdateSource(
 	//
 
 	allPlugins, defaultProviderVersions, err := installPlugins(proj, pwd, main, target,
-		plugctx)
+		plugctx, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
 	}

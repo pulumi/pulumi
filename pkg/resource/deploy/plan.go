@@ -178,14 +178,9 @@ func addDefaultProviders(target *Target, source Source, prev *Snapshot) error {
 		pkg := res.URN.Type().Package()
 		ref, ok := defaultProviderRefs[pkg]
 		if !ok {
-			cfg, err := target.GetPackageConfig(pkg)
+			inputs, err := target.GetPackageConfig(pkg)
 			if err != nil {
 				return errors.Errorf("could not fetch configuration for default provider '%v'", pkg)
-			}
-
-			inputs := make(resource.PropertyMap)
-			for k, v := range cfg {
-				inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
 			}
 			if version, ok := defaultProviderVersions[pkg]; ok {
 				inputs["version"] = resource.NewStringProperty(version.String())
