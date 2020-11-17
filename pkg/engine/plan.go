@@ -167,7 +167,8 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		plan, err = deploy.NewPlan(
 			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
-		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx)
+		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
+			false /*returnInstallErrors*/)
 		if pluginErr != nil {
 			return nil, pluginErr
 		}
