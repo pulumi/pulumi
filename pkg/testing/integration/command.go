@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,7 +30,7 @@ import (
 func RunCommand(t *testing.T, name string, args []string, wd string, opts *ProgramTestOptions) error {
 	path := args[0]
 	command := strings.Join(args, " ")
-	fprintf(opts.Stdout, "**** Invoke '%v' in '%v'\n", command, wd)
+	t.Logf("**** Invoke '%v' in '%v'", command, wd)
 
 	env := os.Environ()
 	if opts.Env != nil {
@@ -80,25 +79,18 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 	}
 
 	if runerr != nil {
-		fprintf(opts.Stderr, "Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
-
-		if !opts.Verbose {
-			// We've seen long fprintf's fail on Travis, so avoid panicing.
-			if _, err := fmt.Fprintf(opts.Stderr, "%s\n", string(runout)); err != nil {
-				fprintf(opts.Stderr, "\n\nOutput truncated: %v\n", err)
-			}
-		}
+		t.Logf("Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
 	}
 
 	// If we collected any program output, write it to a log file -- success or failure.
 	if len(runout) > 0 {
 		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
-			fprintf(opts.Stderr, "Failed to write output: %v\n", err)
+			t.Logf("Failed to write output: %v", err)
 		} else {
-			fprintf(opts.Stderr, "Wrote output to %s\n", logFile)
+			t.Logf("Wrote output to %s", logFile)
 		}
 	} else {
-		fprintf(opts.Stderr, "Command completed without output\n")
+		t.Log("Command completed without output")
 	}
 
 	return runerr
