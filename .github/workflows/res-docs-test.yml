@@ -33,15 +33,15 @@ jobs:
       - name: Add GOBIN to PATH
         run: |
           mkdir -p "$(go env GOPATH)/bin"
-          echo "::add-path::$(go env GOPATH)/bin"
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
           node-version: ${{ matrix.node-version }}
       - name: Install Pulumi CLI
-        uses: pulumi/action-install-pulumi-cli@releases/v1
+        uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Check out source code
