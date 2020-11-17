@@ -36,6 +36,9 @@ CHANGELOG
 - .NET: Report plugin install errors during `pulumi new`.
   [#5760](https://github.com/pulumi/pulumi/pull/5760)
 
+- Correct error message on KeyNotFoundException against StackReference.
+  [#5740](https://github.com/pulumi/pulumi/pull/5740)
+
 ## 2.13.2 (2020-11-06)
 
 - Fix a bug that was causing errors when (de)serializing custom resources.
