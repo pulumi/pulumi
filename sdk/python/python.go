@@ -52,11 +52,17 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
-			pythonCmds)
+		// second-chance on windows for python being installed through the Windows app store.
+		if runtime.GOOS == windows {
+			pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
+		}
+		if err != nil {
+			// TODO: Wrap error? The resulting user facing message isn't very pretty though.
+			return nil, errors.Errorf(
+				"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+				pythonCmds)
+		}
 	}
-
 	return exec.Command(pythonPath, arg...), nil
 }
 
