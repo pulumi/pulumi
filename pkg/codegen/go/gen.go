@@ -1542,7 +1542,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Run Go formatter on the code before saving to disk
 		formattedSource, err := format.Source([]byte(contents))
 		if err != nil {
-			panic(errors.Errorf("invalid Go source code:\n\n%s: %s: %w", relPath, contents, err))
+			panic(errors.Wrapf(err, "invalid Go source code:\n\n%s: %s", relPath, contents))
 		}
 
 		files[relPath] = formattedSource
