@@ -55,12 +55,14 @@ _special_resource_sig = "5cf8f73096256a8f31e491e813e4eb8e"
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
+
 def isLegalProtobufValue(value: Any) -> bool:
     """
     Returns True if the given value is a legal Protobuf value as per the source at
     https://github.com/protocolbuffers/protobuf/blob/master/python/google/protobuf/internal/well_known_types.py#L714-L732
     """
     return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
+
 
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
@@ -233,6 +235,7 @@ async def serialize_property(value: 'Input[Any]',
 
     return value
 
+
 # pylint: disable=too-many-return-statements
 def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
     """
@@ -290,6 +293,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
 
     return output
 
+
 def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> 'Resource':
     urn = ref_struct["urn"]
     version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
@@ -321,11 +325,13 @@ def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[
 
     return urn
 
+
 def is_rpc_secret(value: Any) -> bool:
     """
     Returns if a given python value is actually a wrapped secret.
     """
     return isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig
+
 
 def wrap_rpc_secret(value: Any) -> Any:
     """
@@ -339,6 +345,7 @@ def wrap_rpc_secret(value: Any) -> Any:
         "value": value,
     }
 
+
 def unwrap_rpc_secret(value: Any) -> Any:
     """
     Given a value, if it is a wrapped secret value, return the underlying, otherwise return the value unmodified.
@@ -347,6 +354,7 @@ def unwrap_rpc_secret(value: Any) -> Any:
         return value["value"]
 
     return value
+
 
 def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
     """
@@ -497,7 +505,7 @@ def translate_output_properties(output: Any,
             # If typ is an output type, get its types, so we can pass
             # the type along for each property.
             types = _types.output_type_types(typ)
-            get_type = lambda k: types.get(k) # pylint: disable=unnecessary-lambda
+            get_type = lambda k: types.get(k)  # pylint: disable=unnecessary-lambda
         elif typ:
             # If typ is a dict, get the type for its values, to pass
             # along for each key.
@@ -592,6 +600,7 @@ def resolve_outputs(res: 'Resource',
 
     resolve_properties(resolvers, all_properties, deps)
 
+
 def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
@@ -648,7 +657,7 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     failed to resolve.
 
     :param resolvers: Resolvers associated with a resource's outputs.
-    :param exn: The exception that occured when trying (and failing) to create this resource.
+    :param exn: The exception that occurred when trying (and failing) to create this resource.
     """
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")
@@ -691,6 +700,10 @@ def register_resource_package(pkg: str, package: ResourcePackage):
 
     log.debug(f"registering package {pkg}@{package.version()}")
     resource_packages.append(package)
+
+
+def _package_key(typ: str, version: str) -> str:
+    return f"{typ}@{version}"
 
 
 def get_resource_package(pkg: str, version: str) -> Optional[ResourcePackage]:
