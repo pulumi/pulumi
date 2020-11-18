@@ -25,6 +25,7 @@ import (
 	"io"
 	"path"
 	"reflect"
+	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -508,11 +509,11 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 	}
 }
 
-func (pkg *pkgContext) genEnum(w io.Writer, enum *schema.EnumType) {
-	pkg.genEnumType(w, pkg.tokenToEnum(enum.Token), enum)
+func (pkg *pkgContext) genEnum(w io.Writer, enum *schema.EnumType) error {
+	return pkg.genEnumType(w, pkg.tokenToEnum(enum.Token), enum)
 }
 
-func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.EnumType) {
+func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.EnumType) error {
 	mod := pkg.tokenToPackage(enumType.Token)
 	modPkg, ok := pkg.packages[mod]
 	contract.Assert(ok)
@@ -528,7 +529,10 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 		if e.Name == "" {
 			elementName = fmt.Sprintf("%v", e.Value)
 		}
-		enumName := makeSafeEnumName(elementName)
+		enumName, err := makeSafeEnumName(elementName)
+		if err != nil {
+			return err
+		}
 		if strings.Contains(enumName, "_") {
 			enumName = fmt.Sprintf("_%s", enumName)
 		}
@@ -547,6 +551,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	contract.Assertf(name == inputType,
 		"expect inputType (%s) for enums to be the same as enum type (%s)", inputType, enumType)
 	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType)
+	return nil
 }
 
 func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
@@ -569,9 +574,20 @@ func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
 	}
 }
 
-func makeSafeEnumName(name string) string {
-	name = codegen.ExpandShortEnumName(name)
-	return makeValidIdentifier(Title(name))
+func makeSafeEnumName(name string) (string, error) {
+	safeName := codegen.ExpandShortEnumName(name)
+	// If the name is one illegal character, return an error.
+	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
+		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
+	}
+
+	// Capitalize and make a valid identifier.
+	safeName = makeValidIdentifier(Title(safeName))
+
+	// If there are multiple underscores in a row, replace with one.
+	regex := regexp.MustCompile(`_+`)
+	safeName = regex.ReplaceAllString(safeName, "_")
+	return safeName, nil
 }
 
 func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType string) {
