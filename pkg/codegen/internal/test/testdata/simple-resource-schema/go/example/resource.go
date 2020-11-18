@@ -22,6 +22,7 @@ func NewResource(ctx *pulumi.Context,
 	if args == nil {
 		args = &ResourceArgs{}
 	}
+
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {

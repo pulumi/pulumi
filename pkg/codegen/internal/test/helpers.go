@@ -68,6 +68,6 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
 	for name, file := range expected {
 		assert.Contains(t, actual, name)
-		assert.Equal(t, string(file), string(actual[name]))
+		assert.Equal(t, string(file), string(actual[name]), name)
 	}
 }
