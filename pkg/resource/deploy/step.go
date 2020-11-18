@@ -773,7 +773,7 @@ type ImportStep struct {
 	old           *resource.State                // the state of the resource fetched from the provider.
 	new           *resource.State                // the newly computed state of the resource after importing.
 	replacing     bool                           // true if we are replacing a Pulumi-managed resource.
-	deploymentned bool                           // true if this import is from an import deployment.
+	planned       bool                           // true if this import is from an import deployment.
 	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
@@ -827,10 +827,10 @@ func newImportDeploymentStep(deployment *Deployment, new *resource.State) Step {
 	contract.Assert(!new.External)
 
 	return &ImportStep{
-		deployment:    deployment,
-		reg:           noopEvent(0),
-		new:           new,
-		deploymentned: true,
+		deployment: deployment,
+		reg:        noopEvent(0),
+		new:        new,
+		planned:    true,
 	}
 }
 
@@ -855,8 +855,8 @@ func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 
-	// If this is a deploymentned import, ensure that the resource does not exist in the old state file.
-	if s.deploymentned {
+	// If this is a planned import, ensure that the resource does not exist in the old state file.
+	if s.planned {
 		if _, ok := s.deployment.olds[s.new.URN]; ok {
 			return resource.StatusOK, nil, errors.Errorf("resource '%v' already exists", s.new.URN)
 		}
@@ -903,7 +903,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID)
 
 	// If this step came from an import deployment, we need to fetch any required inputs from the state.
-	if s.deploymentned {
+	if s.planned {
 		contract.Assert(len(s.new.Inputs) == 0)
 
 		pkg, err := s.deployment.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
@@ -941,7 +941,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return rst, nil, err
 	}
 
-	if !s.deploymentned {
+	if !s.planned {
 		s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
 		if diff.Changes != plugin.DiffNone {
