@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Build Pulumi Image
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi
           username: "pulumibot"
@@ -26,7 +26,7 @@ jobs:
           tag-latest: true
           build-args: PULUMI_VERSION=v${{ env.VERSION }}
       - name: Build Pulumi GitHub Actions Image
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi
           username: "pulumibot"
@@ -43,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build base image
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-base
           buildkit: true
@@ -71,7 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build base image
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-base
           buildkit: true
@@ -92,7 +92,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build image
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
@@ -122,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@master
       - name: Build image
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-docker-build@e98e474ca0312b1a0300cdbf9357dd2df3c62c22
         with:
           repository: pulumi/pulumi-${{matrix.sdk}}
           buildkit: true
