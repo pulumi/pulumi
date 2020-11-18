@@ -1652,7 +1652,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
 
 			for _, e := range pkg.enums {
-				pkg.genEnum(buffer, e)
+				if err := pkg.genEnum(buffer, e); err != nil {
+					return nil, err
+				}
 			}
 			setFile(path.Join(mod, "pulumiEnums.go"), buffer.String())
 		}
