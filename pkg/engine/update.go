@@ -22,7 +22,6 @@ import (
 	"sort"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
@@ -165,7 +164,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, "update", ctx.ParentSpan)
+	info, err := newDeploymentContext(u, "update", ctx.ParentSpan)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -177,7 +176,7 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}
 	defer emitter.Close()
 
-	return update(ctx, info, planOptions{
+	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,
 		Events:        emitter,
@@ -352,7 +351,7 @@ func installAndLoadPolicyPlugins(plugctx *plugin.Context, d diag.Sink, policies 
 }
 
 func newUpdateSource(
-	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	//
@@ -410,15 +409,11 @@ func newUpdateSource(
 	}, defaultProviderVersions, dryRun), nil
 }
 
-func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (ResourceChanges, result.Result) {
-	planResult, err := plan(ctx, info, opts, dryRun)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-
-	policies := map[string]string{}
+func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
+	preview bool) (ResourceChanges, result.Result) {
 
 	// Refresh and Import do not execute Policy Packs.
+	policies := map[string]string{}
 	if !opts.isRefresh && !opts.isImport {
 		for _, p := range opts.RequiredPolicies {
 			policies[p.Name()] = p.Version()
@@ -430,41 +425,21 @@ func update(ctx *Context, info *planContext, opts planOptions, dryRun bool) (Res
 		}
 	}
 
-	var resourceChanges ResourceChanges
-	var res result.Result
-	if planResult != nil {
-		defer contract.IgnoreClose(planResult)
-
-		// Make the current working directory the same as the program's, and restore it upon exit.
-		done, chErr := planResult.Chdir()
-		if chErr != nil {
-			return nil, result.FromError(chErr)
-		}
-		defer done()
-
-		if dryRun {
-			// If a dry run, just print the plan, don't actually carry out the deployment.
-			resourceChanges, res = printPlan(ctx, planResult, dryRun, policies)
-		} else {
-			// Otherwise, we will actually deploy the latest bits.
-			opts.Events.preludeEvent(dryRun, planResult.Ctx.Update.GetTarget().Config)
-
-			// Walk the plan, reporting progress and executing the actual operations as we go.
-			start := time.Now()
-			actions := newUpdateActions(ctx, info.Update, opts)
-
-			res = planResult.Walk(ctx, actions, false)
-			resourceChanges = ResourceChanges(actions.Ops)
-
-			if len(resourceChanges) != 0 {
-
-				// Print out the total number of steps performed (and their kinds), the duration, and any summary info.
-				opts.Events.updateSummaryEvent(actions.MaybeCorrupt, time.Since(start),
-					resourceChanges, policies)
-			}
-		}
+	// Create an appropriate set of event listeners.
+	var actions runActions
+	if preview {
+		actions = newPreviewActions(opts)
+	} else {
+		actions = newUpdateActions(ctx, info.Update, opts)
 	}
-	return resourceChanges, res
+
+	deployment, err := newDeployment(ctx, info, opts, preview)
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer contract.IgnoreClose(deployment)
+
+	return deployment.run(ctx, actions, policies, preview)
 }
 
 // abbreviateFilePath is a helper function that cleans up and shortens a provided file path.
@@ -495,17 +470,18 @@ func abbreviateFilePath(path string) string {
 
 // updateActions pretty-prints the plan application process as it goes.
 type updateActions struct {
-	Context      *Context
-	Steps        int
-	Ops          map[deploy.StepOp]int
-	Seen         map[resource.URN]deploy.Step
-	MapLock      sync.Mutex
-	MaybeCorrupt bool
-	Update       UpdateInfo
-	Opts         planOptions
+	Context *Context
+	Steps   int
+	Ops     map[deploy.StepOp]int
+	Seen    map[resource.URN]deploy.Step
+	MapLock sync.Mutex
+	Update  UpdateInfo
+	Opts    deploymentOptions
+
+	maybeCorrupt bool
 }
 
-func newUpdateActions(context *Context, u UpdateInfo, opts planOptions) *updateActions {
+func newUpdateActions(context *Context, u UpdateInfo, opts deploymentOptions) *updateActions {
 	return &updateActions{
 		Context: context,
 		Ops:     make(map[deploy.StepOp]int),
@@ -549,7 +525,7 @@ func (acts *updateActions) OnResourceStepPost(
 	// Report the result of the step.
 	if err != nil {
 		if status == resource.StatusUnknown {
-			acts.MaybeCorrupt = true
+			acts.maybeCorrupt = true
 		}
 
 		errorURN := resource.URN("")
@@ -637,4 +613,129 @@ func (acts *updateActions) OnResourceOutputs(step deploy.Step) error {
 
 func (acts *updateActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
 	acts.Opts.Events.policyViolationEvent(urn, d)
+}
+
+func (acts *updateActions) MaybeCorrupt() bool {
+	return acts.maybeCorrupt
+}
+
+func (acts *updateActions) Changes() ResourceChanges {
+	return ResourceChanges(acts.Ops)
+}
+
+type previewActions struct {
+	Ops     map[deploy.StepOp]int
+	Opts    deploymentOptions
+	Seen    map[resource.URN]deploy.Step
+	MapLock sync.Mutex
+}
+
+func shouldReportStep(step deploy.Step, opts deploymentOptions) bool {
+	return step.Op() != deploy.OpRemovePendingReplace &&
+		(opts.reportDefaultProviderSteps || !isDefaultProviderStep(step))
+}
+
+func ShouldRecordReadStep(step deploy.Step) bool {
+	contract.Assertf(step.Op() == deploy.OpRead, "Only call this on a Read step")
+
+	// If reading a resource didn't result in any change to the resource, we then want to
+	// record this as a 'same'.  That way, when things haven't actually changed, but a user
+	// app did any 'reads' these don't show up in the resource summary at the end.
+	return step.Old() != nil &&
+		step.New() != nil &&
+		step.Old().Outputs != nil &&
+		step.New().Outputs != nil &&
+		step.Old().Outputs.Diff(step.New().Outputs) != nil
+}
+
+func newPreviewActions(opts deploymentOptions) *previewActions {
+	return &previewActions{
+		Ops:  make(map[deploy.StepOp]int),
+		Opts: opts,
+		Seen: make(map[resource.URN]deploy.Step),
+	}
+}
+
+func (acts *previewActions) OnResourceStepPre(step deploy.Step) (interface{}, error) {
+	acts.MapLock.Lock()
+	acts.Seen[step.URN()] = step
+	acts.MapLock.Unlock()
+
+	// Skip reporting if necessary.
+	if !shouldReportStep(step, acts.Opts) {
+		return nil, nil
+	}
+
+	acts.Opts.Events.resourcePreEvent(step, true /*planning*/, acts.Opts.Debug)
+
+	return nil, nil
+}
+
+func (acts *previewActions) OnResourceStepPost(ctx interface{},
+	step deploy.Step, status resource.Status, err error) error {
+	acts.MapLock.Lock()
+	assertSeen(acts.Seen, step)
+	acts.MapLock.Unlock()
+
+	reportStep := shouldReportStep(step, acts.Opts)
+
+	if err != nil {
+		// We always want to report a failure. If we intend to elide this step overall, though, we report it as a
+		// global message.
+		reportedURN := resource.URN("")
+		if reportStep {
+			reportedURN = step.URN()
+		}
+
+		acts.Opts.Diag.Errorf(diag.GetPreviewFailedError(reportedURN), err)
+	} else if reportStep {
+		op, record := step.Op(), step.Logical()
+		if acts.Opts.isRefresh && op == deploy.OpRefresh {
+			// Refreshes are handled specially.
+			op, record = step.(*deploy.RefreshStep).ResultOp(), true
+		}
+
+		if step.Op() == deploy.OpRead {
+			record = ShouldRecordReadStep(step)
+		}
+
+		// Track the operation if shown and/or if it is a logically meaningful operation.
+		if record {
+			acts.MapLock.Lock()
+			acts.Ops[op]++
+			acts.MapLock.Unlock()
+		}
+
+		acts.Opts.Events.resourceOutputsEvent(op, step, true /*planning*/, acts.Opts.Debug)
+	}
+
+	return nil
+}
+
+func (acts *previewActions) OnResourceOutputs(step deploy.Step) error {
+	acts.MapLock.Lock()
+	assertSeen(acts.Seen, step)
+	acts.MapLock.Unlock()
+
+	// Skip reporting if necessary.
+	if !shouldReportStep(step, acts.Opts) {
+		return nil
+	}
+
+	// Print the resource outputs separately.
+	acts.Opts.Events.resourceOutputsEvent(step.Op(), step, true /*planning*/, acts.Opts.Debug)
+
+	return nil
+}
+
+func (acts *previewActions) OnPolicyViolation(urn resource.URN, d plugin.AnalyzeDiagnostic) {
+	acts.Opts.Events.policyViolationEvent(urn, d)
+}
+
+func (acts *previewActions) MaybeCorrupt() bool {
+	return false
+}
+
+func (acts *previewActions) Changes() ResourceChanges {
+	return ResourceChanges(acts.Ops)
 }

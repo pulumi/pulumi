@@ -29,7 +29,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, "refresh", ctx.ParentSpan)
+	info, err := newDeploymentContext(u, "refresh", ctx.ParentSpan)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -44,7 +44,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	// Force opts.Refresh to true.
 	opts.Refresh = true
 
-	return update(ctx, info, planOptions{
+	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,
@@ -54,7 +54,7 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}, dryRun)
 }
 
-func newRefreshSource(client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+func newRefreshSource(client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	// Like Update, we need to gather the set of plugins necessary to refresh everything in the snapshot.
