@@ -96,7 +96,7 @@ func newDeploymentContext(u UpdateInfo, opName string, parentSpan opentracing.Sp
 
 type deploymentContext struct {
 	Update      UpdateInfo       // The update being processed.
-	TracingSpan opentracing.Span // An OpenTracing span to parent plan operations within.
+	TracingSpan opentracing.Span // An OpenTracing span to parent deployment operations within.
 }
 
 func (ctx *deploymentContext) Close() {
@@ -107,11 +107,11 @@ func (ctx *deploymentContext) Close() {
 type deploymentOptions struct {
 	UpdateOptions
 
-	// SourceFunc is a factory that returns an EvalSource to use during planning.  This is the thing that
+	// SourceFunc is a factory that returns an EvalSource to use during deployment.  This is the thing that
 	// creates resources to compare against the current checkpoint state (e.g., by evaluating a program, etc).
 	SourceFunc deploymentSourceFunc
 
-	DOT        bool         // true if we should print the DOT file for this plan.
+	DOT        bool         // true if we should print the DOT file for this deployment.
 	Events     eventEmitter // the channel to write events from the engine to.
 	Diag       diag.Sink    // the sink to use for diag'ing.
 	StatusDiag diag.Sink    // the sink to use for diag'ing status messages.
@@ -119,7 +119,7 @@ type deploymentOptions struct {
 	isImport bool            // True if this is an import.
 	imports  []deploy.Import // Resources to import, if this is an import.
 
-	// true if we're planning a refresh.
+	// true if we're executing a refresh.
 	isRefresh bool
 
 	// true if we should trust the dependency graph reported by the language host. Not all Pulumi-supported languages
@@ -159,12 +159,11 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 		return nil, err
 	}
 
-	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
-	var plan *deploy.Deployment
+	var depl *deploy.Deployment
 	if !opts.isImport {
-		plan, err = deploy.NewDeployment(
+		depl, err = deploy.NewDeployment(
 			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
 		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
@@ -179,7 +178,7 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 			}
 		}
 
-		plan, err = deploy.NewImportDeployment(plugctx, target, proj.Name, opts.imports, dryRun)
+		depl, err = deploy.NewImportDeployment(plugctx, target, proj.Name, opts.imports, dryRun)
 	}
 
 	if err != nil {
@@ -189,16 +188,16 @@ func newDeployment(ctx *Context, info *deploymentContext, opts deploymentOptions
 	return &deployment{
 		Ctx:        info,
 		Plugctx:    plugctx,
-		Deployment: plan,
+		Deployment: depl,
 		Options:    opts,
 	}, nil
 }
 
 type deployment struct {
-	Ctx        *deploymentContext // plan context information.
+	Ctx        *deploymentContext // deployment context information.
 	Plugctx    *plugin.Context    // the context containing plugins and their state.
-	Deployment *deploy.Deployment // the plan created by this command.
-	Options    deploymentOptions  // the options used during planning.
+	Deployment *deploy.Deployment // the deployment created by this command.
+	Options    deploymentOptions  // the options used while deploying.
 }
 
 type runActions interface {
@@ -208,9 +207,7 @@ type runActions interface {
 	MaybeCorrupt() bool
 }
 
-// run enumerates all steps in the plan, calling out to the provided action at each step.  It returns four things: the
-// resulting Snapshot, no matter whether an error occurs or not; an error, if something went wrong; the step that
-// failed, if the error is non-nil; and finally the state of the resource modified in the failing step.
+// run executes the deployment. It is primarily responsible for handling cancellation.
 func (deployment *deployment) run(cancelCtx *Context, actions runActions, policyPacks map[string]string,
 	preview bool) (ResourceChanges, result.Result) {
 
@@ -232,7 +229,7 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	// Emit an appropriate prelude event.
 	deployment.Options.Events.preludeEvent(preview, deployment.Ctx.Update.GetTarget().Config)
 
-	// Execute the plan.
+	// Execute the deployment.
 	start := time.Now()
 
 	done := make(chan bool)
@@ -255,18 +252,18 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 		close(done)
 	}()
 
-	// Asynchronously listen for cancellation, and deliver that signal to plan.
+	// Asynchronously listen for cancellation, and deliver that signal to the deployment.
 	go func() {
 		select {
 		case <-cancelCtx.Cancel.Canceled():
-			// Cancel the plan's execution context, so it begins to shut down.
+			// Cancel the deployment's execution context, so it begins to shut down.
 			cancelFunc()
 		case <-done:
 			return
 		}
 	}()
 
-	// Wait for the plan to finish executing or for the user to terminate the run.
+	// Wait for the deployment to finish executing or for the user to terminate the run.
 	var res result.Result
 	select {
 	case <-cancelCtx.Cancel.Terminated():
