@@ -30,7 +30,7 @@ func newSnapshot(resources []*resource.State, ops []resource.Operation) *Snapsho
 	}, b64.NewBase64SecretsManager(), resources, ops)
 }
 
-func TestPendingOperationsPlan(t *testing.T) {
+func TestPendingOperationsDeployment(t *testing.T) {
 	resourceA := newResource("a")
 	resourceB := newResource("b")
 	snap := newSnapshot([]*resource.State{
@@ -42,7 +42,7 @@ func TestPendingOperationsPlan(t *testing.T) {
 		},
 	})
 
-	_, err := NewPlan(&plugin.Context{}, &Target{}, snap, &fixedSource{}, nil, false, nil)
+	_, err := NewDeployment(&plugin.Context{}, &Target{}, snap, &fixedSource{}, nil, false, nil)
 	if !assert.Error(t, err) {
 		t.FailNow()
 	}

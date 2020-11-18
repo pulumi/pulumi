@@ -162,9 +162,9 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 	// Generate a plan; this API handles all interesting cases (create, update, delete).
 	localPolicyPackPaths := ConvertLocalPolicyPacksToPaths(opts.LocalPolicyPacks)
 
-	var plan *deploy.Plan
+	var deployment *deploy.Deployment
 	if !opts.isImport {
-		plan, err = deploy.NewPlan(
+		deployment, err = deploy.NewDeployment(
 			plugctx, target, target.Snapshot, source, localPolicyPackPaths, dryRun, ctx.BackendClient)
 	} else {
 		_, defaultProviderVersions, pluginErr := installPlugins(proj, pwd, main, target, plugctx,
@@ -179,7 +179,7 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 			}
 		}
 
-		plan, err = deploy.NewImportPlan(plugctx, target, proj.Name, opts.imports, dryRun)
+		deployment, err = deploy.NewImportDeployment(plugctx, target, proj.Name, opts.imports, dryRun)
 	}
 
 	if err != nil {
@@ -187,18 +187,18 @@ func plan(ctx *Context, info *planContext, opts planOptions, dryRun bool) (*plan
 		return nil, err
 	}
 	return &planResult{
-		Ctx:     info,
-		Plugctx: plugctx,
-		Plan:    plan,
-		Options: opts,
+		Ctx:        info,
+		Plugctx:    plugctx,
+		Deployment: deployment,
+		Options:    opts,
 	}, nil
 }
 
 type planResult struct {
-	Ctx     *planContext    // plan context information.
-	Plugctx *plugin.Context // the context containing plugins and their state.
-	Plan    *deploy.Plan    // the plan created by this command.
-	Options planOptions     // the options used during planning.
+	Ctx        *planContext       // plan context information.
+	Plugctx    *plugin.Context    // the context containing plugins and their state.
+	Deployment *deploy.Deployment // the plan created by this command.
+	Options    planOptions        // the options used during planning.
 }
 
 // Chdir changes the directory so that all operations from now on are relative to the project we are working with.
@@ -234,7 +234,7 @@ func (planResult *planResult) Walk(cancelCtx *Context, events deploy.Events, pre
 			TrustDependencies: planResult.Options.trustDependencies,
 			UseLegacyDiff:     planResult.Options.UseLegacyDiff,
 		}
-		walkResult = planResult.Plan.Execute(ctx, opts, preview)
+		walkResult = planResult.Deployment.Execute(ctx, opts, preview)
 		close(done)
 	}()
 
