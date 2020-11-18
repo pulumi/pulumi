@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.14.0 (2020-11-18)
 
 - Propagate secretness of provider configuration through to the statefile. This ensures
   that any configuration values marked as secret (i.e. values set with
@@ -15,16 +18,16 @@ CHANGELOG
 - [Docs] Add support for the generation of Import documentation in the resource docs.
   This documentation will only be available if the resource is importable.
   [#5667](https://github.com/pulumi/pulumi/pull/5667)
-  
+
 - [codegen/go] Add support for ResourceType and isComponent to enable multi-language
   components in Go. This change also generates Input/Output types for all resources
   in downstream Go SDKs.
   [#5497](https://github.com/pulumi/pulumi/pull/5497)
-  
+
 - Support python 3.9 on Windows.
   [#5739](https://github.com/pulumi/pulumi/pull/5739)
 
-- `pulumi-language-go` and `pulumi new` now explicitly requires Go 1.14.0.
+- `pulumi-language-go` and `pulumi new` now explicitly requires Go 1.14.0 or greater.
   [#5741](https://github.com/pulumi/pulumi/pull/5741)
 
 - Update .NET `Grpc` libraries to 2.33.1 and `Protobuf` to 3.13.0 (forked to increase
@@ -77,7 +80,7 @@ CHANGELOG
 
 - [cli] Ensure that the CLI doesn't panic when using pulumi watch and policies are enabled
   [#5569](https://github.com/pulumi/pulumi/pull/5569)
-  
+
 - [cli] Ensure that the CLI doesn't panic when using the JSON output as part of previews
   and policies are enabled
   [#5610](https://github.com/pulumi/pulumi/pull/5610)
