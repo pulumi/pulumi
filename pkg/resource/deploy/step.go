@@ -44,23 +44,23 @@ type Step interface {
 	// the state of the deployment.
 	Apply(preview bool) (resource.Status, StepCompleteFunc, error) // applies or previews this step.
 
-	Op() StepOp           // the operation performed by this step.
-	URN() resource.URN    // the resource URN (for before and after).
-	Type() tokens.Type    // the type affected by this step.
-	Provider() string     // the provider reference for this step.
-	Old() *resource.State // the state of the resource before performing this step.
-	New() *resource.State // the state of the resource after performing this step.
-	Res() *resource.State // the latest state for the resource that is known (worst case, old).
-	Logical() bool        // true if this step represents a logical operation in the program.
-	Plan() *Plan          // the owning plan.
+	Op() StepOp              // the operation performed by this step.
+	URN() resource.URN       // the resource URN (for before and after).
+	Type() tokens.Type       // the type affected by this step.
+	Provider() string        // the provider reference for this step.
+	Old() *resource.State    // the state of the resource before performing this step.
+	New() *resource.State    // the state of the resource after performing this step.
+	Res() *resource.State    // the latest state for the resource that is known (worst case, old).
+	Logical() bool           // true if this step represents a logical operation in the program.
+	Deployment() *Deployment // the owning deployment.
 }
 
 // SameStep is a mutating step that does nothing.
 type SameStep struct {
-	plan *Plan                 // the current plan.
-	reg  RegisterResourceEvent // the registration intent to convey a URN back to.
-	old  *resource.State       // the state of the resource before this step.
-	new  *resource.State       // the state of the resource after this step.
+	deployment *Deployment           // the current deployment.
+	reg        RegisterResourceEvent // the registration intent to convey a URN back to.
+	old        *resource.State       // the state of the resource before this step.
+	new        *resource.State       // the state of the resource after this step.
 
 	// If this is a same-step for a resource being created but which was not --target'ed by the user
 	// (and thus was skipped).
@@ -69,7 +69,7 @@ type SameStep struct {
 
 var _ Step = (*SameStep)(nil)
 
-func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new *resource.State) Step {
+func NewSameStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -81,10 +81,10 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 	contract.Assert(!new.Custom || new.Provider != "" || providers.IsProviderType(new.Type))
 	contract.Assert(!new.Delete)
 	return &SameStep{
-		plan: plan,
-		reg:  reg,
-		old:  old,
-		new:  new,
+		deployment: deployment,
+		reg:        reg,
+		old:        old,
+		new:        new,
 	}
 }
 
@@ -92,7 +92,7 @@ func NewSameStep(plan *Plan, reg RegisterResourceEvent, old *resource.State, new
 // by the user (and thus was skipped). These act as no-op steps (hence 'same') since we are not
 // actually creating the resource, but ensure that we complete resource-registration and convey the
 // right information downstream. For example, we will not write these into the checkpoint file.
-func NewSkippedCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) Step {
+func NewSkippedCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State) Step {
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID == "")
@@ -102,7 +102,7 @@ func NewSkippedCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.S
 	// Make the old state here a direct copy of the new state
 	old := *new
 	return &SameStep{
-		plan:          plan,
+		deployment:    deployment,
 		reg:           reg,
 		old:           &old,
 		new:           new,
@@ -110,15 +110,15 @@ func NewSkippedCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.S
 	}
 }
 
-func (s *SameStep) Op() StepOp           { return OpSame }
-func (s *SameStep) Plan() *Plan          { return s.plan }
-func (s *SameStep) Type() tokens.Type    { return s.new.Type }
-func (s *SameStep) Provider() string     { return s.new.Provider }
-func (s *SameStep) URN() resource.URN    { return s.new.URN }
-func (s *SameStep) Old() *resource.State { return s.old }
-func (s *SameStep) New() *resource.State { return s.new }
-func (s *SameStep) Res() *resource.State { return s.new }
-func (s *SameStep) Logical() bool        { return true }
+func (s *SameStep) Op() StepOp              { return OpSame }
+func (s *SameStep) Deployment() *Deployment { return s.deployment }
+func (s *SameStep) Type() tokens.Type       { return s.new.Type }
+func (s *SameStep) Provider() string        { return s.new.Provider }
+func (s *SameStep) URN() resource.URN       { return s.new.URN }
+func (s *SameStep) Old() *resource.State    { return s.old }
+func (s *SameStep) New() *resource.State    { return s.new }
+func (s *SameStep) Res() *resource.State    { return s.new }
+func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Retain the ID, and outputs:
@@ -134,7 +134,7 @@ func (s *SameStep) IsSkippedCreate() bool {
 
 // CreateStep is a mutating step that creates an entirely new resource.
 type CreateStep struct {
-	plan          *Plan                          // the current plan.
+	deployment    *Deployment                    // the current deployment.
 	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
 	old           *resource.State                // the state of the existing resource (only for replacements).
 	new           *resource.State                // the state of the resource after this step.
@@ -147,7 +147,7 @@ type CreateStep struct {
 
 var _ Step = (*CreateStep)(nil)
 
-func NewCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) Step {
+func NewCreateStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State) Step {
 	contract.Assert(reg != nil)
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
@@ -156,13 +156,13 @@ func NewCreateStep(plan *Plan, reg RegisterResourceEvent, new *resource.State) S
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
 	return &CreateStep{
-		plan: plan,
-		reg:  reg,
-		new:  new,
+		deployment: deployment,
+		reg:        reg,
+		new:        new,
 	}
 }
 
-func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent, old, new *resource.State,
+func NewCreateReplacementStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
 	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
 
 	contract.Assert(reg != nil)
@@ -177,7 +177,7 @@ func NewCreateReplacementStep(plan *Plan, reg RegisterResourceEvent, old, new *r
 	contract.Assert(!new.Delete)
 	contract.Assert(!new.External)
 	return &CreateStep{
-		plan:          plan,
+		deployment:    deployment,
 		reg:           reg,
 		old:           old,
 		new:           new,
@@ -195,7 +195,7 @@ func (s *CreateStep) Op() StepOp {
 	}
 	return OpCreate
 }
-func (s *CreateStep) Plan() *Plan                                  { return s.plan }
+func (s *CreateStep) Deployment() *Deployment                      { return s.deployment }
 func (s *CreateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *CreateStep) Provider() string                             { return s.new.Provider }
 func (s *CreateStep) URN() resource.URN                            { return s.new.URN }
@@ -217,7 +217,7 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, err
 		}
 
-		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.plan.preview)
+		id, outs, rst, err := prov.Create(s.URN(), s.new.Inputs, s.new.CustomTimeouts.Create, s.deployment.preview)
 		if err != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, err
@@ -255,25 +255,25 @@ func (s *CreateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // DeleteStep is a mutating step that deletes an existing resource. If `old` is marked "External",
 // DeleteStep is a no-op.
 type DeleteStep struct {
-	plan      *Plan           // the current plan.
-	old       *resource.State // the state of the existing resource.
-	replacing bool            // true if part of a replacement.
+	deployment *Deployment     // the current deployment.
+	old        *resource.State // the state of the existing resource.
+	replacing  bool            // true if part of a replacement.
 }
 
 var _ Step = (*DeleteStep)(nil)
 
-func NewDeleteStep(plan *Plan, old *resource.State) Step {
+func NewDeleteStep(deployment *Deployment, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
 	contract.Assert(!old.Custom || old.Provider != "" || providers.IsProviderType(old.Type))
 	return &DeleteStep{
-		plan: plan,
-		old:  old,
+		deployment: deployment,
+		old:        old,
 	}
 }
 
-func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingReplace bool) Step {
+func NewDeleteReplacementStep(deployment *Deployment, old *resource.State, pendingReplace bool) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -294,9 +294,9 @@ func NewDeleteReplacementStep(plan *Plan, old *resource.State, pendingReplace bo
 	contract.Assert(pendingReplace != old.Delete)
 	old.PendingReplacement = pendingReplace
 	return &DeleteStep{
-		plan:      plan,
-		old:       old,
-		replacing: true,
+		deployment: deployment,
+		old:        old,
+		replacing:  true,
 	}
 }
 
@@ -313,14 +313,14 @@ func (s *DeleteStep) Op() StepOp {
 	}
 	return OpDelete
 }
-func (s *DeleteStep) Plan() *Plan          { return s.plan }
-func (s *DeleteStep) Type() tokens.Type    { return s.old.Type }
-func (s *DeleteStep) Provider() string     { return s.old.Provider }
-func (s *DeleteStep) URN() resource.URN    { return s.old.URN }
-func (s *DeleteStep) Old() *resource.State { return s.old }
-func (s *DeleteStep) New() *resource.State { return nil }
-func (s *DeleteStep) Res() *resource.State { return s.old }
-func (s *DeleteStep) Logical() bool        { return !s.replacing }
+func (s *DeleteStep) Deployment() *Deployment { return s.deployment }
+func (s *DeleteStep) Type() tokens.Type       { return s.old.Type }
+func (s *DeleteStep) Provider() string        { return s.old.Provider }
+func (s *DeleteStep) URN() resource.URN       { return s.old.URN }
+func (s *DeleteStep) Old() *resource.State    { return s.old }
+func (s *DeleteStep) New() *resource.State    { return nil }
+func (s *DeleteStep) Res() *resource.State    { return s.old }
+func (s *DeleteStep) Logical() bool           { return !s.replacing }
 
 func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	// Refuse to delete protected resources.
@@ -348,30 +348,30 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 }
 
 type RemovePendingReplaceStep struct {
-	plan *Plan           // the current plan.
-	old  *resource.State // the state of the existing resource.
+	deployment *Deployment     // the current deployment.
+	old        *resource.State // the state of the existing resource.
 }
 
-func NewRemovePendingReplaceStep(plan *Plan, old *resource.State) Step {
+func NewRemovePendingReplaceStep(deployment *Deployment, old *resource.State) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.PendingReplacement)
 	return &RemovePendingReplaceStep{
-		plan: plan,
-		old:  old,
+		deployment: deployment,
+		old:        old,
 	}
 }
 
 func (s *RemovePendingReplaceStep) Op() StepOp {
 	return OpRemovePendingReplace
 }
-func (s *RemovePendingReplaceStep) Plan() *Plan          { return s.plan }
-func (s *RemovePendingReplaceStep) Type() tokens.Type    { return s.old.Type }
-func (s *RemovePendingReplaceStep) Provider() string     { return s.old.Provider }
-func (s *RemovePendingReplaceStep) URN() resource.URN    { return s.old.URN }
-func (s *RemovePendingReplaceStep) Old() *resource.State { return s.old }
-func (s *RemovePendingReplaceStep) New() *resource.State { return nil }
-func (s *RemovePendingReplaceStep) Res() *resource.State { return s.old }
-func (s *RemovePendingReplaceStep) Logical() bool        { return false }
+func (s *RemovePendingReplaceStep) Deployment() *Deployment { return s.deployment }
+func (s *RemovePendingReplaceStep) Type() tokens.Type       { return s.old.Type }
+func (s *RemovePendingReplaceStep) Provider() string        { return s.old.Provider }
+func (s *RemovePendingReplaceStep) URN() resource.URN       { return s.old.URN }
+func (s *RemovePendingReplaceStep) Old() *resource.State    { return s.old }
+func (s *RemovePendingReplaceStep) New() *resource.State    { return nil }
+func (s *RemovePendingReplaceStep) Res() *resource.State    { return s.old }
+func (s *RemovePendingReplaceStep) Logical() bool           { return false }
 
 func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	return resource.StatusOK, nil, nil
@@ -379,7 +379,7 @@ func (s *RemovePendingReplaceStep) Apply(preview bool) (resource.Status, StepCom
 
 // UpdateStep is a mutating step that updates an existing resource's state.
 type UpdateStep struct {
-	plan          *Plan                          // the current plan.
+	deployment    *Deployment                    // the current deployment.
 	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
 	old           *resource.State                // the state of the existing resource.
 	new           *resource.State                // the newly computed state of the resource after updating.
@@ -391,8 +391,9 @@ type UpdateStep struct {
 
 var _ Step = (*UpdateStep)(nil)
 
-func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
-	new *resource.State, stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+func NewUpdateStep(deployment *Deployment, reg RegisterResourceEvent, old, new *resource.State,
+	stables, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff,
+
 	ignoreChanges []string) Step {
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
@@ -407,7 +408,7 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 	contract.Assert(!new.External)
 	contract.Assert(!old.External)
 	return &UpdateStep{
-		plan:          plan,
+		deployment:    deployment,
 		reg:           reg,
 		old:           old,
 		new:           new,
@@ -419,7 +420,7 @@ func NewUpdateStep(plan *Plan, reg RegisterResourceEvent, old *resource.State,
 }
 
 func (s *UpdateStep) Op() StepOp                                   { return OpUpdate }
-func (s *UpdateStep) Plan() *Plan                                  { return s.plan }
+func (s *UpdateStep) Deployment() *Deployment                      { return s.deployment }
 func (s *UpdateStep) Type() tokens.Type                            { return s.new.Type }
 func (s *UpdateStep) Provider() string                             { return s.new.Provider }
 func (s *UpdateStep) URN() resource.URN                            { return s.new.URN }
@@ -445,7 +446,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 
 		// Update to the combination of the old "all" state, but overwritten with new inputs.
 		outs, rst, upderr := prov.Update(s.URN(), s.old.ID, s.old.Outputs, s.new.Inputs,
-			s.new.CustomTimeouts.Update, s.ignoreChanges, s.plan.preview)
+			s.new.CustomTimeouts.Update, s.ignoreChanges, s.deployment.preview)
 		if upderr != nil {
 			if rst != resource.StatusPartialFailure {
 				return rst, nil, upderr
@@ -475,7 +476,7 @@ func (s *UpdateStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 // a creation of the new resource, any number of intervening updates of dependents to the new resource, and then
 // a deletion of the now-replaced old resource.  This logical step is primarily here for tools and visualization.
 type ReplaceStep struct {
-	plan          *Plan                          // the current plan.
+	deployment    *Deployment                    // the current deployment.
 	old           *resource.State                // the state of the existing resource.
 	new           *resource.State                // the new state snapshot.
 	keys          []resource.PropertyKey         // the keys causing replacement.
@@ -486,8 +487,9 @@ type ReplaceStep struct {
 
 var _ Step = (*ReplaceStep)(nil)
 
-func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
-	keys, diffs []resource.PropertyKey, detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
+func NewReplaceStep(deployment *Deployment, old, new *resource.State, keys, diffs []resource.PropertyKey,
+	detailedDiff map[string]plugin.PropertyDiff, pendingDelete bool) Step {
+
 	contract.Assert(old != nil)
 	contract.Assert(old.URN != "")
 	contract.Assert(old.ID != "" || !old.Custom)
@@ -497,7 +499,7 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 	// contract.Assert(new.ID == "")
 	contract.Assert(!new.Delete)
 	return &ReplaceStep{
-		plan:          plan,
+		deployment:    deployment,
 		old:           old,
 		new:           new,
 		keys:          keys,
@@ -508,7 +510,7 @@ func NewReplaceStep(plan *Plan, old *resource.State, new *resource.State,
 }
 
 func (s *ReplaceStep) Op() StepOp                                   { return OpReplace }
-func (s *ReplaceStep) Plan() *Plan                                  { return s.plan }
+func (s *ReplaceStep) Deployment() *Deployment                      { return s.deployment }
 func (s *ReplaceStep) Type() tokens.Type                            { return s.new.Type }
 func (s *ReplaceStep) Provider() string                             { return s.new.Provider }
 func (s *ReplaceStep) URN() resource.URN                            { return s.new.URN }
@@ -531,20 +533,21 @@ func (s *ReplaceStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 // not own this resource's lifeycle.
 //
 // A resource with a given URN can transition freely between an "external" state and a non-external state. If
-// a URN that was previously marked "External" (i.e. was the target of a ReadStep in a previous plan) is the
-// target of a RegisterResource in the next plan, a CreateReplacement step will be issued to indicate the transition
-// from external to owned. If a URN that was previously not marked "External" is the target of a ReadResource in the
-// next plan, a ReadReplacement step will be issued to indicate the transition from owned to external.
+// a URN that was previously marked "External" (i.e. was the target of a ReadStep in a previous deployment) is the
+// target of a RegisterResource in the next deployment, a CreateReplacement step will be issued to indicate the
+// transition from external to owned. If a URN that was previously not marked "External" is the target of a
+// ReadResource in the next deployment, a ReadReplacement step will be issued to indicate the transition from owned to
+// external.
 type ReadStep struct {
-	plan      *Plan             // the plan that produced this read
-	event     ReadResourceEvent // the event that should be signaled upon completion
-	old       *resource.State   // the old resource state, if one exists for this urn
-	new       *resource.State   // the new resource state, to be used to query the provider
-	replacing bool              // whether or not the new resource is replacing the old resource
+	deployment *Deployment       // the deployment that produced this read
+	event      ReadResourceEvent // the event that should be signaled upon completion
+	old        *resource.State   // the old resource state, if one exists for this urn
+	new        *resource.State   // the new resource state, to be used to query the provider
+	replacing  bool              // whether or not the new resource is replacing the old resource
 }
 
 // NewReadStep creates a new Read step.
-func NewReadStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *resource.State) Step {
+func NewReadStep(deployment *Deployment, event ReadResourceEvent, old, new *resource.State) Step {
 	contract.Assert(new != nil)
 	contract.Assertf(new.External, "target of Read step must be marked External")
 	contract.Assertf(new.Custom, "target of Read step must be Custom")
@@ -556,28 +559,28 @@ func NewReadStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *
 	}
 
 	return &ReadStep{
-		plan:      plan,
-		event:     event,
-		old:       old,
-		new:       new,
-		replacing: false,
+		deployment: deployment,
+		event:      event,
+		old:        old,
+		new:        new,
+		replacing:  false,
 	}
 }
 
 // NewReadReplacementStep creates a new Read step with the `replacing` flag set. When executed,
 // it will pend deletion of the "old" resource, which must not be an external resource.
-func NewReadReplacementStep(plan *Plan, event ReadResourceEvent, old *resource.State, new *resource.State) Step {
+func NewReadReplacementStep(deployment *Deployment, event ReadResourceEvent, old, new *resource.State) Step {
 	contract.Assert(new != nil)
 	contract.Assertf(new.External, "target of ReadReplacement step must be marked External")
 	contract.Assertf(new.Custom, "target of ReadReplacement step must be Custom")
 	contract.Assert(old != nil)
 	contract.Assertf(!old.External, "old target of ReadReplacement step must not be External")
 	return &ReadStep{
-		plan:      plan,
-		event:     event,
-		old:       old,
-		new:       new,
-		replacing: true,
+		deployment: deployment,
+		event:      event,
+		old:        old,
+		new:        new,
+		replacing:  true,
 	}
 }
 
@@ -589,14 +592,14 @@ func (s *ReadStep) Op() StepOp {
 	return OpRead
 }
 
-func (s *ReadStep) Plan() *Plan          { return s.plan }
-func (s *ReadStep) Type() tokens.Type    { return s.new.Type }
-func (s *ReadStep) Provider() string     { return s.new.Provider }
-func (s *ReadStep) URN() resource.URN    { return s.new.URN }
-func (s *ReadStep) Old() *resource.State { return s.old }
-func (s *ReadStep) New() *resource.State { return s.new }
-func (s *ReadStep) Res() *resource.State { return s.new }
-func (s *ReadStep) Logical() bool        { return !s.replacing }
+func (s *ReadStep) Deployment() *Deployment { return s.deployment }
+func (s *ReadStep) Type() tokens.Type       { return s.new.Type }
+func (s *ReadStep) Provider() string        { return s.new.Provider }
+func (s *ReadStep) URN() resource.URN       { return s.new.URN }
+func (s *ReadStep) Old() *resource.State    { return s.old }
+func (s *ReadStep) New() *resource.State    { return s.new }
+func (s *ReadStep) Res() *resource.State    { return s.new }
+func (s *ReadStep) Logical() bool           { return !s.replacing }
 
 func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	urn := s.new.URN
@@ -654,36 +657,36 @@ func (s *ReadStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 
 // RefreshStep is a step used to track the progress of a refresh operation. A refresh operation updates the an existing
 // resource by reading its current state from its provider plugin. These steps are not issued by the step generator;
-// instead, they are issued by the plan executor as the optional first step in plan execution.
+// instead, they are issued by the deployment executor as the optional first step in deployment execution.
 type RefreshStep struct {
-	plan *Plan           // the plan that produced this refresh
-	old  *resource.State // the old resource state, if one exists for this urn
-	new  *resource.State // the new resource state, to be used to query the provider
-	done chan<- bool     // the channel to use to signal completion, if any
+	deployment *Deployment     // the deployment that produced this refresh
+	old        *resource.State // the old resource state, if one exists for this urn
+	new        *resource.State // the new resource state, to be used to query the provider
+	done       chan<- bool     // the channel to use to signal completion, if any
 }
 
 // NewRefreshStep creates a new Refresh step.
-func NewRefreshStep(plan *Plan, old *resource.State, done chan<- bool) Step {
+func NewRefreshStep(deployment *Deployment, old *resource.State, done chan<- bool) Step {
 	contract.Assert(old != nil)
 
 	// NOTE: we set the new state to the old state by default so that we don't interpret step failures as deletes.
 	return &RefreshStep{
-		plan: plan,
-		old:  old,
-		new:  old,
-		done: done,
+		deployment: deployment,
+		old:        old,
+		new:        old,
+		done:       done,
 	}
 }
 
-func (s *RefreshStep) Op() StepOp           { return OpRefresh }
-func (s *RefreshStep) Plan() *Plan          { return s.plan }
-func (s *RefreshStep) Type() tokens.Type    { return s.old.Type }
-func (s *RefreshStep) Provider() string     { return s.old.Provider }
-func (s *RefreshStep) URN() resource.URN    { return s.old.URN }
-func (s *RefreshStep) Old() *resource.State { return s.old }
-func (s *RefreshStep) New() *resource.State { return s.new }
-func (s *RefreshStep) Res() *resource.State { return s.old }
-func (s *RefreshStep) Logical() bool        { return false }
+func (s *RefreshStep) Op() StepOp              { return OpRefresh }
+func (s *RefreshStep) Deployment() *Deployment { return s.deployment }
+func (s *RefreshStep) Type() tokens.Type       { return s.old.Type }
+func (s *RefreshStep) Provider() string        { return s.old.Provider }
+func (s *RefreshStep) URN() resource.URN       { return s.old.URN }
+func (s *RefreshStep) Old() *resource.State    { return s.old }
+func (s *RefreshStep) New() *resource.State    { return s.new }
+func (s *RefreshStep) Res() *resource.State    { return s.old }
+func (s *RefreshStep) Logical() bool           { return false }
 
 // ResultOp returns the operation that corresponds to the change to this resource after reading its current state, if
 // any.
@@ -732,7 +735,7 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 			//    `pulumi up` will surface them to the user.
 			err = nil
 			msg := fmt.Sprintf("Refreshed resource is in an unhealthy state:\n* %s", strings.Join(initErrors, "\n* "))
-			s.Plan().Diag().Warningf(diag.RawMessage(s.URN(), msg))
+			s.Deployment().Diag().Warningf(diag.RawMessage(s.URN(), msg))
 		}
 	}
 	outputs := refreshed.Outputs
@@ -764,19 +767,21 @@ func (s *RefreshStep) Apply(preview bool) (resource.Status, StepCompleteFunc, er
 }
 
 type ImportStep struct {
-	plan          *Plan                          // the current plan.
+	deployment    *Deployment                    // the current deployment.
 	reg           RegisterResourceEvent          // the registration intent to convey a URN back to.
 	original      *resource.State                // the original resource, if this is an import-replace.
 	old           *resource.State                // the state of the resource fetched from the provider.
 	new           *resource.State                // the newly computed state of the resource after importing.
 	replacing     bool                           // true if we are replacing a Pulumi-managed resource.
-	planned       bool                           // true if this import is from an import plan.
+	deploymentned bool                           // true if this import is from an import deployment.
 	diffs         []resource.PropertyKey         // any keys that differed between the user's program and the actual state.
 	detailedDiff  map[string]plugin.PropertyDiff // the structured property diff.
 	ignoreChanges []string                       // a list of property paths to ignore when updating.
 }
 
-func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State, ignoreChanges []string) Step {
+func NewImportStep(deployment *Deployment, reg RegisterResourceEvent, new *resource.State,
+	ignoreChanges []string) Step {
+
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID != "")
@@ -785,14 +790,14 @@ func NewImportStep(plan *Plan, reg RegisterResourceEvent, new *resource.State, i
 	contract.Assert(!new.External)
 
 	return &ImportStep{
-		plan:          plan,
+		deployment:    deployment,
 		reg:           reg,
 		new:           new,
 		ignoreChanges: ignoreChanges,
 	}
 }
 
-func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, new *resource.State,
+func NewImportReplacementStep(deployment *Deployment, reg RegisterResourceEvent, original, new *resource.State,
 	ignoreChanges []string) Step {
 
 	contract.Assert(original != nil)
@@ -804,7 +809,7 @@ func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, n
 	contract.Assert(!new.External)
 
 	return &ImportStep{
-		plan:          plan,
+		deployment:    deployment,
 		reg:           reg,
 		original:      original,
 		new:           new,
@@ -813,7 +818,7 @@ func NewImportReplacementStep(plan *Plan, reg RegisterResourceEvent, original, n
 	}
 }
 
-func newImportPlanStep(plan *Plan, new *resource.State) Step {
+func newImportDeploymentStep(deployment *Deployment, new *resource.State) Step {
 	contract.Assert(new != nil)
 	contract.Assert(new.URN != "")
 	contract.Assert(new.ID != "")
@@ -822,10 +827,10 @@ func newImportPlanStep(plan *Plan, new *resource.State) Step {
 	contract.Assert(!new.External)
 
 	return &ImportStep{
-		plan:    plan,
-		reg:     noopEvent(0),
-		new:     new,
-		planned: true,
+		deployment:    deployment,
+		reg:           noopEvent(0),
+		new:           new,
+		deploymentned: true,
 	}
 }
 
@@ -836,7 +841,7 @@ func (s *ImportStep) Op() StepOp {
 	return OpImport
 }
 
-func (s *ImportStep) Plan() *Plan                                  { return s.plan }
+func (s *ImportStep) Deployment() *Deployment                      { return s.deployment }
 func (s *ImportStep) Type() tokens.Type                            { return s.new.Type }
 func (s *ImportStep) Provider() string                             { return s.new.Provider }
 func (s *ImportStep) URN() resource.URN                            { return s.new.URN }
@@ -850,13 +855,13 @@ func (s *ImportStep) DetailedDiff() map[string]plugin.PropertyDiff { return s.de
 func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 
-	// If this is a planned import, ensure that the resource does not exist in the old state file.
-	if s.planned {
-		if _, ok := s.plan.olds[s.new.URN]; ok {
+	// If this is a deploymentned import, ensure that the resource does not exist in the old state file.
+	if s.deploymentned {
+		if _, ok := s.deployment.olds[s.new.URN]; ok {
 			return resource.StatusOK, nil, errors.Errorf("resource '%v' already exists", s.new.URN)
 		}
 		if s.new.Parent.Type() != resource.RootStackType {
-			if _, ok := s.plan.olds[s.new.Parent]; !ok {
+			if _, ok := s.deployment.olds[s.new.Parent]; !ok {
 				return resource.StatusOK, nil, errors.Errorf("unknown parent '%v' for resource '%v'",
 					s.new.Parent, s.new.URN)
 			}
@@ -897,11 +902,11 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		s.new.Parent, s.new.Protect, false, s.new.Dependencies, s.new.InitErrors, s.new.Provider,
 		s.new.PropertyDependencies, false, nil, nil, &s.new.CustomTimeouts, s.new.ImportID)
 
-	// If this step came from an import plan, we need to fetch any required inputs from the state.
-	if s.planned {
+	// If this step came from an import deployment, we need to fetch any required inputs from the state.
+	if s.deploymentned {
 		contract.Assert(len(s.new.Inputs) == 0)
 
-		pkg, err := s.plan.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
+		pkg, err := s.deployment.schemaLoader.LoadPackage(string(s.new.Type.Package()), nil)
 		if err != nil {
 			return resource.StatusOK, nil, errors.Wrapf(err, "failed to fetch provider schema")
 		}
@@ -923,27 +928,28 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	if err != nil {
 		return rst, nil, err
 	}
-	if issueCheckErrors(s.plan, s.new, s.new.URN, failures) {
+	if issueCheckErrors(s.deployment, s.new, s.new.URN, failures) {
 		return rst, nil, errors.New("one or more inputs failed to validate")
 	}
 	s.new.Inputs = inputs
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
-	// is from an import plan.
+	// is from an import deployment.
 	diff, err := diffResource(s.new.URN, s.new.ID, s.old.Inputs, s.old.Outputs, s.new.Inputs, prov, preview,
 		s.ignoreChanges)
 	if err != nil {
 		return rst, nil, err
 	}
 
-	if !s.planned {
+	if !s.deploymentned {
 		s.diffs, s.detailedDiff = diff.ChangedKeys, diff.DetailedDiff
 
 		if diff.Changes != plugin.DiffNone {
 			const message = "inputs to import do not match the existing resource"
 
 			if preview {
-				s.plan.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN, message+"; importing this resource will fail", 0))
+				s.deployment.ctx.Diag.Warningf(diag.StreamMessage(s.new.URN,
+					message+"; importing this resource will fail", 0))
 			} else {
 				err = errors.New(message)
 			}
@@ -1129,13 +1135,13 @@ func (op StepOp) Suffix() string {
 // getProvider fetches the provider for the given step.
 func getProvider(s Step) (plugin.Provider, error) {
 	if providers.IsProviderType(s.Type()) {
-		return s.Plan().providers, nil
+		return s.Deployment().providers, nil
 	}
 	ref, err := providers.ParseReference(s.Provider())
 	if err != nil {
 		return nil, errors.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
 	}
-	provider, ok := s.Plan().GetProvider(ref)
+	provider, ok := s.Deployment().GetProvider(ref)
 	if !ok {
 		return nil, errors.Errorf("unknown provider '%v' for resource %v", s.Provider(), s.URN())
 	}
