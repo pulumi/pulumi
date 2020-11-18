@@ -394,7 +394,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 
 	_, err = s.Up(ctx)
 	assert.NotNil(t, err)
-	assert.True(t, IsRuntimeError(err))
+	assert.True(t, IsRuntimeError(err), "%+v", err)
 
 	// -- pulumi destroy --
 

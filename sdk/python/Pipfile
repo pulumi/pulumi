@@ -12,3 +12,4 @@ six = ">=1.12.0"
 [dev-packages]
 pylint = ">=2.1"
 mypy = "0.78"
+pytest = "*"
