@@ -537,7 +537,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 			e.Name, enumType.Token)
 		switch reflect.TypeOf(e.Value).Kind() {
 		case reflect.String:
-			fmt.Fprintf(w, "%s = %s(\"%v\")\n", e.Name, name, e.Value)
+			fmt.Fprintf(w, "%s = %s(%q)\n", e.Name, name, e.Value)
 		default:
 			fmt.Fprintf(w, "%s = %s(%v)\n", e.Name, name, e.Value)
 		}
@@ -565,11 +565,12 @@ func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
 		return "pulumi.String" + suffix
 	default:
 		// We only expect to support the above element types for enums
-		panic(t)
+		panic(fmt.Sprintf("Invalid enum type: %s", t))
 	}
 }
 
 func makeSafeEnumName(name string) string {
+	name = codegen.ExpandShortEnumName(name)
 	return makeValidIdentifier(Title(name))
 }
 
@@ -581,7 +582,7 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "func (e %[1]s) To%[2]sOutput() %[3]sOutput {\n", typeName, asFuncName, elementType)
+	fmt.Fprintf(w, "func (e %s) To%sOutput() %sOutput {\n", typeName, asFuncName, elementType)
 	fmt.Fprintf(w, "return pulumi.ToOutput(%[1]s(e)).(%[1]sOutput)\n", elementType)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
@@ -1541,7 +1542,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Run Go formatter on the code before saving to disk
 		formattedSource, err := format.Source([]byte(contents))
 		if err != nil {
-			panic(fmt.Errorf("invalid Go source code:\n\n%s: %s: %w", relPath, contents, err))
+			panic(errors.Errorf("invalid Go source code:\n\n%s: %s: %w", relPath, contents, err))
 		}
 
 		files[relPath] = formattedSource

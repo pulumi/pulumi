@@ -59,6 +59,15 @@ func TestGeneratePackage(t *testing.T) {
 		expectedFiles []string
 	}{
 		{
+			"Simple schema with local resource properties",
+			"simple-resource-schema",
+			[]string{
+				"example/resource.go",
+				"example/otherResource.go",
+				"example/argFunction.go",
+			},
+		},
+		{
 			"Simple schema with enum types",
 			"simple-enum-schema",
 			[]string{
