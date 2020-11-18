@@ -43,7 +43,7 @@ test_fast:: build
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
 	pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py
 	pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
-	# Using python -m also adds lib/test_with_mocks to sys.path which avoids issues package resolution issues.
+	# Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
 	pushd lib/test_with_mocks ; pipenv run python -m pytest ; popd
 
 test_all:: test_fast
