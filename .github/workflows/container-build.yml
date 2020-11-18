@@ -5,6 +5,7 @@ on:
       - docker-build
 env:
   VERSION: ${{ github.event.client_payload.ref }}
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
 
 jobs:
   pulumi:
