@@ -51,12 +51,50 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
-			pythonCmds)
+		// second-chance on windows for python being installed through the Windows app store.
+		if runtime.GOOS == windows {
+			pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
+		}
+		if err != nil {
+			// TODO: Wrap error? The resulting user facing message isn't very pretty though.
+			return nil, errors.Errorf(
+				"locating any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+				pythonCmds)
+		}
+	}
+	return exec.Command(pythonPath, arg...), nil
+}
+
+// resolveWindowsExecutionAlias performs a lookup for python among UWP
+// application execution aliases which exec.LookPath() can't handle.
+// Windows 10 supports execution aliases for UWP applications. If python
+// is installed using the Windows store app, the installer will drop an alias
+// in %LOCALAPPDATA%\Microsoft\WindowsApps which is a zero-length file - also
+// called an execution alias. This directory is also added to the PATH.
+// See https://www.tiraniddo.dev/2019/09/overview-of-windows-execution-aliases.html
+// for an overview.
+func resolveWindowsExecutionAlias(pythonCmds []string) (string, error) {
+	path := os.Getenv("PATH")
+	for _, dir := range filepath.SplitList(path) {
+		if !strings.Contains(strings.ToLower(dir), filepath.Join("microsoft", "windowsapps")) {
+			continue
+		}
+		for _, pythonCmd := range pythonCmds {
+			path := filepath.Join(dir, pythonCmd)
+			f, err := os.Stat(path)
+			if err != nil && !os.IsNotExist(err) {
+				return "", errors.Wrap(err, "evaluating python execution alias")
+			}
+			if os.IsNotExist(err) {
+				continue
+			}
+			if f.Size() == 0 {
+				return path, nil
+			}
+		}
 	}
 
-	return exec.Command(pythonPath, arg...), nil
+	return "", errors.New("no python execution alias found")
 }
 
 // VirtualEnvCommand returns an *exec.Cmd for running a command from the specified virtual environment
