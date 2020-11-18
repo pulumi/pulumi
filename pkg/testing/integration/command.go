@@ -15,6 +15,7 @@
 package integration
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -80,6 +81,12 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 
 	if runerr != nil {
 		t.Logf("Invoke '%v' failed: %s\n", command, cmdutil.DetailedError(runerr))
+
+		if !opts.Verbose {
+			// Make sure we write the output in case of a failure to stderr so
+			// tests can assert the shape of the error message.
+			_, _ = fmt.Fprintf(opts.Stderr, "%s\n", string(runout))
+		}
 	}
 
 	// If we collected any program output, write it to a log file -- success or failure.
