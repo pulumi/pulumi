@@ -17,5 +17,5 @@ jobs:
         with:
           token: ${{secrets.PULUMI_BOT_TOKEN}}
           formula: pulumi
-          tag: ${{env.VERSION}}
+          tag: v${{env.VERSION}}
           revision: ${{env.COMMIT_SHA}}
