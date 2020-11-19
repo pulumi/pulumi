@@ -21,7 +21,8 @@ class GetResource(pulumi.Resource):
     foo: Output
 
     def __init__(self, urn):
-        super().__init__("unused", "unused:unused:unused", True, None, None, False, False, urn)
+        props = {"foo": None}
+        super().__init__("unused", "unused:unused:unused", True, props, None, False, False, urn)
 
 a = MyResource("a", {
     "foo": "foo",

@@ -558,7 +558,6 @@ def contains_unknowns(val: Any) -> bool:
 
 
 def resolve_outputs(res: 'Resource',
-                    
                     serialized_props: struct_pb2.Struct,
                     outputs: struct_pb2.Struct,
                     deps: Mapping[str, Set['Resource']],

@@ -65,54 +65,6 @@ class InvokeResult:
 
     __iter__ = __await__
 
-async def raw_invoke(tok: str,
-                     props: 'Inputs',
-                     provider_ref: Optional[str] = None,
-                     version: Optional[str] = None,
-                     typ: Optional[type] = None) -> Any:
-
-    # This should have been ensured by the caller.
-    assert typ is None or _types.is_output_type(typ):
-
-    monitor = get_monitor()
-    inputs = await rpc.serialize_properties(props, {})
-    log.debug(f"Invoking function prepared: tok={tok}")
-    req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref, version=version)
-
-    def do_invoke():
-        try:
-            return monitor.Invoke(req)
-        except grpc.RpcError as exn:
-            # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
-            # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
-            # the .code() member. Pylint doesn't know this because it's not known statically.
-            #
-            # Neither pylint nor I are the only ones who find this confusing:
-            # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-            # pylint: disable=no-member
-            if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                sys.exit(0)
-
-            details = exn.details()
-        raise Exception(details)
-
-    resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
-
-    log.debug(f"Invoking function completed successfully: tok={tok}")
-    # If the invoke failed, raise an error.
-    if resp.failures:
-        raise Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
-
-    # Otherwise, return the output properties.
-    ret_obj = getattr(resp, 'return')
-    if ret_obj:
-        deserialized = rpc.deserialize_properties(ret_obj)
-        # If typ is not None, call translate_output_properties to instantiate any output types.
-        return rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized
-
-    return {}
-
-
 def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ: Optional[type] = None) -> InvokeResult:
     """
     invoke dynamically invokes the function, tok, which is offered by a provider plugin.  The inputs
@@ -139,8 +91,43 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
             provider_ref = f"{provider_urn}::{provider_id}"
             log.debug(f"Invoke using provider {provider_ref}")
 
-        
+        monitor = get_monitor()
+        inputs = await rpc.serialize_properties(props, {})
+        version = opts.version or ""
+        log.debug(f"Invoking function prepared: tok={tok}")
+        req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref, version=version)
 
+        def do_invoke():
+            try:
+                return monitor.Invoke(req)
+            except grpc.RpcError as exn:
+                # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
+                # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
+                # the .code() member. Pylint doesn't know this because it's not known statically.
+                #
+                # Neither pylint nor I are the only ones who find this confusing:
+                # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+                # pylint: disable=no-member
+                if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                    sys.exit(0)
+
+                details = exn.details()
+            raise Exception(details)
+
+        resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+
+        log.debug(f"Invoking function completed successfully: tok={tok}")
+        # If the invoke failed, raise an error.
+        if resp.failures:
+            raise Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
+
+        # Otherwise, return the output properties.
+        ret_obj = getattr(resp, 'return')
+        if ret_obj:
+            deserialized = rpc.deserialize_properties(ret_obj)
+            # If typ is not None, call translate_output_properties to instantiate any output types.
+            return rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized
+        return {}
 
     async def do_rpc():
         resp, exn = await RPC_MANAGER.do_rpc("invoke", do_invoke)()

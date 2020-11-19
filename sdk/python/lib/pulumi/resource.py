@@ -723,7 +723,7 @@ class Resource:
 
         if urn is not None:
             # This is a resource that already exists. Read its state from the engine.
-            get_resource(self, custom, urn)
+            get_resource(self, props, custom, urn)
         elif opts.id is not None:
             # If this is a custom resource that already exists, read its state from the provider.
             if not custom:

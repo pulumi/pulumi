@@ -22,7 +22,7 @@ import grpc
 from . import rpc, settings, known_types
 from .. import log
 from .invoke import invoke
-from ..runtime.proto import resource_pb2
+from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
 from ..metadata import get_project, get_stack
 
@@ -168,28 +168,77 @@ def resolved_resource_output(res: 'Resource', value: Any, known: bool, secret: b
 def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> None:
     log.debug(f"getting resource: urn={urn}")
 
-    # Same as below, we initialize the URN property on the resource, which will always be resolved.
-    log.debug("preparing get resource for RPC")
+    # Extract the resource type from the URN.
+    urn_parts = urn.split("::")
+    qualified_type = urn_parts[2]
+    ty = qualified_type.split("$")[-1]
 
+    # Initialize the URN property on the resource.
     (resolve_urn, res.__dict__["urn"]) = resource_output(res)
 
     # If this is a custom resource, initialize its ID property.
     resolve_id: Optional[Callable[[Any, bool, bool, Optional[Exception]], None]] = None
     if custom:
-        id = result.value["id"]
-        id_known = bool(id)
+        (resolve_id, res.__dict__["id"]) = resource_output(res)
 
-        (resolve_id, res.__dict__["id"]) = resolved_resource_output(res)
-
-    async def do_get:
-        result = invoke("pulumi:pulumi:getResource", {"urn": urn})
-
-
-
-
-    # Transfer all values in props into unresolved properties on the resource, then resolve the properties.
+    # Like the other resource functions, "transfer" all input properties onto unresolved futures on res.
     resolvers = rpc.transfer_properties(res, props)
-    rpc.resolve_proprties(resolvers, result.values["state"], {})
+
+    async def do_get():
+        try:
+            resolver = await prepare_resource(res, ty, custom, props, None)
+
+            monitor = settings.get_monitor()
+            inputs = await rpc.serialize_properties({"urn": urn}, {})
+            req = provider_pb2.InvokeRequest(tok="pulumi:pulumi:getResource", args=inputs, provider="", version="")
+
+            def do_invoke():
+                try:
+                    return monitor.Invoke(req)
+                except grpc.RpcError as exn:
+                    # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
+                    # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
+                    # the .code() member. Pylint doesn't know this because it's not known statically.
+                    #
+                    # Neither pylint nor I are the only ones who find this confusing:
+                    # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
+
+                    details = exn.details()
+                raise Exception(details)
+
+            resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+
+            # If the invoke failed, raise an error.
+            if resp.failures:
+                raise Exception(f"getResource failed: {resp.failures[0].reason} ({resp.failures[0].property})")
+
+        except Exception as exn:
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            resolve_urn(None, True, False, exn)
+            if resolve_id is not None:
+                resolve_id(None, True, False, exn)
+            raise
+
+        # Otherwise, grab the URN, ID, and output properties and resolve all of them.
+        resp = getattr(resp, 'return')
+
+        log.debug(f"getResource completed successfully: ty={ty}, urn={resp['urn']}")
+        resolve_urn(resp["urn"], True, False, None)
+        if resolve_id:
+            # The ID is known if (and only if) it is a non-empty string. If it's either None or an
+            # empty string, we should treat it as unknown. TFBridge in particular is known to send
+            # the empty string as an ID when doing a preview.
+            is_known = bool(resp["id"])
+            resolve_id(resp["id"], is_known, False, None)
+
+        rpc.resolve_outputs(res, resolver.serialized_props, resp["state"], {}, resolvers)
+
+    asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
 
 
 def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> None:
@@ -279,14 +328,14 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
-            resolve_urn(urn, True, False, exn)
-            resolve_id(urn, True, False, exn)
+            resolve_urn(None, True, False, exn)
+            resolve_id(None, True, False, exn)
             raise
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
         resolve_id(resolved_id, True, False, None) # Read IDs are always known.
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers)
+        rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
@@ -422,14 +471,14 @@ def register_resource(res: 'Resource',
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
-            resolve_id(None, True, False, exn)
+            resolve_urn(None, True, False, exn)
             if resolve_id is not None:
                 resolve_id(None, True, False, exn)
             raise
 
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
-        if resolve_id:
+        if resolve_id is not None:
             # The ID is known if (and only if) it is a non-empty string. If it's either None or an
             # empty string, we should treat it as unknown. TFBridge in particular is known to send
             # the empty string as an ID when doing a preview.
@@ -444,7 +493,7 @@ def register_resource(res: 'Resource',
                 deps[k] = set(map(new_dependency, urns))
 
 
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
+        rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())
