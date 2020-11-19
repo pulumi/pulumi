@@ -14,9 +14,9 @@ namespace Pulumi.X.Automation
 
         public long Size { get; } // TODO: or double? will know once get to implementation
 
-        public DateTime InstallTime { get; } // TODO: is this UTC or local?
+        public DateTimeOffset InstallTime { get; }
 
-        public DateTime LastUsedTime { get; } // TODO: is this UTC or local? Should suffix with "Utc" if it is UTC
+        public DateTimeOffset LastUsedTime { get; }
 
         public string ServerUrl { get; }
 
@@ -26,8 +26,8 @@ namespace Pulumi.X.Automation
             PluginKind kind,
             string? version,
             long size,
-            DateTime installTime,
-            DateTime lastUsedTime,
+            DateTimeOffset installTime,
+            DateTimeOffset lastUsedTime,
             string serverUrl)
         {
             this.Name = name;

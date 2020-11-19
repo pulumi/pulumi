@@ -24,6 +24,6 @@ namespace Pulumi.X.Automation
         /// <summary>
         /// This is an optional configuration bag.
         /// </summary>
-        public IDictionary<string, string>? Config { get; set; } // TODO: figure out what to do for value type argument here
+        public IDictionary<string, StackSettingsConfigValue>? Config { get; set; }
     }
 }
