@@ -3,7 +3,7 @@
 import asyncio
 import pulumi
 
-from pulumi import Output, export, UNKNOWN
+from pulumi import Output, ResourceOptions, export, UNKNOWN
 from pulumi.dynamic import Resource, ResourceProvider, CreateResult
 from pulumi.runtime import is_dry_run
 
@@ -22,7 +22,7 @@ class GetResource(pulumi.Resource):
 
     def __init__(self, urn):
         props = {"foo": None}
-        super().__init__("unused", "unused:unused:unused", True, props, None, False, False, urn)
+        super().__init__("unused", "unused:unused:unused", True, props, ResourceOptions(urn=urn), False, False)
 
 a = MyResource("a", {
     "foo": "foo",

@@ -378,6 +378,11 @@ class ResourceOptions:
     property must be removed from the resource's options.
     """
 
+    urn: Optional['str']
+    """
+    The URN of a previously-registered resource of this type to read from the engine.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -393,7 +398,8 @@ class ResourceOptions:
                  id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
-                 transformations: Optional[List[ResourceTransformation]] = None) -> None:
+                 transformations: Optional[List[ResourceTransformation]] = None,
+                 urn: Optional['str'] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -425,6 +431,7 @@ class ResourceOptions:
         :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
+        :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -446,6 +453,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
+        self.urn = urn
 
         if depends_on is not None:
             for dep in depends_on:
@@ -516,6 +524,7 @@ class ResourceOptions:
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
+        dest.urn = dest.urn if source.urn is None else source.urn
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
@@ -608,8 +617,7 @@ class Resource:
                  props: Optional['Inputs'] = None,
                  opts: Optional[ResourceOptions] = None,
                  remote: bool = False,
-                 dependency: bool = False,
-                 urn: Optional[str] = None) -> None:
+                 dependency: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -721,9 +729,9 @@ class Resource:
                 self._aliases.append(collapse_alias_to_urn(
                     alias, name, t, opts.parent))
 
-        if urn is not None:
+        if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
-            get_resource(self, props, custom, urn)
+            get_resource(self, props, custom, opts.urn)
         elif opts.id is not None:
             # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
@@ -817,8 +825,7 @@ class CustomResource(Resource):
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None,
-                 dependency: bool = False,
-                 urn: Optional[str] = None) -> None:
+                 dependency: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -827,7 +834,7 @@ class CustomResource(Resource):
                resource.
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
-        Resource.__init__(self, t, name, True, props, opts, False, dependency, urn)
+        Resource.__init__(self, t, name, True, props, opts, False, dependency)
         self.__pulumi_type = t
 
     @property
@@ -851,8 +858,7 @@ class ComponentResource(Resource):
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None,
-                 remote: bool = False,
-                 urn: Optional[str] = None) -> None:
+                 remote: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
@@ -861,7 +867,7 @@ class ComponentResource(Resource):
                resource.
         :param bool remote: True if this is a remote component resource.
         """
-        Resource.__init__(self, t, name, False, props, opts, remote, False, urn)
+        Resource.__init__(self, t, name, False, props, opts, remote, False)
         self.__dict__["id"] = None
 
     def register_outputs(self, outputs):
@@ -891,8 +897,7 @@ class ProviderResource(CustomResource):
                  name: str,
                  props: Optional[dict] = None,
                  opts: Optional[ResourceOptions] = None,
-                 dependency: bool = False,
-                 urn: Optional[str] = None) -> None:
+                 dependency: bool = False) -> None:
         """
         :param str pkg: The package type of this provider resource.
         :param str name: The name of this resource.
@@ -907,7 +912,7 @@ class ProviderResource(CustomResource):
                 "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
-            self, f"pulumi:providers:{pkg}", name, props, opts, dependency, urn)
+            self, f"pulumi:providers:{pkg}", name, props, opts, dependency)
         self.package = pkg
 
 
