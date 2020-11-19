@@ -20,6 +20,7 @@ package python
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -1472,8 +1473,34 @@ func sanitizePackageDescription(description string) string {
 	return ""
 }
 
+func genPulumiPluginFile(pkg *schema.Package) (string, error) {
+	type pulumiPlugin struct {
+		// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
+		Resource bool `json:"resource,omitempty"`
+		// Optional plugin name. If not set, the plugin name is derived from the package name.
+		Name string `json:"name,omitempty"`
+		// Optional plugin version. If not set, the version is derived from the package version (if possible).
+		Version string `json:"version,omitempty"`
+		// Optional plugin server. If not set, the default server is used when installing the plugin.
+		Server string `json:"server,omitempty"`
+	}
+
+	json, err := json.MarshalIndent(&pulumiPlugin{
+		Resource: true,
+		Name:     pkg.Name,
+		Version:  "${PLUGIN_VERSION}",
+		Server:   pkg.PluginDownloadURL,
+	}, "", "  ")
+	if err != nil {
+		return "", err
+	}
+	return string(json), nil
+}
+
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]string) (string, error) {
+func genPackageMetadata(
+	tool string, pkg *schema.Package, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
+
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
 
@@ -1551,7 +1578,11 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	// Publish type metadata: PEP 561
 	fmt.Fprintf(w, "      package_data={\n")
 	fmt.Fprintf(w, "          '%s': [\n", pyPack(pkg.Name))
-	fmt.Fprintf(w, "              'py.typed'\n")
+	fmt.Fprintf(w, "              'py.typed',\n")
+	if emitPulumiPluginFile {
+		fmt.Fprintf(w, "              'pulumiplugin.json',\n")
+	}
+
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
 
@@ -2385,8 +2416,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// Emit casing tables.
 	files.add(filepath.Join(pyPack(pkg.Name), "_tables.py"), []byte(modules[""].genPropertyConversionTables()))
 
+	// Generate pulumiplugin.json, if requested.
+	if info.EmitPulumiPluginFile {
+		plugin, err := genPulumiPluginFile(pkg)
+		if err != nil {
+			return nil, err
+		}
+		files.add("pulumiplugin.json", []byte(plugin))
+	}
+
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, info.Requires)
+	setup, err := genPackageMetadata(tool, pkg, info.EmitPulumiPluginFile, info.Requires)
 	if err != nil {
 		return nil, err
 	}
