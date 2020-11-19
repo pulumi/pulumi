@@ -101,17 +101,23 @@ namespace Pulumi.X.Automation.Commands
             // regardless of the status (faulted, cancelled, completed) of the process task.
             // originally had this in proc.Exited but that introduces race condition
             // if task is cancelled before process starts. this allows us to cleanup process too.
-            tcs.Task.ContinueWith(
-                x => {
+            var cleanupWrapperTask = tcs.Task.ContinueWith(async processTask =>
+            {
+                try
+                {
+                    return await processTask;
+                }
+                finally
+                {
                     cancelRegistration.Dispose();
 
                     if (proc.HasExited)
                         proc.Dispose();
-                },
-                TaskContinuationOptions.None);
+                }
+            }, TaskContinuationOptions.None);
 
             proc.Start();
-            return tcs.Task;
+            return cleanupWrapperTask.Unwrap();
         }
     }
 }
