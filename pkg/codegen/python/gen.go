@@ -460,6 +460,10 @@ func (mod *modContext) genInit(exports []string) string {
 }
 
 func (mod *modContext) importTypeFromToken(tok string, input bool) string {
+	parts := strings.Split(tok, ":")
+	contract.Assert(len(parts) == 3)
+	refPkgName := parts[0]
+
 	modName := mod.tokenToModule(tok)
 	if modName == mod.mod {
 		if input {
@@ -471,30 +475,40 @@ func (mod *modContext) importTypeFromToken(tok string, input bool) string {
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
 	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
+	importPath := relPathToRelImport(relRoot)
+	if mod.pkg.Name != parts[0] {
+		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
+	}
 
 	if modName == "" {
 		imp, as := "outputs", "_root_outputs"
 		if input {
 			imp, as = "_inputs", "_root_inputs"
 		}
-		return fmt.Sprintf("from %s import %s as %s", relImport, imp, as)
+		return fmt.Sprintf("from %s import %s as %s", importPath, imp, as)
 	}
 
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s import %[2]s as _%[2]s", relImport, components[0])
+	return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, components[0])
 }
 
 func (mod *modContext) importResourceFromToken(tok string) string {
+	parts := strings.Split(tok, ":")
+	contract.Assert(len(parts) == 3)
+	refPkgName := parts[0]
+
 	modName := mod.tokenToResource(tok)
 
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
 	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
+	importPath := relPathToRelImport(relRoot)
+	if mod.pkg.Name != parts[0] {
+		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
+	}
 
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s import %s", relImport, components[0])
+	return fmt.Sprintf("from %s import %s", importPath, components[0])
 }
 
 // emitConfigVariables emits all config variables in the given module, returning the resulting file.

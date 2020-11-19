@@ -18,12 +18,15 @@
     "example::Cat": {
       "properties": {
         "name": {
-          "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          "type": "string"
         }
       },
       "inputProperties": {
         "age": {
           "type": "integer"
+        },
+        "pet": {
+          "$ref": "#/types/example::Pet"
         }
       },
       "type": "object"
