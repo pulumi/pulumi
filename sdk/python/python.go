@@ -73,23 +73,44 @@ func Command(arg ...string) (*exec.Cmd, error) {
 // called an execution alias. This directory is also added to the PATH.
 // See https://www.tiraniddo.dev/2019/09/overview-of-windows-execution-aliases.html
 // for an overview.
+// Most of this code is a replacement of the windows version of exec.LookPath
+// but uses os.Lstat instead of an os.Stat which fails with a
+// "CreateFile <path>: The file cannot be accessed by the system".
 func resolveWindowsExecutionAlias(pythonCmds []string) (string, error) {
+	exts := []string{""}
+	x := os.Getenv(`PATHEXT`)
+	if x != "" {
+		for _, e := range strings.Split(strings.ToLower(x), `;`) {
+			if e == "" {
+				continue
+			}
+			if e[0] != '.' {
+				e = "." + e
+			}
+			exts = append(exts, e)
+		}
+	} else {
+		exts = append(exts, ".com", ".exe", ".bat", ".cmd")
+	}
+
 	path := os.Getenv("PATH")
 	for _, dir := range filepath.SplitList(path) {
 		if !strings.Contains(strings.ToLower(dir), filepath.Join("microsoft", "windowsapps")) {
 			continue
 		}
 		for _, pythonCmd := range pythonCmds {
-			path := filepath.Join(dir, pythonCmd)
-			f, err := os.Stat(path)
-			if err != nil && !os.IsNotExist(err) {
-				return "", errors.Wrap(err, "evaluating python execution alias")
-			}
-			if os.IsNotExist(err) {
-				continue
-			}
-			if f.Size() == 0 {
-				return path, nil
+			for _, ext := range exts {
+				path := filepath.Join(dir, pythonCmd+ext)
+				f, err := os.Lstat(path)
+				if err != nil && !os.IsNotExist(err) {
+					return "", errors.Wrap(err, "evaluating python execution alias")
+				}
+				if os.IsNotExist(err) {
+					continue
+				}
+				if f.Size() == 0 {
+					return path, nil
+				}
 			}
 		}
 	}
