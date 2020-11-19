@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2020, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,12 +15,12 @@ import asyncio
 import sys
 import traceback
 
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING, cast
+from typing import Optional, Any, Awaitable, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING, cast
 from google.protobuf import struct_pb2
 import grpc
 
 from . import rpc, settings, known_types
-from .. import log
+from .. import log, output
 from ..runtime.proto import resource_pb2
 from .rpc_manager import RPC_MANAGER
 from ..metadata import get_project, get_stack
@@ -65,6 +65,40 @@ class ResourceResolverOperations(NamedTuple):
     """
 
 
+async def gather_explicit_dependencies(
+        depends_on: Optional['Union[Input[Resource], Input[List[Input[Resource]]]]']) -> 'Awaitable[List[Resource]]':
+    """
+    Gathers explicit dependent Resources from a list of Resources (possibly Awaitable).
+    """
+    explicit_urn_dependencies = []
+    if depends_on is not None:
+        # TODO: may want to use sequence instead
+        # print(type(depends_on))
+        if isinstance(depends_on, list):
+            print('its a list')
+            dependent_urns = list(map(lambda r: r.urn.future(), depends_on))
+            explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
+        elif isinstance(depends_on, output.Output):
+            print('Output instance')
+            dos: 'Output[Union[Input[Resource], List[Input[Resource]]]]' = depends_on.apply(
+                lambda v: gather_explicit_dependencies(v))
+            urns = await dos.future()
+            # TODO: do we have an equivalent to 'const dosResources = await getAllResources(dos);'
+            # dos_resources = await
+            # implicits = await gather_explicit_dependencies(dos_resources)
+            return [*urns]
+        # elif isinstance(depends_on, Awaitable):
+        #     return gather_explicit_dependencies(await depends_on)
+        else:
+            # TODO: this check isn't working
+            # if not isinstance(depends_on, Resource):
+            #     raise Exception(
+            #         "'depends_on' was passed a value that was not a Resource.")
+            return [depends_on]
+
+    return explicit_urn_dependencies
+
+
 # Prepares for an RPC that will manufacture a resource, and hence deals with input and output properties.
 # pylint: disable=too-many-locals
 async def prepare_resource(res: 'Resource',
@@ -77,8 +111,7 @@ async def prepare_resource(res: 'Resource',
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
     if opts is not None and opts.depends_on is not None:
-        dependent_urns = list(map(lambda r: r.urn.future(), opts.depends_on))
-        explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
+        explicit_urn_dependencies = await gather_explicit_dependencies(opts.depends_on)
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
@@ -437,7 +470,6 @@ def register_resource(res: 'Resource',
             for k, v in rpc_deps.items():
                 urns = list(v.urns)
                 deps[k] = set(map(new_dependency, urns))
-
 
         await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
 
