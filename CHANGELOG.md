@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Respect PULUMI_PYTHON_CMD in scripts.
+  [#5782](https://github.com/pulumi/pulumi/pull/5782)
 
 ## 2.14.0 (2020-11-18)
 
