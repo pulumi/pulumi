@@ -600,6 +600,16 @@ func (pkg *Package) TokenToModule(tok string) string {
 	}
 }
 
+func (pkg *Package) TokenToRuntimeModule(tok string) string {
+	// token := pkg ":" module ":" member
+
+	components := strings.Split(tok, ":")
+	if len(components) != 3 {
+		return ""
+	}
+	return components[1]
+}
+
 func (pkg *Package) GetResource(token string) (*Resource, bool) {
 	r, ok := pkg.resourceTable[token]
 	return r, ok

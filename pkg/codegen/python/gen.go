@@ -461,7 +461,72 @@ func (mod *modContext) genInit(exports []string) string {
 		fmt.Fprintf(w, ")\n")
 	}
 
+	// If there are resources in this module, register the module with the runtime.
+	if len(mod.resources) != 0 {
+		mod.genResourceModule(w)
+	}
+
 	return w.String()
+}
+
+// genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
+// Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
+// hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
+// definition and its registration to support rehydrating providers.
+func (mod *modContext) genResourceModule(w io.Writer) {
+	contract.Assert(len(mod.resources) != 0)
+
+	fmt.Fprintf(w, "\nimport pulumi")
+
+	// Check for provider-only modules.
+	var provider *schema.Resource
+	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
+		provider = mod.resources[0]
+	} else {
+		fmt.Fprintf(w, "\n\nclass Module(pulumi.runtime.ResourceModule):\n")
+		fmt.Fprintf(w, "    def version(self):\n")
+		fmt.Fprintf(w, "        return None\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "    def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:\n")
+
+		registrations, first := codegen.StringSet{}, true
+		for _, r := range mod.resources {
+			if r.IsProvider {
+				contract.Assert(provider == nil)
+				provider = r
+				continue
+			}
+
+			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
+
+			conditional := "elif"
+			if first {
+				conditional, first = "if", false
+			}
+			fmt.Fprintf(w, "        %v typ == \"%v\":\n", conditional, r.Token)
+			fmt.Fprintf(w, "            return %v(name, pulumi.ResourceOptions(urn=urn))\n", tokenToName(r.Token))
+		}
+		fmt.Fprintf(w, "        else:\n")
+		fmt.Fprintf(w, "            raise Exception(f\"unknown resource type {typ}\")\n")
+		fmt.Fprintf(w, "\n\n")
+		fmt.Fprintf(w, "_module_instance = Module()\n")
+		for _, name := range registrations.SortedValues() {
+			fmt.Fprintf(w, "pulumi.runtime.register_resource_module(\"%v\", \"%v\", _module_instance)\n", mod.pkg.Name, name)
+		}
+	}
+
+	if provider != nil {
+		fmt.Fprintf(w, "\n\nclass Package(pulumi.runtime.ResourcePackage):\n")
+		fmt.Fprintf(w, "    def version(self):\n")
+		fmt.Fprintf(w, "        return None\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "    def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:\n")
+		fmt.Fprintf(w, "        if typ != \"%v\":\n", provider.Token)
+		fmt.Fprintf(w, "            raise Exception(f\"unknown provider type {typ}\")\n")
+		fmt.Fprintf(w, "        return Provider(name, pulumi.ResourceOptions(urn=urn))\n")
+		fmt.Fprintf(w, "\n\n")
+		fmt.Fprintf(w, "pulumi.runtime.register_resource_package(\"%v\", Package())\n", mod.pkg.Name)
+	}
 }
 
 func (mod *modContext) importTypeFromToken(tok string, input bool) string {
@@ -508,7 +573,13 @@ func (mod *modContext) importResourceFromToken(tok string) string {
 
 	refPkgName := parts[0]
 
-	modName := mod.tokenToResource(tok)
+	resName := ""
+	if refPkgName == "pulumi" && parts[1] == "providers" {
+		refPkgName, resName = parts[2], "Provider"
+		parts[0], parts[1], parts[2] = refPkgName, "", "Provider"
+	} else {
+		resName = mod.tokenToResource(tok)
+	}
 
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
@@ -518,7 +589,7 @@ func (mod *modContext) importResourceFromToken(tok string) string {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
 
-	components := strings.Split(modName, "/")
+	components := strings.Split(resName, "/")
 	return fmt.Sprintf("from %s import %s", importPath, components[0])
 }
 
@@ -847,14 +918,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		// Check that required arguments are present.
 		if prop.IsRequired {
-			fmt.Fprintf(w, "            if %s is None:\n", pname)
+			fmt.Fprintf(w, "            if %s is None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                raise TypeError(\"Missing required property '%s'\")\n", pname)
 		}
 
 		// Check that the property isn't deprecated
 		if prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "            if %s is not None:\n", pname)
+			fmt.Fprintf(w, "            if %s is not None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "                pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
 		}
