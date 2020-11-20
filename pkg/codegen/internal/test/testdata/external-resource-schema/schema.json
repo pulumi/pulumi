@@ -38,6 +38,13 @@
         }
       },
       "type": "object"
+    },
+    "example::Component": {
+      "properties": {
+        "provider": {
+          "$ref": "/kubernetes/v2.6.3/schema.json#/provider"
+        }
+      }
     }
   },
   "functions": {
