@@ -50,7 +50,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "foo")
 
 		stacks, current := integration.GetStacks(e)
@@ -79,7 +79,7 @@ func TestStackCommands(t *testing.T) {
 		}()
 
 		integration.CreateBasicPulumiRepo(e)
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
@@ -118,7 +118,7 @@ func TestStackCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "blighttown")
 		e.RunCommand("pulumi", "stack", "init", "majula")
 		e.RunCommand("pulumi", "stack", "init", "lothric")
@@ -166,7 +166,7 @@ func TestStackCommands(t *testing.T) {
 				}()
 
 				integration.CreateBasicPulumiRepo(e)
-				e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+				e.SetBackend(e.LocalURL())
 				e.RunCommand("pulumi", "stack", "init", "the-abyss")
 				stacks, _ := integration.GetStacks(e)
 				assert.Equal(t, 1, len(stacks))
@@ -214,7 +214,7 @@ func TestStackCommands(t *testing.T) {
 		stackName := addRandomSuffix("invalid-resources")
 		integration.CreateBasicPulumiRepo(e)
 		e.ImportDirectory("integration/stack_dependencies")
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
@@ -298,7 +298,7 @@ func TestStackBackups(t *testing.T) {
 			}
 		}()
 
-		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.SetBackend(e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", stackName)
 
 		// Build the project.
@@ -356,7 +356,7 @@ func TestStackRenameAfterCreate(t *testing.T) {
 	}()
 	stackName := addRandomSuffix("stack-rename")
 	integration.CreateBasicPulumiRepo(e)
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.SetBackend(e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", stackName)
 
 	newName := addRandomSuffix("renamed-stack")
