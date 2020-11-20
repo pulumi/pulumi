@@ -34,6 +34,16 @@ func TestGeneratePackage(t *testing.T) {
 				"Outputs/Container.cs",
 			},
 		},
+		{
+			"External resource schema",
+			"external-resource-schema",
+			[]string{
+				"Inputs/PetArgs.cs",
+				"ArgFunction.cs",
+				"Cat.cs",
+				"Workload.cs",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
