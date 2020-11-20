@@ -289,7 +289,7 @@ func TestSkipInternalKeys(t *testing.T) {
 func TestResourceReference(t *testing.T) {
 	// Test round-trip
 	opts := MarshalOptions{KeepResources: true}
-	rawProp := resource.MakeResourceReference("fakeURN", "fakeID", "fakeVersion")
+	rawProp := resource.MakeResourceReference("fakeURN", "fakeID", true, "fakeVersion")
 	prop, err := MarshalPropertyValue(rawProp, opts)
 	assert.NoError(t, err)
 	actual, err := UnmarshalPropertyValue(prop, opts)
@@ -311,7 +311,7 @@ func TestResourceReference(t *testing.T) {
 	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().ID)), *actual)
 
 	// Test unmarshaling as a URN
-	rawProp = resource.MakeResourceReference("fakeURN", "", "fakeVersion")
+	rawProp = resource.MakeResourceReference("fakeURN", "", false, "fakeVersion")
 	prop, err = MarshalPropertyValue(rawProp, opts)
 	assert.NoError(t, err)
 	opts.KeepResources = false
