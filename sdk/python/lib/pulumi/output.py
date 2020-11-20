@@ -42,6 +42,48 @@ Input = Union[T, Awaitable[T], 'Output[T]']
 Inputs = Mapping[str, Input[Any]]
 InputType = Union[T, Mapping[str, Any]]
 
+class PreviewOutputDict(dict):
+    # proxy dict:
+    def __setitem__(self, key, item):
+        self.__dict__[key] = item
+    def __getitem__(self, key):
+        try:
+            return self.__dict__[key]
+        except KeyError:
+            val_fut: asyncio.Future[any] = asyncio.Future()
+            val_fut.set_result(UNKNOWN)
+            is_known_fut: asyncio.Future[bool] = asyncio.Future()
+            is_known_fut.set_result(False)
+            return Output(set(), val_fut, is_known_fut)
+    def __repr__(self):
+        return repr(self.__dict__)
+    def __len__(self):
+        return len(self.__dict__)
+    def __delitem__(self, key):
+        del self.__dict__[key]
+    def clear(self):
+        return self.__dict__.clear()
+    def copy(self):
+        return self.__dict__copy()
+    def has_key(self, k):
+        return k in self.__dict__
+    def update(self, *args, **kwargs):
+        return self.__dict__.update(*args, **kwargs)
+    def keys(self):
+        return self.__dict__.keys()
+    def values(self):
+        return self.__dict__.values()
+    # proxy classes (for typed dicts):
+    def __getattr__(self, attr):
+        try:
+            return getattr(self.__dict__, attr)
+        except AttributeError:
+            val_fut: asyncio.Future[any] = asyncio.Future()
+            val_fut.set_result(UNKNOWN)
+            is_known_fut: asyncio.Future[bool] = asyncio.Future()
+            is_known_fut.set_result(False)
+            return Output(set(), val_fut, is_known_fut)
+
 
 class Output(Generic[T]):
     """
@@ -171,6 +213,13 @@ class Output(Generic[T]):
                     # that expect to see unknowns during preview in outputs that are not known will always do so.
                     if not is_known and run_with_unknowns and not contains_unknowns(value):
                         value = cast(T, UNKNOWN)
+
+                    # If the value is a dict and we think we know the values, there is a catch: during the
+                    # resolution of an eventual Output, we might populate keys that aren't known ahead of time.
+                    # As a result, we want to fake up a special kind of dict that won't throw KeyErrors for
+                    # missing keys during previews and instead always simply returns an Output that never resolves.
+                    if isinstance(value, dict) and is_known:
+                        value = cast(T, PreviewOutputDict(value))
 
                 transformed: Input[U] = func(value)
                 # Transformed is an Input, meaning there are three cases:
