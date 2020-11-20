@@ -272,7 +272,7 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	contract.Assert(ok)
 	contract.Assert(urn.IsString())
 
-	// TODO(pdg): track secret outputs in the resource map. This is necessary to ensure that the
+	// #5803: track secret outputs in the resource map. This is necessary to ensure that the
 	// `additionalSecretOutputs` option that was provided when the resource was registered is properly respected by
 	// `getResource`.
 

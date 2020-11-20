@@ -159,12 +159,6 @@ def resource_output(res: 'Resource') -> Tuple[Callable[[Any, bool, bool, Optiona
     return (resolve, Output({res}, value_future, known_future, secret_future))
 
 
-def resolved_resource_output(res: 'Resource', value: Any, known: bool, secret: bool) -> 'Output':
-    (resolve, output) = resource_output(res)
-    resolve(value, known, secret, None)
-    return output
-
-
 def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> None:
     log.debug(f"getting resource: urn={urn}")
 
