@@ -225,7 +225,7 @@ namespace Pulumi.Serialization
             }
 
             string? version;
-            TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version)
+            TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version);
 
             var urnParts = urn.Split("::");
             var urnName = urnParts[3];
