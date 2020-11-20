@@ -207,6 +207,13 @@ func Test_parseTypeSpecRef(t *testing.T) {
 		return parsed
 	}
 
+	typs := &types{
+		pkg: &Package{
+			Name:    "test",
+			Version: toVersionPtr("1.2.3"),
+		},
+	}
+
 	tests := []struct {
 		name    string
 		ref     string
@@ -217,68 +224,88 @@ func Test_parseTypeSpecRef(t *testing.T) {
 			name: "resourceRef",
 			ref:  "#/resources/example::Resource",
 			want: typeSpecRef{
-				URL:   toURL("#/resources/example::Resource"),
-				Token: "example::Resource",
-				Kind:  "resources",
+				URL:     toURL("#/resources/example::Resource"),
+				Package: "test",
+				Version: toVersionPtr("1.2.3"),
+				Kind:    "resources",
+				Token:   "example::Resource",
 			},
 		},
 		{
 			name: "typeRef",
-			ref:  "#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			ref:  "#/types/kubernetes:admissionregistration.k8s.io%2fv1:WebhookClientConfig",
 			want: typeSpecRef{
-				URL:   toURL("#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig"),
-				Token: "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
-				Kind:  "types",
+				URL:     toURL("#/types/kubernetes:admissionregistration.k8s.io%2fv1:WebhookClientConfig"),
+				Package: "test",
+				Version: toVersionPtr("1.2.3"),
+				Kind:    "types",
+				Token:   "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			},
+		},
+		{
+			name: "providerRef",
+			ref:  "#/provider",
+			want: typeSpecRef{
+				URL:     toURL("#/provider"),
+				Package: "test",
+				Version: toVersionPtr("1.2.3"),
+				Kind:    "provider",
+				Token:   "pulumi:providers:test",
 			},
 		},
 		{
 			name: "externalResourceRef",
-			ref:  "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
+			ref:  "/random/v2.3.1/schema.json#/resources/random:index%2frandomPet:RandomPet",
 			want: typeSpecRef{
-				externalSchemaRef: &externalSchemaRef{
-					Package: "random",
-					Version: toVersionPtr("2.3.1"),
-				},
-				URL:   toURL("/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"),
-				Token: "random:index/randomPet:RandomPet",
-				Kind:  "resources",
+				URL:     toURL("/random/v2.3.1/schema.json#/resources/random:index%2frandomPet:RandomPet"),
+				Package: "random",
+				Version: toVersionPtr("2.3.1"),
+				Kind:    "resources",
+				Token:   "random:index/randomPet:RandomPet",
 			},
 		},
 		{
 			name:    "invalid externalResourceRef",
-			ref:     "/random/schema.json#/resources/random:index/randomPet:RandomPet",
+			ref:     "/random/schema.json#/resources/random:index%2frandomPet:RandomPet",
 			wantErr: true,
 		},
 		{
 			name: "externalTypeRef",
-			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
+			ref:  "/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io%2Fv1:WebhookClientConfig",
 			want: typeSpecRef{
-				externalSchemaRef: &externalSchemaRef{
-					Package: "kubernetes",
-					Version: toVersionPtr("2.6.3"),
-				},
-				URL:   toURL("/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig"),
-				Token: "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
-				Kind:  "types",
+				URL:     toURL("/kubernetes/v2.6.3/schema.json#/types/kubernetes:admissionregistration.k8s.io%2Fv1:WebhookClientConfig"),
+				Package: "kubernetes",
+				Version: toVersionPtr("2.6.3"),
+				Kind:    "types",
+				Token:   "kubernetes:admissionregistration.k8s.io/v1:WebhookClientConfig",
 			},
 		},
 		{
 			name: "externalHostResourceRef",
-			ref:  "https://example.com/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet",
+			ref:  "https://example.com/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet",
 			want: typeSpecRef{
-				externalSchemaRef: &externalSchemaRef{
-					Package: "random",
-					Version: toVersionPtr("2.3.1"),
-				},
-				URL:   toURL("https://example.com/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"),
-				Token: "random:index/randomPet:RandomPet",
-				Kind:  "resources",
+				URL:     toURL("https://example.com/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"),
+				Package: "random",
+				Version: toVersionPtr("2.3.1"),
+				Kind:    "resources",
+				Token:   "random:index/randomPet:RandomPet",
+			},
+		},
+		{
+			name: "externalProviderRef",
+			ref:  "/kubernetes/v2.6.3/schema.json#/provider",
+			want: typeSpecRef{
+				URL:     toURL("/kubernetes/v2.6.3/schema.json#/provider"),
+				Package: "kubernetes",
+				Version: toVersionPtr("2.6.3"),
+				Kind:    "provider",
+				Token:   "pulumi:providers:kubernetes",
 			},
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := parseTypeSpecRef(tt.ref)
+			got, err := typs.parseTypeSpecRef(tt.ref)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("parseTypeSpecRef() error = %v, wantErr %v", err, tt.wantErr)
 				return
