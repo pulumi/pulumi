@@ -50,5 +50,8 @@ from ._json import (
 )
 
 from .rpc import (
+    ResourceModule,
+    ResourcePackage,
+    register_resource_module,
     register_resource_package,
 )

@@ -285,12 +285,12 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
                 resource_package = _RESOURCE_PACKAGES.get(_package_key(typ_name, version))
                 if resource_package is None:
                     raise Exception(f"Unable to deserialize provider {urn}, no resource package is registered for {typ_name}.")
-                resource = resource_package.construct_provider(urn_name, typ, {}, urn)
+                resource = resource_package.construct_provider(urn_name, typ, urn)
             else:
-                resource_module = _RESOURCE_MODULES.get(_module_key(typ_name, version))
+                resource_module = _RESOURCE_MODULES.get(_module_key(pkg_name+":"+mod_name, version))
                 if resource_module is None:
                     raise Exception(f"Unable to deserialize resource {urn}, no resource module is registered for {mod_name}.")
-                resource_module.construct(urn_name, typ, {}, urn)
+                resource_module.construct(urn_name, typ, urn)
 
             return cast('Resource', resource)
 
@@ -557,11 +557,11 @@ def contains_unknowns(val: Any) -> bool:
     return impl(val, [])
 
 
-async def resolve_outputs(res: 'Resource',
-                          serialized_props: struct_pb2.Struct,
-                          outputs: struct_pb2.Struct,
-                          deps: Mapping[str, Set['Resource']],
-                          resolvers: Dict[str, Resolver]):
+def resolve_outputs(res: 'Resource',
+                    serialized_props: struct_pb2.Struct,
+                    outputs: struct_pb2.Struct,
+                    deps: Mapping[str, Set['Resource']],
+                    resolvers: Dict[str, Resolver]):
 
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
@@ -585,10 +585,9 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
-    await resolve_properties(resolvers, all_properties, deps)
+    resolve_properties(resolvers, all_properties, deps)
 
-async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
-
+def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
         if key in ["id", "urn"]:
@@ -652,7 +651,7 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
 
 class ResourcePackage(ABC):
     @abstractmethod
-    def construct_provider(self, name: str, typ: str, inputs: Mapping[str, Any], urn: str) -> 'ProviderResource':
+    def construct_provider(self, name: str, typ: str, urn: str) -> 'ProviderResource':
         pass
 
 _RESOURCE_PACKAGES: Dict[str, Any] = dict()
@@ -669,7 +668,7 @@ def register_resource_package(typ: str, version: str, package):
 
 class ResourceModule(ABC):
     @abstractmethod
-    def construct(self, name: str, typ: str, inputs: Mapping[str, Any], urn: str) -> 'Resource':
+    def construct(self, name: str, typ: str, urn: str) -> 'Resource':
         pass
 
 _RESOURCE_MODULES: Dict[str, ResourceModule] = dict()
@@ -677,8 +676,8 @@ _RESOURCE_MODULES: Dict[str, ResourceModule] = dict()
 def _module_key(typ: str, version: str) -> str:
     return f"{typ}@{version}"
 
-def register_resource_module(typ: str, version: str, module: ResourceModule):
-    key = _module_key(typ, version)
+def register_resource_module(pkg: str, mod: str, version: str, module: ResourceModule):
+    key = _module_key(pkg+":"+mod, version)
     existing = _RESOURCE_MODULES.get(key, None)
     if existing is not None:
         raise ValueError(f"Cannot re-register module {key}. Previous registration was {existing}, new registration was {module}.")
