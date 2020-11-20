@@ -176,7 +176,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			resource.SigKey: resource.NewStringProperty(resource.ResourceReferenceSig),
 			"urn":           resource.NewStringProperty(string(ref.URN)),
 		}
-		if ref.ID != "" {
+		if ref.HasID {
 			m["id"] = resource.NewStringProperty(string(ref.ID))
 		}
 		if ref.PackageVersion != "" {
@@ -376,12 +376,17 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 				return nil, errors.New("malformed resource reference: urn not a string")
 			}
 
-			var id string
+			id, hasID := "", false
 			if idProp, ok := obj["id"]; ok {
-				if !idProp.IsString() {
+				hasID = true
+				switch {
+				case idProp.IsString():
+					id = idProp.StringValue()
+				case idProp.IsComputed():
+					// Leave the ID empty to indicate that it is unknown.
+				default:
 					return nil, errors.New("malformed resource reference: id not a string")
 				}
-				id = idProp.StringValue()
 			}
 
 			var packageVersion string
@@ -401,7 +406,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 				return &r, nil
 			}
 
-			r := resource.MakeResourceReference(resource.URN(urn.StringValue()), resource.ID(id), packageVersion)
+			r := resource.MakeResourceReference(resource.URN(urn.StringValue()), resource.ID(id), hasID, packageVersion)
 			return &r, nil
 		default:
 			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)

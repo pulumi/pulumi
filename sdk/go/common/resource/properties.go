@@ -97,12 +97,14 @@ type Secret struct {
 }
 
 // ResourceReference is a property value that represents a reference to a Resource. The reference captures the
-// resource's URN, ID, and the version of its containing package.
+// resource's URN, ID, and the version of its containing package. Note that the resource ID may be unknown, in which
+// case HasID will be true and ID will be the empty string.
 //
 //nolint: golint
 type ResourceReference struct {
 	URN            URN
 	ID             ID
+	HasID          bool
 	PackageVersion string
 }
 
@@ -213,8 +215,13 @@ func MakeSecret(v PropertyValue) PropertyValue {
 	return NewSecretProperty(&Secret{Element: v})
 }
 
-func MakeResourceReference(urn URN, id ID, packageVersion string) PropertyValue {
-	return NewResourceReferenceProperty(ResourceReference{URN: urn, ID: id, PackageVersion: packageVersion})
+func MakeResourceReference(urn URN, id ID, hasID bool, packageVersion string) PropertyValue {
+	return NewResourceReferenceProperty(ResourceReference{
+		URN:            urn,
+		ID:             id,
+		HasID:          hasID,
+		PackageVersion: packageVersion,
+	})
 }
 
 // NewPropertyValue turns a value into a property value, provided it is of a legal "JSON-like" kind.

@@ -225,10 +225,7 @@ namespace Pulumi.Serialization
             }
 
             string? version;
-            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version))
-            {
-                throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
-            }
+            TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version)
 
             var urnParts = urn.Split("::");
             var urnName = urnParts[3];
