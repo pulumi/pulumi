@@ -31,6 +31,10 @@ import (
 // credentials or tests interacting with one another
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
 
+// PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
+// used instead of the currently logged in backend or the current projects backend.
+const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
+
 // GetAccount returns an account underneath a given key.
 //
 // Note that the account may not be fully populated: it may only have a valid AccessToken. In that case, it is up to
@@ -129,6 +133,12 @@ func getCredsFilePath() (string, error) {
 // have not logged in.
 func GetCurrentCloudURL() (string, error) {
 	var url string
+
+	// Allow PULUMI_BACKEND_URL to override the current cloud URL selection
+	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
+		url = backend
+	}
+
 	// Try detecting backend from config
 	projPath, err := DetectProjectPath()
 	if err == nil && projPath != "" {
