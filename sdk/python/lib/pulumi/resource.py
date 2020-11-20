@@ -378,7 +378,7 @@ class ResourceOptions:
     property must be removed from the resource's options.
     """
 
-    urn: Optional['str']
+    urn: Optional[str]
     """
     The URN of a previously-registered resource of this type to read from the engine.
     """
@@ -399,7 +399,7 @@ class ResourceOptions:
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
                  transformations: Optional[List[ResourceTransformation]] = None,
-                 urn: Optional['str'] = None) -> None:
+                 urn: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
