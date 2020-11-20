@@ -1,7 +1,11 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Pulumi.X.Automation.Commands;
+using Pulumi.X.Automation.Commands.Exceptions;
 
 namespace Pulumi.X.Automation
 {
@@ -11,10 +15,13 @@ namespace Pulumi.X.Automation
     /// Workspaces are used to manage the execution environment, providing various utilities such as plugin
     /// installation, environment configuration ($PULUMI_HOME), and creation, deletion, and listing of Stacks.
     /// </summary>
-    public abstract class Workspace
+    public abstract class Workspace : IDisposable
     {
-        protected internal Workspace()
+        private readonly IPulumiCmd _cmd;
+
+        internal Workspace(IPulumiCmd cmd)
         {
+            this._cmd = cmd;
         }
 
         /// <summary>
@@ -138,7 +145,7 @@ namespace Pulumi.X.Automation
         /// <param name="stackName">The name of the stack to operate on.</param>
         /// <param name="key">The config key to remove.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task RemoveConfigAsync(string stackName, string key, CancellationToken cancellationToken = default);
+        public abstract Task RemoveConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes all values in the provided key collection from the config map for the specified stack name.
@@ -146,7 +153,7 @@ namespace Pulumi.X.Automation
         /// <param name="stackName">The name of the stack to operate on.</param>
         /// <param name="keys">The collection of keys to remove from the underlying config map.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task RemoveAllConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
+        public abstract Task RemoveConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets and sets the config map used with the last update for the stack matching the specified stack name.
@@ -163,21 +170,41 @@ namespace Pulumi.X.Automation
         /// <summary>
         /// Returns a summary of the currently selected stack, if any.
         /// </summary>
-        public abstract Task<StackInfo?> GetStackAsync(CancellationToken cancellationToken = default);
+        public virtual async Task<StackSummary?> GetStackAsync(CancellationToken cancellationToken = default)
+        {
+            var stacks = await this.ListStacksAsync(cancellationToken);
+            return stacks.FirstOrDefault(x => x.IsCurrent);
+        }
+
+        /// <summary>
+        /// Creates and sets a new stack with the specified stack name, failing if one already exists.
+        /// </summary>
+        /// <param name="stackName">The stack to create.</param>
+        public Task CreateStackAsync(string stackName)
+            => this.CreateStackAsync(stackName, default);
 
         /// <summary>
         /// Creates and sets a new stack with the specified stack name, failing if one already exists.
         /// </summary>
         /// <param name="stackName">The stack to create.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task CreateStackAsync(string stackName, CancellationToken cancellationToken = default);
+        /// <exception cref="StackAlreadyExistsException">If a stack already exists by the provided name.</exception>
+        public abstract Task CreateStackAsync(string stackName, CancellationToken cancellationToken);
+
+        /// <summary>
+        /// Selects and sets an existing stack matching the stack name, failing if none exists.
+        /// </summary>
+        /// <param name="stackName">The stack to select.</param>
+        /// <exception cref="StackNotFoundException">If no stack was found by the provided name.</exception>
+        public Task SelectStackAsync(string stackName)
+            => this.SelectStackAsync(stackName, default);
 
         /// <summary>
         /// Selects and sets an existing stack matching the stack name, failing if none exists.
         /// </summary>
         /// <param name="stackName">The stack to select.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task SelectStackAsync(string stackName, CancellationToken cancellationToken = default);
+        public abstract Task SelectStackAsync(string stackName, CancellationToken cancellationToken);
 
         /// <summary>
         /// Deletes the stack and all associated configuration and history.
@@ -191,7 +218,7 @@ namespace Pulumi.X.Automation
         /// <para/>
         /// This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.{stack}.yaml files).
         /// </summary>
-        public abstract Task<ImmutableList<StackInfo>> ListStacksAsync(CancellationToken cancellationToken = default);
+        public abstract Task<ImmutableList<StackSummary>> ListStacksAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
@@ -200,7 +227,7 @@ namespace Pulumi.X.Automation
         /// <param name="version">The version of the plugin e.g. "v1.0.0".</param>
         /// <param name="kind">The kind of plugin e.g. "resource".</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task InstallPluginAsync(string name, string version, string? kind = null, CancellationToken cancellationToken = default);
+        public abstract Task InstallPluginAsync(string name, string version, string kind = "resource", CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes a plugin from the Workspace matching the specified name and version.
@@ -209,11 +236,52 @@ namespace Pulumi.X.Automation
         /// <param name="versionRange">The optional semver range to check when removing plugins matching the given name e.g. "1.0.0", ">1.0.0".</param>
         /// <param name="kind">The kind of plugin e.g. "resource".</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task RemovePluginAsync(string? name = null, string? versionRange = null, string? kind = null, CancellationToken cancellationToken = default);
+        public abstract Task RemovePluginAsync(string? name = null, string? versionRange = null, string kind = "resource", CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns a list of all plugins installed in the Workspace.
         /// </summary>
         public abstract Task<ImmutableList<PluginInfo>> ListPluginsAsync(CancellationToken cancellationToken = default);
+
+        internal async Task<CommandResult> RunStackCommandAsync(
+            string stackName,
+            IEnumerable<string> args,
+            Action<string>? onOutput,
+            CancellationToken cancellationToken)
+        {
+            var additionalArgs = await this.SerializeArgsForOpAsync(stackName, cancellationToken);
+            var completeArgs = args.Concat(additionalArgs).ToList();
+
+            var result = await this.RunCommandAsync(completeArgs, onOutput, cancellationToken);
+            await this.PostCommandCallbackAsync(stackName, cancellationToken);
+            return result;
+        }
+
+        internal Task<CommandResult> RunCommandAsync(
+            IEnumerable<string> args,
+            CancellationToken cancellationToken)
+            => this.RunCommandAsync(args, null, cancellationToken);
+
+        internal Task<CommandResult> RunCommandAsync(
+            IEnumerable<string> args,
+            Action<string>? onOutput,
+            CancellationToken cancellationToken)
+        {
+            var env = new Dictionary<string, string>();
+            if (!string.IsNullOrWhiteSpace(this.PulumiHome))
+                env["PULUMI_HOME"] = this.PulumiHome;
+
+            if (this.EnvironmentVariables != null)
+            {
+                foreach (var pair in this.EnvironmentVariables)
+                    env[pair.Key] = pair.Value;
+            }
+
+            return this._cmd.RunAsync(args, this.WorkDir, env, onOutput, cancellationToken);
+        }
+
+        public virtual void Dispose()
+        {
+        }
     }
 }

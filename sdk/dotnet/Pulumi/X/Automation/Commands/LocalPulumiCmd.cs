@@ -8,9 +8,9 @@ using Pulumi.X.Automation.Commands.Exceptions;
 
 namespace Pulumi.X.Automation.Commands
 {
-    internal static class PulumiCmd
+    internal class LocalPulumiCmd : IPulumiCmd
     {
-        public static Task<CommandResult> RunAsync(
+        public async Task<CommandResult> RunAsync(
             IEnumerable<string> args,
             string workingDir,
             IDictionary<string, string> additionalEnv,
@@ -32,18 +32,19 @@ namespace Pulumi.X.Automation.Commands
             foreach (var pair in additionalEnv)
                 env[pair.Key] = pair.Value;
 
-            var tcs = new TaskCompletionSource<CommandResult>();
-            var proc = new Process
+            using var proc = new Process
             {
-                EnableRaisingEvents = true
+                EnableRaisingEvents = true,
+                StartInfo = new ProcessStartInfo
+                {
+                    FileName = "pulumi",
+                    WorkingDirectory = workingDir,
+                    CreateNoWindow = true,
+                    UseShellExecute = false,
+                    RedirectStandardError = true,
+                    RedirectStandardOutput = true,
+                },
             };
-
-            proc.StartInfo.FileName = "pulumi";
-            proc.StartInfo.WorkingDirectory = workingDir;
-            proc.StartInfo.CreateNoWindow = true;
-            proc.StartInfo.UseShellExecute = false;
-            proc.StartInfo.RedirectStandardError = true;
-            proc.StartInfo.RedirectStandardOutput = true;
 
             foreach (var arg in completeArgs)
                 proc.StartInfo.ArgumentList.Add(arg);
@@ -57,7 +58,8 @@ namespace Pulumi.X.Automation.Commands
                     onOutput?.Invoke(@event.Data);
             };
 
-            var cancelRegistration = cancellationToken.Register(() =>
+            var tcs = new TaskCompletionSource<CommandResult>();
+            using var cancelRegistration = cancellationToken.Register(() =>
             {
                 // if the process has already exited than let's
                 // just let it set the result on the task
@@ -97,27 +99,8 @@ namespace Pulumi.X.Automation.Commands
                 }
             };
 
-            // need to ensure that the cancellation registration is *always* disposed
-            // regardless of the status (faulted, cancelled, completed) of the process task.
-            // originally had this in proc.Exited but that introduces race condition
-            // if task is cancelled before process starts. this allows us to cleanup process too.
-            var cleanupWrapperTask = tcs.Task.ContinueWith(async processTask =>
-            {
-                try
-                {
-                    return await processTask;
-                }
-                finally
-                {
-                    cancelRegistration.Dispose();
-
-                    if (proc.HasExited)
-                        proc.Dispose();
-                }
-            }, TaskContinuationOptions.None);
-
             proc.Start();
-            return cleanupWrapperTask.Unwrap();
+            return await tcs.Task;
         }
     }
 }

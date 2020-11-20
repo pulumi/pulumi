@@ -1,6 +1,6 @@
 ﻿namespace Pulumi.X.Automation
 {
-    public class StackInfo
+    public class StackSummary
     {
         public string Name { get; }
 
@@ -14,7 +14,7 @@
 
         public string? Url { get; }
 
-        public StackInfo(
+        public StackSummary(
             string name,
             bool isCurrent,
             string? lastUpdate,
