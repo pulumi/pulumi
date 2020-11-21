@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -367,6 +368,11 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		return err
 	}
 
+	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close
+	// it now since we're finished extracting it, to prevent subsequent output from being displayed oddly with
+	// the progress bar.
+	contract.IgnoreClose(tarball)
+
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
 	if err != nil && !os.IsNotExist(err) {
@@ -380,7 +386,9 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 		// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have to hard code here.
 		switch runtime {
 		case "nodejs":
-			if _, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
+			var b bytes.Buffer
+			if _, err := npm.Install(finalDir, &b, &b); err != nil {
+				os.Stderr.Write(b.Bytes())
 				return errors.Wrap(err, "installing plugin dependencies")
 			}
 		case "python":
