@@ -99,7 +99,7 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
 
         def do_invoke():
             try:
-                return monitor.Invoke(req)
+                return (monitor.Invoke(req), None)
             except grpc.RpcError as exn:
                 # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
                 # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
@@ -112,27 +112,42 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
                     sys.exit(0)
 
                 details = exn.details()
-            raise Exception(details)
+            return (None, Exception(details))
 
         resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+        resp_value = resp[0]
+        resp_error = resp[1]
+        log.debug(f"Invoking function completed: tok={tok}, value={resp_value}, error={resp_error}")
 
-        log.debug(f"Invoking function completed successfully: tok={tok}")
         # If the invoke failed, raise an error.
+        if resp_error:
+            return (None, Exception(f"invoke of {tok} failed: {resp_error}"))
         if resp.failures:
-            raise Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})")
+            return (None, Exception(f"invoke of {tok} failed: {resp.failures[0].reason} ({resp.failures[0].property})"))
 
         # Otherwise, return the output properties.
         ret_obj = getattr(resp, 'return')
         if ret_obj:
             deserialized = rpc.deserialize_properties(ret_obj)
             # If typ is not None, call translate_output_properties to instantiate any output types.
-            return rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized
-        return {}
+            return rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized, None
+        return None, None
 
     async def do_rpc():
         resp, exn = await RPC_MANAGER.do_rpc("invoke", do_invoke)()
+        # If there was an RPC level exception, we will raise it. Note that this will also crash the
+        # process because it will have been considered "unhandled". For semantic level errors, such
+        # as errors from the data source itself, we return that as part of the returned tuple instead.
         if exn is not None:
             raise exn
         return resp
 
-    return InvokeResult(_sync_await(asyncio.ensure_future(do_rpc())))
+    # Run the RPC callback asynchronously and then immediately await it.
+    invoke_result = _sync_await(asyncio.ensure_future(do_rpc()))
+
+    # If there was a semantic error, raise it now, otherwise return the resulting value.
+    invoke_value = invoke_result[0]
+    invoke_error = invoke_result[1]
+    if invoke_error:
+        raise invoke_error
+    return InvokeResult(invoke_value)
