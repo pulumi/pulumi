@@ -3,8 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Respect PULUMI_PYTHON_CMD in scripts.
+- Respect `PULUMI_PYTHON_CMD` in scripts.
   [#5782](https://github.com/pulumi/pulumi/pull/5782)
+
+- Add `PULUMI_BACKEND_URL` environment variable to configure the state backend.
+  [#5789](https://github.com/pulumi/pulumi/pull/5789)
 
 ## 2.14.0 (2020-11-18)
 

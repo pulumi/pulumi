@@ -44,6 +44,8 @@ type Environment struct {
 	RootPath string
 	// Current working directory.
 	CWD string
+	// Backend to use for commands
+	Backend string
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -86,6 +88,11 @@ func NewEnvironment(t *testing.T) *Environment {
 		RootPath: root,
 		CWD:      root,
 	}
+}
+
+// SetBackend sets the backend to use for commands in this environment.
+func (e *Environment) SetBackend(backend string) {
+	e.Backend = backend
 }
 
 // ImportDirectory copies a folder into the test environment.
@@ -167,6 +174,9 @@ func (e *Environment) GetCommandResults(t *testing.T, command string, args ...st
 	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 	cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
+	if e.Backend != "" {
+		cmd.Env = append(cmd.Env, fmt.Sprintf("PULUMI_BACKEND_URL=%s", e.Backend))
+	}
 
 	runErr := cmd.Run()
 	return outBuffer.String(), errBuffer.String(), runErr
