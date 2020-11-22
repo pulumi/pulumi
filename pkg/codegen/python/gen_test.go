@@ -55,6 +55,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("pulumi_example", "_inputs.py"),
 				filepath.Join("pulumi_example", "arg_function.py"),
 				filepath.Join("pulumi_example", "cat.py"),
+				filepath.Join("pulumi_example", "component.py"),
 				filepath.Join("pulumi_example", "workload.py"),
 			},
 		},

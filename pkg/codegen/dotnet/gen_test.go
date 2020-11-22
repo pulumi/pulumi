@@ -41,6 +41,7 @@ func TestGeneratePackage(t *testing.T) {
 				"Inputs/PetArgs.cs",
 				"ArgFunction.cs",
 				"Cat.cs",
+				"Component.cs",
 				"Workload.cs",
 			},
 		},

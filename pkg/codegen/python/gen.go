@@ -168,6 +168,11 @@ func (mod *modContext) tokenToResource(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
+	// Is it a provider resource?
+	if components[0] == "pulumi" && components[1] == "providers" {
+		return fmt.Sprintf("pulumi_%s.Provider", components[2])
+	}
+
 	modName, name := mod.tokenToModule(tok), title(components[2])
 
 	if modName == mod.mod {
@@ -495,6 +500,12 @@ func (mod *modContext) importTypeFromToken(tok string, input bool) string {
 func (mod *modContext) importResourceFromToken(tok string) string {
 	parts := strings.Split(tok, ":")
 	contract.Assert(len(parts) == 3)
+
+	// If it's a provider resource, import the top-level package.
+	if parts[0] == "pulumi" && parts[1] == "providers" {
+		return fmt.Sprintf("import pulumi_%s", parts[2])
+	}
+
 	refPkgName := parts[0]
 
 	modName := mod.tokenToResource(tok)

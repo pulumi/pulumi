@@ -265,11 +265,16 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ += "Result"
 		}
 	case *schema.ResourceType:
-		typ = mod.tokenToNamespace(t.Token, "")
-		if typ != "" {
-			typ += "."
+		if strings.HasPrefix(t.Token, "pulumi:providers:") {
+			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
+			typ = fmt.Sprintf("Pulumi.%s.Provider", Title(pkgName))
+		} else {
+			typ = mod.tokenToNamespace(t.Token, "")
+			if typ != "" {
+				typ += "."
+			}
+			typ += tokenToName(t.Token)
 		}
-		typ += tokenToName(t.Token)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
