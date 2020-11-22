@@ -55,7 +55,7 @@ type Stack interface {
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
 	// rename this stack.
-	Rename(ctx context.Context, newName tokens.QName) error
+	Rename(ctx context.Context, newName tokens.QName) (StackReference, error)
 	// list log entries for this stack.
 	GetLogs(ctx context.Context, cfg StackConfiguration, query operations.LogQuery) ([]operations.LogEntry, error)
 	// export this stack's deployment.
@@ -70,7 +70,7 @@ func RemoveStack(ctx context.Context, s Stack, force bool) (bool, error) {
 }
 
 // RenameStack renames the stack, or returns an error if it cannot.
-func RenameStack(ctx context.Context, s Stack, newName tokens.QName) error {
+func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackReference, error) {
 	return s.Backend().RenameStack(ctx, s, newName)
 }
 

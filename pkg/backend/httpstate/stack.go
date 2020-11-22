@@ -136,7 +136,7 @@ func (s *cloudStack) Remove(ctx context.Context, force bool) (bool, error) {
 	return backend.RemoveStack(ctx, s, force)
 }
 
-func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) error {
+func (s *cloudStack) Rename(ctx context.Context, newName tokens.QName) (backend.StackReference, error) {
 	return backend.RenameStack(ctx, s, newName)
 }
 
