@@ -14,6 +14,12 @@ namespace Pulumi.Example
         [Output("provider")]
         public Output<Pulumi.Kubernetes.Provider?> Provider { get; private set; } = null!;
 
+        [Output("securityGroup")]
+        public Output<Pulumi.Aws.Ec2.SecurityGroup?> SecurityGroup { get; private set; } = null!;
+
+        [Output("selector")]
+        public Output<Pulumi.Aws.Eks.Outputs.FargateProfileSelector?> Selector { get; private set; } = null!;
+
 
         /// <summary>
         /// Create a Component resource with the given unique name, arguments, and options.
@@ -59,6 +65,12 @@ namespace Pulumi.Example
 
     public sealed class ComponentArgs : Pulumi.ResourceArgs
     {
+        [Input("metadata")]
+        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? Metadata { get; set; }
+
+        [Input("selector")]
+        public Input<Pulumi.Aws.Eks.Inputs.FargateProfileSelectorArgs>? Selector { get; set; }
+
         public ComponentArgs()
         {
         }

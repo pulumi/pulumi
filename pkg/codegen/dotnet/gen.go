@@ -236,7 +236,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.ObjectType:
 		namingCtx := mod
 		if t.Package != mod.pkg {
-			// If object type belongs to another package, we apply naming convensions from that package,
+			// If object type belongs to another package, we apply naming conventions from that package,
 			// including namespace naming and compatibility mode.
 			var info CSharpPackageInfo
 			if v, ok := t.Package.Language["csharp"].(CSharpPackageInfo); ok {
@@ -269,7 +269,21 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
 			typ = fmt.Sprintf("Pulumi.%s.Provider", Title(pkgName))
 		} else {
-			typ = mod.tokenToNamespace(t.Token, "")
+			namingCtx := mod
+			if t.Resource != nil && t.Resource.Package != mod.pkg {
+				// If resource type belongs to another package, we apply naming conventions from that package,
+				// including namespace naming and compatibility mode.
+				var info CSharpPackageInfo
+				if v, ok := t.Resource.Package.Language["csharp"].(CSharpPackageInfo); ok {
+					info = v
+				}
+				namingCtx = &modContext{
+					pkg:           t.Resource.Package,
+					namespaces:    info.Namespaces,
+					compatibility: info.Compatibility,
+				}
+			}
+			typ = namingCtx.tokenToNamespace(t.Token, "")
 			if typ != "" {
 				typ += "."
 			}
@@ -1236,6 +1250,12 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		}
 		return
 	case *schema.ResourceType:
+		// If it's an external resource, we'll be using fully-qualified type names, so there's no need
+		// for an import.
+		if t.Resource != nil && t.Resource.Package != mod.pkg {
+			return
+		}
+
 		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), ""
 		if modName != mod.mod {
 			mp, err := filepath.Rel(mod.mod, modName)
