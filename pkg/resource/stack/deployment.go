@@ -561,13 +561,13 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					}
 					urn := resource.URN(urnStr)
 
-					var id resource.ID
+					id, hasID := resource.ID(""), false
 					if idV, ok := objmap["id"]; ok {
 						idStr, ok := idV.(string)
 						if !ok {
 							return resource.PropertyValue{}, errors.New("malformed resource value: id must be a string")
 						}
-						id = resource.ID(idStr)
+						id, hasID = resource.ID(idStr), true
 					}
 
 					var packageVersion string
@@ -579,7 +579,7 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						}
 					}
 
-					return resource.MakeResourceReference(urn, id, packageVersion), nil
+					return resource.MakeResourceReference(urn, id, hasID, packageVersion), nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

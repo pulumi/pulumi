@@ -5540,7 +5540,7 @@ func TestResourceReferences(t *testing.T) {
 					if urn.Name() == "resB" {
 						propA, ok := news["resA"]
 						assert.True(t, ok)
-						assert.Equal(t, resource.MakeResourceReference(urnA, idA, ""), propA)
+						assert.Equal(t, resource.MakeResourceReference(urnA, idA, true, ""), propA)
 					}
 
 					return "created-id", news, resource.StatusOK, nil
@@ -5560,7 +5560,7 @@ func TestResourceReferences(t *testing.T) {
 		assert.NoError(t, err)
 
 		ins := resource.PropertyMap{
-			"resA": resource.MakeResourceReference(urnA, idA, ""),
+			"resA": resource.MakeResourceReference(urnA, idA, true, ""),
 		}
 		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resB", true, deploytest.ResourceOptions{
 			Inputs: ins,
@@ -5718,7 +5718,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 					URN: urn,
 					Outputs: resource.PropertyMap{
 						"foo": resource.NewStringProperty("bar"),
-						"res": resource.MakeResourceReference(urnB, idB, ""),
+						"res": resource.MakeResourceReference(urnB, idB, true, ""),
 					},
 				}, nil
 			}
@@ -5744,7 +5744,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
-			"res": resource.MakeResourceReference(urnB, idB, ""),
+			"res": resource.MakeResourceReference(urnB, idB, true, ""),
 		}, state)
 
 		result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{

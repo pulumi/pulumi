@@ -267,7 +267,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             return wrap_rpc_secret(deserialize_property(props_struct["value"]))
         if props_struct[_special_sig_key] == _special_resource_sig:
             urn = props_struct["urn"]
-            version = props_struct["version"]
+            version = props_struct["packageVersion"] if "packageVersion" in props_struct else ""
 
             urn_parts = urn.split("::")
             urn_name = urn_parts[3]

@@ -1042,9 +1042,10 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 
 	// Marshal the input properties.
 	minputs, err := MarshalProperties(inputs, MarshalOptions{
-		Label:        fmt.Sprintf("%s.inputs", label),
-		KeepUnknowns: true,
-		KeepSecrets:  p.acceptSecrets,
+		Label:         fmt.Sprintf("%s.inputs", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   p.acceptSecrets,
+		KeepResources: p.acceptResources,
 	})
 	if err != nil {
 		return ConstructResult{}, err
@@ -1100,9 +1101,10 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	}
 
 	outputs, err := UnmarshalProperties(resp.GetState(), MarshalOptions{
-		Label:        fmt.Sprintf("%s.outputs", label),
-		KeepUnknowns: info.DryRun,
-		KeepSecrets:  true,
+		Label:         fmt.Sprintf("%s.outputs", label),
+		KeepUnknowns:  info.DryRun,
+		KeepSecrets:   true,
+		KeepResources: true,
 	})
 	if err != nil {
 		return ConstructResult{}, err

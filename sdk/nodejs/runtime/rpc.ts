@@ -512,7 +512,7 @@ export function deserializeProperty(prop: any): any {
                 case specialResourceSig:
                     // Deserialize the resource into a live Resource reference
                     const urn = prop["urn"];
-                    const version = prop["version"];
+                    const version = prop["packageVersion"];
 
                     const urnParts = urn.split("::");
                     const qualifiedType = urnParts[2];
