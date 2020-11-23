@@ -24,6 +24,7 @@ from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, TYPE_CHECKING, cast
 
 from google.protobuf import struct_pb2
+from semver import VersionInfo as Version # type:ignore
 import six
 from . import known_types, settings
 from .. import log
@@ -266,34 +267,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
         if props_struct[_special_sig_key] == _special_secret_sig:
             return wrap_rpc_secret(deserialize_property(props_struct["value"]))
         if props_struct[_special_sig_key] == _special_resource_sig:
-            urn = props_struct["urn"]
-            version = props_struct["packageVersion"] if "packageVersion" in props_struct else ""
-
-            urn_parts = urn.split("::")
-            urn_name = urn_parts[3]
-            qualified_type = urn_parts[2]
-            typ = qualified_type.split("$")[-1]
-
-            typ_parts = typ.split(":")
-            pkg_name = typ_parts[0]
-            mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
-            typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
-
-            resource = None
-            is_provider = pkg_name == "pulumi" and mod_name == "providers"
-            if is_provider:
-                resource_package = _RESOURCE_PACKAGES.get(_package_key(typ_name, version))
-                if resource_package is None:
-                    raise Exception(f"Unable to deserialize provider {urn}, no resource package is registered for {typ_name}.")
-                resource = resource_package.construct_provider(urn_name, typ, urn)
-            else:
-                resource_module = _RESOURCE_MODULES.get(_module_key(pkg_name+":"+mod_name, version))
-                if resource_module is None:
-                    raise Exception(f"Unable to deserialize resource {urn}, no resource module is registered for {mod_name}.")
-                resource_module.construct(urn_name, typ, urn)
-
-            return cast('Resource', resource)
-
+            return deserialize_resource(props_struct, keep_unknowns)
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
@@ -315,6 +289,37 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
             output[k] = value
 
     return output
+
+def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> 'Resource':
+    urn = ref_struct["urn"]
+    version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
+
+    urn_parts = urn.split("::")
+    urn_name = urn_parts[3]
+    qualified_type = urn_parts[2]
+    typ = qualified_type.split("$")[-1]
+
+    typ_parts = typ.split(":")
+    pkg_name = typ_parts[0]
+    mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
+    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
+
+    is_provider = pkg_name == "pulumi" and mod_name == "providers"
+    if is_provider:
+        resource_package = get_resource_package(typ_name, version)
+        if resource_package is not None:
+            return cast('Resource', resource_package.construct_provider(urn_name, typ, urn))
+    else:
+        resource_module = get_resource_module(pkg_name, mod_name, version)
+        if resource_module is not None:
+            return cast('Resource', resource_module.construct(urn_name, typ, urn))
+
+    # If we've made it here, deserialize the reference as either a URN or an ID (if present).
+    if "id" in ref_struct:
+        id = ref_struct["id"]
+        return deserialize_property(UNKNOWN if id == "" else id, keep_unknowns)
+
+    return urn
 
 def is_rpc_secret(value: Any) -> bool:
     """
@@ -649,36 +654,100 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
         log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, None, exn)
 
+
+def same_version(a: Optional[Version], b: Optional[Version]) -> bool:
+    # We treat None as a wildcard, so it always equals every other version.
+    return a is None or b is None or a == b
+
+
+def check_version(want: Optional[Version], have: Optional[Version]) -> bool:
+    if want is None or have is None:
+        return True
+    return have.major == want.major() and have.minor() >= want.minor() and have.patch() >= want.patch()
+
+
 class ResourcePackage(ABC):
+    @abstractmethod
+    def version(self) -> Optional[Version]:
+        pass
+
     @abstractmethod
     def construct_provider(self, name: str, typ: str, urn: str) -> 'ProviderResource':
         pass
 
-_RESOURCE_PACKAGES: Dict[str, Any] = dict()
 
-def _package_key(typ: str, version: str) -> str:
-    return f"{typ}@{version}"
+_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = dict()
 
-def register_resource_package(typ: str, version: str, package):
-    key = _package_key(typ, version)
-    existing = _RESOURCE_PACKAGES.get(key, None)
-    if existing is not None:
-        raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
-    _RESOURCE_PACKAGES[key] = package
+
+def register_resource_package(pkg: str, package: ResourcePackage):
+    resource_packages = _RESOURCE_PACKAGES.get(pkg, None)
+    if resource_packages is not None:
+        for existing in resource_packages:
+            if same_version(existing.version(), package.version()):
+                raise ValueError(f"Cannot re-register package {pkg}@{package.version()}. Previous registration was {existing}, new registration was {package}.")
+    else:
+        resource_packages = []
+        _RESOURCE_PACKAGES[pkg] = resource_packages
+
+    log.debug(f"registering package {pkg}@{package.version()}")
+    resource_packages.append(package)
+
+
+def get_resource_package(pkg: str, version: str) -> Optional[ResourcePackage]:
+    ver = None if version == "" else Version.parse(version)
+
+    best_package = None
+    for package in _RESOURCE_PACKAGES.get(pkg, []):
+        if not check_version(ver, package.version()):
+            continue
+        if best_package is None or package.version() > best_package.version():
+            best_package = package
+
+    return best_package
+
 
 class ResourceModule(ABC):
+    @abstractmethod
+    def version(self) -> Optional[Version]:
+        pass
+
     @abstractmethod
     def construct(self, name: str, typ: str, urn: str) -> 'Resource':
         pass
 
-_RESOURCE_MODULES: Dict[str, ResourceModule] = dict()
 
-def _module_key(typ: str, version: str) -> str:
-    return f"{typ}@{version}"
+_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = dict()
 
-def register_resource_module(pkg: str, mod: str, version: str, module: ResourceModule):
-    key = _module_key(pkg+":"+mod, version)
-    existing = _RESOURCE_MODULES.get(key, None)
-    if existing is not None:
-        raise ValueError(f"Cannot re-register module {key}. Previous registration was {existing}, new registration was {module}.")
-    _RESOURCE_MODULES[key] = module
+
+def _module_key(pkg: str, mod: str) -> str:
+    return f"{pkg}:{mod}"
+
+
+def register_resource_module(pkg: str, mod: str, module: ResourceModule):
+    key = _module_key(pkg, mod)
+
+    resource_modules = _RESOURCE_MODULES.get(key, None)
+    if resource_modules is not None:
+        for existing in resource_modules:
+            if same_version(existing.version(), module.version()):
+                raise ValueError(f"Cannot re-register module {key}@{module.version()}. Previous registration was {existing}, new registration was {module}.")
+    else:
+        resource_modules = []
+        _RESOURCE_MODULES[pkg] = resource_modules
+
+    log.debug(f"registering module {key}@{module.version()}")
+    resource_modules.append(module)
+
+
+def get_resource_module(pkg: str, mod: str, version: str) -> Optional[ResourceModule]:
+    key = _module_key(pkg, mod)
+    ver = None if version == "" else Version.parse(version)
+
+    best_module = None
+    for module in _RESOURCE_MODULES.get(key, []):
+        if not check_version(ver, module.version()):
+            continue
+        if best_module is None or module.version() > best_module.version():
+            best_module = module
+
+    return best_module
