@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [sdk/python] Add deserialization support for enums.
+  [#5615](https://github.com/pulumi/pulumi/pull/5615)
+
 - Respect `PULUMI_PYTHON_CMD` in scripts.
   [#5782](https://github.com/pulumi/pulumi/pull/5782)
 
