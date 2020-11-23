@@ -267,7 +267,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.ResourceType:
 		if strings.HasPrefix(t.Token, "pulumi:providers:") {
 			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
-			typ = fmt.Sprintf("Pulumi.%s.Provider", Title(pkgName))
+			typ = fmt.Sprintf("Pulumi.%s.Provider", namespaceName(mod.namespaces, pkgName))
 		} else {
 			typ = mod.tokenToNamespace(t.Token, "")
 			if typ != "" {
