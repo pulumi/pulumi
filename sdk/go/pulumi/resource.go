@@ -181,6 +181,8 @@ type resourceOptions struct {
 	// The transformations are applied in order, and are applied prior to transformation and to parents
 	// walking from the resource up to the stack.
 	Transformations []ResourceTransformation
+	// URN is an optional URN of a previously-registered resource of this type to read from the engine.
+	URN string
 	// Version is an optional version, corresponding to the version of the provider plugin that should be used when
 	// operating on this resource. This version overrides the version information inferred from the current package and
 	// should rarely be used.
@@ -192,6 +194,8 @@ type invokeOptions struct {
 	Parent Resource
 	// Provider is an optional provider resource to use for this invoke.
 	Provider ProviderResource
+	// URN is an optional URN of a previously-registered resource of this type to read from the engine for this invoke.
+	URN string
 	// Version is an optional version of the provider plugin to use for the invoke.
 	Version string
 }
@@ -226,7 +230,7 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 }
 
 // merging is handled by each functional options call
-// properties that are arrays/maps are always appened/merged together
+// properties that are arrays/maps are always appended/merged together
 // last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
 func merge(opts ...ResourceOption) *resourceOptions {
 	options := &resourceOptions{}
@@ -348,6 +352,18 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 func Transformations(o []ResourceTransformation) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Transformations = append(ro.Transformations, o...)
+	})
+}
+
+// URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
+func URN_(o string) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.URN = o
+		case io != nil:
+			io.URN = o
+		}
 	})
 }
 
