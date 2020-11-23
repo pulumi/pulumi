@@ -17,6 +17,38 @@ env:
   TRAVIS_PUBLISH_PACKAGES: true
 
 jobs:
+  templates_smoke_test:
+    name: Trigger Templates Smoke Test
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl dispatch -r pulumi/templates -c trigger-cron $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+  examples_smoke_test:
+    name: Trigger Examples Smoke Test
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl dispatch -r pulumi/examples -c trigger-cron $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   chocolatey:
     name: Chocolatey update
     runs-on: ubuntu-latest
