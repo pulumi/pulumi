@@ -163,6 +163,8 @@ Pulumi.ResourceOptions.Provider.set -> void
 Pulumi.ResourceOptions.ResourceOptions() -> void
 Pulumi.ResourceOptions.ResourceTransformations.get -> System.Collections.Generic.List<Pulumi.ResourceTransformation>
 Pulumi.ResourceOptions.ResourceTransformations.set -> void
+Pulumi.ResourceOptions.Urn.get -> string
+Pulumi.ResourceOptions.Urn.set -> void
 Pulumi.ResourceOptions.Version.get -> string
 Pulumi.ResourceOptions.Version.set -> void
 Pulumi.ResourceTransformation
