@@ -725,7 +725,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	visitObjectTypesFromProperties(res.InputProperties, inputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.addType(mod, T.Token, !res.IsProvider)
+			imports.addType(mod, T.Token, true /*input*/)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
