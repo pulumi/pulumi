@@ -22,6 +22,7 @@ import functools
 import inspect
 from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, TYPE_CHECKING, cast
+from enum import Enum
 
 from google.protobuf import struct_pb2
 from semver import VersionInfo as Version # type:ignore
@@ -476,6 +477,8 @@ def translate_output_properties(output: Any,
 
     If output is a `float` and `typ` is `int`, the value is cast to `int`.
 
+    If output is in [`str`, `int`, `float`] and `typ` is an enum type, instantiate the enum type.
+
     Otherwise, if output is a primitive (i.e. not a dict or list), the value is returned without modification.
 
     :param Optional[type] typ: The output's target type.
@@ -548,6 +551,10 @@ def translate_output_properties(output: Any,
                 raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
         return [translate_output_properties(v, output_transformer, element_type) for v in output]
 
+    if isinstance(output, (int, float, str)) and typ:
+        if issubclass(typ, Enum):
+            return typ(output)
+
     if isinstance(output, float) and typ is int:
         return int(output)
 
@@ -580,7 +587,7 @@ def resolve_outputs(res: 'Resource',
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
     # Get the resource's output types, so we can convert dicts from the engine into actual
-    # instantiated output types as needed.
+    # instantiated output types or primitive types into enums as needed.
     types = _types.resource_types(type(res))
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
