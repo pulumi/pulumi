@@ -476,18 +476,19 @@ func (mod *modContext) genInit(exports []string) string {
 func (mod *modContext) genResourceModule(w io.Writer) {
 	contract.Assert(len(mod.resources) != 0)
 
-	fmt.Fprintf(w, "\nimport pulumi")
+	fmt.Fprintf(w, "\ndef _register_module():\n")
+	fmt.Fprintf(w, "import pulumi")
 
 	// Check for provider-only modules.
 	var provider *schema.Resource
 	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
 		provider = mod.resources[0]
 	} else {
-		fmt.Fprintf(w, "\n\nclass Module(pulumi.runtime.ResourceModule):\n")
-		fmt.Fprintf(w, "    def version(self):\n")
-		fmt.Fprintf(w, "        return None\n")
+		fmt.Fprintf(w, "\n\n    class Module(pulumi.runtime.ResourceModule):\n")
+		fmt.Fprintf(w, "        def version(self):\n")
+		fmt.Fprintf(w, "            return None\n")
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "    def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:\n")
+		fmt.Fprintf(w, "        def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:\n")
 
 		registrations, first := codegen.StringSet{}, true
 		for _, r := range mod.resources {
@@ -503,30 +504,33 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 			if first {
 				conditional, first = "if", false
 			}
-			fmt.Fprintf(w, "        %v typ == \"%v\":\n", conditional, r.Token)
-			fmt.Fprintf(w, "            return %v(name, pulumi.ResourceOptions(urn=urn))\n", tokenToName(r.Token))
+			fmt.Fprintf(w, "            %v typ == \"%v\":\n", conditional, r.Token)
+			fmt.Fprintf(w, "                return %v(name, pulumi.ResourceOptions(urn=urn))\n", tokenToName(r.Token))
 		}
-		fmt.Fprintf(w, "        else:\n")
-		fmt.Fprintf(w, "            raise Exception(f\"unknown resource type {typ}\")\n")
+		fmt.Fprintf(w, "            else:\n")
+		fmt.Fprintf(w, "                raise Exception(f\"unknown resource type {typ}\")\n")
 		fmt.Fprintf(w, "\n\n")
-		fmt.Fprintf(w, "_module_instance = Module()\n")
+		fmt.Fprintf(w, "    _module_instance = Module()\n")
 		for _, name := range registrations.SortedValues() {
-			fmt.Fprintf(w, "pulumi.runtime.register_resource_module(\"%v\", \"%v\", _module_instance)\n", mod.pkg.Name, name)
+			fmt.Fprintf(w, "    pulumi.runtime.register_resource_module(\"%v\", \"%v\", _module_instance)\n", mod.pkg.Name, name)
 		}
 	}
 
 	if provider != nil {
-		fmt.Fprintf(w, "\n\nclass Package(pulumi.runtime.ResourcePackage):\n")
-		fmt.Fprintf(w, "    def version(self):\n")
-		fmt.Fprintf(w, "        return None\n")
+		fmt.Fprintf(w, "\n\n    class Package(pulumi.runtime.ResourcePackage):\n")
+		fmt.Fprintf(w, "        def version(self):\n")
+		fmt.Fprintf(w, "            return None\n")
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "    def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:\n")
-		fmt.Fprintf(w, "        if typ != \"%v\":\n", provider.Token)
-		fmt.Fprintf(w, "            raise Exception(f\"unknown provider type {typ}\")\n")
-		fmt.Fprintf(w, "        return Provider(name, pulumi.ResourceOptions(urn=urn))\n")
+		fmt.Fprintf(w, "        def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:\n")
+		fmt.Fprintf(w, "            if typ != \"%v\":\n", provider.Token)
+		fmt.Fprintf(w, "                raise Exception(f\"unknown provider type {typ}\")\n")
+		fmt.Fprintf(w, "            return Provider(name, pulumi.ResourceOptions(urn=urn))\n")
 		fmt.Fprintf(w, "\n\n")
-		fmt.Fprintf(w, "pulumi.runtime.register_resource_package(\"%v\", Package())\n", mod.pkg.Name)
+		fmt.Fprintf(w, "    pulumi.runtime.register_resource_package(\"%v\", Package())\n", mod.pkg.Name)
 	}
+
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "_register_module()\n")
 }
 
 func (mod *modContext) importTypeFromToken(tok string, input bool) string {
