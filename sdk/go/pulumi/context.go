@@ -27,14 +27,13 @@ import (
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	multierror "github.com/hashicorp/go-multierror"
-	"google.golang.org/grpc"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"google.golang.org/grpc"
 )
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
@@ -415,16 +414,16 @@ func (ctx *Context) RegisterResource(
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) error {
+	t, name string, props Input, res Resource, remote bool, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
 		return errors.New("resource name argument (for URN creation) cannot be empty")
 	}
 
-	_, custom := resource.(CustomResource)
+	_, custom := res.(CustomResource)
 
-	if _, isProvider := resource.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
+	if _, isProvider := res.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
 		return errors.New("provider resource type must begin with \"pulumi:providers:\"")
 	}
 
@@ -446,7 +445,7 @@ func (ctx *Context) registerResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
+	props, options, transformations, err := applyTransformations(t, name, props, res, opts, options)
 	if err != nil {
 		return err
 	}
@@ -466,7 +465,33 @@ func (ctx *Context) registerResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	resState := makeResourceState(t, name, res, providers, aliasURNs, transformations)
+
+	if len(options.URN) > 0 {
+		// This is a resource that already exists. Read its state from the engine.
+		var result resource.PropertyMap
+		type args struct {
+			URN string `json:"urn"`
+		}
+		err := ctx.Invoke(
+			"pulumi:pulumi:getResource",
+			&args{URN: options.URN},
+			result,
+		)
+		if err != nil {
+			return err
+		}
+		defer func() {
+			r := result.Mappable()
+			urn := r["urn"].(string)
+			id := r["id"].(string)
+			state := r["state"].(*structpb.Struct)
+			resState.resolve(ctx.DryRun(), err, nil, urn, id, state, nil)
+			ctx.endRPC(err)
+		}()
+
+		return nil
+	}
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -478,12 +503,12 @@ func (ctx *Context) registerResource(
 		deps := make(map[string][]Resource)
 		var err error
 		defer func() {
-			res.resolve(ctx.DryRun(), err, inputs, urn, resID, state, deps)
+			resState.resolve(ctx.DryRun(), err, inputs, urn, resID, state, deps)
 			ctx.endRPC(err)
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, res)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, resState)
 		if err != nil {
 			return
 		}
