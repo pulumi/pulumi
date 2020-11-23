@@ -187,7 +187,8 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
 	argsSchemaType := &schema.ObjectType{
-		Token: f.Token,
+		Token:   f.Token,
+		Package: mod.pkg,
 	}
 
 	characteristics := propertyCharacteristics{
