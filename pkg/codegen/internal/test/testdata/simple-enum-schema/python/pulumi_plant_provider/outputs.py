@@ -7,7 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
-from . import _enums
+from ._enums import *
 
 __all__ = [
     'Container',
@@ -16,8 +16,8 @@ __all__ = [
 @pulumi.output_type
 class Container(dict):
     def __init__(__self__, *,
-                 size: '_enums.ContainerSize',
-                 brightness: Optional['_enums.ContainerBrightness'] = None,
+                 size: 'ContainerSize',
+                 brightness: Optional['ContainerBrightness'] = None,
                  color: Optional[str] = None,
                  material: Optional[str] = None):
         pulumi.set(__self__, "size", size)
@@ -30,12 +30,12 @@ class Container(dict):
 
     @property
     @pulumi.getter
-    def size(self) -> '_enums.ContainerSize':
+    def size(self) -> 'ContainerSize':
         return pulumi.get(self, "size")
 
     @property
     @pulumi.getter
-    def brightness(self) -> Optional['_enums.ContainerBrightness']:
+    def brightness(self) -> Optional['ContainerBrightness']:
         return pulumi.get(self, "brightness")
 
     @property

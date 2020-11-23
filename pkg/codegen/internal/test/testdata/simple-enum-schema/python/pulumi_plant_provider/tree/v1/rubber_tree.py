@@ -7,10 +7,10 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from ... import _utilities, _tables
-from . import _enums
 from ... import _enums as _root_enums
 from ... import _inputs as _root_inputs
 from ... import outputs as _root_outputs
+from ._enums import *
 
 __all__ = ['RubberTree']
 
@@ -20,8 +20,8 @@ class RubberTree(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
-                 farm: Optional[pulumi.Input[Union['_enums.Farm', str]]] = None,
-                 type: Optional[pulumi.Input['_enums.RubberTreeVariety']] = None,
+                 farm: Optional[pulumi.Input[Union['Farm', str]]] = None,
+                 type: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  __props__=None,
                  __name__=None,
                  __opts__=None):
@@ -88,7 +88,7 @@ class RubberTree(pulumi.CustomResource):
 
     @property
     @pulumi.getter
-    def type(self) -> pulumi.Output['_enums.RubberTreeVariety']:
+    def type(self) -> pulumi.Output['RubberTreeVariety']:
         return pulumi.get(self, "type")
 
     def translate_output_property(self, prop):

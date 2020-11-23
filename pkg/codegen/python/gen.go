@@ -58,15 +58,17 @@ func (ss stringSet) has(s string) bool {
 type imports stringSet
 
 func (imports imports) addType(mod *modContext, tok string, input bool) {
-	imports.addTypeIf(mod, tok, input, false, nil /*predicate*/)
+	imports.addTypeIf(mod, tok, input, nil /*predicate*/)
+}
+
+func (imports imports) addTypeIf(mod *modContext, tok string, input bool, predicate func(imp string) bool) {
+	if imp := mod.importTypeFromToken(tok, input); imp != "" && (predicate == nil || predicate(imp)) {
+		stringSet(imports).add(imp)
+	}
 }
 
 func (imports imports) addEnum(mod *modContext, tok string) {
-	imports.addTypeIf(mod, tok, false /*input*/, true /*enum*/, nil /*predicate*/)
-}
-
-func (imports imports) addTypeIf(mod *modContext, tok string, input, enum bool, predicate func(imp string) bool) {
-	if imp := mod.importTypeFromToken(tok, input, enum); imp != "" && (predicate == nil || predicate(imp)) {
+	if imp := mod.importEnumFromToken(tok); imp != "" {
 		stringSet(imports).add(imp)
 	}
 }
@@ -126,14 +128,8 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input, functionType, enumType bool) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-
-	modName, name := mod.tokenToModule(tok), title(components[2])
+func (mod *modContext) tokenToType(tok string, input, functionType bool) string {
+	modName, name := mod.tokenToModule(tok), tokenToName(tok)
 
 	var suffix string
 	switch {
@@ -166,6 +162,23 @@ func (mod *modContext) tokenToType(tok string, input, functionType, enumType boo
 	return fmt.Sprintf("'%s%s%s%s'", modName, prefix, name, suffix)
 }
 
+func (mod *modContext) tokenToEnum(tok string) string {
+	modName, name := mod.tokenToModule(tok), tokenToName(tok)
+
+	if modName == "" && modName != mod.mod {
+		return fmt.Sprintf("'_root_enums.%s'", name)
+	}
+
+	if modName == mod.mod {
+		modName = ""
+	}
+	if modName != "" {
+		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
+	}
+
+	return fmt.Sprintf("'%s%s'", modName, name)
+}
+
 func (mod *modContext) tokenToResource(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -178,7 +191,7 @@ func (mod *modContext) tokenToResource(tok string) string {
 		return fmt.Sprintf("pulumi_%s.Provider", components[2])
 	}
 
-	modName, name := mod.tokenToModule(tok), title(components[2])
+	modName, name := mod.tokenToModule(tok), tokenToName(tok)
 
 	if modName == mod.mod {
 		modName = ""
@@ -191,8 +204,12 @@ func (mod *modContext) tokenToResource(tok string) string {
 }
 
 func tokenToName(tok string) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+
 	return title(components[2])
 }
 
@@ -484,6 +501,13 @@ func (mod *modContext) genInit(exports []string) string {
 	return w.String()
 }
 
+func (mod *modContext) getRelImportFromRoot() string {
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	return relPathToRelImport(relRoot)
+}
+
 // genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
 // Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
 // hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
@@ -561,10 +585,7 @@ func (mod *modContext) importTypeFromToken(tok string, input bool) string {
 		return "from . import outputs"
 	}
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(rel)
-	importPath := relPathToRelImport(relRoot)
+	importPath := mod.getRelImportFromRoot()
 	if mod.pkg.Name != parts[0] {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
@@ -581,6 +602,22 @@ func (mod *modContext) importTypeFromToken(tok string, input bool) string {
 	return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, components[0])
 }
 
+func (mod *modContext) importEnumFromToken(tok string) string {
+	modName := mod.tokenToModule(tok)
+	if modName == mod.mod {
+		return "from ._enums import *"
+	}
+
+	importPath := mod.getRelImportFromRoot()
+
+	if modName == "" {
+		return fmt.Sprintf("from %s import _enums as _root_enums", importPath)
+	}
+
+	components := strings.Split(modName, "/")
+	return fmt.Sprintf("from %s import %s", importPath, components[0])
+}
+
 func (mod *modContext) importResourceFromToken(tok string) string {
 	parts := strings.Split(tok, ":")
 	contract.Assert(len(parts) == 3)
@@ -594,10 +631,7 @@ func (mod *modContext) importResourceFromToken(tok string) string {
 
 	modName := mod.tokenToResource(tok)
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(rel)
-	importPath := relPathToRelImport(relRoot)
+	importPath := mod.getRelImportFromRoot()
 	if mod.pkg.Name != parts[0] {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
@@ -615,6 +649,8 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
 			imports.addType(mod, T.Token, false /*input*/)
+		case *schema.EnumType:
+			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -664,10 +700,12 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 				visitObjectTypesFromProperties(t.Properties, inputSeen, func(t interface{}) {
 					switch T := t.(type) {
 					case *schema.ObjectType:
-						imports.addTypeIf(mod, T.Token, true /*input*/, false /*enum*/, func(imp string) bool {
+						imports.addTypeIf(mod, T.Token, true /*input*/, func(imp string) bool {
 							// No need to import `._inputs` inside _inputs.py.
 							return imp != "from ._inputs import *"
 						})
+					case *schema.EnumType:
+						imports.addEnum(mod, T.Token)
 					case *schema.ResourceType:
 						imports.addResource(mod, T.Token)
 					}
@@ -678,6 +716,8 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 					switch T := t.(type) {
 					case *schema.ObjectType:
 						imports.addType(mod, T.Token, false /*input*/)
+					case *schema.EnumType:
+						imports.addEnum(mod, T.Token)
 					case *schema.ResourceType:
 						imports.addResource(mod, T.Token)
 					}
@@ -1152,6 +1192,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				imports.addType(mod, T.Token, true /*input*/)
+			case *schema.EnumType:
+				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -1162,6 +1204,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				imports.addType(mod, T.Token, false /*input*/)
+			case *schema.EnumType:
+				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -1360,7 +1404,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			}
 		}
 	default:
-		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
+		return errors.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
 	}
 
 	return nil
@@ -1768,13 +1812,13 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
-		typ = mod.tokenToType(t.Token, false, false, true)
+		typ = mod.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.MapType:
 		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.ObjectType:
-		typ = mod.tokenToType(t.Token, input, mod.details(t).functionType, false)
+		typ = mod.tokenToType(t.Token, input, mod.details(t).functionType)
 		if acceptMapping {
 			typ = fmt.Sprintf("pulumi.InputType[%s]", typ)
 		}
