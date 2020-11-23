@@ -221,3 +221,11 @@ func TestConstructDotnet(t *testing.T) {
 	}
 	integration.ProgramTest(t, opts)
 }
+
+func TestGetResourceDotnet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{"Pulumi"},
+		Dir:          filepath.Join("get_resource", "dotnet"),
+		AllowEmptyPreviewChanges: true,
+	})
+}
