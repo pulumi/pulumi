@@ -477,7 +477,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	contract.Assert(len(mod.resources) != 0)
 
 	fmt.Fprintf(w, "\ndef _register_module():\n")
-	fmt.Fprintf(w, "import pulumi")
+	fmt.Fprintf(w, "    import pulumi")
 
 	// Check for provider-only modules.
 	var provider *schema.Resource
