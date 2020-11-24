@@ -16,6 +16,7 @@ package deploy
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -455,7 +456,11 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Op
 	canceled := callerCtx.Err() != nil
 
 	if res != nil || stepExec.Errored() {
-		ex.reportExecResult("failed", preview)
+		if res.Error() != nil {
+			ex.reportExecResult(fmt.Sprintf("failed: %s", res.Error()), preview)
+		} else {
+			ex.reportExecResult("failed", preview)
+		}
 		return result.Bail()
 	} else if canceled {
 		ex.reportExecResult("canceled", preview)

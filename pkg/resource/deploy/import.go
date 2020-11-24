@@ -190,6 +190,9 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			continue
 		}
 
+		if imp.Type.Package() == "" {
+			return nil, result.Error("incorrect package type specified"), false
+		}
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
@@ -215,6 +218,10 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		return defaultProviderRequests[i].String() < defaultProviderRequests[j].String()
 	})
 	for idx, req := range defaultProviderRequests {
+		if req.Package() == "" {
+			return nil, result.Error("incorrect package type specified"), false
+		}
+
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
 		urn := i.deployment.generateURN("", typ, name)
 
