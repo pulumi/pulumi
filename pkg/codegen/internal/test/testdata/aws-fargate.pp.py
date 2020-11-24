@@ -84,5 +84,5 @@ app_service = aws.ecs.Service("appService",
         container_name="my-app",
         container_port=80,
     )],
-    opts=ResourceOptions(depends_on=[web_listener]))
+    opts=pulumi.ResourceOptions(depends_on=[web_listener]))
 pulumi.export("url", web_load_balancer.dns_name)
