@@ -709,10 +709,6 @@ def register_resource_package(pkg: str, package: ResourcePackage):
     resource_packages.append(package)
 
 
-def _package_key(typ: str, version: str) -> str:
-    return f"{typ}@{version}"
-
-
 def get_resource_package(pkg: str, version: str) -> Optional[ResourcePackage]:
     ver = None if version == "" else Version.parse(version)
 
