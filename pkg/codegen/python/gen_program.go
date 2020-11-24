@@ -75,28 +75,12 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, err
 		}
-		info, _ := p.Language["python"].(PackageInfo)
 
 		// Build the case mapping table.
 		camelCaseToSnakeCase := map[string]string{}
 		seenTypes := codegen.Set{}
 		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
 		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
-
-		// If this package does not use Input/Output classes, annotate nested types to indicate they are dictionaries.
-		if !info.UsesIOClasses {
-			for _, t := range p.Types {
-				if t, ok := t.(*schema.ObjectType); ok {
-					if t.Language == nil {
-						t.Language = map[string]interface{}{}
-					}
-					t.Language["python"] = objectTypeInfo{
-						isDictionary:         true,
-						camelCaseToSnakeCase: camelCaseToSnakeCase,
-					}
-				}
-			}
-		}
 	}
 
 	g := &generator{
