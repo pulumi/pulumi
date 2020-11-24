@@ -276,7 +276,7 @@ func makeContextful(fn interface{}, elementType reflect.Type) interface{} {
 		}
 		outs = []reflect.Type{ft.Out(0), ft.Out(1)}
 	default:
-		panic(errors.New("appplier must return exactly one or two values"))
+		panic(errors.New("applier must return exactly one or two values"))
 	}
 
 	ins := []reflect.Type{contextType, ft.In(0)}
@@ -308,7 +308,7 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 			panic(errors.New("applier's second return type must be assignable to error"))
 		}
 	default:
-		panic(errors.New("appplier must return exactly one or two values"))
+		panic(errors.New("applier must return exactly one or two values"))
 	}
 
 	// Okay
