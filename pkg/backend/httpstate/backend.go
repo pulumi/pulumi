@@ -787,7 +787,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 		qn, _ := b.parseStackName(string(newName))
 		if qn.Owner == "" {
 			errMsg += fmt.Sprintf(
-				"       Did you forgot to include the owner name? If yes, rerun the command as follows:\n\n"+
+				"       Did you forget to include the owner name? If yes, rerun the command as follows:\n\n"+
 					"           $ pulumi stack rename %s/%s\n\n",
 				stackID.Owner, newName)
 		}
