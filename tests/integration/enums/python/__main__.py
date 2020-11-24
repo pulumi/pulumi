@@ -27,7 +27,7 @@ class PlantProvider(ResourceProvider):
 
 class Tree(Resource):
     type: Output[RubberTreeVariety]
-    farm: Optional[Output[Union[Farm, str]]]
+    farm: Optional[Output[str]]
 
     def __init__(self, name: str, type: Input[RubberTreeVariety], farm: Optional[Input[str]]):
         self.type = type
