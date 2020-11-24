@@ -662,7 +662,8 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
 	argsSchemaType := &schema.ObjectType{
-		Token: r.Token,
+		Token:   r.Token,
+		Package: mod.pkg,
 	}
 	// Get the C#-specific name for the args type, which will be the fully-qualified name.
 	characteristics := propertyCharacteristics{
