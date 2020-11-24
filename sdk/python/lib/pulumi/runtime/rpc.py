@@ -551,9 +551,8 @@ def translate_output_properties(output: Any,
                 raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
         return [translate_output_properties(v, output_transformer, element_type) for v in output]
 
-    if isinstance(output, (int, float, str)) and typ:
-        if issubclass(typ, Enum):
-            return typ(output)
+    if typ and isinstance(output, (int, float, str)) and issubclass(typ, Enum):
+        return typ(output)
 
     if isinstance(output, float) and typ is int:
         return int(output)
