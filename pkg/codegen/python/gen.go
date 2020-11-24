@@ -577,13 +577,7 @@ func (mod *modContext) importResourceFromToken(tok string) string {
 
 	refPkgName := parts[0]
 
-	resName := ""
-	if refPkgName == "pulumi" && parts[1] == "providers" {
-		refPkgName, resName = parts[2], "Provider"
-		parts[0], parts[1], parts[2] = refPkgName, "", "Provider"
-	} else {
-		resName = mod.tokenToResource(tok)
-	}
+	modName := mod.tokenToResource(tok)
 
 	rel, err := filepath.Rel(mod.mod, "")
 	contract.Assert(err == nil)
@@ -593,7 +587,7 @@ func (mod *modContext) importResourceFromToken(tok string) string {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
 
-	components := strings.Split(resName, "/")
+	components := strings.Split(modName, "/")
 	return fmt.Sprintf("from %s import %s", importPath, components[0])
 }
 
