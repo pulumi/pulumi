@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi-random/sdk/v2/go/random"
@@ -11,7 +10,7 @@ import (
 type MyResource struct {
 	pulumi.ResourceState
 
-	Length pulumi.IntOutput
+	Length pulumi.IntOutput `pulumi:"length"`
 }
 
 type myResourceArgs struct{}
@@ -25,7 +24,6 @@ func GetResource(ctx *pulumi.Context, urn pulumi.URN) (*MyResource, error) {
 	var resource MyResource
 	err := ctx.RegisterResource("unused:unused:unused", "unused", &MyResourceArgs{}, &resource,
 		pulumi.URN_(string(urn)))
-	fmt.Printf("resource %#v", resource)
 	if err != nil {
 		return nil, err
 	}
@@ -40,16 +38,12 @@ func main() {
 			return err
 		}
 
-		getPetLength := pet.URN().ApplyT(func(urn pulumi.URN) (pulumi.IntOutput, error) {
-			//fmt.Printf("urn %s", urn)
-			//return pulumi.IntOutput{}, nil
+		getPetLength := pet.URN().ApplyT(func(urn pulumi.URN) (pulumi.IntInput, error) {
 			r, err := GetResource(ctx, urn)
 			if err != nil {
-				fmt.Printf("error: %s", err)
-				return pulumi.IntOutput{}, err
+				return nil, err
 			}
-			fmt.Printf("length: %v", r)
-			return r.Length.ToIntOutput(), nil
+			return r.Length, nil
 		})
 		ctx.Export("getPetLength", getPetLength)
 

@@ -413,6 +413,52 @@ func (ctx *Context) RegisterResource(
 	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
 }
 
+func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
+	// This is a resource that already exists. Read its state from the engine.
+	resolvedArgsMap := resource.NewPropertyMapFromMap(map[string]interface{}{
+		"urn": urn,
+	})
+
+	keepUnknowns := ctx.DryRun()
+	rpcArgs, err := plugin.MarshalProperties(
+		resolvedArgsMap,
+		plugin.MarshalOptions{KeepUnknowns: keepUnknowns, KeepSecrets: true, KeepResources: ctx.keepResources},
+	)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling arguments: %w", err)
+	}
+
+	tok := "pulumi:pulumi:getResource"
+	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
+	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
+		Tok:      "pulumi:pulumi:getResource",
+		Args:     rpcArgs,
+		Provider: "",
+		Version:  "",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("Invoke(%s, ...): error: %v", tok, err)
+	}
+
+	// If there were any failures from the provider, return them.
+	if len(resp.Failures) > 0 {
+		logging.V(9).Infof("Invoke(%s, ...): success: w/ %d failures", tok, len(resp.Failures))
+		var ferr error
+		for _, failure := range resp.Failures {
+			ferr = multierror.Append(ferr,
+				fmt.Errorf("%s invoke failed: %s (%s)", tok, failure.Reason, failure.Property))
+		}
+		return nil, ferr
+	}
+
+	urn, id := resp.Return.Fields["urn"].GetStringValue(), resp.Return.Fields["id"].GetStringValue()
+	return &pulumirpc.RegisterResourceResponse{
+		Urn:    urn,
+		Id:     id,
+		Object: resp.Return.Fields["state"].GetStructValue(),
+	}, nil
+}
+
 func (ctx *Context) registerResource(
 	t, name string, props Input, res Resource, remote bool, opts ...ResourceOption) error {
 	if t == "" {
@@ -467,32 +513,6 @@ func (ctx *Context) registerResource(
 	// Create resolvers for the resource's outputs.
 	resState := makeResourceState(t, name, res, providers, aliasURNs, transformations)
 
-	if len(options.URN) > 0 {
-		// This is a resource that already exists. Read its state from the engine.
-		var result resource.PropertyMap
-		type args struct {
-			URN string `json:"urn"`
-		}
-		err := ctx.Invoke(
-			"pulumi:pulumi:getResource",
-			&args{URN: options.URN},
-			result,
-		)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			r := result.Mappable()
-			urn := r["urn"].(string)
-			id := r["id"].(string)
-			state := r["state"].(*structpb.Struct)
-			resState.resolve(ctx.DryRun(), err, nil, urn, id, state, nil)
-			ctx.endRPC(err)
-		}()
-
-		return nil
-	}
-
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
 	go func() {
@@ -513,32 +533,43 @@ func (ctx *Context) registerResource(
 			return
 		}
 
-		logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
-		resp, err := ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
-			Type:                    t,
-			Name:                    name,
-			Parent:                  inputs.parent,
-			Object:                  inputs.rpcProps,
-			Custom:                  custom,
-			Protect:                 inputs.protect,
-			Dependencies:            inputs.deps,
-			Provider:                inputs.provider,
-			PropertyDependencies:    inputs.rpcPropertyDeps,
-			DeleteBeforeReplace:     inputs.deleteBeforeReplace,
-			ImportId:                inputs.importID,
-			CustomTimeouts:          inputs.customTimeouts,
-			IgnoreChanges:           inputs.ignoreChanges,
-			Aliases:                 inputs.aliases,
-			AcceptSecrets:           true,
-			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
-			Version:                 inputs.version,
-			Remote:                  remote,
-		})
-		if err != nil {
-			logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+		var resp *pulumirpc.RegisterResourceResponse
+		if len(options.URN) > 0 {
+			resp, err = ctx.getResource(options.URN)
+			if err != nil {
+				logging.V(9).Infof("getResource(%s, %s): error: %v", t, name, err)
+			} else {
+				logging.V(9).Infof("getResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+			}
 		} else {
-			logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+			logging.V(9).Infof("RegisterResource(%s, %s): Goroutine spawned, RPC call being made", t, name)
+			resp, err = ctx.monitor.RegisterResource(ctx.ctx, &pulumirpc.RegisterResourceRequest{
+				Type:                    t,
+				Name:                    name,
+				Parent:                  inputs.parent,
+				Object:                  inputs.rpcProps,
+				Custom:                  custom,
+				Protect:                 inputs.protect,
+				Dependencies:            inputs.deps,
+				Provider:                inputs.provider,
+				PropertyDependencies:    inputs.rpcPropertyDeps,
+				DeleteBeforeReplace:     inputs.deleteBeforeReplace,
+				ImportId:                inputs.importID,
+				CustomTimeouts:          inputs.customTimeouts,
+				IgnoreChanges:           inputs.ignoreChanges,
+				Aliases:                 inputs.aliases,
+				AcceptSecrets:           true,
+				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
+				Version:                 inputs.version,
+				Remote:                  remote,
+			})
+			if err != nil {
+				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
+			} else {
+				logging.V(9).Infof("RegisterResource(%s, %s): success: %s %s ...", t, name, resp.Urn, resp.Id)
+			}
 		}
+
 		if resp != nil {
 			urn, resID = resp.Urn, resp.Id
 			state = resp.Object
