@@ -114,6 +114,11 @@ Pulumi.InvokeOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.InvokeOptions.Provider.set -> void
 Pulumi.InvokeOptions.Version.get -> string
 Pulumi.InvokeOptions.Version.set -> void
+Pulumi.IResourcePackage
+Pulumi.IResourcePackage.Construct(string name, string type, string urn) -> Pulumi.Resource
+Pulumi.IResourcePackage.ConstructProvider(string name, string type, string urn) -> Pulumi.ProviderResource
+Pulumi.IResourcePackage.Name.get -> string
+Pulumi.IResourcePackage.Version.get -> string
 Pulumi.Log
 Pulumi.Output
 Pulumi.Output<T>
@@ -177,10 +182,6 @@ Pulumi.ResourceTransformationResult
 Pulumi.ResourceTransformationResult.Args.get -> Pulumi.ResourceArgs
 Pulumi.ResourceTransformationResult.Options.get -> Pulumi.ResourceOptions
 Pulumi.ResourceTransformationResult.ResourceTransformationResult(Pulumi.ResourceArgs args, Pulumi.ResourceOptions options) -> void
-Pulumi.IResourceModule
-Pulumi.IResourceModule.Construct(string name, string type, System.Collections.Generic.IDictionary<string, object> args, string urn) -> Pulumi.Resource
-Pulumi.IResourcePackage
-Pulumi.IResourcePackage.ConstructProvider(string name, string type, System.Collections.Generic.IDictionary<string, object> args, string urn) -> Pulumi.ProviderResource
 Pulumi.Stack
 Pulumi.Stack.Stack(Pulumi.StackOptions options = null) -> void
 Pulumi.StackOptions
@@ -234,8 +235,6 @@ override Pulumi.Union<T0, T1>.ToString() -> string
 static Pulumi.ComponentResourceOptions.Merge(Pulumi.ComponentResourceOptions options1, Pulumi.ComponentResourceOptions options2) -> Pulumi.ComponentResourceOptions
 static Pulumi.CustomResourceOptions.Merge(Pulumi.CustomResourceOptions options1, Pulumi.CustomResourceOptions options2) -> Pulumi.CustomResourceOptions
 static Pulumi.Deployment.Instance.get -> Pulumi.DeploymentInstance
-static Pulumi.Deployment.RegisterResourceModule(string name, string version, Pulumi.IResourceModule module) -> void
-static Pulumi.Deployment.RegisterResourcePackage(string name, string version, Pulumi.IResourcePackage package) -> void
 static Pulumi.Deployment.RunAsync(System.Action action) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Collections.Generic.IDictionary<string, object>> func) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task> func) -> System.Threading.Tasks.Task<int>

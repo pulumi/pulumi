@@ -242,21 +242,19 @@ namespace Pulumi.Serialization
 
             var isProvider = pkgName == "pulumi" && modName == "providers";
             if (isProvider) {
-                IResourcePackage? package;
-                if (!ResourcePackages.TryGetResourcePackage(typeName, version, out package))
+                if (!ResourcePackages.TryGetResourcePackage(typeName, version, out var package))
                 {
                     throw new InvalidOperationException($"Unable to deserialize provider {urn}, no resource package is registered for type {typeName}.");
                 }
-                resource = package.ConstructProvider(urnName, type, null, urn);
+                resource = package.ConstructProvider(urnName, type, urn);
                 return true;
             }
 
-            IResourceModule? module;
-            if (!ResourceModules.TryGetResourceModule(modName, version, out module))
+            if (!ResourcePackages.TryGetResourcePackage(pkgName, version, out var module))
             {
                 throw new InvalidOperationException($"Unable to deserialize resource {urn}, no module is registered for {modName}.");
             }
-            resource = module.Construct(urnName, type, null, urn);
+            resource = module.Construct(urnName, type, urn);
             return true;
         }
 
