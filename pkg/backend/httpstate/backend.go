@@ -782,7 +782,9 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	}
 
 	if stackID.Owner != newIdentity.Owner {
-		errMsg := "New stack owner, %s, does not match existing owner, %s.\n\n"
+		errMsg := fmt.Sprintf(
+			"New stack owner, %s, does not match existing owner, %s.\n\n",
+			stackID.Owner, newIdentity.Owner)
 
 		qn, _ := b.parseStackName(string(newName))
 		if qn.Owner == "" {
@@ -792,15 +794,15 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 				stackID.Owner, newName)
 		}
 
-		url := "."
+		errMsgSuffix := "."
 		if consoleURL, err := b.StackConsoleURL(stack.Ref()); err == nil {
-			url = ":\n\n           " + consoleURL + "/settings/options"
+			errMsgSuffix = ":\n\n           " + consoleURL + "/settings/options"
 		}
 		errMsg += "       You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
 			"       of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
-			"       \"Settings\" page of the stack and then clicking the \"Transfer Stack\" button" + url
+			"       \"Settings\" page of the stack and then clicking the \"Transfer Stack\" button"
 
-		return nil, errors.Errorf(errMsg, stackID.Owner, newIdentity.Owner)
+		return nil, errors.New(errMsg + errMsgSuffix)
 	}
 
 	if err = b.client.RenameStack(ctx, stackID, newIdentity); err != nil {
