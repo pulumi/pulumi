@@ -17,6 +17,7 @@ package deploy
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/blang/semver"
@@ -31,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
@@ -528,6 +530,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	switch req.Id {
 	case "secrets":
 		hasSupport = true
+	case "resourceReferences":
+		hasSupport = cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL_RESOURCE_REFERENCES"))
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
