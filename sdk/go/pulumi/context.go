@@ -460,16 +460,16 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, res Resource, remote bool, opts ...ResourceOption) error {
+	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) error {
 	if t == "" {
 		return errors.New("resource type argument cannot be empty")
 	} else if name == "" {
 		return errors.New("resource name argument (for URN creation) cannot be empty")
 	}
 
-	_, custom := res.(CustomResource)
+	_, custom := resource.(CustomResource)
 
-	if _, isProvider := res.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
+	if _, isProvider := resource.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
 		return errors.New("provider resource type must begin with \"pulumi:providers:\"")
 	}
 
@@ -491,7 +491,7 @@ func (ctx *Context) registerResource(
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
 	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, res, opts, options)
+	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
 	if err != nil {
 		return err
 	}
@@ -511,7 +511,7 @@ func (ctx *Context) registerResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	resState := makeResourceState(t, name, res, providers, aliasURNs, transformations)
+	resState := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
