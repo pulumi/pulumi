@@ -431,10 +431,8 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 	tok := "pulumi:pulumi:getResource"
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
-		Tok:      "pulumi:pulumi:getResource",
-		Args:     rpcArgs,
-		Provider: "",
-		Version:  "",
+		Tok:  "pulumi:pulumi:getResource",
+		Args: rpcArgs,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("Invoke(%s, ...): error: %v", tok, err)
@@ -451,10 +449,9 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 		return nil, ferr
 	}
 
-	urn, id := resp.Return.Fields["urn"].GetStringValue(), resp.Return.Fields["id"].GetStringValue()
 	return &pulumirpc.RegisterResourceResponse{
-		Urn:    urn,
-		Id:     id,
+		Urn:    resp.Return.Fields["urn"].GetStringValue(),
+		Id:     resp.Return.Fields["id"].GetStringValue(),
 		Object: resp.Return.Fields["state"].GetStructValue(),
 	}, nil
 }
