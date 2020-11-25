@@ -49,7 +49,7 @@ class RubberTree(pulumi.CustomResource):
 
             __props__['container'] = container
             __props__['farm'] = farm
-            if type is None:
+            if type is None and not opts.urn:
                 raise TypeError("Missing required property 'type'")
             __props__['type'] = type
         super(RubberTree, __self__).__init__(
