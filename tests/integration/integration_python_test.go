@@ -349,6 +349,23 @@ func TestLargeResourcePython(t *testing.T) {
 	})
 }
 
+// Test enum outputs
+func TestEnumOutputsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Dir: filepath.Join("enums", "python"),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+
+			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
+			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
+			assert.Equal(t, "My Burgundy Rubber tree is from Pulumi Planters Inc.", stack.Outputs["mySentence"])
+		},
+	})
+}
+
 // Test to ensure Pylint is clean.
 func TestPythonPylint(t *testing.T) {
 	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")

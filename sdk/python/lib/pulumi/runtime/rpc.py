@@ -22,6 +22,7 @@ import functools
 import inspect
 from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, TYPE_CHECKING, cast
+from enum import Enum
 
 from google.protobuf import struct_pb2
 from semver import VersionInfo as Version # type:ignore
@@ -55,12 +56,14 @@ _special_resource_sig = "5cf8f73096256a8f31e491e813e4eb8e"
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
+
 def isLegalProtobufValue(value: Any) -> bool:
     """
     Returns True if the given value is a legal Protobuf value as per the source at
     https://github.com/protocolbuffers/protobuf/blob/master/python/google/protobuf/internal/well_known_types.py#L714-L732
     """
     return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
+
 
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
@@ -233,6 +236,7 @@ async def serialize_property(value: 'Input[Any]',
 
     return value
 
+
 # pylint: disable=too-many-return-statements
 def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
     """
@@ -290,6 +294,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
 
     return output
 
+
 def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> 'Resource':
     urn = ref_struct["urn"]
     version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
@@ -321,11 +326,13 @@ def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[
 
     return urn
 
+
 def is_rpc_secret(value: Any) -> bool:
     """
     Returns if a given python value is actually a wrapped secret.
     """
     return isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig
+
 
 def wrap_rpc_secret(value: Any) -> Any:
     """
@@ -339,6 +346,7 @@ def wrap_rpc_secret(value: Any) -> Any:
         "value": value,
     }
 
+
 def unwrap_rpc_secret(value: Any) -> Any:
     """
     Given a value, if it is a wrapped secret value, return the underlying, otherwise return the value unmodified.
@@ -347,6 +355,7 @@ def unwrap_rpc_secret(value: Any) -> Any:
         return value["value"]
 
     return value
+
 
 def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
     """
@@ -468,6 +477,8 @@ def translate_output_properties(output: Any,
 
     If output is a `float` and `typ` is `int`, the value is cast to `int`.
 
+    If output is in [`str`, `int`, `float`] and `typ` is an enum type, instantiate the enum type.
+
     Otherwise, if output is a primitive (i.e. not a dict or list), the value is returned without modification.
 
     :param Optional[type] typ: The output's target type.
@@ -497,7 +508,7 @@ def translate_output_properties(output: Any,
             # If typ is an output type, get its types, so we can pass
             # the type along for each property.
             types = _types.output_type_types(typ)
-            get_type = lambda k: types.get(k) # pylint: disable=unnecessary-lambda
+            get_type = lambda k: types.get(k)  # pylint: disable=unnecessary-lambda
         elif typ:
             # If typ is a dict, get the type for its values, to pass
             # along for each key.
@@ -540,6 +551,9 @@ def translate_output_properties(output: Any,
                 raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
         return [translate_output_properties(v, output_transformer, element_type) for v in output]
 
+    if typ and isinstance(output, (int, float, str)) and inspect.isclass(typ) and issubclass(typ, Enum):
+        return typ(output)
+
     if isinstance(output, float) and typ is int:
         return int(output)
 
@@ -572,7 +586,7 @@ def resolve_outputs(res: 'Resource',
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
     # Get the resource's output types, so we can convert dicts from the engine into actual
-    # instantiated output types as needed.
+    # instantiated output types or primitive types into enums as needed.
     types = _types.resource_types(type(res))
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
@@ -591,6 +605,7 @@ def resolve_outputs(res: 'Resource',
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
     resolve_properties(resolvers, all_properties, deps)
+
 
 def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
     for key, value in all_properties.items():
@@ -648,7 +663,7 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     failed to resolve.
 
     :param resolvers: Resolvers associated with a resource's outputs.
-    :param exn: The exception that occured when trying (and failing) to create this resource.
+    :param exn: The exception that occurred when trying (and failing) to create this resource.
     """
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")

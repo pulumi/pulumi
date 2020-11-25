@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import unittest
+from enum import Enum
 from typing import Any, Dict, List, NamedTuple, Mapping, Optional, Sequence
 
 from pulumi.runtime import rpc
@@ -598,7 +599,43 @@ class OutputTypeWithAny(dict):
     value_str: Any
 
 
+class ContainerColor(str, Enum):
+    RED = "red"
+    BLUE = "blue"
+
+
+class ContainerSize(int, Enum):
+    FOUR_INCH = 4
+    SIX_INCH = 6
+
+
+class ContainerBrightness(float, Enum):
+    ZERO_POINT_ONE = 0.1
+    ONE_POINT_ZERO = 1.0
+
+
 class TranslateOutputPropertiesTests(unittest.TestCase):
+    def test_str_enum(self):
+        result = rpc.translate_output_properties("red", translate_output_property, ContainerColor)
+        self.assertIsInstance(result, ContainerColor)
+        self.assertIsInstance(result, Enum)
+        self.assertEqual(result, "red")
+        self.assertEqual(result, ContainerColor.RED)
+
+    def test_int_enum(self):
+        result = rpc.translate_output_properties(4, translate_output_property, ContainerSize)
+        self.assertIsInstance(result, ContainerSize)
+        self.assertIsInstance(result, Enum)
+        self.assertEqual(result, 4)
+        self.assertEqual(result, ContainerSize.FOUR_INCH)
+
+    def test_float_enum(self):
+        result = rpc.translate_output_properties(0.1, translate_output_property, ContainerBrightness)
+        self.assertIsInstance(result, ContainerBrightness)
+        self.assertIsInstance(result, Enum)
+        self.assertEqual(result, 0.1)
+        self.assertEqual(result, ContainerBrightness.ZERO_POINT_ONE)
+
     def test_translate(self):
         output = {
             "firstArg": "hello",
