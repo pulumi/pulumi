@@ -81,12 +81,6 @@ func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
 
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	// TODO[pulumi/pulumi#5145]: Delete this if check once all providers have UsesIOClasses set to true in their
-	// schema.
-	if pythonPkgInfo, ok := pkg.Language["python"].(PackageInfo); !ok || !pythonPkgInfo.UsesIOClasses {
-		return d.GetLanguageTypeStringLegacy(pkg, moduleName, t, input, optional)
-	}
-
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,
@@ -104,49 +98,6 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	typeName = strings.ReplaceAll(typeName, "'", "")
 
 	return typeName
-}
-
-// TODO[pulumi/pulumi#5145]: Delete this function once all providers have UsesIOClasses set to true in their schema.
-// GetLanguageTypeStringLegacy returns the legacy type strings.
-func (d DocLanguageHelper) GetLanguageTypeStringLegacy(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
-	mod := modContext{} // This is a dummy context since pyType is a method and is only needed for resource refs.
-	name := mod.pyType(t)
-
-	// The Python SDK generator will simply return "list" or "dict" for enumerables.
-	// So we examine the underlying types to provide some more information on
-	// the elements inside the enumerable.
-	switch name {
-	case "list":
-		arrTy := t.(*schema.ArrayType)
-		elType := arrTy.ElementType.String()
-		return getListWithTypeName(elementTypeToName(elType))
-	case "dict":
-		switch dTy := t.(type) {
-		case *schema.UnionType:
-			types := make([]string, 0, len(dTy.ElementTypes))
-			for _, e := range dTy.ElementTypes {
-				if schema.IsPrimitiveType(e) {
-					types = append(types, e.String())
-					continue
-				}
-				t := d.GetLanguageTypeStringLegacy(pkg, moduleName, e, input, optional)
-				types = append(types, t)
-			}
-			return strings.Join(types, " | ")
-		case *schema.MapType:
-			if uTy, ok := dTy.ElementType.(*schema.UnionType); ok {
-				return d.GetLanguageTypeStringLegacy(pkg, moduleName, uTy, input, optional)
-			}
-
-			elType := dTy.ElementType.String()
-			return getMapWithTypeName(elementTypeToName(elType))
-		case *schema.ObjectType:
-			return getDictWithTypeName(tokenToName(dTy.Token))
-		default:
-			return "Dict[str, Any]"
-		}
-	}
-	return name
 }
 
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
@@ -174,47 +125,6 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 // GetPropertyName returns the property name specific to Python.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return PyName(p.Name), nil
-}
-
-// elementTypeToName returns the type name from an element type of the form
-// package:module:_type, with its leading "_" stripped.
-func elementTypeToName(el string) string {
-	parts := strings.Split(el, ":")
-	if len(parts) == 3 {
-		el = parts[2]
-	}
-	el = strings.TrimPrefix(el, "_")
-
-	return el
-}
-
-// getListWithTypeName returns a Python representation of a list containing
-// items of `t`.
-func getListWithTypeName(t string) string {
-	if t == "string" {
-		return "List[str]"
-	}
-
-	return fmt.Sprintf("List[%s]", strings.Title(t))
-}
-
-// getDictWithTypeName returns the Python representation of a dictionary
-// where each item is of type `t`.
-func getDictWithTypeName(t string) string {
-	return fmt.Sprintf("Dict[%s]", strings.Title(t))
-}
-
-// getMapWithTypeName returns the Python representation of a dictionary
-// with a string keu and a value of type `t`.
-func getMapWithTypeName(t string) string {
-	switch t {
-	case "string":
-		return "Dict[str, str]"
-	case "any":
-		return "Dict[str, Any]"
-	default:
-		return fmt.Sprintf("Dict[str, %s]", strings.Title(t))
-	}
 }
 
 // GetModuleDocLink returns the display name and the link for a module.

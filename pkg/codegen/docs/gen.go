@@ -890,7 +890,6 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 	if len(properties) == 0 {
 		return nil
 	}
-	isK8s := isKubernetesPackage(mod.pkg)
 	docProperties := make([]property, 0, len(properties))
 	for _, prop := range properties {
 		if prop == nil {
@@ -915,30 +914,6 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			panic(err)
 		}
 		propLangName := name
-
-		// TODO[pulumi/pulumi#5145]: Delete this if check once all providers have UsesIOClasses set to true in their
-		// schema.
-		if lang == "python" && !pythonPkgInfo.UsesIOClasses {
-			pyName := python.PyName(prop.Name)
-			// The default casing for a Python property name is snake_case unless
-			// it is a property of a nested object, in which case, we should check the property
-			// case maps.
-			propLangName = pyName
-
-			// We don't use the property-case maps for k8s since input properties are accessible
-			// using either case, where output properties are only accessible using snake_case.
-			if nested && !isK8s {
-				if snakeCase, ok := camelCaseToSnakeCase[prop.Name]; ok {
-					propLangName = snakeCase
-				} else if camelCase, ok := snakeCaseToCamelCase[pyName]; ok {
-					propLangName = camelCase
-				} else {
-					// If neither of the property case maps have the property
-					// then use the default name of the property.
-					propLangName = prop.Name
-				}
-			}
-		}
 
 		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
 
