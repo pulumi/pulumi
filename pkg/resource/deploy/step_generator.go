@@ -15,6 +15,7 @@
 package deploy
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -235,6 +236,17 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	}
 	sg.urns[urn] = true
 
+	// If there is a plan for this resource, validate that the program goal conforms to the plan.
+	if len(sg.plan.resourcePlans) != 0 {
+		resourcePlan, ok := sg.plan.resourcePlans[urn]
+		if !ok {
+			return nil, result.Errorf("resource not found in plan")
+		}
+		if err := resourcePlan.checkGoal(goal); err != nil {
+			return nil, result.FromError(fmt.Errorf("resource violates plan: %w", err))
+		}
+	}
+
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
 	// alias, record that alias so that we do not delete the aliased resource later.
@@ -270,13 +282,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 			return nil, res
 		}
 		inputs = processedInputs
-	}
-
-	// If there is a plan for this resource, finalize its inputs.
-	if resourcePlan, ok := sg.plan.resourcePlans[urn]; ok {
-		// should really overwrite goal info completely here
-
-		inputs = resourcePlan.completeInputs(inputs)
 	}
 
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will

@@ -1,6 +1,8 @@
 package apitype
 
 import (
+	"encoding/json"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
@@ -47,9 +49,23 @@ type ResourcePlanV1 struct {
 	Steps []OpType `json:"steps,omitempty"`
 }
 
+// VersionedDeploymentPlan is a version number plus a JSON document. The version number describes what
+// version of the DeploymentPlan structure the DeploymentPlan member's JSON document can decode into.
+type VersionedDeploymentPlan struct {
+	Version int             `json:"version"`
+	Plan    json.RawMessage `json:"plan"`
+}
+
 // DeploymentPlanV1 is the serializable version of a deployment plan.
 type DeploymentPlanV1 struct {
 	// TODO(pdg-plan): should there be a message here?
+
+	// Manifest contains metadata about this plan.
+	Manifest ManifestV1 `json:"manifest" yaml:"manifest"`
+	// Any environment variables that were set when the plan was created. Values are encrypted.
+	EnvironmentVariables map[string][]byte `json:"environmentVariables,omitempty"`
+	// The configuration in use during the plan.
+	Config map[string]ConfigValue `json:"config"`
 
 	// The set of resource plans.
 	ResourcePlans map[resource.URN]ResourcePlanV1 `json:"resourcePlans,omitempty"`

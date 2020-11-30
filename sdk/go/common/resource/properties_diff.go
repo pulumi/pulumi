@@ -119,8 +119,7 @@ func (diff *ArrayDiff) Len() int {
 // IgnoreKeyFunc is the callback type for Diff's ignore option.
 type IgnoreKeyFunc func(key PropertyKey) bool
 
-// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
-func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
+func (props PropertyMap) diff(other PropertyMap, ignoreUnknowns bool, ignoreKeys []IgnoreKeyFunc) *ObjectDiff {
 	adds := make(PropertyMap)
 	deletes := make(PropertyMap)
 	sames := make(PropertyMap)
@@ -137,7 +136,7 @@ func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *O
 
 	// First find any updates or deletes.
 	for k, old := range props {
-		if ignore(k) {
+		if ignore(k) || ignoreUnknowns && (old.IsComputed() || old.IsOutput()) {
 			continue
 		}
 
@@ -156,7 +155,7 @@ func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *O
 			} else {
 				sames[k] = old
 			}
-		} else if old.HasValue() {
+		} else if old.HasValue() && (!ignoreUnknowns || !old.IsComputed()) {
 			// If there was no new property, it has been deleted.
 			deletes[k] = old
 		}
@@ -185,8 +184,12 @@ func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *O
 	}
 }
 
-// Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
-func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *ValueDiff {
+// Diff returns a diffset by comparing the property map to another; it returns nil if there are no diffs.
+func (props PropertyMap) Diff(other PropertyMap, ignoreKeys ...IgnoreKeyFunc) *ObjectDiff {
+	return props.diff(other, false, ignoreKeys)
+}
+
+func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys []IgnoreKeyFunc) *ValueDiff {
 	if v.IsArray() && other.IsArray() {
 		old := v.ArrayValue()
 		new := other.ArrayValue()
@@ -239,10 +242,15 @@ func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *V
 	}
 
 	// If we got here, either the values are primitives, or they weren't the same type; do a simple diff.
-	if v.DeepEquals(other) {
+	if v.DeepEquals(other) || ignoreUnknowns && (v.IsComputed() || v.IsOutput()) {
 		return nil
 	}
 	return &ValueDiff{Old: v, New: other}
+}
+
+// Diff returns a diff by comparing a single property value to another; it returns nil if there are no diffs.
+func (v PropertyValue) Diff(other PropertyValue, ignoreKeys ...IgnoreKeyFunc) *ValueDiff {
+	return v.diff(other, false, ignoreKeys)
 }
 
 // DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
@@ -372,4 +380,14 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
+}
+
+func (m PropertyMap) ConstrainedTo(constraints PropertyMap) (*ObjectDiff, bool) {
+	diff := constraints.diff(m, true, nil)
+	return diff, diff == nil
+}
+
+func (v PropertyValue) ConstrainedTo(constraint PropertyValue) (*ValueDiff, bool) {
+	diff := constraint.diff(v, true, nil)
+	return diff, diff == nil
 }
