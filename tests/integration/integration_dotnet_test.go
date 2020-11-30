@@ -72,7 +72,7 @@ func TestStackComponentDotNet(t *testing.T) {
 // TestStackComponentServiceProviderDotNet tests the creation of the stack using IServiceProvider.
 func TestStackComponentServiceProviderDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir:          filepath.Join("stack_service_provider", "dotnet"),
+		Dir:          filepath.Join("stack_component", "dotnet_service_provider"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {

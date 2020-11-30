@@ -106,8 +106,10 @@ namespace Pulumi
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// instantiate a new stack instance based on the type passed as TStack
-        /// type parameter. This method creates no real resources.
-        /// Note: Currently, unit tests that call <see cref="TestAsync{TStack}(IMocks, TestOptions)"/>
+        /// type parameter using the given service provider. This method creates
+        /// no real resources.
+        /// Note: Currently, unit tests that call
+        /// <see cref="TestWithServiceProviderAsync{TStack}(IMocks, IServiceProvider, TestOptions)"/>
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="mocks">Hooks to mock the engine calls.</param>
@@ -118,7 +120,6 @@ namespace Pulumi
         public static Task<ImmutableArray<Resource>> TestWithServiceProviderAsync<TStack>(IMocks mocks, IServiceProvider serviceProvider, TestOptions? options = null)
             where TStack : Stack
         {
-            // New method name is necessary to avoid backcompat issues with method overloads: https://github.com/dotnet/roslyn/blob/master/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md
             return TestAsync(mocks, (deployment) => deployment._runner.RunAsync<TStack>(serviceProvider), options);
         }
 

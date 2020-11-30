@@ -242,6 +242,7 @@ static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task> func)
 static Pulumi.Deployment.RunAsync(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> func, Pulumi.StackOptions options = null) -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.RunAsync<TStack>() -> System.Threading.Tasks.Task<int>
 static Pulumi.Deployment.TestAsync<TStack>(Pulumi.Testing.IMocks mocks, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
+static Pulumi.Deployment.TestWithServiceProviderAsync<TStack>(Pulumi.Testing.IMocks mocks, System.IServiceProvider serviceProvider, Pulumi.Testing.TestOptions options = null) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableArray<Pulumi.Resource>>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>

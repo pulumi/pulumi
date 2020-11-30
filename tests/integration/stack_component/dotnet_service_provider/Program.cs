@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
+﻿// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
 
 using System;
 using System.Collections.Generic;
@@ -32,7 +32,7 @@ class Program
     }
 }
 
-class Dependancy
+class Dependency
 {
     public string Abc { get; set; } = "ABC";
     public int Foo { get; set; } = 42;
@@ -45,7 +45,7 @@ class TestServiceProvider : IServiceProvider
     {
         if (serviceType == typeof(MyStack))
         {
-            return new MyStack(new Dependancy()); 
+            return new MyStack(new Dependency()); 
         }
 
         return null;
