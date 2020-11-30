@@ -150,6 +150,14 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+func (mod *modContext) resourceFileName(r *schema.Resource) string {
+	fileName := camel(resourceName(r)) + ".ts"
+	if mod.isReservedSourceFileName(fileName) {
+		fileName = camel(resourceName(r)) + "_.ts"
+	}
+	return fileName
+}
+
 func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
@@ -514,7 +522,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired {
-				fmt.Fprintf(w, "            if (!args || args.%s === undefined) {\n", prop.Name)
+				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !(opts && opts.urn)) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -1224,10 +1232,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		fileName := camel(resourceName(r)) + ".ts"
-		if mod.isReservedSourceFileName(fileName) {
-			fileName = camel(resourceName(r)) + "_.ts"
-		}
+		fileName := mod.resourceFileName(r)
 		addFile(fileName, buffer.String())
 	}
 
@@ -1293,7 +1298,13 @@ func getChildMod(modName string) string {
 // genIndex emits an index module, optionally re-exporting other members or submodules.
 func (mod *modContext) genIndex(exports []string) string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, nil, nil)
+
+	var imports []string
+	// Include the SDK import if we'll be registering module resources.
+	if len(mod.resources) != 0 {
+		imports = mod.sdkImports(false, false)
+	}
+	mod.genHeader(w, imports, nil)
 
 	// Export anything flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -1340,7 +1351,7 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 	}
 
-	// Finally, if there are submodules, export them.
+	// If there are submodules, export them.
 	if len(children) > 0 {
 		if len(exports) > 0 {
 			fmt.Fprintf(w, "\n")
@@ -1355,7 +1366,78 @@ func (mod *modContext) genIndex(exports []string) string {
 		printExports(w, sorted)
 	}
 
+	// If there are resources in this module, register the module with the runtime.
+	if len(mod.resources) != 0 {
+		mod.genResourceModule(w)
+	}
+
 	return w.String()
+}
+
+// genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
+// Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
+// hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
+// definition and its registration to support rehydrating providers.
+func (mod *modContext) genResourceModule(w io.Writer) {
+	contract.Assert(len(mod.resources) != 0)
+
+	// Check for provider-only modules.
+	var provider *schema.Resource
+	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
+		provider = mod.resources[0]
+	} else {
+		registrations, first := codegen.StringSet{}, true
+		for _, r := range mod.resources {
+			if r.IsProvider {
+				contract.Assert(provider == nil)
+				provider = r
+				continue
+			}
+
+			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
+
+			if first {
+				first = false
+				fmt.Fprintf(w, "\n// Import resources to register:\n")
+			}
+			fileName := strings.TrimSuffix(mod.resourceFileName(r), ".ts")
+			fmt.Fprintf(w, "import { %s } from \"./%s\";\n", resourceName(r), fileName)
+		}
+
+		fmt.Fprintf(w, "\nconst _module = {\n")
+		fmt.Fprintf(w, "    construct: (name: string, type: string, urn: string): pulumi.Resource => {\n")
+		fmt.Fprintf(w, "        switch (type) {\n")
+
+		for _, r := range mod.resources {
+			if r.IsProvider {
+				continue
+			}
+
+			fmt.Fprintf(w, "            case \"%v\":\n", r.Token)
+			fmt.Fprintf(w, "                return new %v(name, <any>undefined, { urn })\n", resourceName(r))
+		}
+
+		fmt.Fprintf(w, "            default:\n")
+		fmt.Fprintf(w, "                throw new Error(`unknown resource type ${type}`);\n")
+		fmt.Fprintf(w, "        }\n")
+		fmt.Fprintf(w, "    },\n")
+		fmt.Fprintf(w, "};\n")
+		for _, name := range registrations.SortedValues() {
+			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", mod.pkg.Name, name)
+		}
+	}
+
+	if provider != nil {
+		fmt.Fprintf(w, "\nimport { Provider } from \"./provider\";\n\n")
+		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name)
+		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
+		fmt.Fprintf(w, "        if (type !== \"%v\") {\n", provider.Token)
+		fmt.Fprintf(w, "            throw new Error(`unknown provider type ${type}`);\n")
+		fmt.Fprintf(w, "        }\n")
+		fmt.Fprintf(w, "        return new Provider(name, <any>undefined, { urn });\n")
+		fmt.Fprintf(w, "    },\n")
+		fmt.Fprintf(w, "});\n")
+	}
 }
 
 func printExports(w io.Writer, exports []string) {
