@@ -69,6 +69,29 @@ func TestStackComponentDotNet(t *testing.T) {
 	})
 }
 
+// TestStackComponentServiceProviderDotNet tests the creation of the stack using IServiceProvider.
+func TestStackComponentServiceProviderDotNet(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("stack_component", "dotnet_service_provider"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
+			fmt.Printf("Deployment: %v", stackInfo.Deployment)
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 1, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.URN.Type())
+				assert.Equal(t, 0, len(stackRes.Inputs))
+				assert.Equal(t, 2, len(stackRes.Outputs))
+				assert.Equal(t, "ABC", stackRes.Outputs["abc"])
+				assert.Equal(t, float64(42), stackRes.Outputs["Foo"])
+			}
+		},
+	})
+}
+
 // Tests basic configuration from the perspective of a Pulumi .NET program.
 func TestConfigBasicDotNet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{

@@ -29,11 +29,25 @@ namespace Pulumi
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
 
+            public Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
+            {
+                if (serviceProvider == null)
+                {
+                    throw new ArgumentNullException(nameof(serviceProvider));
+                }
+
+                return RunAsync(() => serviceProvider.GetService(typeof(TStack)) as TStack
+                    ?? throw new ApplicationException($"Failed to resolve instance of type {typeof(TStack)} from service provider. Register the type with the service provider before calling {nameof(RunAsync)}."));
+            }
+
             public Task<int> RunAsync<TStack>() where TStack : Stack, new()
+                => RunAsync(() => new TStack());
+
+            private Task<int> RunAsync<TStack>(Func<TStack> stackFactory) where TStack : Stack
             {
                 try
                 {
-                    var stack = new TStack();
+                    var stack = stackFactory();
                     // Stack doesn't call RegisterOutputs, so we register them on its behalf.
                     stack.RegisterPropertyOutputs();
                     RegisterTask("User program code.", stack.Outputs.DataTask);
