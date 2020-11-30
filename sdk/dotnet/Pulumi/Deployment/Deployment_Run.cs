@@ -130,7 +130,7 @@ namespace Pulumi
         /// resources are properly registered.
         /// </para>
         /// </summary>
-        public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack, new()
+        public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
             => CreateRunner().RunAsync<TStack>(serviceProvider);
 
         /// <summary>

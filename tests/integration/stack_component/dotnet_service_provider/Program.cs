@@ -16,11 +16,11 @@ class MyStack : Stack
     // This should NOT be exported as stack output due to the missing attribute
     public Output<string> Bar { get; private set; }
 
-    public MyStack(Dependency dependancy)
+    public MyStack(Dependency dependency)
     {
-        this.Abc = Output.Create(dependancy.Abc);
-        this.Foo = Output.Create(dependancy.Foo);
-        this.Bar = Output.Create(dependancy.Bar);
+        this.Abc = Output.Create(dependency.Abc);
+        this.Foo = Output.Create(dependency.Foo);
+        this.Bar = Output.Create(dependency.Bar);
     }
 }
 
