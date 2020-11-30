@@ -23,7 +23,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Plan, ResourceChanges, result.Result) {
+func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (deploy.Plan, ResourceChanges, result.Result) {
 	contract.Require(u != nil, "u")
 	contract.Require(ctx != nil, "ctx")
 

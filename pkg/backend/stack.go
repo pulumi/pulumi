@@ -40,7 +40,7 @@ type Stack interface {
 	Backend() Backend                                       // the backend this stack belongs to.
 
 	// Preview changes to this stack.
-	Preview(ctx context.Context, op UpdateOperation) (engine.Plan, engine.ResourceChanges, result.Result)
+	Preview(ctx context.Context, op UpdateOperation) (deploy.Plan, engine.ResourceChanges, result.Result)
 	// Update this stack.
 	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Import resources into this stack.
@@ -75,7 +75,7 @@ func RenameStack(ctx context.Context, s Stack, newName tokens.QName) (StackRefer
 }
 
 // PreviewStack previews changes to this stack.
-func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Plan, engine.ResourceChanges, result.Result) {
+func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (deploy.Plan, engine.ResourceChanges, result.Result) {
 	return s.Backend().Preview(ctx, s, op)
 }
 

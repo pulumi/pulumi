@@ -10,6 +10,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
+// A Plan is a mapping from URNs to ResourcePlans. The plan defines an expected set of resources and the expected
+// inputs and operations for each. The inputs and operations are treated as constraints, and may allow for inputs or
+// operations that do not exactly match those recorded in the plan. In the case of inputs, unknown values in the plan
+// accept any value (including no value) as valid. For operations, a same step is allowed in place of an update or
+// a replace step, and an update is allowed in place of a replace step. All resource options are required to match
+// exactly.
+type Plan map[resource.URN]*ResourcePlan
+
 // A ResourcePlan represents the planned goal state and resource operations for a single resource. The operations are
 // ordered.
 type ResourcePlan struct {

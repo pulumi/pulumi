@@ -41,6 +41,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
@@ -864,7 +865,7 @@ func getRefreshOption(proj *workspace.Project, refresh string) (bool, error) {
 	return false, nil
 }
 
-func writePlan(path string, plan engine.Plan, enc config.Encrypter, showSecrets bool) error {
+func writePlan(path string, plan deploy.Plan, enc config.Encrypter, showSecrets bool) error {
 	f, err := os.Create(path)
 	if err != nil {
 		return err
@@ -878,7 +879,7 @@ func writePlan(path string, plan engine.Plan, enc config.Encrypter, showSecrets 
 	return json.NewEncoder(f).Encode(deploymentPlan)
 }
 
-func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (engine.Plan, error) {
+func readPlan(path string, dec config.Decrypter, enc config.Encrypter) (deploy.Plan, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, err

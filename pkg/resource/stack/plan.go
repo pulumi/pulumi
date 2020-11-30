@@ -42,7 +42,7 @@ func SerializeResourcePlan(plan *deploy.ResourcePlan, enc config.Encrypter, show
 	}, nil
 }
 
-func SerializePlan(plan map[resource.URN]*deploy.ResourcePlan, enc config.Encrypter, showSecrets bool) (apitype.DeploymentPlanV1, error) {
+func SerializePlan(plan deploy.Plan, enc config.Encrypter, showSecrets bool) (apitype.DeploymentPlanV1, error) {
 	resourcePlans := map[resource.URN]apitype.ResourcePlanV1{}
 	for urn, plan := range plan {
 		serializedPlan, err := SerializeResourcePlan(plan, enc, showSecrets)
@@ -89,14 +89,14 @@ func DeserializeResourcePlan(plan apitype.ResourcePlanV1, dec config.Decrypter, 
 	}, nil
 }
 
-func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (map[resource.URN]*deploy.ResourcePlan, error) {
-	resourcePlans := map[resource.URN]*deploy.ResourcePlan{}
-	for urn, plan := range plan.ResourcePlans {
-		deserializedPlan, err := DeserializeResourcePlan(plan, dec, enc)
+func DeserializePlan(plan apitype.DeploymentPlanV1, dec config.Decrypter, enc config.Encrypter) (deploy.Plan, error) {
+	deserializedPlan := deploy.Plan{}
+	for urn, resourcePlan := range plan.ResourcePlans {
+		deserializedResourcePlan, err := DeserializeResourcePlan(resourcePlan, dec, enc)
 		if err != nil {
 			return nil, err
 		}
-		resourcePlans[urn] = deserializedPlan
+		deserializedPlan[urn] = deserializedResourcePlan
 	}
-	return resourcePlans, nil
+	return deserializedPlan, nil
 }

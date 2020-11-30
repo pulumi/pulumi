@@ -147,7 +147,7 @@ type UpdateOptions struct {
 	Host plugin.Host
 
 	// The plan to use for the update, if any.
-	Plan Plan
+	Plan deploy.Plan
 }
 
 // ResourceChanges contains the aggregate resource changes by operation type.
@@ -167,10 +167,7 @@ func (changes ResourceChanges) HasChanges() bool {
 	return c > 0
 }
 
-// Plan records planned resource changes.
-type Plan map[resource.URN]*deploy.ResourcePlan
-
-func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Plan, ResourceChanges, result.Result) {
+func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (deploy.Plan, ResourceChanges, result.Result) {
 	contract.Require(u != nil, "update")
 	contract.Require(ctx != nil, "ctx")
 
@@ -425,7 +422,7 @@ func newUpdateSource(
 }
 
 func update(ctx *Context, info *deploymentContext, opts deploymentOptions,
-	preview bool) (Plan, ResourceChanges, result.Result) {
+	preview bool) (deploy.Plan, ResourceChanges, result.Result) {
 
 	// Refresh and Import do not execute Policy Packs.
 	policies := map[string]string{}

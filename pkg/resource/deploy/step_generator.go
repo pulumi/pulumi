@@ -158,7 +158,7 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Check each proposed step against the relevant resource plan, if any, and generate any output resource plans.
 	for _, s := range steps {
-		if resourcePlan, ok := sg.plan.resourcePlans[s.URN()]; ok {
+		if resourcePlan, ok := sg.deployment.plan[s.URN()]; ok {
 			if len(resourcePlan.Ops) == 0 {
 				return nil, result.Errorf("%v is not allowed by the plan: no more steps were expected for this resource", s.Op())
 			}
@@ -170,12 +170,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
 
-		resourcePlan, ok := sg.plan.newResourcePlans[s.URN()]
+		resourcePlan, ok := sg.deployment.newPlan[s.URN()]
 		if !ok {
 			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
 			// application. However, it is necessary in the face of computed inputs.
 			resourcePlan = &ResourcePlan{Goal: event.Goal()}
-			sg.plan.newResourcePlans[s.URN()] = resourcePlan
+			sg.deployment.newPlan[s.URN()] = resourcePlan
 		}
 		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}
@@ -237,8 +237,8 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	sg.urns[urn] = true
 
 	// If there is a plan for this resource, validate that the program goal conforms to the plan.
-	if len(sg.plan.resourcePlans) != 0 {
-		resourcePlan, ok := sg.plan.resourcePlans[urn]
+	if len(sg.deployment.plan) != 0 {
+		resourcePlan, ok := sg.deployment.plan[urn]
 		if !ok {
 			return nil, result.Errorf("resource not found in plan")
 		}

@@ -824,7 +824,7 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.Plan, engine.ResourceChanges, result.Result) {
+	op backend.UpdateOperation) (deploy.Plan, engine.ResourceChanges, result.Result) {
 	// We can skip PreviewtThenPromptThenExecute, and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -927,7 +927,7 @@ func (b *cloudBackend) createAndStartUpdate(
 func (b *cloudBackend) apply(
 	ctx context.Context, kind apitype.UpdateKind, stack backend.Stack,
 	op backend.UpdateOperation, opts backend.ApplierOptions,
-	events chan<- engine.Event) (engine.Plan, engine.ResourceChanges, result.Result) {
+	events chan<- engine.Event) (deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	actionLabel := backend.ActionLabel(kind, opts.DryRun)
 
@@ -981,7 +981,7 @@ func (b *cloudBackend) query(ctx context.Context, op backend.QueryOperation,
 func (b *cloudBackend) runEngineAction(
 	ctx context.Context, kind apitype.UpdateKind, stackRef backend.StackReference,
 	op backend.UpdateOperation, update client.UpdateIdentifier, token string,
-	callerEventsOpt chan<- engine.Event, dryRun bool) (engine.Plan, engine.ResourceChanges, result.Result) {
+	callerEventsOpt chan<- engine.Event, dryRun bool) (deploy.Plan, engine.ResourceChanges, result.Result) {
 
 	contract.Assertf(token != "", "persisted actions require a token")
 	u, err := b.newUpdate(ctx, stackRef, op, update, token)
@@ -1035,7 +1035,7 @@ func (b *cloudBackend) runEngineAction(
 		engineCtx.ParentSpan = parentSpan.Context()
 	}
 
-	var plan engine.Plan
+	var plan deploy.Plan
 	var changes engine.ResourceChanges
 	var res result.Result
 	switch kind {

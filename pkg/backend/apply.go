@@ -27,6 +27,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -45,7 +46,7 @@ type ApplierOptions struct {
 
 // Applier applies the changes specified by this update operation against the target stack.
 type Applier func(ctx context.Context, kind apitype.UpdateKind, stack Stack, op UpdateOperation,
-	opts ApplierOptions, events chan<- engine.Event) (engine.Plan, engine.ResourceChanges, result.Result)
+	opts ApplierOptions, events chan<- engine.Event) (deploy.Plan, engine.ResourceChanges, result.Result)
 
 func ActionLabel(kind apitype.UpdateKind, dryRun bool) string {
 	v := updateTextMap[kind]
@@ -80,7 +81,7 @@ const (
 )
 
 func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack,
-	op UpdateOperation, apply Applier) (engine.Plan, engine.ResourceChanges, result.Result) {
+	op UpdateOperation, apply Applier) (deploy.Plan, engine.ResourceChanges, result.Result) {
 	// create a channel to hear about the update events from the engine. this will be used so that
 	// we can build up the diff display in case the user asks to see the details of the diff
 

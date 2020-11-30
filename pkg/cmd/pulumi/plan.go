@@ -20,7 +20,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -150,7 +149,7 @@ func pruneSames(root *planNode) *planNode {
 	return root
 }
 
-func renderPlan(plan engine.Plan, showSames bool, color colors.Colorization) []cmdutil.TableRow {
+func renderPlan(plan deploy.Plan, showSames bool, color colors.Colorization) []cmdutil.TableRow {
 	var root *planNode
 	var orphans []*planNode
 	nodes := map[resource.URN]*planNode{}

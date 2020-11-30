@@ -114,7 +114,7 @@ func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview
 // or update.
-func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) (map[resource.URN]*ResourcePlan, result.Result) {
+func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, preview bool) (Plan, result.Result) {
 	// Set up a goroutine that will signal cancellation to the deployment's plugins if the caller context is cancelled.
 	// We do not hang this off of the context we create below because we do not want the failure of a single step to
 	// cause other steps to fail.
@@ -295,7 +295,7 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		return nil, result.Bail()
 	}
 
-	return pe.plan.newResourcePlans, res
+	return ex.deployment.newPlan, res
 }
 
 func (ex *deploymentExecutor) performDeletes(
@@ -433,7 +433,7 @@ func (ex *deploymentExecutor) retirePendingDeletes(callerCtx context.Context, op
 }
 
 // import imports a list of resources into a stack.
-func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Options, preview bool) (map[resource.URN]*ResourcePlan, result.Result) {
+func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Options, preview bool) (Plan, result.Result) {
 	if len(ex.deployment.imports) == 0 {
 		return nil, nil
 	}
@@ -466,7 +466,7 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Op
 		ex.reportExecResult("canceled", preview)
 		return nil, result.Bail()
 	}
-	return pe.plan.newResourcePlans, nil
+	return ex.deployment.newPlan, nil
 }
 
 // refresh refreshes the state of the base checkpoint file for the current deployment in memory.
