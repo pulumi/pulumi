@@ -28,7 +28,7 @@ class Program
 {
     static Task<int> Main(string[] args)
     {
-        Deployment.RunAsync<MyStack>(new TestServiceProvider());
+        return Deployment.RunAsync<MyStack>(new SampleServiceProvider());
     }
 }
 
@@ -39,7 +39,7 @@ class Dependency
     public string Bar { get; set; } = "this should not come to output";
 }
 
-class TestServiceProvider : IServiceProvider
+class SampleServiceProvider : IServiceProvider
 {
     public object GetService(Type serviceType)
     {
