@@ -20,6 +20,8 @@ import { ComponentResource, CustomResource, ProviderResource, Resource, URN } fr
 import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsResourceReferences, monitorSupportsSecrets } from "./settings";
 
+import * as semver from "semver";
+
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
 export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void>;
@@ -526,18 +528,24 @@ export function deserializeProperty(prop: any): any {
                     const isProvider = pkgName === "pulumi" && modName === "providers";
 
                     if (isProvider) {
-                        const resourcePackage = resourcePackages.get(packageKey(typName, version || ""));
-                        if (!resourcePackage) {
-                            throw new Error(`Unable to deserialize provider ${urn}, no resource package is registered for ${typName}.`);
+                        const resourcePackage = getResourcePackage(typName, version);
+                        if (resourcePackage) {
+                            return resourcePackage.constructProvider(urnName, type, urn);
                         }
-                        return resourcePackage.constructProvider(urnName, type, {}, { urn });
+                    } else {
+                        const resourceModule = getResourceModule(pkgName, modName, version);
+                        if (resourceModule) {
+                            return resourceModule.construct(urnName, type, urn);
+                        }
                     }
 
-                    const resourceModule = resourceModules.get(moduleKey(modName, version || ""));
-                    if (!resourceModule) {
-                        throw new Error(`Unable to deserialize resource ${urn}, no module is registered for ${modName}.`);
+                    // If we've made it here, deserialize the reference as either a URN or an ID (if present).
+                    if (prop["id"]) {
+                        const id = prop["id"];
+                        return deserializeProperty(id === "" ? unknownValue : id);
                     }
-                    return resourceModule.construct(urnName, type, {}, { urn });
+                    return urn;
+
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -578,54 +586,101 @@ export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
     return p;
 }
 
+function sameVersion(a?: string, b?: string): boolean {
+    // We treat undefined as a wildcard, so it always equals every other version.
+    return a === undefined || b === undefined || semver.eq(a, b);
+}
+
+function checkVersion(want?: semver.SemVer, have?: semver.SemVer): boolean {
+    if (want === undefined || have === undefined) {
+        return true;
+    }
+    return have.major === want.major && have.minor >= want.minor && have.patch >= want.patch;
+}
+
+/** @internal */
+export function register<T extends { readonly version?: string }>(source: Map<string, T[]>, registrationType: string, key: string, item: T): void {
+    let items = source.get(key);
+    if (items) {
+        for (const existing of items) {
+            if (sameVersion(existing.version, item.version)) {
+                throw new Error(`Cannot re-register ${registrationType} ${key}@${item.version}. Previous registration was ${existing}, new registration was ${item}.`);
+            }
+        }
+    } else {
+        items = [];
+        source.set(key, items);
+    }
+
+    log.debug(`registering ${registrationType} ${key}@${item.version}`);
+    items.push(item);
+}
+
+/** @internal */
+export function getRegistration<T extends { readonly version?: string }>(source: Map<string, T[]>, key: string, version: string): T | undefined {
+    const ver = version ? new semver.SemVer(version) : undefined;
+
+    let bestMatch: T | undefined = undefined;
+    let bestMatchVersion: semver.SemVer | undefined = undefined;
+    for (const existing of source.get(key) ?? []) {
+        const existingVersion = existing.version !== undefined ? new semver.SemVer(existing.version) : undefined;
+        if (!checkVersion(ver, existingVersion)) {
+            continue;
+        }
+        if (!bestMatch || (existingVersion && bestMatchVersion && semver.gt(existingVersion, bestMatchVersion))) {
+            bestMatch = existing;
+            bestMatchVersion = existingVersion;
+        }
+    }
+    return bestMatch;
+}
+
 /**
  * A ResourcePackage is a type that understands how to construct resource providers given a name, type, args, and URN.
  */
 export interface ResourcePackage {
-    constructProvider(name: string, type: string, args: any, opts: { urn: string }): ProviderResource;
+    readonly version?: string;
+    constructProvider(name: string, type: string, urn: string): ProviderResource;
 }
 
-const resourcePackages = new Map<string, ResourcePackage>();
-
-function packageKey(name: string, version: string): string {
-    return `${name}@${version}`;
-}
+const resourcePackages = new Map<string, ResourcePackage[]>();
 
 /**
  * registerResourcePackage registers a resource package that will be used to construct providers for any URNs matching
  * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
-export function registerResourcePackage(name: string, version: string, pkg: ResourcePackage) {
-    const key = packageKey(name, version);
-    const existing = resourcePackages.get(key);
-    if (existing) {
-        throw new Error(`Cannot re-register package ${key}. Previous registration was ${existing}, new registration was ${pkg}.`);
-    }
-    resourcePackages.set(key, pkg);
+export function registerResourcePackage(pkg: string, resourcePackage: ResourcePackage) {
+    register(resourcePackages, "package", pkg, resourcePackage);
+}
+
+export function getResourcePackage(pkg: string, version: string): ResourcePackage | undefined {
+    return getRegistration(resourcePackages, pkg, version);
 }
 
 /**
  * A ResourceModule is a type that understands how to construct resources given a name, type, args, and URN.
  */
 export interface ResourceModule {
-    construct(name: string, type: string, args: any, opts: { urn: string }): Resource;
+    readonly version?: string;
+    construct(name: string, type: string, urn: string): Resource;
 }
 
-const resourceModules = new Map<string, ResourceModule>();
+const resourceModules = new Map<string, ResourceModule[]>();
 
-function moduleKey(name: string, version: string): string {
-    return `${name}@${version}`;
+function moduleKey(pkg: string, mod: string): string {
+    return `${pkg}:${mod}`;
 }
 
 /**
  * registerResourceModule registers a resource module that will be used to construct resources for any URNs matching
  * the module name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
  */
-export function registerResourceModule(name: string, version: string, module: ResourceModule) {
-    const key = moduleKey(name, version);
-    const existing = resourceModules.get(key);
-    if (existing) {
-        throw new Error(`Cannot re-register module ${key}. Previous registration was ${existing}, new registration was ${module}.`);
-    }
-    resourceModules.set(key, module);
+export function registerResourceModule(pkg: string, mod: string, module: ResourceModule) {
+    const key = moduleKey(pkg, mod);
+    register(resourceModules, "module", key, module);
+}
+
+export function getResourceModule(pkg: string, mod: string, version: string): ResourceModule | undefined {
+    const key = moduleKey(pkg, mod);
+    return getRegistration(resourceModules, key, version);
 }
