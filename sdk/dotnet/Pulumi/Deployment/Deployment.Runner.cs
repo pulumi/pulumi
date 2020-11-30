@@ -29,12 +29,6 @@ namespace Pulumi
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
 
-            /// <summary>
-            /// Executes the Pulumi program defined in the constructor of TStack.
-            /// </summary>
-            /// <typeparam name="TStack">The stack to run.</typeparam>
-            /// <param name="serviceProvider">The service provider used to get an instance of the stack.</param>
-            /// <returns></returns>
             public Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
             {
                 if (serviceProvider == null)
@@ -46,22 +40,9 @@ namespace Pulumi
                     ?? throw new ApplicationException($"Failed to resolve instance of type {typeof(TStack)} from service provider. Register the type with the service provider before calling {nameof(RunAsync)}."));
             }
 
-            /// <summary>
-            /// Executes the Pulumi program defined in the constructor of TStack.
-            /// </summary>
-            /// <typeparam name="TStack"></typeparam>
-            /// <returns></returns>
             public Task<int> RunAsync<TStack>() where TStack : Stack, new()
-            {
-                return RunAsync(() => new TStack());
-            }
+                => RunAsync(() => new TStack());
 
-            /// <summary>
-            /// Executes the Pulumi program defined in the constructor of TStack.
-            /// </summary>
-            /// <typeparam name="TStack">The stack to run.</typeparam>
-            /// <param name="stackFactory">The factory used to create an instance of the stack.</param>
-            /// <returns></returns>
             private Task<int> RunAsync<TStack>(Func<TStack> stackFactory) where TStack : Stack
             {
                 try
