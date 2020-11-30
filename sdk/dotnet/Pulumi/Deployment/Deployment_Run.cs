@@ -104,10 +104,42 @@ namespace Pulumi
             => CreateRunner().RunAsync<TStack>();
 
         /// <summary>
+        /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
+        /// application. .NET applications should perform all startup logic they
+        /// need in their <c>Main</c> method and then end with:
+        /// <para>
+        /// <c>
+        /// static Task&lt;int&gt; Main(string[] args) {// program
+        /// initialization code ...
+        ///
+        ///     return Deployment.Run&lt;MyStack&gt;(serviceProvider);}
+        /// </c>
+        /// </para>
+        /// <para>
+        /// Deployment will instantiate a new stack instance based on the type
+        /// passed as TStack type parameter using the serviceProvider.
+        /// Importantly, cloud resources cannot be created outside of the
+        /// <see cref="Stack"/> component.
+        /// </para>
+        /// <para>
+        /// Because cloud Resource construction is inherently asynchronous, the
+        /// result of this function is a <see cref="Task{T}"/> which should then
+        /// be returned or awaited.  This will ensure that any problems that are
+        /// encountered during the running of the program are properly reported.
+        /// Failure to do this may lead to the program ending early before all
+        /// resources are properly registered.
+        /// </para>
+        /// </summary>
+        public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
+            => CreateRunner().RunAsync<TStack>(serviceProvider);
+
+        /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
         /// instantiate a new stack instance based on the type passed as TStack
-        /// type parameter. This method creates no real resources.
-        /// Note: Currently, unit tests that call <see cref="TestAsync{TStack}(IMocks, TestOptions)"/>
+        /// type parameter using the given service provider. This method creates
+        /// no real resources.
+        /// Note: Currently, unit tests that call
+        /// <see cref="TestWithServiceProviderAsync{TStack}(IMocks, IServiceProvider, TestOptions)"/>
         /// must run serially; parallel execution is not supported.
         /// </summary>
         /// <param name="mocks">Hooks to mock the engine calls.</param>
@@ -118,7 +150,6 @@ namespace Pulumi
         public static Task<ImmutableArray<Resource>> TestWithServiceProviderAsync<TStack>(IMocks mocks, IServiceProvider serviceProvider, TestOptions? options = null)
             where TStack : Stack
         {
-            // New method name is necessary to avoid backcompat issues with method overloads: https://github.com/dotnet/roslyn/blob/master/docs/Adding%20Optional%20Parameters%20in%20Public%20API.md
             return TestAsync(mocks, (deployment) => deployment._runner.RunAsync<TStack>(serviceProvider), options);
         }
 

@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation.  All rights reserved.
+﻿// Copyright 2016-2020, Pulumi Corporation.  All rights reserved.
 
 using System;
 using System.Collections.Generic;
@@ -16,11 +16,11 @@ class MyStack : Stack
     // This should NOT be exported as stack output due to the missing attribute
     public Output<string> Bar { get; private set; }
 
-    public MyStack(Dependancy dependancy)
+    public MyStack(Dependency dependency)
     {
-        this.Abc = Output.Create(dependancy.Abc);
-        this.Foo = Output.Create(dependancy.Foo);
-        this.Bar = Output.Create(dependancy.Bar);
+        this.Abc = Output.Create(dependency.Abc);
+        this.Foo = Output.Create(dependency.Foo);
+        this.Bar = Output.Create(dependency.Bar);
     }
 }
 
@@ -28,24 +28,24 @@ class Program
 {
     static Task<int> Main(string[] args)
     {
-        Deployment.RunAsync<MyStack>(new TestServiceProvider());
+        return Deployment.RunAsync<MyStack>(new SampleServiceProvider());
     }
 }
 
-class Dependancy
+class Dependency
 {
     public string Abc { get; set; } = "ABC";
     public int Foo { get; set; } = 42;
     public string Bar { get; set; } = "this should not come to output";
 }
 
-class TestServiceProvider : IServiceProvider
+class SampleServiceProvider : IServiceProvider
 {
     public object GetService(Type serviceType)
     {
         if (serviceType == typeof(MyStack))
         {
-            return new MyStack(new Dependancy()); 
+            return new MyStack(new Dependency()); 
         }
 
         return null;

@@ -12,6 +12,5 @@ namespace Pulumi
         Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options);
         Task<int> RunAsync<TStack>() where TStack : Stack, new();
         Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack;
-
     }
 }
