@@ -786,8 +786,12 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
 			"New stack owner, %s, does not match existing owner, %s.\n\n",
 			stackID.Owner, newIdentity.Owner)
 
-		qn, _ := b.parseStackName(string(newName))
-		if qn.Owner == "" {
+		// Re-parse the name using the parseStackName function to avoid the logic in ParseStackReference
+		// that auto-populates the owner property with the currently logged in account. We actually want to
+		// give a different error message if the raw stack name itself didn't include an owner part.
+		parsedName, err := b.parseStackName(string(newName))
+		contract.IgnoreError(err)
+		if parsedName.Owner == "" {
 			errMsg += fmt.Sprintf(
 				"       Did you forget to include the owner name? If yes, rerun the command as follows:\n\n"+
 					"           $ pulumi stack rename %s/%s\n\n",
