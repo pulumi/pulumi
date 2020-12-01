@@ -17,6 +17,9 @@ CHANGELOG
   
 - [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key in Azure KeyVault
   [#5842](https://github.com/pulumi/pulumi/pull/5842/)
+  
+- Enable resource reference feature by default.
+  [#5848](https://github.com/pulumi/pulumi/pull/5848)
 
 ## 2.14.0 (2020-11-18)
 
