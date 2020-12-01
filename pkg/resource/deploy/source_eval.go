@@ -531,7 +531,12 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "secrets":
 		hasSupport = true
 	case "resourceReferences":
-		hasSupport = cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL_RESOURCE_REFERENCES"))
+		hasSupport = true
+
+		// If the experimental flag is explicitly set to a falsy value, disable this feature.
+		if v, ok := os.LookupEnv("PULUMI_EXPERIMENTAL_RESOURCE_REFERENCES"); ok && !cmdutil.IsTruthy(v) {
+			hasSupport = false
+		}
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
