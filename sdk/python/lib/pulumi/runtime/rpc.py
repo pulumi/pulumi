@@ -748,7 +748,7 @@ def register_resource_module(pkg: str, mod: str, module: ResourceModule):
                 raise ValueError(f"Cannot re-register module {key}@{module.version()}. Previous registration was {existing}, new registration was {module}.")
     else:
         resource_modules = []
-        _RESOURCE_MODULES[pkg] = resource_modules
+        _RESOURCE_MODULES[key] = resource_modules
 
     log.debug(f"registering module {key}@{module.version()}")
     resource_modules.append(module)
