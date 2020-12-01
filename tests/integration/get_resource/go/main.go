@@ -33,7 +33,9 @@ func GetResource(ctx *pulumi.Context, urn pulumi.URN) (*MyResource, error) {
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 
-		pet, err := random.NewRandomPet(ctx, "cat", &random.RandomPetArgs{})
+		pet, err := random.NewRandomPet(ctx, "cat", &random.RandomPetArgs{
+			Length: pulumi.Int(2),
+		})
 		if err != nil {
 			return err
 		}

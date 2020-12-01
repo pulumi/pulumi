@@ -182,5 +182,9 @@ func TestGetResourceGo(t *testing.T) {
 		},
 		Dir:                      filepath.Join("get_resource", "go"),
 		AllowEmptyPreviewChanges: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+			assert.Equal(t, float64(2), stack.Outputs["getPetLength"])
+		},
 	})
 }
