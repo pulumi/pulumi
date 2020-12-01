@@ -14,6 +14,9 @@ CHANGELOG
 
 - [sdk/dotnet] Add support for dependency injection into TStack instance by adding an overload to `Deployment.RunAsync`. The overload accepts an `IServiceProvider` that is used to create the instance of TStack. Also added a new method `Deployment.TestWithServiceProviderAsync` for testing stacks that use dependency injection. 
   [#5723](https://github.com/pulumi/pulumi/pull/5723/)
+  
+- [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key in Azure KeyVault
+  [#5842](https://github.com/pulumi/pulumi/pull/5842/)
 
 ## 2.14.0 (2020-11-18)
 
