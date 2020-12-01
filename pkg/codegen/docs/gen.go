@@ -1860,7 +1860,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package, emitAPIL
 // GeneratePackage generates the docs package with docs for each resource given the Pulumi
 // schema.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	emitAPILinks := pkg.Name != "azure-nextgen"
+	emitAPILinks := pkg.Name != "azure-nextgen" && pkg.Name != "eks"
 
 	templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
