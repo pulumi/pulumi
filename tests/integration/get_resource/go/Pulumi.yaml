@@ -1,0 +1,3 @@
+name: get-resource
+runtime: go
+description: A simple Go program that gets an existing resource from the engine.
