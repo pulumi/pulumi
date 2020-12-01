@@ -48,7 +48,10 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 	}
 
 	var secretsManager *cloud.Manager
-	if info.EncryptedKey == "" {
+
+	// if there is no key OR the secrets provider is changing
+	// then we need to generate the new key based on the new secrets provider
+	if info.EncryptedKey == "" || info.SecretsProvider != secretsProvider {
 		dataKey, err := cloud.GenerateNewDataKey(secretsProvider)
 		if err != nil {
 			return nil, err
