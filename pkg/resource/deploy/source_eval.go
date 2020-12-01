@@ -533,8 +533,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "resourceReferences":
 		hasSupport = true
 
-		// If the experimental flag is explicitly set to a falsy value, disable this feature.
-		if v, ok := os.LookupEnv("PULUMI_EXPERIMENTAL_RESOURCE_REFERENCES"); ok && !cmdutil.IsTruthy(v) {
+		// Allow the resource reference feature to be disabled by explicitly setting an env var.
+		if v, ok := os.LookupEnv("PULUMI_DISABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
 			hasSupport = false
 		}
 	}
