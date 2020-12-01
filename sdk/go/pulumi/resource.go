@@ -194,8 +194,6 @@ type invokeOptions struct {
 	Parent Resource
 	// Provider is an optional provider resource to use for this invoke.
 	Provider ProviderResource
-	// URN is an optional URN of a previously-registered resource of this type to read from the engine for this invoke.
-	URN string
 	// Version is an optional version of the provider plugin to use for the invoke.
 	Version string
 }
@@ -357,14 +355,9 @@ func Transformations(o []ResourceTransformation) ResourceOption {
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
 //nolint: golint
-func URN_(o string) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
-		switch {
-		case ro != nil:
-			ro.URN = o
-		case io != nil:
-			io.URN = o
-		}
+func URN_(o string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.URN = o
 	})
 }
 
