@@ -26,22 +26,36 @@ import (
 )
 
 func TestIsVirtualEnv(t *testing.T) {
-	// Create a new empty test directory.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	testBody := func(t *testing.T, forceStartProcess bool) {
+		// Create a new empty test directory.
+		tempdir, _ := ioutil.TempDir("", "test-env")
+		defer os.RemoveAll(tempdir)
 
-	// Assert the empty test directory is not a virtual environment.
-	assert.False(t, IsVirtualEnv(tempdir))
+		// Assert the empty test directory is not a virtual environment.
+		assert.False(t, IsVirtualEnv(tempdir))
 
-	// Create and run a python command to create a virtual environment.
-	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
-	assert.NoError(t, err)
-	err = cmd.Run()
-	assert.NoError(t, err)
+		// Create and run a python command to create a virtual environment.
+		venvDir := filepath.Join(tempdir, "venv")
+		cmd, err := Command([]string{"-m", "venv", venvDir})
+		assert.NoError(t, err)
+		asWrappedCmd := cmd.(*wrappedCmd)
+		asWrappedCmd.useStartProcess = forceStartProcess
+		err = cmd.Run()
+		assert.NoError(t, err)
 
-	// Assert the new venv directory is a virtual environment.
-	assert.True(t, IsVirtualEnv(venvDir))
+		// Assert the new venv directory is a virtual environment.
+		assert.True(t, IsVirtualEnv(venvDir))
+	}
+
+	// Run with the default exec.Cmd support
+	t.Run("DefaultCmd", func(t *testing.T) {
+		testBody(t, false)
+	})
+
+	// Run with StartProcess
+	t.Run("StartProcess", func(t *testing.T) {
+		testBody(t, true)
+	})
 }
 
 func TestActivateVirtualEnv(t *testing.T) {
@@ -78,28 +92,48 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 		t.Skip("Skipped in short test run")
 	}
 
-	// Create a new empty test directory.
-	tempdir, _ := ioutil.TempDir("", "test-env")
-	defer os.RemoveAll(tempdir)
+	testBody := func(t *testing.T, forceStartProcess bool) {
+		// Create a new empty test directory.
+		tempdir, _ := ioutil.TempDir("", "test-env")
+		defer os.RemoveAll(tempdir)
 
-	// Create and run a python command to create a virtual environment.
-	venvDir := filepath.Join(tempdir, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
-	assert.NoError(t, err)
-	err = cmd.Run()
-	assert.NoError(t, err)
+		// Create and run a python command to create a virtual environment.
+		venvDir := filepath.Join(tempdir, "venv")
+		cmd, err := Command([]string{"-m", "venv", venvDir})
+		assert.NoError(t, err)
+		err = cmd.Run()
+		assert.NoError(t, err)
 
-	// Create a requirements.txt file in the temp directory.
-	requirementsFile := filepath.Join(tempdir, "requirements.txt")
-	assert.NoError(t, ioutil.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0600))
+		// Create a requirements.txt file in the temp directory.
+		requirementsFile := filepath.Join(tempdir, "requirements.txt")
+		assert.NoError(t, ioutil.WriteFile(requirementsFile, []byte("pulumi==2.0.0\n"), 0600))
 
-	// Create a command to run pip from the virtual environment.
-	pipCmd := VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-r", "requirements.txt")
-	pipCmd.Dir = tempdir
-	pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+		// Create a command to run pip from the virtual environment.
+		pipCmd, err := VirtualEnvCommand(
+			venvDir,
+			"python",
+			[]string{"-m", "pip", "install", "-r", "requirements.txt"},
+			WithDir(tempdir),
+			WithEnv(ActivateVirtualEnv(os.Environ(), venvDir)),
+		)
 
-	// Run the command.
-	if output, err := pipCmd.CombinedOutput(); err != nil {
-		assert.Failf(t, "pip install command failed with output: %s", string(output))
+		asWrappedCmd := pipCmd.(*wrappedCmd)
+		asWrappedCmd.useStartProcess = forceStartProcess
+		// Run the command.
+		output, err := pipCmd.CombinedOutput()
+		t.Logf("%s", string(output))
+		if err != nil {
+			assert.Failf(t, "pip install command failed with output: %s", string(output))
+		}
 	}
+
+	// Run with the default exec.Cmd support
+	t.Run("DefaultCmd", func(t *testing.T) {
+		testBody(t, false)
+	})
+
+	// Run with StartProcess
+	t.Run("StartProcess", func(t *testing.T) {
+		testBody(t, true)
+	})
 }

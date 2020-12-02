@@ -27,9 +27,51 @@ import (
 
 const windows = "windows"
 
+type CommandOpt interface {
+	apply(cmd *wrappedCmd)
+}
+
+type commandOptFunc func(cmd *wrappedCmd)
+
+func (c commandOptFunc) apply(cmd *wrappedCmd) {
+	c(cmd)
+}
+
+func WithDir(dir string) CommandOpt {
+	return commandOptFunc(func(cmd *wrappedCmd) {
+		cmd.cmd.Dir = dir
+	})
+}
+
+func WithEnv(env []string) CommandOpt {
+	return commandOptFunc(func(cmd *wrappedCmd) {
+		cmd.cmd.Env = env
+	})
+}
+
+func WithCommandPath(cmdPath string) CommandOpt {
+	return commandOptFunc(func(cmd *wrappedCmd) {
+		cmd.cmd.Path = cmdPath
+	})
+}
+
+func WithStdOut(stdout *os.File) CommandOpt {
+	return commandOptFunc(func(cmd *wrappedCmd) {
+		cmd.stdout = stdout
+		cmd.cmd.Stdout = stdout
+	})
+}
+
+func WithStdErr(stderr *os.File) CommandOpt {
+	return commandOptFunc(func(cmd *wrappedCmd) {
+		cmd.stderr = stderr
+		cmd.cmd.Stderr = stderr
+	})
+}
+
 // Command returns an *exec.Cmd for running `python`. If the `PULUMI_PYTHON_CMD` variable is set
 // it will be looked for on `PATH`, otherwise, `python3` and `python` will be looked for.
-func Command(arg ...string) (*exec.Cmd, error) {
+func Command(args []string, opts ...CommandOpt) (WrappedCmd, error) {
 	var err error
 	var pythonCmds []string
 	var pythonPath string
@@ -56,13 +98,24 @@ func Command(arg ...string) (*exec.Cmd, error) {
 			pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
 		}
 		if err != nil {
-			// TODO: Wrap error? The resulting user facing message isn't very pretty though.
 			return nil, errors.Errorf(
 				"locating any of %q on your PATH.  Have you installed Python 3.6 or greater?",
 				pythonCmds)
 		}
+
 	}
-	return exec.Command(pythonPath, arg...), nil
+	cmd := &exec.Cmd{
+		Path: pythonPath,
+		Args: append([]string{pythonPath}, args...),
+	}
+	wcmd, err := newWrappedCmd(cmd)
+	if err != nil {
+		return nil, err
+	}
+	for _, o := range opts {
+		o.apply(wcmd)
+	}
+	return wcmd, nil
 }
 
 // resolveWindowsExecutionAlias performs a lookup for python among UWP
@@ -120,12 +173,13 @@ func resolveWindowsExecutionAlias(pythonCmds []string) (string, error) {
 
 // VirtualEnvCommand returns an *exec.Cmd for running a command from the specified virtual environment
 // directory.
-func VirtualEnvCommand(virtualEnvDir, name string, arg ...string) *exec.Cmd {
+func VirtualEnvCommand(virtualEnvDir, name string, args []string, opts ...CommandOpt) (WrappedCmd, error) {
 	if runtime.GOOS == windows {
 		name = fmt.Sprintf("%s.exe", name)
 	}
 	cmdPath := filepath.Join(virtualEnvDir, virtualEnvBinDirName(), name)
-	return exec.Command(cmdPath, arg...)
+	opts = append(opts, WithCommandPath(cmdPath))
+	return Command(args, opts...)
 }
 
 // IsVirtualEnv returns true if the specified directory contains a python binary.
@@ -205,7 +259,7 @@ func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv 
 
 	// Create the virtual environment by running `python -m venv venv`.
 	venvDir := filepath.Join(root, "venv")
-	cmd, err := Command("-m", "venv", venvDir)
+	cmd, err := Command([]string{"-m", "venv", venvDir})
 	if err != nil {
 		return err
 	}
@@ -227,18 +281,30 @@ func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv 
 	print("Finished creating virtual environment")
 
 	runPipInstall := func(errorMsg string, arg ...string) error {
-		pipCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip", "install"}, arg...)...)
-		pipCmd.Dir = root
-		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+		args := []string{"-m", "pip", "install"}
+		args = append(args, arg...)
+		opts := []CommandOpt{
+			WithDir(root),
+			WithEnv(ActivateVirtualEnv(os.Environ(), venvDir)),
+		}
+		if showOutput {
+			opts = append(opts, WithStdOut(os.Stdout), WithStdErr(os.Stderr))
+		}
+		pipCmd, err := VirtualEnvCommand(venvDir,
+			"python",
+			args,
+			opts...,
+		)
+		if err != nil {
+			return err
+		}
 
 		wrapError := func(err error) error {
-			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args, " "))
+			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args(), " "))
 		}
 
 		if showOutput {
-			// Show stdout/stderr output.
-			pipCmd.Stdout = os.Stdout
-			pipCmd.Stderr = os.Stderr
+			// Stdout/stderr already set
 			if err := pipCmd.Run(); err != nil {
 				return wrapError(err)
 			}

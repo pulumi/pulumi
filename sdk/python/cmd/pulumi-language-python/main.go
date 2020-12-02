@@ -166,8 +166,9 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	var cmd *exec.Cmd
+	var cmd python.WrappedCmd
 	var virtualenv string
+	env := os.Environ()
 	if host.virtualenv != "" {
 		virtualenv = host.virtualenv
 		if !path.IsAbs(virtualenv) {
@@ -180,26 +181,34 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		if !python.IsVirtualEnv(virtualenv) {
 			return nil, python.NewVirtualEnvError(host.virtualenv, virtualenv)
 		}
-		cmd = python.VirtualEnvCommand(virtualenv, "python", args...)
-	} else {
-		cmd, err = python.Command(args...)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if virtualenv != "" || config != "" {
-		env := os.Environ()
 		if virtualenv != "" {
 			env = python.ActivateVirtualEnv(env, virtualenv)
 		}
 		if config != "" {
 			env = append(env, pulumiConfigVar+"="+config)
 		}
-		cmd.Env = env
+		cmd, err = python.VirtualEnvCommand(virtualenv,
+			"python",
+			args,
+			python.WithStdOut(os.Stdout),
+			python.WithStdErr(os.Stderr),
+			python.WithEnv(env),
+		)
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		cmd, err = python.Command(
+			args,
+			python.WithStdOut(os.Stdout),
+			python.WithStdErr(os.Stderr),
+			python.WithEnv(env),
+		)
+		if err != nil {
+			return nil, err
+		}
 	}
+
 	if err := cmd.Run(); err != nil {
 		// Python does not explicitly flush standard out or standard error when exiting abnormally. For this reason, we
 		// need to explicitly flush our output streams so that, when we exit, the engine picks up the child Python
