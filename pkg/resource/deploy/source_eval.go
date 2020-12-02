@@ -531,12 +531,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "secrets":
 		hasSupport = true
 	case "resourceReferences":
-		hasSupport = true
-
-		// Allow the resource reference feature to be disabled by explicitly setting an env var.
-		if v, ok := os.LookupEnv("PULUMI_DISABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
-			hasSupport = false
-		}
+		hasSupport = cmdutil.IsTruthy(os.Getenv("PULUMI_EXPERIMENTAL_RESOURCE_REFERENCES"))
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
