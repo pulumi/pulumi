@@ -43,7 +43,7 @@ type MockBackend struct {
 	CreateStackF            func(context.Context, StackReference, interface{}) (Stack, error)
 	RemoveStackF            func(context.Context, Stack, bool) (bool, error)
 	ListStacksF             func(context.Context, ListStacksFilter) ([]StackSummary, error)
-	RenameStackF            func(context.Context, Stack, tokens.QName) error
+	RenameStackF            func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
 	QueryF                  func(context.Context, QueryOperation) result.Result
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
@@ -159,7 +159,8 @@ func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter) 
 	panic("not implemented")
 }
 
-func (be *MockBackend) RenameStack(ctx context.Context, stack Stack, newName tokens.QName) error {
+func (be *MockBackend) RenameStack(ctx context.Context, stack Stack,
+	newName tokens.QName) (StackReference, error) {
 	if be.RenameStackF != nil {
 		return be.RenameStackF(ctx, stack, newName)
 	}
@@ -328,7 +329,7 @@ type MockStack struct {
 	WatchF   func(ctx context.Context, op UpdateOperation) result.Result
 	QueryF   func(ctx context.Context, op UpdateOperation) result.Result
 	RemoveF  func(ctx context.Context, force bool) (bool, error)
-	RenameF  func(ctx context.Context, newName tokens.QName) error
+	RenameF  func(ctx context.Context, newName tokens.QName) (StackReference, error)
 	GetLogsF func(ctx context.Context, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)
 	ExportDeploymentF func(ctx context.Context) (*apitype.UntypedDeployment, error)
@@ -422,7 +423,7 @@ func (ms *MockStack) Remove(ctx context.Context, force bool) (bool, error) {
 	panic("not implemented")
 }
 
-func (ms *MockStack) Rename(ctx context.Context, newName tokens.QName) error {
+func (ms *MockStack) Rename(ctx context.Context, newName tokens.QName) (StackReference, error) {
 	if ms.RenameF != nil {
 		return ms.RenameF(ctx, newName)
 	}

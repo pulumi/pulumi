@@ -363,6 +363,48 @@ func TestStackRenameAfterCreate(t *testing.T) {
 	e.RunCommand("pulumi", "stack", "rename", newName)
 }
 
+// TestStackRenameServiceAfterCreateBackend tests a few edge cases about renaming
+// stacks owned by organizations in the service backend.
+func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	// Use the current username as the "organization" in certain operations.
+	username, _ := e.RunCommand("pulumi", "whoami")
+	orgName := strings.TrimSpace(username)
+
+	// Create a basic project.
+	stackName := addRandomSuffix("stack-rename-svcbe")
+	stackRenameBase := addRandomSuffix("renamed-stack-svcbe")
+	integration.CreateBasicPulumiRepo(e)
+	e.RunCommand("pulumi", "stack", "init", stackName)
+
+	// Create some configuration so that a per-project YAML file is generated.
+	e.RunCommand("pulumi", "config", "set", "xyz", "abc")
+
+	// Try to rename the stack to itself. This should fail.
+	e.RunCommandExpectError("pulumi", "stack", "rename", stackName)
+
+	// Try to rename this stack to a name outside of the current "organization".
+	// This should fail since it is not currently legal to do so.
+	e.RunCommandExpectError("pulumi", "stack", "rename", "fakeorg/"+stackRenameBase)
+
+	// Next perform a legal rename. This should work.
+	e.RunCommand("pulumi", "stack", "rename", stackRenameBase)
+	stdoutXyz1, _ := e.RunCommand("pulumi", "config", "get", "xyz")
+	assert.Equal(t, "abc", strings.Trim(stdoutXyz1, "\r\n"))
+
+	// Now perform another legal rename, this time explicitly specifying the
+	// "organization" for the stack (which should match the default).
+	e.RunCommand("pulumi", "stack", "rename", orgName+"/"+stackRenameBase+"2")
+	stdoutXyz2, _ := e.RunCommand("pulumi", "config", "get", "xyz")
+	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
+}
+
 func getFileNames(infos []os.FileInfo) []string {
 	var result []string
 	for _, i := range infos {

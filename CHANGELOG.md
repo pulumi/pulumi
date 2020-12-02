@@ -6,6 +6,9 @@ CHANGELOG
 - [sdk/python] Add deserialization support for enums.
   [#5615](https://github.com/pulumi/pulumi/pull/5615)
 
+- Correctly rename `Pulumi.*.yaml` stack files during a rename that includes an
+  organization in its name [#5812](https://github.com/pulumi/pulumi/pull/5812).
+
 - Respect `PULUMI_PYTHON_CMD` in scripts.
   [#5782](https://github.com/pulumi/pulumi/pull/5782)
 
@@ -14,7 +17,7 @@ CHANGELOG
 
 - [sdk/dotnet] Add support for dependency injection into TStack instance by adding an overload to `Deployment.RunAsync`. The overload accepts an `IServiceProvider` that is used to create the instance of TStack. Also added a new method `Deployment.TestWithServiceProviderAsync` for testing stacks that use dependency injection. 
   [#5723](https://github.com/pulumi/pulumi/pull/5723/)
-  
+
 - [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key in Azure KeyVault
   [#5842](https://github.com/pulumi/pulumi/pull/5842/)
   
