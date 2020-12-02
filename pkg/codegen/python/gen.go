@@ -515,8 +515,14 @@ func (mod *modContext) getRelImportFromRoot() string {
 func (mod *modContext) genResourceModule(w io.Writer) {
 	contract.Assert(len(mod.resources) != 0)
 
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	relImport := relPathToRelImport(relRoot)
+
 	fmt.Fprintf(w, "\ndef _register_module():\n")
-	fmt.Fprintf(w, "    import pulumi")
+	fmt.Fprintf(w, "    import pulumi\n")
+	fmt.Fprintf(w, "    from %s import _utilities\n", relImport)
 
 	// Check for provider-only modules.
 	var provider *schema.Resource
@@ -524,8 +530,10 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 		provider = mod.resources[0]
 	} else {
 		fmt.Fprintf(w, "\n\n    class Module(pulumi.runtime.ResourceModule):\n")
+		fmt.Fprintf(w, "        _version = _utilities.get_semver_version()\n")
+		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        def version(self):\n")
-		fmt.Fprintf(w, "            return None\n")
+		fmt.Fprintf(w, "            return Module._version\n")
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:\n")
 
@@ -557,8 +565,10 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 
 	if provider != nil {
 		fmt.Fprintf(w, "\n\n    class Package(pulumi.runtime.ResourcePackage):\n")
+		fmt.Fprintf(w, "        _version = _utilities.get_semver_version()\n")
+		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        def version(self):\n")
-		fmt.Fprintf(w, "            return None\n")
+		fmt.Fprintf(w, "            return Package._version\n")
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:\n")
 		fmt.Fprintf(w, "            if typ != \"%v\":\n", provider.Token)
@@ -2433,7 +2443,7 @@ def get_env_float(*args):
     return None
 
 
-def get_version():
+def get_semver_version():
     # __name__ is set to the fully-qualified name of the current module, In our case, it will be
     # <some module>._utilities. <some module> is the module we want to query the version for.
     root_package, *rest = __name__.split('.')
@@ -2462,6 +2472,8 @@ def get_version():
     # for dev builds, while semver encodes them as "prerelease" versions. In order to bridge between the two, we convert
     # our dev build version into a prerelease tag. This matches what all of our other packages do when constructing
     # their own semver string.
-    semver_version = SemverVersion(major=major, minor=minor, patch=patch, prerelease=prerelease)
-    return str(semver_version)
+    return SemverVersion(major=major, minor=minor, patch=patch, prerelease=prerelease)
+
+def get_version():
+	return str(get_semver_version())
 `

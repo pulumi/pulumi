@@ -8,10 +8,14 @@ from .rubber_tree import *
 
 def _register_module():
     import pulumi
+    from ... import _utilities
+
 
     class Module(pulumi.runtime.ResourceModule):
+        _version = _utilities.get_semver_version()
+
         def version(self):
-            return None
+            return Module._version
 
         def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:
             if typ == "plant-provider:tree/v1:RubberTree":

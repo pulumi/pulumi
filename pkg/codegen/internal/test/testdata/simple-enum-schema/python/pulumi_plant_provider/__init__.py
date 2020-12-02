@@ -15,10 +15,14 @@ from . import (
 
 def _register_module():
     import pulumi
+    from . import _utilities
+
 
     class Package(pulumi.runtime.ResourcePackage):
+        _version = _utilities.get_semver_version()
+
         def version(self):
-            return None
+            return Package._version
 
         def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:
             if typ != "pulumi:providers:plant-provider":
