@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.15.0 (2020-12-02)
 
 - [sdk/python] Add deserialization support for enums.
   [#5615](https://github.com/pulumi/pulumi/pull/5615)
@@ -15,7 +18,7 @@ CHANGELOG
 - Add `PULUMI_BACKEND_URL` environment variable to configure the state backend.
   [#5789](https://github.com/pulumi/pulumi/pull/5789)
 
-- [sdk/dotnet] Add support for dependency injection into TStack instance by adding an overload to `Deployment.RunAsync`. The overload accepts an `IServiceProvider` that is used to create the instance of TStack. Also added a new method `Deployment.TestWithServiceProviderAsync` for testing stacks that use dependency injection. 
+- [sdk/dotnet] Add support for dependency injection into TStack instance by adding an overload to `Deployment.RunAsync`. The overload accepts an `IServiceProvider` that is used to create the instance of TStack. Also added a new method `Deployment.TestWithServiceProviderAsync` for testing stacks that use dependency injection.
   [#5723](https://github.com/pulumi/pulumi/pull/5723/)
 
 - [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key in Azure KeyVault
