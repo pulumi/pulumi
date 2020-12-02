@@ -1,4 +1,6 @@
 on:
+  repository_dispatch:
+    types: [ run-acceptance-tests-command ]
   pull_request:
 
 env:
@@ -8,19 +10,24 @@ env:
   GO111MODULE: "on"
 
 jobs:
-  lint:
-    container: golangci/golangci-lint:latest
-    name: Lint ${{ matrix.directory }}
-    strategy:
-      matrix:
-        directory: [ sdk, pkg, tests ]
+  comment-notification:
+    # We only care about adding the result to the PR if it's a repository_dispatch event
+    if: github.event_name == 'repository_dispatch'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Lint ${{ matrix.directory }}
-        run: |
-          cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+      - name: Create URL to the run output
+        id: vars
+        run: echo ::set-output name=run-url::https://github.com/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID
+      - name: Update with Result
+        uses: peter-evans/create-or-update-comment@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          repository: ${{ github.event.client_payload.github.payload.repository.full_name }}
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
+          body: |
+            Please view the results of the PR Build + Acceptance Tests Run [Here][1]
+
+            [1]: ${{ steps.vars.outputs.run-url }}
   build_and_test:
     name: Build & Test
     strategy:
@@ -30,6 +37,7 @@ jobs:
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set up Go ${{ matrix.go-version }}
@@ -97,6 +105,7 @@ jobs:
         node-version: [14.x]
         python-version: [3.9.x]
         dotnet: [3.1.x]
+    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
