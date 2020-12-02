@@ -1302,7 +1302,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	var imports []string
 	// Include the SDK import if we'll be registering module resources.
 	if len(mod.resources) != 0 {
-		imports = mod.sdkImports(false, false)
+		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
 	}
 	mod.genHeader(w, imports, nil)
 
@@ -1405,6 +1405,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 		}
 
 		fmt.Fprintf(w, "\nconst _module = {\n")
+		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
 		fmt.Fprintf(w, "    construct: (name: string, type: string, urn: string): pulumi.Resource => {\n")
 		fmt.Fprintf(w, "        switch (type) {\n")
 
@@ -1430,6 +1431,7 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	if provider != nil {
 		fmt.Fprintf(w, "\nimport { Provider } from \"./provider\";\n\n")
 		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name)
+		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
 		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
 		fmt.Fprintf(w, "        if (type !== \"%v\") {\n", provider.Token)
 		fmt.Fprintf(w, "            throw new Error(`unknown provider type ${type}`);\n")

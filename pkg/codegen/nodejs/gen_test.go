@@ -28,6 +28,7 @@ func TestGeneratePackage(t *testing.T) {
 			"Simple schema with enum types",
 			"simple-enum-schema",
 			[]string{
+				"index.ts",
 				"tree/v1/rubberTree.ts",
 				"tree/v1/index.ts",
 				"tree/index.ts",
