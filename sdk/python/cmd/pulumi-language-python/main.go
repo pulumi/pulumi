@@ -286,6 +286,8 @@ func (w *logWriter) Write(p []byte) (n int, err error) {
 }
 
 // These packages are known not to have any plugins.
+// TODO[pulumi/pulumi#5863]: Remove this once the `pulumi-policy` package includes a `pulumiplugin.json`
+// file that indicates the package does not have an associated plugin, and enough time has passed.
 var packagesWithoutPlugins = map[string]struct{}{
 	"pulumi-policy": {},
 }
