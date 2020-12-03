@@ -116,6 +116,7 @@ func TestRunningPipInVirtualEnvironment(t *testing.T) {
 			WithDir(tempdir),
 			WithEnv(ActivateVirtualEnv(os.Environ(), venvDir)),
 		)
+		assert.NoError(t, err)
 
 		asWrappedCmd := pipCmd.(*wrappedCmd)
 		asWrappedCmd.useStartProcess = forceStartProcess

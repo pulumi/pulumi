@@ -268,7 +268,7 @@ func dedupEnvCase(caseInsensitive bool, env []string) []string {
 // two interfaces with non-comparable underlying types.
 func interfaceEqual(a, b interface{}) bool {
 	defer func() {
-		recover()
+		_ = recover()
 	}()
 	return a == b
 }

@@ -33,11 +33,11 @@ func Test_wrappedCmd_CombinedOutputIsSame(t *testing.T) {
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			execCmd := &wrappedCmd{
-				cmd: exec.Command("python", tt.args...),
+				cmd: exec.Command("python", tt.args...), //nolint
 			}
 			execCmdOut := getCmdOutput(t, execCmd)
 			startProc := &wrappedCmd{
-				cmd:             exec.Command("python", tt.args...),
+				cmd:             exec.Command("python", tt.args...), //nolint
 				useStartProcess: true,
 			}
 			assert.NotEmpty(t, execCmdOut)
