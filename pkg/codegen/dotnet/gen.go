@@ -1052,7 +1052,7 @@ func genResourcePackage(pkg *schema.Package, assemblyName string, modules map[st
 	fmt.Fprintf(w, "    internal class ResourcePackage : IResourcePackage\n")
 	fmt.Fprintf(w, "    {\n")
 	fmt.Fprintf(w, "        public string Name => \"%s\";\n\n", pkg.Name)
-	fmt.Fprintf(w, "        public string? Version => null;\n\n")
+	fmt.Fprintf(w, "        public string? Version => Utilities.Version;\n\n")
 	fmt.Fprintf(w, "        [Obsolete(\"The overload with 4 parameters is deprecated and will be removed\")]\n")
 	fmt.Fprintf(w, "        public ProviderResource ConstructProvider(string name, string type, System.Collections.Generic.IDictionary<string, object?>? args, string urn)\n")
 	fmt.Fprintf(w, "            => ConstructProvider(name, type, urn);\n\n")

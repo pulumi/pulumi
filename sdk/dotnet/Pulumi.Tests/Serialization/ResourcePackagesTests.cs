@@ -78,12 +78,6 @@ namespace Pulumi.Tests.Serialization
             }
         }
         
-        private class VersionBlankTestPackage : BaseTestPackage
-        {
-            public override string Name => "test";
-            public override string? Version => "1.0.1-alpha1";
-        }
-
         private class Version101TestPackage : BaseTestPackage
         {
             public override string Name => "test";
