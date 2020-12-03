@@ -28,7 +28,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -333,14 +332,6 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 	return pulumiPackages, nil
 }
 
-//nolint:lll
-type pulumiPlugin struct {
-	Resource bool   `json:"resource"` // Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
-	Name     string `json:"name"`     // Optional plugin name. If not set, the plugin name is derived from the package name.
-	Version  string `json:"version"`  // Optional plugin version. If not set, the version is derived from the package version (if possible).
-	Server   string `json:"server"`   // Optional plugin server. If not set, the default server is used when installing the plugin.
-}
-
 // determinePluginDependency attempts to determine a plugin associated with a package. It checks to see if the package
 // contains a pulumiplugin.json file and uses the information in that file to determine the plugin. If `resource` in
 // pulumiplugin.json is set to false, nil is returned. If the name or version aren't specified in the file, these values
@@ -367,13 +358,8 @@ func determinePluginDependency(
 	logging.V(5).Infof("GetRequiredPlugins: pulumiplugin.json file path: %s", pulumiPluginFilePath)
 
 	var name, version, server string
-	b, err := ioutil.ReadFile(pulumiPluginFilePath)
+	plugin, err := python.LoadPulumiPluginFile(pulumiPluginFilePath)
 	if err == nil {
-		var plugin pulumiPlugin
-		if err := json.Unmarshal(b, &plugin); err != nil {
-			return nil, err
-		}
-
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
 		if !plugin.Resource {

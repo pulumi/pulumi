@@ -20,7 +20,6 @@ package python
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"io"
 	"path"
@@ -37,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	pysdk "github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 type typeDetails struct {
@@ -1473,28 +1473,14 @@ func sanitizePackageDescription(description string) string {
 	return ""
 }
 
-func genPulumiPluginFile(pkg *schema.Package) (string, error) {
-	type pulumiPlugin struct {
-		// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
-		Resource bool `json:"resource,omitempty"`
-		// Optional plugin name. If not set, the plugin name is derived from the package name.
-		Name string `json:"name,omitempty"`
-		// Optional plugin version. If not set, the version is derived from the package version (if possible).
-		Version string `json:"version,omitempty"`
-		// Optional plugin server. If not set, the default server is used when installing the plugin.
-		Server string `json:"server,omitempty"`
-	}
-
-	json, err := json.MarshalIndent(&pulumiPlugin{
+func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
+	plugin := &pysdk.PulumiPlugin{
 		Resource: true,
 		Name:     pkg.Name,
 		Version:  "${PLUGIN_VERSION}",
 		Server:   pkg.PluginDownloadURL,
-	}, "", "  ")
-	if err != nil {
-		return "", err
 	}
-	return string(json), nil
+	return plugin.MarshalJSON()
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
@@ -2422,7 +2408,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		if err != nil {
 			return nil, err
 		}
-		files.add("pulumiplugin.json", []byte(plugin))
+		files.add("pulumiplugin.json", plugin)
 	}
 
 	// Finally emit the package metadata (setup.py).
