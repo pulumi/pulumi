@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [sdk/python] Address potential issues when running multiple `pulumi` processes concurrently.
+  [#5857](https://github.com/pulumi/pulumi/pull/5857)
+
 
 ## 2.15.0 (2020-12-02)
 
