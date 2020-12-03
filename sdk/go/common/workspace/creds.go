@@ -213,5 +213,23 @@ func StoreCredentials(creds Credentials) error {
 	if err != nil {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
-	return ioutil.WriteFile(credsFile, raw, 0600)
+
+	tempCredsFile, err := ioutil.TempFile("", "credentials-*.json")
+	if err != nil {
+		return err
+	}
+	_, err = tempCredsFile.Write(raw)
+	if err != nil {
+		return err
+	}
+	err = tempCredsFile.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempCredsFile.Name(), credsFile)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
