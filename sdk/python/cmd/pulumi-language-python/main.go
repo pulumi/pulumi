@@ -39,6 +39,7 @@ import (
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
@@ -360,7 +361,7 @@ func determinePluginDependency(
 	logging.V(5).Infof("GetRequiredPlugins: pulumiplugin.json file path: %s", pulumiPluginFilePath)
 
 	var name, version, server string
-	plugin, err := python.LoadPulumiPluginFile(pulumiPluginFilePath)
+	plugin, err := plugin.LoadPulumiPluginJSON(pulumiPluginFilePath)
 	if err == nil {
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.

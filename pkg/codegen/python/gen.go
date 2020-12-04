@@ -35,8 +35,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	pysdk "github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 type typeDetails struct {
@@ -1474,13 +1474,13 @@ func sanitizePackageDescription(description string) string {
 }
 
 func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
-	plugin := &pysdk.PulumiPlugin{
+	plugin := &plugin.PulumiPluginJSON{
 		Resource: true,
 		Name:     pkg.Name,
 		Version:  "${PLUGIN_VERSION}",
 		Server:   pkg.PluginDownloadURL,
 	}
-	return plugin.MarshalJSON()
+	return plugin.JSON()
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
