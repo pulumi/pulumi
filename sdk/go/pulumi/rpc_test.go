@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -542,5 +543,143 @@ func TestMapInputMarhsalling(t *testing.T) {
 		for i := range c.depUrns {
 			assert.Equal(t, URN(c.depUrns[i]), depUrns[i])
 		}
+	}
+}
+
+func TestVersionedMap(t *testing.T) {
+	resourceModules := versionedMap{
+		versions: map[string][]Versioned{},
+	}
+	resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.1-alpha1")})
+	resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.2")})
+	resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("2.2.0")})
+	resourceModules.Store("unrelated", &testResourcePackage{version: semver.MustParse("1.0.3")})
+	resourceModules.Store("wild", &testResourcePackage{})
+	resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")})
+	resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-beta1")})
+
+	tests := []struct {
+		name            string
+		pkg             string
+		version         semver.Version
+		expectFound     bool
+		expectedVersion semver.Version
+	}{
+		{
+			name:        "unknown not found",
+			pkg:         "unknown",
+			version:     semver.Version{},
+			expectFound: false,
+		},
+		{
+			name:        "unknown not found",
+			pkg:         "unknown",
+			version:     semver.MustParse("0.0.1"),
+			expectFound: false,
+		},
+		{
+			name:        "different major version not found",
+			pkg:         "test",
+			version:     semver.MustParse("0.0.1"),
+			expectFound: false,
+		},
+		{
+			name:        "different major version not found",
+			pkg:         "test",
+			version:     semver.MustParse("3.0.0"),
+			expectFound: false,
+		},
+		{
+			name:            "wildcard returns highest version",
+			pkg:             "test",
+			version:         semver.Version{},
+			expectFound:     true,
+			expectedVersion: semver.MustParse("2.2.0"),
+		},
+		{
+			name:            "major version respected 1.0.0",
+			pkg:             "test",
+			version:         semver.MustParse("1.0.0"),
+			expectFound:     true,
+			expectedVersion: semver.MustParse("1.0.2"),
+		},
+		{
+			name:            "major version respected 2.0.0",
+			pkg:             "test",
+			version:         semver.MustParse("2.0.0"),
+			expectFound:     true,
+			expectedVersion: semver.MustParse("2.2.0"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg, found := resourceModules.Load(tt.pkg, tt.version)
+			assert.Equal(t, tt.expectFound, found)
+			if tt.expectFound {
+				assert.Equal(t, tt.expectedVersion, pkg.Version())
+			}
+		})
+	}
+}
+
+func TestRegisterResourcePackage(t *testing.T) {
+	pkg := "test"
+
+	tests := []struct {
+		name            string
+		resourcePackage ResourcePackage
+	}{
+		{
+			name:            "wildcard version",
+			resourcePackage: &testResourcePackage{},
+		},
+		{
+			name:            "version",
+			resourcePackage: &testResourcePackage{version: semver.MustParse("1.2.3")},
+		},
+		{
+			name:            "alpha version",
+			resourcePackage: &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			RegisterResourcePackage(pkg, tt.resourcePackage)
+			assert.Panics(t, func() {
+				RegisterResourcePackage(pkg, tt.resourcePackage)
+			})
+		})
+	}
+}
+
+func TestRegisterResourceModule(t *testing.T) {
+	pkg := "testPkg"
+	mod := "testMod"
+
+	tests := []struct {
+		name           string
+		resourceModule ResourceModule
+	}{
+		{
+			name:           "wildcard version",
+			resourceModule: &testResourceModule{},
+		},
+		{
+			name:           "version",
+			resourceModule: &testResourceModule{version: semver.MustParse("1.2.3")},
+		},
+		{
+			name:           "alpha version",
+			resourceModule: &testResourceModule{version: semver.MustParse("1.0.0-alpha1")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			RegisterResourceModule(pkg, mod, tt.resourceModule)
+			assert.Panics(t, func() {
+				RegisterResourceModule(pkg, mod, tt.resourceModule)
+			})
+		})
 	}
 }
