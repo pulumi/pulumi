@@ -119,11 +119,13 @@ func commandContext() context.Context {
 	return ctx
 }
 
-func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string) error {
+func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string,
+	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
 	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
 	// for the Pulumi service backend secrets provider.
+	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
 		// The default when using the filestate backend is the passphrase secrets provider
@@ -148,7 +150,8 @@ func createSecretsManager(b backend.Backend, stackRef backend.StackReference, se
 	}
 
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
+		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+			rotatePassphraseSecretsProvider); pharseErr != nil {
 			return pharseErr
 		}
 	} else if !isDefaultSecretsProvider {
@@ -194,7 +197,8 @@ func createStack(
 		return nil, errors.Wrapf(err, "could not create stack")
 	}
 
-	if err := createSecretsManager(b, stackRef, secretsProvider); err != nil {
+	if err := createSecretsManager(b, stackRef, secretsProvider,
+		false /* rotateSecretsManager */); err != nil {
 		return nil, err
 	}
 
