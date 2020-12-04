@@ -35,6 +35,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -1472,8 +1473,20 @@ func sanitizePackageDescription(description string) string {
 	return ""
 }
 
+func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
+	plugin := &plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		Version:  "${PLUGIN_VERSION}",
+		Server:   pkg.PluginDownloadURL,
+	}
+	return plugin.JSON()
+}
+
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]string) (string, error) {
+func genPackageMetadata(
+	tool string, pkg *schema.Package, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
+
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
 
@@ -1551,7 +1564,11 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	// Publish type metadata: PEP 561
 	fmt.Fprintf(w, "      package_data={\n")
 	fmt.Fprintf(w, "          '%s': [\n", pyPack(pkg.Name))
-	fmt.Fprintf(w, "              'py.typed'\n")
+	fmt.Fprintf(w, "              'py.typed',\n")
+	if emitPulumiPluginFile {
+		fmt.Fprintf(w, "              'pulumiplugin.json',\n")
+	}
+
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
 
@@ -2385,8 +2402,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// Emit casing tables.
 	files.add(filepath.Join(pyPack(pkg.Name), "_tables.py"), []byte(modules[""].genPropertyConversionTables()))
 
+	// Generate pulumiplugin.json, if requested.
+	if info.EmitPulumiPluginFile {
+		plugin, err := genPulumiPluginFile(pkg)
+		if err != nil {
+			return nil, err
+		}
+		files.add("pulumiplugin.json", plugin)
+	}
+
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, info.Requires)
+	setup, err := genPackageMetadata(tool, pkg, info.EmitPulumiPluginFile, info.Requires)
 	if err != nil {
 		return nil, err
 	}

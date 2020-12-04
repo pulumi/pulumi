@@ -193,15 +193,15 @@ func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, 
 			return errors.Wrapf(err, "`%s install` failed; rerun manually to try again.", bin)
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		if err := python.InstallDependencies(root, true /*showOutput*/, func(virtualenv string) error {
-			// Save project with venv info.
-			proj.Runtime.SetOption("virtualenv", virtualenv)
-			if err := proj.Save(projPath); err != nil {
-				return errors.Wrapf(err, "saving project at %s", projPath)
-			}
-			return nil
-		}); err != nil {
+		const venvDir = "venv"
+		if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
 			return err
+		}
+
+		// Save project with venv info.
+		proj.Runtime.SetOption("virtualenv", venvDir)
+		if err := proj.Save(projPath); err != nil {
+			return errors.Wrapf(err, "saving project at %s", projPath)
 		}
 	}
 	return nil

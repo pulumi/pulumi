@@ -16,7 +16,9 @@ package plugin
 
 import (
 	"bufio"
+	"encoding/json"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -39,6 +41,45 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 )
+
+// PulumiPluginJSON represents additional information about a package's associated Pulumi plugin.
+// For Python, the content is inside a pulumiplugin.json file inside the package.
+// For Node.js, the content is within the package.json file, under the "pulumi" node.
+// This is not currently used for .NET or Go, but we could consider adopting it for those languages.
+type PulumiPluginJSON struct {
+	// Indicates whether the package has an associated resource plugin. Set to false to indicate no plugin.
+	Resource bool `json:"resource"`
+	// Optional plugin name. If not set, the plugin name is derived from the package name.
+	Name string `json:"name,omitempty"`
+	// Optional plugin version. If not set, the version is derived from the package version (if possible).
+	Version string `json:"version,omitempty"`
+	// Optional plugin server. If not set, the default server is used when installing the plugin.
+	Server string `json:"server,omitempty"`
+}
+
+func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
+	json, err := json.MarshalIndent(plugin, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return json, nil
+}
+
+func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
+	b, err := ioutil.ReadFile(path)
+	if err != nil {
+		// Deliberately not wrapping the error here so that os.IsNotExist checks can be used to determine
+		// if the file could not be opened due to it not existing.
+		return nil, err
+	}
+
+	var plugin *PulumiPluginJSON
+	if err := json.Unmarshal(b, plugin); err != nil {
+		return nil, err
+	}
+
+	return plugin, nil
+}
 
 type plugin struct {
 	stdoutDone <-chan bool

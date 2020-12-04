@@ -6,6 +6,8 @@ CHANGELOG
 - [sdk/python] Address potential issues when running multiple `pulumi` processes concurrently.
   [#5857](https://github.com/pulumi/pulumi/pull/5857)
 
+- Automatically install missing Python dependencies.
+  [#5787](https://github.com/pulumi/pulumi/pull/5787)
 
 ## 2.15.0 (2020-12-02)
 
