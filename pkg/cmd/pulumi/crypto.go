@@ -58,12 +58,14 @@ func getStackSecretsManager(s backend.Stack) (secrets.Manager, error) {
 		}
 
 		if ps.EncryptionSalt != "" {
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
+			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
+				false /* rotatePassphraseSecretsProvider */)
 		}
 
 		switch s.(type) {
 		case filestate.Stack:
-			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile)
+			return newPassphraseSecretsManager(s.Ref().Name(), stackConfigFile,
+				false /* rotatePassphraseSecretsProvider */)
 		case httpstate.Stack:
 			return newServiceSecretsManager(s.(httpstate.Stack), s.Ref().Name(), stackConfigFile)
 		}

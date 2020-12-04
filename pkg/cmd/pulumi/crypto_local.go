@@ -57,7 +57,8 @@ func readPassphrase(prompt string) (phrase string, interactive bool, err error) 
 	return phrase, true, err
 }
 
-func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
+func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
+	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
@@ -71,6 +72,10 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 	info, err := workspace.LoadProjectStack(configFile)
 	if err != nil {
 		return nil, err
+	}
+
+	if rotatePassphraseSecretsProvider {
+		info.EncryptionSalt = ""
 	}
 
 	// If we have a salt, we can just use it.
@@ -99,12 +104,20 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 
 	// Get a the passphrase from the user, ensuring that they match.
 	for {
+		firstMessage := "Enter your passphrase to protect config/secrets"
+		if rotatePassphraseSecretsProvider {
+			firstMessage = "Enter your new passphrase to protect config/secrets"
+		}
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
-		first, _, err := readPassphrase("Enter your passphrase to protect config/secrets")
+		first, _, err := readPassphrase(firstMessage)
 		if err != nil {
 			return nil, err
 		}
-		second, _, err := readPassphrase("Re-enter your passphrase to confirm")
+		secondMessage := "Re-enter your passphrase to confirm"
+		if rotatePassphraseSecretsProvider {
+			secondMessage = "Re-enter your new passphrase to confirm"
+		}
+		second, _, err := readPassphrase(secondMessage)
 		if err != nil {
 			return nil, err
 		}
