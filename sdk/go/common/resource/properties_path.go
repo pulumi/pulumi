@@ -187,10 +187,9 @@ func (p PropertyPath) Add(dest, v PropertyValue) (PropertyValue, bool) {
 			case dest.IsArray():
 				// If the destination array does exist, ensure that it is large enough to accommodate the requested
 				// index.
-				arr := dest.ArrayValue()
-				if key >= len(arr) {
-					arr = append(make([]PropertyValue, key+1-len(arr)), arr...)
-					v.V = arr
+				if arr := dest.ArrayValue(); key >= len(arr) {
+					dest = NewArrayProperty(append(make([]PropertyValue, key+1-len(arr)), arr...))
+					set(dest)
 				}
 			default:
 				return PropertyValue{}, false

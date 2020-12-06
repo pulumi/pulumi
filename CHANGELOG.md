@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix a problem where `pulumi import` could panic on importing arrays and sets, due to
+  incorrect array resizing logic. [#5872](https://github.com/pulumi/pulumi/pull/5872).
 
 ## 2.15.1 (2020-12-04)
 
