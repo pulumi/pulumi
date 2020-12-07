@@ -131,7 +131,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, 
 	}
 
 	g.Fprintf(w, "\n")
-	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
+	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n")
 
 	for _, imp := range pulumiImports.SortedValues() {
 		g.Fprintf(w, "%s\n", imp)
