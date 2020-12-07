@@ -6,6 +6,9 @@ CHANGELOG
 - Fix a problem where `pulumi import` could panic on importing arrays and sets, due to
   incorrect array resizing logic. [#5872](https://github.com/pulumi/pulumi/pull/5872).
 
+- Fix python execution for users running Python installed through the Windows App Store
+  on Windows 10 [#5874](https://github.com/pulumi/pulumi/pull/5874)
+
 ## 2.15.1 (2020-12-04)
 
 - [sdk/python] Address potential issues when running multiple `pulumi` processes concurrently.
