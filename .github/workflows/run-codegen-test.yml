@@ -11,6 +11,7 @@ env:
 jobs:
   downstream-test:
     name: Test ${{ matrix.provider }} Downstream
+    if: github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     strategy:
       matrix:
