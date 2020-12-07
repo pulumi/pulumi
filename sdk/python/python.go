@@ -26,14 +26,16 @@ import (
 	"github.com/pkg/errors"
 )
 
-const windows = "windows"
+const (
+	windows             = "windows"
+	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
+)
 
 // Command returns an *exec.Cmd for running `python`. If the `PULUMI_PYTHON_CMD` variable is set
 // it will be looked for on `PATH`, otherwise, `python3` and `python` will be looked for.
 func Command(arg ...string) (*exec.Cmd, error) {
 	var err error
 	var pythonCmds []string
-	var pythonPath string
 
 	if pythonCmd := os.Getenv("PULUMI_PYTHON_CMD"); pythonCmd != "" {
 		pythonCmds = []string{pythonCmd}
@@ -44,7 +46,8 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		pythonCmds = []string{"python3", "python"}
 	}
 
-	for _, pythonCmd := range pythonCmds {
+	var pythonCmd, pythonPath string
+	for _, pythonCmd = range pythonCmds {
 		pythonPath, err = exec.LookPath(pythonCmd)
 		// Break on the first cmd we find on the path (if any)
 		if err == nil {
@@ -52,12 +55,73 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
-			pythonCmds)
+		// second-chance on windows for python being installed through the Windows app store.
+		if runtime.GOOS == windows {
+			pythonCmd, pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
+		}
+		if err != nil {
+			return nil, errors.Errorf(
+				"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+				pythonCmds)
+		}
 	}
 
+	if needsPythonShim(pythonPath) {
+		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
+		return exec.Command(shimCmd, arg...), nil
+	}
 	return exec.Command(pythonPath, arg...), nil
+}
+
+// resolveWindowsExecutionAlias performs a lookup for python among UWP
+// application execution aliases which exec.LookPath() can't handle.
+// Windows 10 supports execution aliases for UWP applications. If python
+// is installed using the Windows store app, the installer will drop an alias
+// in %LOCALAPPDATA%\Microsoft\WindowsApps which is a zero-length file - also
+// called an execution alias. This directory is also added to the PATH.
+// See https://www.tiraniddo.dev/2019/09/overview-of-windows-execution-aliases.html
+// for an overview.
+// Most of this code is a replacement of the windows version of exec.LookPath
+// but uses os.Lstat instead of an os.Stat which fails with a
+// "CreateFile <path>: The file cannot be accessed by the system".
+func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
+	exts := []string{""}
+	x := os.Getenv(`PATHEXT`)
+	if x != "" {
+		for _, e := range strings.Split(strings.ToLower(x), `;`) {
+			if e == "" {
+				continue
+			}
+			if e[0] != '.' {
+				e = "." + e
+			}
+			exts = append(exts, e)
+		}
+	} else {
+		exts = append(exts, ".com", ".exe", ".bat", ".cmd")
+	}
+
+	path := os.Getenv("PATH")
+	for _, dir := range filepath.SplitList(path) {
+		if !strings.Contains(strings.ToLower(dir), filepath.Join("microsoft", "windowsapps")) {
+			continue
+		}
+		for _, pythonCmd := range pythonCmds {
+			for _, ext := range exts {
+				path := filepath.Join(dir, pythonCmd+ext)
+				_, err := os.Lstat(path)
+				if err != nil && !os.IsNotExist(err) {
+					return "", "", errors.Wrap(err, "evaluating python execution alias")
+				}
+				if os.IsNotExist(err) {
+					continue
+				}
+				return pythonCmd, path, nil
+			}
+		}
+	}
+
+	return "", "", errors.New("no python execution alias found")
 }
 
 // VirtualEnvCommand returns an *exec.Cmd for running a command from the specified virtual environment
