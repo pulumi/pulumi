@@ -96,14 +96,15 @@ namespace Pulumi
     }
     
     [AttributeUsage(AttributeTargets.Class)]
-    public sealed class ResourceIdentifierAttribute : Attribute
+    public sealed class ResourceTypeAttribute : Attribute
     {
-        public string Token { get; }
+        public string Type { get; }
+        
         public string? Version { get; }
 
-        public ResourceIdentifierAttribute(string token, string? version)
+        public ResourceTypeAttribute(string type, string? version = null)
         {
-            Token = token;
+            Type = type;
             Version = version;
         }
     }

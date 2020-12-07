@@ -143,10 +143,10 @@ Pulumi.ResourceArgs
 Pulumi.ResourceArgs.ResourceArgs() -> void
 Pulumi.ResourceException
 Pulumi.ResourceException.ResourceException(string message, Pulumi.Resource resource, bool hideStack = false) -> void
-Pulumi.ResourceIdentifierAttribute
-Pulumi.ResourceIdentifierAttribute.ResourceIdentifierAttribute(string token, string version) -> void
-Pulumi.ResourceIdentifierAttribute.Token.get -> string
-Pulumi.ResourceIdentifierAttribute.Version.get -> string
+Pulumi.ResourceTypeAttribute
+Pulumi.ResourceTypeAttribute.ResourceTypeAttribute(string type, string version = null) -> void
+Pulumi.ResourceTypeAttribute.Type.get -> string
+Pulumi.ResourceTypeAttribute.Version.get -> string
 Pulumi.ResourceOptions
 Pulumi.ResourceOptions.Aliases.get -> System.Collections.Generic.List<Pulumi.Input<Pulumi.Alias>>
 Pulumi.ResourceOptions.Aliases.set -> void

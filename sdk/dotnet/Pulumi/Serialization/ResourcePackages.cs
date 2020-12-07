@@ -61,10 +61,14 @@ namespace Pulumi
                 from a in LoadReferencedAssemblies()
                 from t in a.GetTypes()
                 where typeof(CustomResource).IsAssignableFrom(t)
-                let attr = t.GetCustomAttribute<ResourceIdentifierAttribute>()
+                let attr = t.GetCustomAttribute<ResourceTypeAttribute>()
                 where attr != null
-                let versionType = (attr.Version, t)
-                group versionType by attr.Token into g
+                let ut = a.GetType($"{a.GetName().Name}.Utilities")
+                let versionProp = ut?.GetProperty("Version", BindingFlags.Static | BindingFlags.Public | BindingFlags.GetProperty)
+                let assemblyVersion = (string?)versionProp?.GetValue(null)
+                let version = attr.Version ?? assemblyVersion
+                let versionType = (version, t)
+                group versionType by attr.Type into g
                 select new { g.Key, Items = g};
             return pairs.ToImmutableDictionary(v => v.Key, v => v.Items.ToImmutableList());
         }

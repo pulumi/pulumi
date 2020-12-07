@@ -684,7 +684,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
-	fmt.Fprintf(w, "    [ResourceIdentifier(\"%s\", \"%s\")]\n", r.Token, mod.pkg.Version.String())
+	fmt.Fprintf(w, "    [ResourceType(\"%s\")]\n", r.Token)
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 

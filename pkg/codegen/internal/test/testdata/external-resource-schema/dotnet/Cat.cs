@@ -9,7 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
-    [ResourceIdentifier("example::Cat", "0.0.1")]
+    [ResourceType("example::Cat")]
     public partial class Cat : Pulumi.CustomResource
     {
         [Output("name")]
