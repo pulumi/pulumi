@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix errors when running `pulumi` in Windows-based CI environments.
+  [#5879](https://github.com/pulumi/pulumi/issues/5879)
 
 ## 2.15.2 (2020-12-07)
 
@@ -11,7 +13,7 @@ _(none)_
 
 ## 2.15.1 (2020-12-04)
 
-- [sdk/python] Address potential issues when running multiple `pulumi` processes concurrently.
+- Address potential issues when running multiple `pulumi` processes concurrently.
   [#5857](https://github.com/pulumi/pulumi/pull/5857)
 
 - Automatically install missing Python dependencies.
