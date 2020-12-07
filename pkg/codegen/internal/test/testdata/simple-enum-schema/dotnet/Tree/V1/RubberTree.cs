@@ -9,6 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.PlantProvider.Tree.V1
 {
+    [ResourceIdentifier("plant-provider:tree/v1:RubberTree", "0.0.1")]
     public partial class RubberTree : Pulumi.CustomResource
     {
         [Output("container")]

@@ -9,6 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
+    [ResourceIdentifier("example::Workload", "0.0.1")]
     public partial class Workload : Pulumi.CustomResource
     {
         [Output("pod")]

@@ -9,6 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
+    [ResourceIdentifier("example::Resource", "0.0.1")]
     public partial class Resource : Pulumi.CustomResource
     {
         [Output("bar")]
