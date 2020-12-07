@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.15.3 (2020-12-07)
 
 - Fix errors when running `pulumi` in Windows-based CI environments.
   [#5879](https://github.com/pulumi/pulumi/issues/5879)
