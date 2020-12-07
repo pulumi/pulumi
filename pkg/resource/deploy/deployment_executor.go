@@ -456,7 +456,7 @@ func (ex *deploymentExecutor) importResources(callerCtx context.Context, opts Op
 	canceled := callerCtx.Err() != nil
 
 	if res != nil || stepExec.Errored() {
-		if res.Error() != nil {
+		if res != nil && res.Error() != nil {
 			ex.reportExecResult(fmt.Sprintf("failed: %s", res.Error()), preview)
 		} else {
 			ex.reportExecResult("failed", preview)
