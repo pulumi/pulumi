@@ -9,103 +9,93 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void UnknownNotFound()
         {
-            if (ResourcePackages.TryGetResourcePackage("unknown", null, out _))
+            if (ResourcePackages.TryGetResourceType("test:index/UnknownResource", null, out _))
             {
-                Assert.True(false, "Unknown package found");
+                Assert.True(false, "Unknown resource found");
             }
-            if (ResourcePackages.TryGetResourcePackage("unknown", "0.0.1", out _))
+            if (ResourcePackages.TryGetResourceType("unknown:index/TestResource", "0.0.1", out _))
             {
-                Assert.True(false, "Unknown package found");
+                Assert.True(false, "Unknown resource found");
             }
         }
         
         [Fact]
         public void BlankReturnsHighestVersion()
         {
-            if (ResourcePackages.TryGetResourcePackage("test", null, out var package))
+            if (ResourcePackages.TryGetResourceType("test:index/TestResource", null, out var type))
             {
-                Assert.Equal("test", package.Name);
-                Assert.Equal("2.2.0", package.Version);
+                Assert.Equal(typeof(Version202TestResource), type);
             }
             else
             {
-                Assert.True(false, "Test package not found");
+                Assert.True(false, "Test resource not found");
             }
         }
         
         [Fact]
         public void MajorVersionRespected()
         {
-            if (ResourcePackages.TryGetResourcePackage("test", "1.0.0", out var package))
+            if (ResourcePackages.TryGetResourceType("test:index/TestResource", "1.0.0", out var type))
             {
-                Assert.Equal("test", package.Name);
-                Assert.Equal("1.0.2", package.Version);
+                Assert.Equal(typeof(Version102TestResource), type);
             }
             else
             {
-                Assert.True(false, "Test package not found");
+                Assert.True(false, "Test resource not found");
             }
         }
         
         [Fact]
         public void WildcardSelectedIfOthersDontMatch()
         {
-            if (ResourcePackages.TryGetResourcePackage("test", "3.0.0", out var package))
+            if (ResourcePackages.TryGetResourceType("test:index/TestResource", "3.0.0", out var type))
             {
-                Assert.Equal("test", package.Name);
-                Assert.Null(package.Version);
+                Assert.Equal(typeof(WildcardTestResource), type);
             }
             else
             {
-                Assert.True(false, "Test package not found");
+                Assert.True(false, "Test resource not found");
             }
         }
 
-        private abstract class BaseTestPackage : IResourcePackage
+        [ResourceIdentifier("test:index/TestResource", "1.0.1-alpha1")]
+        private class Version101TestResource : CustomResource
         {
-            public abstract string Name { get; }
-        
-            public abstract string? Version { get; }
-    
-            public ProviderResource ConstructProvider(string name, string type, string urn)
+            public Version101TestResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
             {
-                throw new System.NotImplementedException();
-            }
-
-            public Resource Construct(string name, string type, string urn)
-            {
-                throw new System.NotImplementedException();
             }
         }
         
-        private class Version101TestPackage : BaseTestPackage
+        [ResourceIdentifier("test:index/TestResource", "1.0.2")]
+        private class Version102TestResource : CustomResource
         {
-            public override string Name => "test";
-            public override string? Version => "1.0.1-alpha1";
+            public Version102TestResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
+            {
+            }
         }
         
-        private class Version102TestPackage : BaseTestPackage
+        [ResourceIdentifier("test:index/TestResource", "2.0.2")]
+        private class Version202TestResource : CustomResource
         {
-            public override string Name => "test";
-            public override string? Version => "1.0.2";
+            public Version202TestResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
+            {
+            }
         }
         
-        private class Version220TestPackage : BaseTestPackage
+        [ResourceIdentifier("test:index/TestResource", null)]
+        private class WildcardTestResource : CustomResource
         {
-            public override string Name => "test";
-            public override string? Version => "2.2.0";
+            public WildcardTestResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
+            {
+            }
         }
         
-        private class WildcardTestPackage : BaseTestPackage
+        [ResourceIdentifier("test:index/UnrelatedResource", "1.0.3")]
+        private class OtherResource : CustomResource
         {
-            public override string Name => "test";
-            public override string? Version => null;
-        }
-        
-        private class OtherTestPackage : BaseTestPackage
-        {
-            public override string Name => "unrelated";
-            public override string? Version => "1.0.3";
+            public OtherResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
+            {
+            }
         }
     }
 }

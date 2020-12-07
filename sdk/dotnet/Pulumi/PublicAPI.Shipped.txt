@@ -114,11 +114,6 @@ Pulumi.InvokeOptions.Provider.get -> Pulumi.ProviderResource
 Pulumi.InvokeOptions.Provider.set -> void
 Pulumi.InvokeOptions.Version.get -> string
 Pulumi.InvokeOptions.Version.set -> void
-Pulumi.IResourcePackage
-Pulumi.IResourcePackage.Construct(string name, string type, string urn) -> Pulumi.Resource
-Pulumi.IResourcePackage.ConstructProvider(string name, string type, string urn) -> Pulumi.ProviderResource
-Pulumi.IResourcePackage.Name.get -> string
-Pulumi.IResourcePackage.Version.get -> string
 Pulumi.Log
 Pulumi.Output
 Pulumi.Output<T>
@@ -148,6 +143,10 @@ Pulumi.ResourceArgs
 Pulumi.ResourceArgs.ResourceArgs() -> void
 Pulumi.ResourceException
 Pulumi.ResourceException.ResourceException(string message, Pulumi.Resource resource, bool hideStack = false) -> void
+Pulumi.ResourceIdentifierAttribute
+Pulumi.ResourceIdentifierAttribute.ResourceIdentifierAttribute(string token, string version) -> void
+Pulumi.ResourceIdentifierAttribute.Token.get -> string
+Pulumi.ResourceIdentifierAttribute.Version.get -> string
 Pulumi.ResourceOptions
 Pulumi.ResourceOptions.Aliases.get -> System.Collections.Generic.List<Pulumi.Input<Pulumi.Alias>>
 Pulumi.ResourceOptions.Aliases.set -> void

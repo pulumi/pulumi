@@ -94,4 +94,17 @@ namespace Pulumi
     public sealed class EnumTypeAttribute : Attribute
     {
     }
+    
+    [AttributeUsage(AttributeTargets.Class)]
+    public sealed class ResourceIdentifierAttribute : Attribute
+    {
+        public string Token { get; }
+        public string? Version { get; }
+
+        public ResourceIdentifierAttribute(string token, string? version)
+        {
+            Token = token;
+            Version = version;
+        }
+    }
 }

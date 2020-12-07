@@ -684,6 +684,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
+	fmt.Fprintf(w, "    [ResourceIdentifier(\"%s\", \"%s\")]\n", r.Token, mod.pkg.Version.String())
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
@@ -1019,72 +1020,6 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	fmt.Fprintf(w, "}\n")
 
 	return nil
-}
-
-// genResourcePackage generates a ResourcePackage definition. The generated ResourcePackage supports
-// the deserialization of resource references into fully-hydrated Resource instances and providers.
-func genResourcePackage(pkg *schema.Package, assemblyName string, modules map[string]*modContext) []byte {
-	contract.Assert(len(modules) != 0)
-
-	w := &bytes.Buffer{}
-
-	// Generate a header and find the provider.
-	var provider *schema.Resource
-	hasHeader := false
-	for _, mod := range modules {
-		if !hasHeader {
-			mod.genHeader(w, []string{"System"})
-			hasHeader = true
-		}
-		for _, r := range mod.resources {
-			if r.IsProvider {
-				contract.Assert(provider == nil)
-				provider = r
-				continue
-			}
-		}
-	}
-
-	// Open the namespace.
-	fmt.Fprintf(w, "namespace %s\n", assemblyName)
-	fmt.Fprintf(w, "{\n")
-
-	fmt.Fprintf(w, "    internal class ResourcePackage : IResourcePackage\n")
-	fmt.Fprintf(w, "    {\n")
-	fmt.Fprintf(w, "        public string Name => \"%s\";\n\n", pkg.Name)
-	fmt.Fprintf(w, "        public string? Version => Utilities.Version;\n\n")
-	fmt.Fprintf(w, "        [Obsolete(\"The overload with 4 parameters is deprecated and will be removed\")]\n")
-	fmt.Fprintf(w, "        public ProviderResource ConstructProvider(string name, string type, System.Collections.Generic.IDictionary<string, object?>? args, string urn)\n")
-	fmt.Fprintf(w, "            => ConstructProvider(name, type, urn);\n\n")
-	fmt.Fprintf(w, "        public ProviderResource ConstructProvider(string name, string type, string urn)\n")
-	fmt.Fprintf(w, "        {\n")
-	if provider != nil {
-		fmt.Fprintf(w, "            if (type == \"%s\")\n", provider.Token)
-		fmt.Fprintf(w, "                return new Provider(name, default!, new CustomResourceOptions {Urn=urn});\n")
-	}
-	fmt.Fprintf(w, "            throw new Exception($\"Unknown provider type {type}\");\n")
-	fmt.Fprintf(w, "        }\n\n")
-	fmt.Fprintf(w, "        public Resource Construct(string name, string type, string urn)\n")
-	fmt.Fprintf(w, "        {\n")
-	fmt.Fprintf(w, "            var options = new CustomResourceOptions {Urn=urn};\n")
-	fmt.Fprintf(w, "            switch (type)\n")
-	fmt.Fprintf(w, "            {\n")
-	for _, mod := range modules {
-		for _, r := range mod.resources {
-			if !r.IsProvider {
-				fmt.Fprintf(w, "                case \"%s\":\n", r.Token)
-				fmt.Fprintf(w, "                    return new %s.%s(name, default!, options);\n", mod.namespaceName, tokenToName(r.Token))
-			}
-		}
-	}
-	fmt.Fprintf(w, "            }\n")
-	fmt.Fprintf(w, "            throw new Exception($\"Unknown resource type {type}\");\n")
-	fmt.Fprintf(w, "        }\n")
-	fmt.Fprintf(w, "    }\n")
-
-	fmt.Fprintf(w, "}\n")
-
-	return []byte(w.String())
 }
 
 func printObsoleteAttribute(w io.Writer, deprecationMessage, indent string) {
@@ -1944,9 +1879,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 			return nil, err
 		}
 	}
-
-	// Define package and module registrations.
-	files.add("ResourcePackage.cs", genResourcePackage(pkg, assemblyName, modules))
 
 	// Finally emit the package metadata.
 	if err := genPackageMetadata(pkg, assemblyName, info.PackageReferences, files); err != nil {

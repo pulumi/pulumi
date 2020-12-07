@@ -10,49 +10,63 @@ using Semver;
 
 namespace Pulumi
 {
-    public interface IResourcePackage
-    {
-        string Name { get; }
-        string? Version { get; }
-        ProviderResource ConstructProvider(string name, string type, string urn);
-        Resource Construct(string name, string type, string urn);
-    }
-
     internal static class ResourcePackages
     {
-        private static ImmutableList<IResourcePackage>? _resourcePackages;
-        private static readonly object _resourcePackagesLock = new object();
-
-        internal static bool TryGetResourcePackage(string name, string? version, [NotNullWhen(true)] out IResourcePackage? package)
+        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>>? _resourceTypes;
+        private static readonly object _resourceTypesLock = new object();
+        
+        internal static Resource Construct(string type, string version, string urn)
         {
-            lock (_resourcePackagesLock)
+            if (!TryGetResourceType(type, version, out var resourceType))
             {
-                _resourcePackages ??= DiscoverResourcePackages();
+                throw new InvalidOperationException($"Unable to deserialize resource {urn}.");
+            }
+
+            var urnParts = urn.Split("::");
+            var urnName = urnParts[3];
+            var constructorInfo = resourceType.GetConstructors().Single(c => c.GetParameters().Length == 3);
+            return (Resource)constructorInfo.Invoke(new[] {urnName, (object?)null, new CustomResourceOptions {Urn = urn}});
+        }
+
+        internal static bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
+        {
+            lock (_resourceTypesLock)
+            {
+                _resourceTypes ??= DiscoverResourceTypes();
             }
 
             var minimalVersion = version != null ? SemVersion.Parse(version) : new SemVersion(0);
-            var matches =
-                from p in _resourcePackages
-                where p.Name == name
-                let packageVersion = p.Version != null ? SemVersion.Parse(p.Version) : minimalVersion
-                where packageVersion >= minimalVersion
-                where (version == null || p.Version == null || minimalVersion.Major == packageVersion.Major)
-                orderby packageVersion descending
-                select p;
+            var yes = _resourceTypes.TryGetValue(name, out var types);
+            if (!yes)
+            {
+                type = null;
+                return false;
+            }
             
-            package = matches.FirstOrDefault();
-            return package != null;
+            var matches =
+                    from vt in types
+                    let resourceVersion = vt.Item1 != null ? SemVersion.Parse(vt.Item1) : minimalVersion
+                    where resourceVersion >= minimalVersion
+                    where (version == null || vt.Item1 == null || minimalVersion.Major == resourceVersion.Major)
+                    orderby resourceVersion descending
+                    select vt.Item2;
+            
+            type = matches.FirstOrDefault();
+            return type != null;
         }
-
-        private static ImmutableList<IResourcePackage> DiscoverResourcePackages()
+        
+        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>> DiscoverResourceTypes()
         {
-            return LoadReferencedAssemblies()
-                .SelectMany(s => s.GetTypes())
-                .Where(typeof(IResourcePackage).IsAssignableFrom)
-                .SelectMany(type => type.GetConstructors().Where(c => c.GetParameters().Length == 0))
-                .Select(c => c.Invoke(new object[0]))
-                .Cast<IResourcePackage>()
-                .ToImmutableList();
+            var pairs =
+                from a in LoadReferencedAssemblies()
+                from t in a.GetTypes()
+                where typeof(CustomResource).IsAssignableFrom(t)
+                let attr = t.GetCustomAttribute<ResourceIdentifierAttribute>()
+                where attr != null
+                let versionType = (attr.Version, t)
+                group versionType by attr.Token into g
+                select new { g.Key, Items = g};
+            return pairs.ToImmutableDictionary(v => v.Key, v => v.Items.ToImmutableList());
         }
         
         // Assemblies are loaded on demand, so it could be that some assemblies aren't yet loaded to the current
