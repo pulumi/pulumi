@@ -8,6 +8,7 @@ _(none)_
 
 - Fix a problem where `pulumi import` could panic on an import error due to missing error message.
   [#5884](https://github.com/pulumi/pulumi/pull/5884)
+- Correct the system name detected for Jenkins CI. [#5891](https://github.com/pulumi/pulumi/pull/5891)
 
 - Fix python execution for users running Python installed through the Windows App Store
   on Windows 10 [#5874](https://github.com/pulumi/pulumi/pull/5874)
