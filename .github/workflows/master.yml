@@ -66,6 +66,7 @@ jobs:
       - name: Ensure
         run: |
           make ensure
+      - run: git status
       - name: Publish Packages
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -103,7 +104,7 @@ jobs:
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       - name: Set PreRelease Version
-        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)"
+        run: echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
