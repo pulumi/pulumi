@@ -332,7 +332,7 @@ func (ctx *Context) ReadResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	res := makePendingResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -409,7 +409,12 @@ func (ctx *Context) ReadResource(
 //
 func (ctx *Context) RegisterResource(
 	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
+	_, err := ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
+	return err
+}
 
+func (ctx *Context) RegisterResourceWithResult(
+	t, name string, props Input, resource Resource, opts ...ResourceOption) (*PendingResourceState, error) {
 	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
 }
 
@@ -457,17 +462,17 @@ func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse
 }
 
 func (ctx *Context) registerResource(
-	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) error {
+	t, name string, props Input, resource Resource, remote bool, opts ...ResourceOption) (*PendingResourceState, error) {
 	if t == "" {
-		return errors.New("resource type argument cannot be empty")
+		return nil, errors.New("resource type argument cannot be empty")
 	} else if name == "" {
-		return errors.New("resource name argument (for URN creation) cannot be empty")
+		return nil, errors.New("resource name argument (for URN creation) cannot be empty")
 	}
 
 	_, custom := resource.(CustomResource)
 
 	if _, isProvider := resource.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
-		return errors.New("provider resource type must begin with \"pulumi:providers:\"")
+		return nil, errors.New("provider resource type must begin with \"pulumi:providers:\"")
 	}
 
 	if props != nil {
@@ -477,7 +482,7 @@ func (ctx *Context) registerResource(
 		}
 		if !(propsType.Kind() == reflect.Struct ||
 			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
-			return errors.New("props must be a struct or map or a pointer to a struct or map")
+			return nil, errors.New("props must be a struct or map or a pointer to a struct or map")
 		}
 	}
 
@@ -490,25 +495,25 @@ func (ctx *Context) registerResource(
 	// user-provided properties and options assigned to this resource.
 	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Collapse aliases to URNs.
 	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
-		return err
+		return nil, err
 	}
 
 	// Merge providers.
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	resState := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	resState := makePendingResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -580,7 +585,7 @@ func (ctx *Context) registerResource(
 		}
 	}()
 
-	return nil
+	return resState, nil
 }
 
 func (ctx *Context) RegisterComponentResource(
@@ -591,17 +596,27 @@ func (ctx *Context) RegisterComponentResource(
 
 func (ctx *Context) RegisterRemoteComponentResource(
 	t, name string, props Input, resource ComponentResource, opts ...ResourceOption) error {
-
-	return ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
+	_, err := ctx.registerResource(t, name, props, resource, true /*remote*/, opts...)
+	return err
 }
 
-// resourceState contains the results of a resource registration operation.
-type resourceState struct {
+// PendingResourceState contains the results of a resource registration operation.
+type PendingResourceState struct {
 	outputs         map[string]Output
 	providers       map[string]ProviderResource
 	aliases         []URNOutput
 	name            string
 	transformations []ResourceTransformation
+}
+
+// GetOutput returns an output by the given name, allocating storage for it lazily if needed.
+func (st *PendingResourceState) GetOutput(k string) Output {
+	out, ok := st.outputs[k]
+	if !ok {
+		out, _, _ = NewOutput()
+		st.outputs[k] = out
+	}
+	return out
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
@@ -697,17 +712,17 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 
 var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 
-// makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
+// makePendingResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
-func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	aliases []URNOutput, transformations []ResourceTransformation) *resourceState {
+func makePendingResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
+	aliases []URNOutput, transformations []ResourceTransformation) *PendingResourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
 	// ought to.
 	resource := reflect.ValueOf(resourceV)
 	typ := resource.Type()
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
-		return &resourceState{}
+		return &PendingResourceState{}
 	}
 	resource, typ = resource.Elem(), typ.Elem()
 
@@ -730,7 +745,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 	// former is used for any URN or ID fields; the latter are used to determine the expected outputs of the resource
 	// after its RegisterResource call completes. For each of those fields, create an appropriately-typed Output and
 	// map the Output to its property name so we can resolve it later.
-	state := &resourceState{outputs: map[string]Output{}}
+	state := &PendingResourceState{outputs: map[string]Output{}}
 	for i := 0; i < typ.NumField(); i++ {
 		fieldV := resource.Field(i)
 		if !fieldV.CanSet() {
@@ -793,7 +808,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 }
 
 // resolve resolves the resource outputs using the given error and/or values.
-func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInputs, urn, id string,
+func (state *PendingResourceState) resolve(dryrun bool, err error, inputs *resourceInputs, urn, id string,
 	result *structpb.Struct, deps map[string][]Resource) {
 
 	var inprops resource.PropertyMap
@@ -883,7 +898,7 @@ type resourceInputs struct {
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
 func (ctx *Context) prepareResourceInputs(props Input, t string,
-	opts *resourceOptions, resource *resourceState) (*resourceInputs, error) {
+	opts *resourceOptions, resource *PendingResourceState) (*resourceInputs, error) {
 
 	providers := resource.providers
 
