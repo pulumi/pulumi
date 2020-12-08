@@ -14,7 +14,11 @@
 
 package display
 
-import "github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+import (
+	"io"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+)
 
 // Type of output to display.
 type Type int
@@ -45,4 +49,6 @@ type Options struct {
 	JSONDisplay          bool                // true if we should emit the entire diff as JSON.
 	EventLogPath         string              // the path to the file to use for logging events, if any.
 	Debug                bool                // true to enable debug output.
+	Stdout               io.Writer           // the writer to use for stdout. Defaults to os.Stdout if unset.
+	Stderr               io.Writer           // the writer to use for stderr. Defaults to os.Stderr if unset.
 }
