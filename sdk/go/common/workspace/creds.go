@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
 
@@ -213,5 +214,26 @@ func StoreCredentials(creds Credentials) error {
 	if err != nil {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
-	return ioutil.WriteFile(credsFile, raw, 0600)
+
+	// Use a temporary file and atomic os.Rename to ensure the file contents are
+	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
+	tempCredsFile, err := ioutil.TempFile(filepath.Dir(credsFile), "credentials-*.json")
+	if err != nil {
+		return err
+	}
+	_, err = tempCredsFile.Write(raw)
+	if err != nil {
+		return err
+	}
+	err = tempCredsFile.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempCredsFile.Name(), credsFile)
+	if err != nil {
+		contract.IgnoreError(os.Remove(tempCredsFile.Name()))
+		return err
+	}
+
+	return nil
 }
