@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix a problem where `pulumi import` could panic on an import error due to missing error message. 
+  [#5884](https://github.com/pulumi/pulumi/pull/5884)
 
 ## 2.15.3 (2020-12-07)
 
