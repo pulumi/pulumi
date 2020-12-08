@@ -1305,7 +1305,7 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 		baseDescription = fmt.Sprintf("Explore the %s resource of the %s module, "+
 			"including examples, input properties, output properties, "+
 			"lookup functions, and supporting types.", resourceName, mod.mod)
-		titleTag = fmt.Sprintf("Resource %s | Module %s | Package %s", resourceName, mod.mod, packageName)
+		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, resourceName)
 	}
 
 	return header{

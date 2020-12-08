@@ -377,7 +377,7 @@ func TestResourceDocHeader(t *testing.T) {
 			Name:             "ModuleLevelResourceHeader",
 			ResourceName:     "Resource",
 			ModuleName:       "module",
-			ExpectedTitleTag: "Resource Resource | Module module | Package prov",
+			ExpectedTitleTag: "prov.module.Resource",
 		},
 	}
 
