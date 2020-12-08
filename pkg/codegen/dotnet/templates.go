@@ -102,12 +102,12 @@ namespace {{.Namespace}}
         }
     }
 
-	  internal sealed class {{.Name}}ResourceTypeAttribute : Pulumi.ResourceTypeAttribute
-	  {
-		    public {{.Name}}ResourceTypeAttribute(string type) : base(type, Utilities.Version)
-		    {
-		    }
-	  }
+    internal sealed class {{.Name}}ResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    {
+        public {{.Name}}ResourceTypeAttribute(string type) : base(type, Utilities.Version)
+        {
+        }
+    }
 }
 `
 
