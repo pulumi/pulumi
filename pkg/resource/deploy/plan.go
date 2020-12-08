@@ -188,9 +188,19 @@ func (rp *ResourcePlan) checkGoal(programGoal *resource.Goal) error {
 	}
 
 	// Check that the properties meet the constraints set in the plan.
-	if _, constrained := programGoal.Properties.ConstrainedTo(rp.Goal.Properties); !constrained {
+	if diff, constrained := programGoal.Properties.ConstrainedTo(rp.Goal.Properties); !constrained {
 		// TODO(pdg-plan): message!
-		return fmt.Errorf("properties changed")
+		var paths []string
+		for k := range diff.Adds {
+			paths = append(paths, "+"+string(k))
+		}
+		for k := range diff.Deletes {
+			paths = append(paths, "-"+string(k))
+		}
+		for k := range diff.Updates {
+			paths = append(paths, "~"+string(k))
+		}
+		return fmt.Errorf("properties changed: %v", strings.Join(paths, ", "))
 	}
 
 	// Check that the property dependencies match. Note that because it is legal for a property that is unknown in the

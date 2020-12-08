@@ -74,6 +74,22 @@ func (diff *ObjectDiff) Keys() []PropertyKey {
 	return ks
 }
 
+func (diff *ObjectDiff) Paths() []PropertyPath {
+	var paths []PropertyPath
+	for k := range diff.Adds {
+		paths = append(paths, PropertyPath{string(k)})
+	}
+	for k := range diff.Adds {
+		paths = append(paths, PropertyPath{string(k)})
+	}
+	for k, d := range diff.Updates {
+		for _, child := range d.Paths() {
+			paths = append(paths, append(PropertyPath{string(k)}, child...))
+		}
+	}
+	return paths
+}
+
 // ValueDiff holds the results of diffing two property values.
 type ValueDiff struct {
 	Old    PropertyValue // the old value.
@@ -82,12 +98,39 @@ type ValueDiff struct {
 	Object *ObjectDiff   // the object's detailed diffs (only for objects).
 }
 
+func (diff ValueDiff) Paths() []PropertyPath {
+	switch {
+	case diff.Array != nil:
+		return diff.Array.Paths()
+	case diff.Object != nil:
+		return diff.Object.Paths()
+	default:
+		return nil
+	}
+}
+
 // ArrayDiff holds the results of diffing two arrays of property values.
 type ArrayDiff struct {
 	Adds    map[int]PropertyValue // elements added in the new.
 	Deletes map[int]PropertyValue // elements deleted in the new.
 	Sames   map[int]PropertyValue // elements the same in both.
 	Updates map[int]ValueDiff     // elements that have changed in the new.
+}
+
+func (diff *ArrayDiff) Paths() []PropertyPath {
+	var paths []PropertyPath
+	for k := range diff.Adds {
+		paths = append(paths, PropertyPath{k})
+	}
+	for k := range diff.Adds {
+		paths = append(paths, PropertyPath{k})
+	}
+	for k, d := range diff.Updates {
+		for _, child := range d.Paths() {
+			paths = append(paths, append(PropertyPath{k}, child...))
+		}
+	}
+	return paths
 }
 
 // Len computes the length of this array, taking into account adds, deletes, sames, and updates.
