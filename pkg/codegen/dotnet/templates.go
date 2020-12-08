@@ -101,16 +101,23 @@ namespace {{.Namespace}}
             }
         }
     }
+
+	  internal sealed class {{.Name}}ResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+	  {
+		    public {{.Name}}ResourceTypeAttribute(string type) : base(type, Utilities.Version)
+		    {
+		    }
+	  }
 }
 `
 
 var csharpUtilitiesTemplate = template.Must(template.New("CSharpUtilities").Parse(csharpUtilitiesTemplateText))
 
 type csharpUtilitiesTemplateContext struct {
+	Name      string
 	Namespace string
 	ClassName string
 	Tool      string
-	Version   string
 }
 
 // TODO(pdg): parameterize package name

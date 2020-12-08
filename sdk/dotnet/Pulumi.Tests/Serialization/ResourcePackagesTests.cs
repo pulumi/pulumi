@@ -61,19 +61,6 @@ namespace Pulumi.Tests.Serialization
                 Assert.True(false, "Test resource not found");
             }
         }
-        
-        [Fact]
-        public void AssemblyVersionIsUsedWhenResourceVersionIsBlank()
-        {
-            if (ResourcePackages.TryGetResourceType("test:index/AnotherResource", "4.0.0", out var type))
-            {
-                Assert.Equal(typeof(AnotherWildcardResource), type);
-            }
-            else
-            {
-                Assert.True(false, "Another resource not found");
-            }
-        }
 
         [ResourceType("test:index/TestResource", "1.0.1-alpha1")]
         private class Version101TestResource : CustomResource
@@ -113,19 +100,6 @@ namespace Pulumi.Tests.Serialization
             public OtherResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
             {
             }
-        }
-        
-        [ResourceType("test:index/AnotherResource", null)]
-        private class AnotherWildcardResource : CustomResource
-        {
-            public AnotherWildcardResource(string type, string name, ResourceArgs? args, CustomResourceOptions? options = null) : base(type, name, args, options)
-            {
-            }
-        }
-
-        private static class Utilities
-        {
-            public static string Version => "4.1.1";
         }
     }
 }

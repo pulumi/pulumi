@@ -144,7 +144,7 @@ Pulumi.ResourceArgs.ResourceArgs() -> void
 Pulumi.ResourceException
 Pulumi.ResourceException.ResourceException(string message, Pulumi.Resource resource, bool hideStack = false) -> void
 Pulumi.ResourceTypeAttribute
-Pulumi.ResourceTypeAttribute.ResourceTypeAttribute(string type, string version = null) -> void
+Pulumi.ResourceTypeAttribute.ResourceTypeAttribute(string type, string version) -> void
 Pulumi.ResourceTypeAttribute.Type.get -> string
 Pulumi.ResourceTypeAttribute.Version.get -> string
 Pulumi.ResourceOptions

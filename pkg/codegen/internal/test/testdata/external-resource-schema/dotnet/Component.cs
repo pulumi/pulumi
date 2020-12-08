@@ -9,7 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
-    [ResourceType("example::Component")]
+    [ExampleResourceType("example::Component")]
     public partial class Component : Pulumi.CustomResource
     {
         [Output("provider")]
