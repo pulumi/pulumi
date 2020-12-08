@@ -5,7 +5,7 @@ on:
       - 'pkg/codegen/docs/**'
       - 'pkg/codegen/docs/docs.go'
       - 'pkg/codegen/docs/docs_test.go'
-      - '.github/workflows/res-docs-test.yml'
+      - '.github/workflows/run-docs-generation.yml'
 
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
