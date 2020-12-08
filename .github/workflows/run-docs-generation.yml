@@ -5,7 +5,7 @@ on:
       - 'pkg/codegen/docs/**'
       - 'pkg/codegen/docs/docs.go'
       - 'pkg/codegen/docs/docs_test.go'
-      - '.github/workflows/res-docs-test.yml'
+      - '.github/workflows/run-docs-generation.yml'
 
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
@@ -84,7 +84,7 @@ jobs:
           echo "::set-output name=prNumber::${PR_NUMBER}"
 
       - name: Create draft docs PR
-        uses: peter-evans/create-pull-request@v2
+        uses: peter-evans/create-pull-request@v3
         with:
           draft: true
           # We use a repo:public scoped PAT instead of the implicitly provided GITHUB_TOKEN secret here
@@ -105,5 +105,3 @@ jobs:
           # Assign the draft PR to the author of the current PR.
           assignees: ${{ github.event.pull_request.user.login }}
           branch: ${{ steps.regenerate-resource-docs.outputs.branchName }}
-          request-to-parent: false
-
