@@ -5,6 +5,7 @@ CHANGELOG
 
 - Fix a problem where `pulumi import` could panic on an import error due to missing error message. 
   [#5884](https://github.com/pulumi/pulumi/pull/5884)
+- Correct the system name detected for Jenkins CI. [#5891](https://github.com/pulumi/pulumi/pull/5891)
 
 ## 2.15.3 (2020-12-07)
 
