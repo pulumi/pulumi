@@ -2,9 +2,15 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
 
-- Fix a problem where `pulumi import` could panic on an import error due to missing error message. 
+## 2.15.4 (2020-12-08)
+
+- Fix a problem where `pulumi import` could panic on an import error due to missing error message.
   [#5884](https://github.com/pulumi/pulumi/pull/5884)
+
+- Fix python execution for users running Python installed through the Windows App Store
+  on Windows 10 [#5874](https://github.com/pulumi/pulumi/pull/5874)
 
 ## 2.15.3 (2020-12-07)
 
@@ -15,9 +21,6 @@ CHANGELOG
 
 - Fix a problem where `pulumi import` could panic on importing arrays and sets, due to
   incorrect array resizing logic. [#5872](https://github.com/pulumi/pulumi/pull/5872).
-
-- Fix python execution for users running Python installed through the Windows App Store
-  on Windows 10 [#5874](https://github.com/pulumi/pulumi/pull/5874)
 
 ## 2.15.1 (2020-12-04)
 
