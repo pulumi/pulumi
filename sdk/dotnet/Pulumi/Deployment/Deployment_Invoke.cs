@@ -54,6 +54,7 @@ namespace Pulumi
                 Provider = provider ?? "",
                 Version = options?.Version ?? "",
                 Args = serialized,
+                AcceptResources = !_disableResourceReferences,
             });
 
             if (result.Failures.Count > 0)

@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"reflect"
 	"sort"
 	"strings"
@@ -29,12 +30,15 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"google.golang.org/grpc"
 )
+
+var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
@@ -219,10 +223,11 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
 	resp, err := ctx.monitor.Invoke(ctx.ctx, &pulumirpc.InvokeRequest{
-		Tok:      tok,
-		Args:     rpcArgs,
-		Provider: providerRef,
-		Version:  options.Version,
+		Tok:             tok,
+		Args:            rpcArgs,
+		Provider:        providerRef,
+		Version:         options.Version,
+		AcceptResources: !disableResourceReferences,
 	})
 	if err != nil {
 		logging.V(9).Infof("Invoke(%s, ...): error: %v", tok, err)
@@ -367,6 +372,7 @@ func (ctx *Context) ReadResource(
 			Id:                      string(idToRead),
 			Aliases:                 inputs.aliases,
 			AcceptSecrets:           true,
+			AcceptResources:         !disableResourceReferences,
 			AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 		})
 		if err != nil {
@@ -556,6 +562,7 @@ func (ctx *Context) registerResource(
 				IgnoreChanges:           inputs.ignoreChanges,
 				Aliases:                 inputs.aliases,
 				AcceptSecrets:           true,
+				AcceptResources:         !disableResourceReferences,
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
 				Remote:                  remote,
