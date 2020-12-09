@@ -57,3 +57,8 @@ export function values(obj: object): any[] {
 export function union<T>(set1: Set<T>, set2: Set<T>) {
     return new Set([...set1, ...set2]);
 }
+
+/** @internal */
+export const disableResourceReferences: boolean =
+    process.env.PULUMI_DISABLE_RESOURCE_REFERENCES === "1" ||
+    (process.env.PULUMI_DISABLE_RESOURCE_REFERENCES ?? "").toUpperCase() === "TRUE";

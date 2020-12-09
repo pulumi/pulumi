@@ -78,6 +78,7 @@ namespace Pulumi
                 Version = options.Version ?? "",
                 ImportId = customOpts?.ImportId ?? "",
                 AcceptSecrets = true,
+                AcceptResources = !_disableResourceReferences,
                 DeleteBeforeReplace = deleteBeforeReplace ?? false,
                 DeleteBeforeReplaceDefined = deleteBeforeReplace != null,
                 CustomTimeouts = new RegisterResourceRequest.Types.CustomTimeouts
