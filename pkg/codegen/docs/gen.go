@@ -386,6 +386,7 @@ func (mod *modContext) getLanguageModuleName(lang string) string {
 func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modName string, isInput bool) string {
 	switch lang {
 	case "go", "python":
+		langTypeString = cleanOptionalIdentifier(langTypeString, lang)
 		parts := strings.Split(langTypeString, ".")
 		return parts[len(parts)-1]
 	}
