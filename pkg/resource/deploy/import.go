@@ -129,17 +129,19 @@ func (i *importer) wait(ctx context.Context, token completionToken) bool {
 }
 
 func (i *importer) registerExistingResources(ctx context.Context) bool {
-	// Issue same steps per existing resource to make sure that they are recorded in the snapshot.
-	// We issue these steps serially s.t. the resources remain in the order in which they appear in the state.
-	for _, r := range i.deployment.prev.Resources {
-		if r.Delete {
-			continue
-		}
+	if i != nil && i.deployment != nil && i.deployment.prev != nil {
+		// Issue same steps per existing resource to make sure that they are recorded in the snapshot.
+		// We issue these steps serially s.t. the resources remain in the order in which they appear in the state.
+		for _, r := range i.deployment.prev.Resources {
+			if r.Delete {
+				continue
+			}
 
-		new := *r
-		new.ID = ""
-		if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
-			return false
+			new := *r
+			new.ID = ""
+			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
+				return false
+			}
 		}
 	}
 	return true
