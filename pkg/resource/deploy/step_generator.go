@@ -254,7 +254,6 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
 	sg.resourceGoals[urn] = goal
-	sg.deployment.news.set(urn, new)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}

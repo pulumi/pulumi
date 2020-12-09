@@ -282,13 +282,19 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
-	// Ensure that any secrets properties in the output are marked as such.
+	// Ensure that any secrets properties in the output are marked as such and that the resource is tracked in the set
+	// of registered resources.
 	if step.New() != nil {
 		newState := step.New()
 		for _, k := range newState.AdditionalSecretOutputs {
 			if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 				newState.Outputs[k] = resource.MakeSecret(v)
 			}
+		}
+
+		// If this is not a resource that is managed by Pulumi, then we can ignore it.
+		if !newState.External && se.deployment.news != nil {
+			se.deployment.news.set(newState.URN, newState)
 		}
 	}
 

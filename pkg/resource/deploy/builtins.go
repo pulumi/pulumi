@@ -272,10 +272,6 @@ func (p *builtinProvider) getResource(inputs resource.PropertyMap) (resource.Pro
 	contract.Assert(ok)
 	contract.Assert(urn.IsString())
 
-	// #5803: track secret outputs in the resource map. This is necessary to ensure that the
-	// `additionalSecretOutputs` option that was provided when the resource was registered is properly respected by
-	// `getResource`.
-
 	state, ok := p.resources.get(resource.URN(urn.StringValue()))
 	if !ok {
 		return nil, errors.Errorf("unknown resource %v", urn.StringValue())
