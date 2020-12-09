@@ -291,7 +291,11 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 				newState.Outputs[k] = resource.MakeSecret(v)
 			}
 		}
-		se.deployment.news.set(newState.URN, newState)
+
+		// If this is not a resource that is managed by Pulumi, then we can ignore it.
+		if !newState.External && se.deployment.news != nil {
+			se.deployment.news.set(newState.URN, newState)
+		}
 	}
 
 	if events != nil {
