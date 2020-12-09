@@ -112,6 +112,15 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return p.Name, nil
 }
 
+// GetEnumName returns the enum name specific to NodeJS.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name)
+}
+
 // GetModuleDocLink returns the display name and the link for a module.
 func (d DocLanguageHelper) GetModuleDocLink(pkg *schema.Package, modName string) (string, string) {
 	var displayName string

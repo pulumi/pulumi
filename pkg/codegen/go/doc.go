@@ -106,6 +106,15 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return strings.Title(p.Name), nil
 }
 
+// GetEnumName returns the enum name specific to Go.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name)
+}
+
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
 	funcName := tokenToName(f.Token)
 	pkg, ok := d.packages[modName]

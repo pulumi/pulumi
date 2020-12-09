@@ -24,6 +24,7 @@ import (
 // See the implementation for this interface under each of the language code generators.
 type DocLanguageHelper interface {
 	GetPropertyName(p *schema.Property) (string, error)
+	GetEnumName(e *schema.Enum) (string, error)
 	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
 	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
 	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string

@@ -170,6 +170,16 @@ type property struct {
 	IsInput    bool
 }
 
+// enum represents an enum.
+type enum struct {
+	ID                 string // ID is the `id` attribute attached to the DOM element containing the enum.
+	DisplayName        string // DisplayName is the enum name with word-breaks.
+	Name               string // Name is the language-specific enum name.
+	Value              string
+	Comment            string
+	DeprecationMessage string
+}
+
 // apiTypeDocLinks represents the links for a type's input and output API doc.
 type apiTypeDocLinks struct {
 	InputType  string
@@ -182,6 +192,7 @@ type docNestedType struct {
 	AnchorID    string
 	APIDocLinks map[string]apiTypeDocLinks
 	Properties  map[string][]property
+	EnumValues  map[string][]enum
 }
 
 // propertyType represents the type of a property.
@@ -471,6 +482,17 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 		tokenName := tokenToName(t.Token)
 		// Links to anchor tags on the same page must be lower-cased.
 		href = "#" + strings.ToLower(tokenName)
+	case *schema.EnumType:
+		tokenName := tokenToName(t.Token)
+		// Links to anchor tags on the same page must be lower-cased.
+		href = "#" + strings.ToLower(tokenName)
+	case *schema.UnionType:
+		var elements []string
+		for _, e := range t.ElementTypes {
+			elementLangType := mod.typeString(e, lang, characteristics, false)
+			elements = append(elements, elementLangType.DisplayName)
+		}
+		langTypeString = strings.Join(elements, " | ")
 	default:
 		// Check if type is primitive/built-in type if no match for cases listed above.
 		if schema.IsPrimitiveType(t) {
@@ -798,91 +820,124 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 	isK8s := isKubernetesPackage(mod.pkg)
 
-	var objs []docNestedType
+	var typs []docNestedType
 	for token, tyUsage := range tokens {
 		for _, t := range mod.pkg.Types {
-			obj, ok := t.(*schema.ObjectType)
-			if !ok || obj.Token != token {
-				continue
-			}
-			if len(obj.Properties) == 0 {
-				continue
-			}
-
-			// Create maps to hold the per-language properties of this object and links to
-			// the API doc for each language.
-			props := make(map[string][]property)
-			apiDocLinks := make(map[string]apiTypeDocLinks)
-			for _, lang := range supportedLanguages {
-				// The nested type may be under a different package in a language.
-				// For example, in k8s, common types are in the core/v1 module and can appear in
-				// nested types elsewhere. So we use the appropriate name of that type,
-				// as well as its language-specific name. For example, module name for use as a C# namespace
-				// or as a Go package name.
-				modName := mod.getLanguageModuleName(lang)
-				nestedTypeModName := mod.pkg.TokenToModule(token)
-				if nestedTypeModName != mod.mod {
-					modName = mod.getLanguageModuleName(lang)
-				}
-
-				docLangHelper := getLanguageDocHelper(lang)
-				inputCharacteristics := propertyCharacteristics{
-					input:    true,
-					optional: true,
-				}
-				outputCharacteristics := propertyCharacteristics{
-					input:    false,
-					optional: true,
-				}
-				inputObjLangType := mod.typeString(t, lang, inputCharacteristics, false /*insertWordBreaks*/)
-				outputObjLangType := mod.typeString(t, lang, outputCharacteristics, false /*insertWordBreaks*/)
-
-				// Get the doc link for this nested type based on whether the type is for a Function or a Resource.
-				var inputTypeDocLink string
-				var outputTypeDocLink string
-				if resourceType {
-					if tyUsage.Input {
-						inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
-					}
-					if tyUsage.Output {
-						outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
-					}
-				} else {
-					if tyUsage.Input {
-						inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
-					}
-					if tyUsage.Output {
-						outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
-					}
-				}
-
-				props[lang] = mod.getProperties(obj.Properties, lang, true, true)
-				// Don't add C# type links for Kubernetes because there are differences in the namespaces between the schema code gen and
-				// the current code gen that the package uses. So the links will be incorrect.
-				if isK8s && lang == "csharp" {
+			switch typ := t.(type) {
+			case *schema.ObjectType:
+				if typ.Token != token || len(typ.Properties) == 0 {
 					continue
 				}
-				apiDocLinks[lang] = apiTypeDocLinks{
-					InputType:  inputTypeDocLink,
-					OutputType: outputTypeDocLink,
-				}
-			}
 
-			name := strings.Title(tokenToName(obj.Token))
-			objs = append(objs, docNestedType{
-				Name:        wbr(name),
-				AnchorID:    strings.ToLower(name),
-				APIDocLinks: apiDocLinks,
-				Properties:  props,
-			})
+				// Create maps to hold the per-language properties of this object and links to
+				// the API doc for each language.
+				props := make(map[string][]property)
+				apiDocLinks := make(map[string]apiTypeDocLinks)
+				for _, lang := range supportedLanguages {
+					// The nested type may be under a different package in a language.
+					// For example, in k8s, common types are in the core/v1 module and can appear in
+					// nested types elsewhere. So we use the appropriate name of that type,
+					// as well as its language-specific name. For example, module name for use as a C# namespace
+					// or as a Go package name.
+					modName := mod.getLanguageModuleName(lang)
+					nestedTypeModName := mod.pkg.TokenToModule(token)
+					if nestedTypeModName != mod.mod {
+						modName = mod.getLanguageModuleName(lang)
+					}
+
+					docLangHelper := getLanguageDocHelper(lang)
+					inputCharacteristics := propertyCharacteristics{
+						input:    true,
+						optional: true,
+					}
+					outputCharacteristics := propertyCharacteristics{
+						input:    false,
+						optional: true,
+					}
+					inputObjLangType := mod.typeString(t, lang, inputCharacteristics, false /*insertWordBreaks*/)
+					outputObjLangType := mod.typeString(t, lang, outputCharacteristics, false /*insertWordBreaks*/)
+
+					// Get the doc link for this nested type based on whether the type is for a Function or a Resource.
+					var inputTypeDocLink string
+					var outputTypeDocLink string
+					if resourceType {
+						if tyUsage.Input {
+							inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
+						}
+						if tyUsage.Output {
+							outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
+						}
+					} else {
+						if tyUsage.Input {
+							inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
+						}
+						if tyUsage.Output {
+							outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
+						}
+					}
+
+					props[lang] = mod.getProperties(typ.Properties, lang, true, true)
+					// Don't add C# type links for Kubernetes because there are differences in the namespaces between the schema code gen and
+					// the current code gen that the package uses. So the links will be incorrect.
+					if isK8s && lang == "csharp" {
+						continue
+					}
+					apiDocLinks[lang] = apiTypeDocLinks{
+						InputType:  inputTypeDocLink,
+						OutputType: outputTypeDocLink,
+					}
+				}
+
+				name := strings.Title(tokenToName(typ.Token))
+				typs = append(typs, docNestedType{
+					Name:        wbr(name),
+					AnchorID:    strings.ToLower(name),
+					APIDocLinks: apiDocLinks,
+					Properties:  props,
+				})
+			case *schema.EnumType:
+				if typ.Token != token || len(typ.Elements) == 0 {
+					continue
+				}
+				name := strings.Title(tokenToName(typ.Token))
+
+				enums := make(map[string][]enum)
+				for _, lang := range supportedLanguages {
+					docLangHelper := getLanguageDocHelper(lang)
+
+					var langEnumValues []enum
+					for _, e := range typ.Elements {
+						name, err := docLangHelper.GetEnumName(e)
+						if err != nil {
+							panic(err)
+						}
+						enumID := strings.ToLower(name + propertyLangSeparator + lang)
+						langEnumValues = append(langEnumValues, enum{
+							ID:                 enumID,
+							DisplayName:        wbr(name),
+							Name:               name,
+							Value:              fmt.Sprintf("%v", e.Value),
+							Comment:            e.Comment,
+							DeprecationMessage: e.DeprecationMessage,
+						})
+					}
+					enums[lang] = langEnumValues
+				}
+
+				typs = append(typs, docNestedType{
+					Name:       wbr(name),
+					AnchorID:   strings.ToLower(name),
+					EnumValues: enums,
+				})
+			}
 		}
 	}
 
-	sort.Slice(objs, func(i, j int) bool {
-		return objs[i].Name < objs[j].Name
+	sort.Slice(typs, func(i, j int) bool {
+		return typs[i].Name < typs[j].Name
 	})
 
-	return objs
+	return typs
 }
 
 // getProperties returns a slice of properties that can be rendered for docs for
@@ -1450,6 +1505,9 @@ func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, 
 			glog.V(4).Infof("visiting object property %s\n", p.Type.String())
 			mod.getNestedTypes(p.Type, types, input)
 		}
+	case *schema.EnumType:
+		glog.V(4).Infof("visiting enum type %s\n", t.Token)
+		types.add(t.Token, false)
 	case *schema.UnionType:
 		glog.V(4).Infof("visiting union type %s\n", t.String())
 		for _, e := range t.ElementTypes {
