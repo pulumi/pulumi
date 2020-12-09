@@ -235,7 +235,7 @@ export abstract class Resource {
         const parent = opts.parent || getStackResource() || { __transformations: undefined };
         this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
         for (const transformation of this.__transformations) {
-            const tres = transformation({ resource: this, type: t, name, props, opts });
+            const tres = transformation({ resource: this, type: t, name: name, props: {...props}, opts: {...opts} });
             if (tres) {
                 if (tres.opts.parent !== opts.parent) {
                     // This is currently not allowed because the parent tree is needed to establish what

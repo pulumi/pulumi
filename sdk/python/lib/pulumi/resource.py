@@ -657,7 +657,9 @@ class Resource:
         parent_transformations = (parent._transformations or []) if parent is not None else []
         self._transformations = (opts.transformations or []) + parent_transformations
         for transformation in self._transformations:
-            args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
+            transform_props = copy.copy(props)
+            transform_opts = copy.copy(opts)
+            args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=transform_props, opts=transform_opts)
             tres = transformation(args)
             if tres is not None:
                 if tres.opts.parent != opts.parent:
