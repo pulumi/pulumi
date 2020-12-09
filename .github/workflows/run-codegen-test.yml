@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
     - 'pkg/codegen/**'
+    - '!pkg/codegen/docs/**'
     - '.github/workflows/codegen-test.yml'
 
 env:
