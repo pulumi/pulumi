@@ -1,4 +1,6 @@
-﻿namespace Pulumi.X.Automation
+﻿using System.Text.Json.Serialization;
+
+namespace Pulumi.X.Automation
 {
     /// <summary>
     /// Various configuration options that apply to different language runtimes.
@@ -10,6 +12,7 @@
         /// <para/>
         /// A boolean that controls whether to use ts-node to execute sources.
         /// </summary>
+        [JsonPropertyName("typescript")]
         public bool? TypeScript { get; set; }
 
         /// <summary>
@@ -26,6 +29,7 @@
         /// <para/>
         /// A string that specifies the path to a virtual environment to use when running the program.
         /// </summary>
+        [JsonPropertyName("virtualenv")]
         public string? VirtualEnvironment { get; set; }
     }
 }

@@ -339,8 +339,7 @@ namespace Pulumi.X.Automation
                     continue;
 
                 var content = await File.ReadAllTextAsync(path, cancellationToken);
-                return isJson ? this._serializer.DeserializeJson<ProjectSettings>(content)
-                    : this._serializer.DeserializeYaml<ProjectSettings>(content);
+                return isJson ? this._serializer.DeserializeJson<ProjectSettings>(content) : this._serializer.DeserializeYaml<ProjectSettings>(content);
             }
 
             return null;
@@ -371,7 +370,7 @@ namespace Pulumi.X.Automation
             if (parts.Length < 1)
                 return stackName;
 
-            return parts[parts.Length - 1];
+            return parts[^1];
         }
 
         /// <inheritdoc/>
@@ -387,8 +386,7 @@ namespace Pulumi.X.Automation
                     continue;
 
                 var content = await File.ReadAllTextAsync(path, cancellationToken);
-                return isJson ? this._serializer.DeserializeJson<StackSettings>(content)
-                    : this._serializer.DeserializeYaml<StackSettings>(content);
+                return isJson ? this._serializer.DeserializeJson<StackSettings>(content) : this._serializer.DeserializeYaml<StackSettings>(content);
             }
 
             return null;
