@@ -684,6 +684,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
+	fmt.Fprintf(w, "    [%sResourceType(\"%s\")]\n", namespaceName(mod.namespaces, mod.pkg.Name), r.Token)
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
@@ -1436,10 +1437,10 @@ func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
 	err := csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
+		Name:      namespaceName(mod.namespaces, mod.pkg.Name),
 		Namespace: mod.namespaceName,
 		ClassName: "Utilities",
 		Tool:      mod.tool,
-		Version:   mod.pkg.Version.String(),
 	})
 	if err != nil {
 		return "", err
