@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Re-apply fix for running multiple `pulumi` processes concurrently.
+  [#5893](https://github.com/pulumi/pulumi/issues/5893)
 
 ## 2.15.4 (2020-12-08)
 
