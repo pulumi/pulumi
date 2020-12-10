@@ -94,6 +94,8 @@
         "tests/runtime/props.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
 
-        "tests/automation/localWorkspace.spec.ts"
+        "tests/automation/localWorkspace.spec.ts",
+
+        "tests_with_mocks/mocks.spec.ts",
     ]
 }
