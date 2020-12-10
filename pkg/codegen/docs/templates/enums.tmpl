@@ -1,0 +1,25 @@
+{{ define "enums" }}
+
+{{- range $lang, $enums := . }}
+
+{{ print "{{% choosable language" }} {{ print $lang }} {{ print "%}}" }}
+<table class="resources-enums">{{ range . }}
+    <tr class="enum-row" id="{{ htmlSafe .ID }}">
+        <td>
+            {{- htmlSafe .DisplayName -}}
+        </td>
+        <td>
+            {{- htmlSafe .Value -}}
+        </td>
+        <td>
+            {{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}
+            {{- if .DeprecationMessage -}}<p class="enum-message">Deprecated: {{ print "{{% md %}}" -}}{{- htmlSafe .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
+        </td>
+    </tr>
+{{- end }}
+</table>
+{{ print "{{% /choosable %}}" }}
+
+{{- end }}
+
+{{- end }}
