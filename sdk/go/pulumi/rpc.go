@@ -199,7 +199,7 @@ func marshalInputAndDetermineSecret(v interface{},
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
 				} else if !valueType.AssignableTo(destType) {
-					err := fmt.Errorf("cannot marshal an input of type %T as a value of type %v", input, destType)
+					err := fmt.Errorf("cannot marshal an input of type %T with element type %v as a value of type %v", input, valueType, destType)
 					return resource.PropertyValue{}, nil, false, err
 				}
 			}
