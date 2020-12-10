@@ -40,6 +40,8 @@ class MyMocks(pulumi.runtime.Mocks):
                 'public_ip': '203.0.113.12',
             }
             return ['i-1234567890abcdef0', dict(inputs, **state)]
+        elif type_ == 'pkg:index:MyCustom':
+            return [name + '_id', inputs]
         else:
             return ['', {}]
 
@@ -60,6 +62,12 @@ class TestingWithMocks(unittest.TestCase):
         def check_ip(ip):
             self.assertEqual(ip, '203.0.113.12')
         return resources.myinstance.public_ip.apply(check_ip)
+
+    @pulumi.runtime.test
+    def test_custom_resource_reference(self):
+        def check_instance(instance):
+            self.assertIsInstance(instance, resources.Instance)
+        return resources.mycustom.instance.apply(check_instance)
 
     @pulumi.runtime.test
     def test_invoke(self):
