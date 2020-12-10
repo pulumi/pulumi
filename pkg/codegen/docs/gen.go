@@ -493,11 +493,6 @@ func (mod *modContext) typeString(t schema.Type, lang string, characteristics pr
 			elements = append(elements, elementLangType.DisplayName)
 		}
 		langTypeString = strings.Join(elements, " | ")
-	default:
-		// Check if type is primitive/built-in type if no match for cases listed above.
-		if schema.IsPrimitiveType(t) {
-			href = docLanguageHelper.GetDocLinkForBuiltInType(t.String())
-		}
 	}
 
 	// Strip the namespace/module prefix for the type's display name.
@@ -601,7 +596,6 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 			Comment: ctorNameArgComment,
 		},
@@ -657,7 +651,6 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 			Comment: ctorNameArgComment,
 		},
@@ -744,7 +737,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 			Comment: ctorNameArgComment,
 		},
@@ -1151,7 +1143,6 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 
 			Type: propertyType{
 				Name: "string",
-				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -1203,7 +1194,6 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{
@@ -1252,7 +1242,6 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			Name: "name",
 			Type: propertyType{
 				Name: "string",
-				Link: docLangHelper.GetDocLinkForBuiltInType("string"),
 			},
 		},
 		{

@@ -29,7 +29,6 @@ type DocLanguageHelper interface {
 	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
 	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetDocLinkForBuiltInType(typeName string) string
 	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
 
 	GetFunctionName(modName string, f *schema.Function) string

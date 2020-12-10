@@ -81,11 +81,6 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return link + "Args"
 }
 
-// GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
-}
-
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	modPkg, ok := d.packages[moduleName]

@@ -61,13 +61,6 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typ
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
 
-// GetDocLinkForBuiltInType returns the C# URL for a built-in type.
-// Currently not using the typeName parameter because the returned link takes to a general
-// top -level page containing info for all built in types.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types"
-}
-
 // GetDocLinkForResourceInputOrOutputType returns the doc link for an input or output type of a Resource.
 func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string {
 	return d.GetDocLinkForResourceType(pkg, moduleName, typeName)
