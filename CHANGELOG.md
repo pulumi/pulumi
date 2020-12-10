@@ -5,6 +5,9 @@ CHANGELOG
 
 - Re-apply fix for running multiple `pulumi` processes concurrently.
   [#5893](https://github.com/pulumi/pulumi/issues/5893)
+  
+- [cli] Prevent a panic when using `pulumi import` with local filesystems
+  [#5906](https://github.com/pulumi/pulumi/issues/5906)
 
 ## 2.15.4 (2020-12-08)
 
