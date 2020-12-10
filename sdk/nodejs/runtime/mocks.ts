@@ -26,7 +26,7 @@ const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
  */
 export interface Mocks {
     /**
-     * call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
+     * Mocks provider-implemented function calls (e.g. aws.get_availability_zones).
      *
      * @param token: The token that indicates which function is being called. This token is of the form "package:module:function".
      * @param args: The arguments provided to the function call.
@@ -35,23 +35,22 @@ export interface Mocks {
     call(token: string, args: any, provider?: string): Record<string, any>;
 
     /**
-     * new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
+     * Mocks resource construction calls. This function should return the physical identifier and the output properties
      * for the resource being constructed.
      *
-     * @param type_: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
+     * @param type: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
      * @param name: The logical name of the resource instance.
      * @param inputs: The inputs for the resource.
-     * @param provider: If provided, the identifier of the provider instnace being used to manage this resource.
-     * @param id_: If provided, the physical identifier of an existing resource to read or import.
+     * @param provider: If provided, the identifier of the provider instance being used to manage this resource.
+     * @param id: If provided, the physical identifier of an existing resource to read or import.
      */
     newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string, state: Record<string, any> };
 }
 
 export class MockMonitor {
-    mocks: Mocks;
+    readonly resources = new Map<string, { urn: string, id: string, state: any }>();
 
-    constructor(mocks: Mocks) {
-        this.mocks = mocks;
+    constructor(readonly mocks: Mocks) {
     }
 
     private newUrn(parent: string, type: string, name: string): string {
@@ -65,7 +64,21 @@ export class MockMonitor {
 
     public async invoke(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
-            const result = this.mocks.call(req.getTok(), deserializeProperties(req.getArgs()), req.getProvider());
+            const tok = req.getTok();
+            const inputs = deserializeProperties(req.getArgs());
+
+            if (tok === "pulumi:pulumi:getResource") {
+                const registeredResource = this.resources.get(inputs.urn);
+                if (!registeredResource) {
+                    throw new Error(`unknown resource ${inputs.urn}`);
+                }
+                const resp = new provproto.InvokeResponse();
+                resp.setReturn(structproto.Struct.fromJavaScript(registeredResource));
+                callback(null, resp);
+                return;
+            }
+
+            const result = this.mocks.call(tok, inputs, req.getProvider());
             const response = new provproto.InvokeResponse();
             response.setReturn(structproto.Struct.fromJavaScript(await serializeProperties("", result)));
             callback(null, response);
@@ -82,9 +95,15 @@ export class MockMonitor {
                 deserializeProperties(req.getProperties()),
                 req.getProvider(),
                 req.getId());
+
+            const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
+            const serializedState = await serializeProperties("", result.state);
+
+            this.resources.set(urn, { urn, id: result.id, state: serializedState });
+
             const response = new resproto.ReadResourceResponse();
-            response.setUrn(this.newUrn(req.getParent(), req.getType(), req.getName()));
-            response.setProperties(structproto.Struct.fromJavaScript(await serializeProperties("", result.state)));
+            response.setUrn(urn);
+            response.setProperties(structproto.Struct.fromJavaScript(serializedState));
             callback(null, response);
         } catch (err) {
             callback(err, undefined);
@@ -99,10 +118,16 @@ export class MockMonitor {
                 deserializeProperties(req.getObject()),
                 req.getProvider(),
                 req.getImportid());
+
+            const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
+            const serializedState = await serializeProperties("", result.state);
+
+            this.resources.set(urn, { urn, id: result.id, state: serializedState });
+
             const response = new resproto.RegisterResourceResponse();
-            response.setUrn(this.newUrn(req.getParent(), req.getType(), req.getName()));
+            response.setUrn(urn);
             response.setId(result.id);
-            response.setObject(structproto.Struct.fromJavaScript(await serializeProperties("", result.state)));
+            response.setObject(structproto.Struct.fromJavaScript(serializedState));
             callback(null, response);
         } catch (err) {
             callback(err, undefined);

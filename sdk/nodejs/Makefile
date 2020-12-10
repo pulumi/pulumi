@@ -45,6 +45,7 @@ istanbul_tests:: build
 	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 90000 'bin/tests/**/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
+	./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
 
 sxs_tests:: build
 	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
