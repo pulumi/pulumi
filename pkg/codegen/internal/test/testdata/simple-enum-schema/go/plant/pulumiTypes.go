@@ -52,7 +52,7 @@ func (i ContainerArgs) ToContainerPtrOutput() ContainerPtrOutput {
 }
 
 func (i ContainerArgs) ToContainerPtrOutputWithContext(ctx context.Context) ContainerPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ContainerOutput).ToContainerPtrOutputWithContext(ctx)
+	return pulumi.ToOutputWithContext(ctx, i).(ContainerPtrOutput)
 }
 
 // ContainerPtrInput is an input type that accepts ContainerArgs, ContainerPtr and ContainerPtrOutput values.

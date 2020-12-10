@@ -100,6 +100,21 @@ func (i *RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTr
 	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeOutput)
 }
 
+func (i *RubberTree) ToRubberTreePtrOutput() RubberTreePtrOutput {
+	return i.ToRubberTreePtrOutputWithContext(context.Background())
+}
+
+func (i *RubberTree) ToRubberTreePtrOutputWithContext(ctx context.Context) RubberTreePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RubberTreePtrOutput)
+}
+
+type RubberTreePtrInput interface {
+	pulumi.Input
+
+	ToRubberTreePtrOutput() RubberTreePtrOutput
+	ToRubberTreePtrOutputWithContext(ctx context.Context) RubberTreePtrOutput
+}
+
 type RubberTreeOutput struct {
 	*pulumi.OutputState
 }
@@ -116,6 +131,23 @@ func (o RubberTreeOutput) ToRubberTreeOutputWithContext(ctx context.Context) Rub
 	return o
 }
 
+type RubberTreePtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (RubberTreePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**RubberTree)(nil))
+}
+
+func (o RubberTreePtrOutput) ToRubberTreePtrOutput() RubberTreePtrOutput {
+	return o
+}
+
+func (o RubberTreePtrOutput) ToRubberTreePtrOutputWithContext(ctx context.Context) RubberTreePtrOutput {
+	return o
+}
+
 func init() {
 	pulumi.RegisterOutputType(RubberTreeOutput{})
+	pulumi.RegisterOutputType(RubberTreePtrOutput{})
 }
