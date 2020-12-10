@@ -162,7 +162,7 @@ type property struct {
 	DisplayName        string
 	Name               string
 	Comment            string
-	Type               propertyType
+	Types              []propertyType
 	DeprecationMessage string
 	Link               string
 
@@ -918,6 +918,15 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 
 		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
 
+		propTypes := make([]propertyType, 0)
+		if typ, isUnion := prop.Type.(*schema.UnionType); isUnion {
+			for _, elementType := range typ.ElementTypes {
+				propTypes = append(propTypes, mod.typeString(elementType, lang, characteristics, true))
+			}
+		} else {
+			propTypes = append(propTypes, mod.typeString(prop.Type, lang, characteristics, true))
+		}
+
 		docProperties = append(docProperties, property{
 			ID:                 propID,
 			DisplayName:        wbr(propLangName),
@@ -927,7 +936,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			IsRequired:         prop.IsRequired,
 			IsInput:            input,
 			Link:               "#" + propID,
-			Type:               mod.typeString(prop.Type, lang, characteristics, true),
+			Types:              propTypes,
 		})
 	}
 

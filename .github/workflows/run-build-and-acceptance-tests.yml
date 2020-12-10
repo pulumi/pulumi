@@ -2,6 +2,8 @@ on:
   repository_dispatch:
     types: [ run-acceptance-tests-command ]
   pull_request:
+    paths-ignore:
+      - 'pkg/codegen/docs/**'
 
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
