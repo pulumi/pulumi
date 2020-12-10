@@ -13,6 +13,9 @@ CHANGELOG
   a resource references another resources that's been registered with `registerResourceModule`.
   [#5914](https://github.com/pulumi/pulumi/pull/5914)
 
+- Enable resource reference feature by default.
+  [#5905](https://github.com/pulumi/pulumi/pull/5905)
+
 ## 2.15.4 (2020-12-08)
 
 - Fix a problem where `pulumi import` could panic on an import error due to missing error message.

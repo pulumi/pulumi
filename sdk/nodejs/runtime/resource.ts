@@ -216,6 +216,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
 
         // Now run the operation, serializing the invocation if necessary.
@@ -305,6 +306,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setIgnorechangesList(opts.ignoreChanges || []);
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");

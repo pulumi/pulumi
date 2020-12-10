@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import os
 import sys
 import traceback
 
@@ -282,6 +283,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                 additional_secret_outputs = map(
                     res.translate_input_property, opts.additional_secret_outputs)
 
+            accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
                 name=name,
@@ -292,6 +294,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                 dependencies=resolver.dependencies,
                 version=opts.version or "",
                 acceptSecrets=True,
+                acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
@@ -416,6 +419,7 @@ def register_resource(res: 'Resource',
                 else:
                     raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
 
+            accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -431,6 +435,7 @@ def register_resource(res: 'Resource',
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
                 acceptSecrets=True,
+                acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,

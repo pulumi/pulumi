@@ -1155,7 +1155,11 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		return nil, nil, err
 	}
 
-	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+	resp, err := client.Invoke(p.ctx.Request(), &pulumirpc.InvokeRequest{
+		Tok:             string(tok),
+		Args:            margs,
+		AcceptResources: p.acceptResources,
+	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
@@ -1216,7 +1220,11 @@ func (p *provider) StreamInvoke(
 	}
 
 	streamClient, err := client.StreamInvoke(
-		p.ctx.Request(), &pulumirpc.InvokeRequest{Tok: string(tok), Args: margs})
+		p.ctx.Request(), &pulumirpc.InvokeRequest{
+			Tok:             string(tok),
+			Args:            margs,
+			AcceptResources: p.acceptResources,
+		})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)
 		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())

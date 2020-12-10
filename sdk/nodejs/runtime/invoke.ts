@@ -203,6 +203,7 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
     req.setArgs(obj);
     req.setProvider(provider);
     req.setVersion(opts.version || "");
+    req.setAcceptresources(!utils.disableResourceReferences);
     return req;
 }
 
