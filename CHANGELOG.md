@@ -9,6 +9,10 @@ CHANGELOG
 - [cli] Prevent a panic when using `pulumi import` with local filesystems
   [#5906](https://github.com/pulumi/pulumi/issues/5906)
 
+- [sdk/nodejs] Fix issue that would cause unit tests using mocks to fail with unhandled errors when
+  a resource references another resources that's been registered with `registerResourceModule`.
+  [#5914](https://github.com/pulumi/pulumi/pull/5914)
+
 ## 2.15.4 (2020-12-08)
 
 - Fix a problem where `pulumi import` could panic on an import error due to missing error message.
