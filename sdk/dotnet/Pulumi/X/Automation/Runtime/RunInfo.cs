@@ -1,0 +1,24 @@
+﻿using System.Collections.Generic;
+
+namespace Pulumi.X.Automation.Runtime
+{
+    internal class RunInfo
+    {
+        public RunInfo(string engineAddr, string monitorAddr, IDictionary<string, string> config, string project, string stack, int parallel)
+        {
+            EngineAddr = engineAddr;
+            MonitorAddr = monitorAddr;
+            Config = config;
+            Project = project;
+            Stack = stack;
+            Parallel = parallel;
+        }
+
+        public string EngineAddr { get; }
+        public string MonitorAddr { get; }
+        public IDictionary<string, string> Config { get; }
+        public string Project { get; }
+        public string Stack { get; }
+        public int Parallel { get; }
+    }
+}
