@@ -8,10 +8,12 @@
             title="{{ if .IsInput -}}{{- if .IsRequired -}}Required{{- else -}}Optional{{- end -}}{{- end -}}{{- if .DeprecationMessage -}}, Deprecated{{- end -}}">
         <span id="{{ htmlSafe .ID }}">{{ template "linkify_wo_style" . }}</span> 
         <span class="property-indicator"></span>
-        {{ range $index, $type := .Types }}
-            {{- if gt $index 0 -}}<span class="property-type"> | </span>{{- end -}}
-            <span class="property-type">{{- if eq .Link "#" "" -}}{{- htmlSafe .DisplayName -}}{{- else -}}{{ template "linkify" . }}{{- end -}}</span>
-        {{- end }}
+        <span class="property-type">
+        {{- range $index, $type := .Types }}
+            {{- if gt $index 0 }} | {{ end -}}
+            {{- if eq .Link "#" "" -}}{{- htmlSafe .DisplayName -}}{{- else -}}{{ template "linkify" . }}{{- end -}}
+        {{- end -}}
+        </span>
     </dt>
     <dd>
         {{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}
