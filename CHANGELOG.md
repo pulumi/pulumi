@@ -18,6 +18,9 @@ _(none)_
 
 - Enable resource reference feature by default.
   [#5905](https://github.com/pulumi/pulumi/pull/5905)
+  
+- [codegen/go] Fix Input/Output methods for Go resources.
+  [#5916](https://github.com/pulumi/pulumi/pull/5916)
 
 - [sdk/python] Implement getResource in the mock monitor.
   [#5919](https://github.com/pulumi/pulumi/pull/5919)
