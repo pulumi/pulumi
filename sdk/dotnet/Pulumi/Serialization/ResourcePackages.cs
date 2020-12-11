@@ -35,7 +35,7 @@ namespace Pulumi
                 _resourceTypes ??= DiscoverResourceTypes();
             }
 
-            var minimalVersion = version != null ? SemVersion.Parse(version) : new SemVersion(0);
+            var minimalVersion = !string.IsNullOrEmpty(version) ? SemVersion.Parse(version) : new SemVersion(0);
             var yes = _resourceTypes.TryGetValue(name, out var types);
             if (!yes)
             {
@@ -45,7 +45,7 @@ namespace Pulumi
             
             var matches =
                     from vt in types
-                    let resourceVersion = vt.Item1 != null ? SemVersion.Parse(vt.Item1) : minimalVersion
+                    let resourceVersion = !string.IsNullOrEmpty(vt.Item1) ? SemVersion.Parse(vt.Item1) : minimalVersion
                     where resourceVersion >= minimalVersion
                     where (version == null || vt.Item1 == null || minimalVersion.Major == resourceVersion.Major)
                     orderby resourceVersion descending
