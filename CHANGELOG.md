@@ -19,6 +19,10 @@ CHANGELOG
 - [sdk/python] Implement getResource in the mock monitor.
   [#5919](https://github.com/pulumi/pulumi/pull/5919)
 
+- [sdk/dotnet] Implement getResource in the mock monitor and fix some issues around
+  deserializing resources.
+  [#5921](https://github.com/pulumi/pulumi/pull/5921)
+
 ## 2.15.4 (2020-12-08)
 
 - Fix a problem where `pulumi import` could panic on an import error due to missing error message.
