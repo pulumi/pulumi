@@ -1,18 +1,18 @@
 package gen
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant"
-	tree "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	"github.com/stretchr/testify/require"
 	"path/filepath"
 	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant"
+	tree "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInputUsage(t *testing.T) {
@@ -62,15 +62,17 @@ func TestGeneratePackage(t *testing.T) {
 			"Simple schema with local resource properties",
 			"simple-resource-schema",
 			[]string{
-				"example/resource.go",
-				"example/otherResource.go",
 				"example/argFunction.go",
+				"example/otherResource.go",
+				"example/provider.go",
+				"example/resource.go",
 			},
 		},
 		{
 			"Simple schema with enum types",
 			"simple-enum-schema",
 			[]string{
+				filepath.Join("plant", "provider.go"),
 				filepath.Join("plant", "pulumiTypes.go"),
 				filepath.Join("plant", "pulumiEnums.go"),
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
