@@ -907,15 +907,21 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 					var langEnumValues []enum
 					for _, e := range typ.Elements {
-						name, err := docLangHelper.GetEnumName(e)
+						enumName, err := docLangHelper.GetEnumName(e)
 						if err != nil {
 							panic(err)
+						}
+						if lang == "go" {
+							if strings.Contains(name, "_") {
+								enumName = fmt.Sprintf("_%s", enumName)
+							}
+							enumName = name + enumName
 						}
 						enumID := strings.ToLower(name + propertyLangSeparator + lang)
 						langEnumValues = append(langEnumValues, enum{
 							ID:                 enumID,
-							DisplayName:        wbr(name),
-							Name:               name,
+							DisplayName:        wbr(enumName),
+							Name:               enumName,
 							Value:              fmt.Sprintf("%v", e.Value),
 							Comment:            e.Comment,
 							DeprecationMessage: e.DeprecationMessage,
