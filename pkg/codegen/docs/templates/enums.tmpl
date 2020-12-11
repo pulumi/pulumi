@@ -3,21 +3,17 @@
 {{- range $lang, $enums := . }}
 
 {{ print "{{% choosable language" }} {{ print $lang }} {{ print "%}}" }}
-<table class="resources-enums">{{ range . }}
-    <tr class="enum-row" id="{{ htmlSafe .ID }}">
-        <td>
-            {{- htmlSafe .DisplayName -}}
-        </td>
-        <td>
-            {{- htmlSafe .Value -}}
-        </td>
-        <td>
-            {{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}
-            {{- if .DeprecationMessage -}}<p class="enum-message">Deprecated: {{ print "{{% md %}}" -}}{{- htmlSafe .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
-        </td>
-    </tr>
+<dl class="tabular">{{ range . }}
+    <dt>
+        {{- htmlSafe .DisplayName -}}
+    </dt>
+    <dd>
+        {{- htmlSafe .Value }}
+        {{- if .Comment }}{{ print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" }}{{ end -}}
+        {{- if .DeprecationMessage }}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- htmlSafe .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
+    </dd>
 {{- end }}
-</table>
+</dl>
 {{ print "{{% /choosable %}}" }}
 
 {{- end }}
