@@ -87,6 +87,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		typeQualifierPackage = "outputs"
 	}
 	typeName = strings.ReplaceAll(typeName, typeQualifierPackage+".", "")
+	typeName = strings.ReplaceAll(typeName, "enums.", "")
 
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.
