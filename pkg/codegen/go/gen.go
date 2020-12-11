@@ -499,7 +499,12 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
-	fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
+	if strings.HasSuffix(name, "Ptr") && !ptrMethods {
+		base := name[:len(name)-3]
+		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput).To%sOutput()\n", base, Title(name))
+	} else {
+		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
+	}
 	fmt.Fprintf(w, "}\n\n")
 
 	if ptrMethods {
@@ -508,7 +513,11 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 		fmt.Fprintf(w, "}\n\n")
 
 		fmt.Fprintf(w, "func (i %s) To%sPtrOutputWithContext(ctx context.Context) %sPtrOutput {\n", receiverType, Title(name), name)
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sPtrOutput)\n", name)
+		if strings.HasSuffix(receiverType, "Args") {
+			fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%[1]sOutput).To%[1]sPtrOutput()\n", name)
+		} else {
+			fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sPtrOutput)\n", name)
+		}
 		fmt.Fprintf(w, "}\n\n")
 	}
 }
