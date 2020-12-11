@@ -1,9 +1,12 @@
 package pulumi
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -258,6 +261,130 @@ func TestInvoke(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, "oof", result2["foo"].(string))
 		assert.Equal(t, "zab", result2["baz"].(string))
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+}
+
+type testInstanceResource struct {
+	CustomResourceState
+}
+
+type testInstanceResourceArgs struct {
+}
+
+type testInstanceResourceInputs struct {
+}
+
+func (*testInstanceResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testInstanceResourceArgs)(nil)).Elem()
+}
+
+type testInstanceResourceInput interface {
+	Input
+
+	ToTestInstanceResourceOutput() testInstanceResourceOutput
+	ToTestInstanceResourceOutputWithContext(ctx context.Context) testInstanceResourceOutput
+}
+
+func (testInstanceResource) ElementType() reflect.Type {
+	return reflect.TypeOf((*testInstanceResource)(nil)).Elem()
+}
+
+func (i testInstanceResource) ToTestInstanceResourceOutput() testInstanceResourceOutput {
+	return i.ToTestInstanceResourceOutputWithContext(context.Background())
+}
+
+func (i testInstanceResource) ToTestInstanceResourceOutputWithContext(ctx context.Context) testInstanceResourceOutput {
+	return ToOutputWithContext(ctx, i).(testInstanceResourceOutput)
+}
+
+type testInstanceResourceOutput struct {
+	*OutputState
+}
+
+func (testInstanceResourceOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*testInstanceResourceOutput)(nil)).Elem()
+}
+
+func (o testInstanceResourceOutput) ToTestInstanceResourceOutput() testInstanceResourceOutput {
+	return o
+}
+
+func (o testInstanceResourceOutput) ToTestInstanceResourceOutputWithContext(
+	ctx context.Context) testInstanceResourceOutput {
+	return o
+}
+
+type testMyCustomResource struct {
+	CustomResourceState
+
+	Instance testInstanceResourceOutput `pulumi:"instance"`
+}
+
+type testMyCustomResourceArgs struct {
+	Instance testInstanceResource `pulumi:"instance"`
+}
+
+type testMyCustomResourceInputs struct {
+	Instance testInstanceResourceInput
+}
+
+func (testMyCustomResourceInputs) ElementType() reflect.Type {
+	return reflect.TypeOf((*testMyCustomResourceArgs)(nil)).Elem()
+}
+
+type module int
+
+func (module) Construct(ctx *Context, name, typ, urn string) (Resource, error) {
+	switch typ {
+	case "pkg:index:Instance":
+		var instance testInstanceResource
+		return &instance, nil
+	default:
+		return nil, errors.Errorf("unknown resource type %s", typ)
+	}
+}
+
+func (module) Version() semver.Version {
+	return semver.Version{}
+}
+
+func TestRegisterResourceWithResourceReferences(t *testing.T) {
+	RegisterOutputType(testInstanceResourceOutput{})
+
+	RegisterResourceModule("pkg", "index", module(0))
+
+	mocks := &testMonitor{
+		NewResourceF: func(typeToken, name string, inputs resource.PropertyMap,
+			provider, id string) (string, resource.PropertyMap, error) {
+
+			switch typeToken {
+			case "pkg:index:Instance":
+				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
+			case "pkg:index:MyCustom":
+				return name + "_id", inputs, nil
+			default:
+				return "", nil, errors.Errorf("unknown resource %s", typeToken)
+			}
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		var instance testInstanceResource
+		err := ctx.RegisterResource("pkg:index:Instance", "instance", &testInstanceResourceInputs{}, &instance)
+		assert.NoError(t, err)
+
+		var mycustom testMyCustomResource
+		err = ctx.RegisterResource("pkg:index:MyCustom", "mycustom", &testMyCustomResourceInputs{
+			Instance: instance,
+		}, &mycustom)
+		assert.NoError(t, err)
+
+		_, _, secret, _, err := await(mycustom.Instance)
+		assert.NoError(t, err)
+		assert.False(t, secret)
 
 		return nil
 	}, WithMocks("project", "stack", mocks))

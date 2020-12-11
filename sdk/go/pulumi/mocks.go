@@ -2,8 +2,10 @@ package pulumi
 
 import (
 	"log"
+	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -26,9 +28,10 @@ func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 }
 
 type mockMonitor struct {
-	project string
-	stack   string
-	mocks   MockResourceMonitor
+	project   string
+	stack     string
+	mocks     MockResourceMonitor
+	resources sync.Map // map[string]resource.PropertyMap
 }
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
@@ -58,6 +61,25 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 	})
 	if err != nil {
 		return nil, err
+	}
+
+	if in.GetTok() == "pulumi:pulumi:getResource" {
+		urn := args["urn"].StringValue()
+		registeredResourceV, ok := m.resources.Load(urn)
+		if !ok {
+			return nil, errors.Errorf("unknown resource %s", urn)
+		}
+		registeredResource := registeredResourceV.(resource.PropertyMap)
+		result, err := plugin.MarshalProperties(registeredResource, plugin.MarshalOptions{
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+		if err != nil {
+			return nil, err
+		}
+		return &pulumirpc.InvokeResponse{
+			Return: result,
+		}, nil
 	}
 
 	resultV, err := m.mocks.Call(in.GetTok(), args, in.GetProvider())
@@ -95,10 +117,18 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 		return nil, err
 	}
 
-	_, state, err := m.mocks.NewResource(in.GetType(), in.GetName(), stateIn, in.GetProvider(), in.GetId())
+	id, state, err := m.mocks.NewResource(in.GetType(), in.GetName(), stateIn, in.GetProvider(), in.GetId())
 	if err != nil {
 		return nil, err
 	}
+
+	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
+
+	m.resources.Store(urn, resource.PropertyMap{
+		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
+		resource.PropertyKey("id"):    resource.NewStringProperty(id),
+		resource.PropertyKey("state"): resource.NewObjectProperty(state),
+	})
 
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets:   true,
@@ -109,7 +139,7 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 	}
 
 	return &pulumirpc.ReadResourceResponse{
-		Urn:        m.newURN(in.GetParent(), in.GetType(), in.GetName()),
+		Urn:        urn,
 		Properties: stateOut,
 	}, nil
 }
@@ -136,6 +166,14 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		return nil, err
 	}
 
+	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
+
+	m.resources.Store(urn, resource.PropertyMap{
+		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
+		resource.PropertyKey("id"):    resource.NewStringProperty(id),
+		resource.PropertyKey("state"): resource.NewObjectProperty(state),
+	})
+
 	stateOut, err := plugin.MarshalProperties(state, plugin.MarshalOptions{
 		KeepSecrets:   true,
 		KeepResources: true,
@@ -145,7 +183,7 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	}
 
 	return &pulumirpc.RegisterResourceResponse{
-		Urn:    m.newURN(in.GetParent(), in.GetType(), in.GetName()),
+		Urn:    urn,
 		Id:     id,
 		Object: stateOut,
 	}, nil
