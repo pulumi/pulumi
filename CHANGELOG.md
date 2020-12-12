@@ -5,6 +5,9 @@ CHANGELOG
 
 - Fix a bug in the Go SDK that could result in dropped resource dependencies.
   [#5930](https://github.com/pulumi/pulumi/pull/5930)
+  
+- Temporarily disable resource ref feature.
+  [#5932](https://github.com/pulumi/pulumi/pull/5932)
 
 ## 2.15.5 (2020-12-11)
 
