@@ -47,19 +47,19 @@ namespace Pulumi.X.Automation
             var args = request.Args;
             var engineAddr = args != null && args.Any() ? args[0] : "";
 
-            var runInfo = new RunInfo(
+            var runInfo = new RuntimeSettings(
                 engineAddr,
                 request.MonitorAddress,
                 request.Config,
                 request.Project,
                 request.Stack,
-                request.Parallel);
+                request.Parallel,
+                request.DryRun);
 
             try
             {
-                // TODO: Set and pass config
-
-                await Deployment.RunAsync(() => _program());
+                var deployment = new Deployment(runInfo);
+                await deployment.RunInstanceAsync(() => _program());
             }
             catch (Exception e)
             {

@@ -2,9 +2,9 @@
 
 namespace Pulumi.X.Automation.Runtime
 {
-    internal class RunInfo
+    internal class RuntimeSettings
     {
-        public RunInfo(string engineAddr, string monitorAddr, IDictionary<string, string> config, string project, string stack, int parallel)
+        public RuntimeSettings(string engineAddr, string monitorAddr, IDictionary<string, string> config, string project, string stack, int parallel, bool isDryRun)
         {
             EngineAddr = engineAddr;
             MonitorAddr = monitorAddr;
@@ -12,6 +12,7 @@ namespace Pulumi.X.Automation.Runtime
             Project = project;
             Stack = stack;
             Parallel = parallel;
+            IsDryRun = isDryRun;
         }
 
         public string EngineAddr { get; }
@@ -20,5 +21,6 @@ namespace Pulumi.X.Automation.Runtime
         public string Project { get; }
         public string Stack { get; }
         public int Parallel { get; }
+        public bool IsDryRun { get; }
     }
 }
