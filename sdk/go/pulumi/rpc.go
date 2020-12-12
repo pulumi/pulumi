@@ -184,11 +184,11 @@ func marshalInputAndDetermineSecret(v interface{},
 	destType reflect.Type,
 	await bool) (resource.PropertyValue, []Resource, bool, error) {
 	secret := false
+	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
-		var deps []Resource
 		if input, ok := v.(Input); ok {
 			valueType = input.ElementType()
 

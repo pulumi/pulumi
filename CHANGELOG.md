@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix a bug in the Go SDK that could result in dropped resource dependencies.
+  [#5930](https://github.com/pulumi/pulumi/pull/5930)
 
 ## 2.15.5 (2020-12-11)
 
