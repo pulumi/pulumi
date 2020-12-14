@@ -245,6 +245,10 @@ static Pulumi.Deployment.TestWithServiceProviderAsync<TStack>(Pulumi.Testing.IMo
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
+static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputList<Pulumi.Union<T, U>> map, Pulumi.Input<T> value) -> void
+static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputList<Pulumi.Union<T, U>> map, Pulumi.Input<U> value) -> void
+static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputMap<Pulumi.Union<T, U>> map, string key, Pulumi.Input<T> value) -> void
+static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputMap<Pulumi.Union<T, U>> map, string key, Pulumi.Input<U> value) -> void
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>

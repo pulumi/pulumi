@@ -75,5 +75,25 @@ namespace Pulumi
 
         public static Output<T> ToOutput<T>(this Input<T>? input)
             => input ?? Output.Create(default(T)!);
+        
+        public static void Add<T, U>(this InputMap<Union<T, U>> map, string key, Input<T> value)
+        {
+            map.Add(key, value.ToOutput().Apply(v => (Union<T, U>)v));
+        }
+        
+        public static void Add<T, U>(this InputMap<Union<T, U>> map, string key, Input<U> value)
+        {
+            map.Add(key, value.ToOutput().Apply(v => (Union<T, U>)v));
+        }
+        
+        public static void Add<T, U>(this InputList<Union<T, U>> map, Input<T> value)
+        {
+            map.Add(value.ToOutput().Apply(v => (Union<T, U>)v));
+        }
+        
+        public static void Add<T, U>(this InputList<Union<T, U>> map, Input<U> value)
+        {
+            map.Add(value.ToOutput().Apply(v => (Union<T, U>)v));
+        }
     }
 }
