@@ -90,6 +90,8 @@ Pulumi.InputArgs.InputArgs() -> void
 Pulumi.InputAttribute
 Pulumi.InputAttribute.InputAttribute(string name, bool required = false, bool json = false) -> void
 Pulumi.InputExtensions
+Pulumi.InputListExtensions
+Pulumi.InputMapExtensions
 Pulumi.InputJson
 Pulumi.InputJson.InputJson() -> void
 Pulumi.InputList<T>
@@ -245,15 +247,15 @@ static Pulumi.Deployment.TestWithServiceProviderAsync<TStack>(Pulumi.Testing.IMo
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(Pulumi.Output<T> value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Input<T>(T value) -> Pulumi.Input<T>
 static Pulumi.Input<T>.implicit operator Pulumi.Output<T>(Pulumi.Input<T> input) -> Pulumi.Output<T>
-static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputList<Pulumi.Union<T, U>> list, Pulumi.Input<T> value) -> void
-static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputList<Pulumi.Union<T, U>> list, Pulumi.Input<U> value) -> void
-static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputMap<Pulumi.Union<T, U>> map, string key, Pulumi.Input<T> value) -> void
-static Pulumi.InputExtensions.Add<T, U>(this Pulumi.InputMap<Pulumi.Union<T, U>> map, string key, Pulumi.Input<U> value) -> void
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, Pulumi.Input<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, Pulumi.Output<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, System.Threading.Tasks.Task<U>> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.Apply<T, U>(this Pulumi.Input<T> input, System.Func<T, U> func) -> Pulumi.Output<U>
 static Pulumi.InputExtensions.ToOutput<T>(this Pulumi.Input<T> input) -> Pulumi.Output<T>
+static Pulumi.InputListExtensions.Add<T, U>(this Pulumi.InputList<Pulumi.Union<T, U>> list, Pulumi.Input<T> value) -> void
+static Pulumi.InputListExtensions.Add<T, U>(this Pulumi.InputList<Pulumi.Union<T, U>> list, Pulumi.Input<U> value) -> void
+static Pulumi.InputMapExtensions.Add<T, U>(this Pulumi.InputMap<Pulumi.Union<T, U>> map, string key, Pulumi.Input<T> value) -> void
+static Pulumi.InputMapExtensions.Add<T, U>(this Pulumi.InputMap<Pulumi.Union<T, U>> map, string key, Pulumi.Input<U> value) -> void
 static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<System.Text.Json.JsonDocument> document) -> Pulumi.InputJson
 static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<System.Text.Json.JsonElement> element) -> Pulumi.InputJson
 static Pulumi.InputJson.implicit operator Pulumi.InputJson(Pulumi.Output<string> json) -> Pulumi.InputJson
