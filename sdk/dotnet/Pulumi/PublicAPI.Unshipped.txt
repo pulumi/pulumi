@@ -126,8 +126,10 @@ Pulumi.X.Automation.StackSettings.StackSettings() -> void
 Pulumi.X.Automation.StackSettingsConfigValue
 Pulumi.X.Automation.StackSettingsConfigValue.IsObject.get -> bool
 Pulumi.X.Automation.StackSettingsConfigValue.IsSecure.get -> bool
-Pulumi.X.Automation.StackSettingsConfigValue.StackSettingsConfigValue(string value, bool isSecure, bool isObject) -> void
-Pulumi.X.Automation.StackSettingsConfigValue.Value.get -> string
+Pulumi.X.Automation.StackSettingsConfigValue.StackSettingsConfigValue(System.Collections.Generic.IDictionary<string, object> value) -> void
+Pulumi.X.Automation.StackSettingsConfigValue.StackSettingsConfigValue(string value, bool isSecure) -> void
+Pulumi.X.Automation.StackSettingsConfigValue.ValueObject.get -> System.Collections.Generic.IDictionary<string, object>
+Pulumi.X.Automation.StackSettingsConfigValue.ValueString.get -> string
 Pulumi.X.Automation.StackSummary
 Pulumi.X.Automation.StackSummary.IsCurrent.get -> bool
 Pulumi.X.Automation.StackSummary.IsUpdateInProgress.get -> bool

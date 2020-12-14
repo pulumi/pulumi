@@ -16,12 +16,13 @@ namespace Pulumi.X.Automation.Serialization
             // configure json
             this._jsonOptions = new JsonSerializerOptions
             {
-                PropertyNamingPolicy = new LowercaseNamingPolicy()
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
             this._jsonOptions.Converters.Add(new JsonStringEnumConverter(new LowercaseNamingPolicy()));
             this._jsonOptions.Converters.Add(new ProjectSettingsConverter());
             this._jsonOptions.Converters.Add(new ProjectRuntimeConverter());
+            this._jsonOptions.Converters.Add(new StackSettingsConfigValueConverter());
 
             // configure yaml
             this._yamlDeserializer = new DeserializerBuilder().Build();

@@ -12,7 +12,6 @@ namespace Pulumi.X.Automation
         /// <para/>
         /// A boolean that controls whether to use ts-node to execute sources.
         /// </summary>
-        [JsonPropertyName("typescript")]
         public bool? TypeScript { get; set; }
 
         /// <summary>
@@ -29,7 +28,7 @@ namespace Pulumi.X.Automation
         /// <para/>
         /// A string that specifies the path to a virtual environment to use when running the program.
         /// </summary>
-        [JsonPropertyName("virtualenv")]
+        [JsonPropertyName("virtualEnv")]
         public string? VirtualEnvironment { get; set; }
     }
 }

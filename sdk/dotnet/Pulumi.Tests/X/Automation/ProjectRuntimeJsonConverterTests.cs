@@ -45,9 +45,9 @@ namespace Pulumi.Tests.X.Automation
     ""runtime"": {{
         ""name"": ""{runtimeName.ToString().ToLower()}"",
         ""options"": {{
-            ""typescript"": true,
+            ""typeScript"": true,
             ""binary"": ""test-binary"",
-            ""virtualenv"": ""test-env""
+            ""virtualEnv"": ""test-env""
         }}
     }}
 }}
