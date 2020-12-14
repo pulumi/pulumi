@@ -93,6 +93,9 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
 		os.Exit(1)
 	}
+	if _, ok := t.(*schema.EnumType); ok {
+		return modPkg.inputType(t, optional)
+	}
 	return modPkg.plainType(t, optional)
 }
 
@@ -104,6 +107,15 @@ func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string
 // GetPropertyName returns the property name specific to Go.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return strings.Title(p.Name), nil
+}
+
+// GetEnumName returns the enum name specific to Go.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name)
 }
 
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {

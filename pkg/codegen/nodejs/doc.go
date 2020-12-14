@@ -87,6 +87,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		typeQualifierPackage = "outputs"
 	}
 	typeName = strings.ReplaceAll(typeName, typeQualifierPackage+".", "")
+	typeName = strings.ReplaceAll(typeName, "enums.", "")
 
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.
@@ -110,6 +111,15 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 // GetPropertyName returns the property name specific to NodeJS.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return p.Name, nil
+}
+
+// GetEnumName returns the enum name specific to NodeJS.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name)
 }
 
 // GetModuleDocLink returns the display name and the link for a module.
