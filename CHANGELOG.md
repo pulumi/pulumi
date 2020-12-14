@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [sdk/dotnet] Add collection initializers for smooth support of Union<T, U> as element type
+  [#5938](https://github.com/pulumi/pulumi/pull/5938)
 
 ## 2.15.6 (2020-12-12)
 
