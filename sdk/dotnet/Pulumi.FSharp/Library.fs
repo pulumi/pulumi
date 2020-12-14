@@ -29,8 +29,8 @@ module Ops =
     /// </summary>
     let inputMap<'a> (items: seq<string * Input<'a>>) =
         let result = new InputMap<'a>()
-        for item in items do
-            result.Add item
+        for (key, value) in items do
+            result.Add(key, value)
         result
 
     /// <summary>
