@@ -1,4 +1,5 @@
-package gen
+// nolint: lll
+package nodejs
 
 import "testing"
 
@@ -8,11 +9,13 @@ func TestMakeSafeEnumName(t *testing.T) {
 		expected string
 		wantErr  bool
 	}{
+		{"red", "Red", false},
+		{"snake_cased_name", "Snake_cased_name", false},
 		{"+", "", true},
 		{"*", "Asterisk", false},
 		{"0", "Zero", false},
-		{"8.3", "_8_3", false},
-		{"11", "_11", false},
+		{"8.3", "Value8_3", false},
+		{"11", "Value11", false},
 		{"Microsoft-Windows-Shell-Startup", "Microsoft_Windows_Shell_Startup", false},
 		{"Microsoft.Batch", "Microsoft_Batch", false},
 		{"readonly", "Readonly", false},
@@ -29,23 +32,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("makeSafeEnumName() got = %v, want %v", got, tt.expected)
-			}
-		})
-	}
-}
-
-func Test_makeValidIdentifier(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"&opts0", "&opts0"},
-		{"8", "_8"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			if got := makeValidIdentifier(tt.input); got != tt.expected {
-				t.Errorf("makeValidIdentifier() = %v, want %v", got, tt.expected)
 			}
 		})
 	}

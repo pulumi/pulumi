@@ -1379,6 +1379,11 @@ func makeSafeEnumName(name string) (string, error) {
 	// Change to uppercase and make a valid identifier.
 	safeName = makeValidIdentifier(strings.ToTitle(safeName))
 
+	// If the first character of the name is an underscore, add `VALUE` before it.
+	if strings.HasPrefix(safeName, "_") {
+		safeName = fmt.Sprintf("VALUE%s", safeName)
+	}
+
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)
 	safeName = regex.ReplaceAllString(safeName, "_")

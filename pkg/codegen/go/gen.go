@@ -537,7 +537,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 		if err != nil {
 			return err
 		}
-		if strings.Contains(enumName, "_") {
+		if strings.Contains(enumName, "_") && !strings.HasPrefix(enumName, "_") {
 			enumName = fmt.Sprintf("_%s", enumName)
 		}
 		e.Name = name + enumName
