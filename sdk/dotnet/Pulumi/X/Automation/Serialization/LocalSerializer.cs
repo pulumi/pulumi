@@ -1,7 +1,9 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 using Pulumi.X.Automation.Serialization.Json;
+using Pulumi.X.Automation.Serialization.Yaml;
 using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace Pulumi.X.Automation.Serialization
 {
@@ -14,19 +16,11 @@ namespace Pulumi.X.Automation.Serialization
         public LocalSerializer()
         {
             // configure json
-            this._jsonOptions = new JsonSerializerOptions
-            {
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-            };
-
-            this._jsonOptions.Converters.Add(new JsonStringEnumConverter(new LowercaseNamingPolicy()));
-            this._jsonOptions.Converters.Add(new ProjectSettingsConverter());
-            this._jsonOptions.Converters.Add(new ProjectRuntimeConverter());
-            this._jsonOptions.Converters.Add(new StackSettingsConfigValueConverter());
+            this._jsonOptions = BuildJsonSerializerOptions();
 
             // configure yaml
-            this._yamlDeserializer = new DeserializerBuilder().Build();
-            this._yamlSerializer = new SerializerBuilder().Build();
+            this._yamlDeserializer = BuildYamlDeserializer();
+            this._yamlSerializer = BuildYamlSerializer();
         }
 
         public T DeserializeJson<T>(string content)
@@ -44,5 +38,32 @@ namespace Pulumi.X.Automation.Serialization
         public string SerializeYaml<T>(T @object)
             where T : class
             => this._yamlSerializer.Serialize(@object);
+
+        public static JsonSerializerOptions BuildJsonSerializerOptions()
+        {
+            var options = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+            };
+
+            options.Converters.Add(new JsonStringEnumConverter(new LowercaseJsonNamingPolicy()));
+            options.Converters.Add(new ProjectSettingsJsonConverter());
+            options.Converters.Add(new ProjectRuntimeJsonConverter());
+            options.Converters.Add(new StackSettingsConfigValueJsonConverter());
+
+            return options;
+        }
+
+        public static IDeserializer BuildYamlDeserializer()
+            => new DeserializerBuilder()
+            .WithNamingConvention(LowerCaseNamingConvention.Instance)
+            .WithTypeConverter(new ProjectRuntimeYamlConverter())
+            .Build();
+
+        public static ISerializer BuildYamlSerializer()
+            => new SerializerBuilder()
+            .WithNamingConvention(LowerCaseNamingConvention.Instance)
+            .WithTypeConverter(new ProjectRuntimeYamlConverter())
+            .Build();
     }
 }

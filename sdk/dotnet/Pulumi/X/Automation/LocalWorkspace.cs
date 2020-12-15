@@ -339,7 +339,11 @@ namespace Pulumi.X.Automation
                     continue;
 
                 var content = await File.ReadAllTextAsync(path, cancellationToken);
-                return isJson ? this._serializer.DeserializeJson<ProjectSettings>(content) : this._serializer.DeserializeYaml<ProjectSettings>(content);
+                if (isJson)
+                    return this._serializer.DeserializeJson<ProjectSettings>(content);
+
+                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
+                return model.Convert();
             }
 
             return null;

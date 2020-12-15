@@ -15,15 +15,17 @@ namespace Pulumi.Tests.X.Automation
         {
             const string json = @"
 {
-    ""plain"": ""plain""
+    ""config"": {
+        ""test"": ""plain""
+    }  
 }
 ";
 
-            var config = Serializer.DeserializeJson<IDictionary<string, StackSettingsConfigValue>>(json);
-            Assert.NotNull(config);
-            Assert.True(config.ContainsKey("plain"));
+            var settings = Serializer.DeserializeJson<StackSettings>(json);
+            Assert.NotNull(settings?.Config);
+            Assert.True(settings!.Config!.ContainsKey("test"));
 
-            var value = config["plain"];
+            var value = settings.Config["test"];
             Assert.NotNull(value);
             Assert.Equal("plain", value.ValueString);
             Assert.Null(value.ValueObject);
@@ -36,17 +38,19 @@ namespace Pulumi.Tests.X.Automation
         {
             const string json = @"
 {
-    ""secure"": {
-        ""secure"": ""secret""
-    }
+    ""config"": {
+        ""test"": {
+            ""secure"": ""secret""
+        }
+    }  
 }
 ";
 
-            var config = Serializer.DeserializeJson<IDictionary<string, StackSettingsConfigValue>>(json);
-            Assert.NotNull(config);
-            Assert.True(config.ContainsKey("secure"));
+            var settings = Serializer.DeserializeJson<StackSettings>(json);
+            Assert.NotNull(settings?.Config);
+            Assert.True(settings!.Config!.ContainsKey("test"));
 
-            var value = config["secure"];
+            var value = settings.Config["test"];
             Assert.NotNull(value);
             Assert.Equal("secret", value.ValueString);
             Assert.Null(value.ValueObject);
@@ -59,22 +63,24 @@ namespace Pulumi.Tests.X.Automation
         {
             const string json = @"
 {
-    ""value"": {
-        ""test"": ""test"",
-        ""nested"": {
-            ""one"": 1,
-            ""two"": true,
-            ""three"": ""three""
+    ""config"": {
+        ""value"": {
+            ""test"": ""test"",
+            ""nested"": {
+                ""one"": 1,
+                ""two"": true,
+                ""three"": ""three""
+            }
         }
-    }
+    } 
 }
 ";
 
-            var config = Serializer.DeserializeJson<IDictionary<string, StackSettingsConfigValue>>(json);
-            Assert.NotNull(config);
-            Assert.True(config.ContainsKey("value"));
+            var settings = Serializer.DeserializeJson<StackSettings>(json);
+            Assert.NotNull(settings?.Config);
+            Assert.True(settings!.Config!.ContainsKey("value"));
 
-            var value = config["value"];
+            var value = settings.Config["value"];
             Assert.NotNull(value);
             Assert.Null(value.ValueString);
             Assert.NotNull(value.ValueObject);

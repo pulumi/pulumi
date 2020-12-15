@@ -2,7 +2,7 @@
 
 namespace Pulumi.X.Automation.Serialization.Json
 {
-    internal class LowercaseNamingPolicy : JsonNamingPolicy
+    internal class LowercaseJsonNamingPolicy : JsonNamingPolicy
     {
         public override string ConvertName(string name)
             => name.ToLower();

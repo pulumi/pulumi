@@ -5,7 +5,7 @@ using System.Text.Json.Serialization;
 
 namespace Pulumi.X.Automation.Serialization.Json
 {
-    internal class StackSettingsConfigValueConverter : JsonConverter<StackSettingsConfigValue>
+    internal class StackSettingsConfigValueJsonConverter : JsonConverter<StackSettingsConfigValue>
     {
         public override StackSettingsConfigValue Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {

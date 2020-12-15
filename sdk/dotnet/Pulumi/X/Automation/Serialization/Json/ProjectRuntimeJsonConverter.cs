@@ -4,7 +4,7 @@ using System.Text.Json.Serialization;
 
 namespace Pulumi.X.Automation.Serialization.Json
 {
-    internal class ProjectRuntimeConverter : JsonConverter<ProjectRuntime>
+    internal class ProjectRuntimeJsonConverter : JsonConverter<ProjectRuntime>
     {
         public override ProjectRuntime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {

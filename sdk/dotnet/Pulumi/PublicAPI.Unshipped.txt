@@ -70,8 +70,8 @@ Pulumi.X.Automation.ProjectRuntimeOptions.Binary.set -> void
 Pulumi.X.Automation.ProjectRuntimeOptions.ProjectRuntimeOptions() -> void
 Pulumi.X.Automation.ProjectRuntimeOptions.TypeScript.get -> bool?
 Pulumi.X.Automation.ProjectRuntimeOptions.TypeScript.set -> void
-Pulumi.X.Automation.ProjectRuntimeOptions.VirtualEnvironment.get -> string
-Pulumi.X.Automation.ProjectRuntimeOptions.VirtualEnvironment.set -> void
+Pulumi.X.Automation.ProjectRuntimeOptions.VirtualEnv.get -> string
+Pulumi.X.Automation.ProjectRuntimeOptions.VirtualEnv.set -> void
 Pulumi.X.Automation.ProjectSettings
 Pulumi.X.Automation.ProjectSettings.Author.get -> string
 Pulumi.X.Automation.ProjectSettings.Author.set -> void

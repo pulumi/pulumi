@@ -1,12 +1,12 @@
 ﻿using System;
-using System.Text.Json;
+using System.Text;
 using Pulumi.X.Automation;
 using Pulumi.X.Automation.Serialization;
 using Xunit;
 
 namespace Pulumi.Tests.X.Automation
 {
-    public class ProjectRuntimeJsonConverterTests
+    public class ProjectRuntimeYamlConverterTests
     {
         private static LocalSerializer Serializer = new LocalSerializer();
 
@@ -17,14 +17,13 @@ namespace Pulumi.Tests.X.Automation
         [InlineData(ProjectRuntimeName.Dotnet)]
         public void CanDeserializeWithStringRuntime(ProjectRuntimeName runtimeName)
         {
-            var json = $@"
-{{
-    ""name"": ""test-project"",
-    ""runtime"": ""{runtimeName.ToString().ToLower()}""
-}}
+            var yaml = $@"
+name: test-project
+runtime: {runtimeName.ToString().ToLower()}
 ";
 
-            var settings = Serializer.DeserializeJson<ProjectSettings>(json);
+            var model = Serializer.DeserializeYaml<ProjectSettingsModel>(yaml);
+            var settings = model.Convert();
             Assert.NotNull(settings);
             Assert.IsType<ProjectSettings>(settings);
             Assert.Equal("test-project", settings.Name);
@@ -39,21 +38,18 @@ namespace Pulumi.Tests.X.Automation
         [InlineData(ProjectRuntimeName.Dotnet)]
         public void CanDeserializeWithObjectRuntime(ProjectRuntimeName runtimeName)
         {
-            var json = $@"
-{{
-    ""name"": ""test-project"",
-    ""runtime"": {{
-        ""name"": ""{runtimeName.ToString().ToLower()}"",
-        ""options"": {{
-            ""typeScript"": true,
-            ""binary"": ""test-binary"",
-            ""virtualEnv"": ""test-env""
-        }}
-    }}
-}}
+            var yaml = $@"
+name: test-project
+runtime:
+  name: {runtimeName.ToString().ToLower()}
+  options:
+    typescript: true
+    binary: test-binary
+    virtualenv: test-env
 ";
 
-            var settings = Serializer.DeserializeJson<ProjectSettings>(json);
+            var model = Serializer.DeserializeYaml<ProjectSettingsModel>(yaml);
+            var settings = model.Convert();
             Assert.NotNull(settings);
             Assert.IsType<ProjectSettings>(settings);
             Assert.Equal("test-project", settings.Name);
@@ -69,13 +65,10 @@ namespace Pulumi.Tests.X.Automation
         {
             var runtime = new ProjectRuntime(ProjectRuntimeName.Dotnet);
 
-            var json = Serializer.SerializeJson(runtime);
-            Console.WriteLine(json);
+            var yaml = Serializer.SerializeYaml(runtime);
+            Console.WriteLine(yaml);
 
-            using var document = JsonDocument.Parse(json);
-            Assert.NotNull(document);
-            Assert.Equal(JsonValueKind.String, document.RootElement.ValueKind);
-            Assert.Equal("dotnet", document.RootElement.GetString());
+            Assert.Equal("dotnet\r\n", yaml);
         }
 
         [Fact]
@@ -89,12 +82,15 @@ namespace Pulumi.Tests.X.Automation
                 },
             };
 
-            var json = Serializer.SerializeJson(runtime);
-            Console.WriteLine(json);
+            var yaml = Serializer.SerializeYaml(runtime);
+            Console.WriteLine(yaml);
 
-            using var document = JsonDocument.Parse(json);
-            Assert.NotNull(document);
-            Assert.Equal(JsonValueKind.Object, document.RootElement.ValueKind);
+            var expected = new StringBuilder();
+            expected.Append("name: dotnet\r\n");
+            expected.Append("options:\r\n");
+            expected.Append("  typescript: true\r\n");
+
+            Assert.Equal(expected.ToString(), yaml);
         }
     }
 }

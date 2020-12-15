@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using YamlDotNet.Serialization;
 
 namespace Pulumi.X.Automation
 {
@@ -28,7 +29,6 @@ namespace Pulumi.X.Automation
         /// <para/>
         /// A string that specifies the path to a virtual environment to use when running the program.
         /// </summary>
-        [JsonPropertyName("virtualEnv")]
-        public string? VirtualEnvironment { get; set; }
+        public string? VirtualEnv { get; set; }
     }
 }

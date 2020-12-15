@@ -1,4 +1,4 @@
-﻿namespace Pulumi.X.Automation.Serialization.Json
+﻿namespace Pulumi.X.Automation.Serialization
 {
     // necessary because this version of System.Text.Json
     // can't deserialize a type that doesn't have a parameterless constructor
@@ -23,5 +23,20 @@
         public ProjectTemplate? Template { get; set; }
 
         public ProjectBackend? Backend { get; set; }
+
+        public ProjectSettings Convert()
+        {
+            return new ProjectSettings(this.Name!, this.Runtime ?? new ProjectRuntime(ProjectRuntimeName.NodeJS))
+            {
+                Main = this.Main,
+                Description = this.Description,
+                Author = this.Author,
+                Website = this.Website,
+                License = this.License,
+                Config = this.Config,
+                Template = this.Template,
+                Backend = this.Backend,
+            };
+        }
     }
 }
