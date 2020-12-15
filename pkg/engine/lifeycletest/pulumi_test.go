@@ -134,8 +134,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
-	// Now change the inputs to our resource and run a preview.
-	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	// Now run a preview. Expect a warning because the diff is unavailable.
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {

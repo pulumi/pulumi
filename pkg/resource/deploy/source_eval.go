@@ -929,6 +929,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Filter out partially-known values if the requestor does not support them.
 	outputs := result.State.Outputs
+	if !req.GetCustom() && !remote {
+		// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
+		outputs = resource.PropertyMap{}
+	}
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}
