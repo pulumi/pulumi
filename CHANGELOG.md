@@ -6,6 +6,9 @@ CHANGELOG
 - [sdk/dotnet] Add collection initializers for smooth support of Union<T, U> as element type
   [#5938](https://github.com/pulumi/pulumi/pull/5938)
 
+- Fix bug marshaling unknown resource IDs when not keeping resources and resource references are enabled.
+  [#5952](https://github.com/pulumi/pulumi/pull/5952)
+
 ## 2.15.6 (2020-12-12)
 
 - Fix a bug in the Go SDK that could result in dropped resource dependencies.
