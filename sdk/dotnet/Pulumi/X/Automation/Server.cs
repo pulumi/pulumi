@@ -8,14 +8,14 @@ using Pulumirpc;
 
 namespace Pulumi.X.Automation
 {
-    internal class LanguageServer<T> : LanguageRuntime.LanguageRuntimeBase
+    internal class Server : LanguageRuntime.LanguageRuntimeBase
     {
         // MaxRpcMesageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
         public const int MaxRpcMesageSize = 1024 * 1024 * 400;
 
         private readonly PulumiFn _program;
 
-        public LanguageServer(PulumiFn program)
+        public Server(PulumiFn program)
         {
             _program = program;
         }
