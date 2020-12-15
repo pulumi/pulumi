@@ -58,9 +58,12 @@ func makeValidIdentifier(name string) string {
 		if i == 0 && c == '&' {
 			firstChar++
 		}
-		if i == firstChar && !isLegalIdentifierStart(c) || i > 0 && !isLegalIdentifierPart(c) {
+		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
+			if i == firstChar && !isLegalIdentifierStart(c) {
+				builder.WriteRune('_')
+			}
 			builder.WriteRune(c)
 		}
 	}

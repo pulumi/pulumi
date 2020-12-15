@@ -70,6 +70,7 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"+", "", true},
 		{"*", "Asterisk", false},
 		{"0", "Zero", false},
+		{"8.3", "_8_3", false},
 		{"Microsoft-Windows-Shell-Startup", "Microsoft_Windows_Shell_Startup", false},
 		{"Microsoft.Batch", "Microsoft_Batch", false},
 		{"readonly", "@Readonly", false},
