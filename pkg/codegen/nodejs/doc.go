@@ -68,11 +68,6 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return d.GetDocLinkForResourceInputOrOutputType(pkg, modName, typeName, input)
 }
 
-// GetDocLinkForBuiltInType returns the URL for a built-in type.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
-}
-
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	modCtx := &modContext{
