@@ -65,6 +65,10 @@ func isLegalIdentifierPart(c rune) bool {
 func makeValidIdentifier(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
+		if i == 0 && c == '@' {
+			builder.WriteRune(c)
+			continue
+		}
 		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
