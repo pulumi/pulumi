@@ -1128,7 +1128,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 		if e.Name == "" {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
-		safeName, err := makeSafeEnumName(e.Name)
+		safeName, err := makeSafeEnumName(e.Name, enumName)
 		if err != nil {
 			return err
 		}

@@ -90,7 +90,7 @@ func propertyName(name string) string {
 	return makeValidIdentifier(Title(name))
 }
 
-func makeSafeEnumName(name string) (string, error) {
+func makeSafeEnumName(name, typeName string) (string, error) {
 	// Replace common single character enum names.
 	safeName := codegen.ExpandShortEnumName(name)
 
@@ -105,6 +105,11 @@ func makeSafeEnumName(name string) (string, error) {
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)
 	safeName = regex.ReplaceAllString(safeName, "_")
+
+	// If the enum name starts with an underscore, add the type name as a prefix.
+	if strings.HasPrefix(safeName, "_") {
+		safeName = typeName + safeName
+	}
 
 	// "Equals" conflicts with a method on the EnumType struct, change it to EqualsValue.
 	if safeName == "Equals" {

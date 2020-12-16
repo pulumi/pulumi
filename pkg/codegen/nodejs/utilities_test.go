@@ -1,4 +1,5 @@
-package dotnet
+// nolint: lll
+package nodejs
 
 import "testing"
 
@@ -8,6 +9,8 @@ func TestMakeSafeEnumName(t *testing.T) {
 		expected string
 		wantErr  bool
 	}{
+		{"red", "Red", false},
+		{"snake_cased_name", "Snake_cased_name", false},
 		{"+", "", true},
 		{"*", "Asterisk", false},
 		{"0", "Zero", false},
@@ -15,11 +18,10 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"11", "TypeName_11", false},
 		{"Microsoft-Windows-Shell-Startup", "Microsoft_Windows_Shell_Startup", false},
 		{"Microsoft.Batch", "Microsoft_Batch", false},
-		{"readonly", "@Readonly", false},
+		{"readonly", "Readonly", false},
 		{"SystemAssigned, UserAssigned", "SystemAssigned_UserAssigned", false},
 		{"Dev(NoSLA)_Standard_D11_v2", "Dev_NoSLA_Standard_D11_v2", false},
 		{"Standard_E8as_v4+1TB_PS", "Standard_E8as_v4_1TB_PS", false},
-		{"Equals", "EqualsValue", false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
@@ -30,23 +32,6 @@ func TestMakeSafeEnumName(t *testing.T) {
 			}
 			if got != tt.expected {
 				t.Errorf("makeSafeEnumName() got = %v, want %v", got, tt.expected)
-			}
-		})
-	}
-}
-
-func Test_makeValidIdentifier(t *testing.T) {
-	tests := []struct {
-		input    string
-		expected string
-	}{
-		{"@default", "@default"},
-		{"8", "_8"},
-	}
-	for _, tt := range tests {
-		t.Run(tt.input, func(t *testing.T) {
-			if got := makeValidIdentifier(tt.input); got != tt.expected {
-				t.Errorf("makeValidIdentifier() = %v, want %v", got, tt.expected)
 			}
 		})
 	}
