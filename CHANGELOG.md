@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a bug in the core engine that could cause resources references to marshal improperly
+  during preview.
+  [#5960](https://github.com/pulumi/pulumi/pull/5960)
+
 - [sdk/dotnet] Add collection initializers for smooth support of Union<T, U> as element type
   [#5938](https://github.com/pulumi/pulumi/pull/5938)
 
