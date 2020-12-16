@@ -69,6 +69,8 @@ jobs:
           echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
+        with:
+          ref: ${{ github.event.client_payload.pull_request.head.sha }}
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
