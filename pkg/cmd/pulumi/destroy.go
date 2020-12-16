@@ -123,13 +123,14 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:               parallel,
-				Debug:                  debug,
-				Refresh:                refresh,
-				DestroyTargets:         targetUrns,
-				TargetDependents:       targetDependents,
-				UseLegacyDiff:          useLegacyDiff(),
-				DisableProviderPreview: disableProviderPreview(),
+				Parallel:                  parallel,
+				Debug:                     debug,
+				Refresh:                   refresh,
+				DestroyTargets:            targetUrns,
+				TargetDependents:          targetDependents,
+				UseLegacyDiff:             useLegacyDiff(),
+				DisableProviderPreview:    disableProviderPreview(),
+				DisableResourceReferences: disableResourceReferences(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{

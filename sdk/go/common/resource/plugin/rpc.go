@@ -166,7 +166,7 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		ref := v.ResourceReferenceValue()
 		if !opts.KeepResources {
 			val := string(ref.URN)
-			if ref.ID != "" {
+			if ref.HasID {
 				val = string(ref.ID)
 			}
 			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")

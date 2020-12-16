@@ -71,6 +71,14 @@ func disableProviderPreview() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_PROVIDER_PREVIEW"))
 }
 
+func disableResourceReferences() bool {
+	// Allow the resource reference feature to be enabled by explicitly setting an env var.
+	if v, ok := os.LookupEnv("PULUMI_ENABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
+		return false
+	}
+	return true
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.

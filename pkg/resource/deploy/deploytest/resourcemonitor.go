@@ -22,6 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 	"google.golang.org/grpc"
@@ -30,9 +31,12 @@ import (
 type ResourceMonitor struct {
 	conn   *grpc.ClientConn
 	resmon pulumirpc.ResourceMonitorClient
+
+	supportsSecrets            bool
+	supportsResourceReferences bool
 }
 
-func dialMonitor(endpoint string) (*ResourceMonitor, error) {
+func dialMonitor(ctx context.Context, endpoint string) (*ResourceMonitor, error) {
 	// Connect to the resource monitor and create an appropriate client.
 	conn, err := grpc.Dial(
 		endpoint,
@@ -42,12 +46,35 @@ func dialMonitor(endpoint string) (*ResourceMonitor, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not connect to resource monitor")
 	}
+	resmon := pulumirpc.NewResourceMonitorClient(conn)
+
+	// Check feature support.
+	supportsSecrets, err := supportsFeature(ctx, resmon, "secrets")
+	if err != nil {
+		contract.IgnoreError(conn.Close())
+		return nil, err
+	}
+	supportsResourceReferences, err := supportsFeature(ctx, resmon, "resourceReferences")
+	if err != nil {
+		contract.IgnoreError(conn.Close())
+		return nil, err
+	}
 
 	// Fire up a resource monitor client and return.
 	return &ResourceMonitor{
-		conn:   conn,
-		resmon: pulumirpc.NewResourceMonitorClient(conn),
+		conn:                       conn,
+		resmon:                     resmon,
+		supportsSecrets:            supportsSecrets,
+		supportsResourceReferences: supportsResourceReferences,
 	}, nil
+}
+
+func supportsFeature(ctx context.Context, resmon pulumirpc.ResourceMonitorClient, id string) (bool, error) {
+	resp, err := resmon.SupportsFeature(ctx, &pulumirpc.SupportsFeatureRequest{Id: id})
+	if err != nil {
+		return false, err
+	}
+	return resp.GetHasSupport(), nil
 }
 
 func (rm *ResourceMonitor) Close() error {
@@ -73,6 +100,9 @@ type ResourceOptions struct {
 	CustomTimeouts        *resource.CustomTimeouts
 	SupportsPartialValues *bool
 	Remote                bool
+
+	DisableSecrets            bool
+	DisableResourceReferences bool
 }
 
 func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom bool,
@@ -89,7 +119,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 	// marshal inputs
 	ins, err := plugin.MarshalProperties(opts.Inputs, plugin.MarshalOptions{
 		KeepUnknowns:  true,
-		KeepResources: true,
+		KeepSecrets:   rm.supportsSecrets,
+		KeepResources: rm.supportsResourceReferences,
 	})
 	if err != nil {
 		return "", "", nil, err
@@ -146,8 +177,8 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		DeleteBeforeReplace:        deleteBeforeReplace,
 		DeleteBeforeReplaceDefined: opts.DeleteBeforeReplace != nil,
 		IgnoreChanges:              opts.IgnoreChanges,
-		AcceptSecrets:              true,
-		AcceptResources:            true,
+		AcceptSecrets:              !opts.DisableSecrets,
+		AcceptResources:            !opts.DisableResourceReferences,
 		Version:                    opts.Version,
 		Aliases:                    aliasStrings,
 		ImportId:                   string(opts.ImportID),
@@ -162,8 +193,13 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		return "", "", nil, err
 	}
 	// unmarshal outputs
+	//
+	// Note that `KeepSecrets` and `KeepResources` are set to `true` so the caller can detect secrets and resource refs
+	// that are erroneously returned (e.g. secrets/resource refs that are returned even though the caller has not set
+	// `AcceptSecrets` or `AcceptResources` to `true` above).
 	outs, err := plugin.UnmarshalProperties(resp.Object, plugin.MarshalOptions{
 		KeepUnknowns:  true,
+		KeepSecrets:   true,
 		KeepResources: true,
 	})
 	if err != nil {
