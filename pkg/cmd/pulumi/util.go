@@ -72,13 +72,10 @@ func disableProviderPreview() bool {
 }
 
 func disableResourceReferences() bool {
-	// TODO: Temporarily disabling resource ref support (https://github.com/pulumi/pulumi-kubernetes/issues/1405)
-
-	// Allow the resource reference feature to be disabled by explicitly setting an env var.
-	//	if v, ok := os.LookupEnv("PULUMI_DISABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
-	//		hasSupport = false
-	//	}
-
+	// Allow the resource reference feature to be enabled by explicitly setting an env var.
+	if v, ok := os.LookupEnv("PULUMI_ENABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
+		return false
+	}
 	return true
 }
 
