@@ -68,11 +68,6 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return d.GetDocLinkForResourceInputOrOutputType(pkg, modName, typeName, input)
 }
 
-// GetDocLinkForBuiltInType returns the URL for a built-in type.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return fmt.Sprintf("https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/%s", typeName)
-}
-
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	modCtx := &modContext{
@@ -87,6 +82,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 		typeQualifierPackage = "outputs"
 	}
 	typeName = strings.ReplaceAll(typeName, typeQualifierPackage+".", "")
+	typeName = strings.ReplaceAll(typeName, "enums.", "")
 
 	// Remove the union with `undefined` for optional types,
 	// since we will show that information separately anyway.
@@ -110,6 +106,15 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 // GetPropertyName returns the property name specific to NodeJS.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return p.Name, nil
+}
+
+// GetEnumName returns the enum name specific to NodeJS.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name)
 }
 
 // GetModuleDocLink returns the display name and the link for a module.

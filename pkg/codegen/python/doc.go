@@ -72,13 +72,6 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return ""
 }
 
-// GetDocLinkForBuiltInType returns the Python URL for a built-in type.
-// Currently not using the typeName parameter because the returned link takes to a general
-// top-level page containing info for all built in types.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return "https://docs.python.org/3/library/stdtypes.html"
-}
-
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
@@ -125,6 +118,15 @@ func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool
 // GetPropertyName returns the property name specific to Python.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return PyName(p.Name), nil
+}
+
+// GetEnumName returns the enum name specific to Python.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name)
 }
 
 // GetModuleDocLink returns the display name and the link for a module.

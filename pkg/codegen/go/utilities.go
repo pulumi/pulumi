@@ -52,15 +52,18 @@ func isLegalIdentifierPart(c rune) bool {
 // prefixed with _. No attempt is made to ensure that the result is unique.
 func makeValidIdentifier(name string) string {
 	var builder strings.Builder
-	firstChar := 0
 	for i, c := range name {
 		// ptr dereference
 		if i == 0 && c == '&' {
-			firstChar++
+			builder.WriteRune(c)
+			continue
 		}
-		if i == firstChar && !isLegalIdentifierStart(c) || i > 0 && !isLegalIdentifierPart(c) {
+		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
+			if i == 0 && !isLegalIdentifierStart(c) {
+				builder.WriteRune('_')
+			}
 			builder.WriteRune(c)
 		}
 	}
