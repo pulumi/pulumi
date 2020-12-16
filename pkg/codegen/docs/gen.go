@@ -1356,9 +1356,9 @@ func (mod *modContext) genResourceHeader(r *schema.Resource) header {
 			"lookup functions, and supporting types.", resourceName, packageName)
 		titleTag = fmt.Sprintf("Resource %s | Package %s", resourceName, packageName)
 	} else {
-		baseDescription = fmt.Sprintf("Explore the %s resource of the %s module, "+
-			"including examples, input properties, output properties, "+
-			"lookup functions, and supporting types.", resourceName, mod.mod)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s.%s resource "+
+			"with examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", mod.pkg.Name, mod.mod, resourceName)
 		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, resourceName)
 	}
 
