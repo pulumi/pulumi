@@ -71,6 +71,17 @@ func disableProviderPreview() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_PROVIDER_PREVIEW"))
 }
 
+func disableResourceReferences() bool {
+	// TODO: Temporarily disabling resource ref support (https://github.com/pulumi/pulumi-kubernetes/issues/1405)
+
+	// Allow the resource reference feature to be disabled by explicitly setting an env var.
+	//	if v, ok := os.LookupEnv("PULUMI_DISABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
+	//		hasSupport = false
+	//	}
+
+	return true
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.

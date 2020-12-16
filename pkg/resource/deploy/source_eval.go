@@ -17,7 +17,6 @@ package deploy
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/blang/semver"
@@ -32,7 +31,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
@@ -392,14 +390,15 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	providers        ProviderSource                     // the provider source itself.
-	defaultProviders *defaultProviders                  // the default provider manager.
-	constructInfo    plugin.ConstructInfo               // information for construct calls.
-	regChan          chan *registerResourceEvent        // the channel to send resource registrations to.
-	regOutChan       chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
-	regReadChan      chan *readResourceEvent            // the channel to send resource reads to.
-	cancel           chan bool                          // a channel that can cancel the server.
-	done             chan error                         // a channel that resolves when the server completes.
+	providers                 ProviderSource                     // the provider source itself.
+	defaultProviders          *defaultProviders                  // the default provider manager.
+	constructInfo             plugin.ConstructInfo               // information for construct calls.
+	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
+	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
+	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
+	cancel                    chan bool                          // a channel that can cancel the server.
+	done                      chan error                         // a channel that resolves when the server completes.
+	disableResourceReferences bool                               // true if resource references are disabled.
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -424,12 +423,13 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		providers:        provs,
-		defaultProviders: d,
-		regChan:          regChan,
-		regOutChan:       regOutChan,
-		regReadChan:      regReadChan,
-		cancel:           cancel,
+		providers:                 provs,
+		defaultProviders:          d,
+		regChan:                   regChan,
+		regOutChan:                regOutChan,
+		regReadChan:               regReadChan,
+		cancel:                    cancel,
+		disableResourceReferences: opts.DisableResourceReferences,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -531,13 +531,7 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	case "secrets":
 		hasSupport = true
 	case "resourceReferences":
-		// TODO: Temporarily disabling resource ref support (https://github.com/pulumi/pulumi-kubernetes/issues/1405)
-		hasSupport = false
-
-		// Allow the resource reference feature to be disabled by explicitly setting an env var.
-		if v, ok := os.LookupEnv("PULUMI_DISABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
-			hasSupport = false
-		}
+		hasSupport = !rm.disableResourceReferences
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)

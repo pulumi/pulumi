@@ -15,6 +15,7 @@
 package deploytest
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/blang/semver"
@@ -176,7 +177,7 @@ func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name
 	if prov.ConstructF == nil {
 		return plugin.ConstructResult{}, nil
 	}
-	monitor, err := dialMonitor(info.MonitorAddress)
+	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
 	if err != nil {
 		return plugin.ConstructResult{}, err
 	}

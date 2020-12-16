@@ -236,17 +236,18 @@ func (deployment *deployment) run(cancelCtx *Context, actions runActions, policy
 	var walkResult result.Result
 	go func() {
 		opts := deploy.Options{
-			Events:            actions,
-			Parallel:          deployment.Options.Parallel,
-			Refresh:           deployment.Options.Refresh,
-			RefreshOnly:       deployment.Options.isRefresh,
-			RefreshTargets:    deployment.Options.RefreshTargets,
-			ReplaceTargets:    deployment.Options.ReplaceTargets,
-			DestroyTargets:    deployment.Options.DestroyTargets,
-			UpdateTargets:     deployment.Options.UpdateTargets,
-			TargetDependents:  deployment.Options.TargetDependents,
-			TrustDependencies: deployment.Options.trustDependencies,
-			UseLegacyDiff:     deployment.Options.UseLegacyDiff,
+			Events:                    actions,
+			Parallel:                  deployment.Options.Parallel,
+			Refresh:                   deployment.Options.Refresh,
+			RefreshOnly:               deployment.Options.isRefresh,
+			RefreshTargets:            deployment.Options.RefreshTargets,
+			ReplaceTargets:            deployment.Options.ReplaceTargets,
+			DestroyTargets:            deployment.Options.DestroyTargets,
+			UpdateTargets:             deployment.Options.UpdateTargets,
+			TargetDependents:          deployment.Options.TargetDependents,
+			TrustDependencies:         deployment.Options.trustDependencies,
+			UseLegacyDiff:             deployment.Options.UseLegacyDiff,
+			DisableResourceReferences: deployment.Options.DisableResourceReferences,
 		}
 		walkResult = deployment.Deployment.Execute(ctx, opts, preview)
 		close(done)
