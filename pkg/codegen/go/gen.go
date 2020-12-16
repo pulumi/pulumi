@@ -25,7 +25,6 @@ import (
 	"io"
 	"path"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -528,21 +527,19 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	fmt.Fprintln(w, "const (")
 	for _, e := range enumType.Elements {
 		printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, true)
+
 		var elementName = e.Name
-		// Add the type to the name to disambiguate constants used for enum values
 		if e.Name == "" {
 			elementName = fmt.Sprintf("%v", e.Value)
 		}
-		enumName, err := makeSafeEnumName(elementName)
+		enumName, err := makeSafeEnumName(elementName, name)
 		if err != nil {
 			return err
 		}
-		if strings.Contains(enumName, "_") && !strings.HasPrefix(enumName, "_") {
-			enumName = fmt.Sprintf("_%s", enumName)
-		}
-		e.Name = name + enumName
+		e.Name = enumName
 		contract.Assertf(!modPkg.names.has(e.Name), "Name collision for enum constant: %s for %s",
 			e.Name, enumType.Token)
+
 		switch reflect.TypeOf(e.Value).Kind() {
 		case reflect.String:
 			fmt.Fprintf(w, "%s = %s(%q)\n", e.Name, name, e.Value)
@@ -576,22 +573,6 @@ func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
 		// We only expect to support the above element types for enums
 		panic(fmt.Sprintf("Invalid enum type: %s", t))
 	}
-}
-
-func makeSafeEnumName(name string) (string, error) {
-	safeName := codegen.ExpandShortEnumName(name)
-	// If the name is one illegal character, return an error.
-	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
-	}
-
-	// Capitalize and make a valid identifier.
-	safeName = makeValidIdentifier(Title(safeName))
-
-	// If there are multiple underscores in a row, replace with one.
-	regex := regexp.MustCompile(`_+`)
-	safeName = regex.ReplaceAllString(safeName, "_")
-	return safeName, nil
 }
 
 func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType string) {

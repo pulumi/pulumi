@@ -40,8 +40,8 @@ func TestMakeSafeEnumName(t *testing.T) {
 		{"+", "", true},
 		{"*", "ASTERISK", false},
 		{"0", "ZERO", false},
-		{"8.3", "VALUE_8_3", false},
-		{"11", "VALUE_11", false},
+		{"8.3", "TYPE_NAME_8_3", false},
+		{"11", "TYPE_NAME_11", false},
 		{"Microsoft-Windows-Shell-Startup", "MICROSOFT_WINDOWS_SHELL_STARTUP", false},
 		{"Microsoft.Batch", "MICROSOFT_BATCH", false},
 		{"readonly", "READONLY", false},
@@ -54,7 +54,7 @@ func TestMakeSafeEnumName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.input, func(t *testing.T) {
-			got, err := makeSafeEnumName(tt.input)
+			got, err := makeSafeEnumName(tt.input, "TypeName")
 			if (err != nil) != tt.wantErr {
 				t.Errorf("makeSafeEnumName() error = %v, wantErr %v", err, tt.wantErr)
 				return

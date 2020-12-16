@@ -1364,33 +1364,6 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 	return nil
 }
 
-func makeSafeEnumName(name string) (string, error) {
-	// Replace common single character enum names.
-	safeName := codegen.ExpandShortEnumName(name)
-
-	// If the name is one illegal character, return an error.
-	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
-		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
-	}
-
-	// If it's camelCase, change it to snake_case.
-	safeName = pyName(safeName, false /*legacy*/)
-
-	// Change to uppercase and make a valid identifier.
-	safeName = makeValidIdentifier(strings.ToTitle(safeName))
-
-	// If the first character of the name is an underscore, add `VALUE` before it.
-	if strings.HasPrefix(safeName, "_") {
-		safeName = fmt.Sprintf("VALUE%s", safeName)
-	}
-
-	// If there are multiple underscores in a row, replace with one.
-	regex := regexp.MustCompile(`_+`)
-	safeName = regex.ReplaceAllString(safeName, "_")
-
-	return safeName, nil
-}
-
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
@@ -1406,7 +1379,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 				e.Name = fmt.Sprintf("%v", e.Value)
 			}
 
-			name, err := makeSafeEnumName(e.Name)
+			name, err := makeSafeEnumName(e.Name, enumName)
 			if err != nil {
 				return err
 			}
