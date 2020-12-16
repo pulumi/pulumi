@@ -505,8 +505,10 @@ func newImportCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(
+		//nolint:lll
 		&parentSpec, "parent", "", "The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource")
 	cmd.PersistentFlags().StringVar(
+		//nolint:lll
 		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
