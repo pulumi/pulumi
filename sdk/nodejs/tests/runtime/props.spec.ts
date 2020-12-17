@@ -112,6 +112,8 @@ interface TestInputs {
 }
 
 describe("runtime", () => {
+    beforeEach(runtime._reset);
+
     describe("transferProperties", () => {
         it("marshals basic properties correctly", asyncTest(async () => {
             const inputs: TestInputs = {
@@ -164,13 +166,12 @@ describe("runtime", () => {
             transfer = gstruct.Struct.fromJavaScript(
                 await runtime.serializeProperties("test", inputs));
             result = runtime.deserializeProperties(transfer);
+            assert.ok(!runtime.isRpcSecret(result.secret1));
+            assert.ok(!runtime.isRpcSecret(result.secret2));
             assert.strictEqual(result.secret1, 1);
             assert.strictEqual(result.secret2, undefined);
-
-            runtime._setTestModeEnabled(false);
         }));
         it("marshals resource references correctly during preview", asyncTest(async () => {
-            runtime._setTestModeEnabled(false);
             runtime._setIsDryRun(true);
             runtime.setMocks(new TestMocks());
 
@@ -210,8 +211,6 @@ describe("runtime", () => {
         }));
 
         it("marshals resource references correctly during update", asyncTest(async () => {
-            runtime._setTestModeEnabled(false);
-            runtime._setIsDryRun(false);
             runtime.setMocks(new TestMocks());
 
             const component = new TestComponentResource("test");
@@ -309,8 +308,6 @@ describe("runtime", () => {
             assert.strictEqual(result.listWithMap.value[0].secret, "a secret value");
         });
         it("deserializes resource references properly during preview", asyncTest(async () => {
-            runtime._setIsDryRun(false);
-
             runtime.setMocks(new TestMocks());
             runtime._setFeatureSupport("resourceReferences", true);
             runtime.registerResourceModule("test", "index", new TestResourceModule());

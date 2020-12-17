@@ -17,6 +17,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { ComponentResource, URN } from "../resource";
 import { debuggablePromise } from "./debuggable";
+import { _resetResourceModules, _resetResourcePackages } from "./rpc";
 
 const engrpc = require("../proto/engine_grpc_pb.js");
 const engproto = require("../proto/engine_pb.js");
@@ -118,6 +119,8 @@ export function _reset() {
     rpcDone = Promise.resolve();
     featureSupport = {};
     options = {};
+    _resetResourcePackages();
+    _resetResourceModules();
 }
 
 /** @internal Used only for testing purposes */
