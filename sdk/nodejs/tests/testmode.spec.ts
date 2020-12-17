@@ -31,6 +31,8 @@ const testModeDisabledError = (err: Error) => {
 
 describe("testMode", () => {
     it("rejects non-test mode", () => {
+        runtime._reset();
+
         // Allocating a resource directly while not in test mode errors out.
         assert.throws(() => { const _ = new FakeResource("fake"); }, testModeDisabledError);
         // Fetching the project name while not in test mode errors out.
@@ -40,7 +42,9 @@ describe("testMode", () => {
     });
     it("accepts test mode", asyncTest(async () => {
         // Set up all the test mode envvars, so that the test will pass.
+        runtime._reset();
         runtime._setTestModeEnabled(true);
+
         const testProject = "TestProject";
         runtime._setProject(testProject);
         const testStack = "TestStack";
