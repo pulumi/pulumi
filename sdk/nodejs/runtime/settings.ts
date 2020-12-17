@@ -67,6 +67,7 @@ export function resetOptions(
     engine = undefined;
     rootResource = undefined;
     rpcDone = Promise.resolve();
+    featureSupport = {};
 
     options = {
         project,
@@ -110,8 +111,23 @@ export function isDryRun(): boolean {
 }
 
 /** @internal Used only for testing purposes */
+export function _reset() {
+    monitor = undefined;
+    engine = undefined;
+    rootResource = undefined;
+    rpcDone = Promise.resolve();
+    featureSupport = {};
+    options = {};
+}
+
+/** @internal Used only for testing purposes */
 export function _setTestModeEnabled(val: boolean) {
     (options as any).testModeEnabled = val;
+}
+
+/** @internal Used only for testing purposes */
+export function _setFeatureSupport(key: string, val: boolean) {
+    featureSupport[key] = val;
 }
 
 /**
@@ -193,7 +209,7 @@ export function _setStack(val: string | undefined) {
  * monitor is a live connection to the resource monitor that tracks deployments (lazily initialized).
  */
 let monitor: any | undefined;
-const featureSupport: Record<string, boolean> = {};
+let featureSupport: Record<string, boolean> = {};
 
 /**
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
@@ -453,7 +469,9 @@ export async function setRootResource(res: ComponentResource): Promise<void> {
 export async function monitorSupportsFeature(feature: string): Promise<boolean> {
     const monitorRef: any = getMonitor();
     if (!monitorRef) {
-        return false;
+        // If there's no monitor and test mode is disabled, just return false. Otherwise, return whatever is present in
+        // the featureSupport map.
+        return isTestModeEnabled() && featureSupport[feature];
     }
 
     if (featureSupport[feature] === undefined) {

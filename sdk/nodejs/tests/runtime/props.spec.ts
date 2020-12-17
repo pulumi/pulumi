@@ -13,10 +13,58 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { Inputs, runtime, secret } from "../../index";
+import { ComponentResource, CustomResource, Inputs, Resource, ResourceOptions, runtime, secret } from "../../index";
 import { asyncTest } from "../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+
+class TestComponentResource extends ComponentResource {
+    constructor(name: string, opts?: ResourceOptions) {
+        super("test:index:component", name, {}, opts);
+
+        super.registerOutputs({});
+    }
+}
+
+class TestCustomResource extends CustomResource {
+    constructor(name: string, type?: string, opts?: ResourceOptions) {
+        super(type || "test:index:custom", name, {}, opts);
+    }
+}
+
+class TestResourceModule implements runtime.ResourceModule {
+    construct(name: string, type: string, urn: string): Resource {
+        switch (type) {
+            case "test:index:component":
+                return new TestComponentResource(name, {urn});
+            case "test:index:custom":
+                return new TestCustomResource(name, type, {urn});
+            default:
+                throw new Error(`unknown resource type ${type}`);
+        }
+    }
+}
+
+class TestMocks implements runtime.Mocks {
+    call(token: string, args: any, provider?: string): Record<string, any> {
+        throw new Error(`unknown function ${token}`);
+    }
+
+    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string | undefined, state: Record<string, any> } {
+        switch (type) {
+            case "test:index:component":
+                return {id: undefined, state: {}};
+            case "test:index:custom":
+            case "test2:index:custom":
+                return {
+                    id: runtime.isDryRun() ? undefined : "test-id",
+                    state: {},
+                };
+            default:
+                throw new Error(`unknown resource type ${type}`);
+        }
+    }
+}
 
 // tslint:disable-next-line:variable-name
 const TestStrEnum = {
@@ -95,17 +143,110 @@ describe("runtime", () => {
         }));
         it("marshals secrets correctly", asyncTest(async () => {
             runtime._setTestModeEnabled(true);
+
             const inputs: Inputs = {
                 "secret1": secret(1),
                 "secret2": secret(undefined),
             };
+
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
-            const transfer = gstruct.Struct.fromJavaScript(
+            runtime._setFeatureSupport("secrets", true);
+            let transfer = gstruct.Struct.fromJavaScript(
                 await runtime.serializeProperties("test", inputs));
-            const result = runtime.deserializeProperties(transfer);
+            let result = runtime.deserializeProperties(transfer);
+            assert.ok(runtime.isRpcSecret(result.secret1));
+            assert.ok(runtime.isRpcSecret(result.secret2));
+            assert.strictEqual(runtime.unwrapRpcSecret(result.secret1), 1);
+            assert.strictEqual(runtime.unwrapRpcSecret(result.secret2), null);
+
+            // Serialize and then deserialize all the properties, checking that they round-trip as expected.
+            runtime._setFeatureSupport("secrets", false);
+            transfer = gstruct.Struct.fromJavaScript(
+                await runtime.serializeProperties("test", inputs));
+            result = runtime.deserializeProperties(transfer);
             assert.strictEqual(result.secret1, 1);
             assert.strictEqual(result.secret2, undefined);
+
             runtime._setTestModeEnabled(false);
+        }));
+        it("marshals resource references correctly during preview", asyncTest(async () => {
+            runtime._setTestModeEnabled(false);
+            runtime._setIsDryRun(true);
+            runtime.setMocks(new TestMocks());
+
+            const component = new TestComponentResource("test");
+            const custom = new TestCustomResource("test");
+
+            const componentURN = await component.urn.promise();
+            const customURN = await custom.urn.promise();
+            const customID = await custom.id.promise();
+
+            const inputs: Inputs = {
+                "component": component,
+                "custom": custom,
+            };
+
+            runtime._setFeatureSupport("resourceReferences", true);
+
+            let serialized = await runtime.serializeProperties("test", inputs);
+            assert.deepEqual(serialized, {
+                "component": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": componentURN,
+                },
+                "custom": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": customURN,
+                    "id": customID,
+                },
+            });
+
+            runtime._setFeatureSupport("resourceReferences", false);
+            serialized = await runtime.serializeProperties("test", inputs);
+            assert.deepEqual(serialized, {
+                "component": componentURN,
+                "custom": customID ? customID : runtime.unknownValue,
+            });
+        }));
+
+        it("marshals resource references correctly during update", asyncTest(async () => {
+            runtime._setTestModeEnabled(false);
+            runtime._setIsDryRun(false);
+            runtime.setMocks(new TestMocks());
+
+            const component = new TestComponentResource("test");
+            const custom = new TestCustomResource("test");
+
+            const componentURN = await component.urn.promise();
+            const customURN = await custom.urn.promise();
+            const customID = await custom.id.promise();
+
+            const inputs: Inputs = {
+                "component": component,
+                "custom": custom,
+            };
+
+            runtime._setFeatureSupport("resourceReferences", true);
+
+            let serialized = await runtime.serializeProperties("test", inputs);
+            assert.deepEqual(serialized, {
+                "component": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": componentURN,
+                },
+                "custom": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": customURN,
+                    "id": customID,
+                },
+            });
+
+            runtime._setFeatureSupport("resourceReferences", false);
+            serialized = await runtime.serializeProperties("test", inputs);
+            assert.deepEqual(serialized, {
+                "component": componentURN,
+                "custom": customID,
+            });
         }));
     });
 
@@ -167,5 +308,44 @@ describe("runtime", () => {
             assert.strictEqual(result.listWithMap.value[0].regular, "a normal value");
             assert.strictEqual(result.listWithMap.value[0].secret, "a secret value");
         });
+        it("deserializes resource references properly during preview", asyncTest(async () => {
+            runtime._setIsDryRun(false);
+
+            runtime.setMocks(new TestMocks());
+            runtime._setFeatureSupport("resourceReferences", true);
+            runtime.registerResourceModule("test", "index", new TestResourceModule());
+
+            const component = new TestComponentResource("test");
+            const custom = new TestCustomResource("test");
+            const unregistered = new TestCustomResource("test", "test2:index:custom");
+
+            const componentURN = await component.urn.promise();
+            const customURN = await custom.urn.promise();
+            const customID = await custom.id.promise();
+            const unregisteredURN = await unregistered.urn.promise();
+            const unregisteredID = await unregistered.id.promise();
+
+            const outputs = {
+                "component": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": componentURN,
+                },
+                "custom": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": customURN,
+                    "id": customID,
+                },
+                "unregistered": {
+                    [runtime.specialSigKey]: runtime.specialResourceSig,
+                    "urn": unregisteredURN,
+                    "id": unregisteredID,
+                },
+            };
+
+            const deserialized = runtime.deserializeProperty(outputs);
+            assert.ok((<ComponentResource>deserialized["component"]).__pulumiComponentResource);
+            assert.ok((<CustomResource>deserialized["custom"]).__pulumiCustomResource);
+            assert.deepEqual(deserialized["unregistered"], unregisteredID);
+        }));
     });
 });

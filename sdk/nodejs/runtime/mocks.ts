@@ -44,11 +44,11 @@ export interface Mocks {
      * @param provider: If provided, the identifier of the provider instance being used to manage this resource.
      * @param id: If provided, the physical identifier of an existing resource to read or import.
      */
-    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string, state: Record<string, any> };
+    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string | undefined, state: Record<string, any> };
 }
 
 export class MockMonitor {
-    readonly resources = new Map<string, { urn: string, id: string, state: any }>();
+    readonly resources = new Map<string, { urn: string, id: string | undefined, state: any }>();
 
     constructor(readonly mocks: Mocks) {
     }
@@ -135,7 +135,17 @@ export class MockMonitor {
     }
 
     public registerResourceOutputs(req: any, callback: (err: any, innerResponse: any) => void) {
-        callback(null, {});
+        try {
+            const registeredResource = this.resources.get(req.getUrn());
+            if (!registeredResource) {
+                throw new Error(`unknown resource ${req.getUrn()}`);
+            }
+            registeredResource.state = req.getOuptuts();
+
+            callback(null, {});
+        } catch (err) {
+            callback(err, undefined);
+        }
     }
 
     public supportsFeature(req: any, callback: (err: any, innerResponse: any) => void) {
