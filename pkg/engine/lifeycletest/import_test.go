@@ -552,6 +552,9 @@ func TestImportIgnoreChanges(t *testing.T) {
 	}
 
 	project := p.GetProject()
-	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
+
+	assert.Len(t, snap.Resources, 2)
+	assert.Equal(t, resource.NewStringProperty("bar"), snap.Resources[1].Outputs["foo"])
 }
