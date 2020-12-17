@@ -17,8 +17,8 @@ from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Sequence
 
 from google.protobuf import struct_pb2
-from pulumi.resource import ComponentResource, CustomResource
-from pulumi.runtime import rpc, rpc_manager, known_types, settings
+from pulumi.resource import ComponentResource, CustomResource, ResourceOptions
+from pulumi.runtime import Mocks, ResourceModule, rpc, rpc_manager, known_types, set_mocks, settings
 from pulumi import Input, Output, UNKNOWN, input_type
 from pulumi.asset import (
     FileAsset,
@@ -31,14 +31,46 @@ from pulumi.asset import (
 import pulumi
 
 
-class MyCustomResource(CustomResource):
+class FakeCustomResource(CustomResource):
     def __init__(self, urn):
         self.__dict__["urn"] = Output.from_input(urn)
         self.__dict__["id"] = Output.from_input("id")
 
-class MyComponentResource(ComponentResource):
+class FakeComponentResource(ComponentResource):
     def __init__(self, urn):
         self.__dict__["urn"] = Output.from_input(urn)
+
+class MyCustomResource(CustomResource):
+    def __init__(self, name: str, typ: Optional[str] = None, opts: Optional[ResourceOptions] = None):
+        super(MyCustomResource, self).__init__(typ if typ is not None else "test:index:resource", name, None, opts)
+
+class MyComponentResource(ComponentResource):
+    def __init__(self, name: str, typ: Optional[str] = None, opts: Optional[ResourceOptions] = None):
+        super(MyComponentResource, self).__init__(typ if typ is not None else "test:index:component", name, None, opts)
+
+class MyResourceModule(ResourceModule):
+    def version(self):
+        return None
+
+    def construct(self, name: str, typ: str, urn: str):
+        if typ == "test:index:resource":
+            return MyCustomResource(name, typ, ResourceOptions(urn=urn))
+        elif typ == "test:index:component":
+            return MyComponentResource(name, typ, ResourceOptions(urn=urn))
+        else:
+            raise Exception(f"unknown resource type {typ}")
+
+class MyMocks(Mocks):
+    def call(self, token, args, provider):
+        raise Exception(f"unknown function {token}")
+
+    def new_resource(self, typ, name, inputs, provider, id):
+        if typ == "test:index:resource":
+            return [None if settings.is_dry_run() else "id", {}]
+        elif typ == "test:index:component":
+            return [None, {}]
+        else:
+            raise Exception(f"unknown resource type {typ}")
 
 def pulumi_test(coro):
     wrapped = pulumi.runtime.test(coro)
@@ -84,41 +116,93 @@ class NextSerializationTests(unittest.TestCase):
         self.assertDictEqual({"a": 42, "b": 99}, prop)
 
     @pulumi_test
-    async def test_custom_resource(self):
-        fake_urn = "urn:pulumi:mystack::myproject::my:mod:Fake::fake"
-        res = MyCustomResource(fake_urn)
+    async def test_custom_resource_preview(self):
+        settings.SETTINGS.dry_run = True
+        rpc.register_resource_module("test", "index", MyResourceModule())
+        set_mocks(MyMocks())
+
+        res = MyCustomResource("test")
+        urn = await res.urn.future()
+        id = await res.id.future()
 
         settings.SETTINGS.feature_support["resourceReferences"] = False
         deps = []
         prop = await rpc.serialize_property(res, deps)
         self.assertListEqual([res], deps)
-        self.assertEqual("id", prop)
+        self.assertEqual(id, prop)
 
         settings.SETTINGS.feature_support["resourceReferences"] = True
         deps = []
         prop = await rpc.serialize_property(res, deps)
-        self.assertListEqual([res], deps)
+        self.assertListEqual([res, res], deps)
         self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
-        self.assertEqual(fake_urn, prop["urn"])
-        self.assertEqual("id", prop["id"])
+        self.assertEqual(urn, prop["urn"])
+        self.assertEqual(id, prop["id"])
+
+        res = rpc.deserialize_properties(prop)
+        self.assertTrue(isinstance(res, MyCustomResource))
+
+        rpc._RESOURCE_MODULES.clear()
+        res = rpc.deserialize_properties(prop)
+        self.assertEqual(id, res)
+
+    @pulumi_test
+    async def test_custom_resource(self):
+        rpc.register_resource_module("test", "index", MyResourceModule())
+        set_mocks(MyMocks())
+
+        res = MyCustomResource("test")
+        urn = await res.urn.future()
+        id = await res.id.future()
+
+        settings.SETTINGS.feature_support["resourceReferences"] = False
+        deps = []
+        prop = await rpc.serialize_property(res, deps)
+        self.assertListEqual([res], deps)
+        self.assertEqual(id, prop)
+
+        settings.SETTINGS.feature_support["resourceReferences"] = True
+        deps = []
+        prop = await rpc.serialize_property(res, deps)
+        self.assertListEqual([res, res], deps)
+        self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
+        self.assertEqual(urn, prop["urn"])
+        self.assertEqual(id, prop["id"])
+
+        res = rpc.deserialize_properties(prop)
+        self.assertTrue(isinstance(res, MyCustomResource))
+
+        rpc._RESOURCE_MODULES.clear()
+        res = rpc.deserialize_properties(prop)
+        self.assertEqual(id, res)
 
     @pulumi_test
     async def test_component_resource(self):
-        fake_urn = "urn:pulumi:mystack::myproject::my:mod:Fake::fake"
-        res = MyComponentResource(fake_urn)
+        rpc.register_resource_module("test", "index", MyResourceModule())
+        set_mocks(MyMocks())
+
+        res = MyComponentResource("test")
+        urn = await res.urn.future()
 
         settings.SETTINGS.feature_support["resourceReferences"] = False
         deps = []
         prop = await rpc.serialize_property(res, deps)
         self.assertListEqual([res], deps)
-        self.assertEqual(fake_urn, prop)
+        self.assertEqual(urn, prop)
 
         settings.SETTINGS.feature_support["resourceReferences"] = True
         deps = []
         prop = await rpc.serialize_property(res, deps)
         self.assertListEqual([res], deps)
         self.assertEqual(rpc._special_resource_sig, prop[rpc._special_sig_key])
-        self.assertEqual(fake_urn, prop["urn"])
+        self.assertEqual(urn, prop["urn"])
+
+        res = rpc.deserialize_properties(prop)
+        self.assertTrue(isinstance(res, MyComponentResource))
+
+        rpc._RESOURCE_MODULES.clear()
+        res = rpc.deserialize_properties(prop)
+        self.assertEqual(urn, res)
 
     @pulumi_test
     async def test_string_asset(self):
@@ -143,8 +227,8 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_output(self):
-        existing = MyCustomResource("existing-dependency")
-        res = MyCustomResource("some-dependency")
+        existing = FakeCustomResource("existing-dependency")
+        res = FakeCustomResource("some-dependency")
         fut = asyncio.Future()
         fut.set_result(42)
         known_fut = asyncio.Future()
@@ -180,7 +264,7 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_output_all(self):
-        res = MyCustomResource("some-resource")
+        res = FakeCustomResource("some-resource")
         fut = asyncio.Future()
         fut.set_result(42)
         known_fut = asyncio.Future()
@@ -196,14 +280,14 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_output_all_composes_dependencies(self):
-        res = MyCustomResource("some-resource")
+        res = FakeCustomResource("some-resource")
         fut = asyncio.Future()
         fut.set_result(42)
         known_fut = asyncio.Future()
         known_fut.set_result(True)
         out = Output({res}, fut, known_fut)
 
-        other = MyCustomResource("some-other-resource")
+        other = FakeCustomResource("some-other-resource")
         other_fut = asyncio.Future()
         other_fut.set_result(99)
         other_known_fut = asyncio.Future()
@@ -218,14 +302,14 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_output_all_known_if_all_are_known(self):
-        res = MyCustomResource("some-resource")
+        res = FakeCustomResource("some-resource")
         fut = asyncio.Future()
         fut.set_result(42)
         known_fut = asyncio.Future()
         known_fut.set_result(True)
         out = Output({res}, fut, known_fut)
 
-        other = MyCustomResource("some-other-resource")
+        other = FakeCustomResource("some-other-resource")
         other_fut = asyncio.Future()
         other_fut.set_result(UNKNOWN)  # <- not known
         other_known_fut = asyncio.Future()
@@ -243,7 +327,7 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_unknown_output(self):
-        res = MyCustomResource("some-dependency")
+        res = FakeCustomResource("some-dependency")
         fut = asyncio.Future()
         fut.set_result(None)
         known_fut = asyncio.Future()

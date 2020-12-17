@@ -55,7 +55,7 @@ class Mocks(ABC):
         return {}
 
     @abstractmethod
-    def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[str, dict]:
+    def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
