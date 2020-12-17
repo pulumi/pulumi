@@ -921,6 +921,13 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 				s.new.Inputs[k] = s.old.Inputs[k]
 			}
 		}
+	} else {
+		// Set inputs back to their old values (if any) for any "ignored" properties
+		processedInputs, res := processIgnoreChanges(s.new.Inputs, s.old.Inputs, s.ignoreChanges)
+		if res != nil {
+			return resource.StatusOK, nil, res.Error()
+		}
+		s.new.Inputs = processedInputs
 	}
 
 	// Check the inputs using the provider inputs for defaults.
