@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a bug in the core engine that caused `ignoreChanges` to fail for resources being imported.
+  [#5976](https://github.com/pulumi/pulumi/pull/5976)
+
 - Fix a bug in the core engine that could cause resources references to marshal improperly
   during preview.
   [#5960](https://github.com/pulumi/pulumi/pull/5960)
