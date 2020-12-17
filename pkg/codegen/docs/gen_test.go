@@ -365,6 +365,7 @@ func TestResourceDocHeader(t *testing.T) {
 		ExpectedTitleTag string
 		ResourceName     string
 		ModuleName       string
+		ExpectedMetaDesc string
 	}{
 		{
 			Name:         "PackageLevelResourceHeader",
@@ -372,12 +373,14 @@ func TestResourceDocHeader(t *testing.T) {
 			// Empty string indicates the package-level root module.
 			ModuleName:       "",
 			ExpectedTitleTag: "Resource PackageLevelResource | Package prov",
+			ExpectedMetaDesc: "Explore the PackageLevelResource resource of the prov package, including examples, input properties, output properties, lookup functions, and supporting types. This is a package-level resource.",
 		},
 		{
 			Name:             "ModuleLevelResourceHeader",
 			ResourceName:     "Resource",
 			ModuleName:       "module",
 			ExpectedTitleTag: "prov.module.Resource",
+			ExpectedMetaDesc: "Documentation for the prov.module.Resource resource with examples, input properties, output properties, lookup functions, and supporting types.",
 		},
 	}
 
@@ -395,6 +398,7 @@ func TestResourceDocHeader(t *testing.T) {
 			}
 			h := mod.genResourceHeader(r)
 			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
+			assert.Equal(t, test.ExpectedMetaDesc, h.MetaDesc)
 		})
 	}
 }
