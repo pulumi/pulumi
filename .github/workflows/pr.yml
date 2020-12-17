@@ -1,6 +1,6 @@
 name: New Pull Request
-"on":
-  pull_request_target:
+on:
+  pull_request:
 
 jobs:
   comment-on-pr:
@@ -8,7 +8,6 @@ jobs:
     if: github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
       - name: Comment PR
         uses: thollander/actions-comment-pull-request@1.0.1
         with:
@@ -27,6 +26,9 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.ref }}
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
