@@ -1930,6 +1930,7 @@ func TestComponentOutputs(t *testing.T) {
 		err = monitor.RegisterResourceOutputs(urn, resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
 		})
+		assert.NoError(t, err)
 		return nil
 	})
 	host := deploytest.NewPluginHost(nil, nil, program)
