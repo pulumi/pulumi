@@ -22,9 +22,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
@@ -65,8 +66,8 @@ func newStackRmCmd() *cobra.Command {
 			}
 
 			// Ensure the user really wants to do this.
-			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.Ref())
-			if !yes && !confirmPrompt(prompt, s.Ref().String(), opts) {
+			prompt := fmt.Sprintf("This will permanently remove the '%s' stack!", s.FriendlyName())
+			if !yes && !confirmPrompt(prompt, s.FriendlyName(), opts) {
 				fmt.Println("confirmation declined")
 				return result.Bail()
 			}
@@ -75,24 +76,24 @@ func newStackRmCmd() *cobra.Command {
 			if err != nil {
 				if hasResources {
 					return result.Errorf(
-						"'%s' still has resources; removal rejected; pass --force to override", s.Ref())
+						"'%s' still has resources; removal rejected; pass --force to override", s.FriendlyName())
 				}
 				return result.FromError(err)
 			}
 
 			if !preserveConfig {
 				// Blow away stack specific settings if they exist. If we get an ENOENT error, ignore it.
-				if path, err := workspace.DetectProjectStackPath(s.Ref().Name()); err == nil {
+				if path, err := workspace.DetectProjectStackPath(tokens.QName(s.ID().Stack)); err == nil {
 					if err = os.Remove(path); err != nil && !os.IsNotExist(err) {
 						return result.FromError(err)
 					}
 				}
 			}
 
-			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.Ref(), colors.Reset)
+			msg := fmt.Sprintf("%sStack '%s' has been removed!%s", colors.SpecAttention, s.FriendlyName(), colors.Reset)
 			fmt.Println(opts.Color.Colorize(msg))
 
-			contract.IgnoreError(state.SetCurrentStack(""))
+			contract.IgnoreError(s.Backend().SetCurrentStack(backend.StackIdentifier{}))
 			return nil
 		}),
 	}

@@ -21,8 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 )
 
@@ -39,28 +38,24 @@ func newConsoleCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stack, err := state.CurrentStack(commandContext(), backend)
+			stack, err := backend.CurrentStack(commandContext())
 			if err != nil {
 				return err
 			}
 
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.
-			cloudBackend, isCloud := backend.(httpstate.Backend)
-			if isCloud {
+			client, isPulumiClient := backend.Client().(*pulumi.Client)
+			if isPulumiClient {
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
-				if s, ok := stack.(httpstate.Stack); ok {
-					if consoleURL, err := s.ConsoleURL(); err == nil {
-						launchConsole(consoleURL)
-					} else {
-						// Open the cloud backend home page if retrieving the stack
-						// console URL fails.
-						launchConsole(cloudBackend.URL())
-					}
+				if consoleURL, err := stack.ConsoleURL(); err == nil {
+					launchConsole(consoleURL)
 				} else {
-					launchConsole(cloudBackend.URL())
+					// Open the cloud backend home page if retrieving the stack
+					// console URL fails.
+					launchConsole(client.URL())
 				}
 				return nil
 			}

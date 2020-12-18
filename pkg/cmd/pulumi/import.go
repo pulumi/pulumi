@@ -28,7 +28,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/dotnet"
 	gogen "github.com/pulumi/pulumi/pkg/v2/codegen/go"
@@ -172,7 +172,7 @@ func parseImportFile(f importFile, protectResources bool) ([]deploy.Import, impo
 	return imports, names, nil
 }
 
-func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
+func getCurrentDeploymentForStack(s *cli.Stack) (*deploy.Snapshot, error) {
 	deployment, err := s.ExportDeployment(context.Background())
 	if err != nil {
 		return nil, err
@@ -182,10 +182,10 @@ func getCurrentDeploymentForStack(s backend.Stack) (*deploy.Snapshot, error) {
 		switch err {
 		case stack.ErrDeploymentSchemaVersionTooOld:
 			return nil, fmt.Errorf("the stack '%s' is too old to be used by this version of the Pulumi CLI",
-				s.Ref().Name())
+				s.FriendlyName())
 		case stack.ErrDeploymentSchemaVersionTooNew:
 			return nil, fmt.Errorf("the stack '%s' is newer than what this version of the Pulumi CLI understands. "+
-				"Please update your version of the Pulumi CLI", s.Ref().Name())
+				"Please update your version of the Pulumi CLI", s.FriendlyName())
 		}
 		return nil, errors.Wrap(err, "could not deserialize deployment")
 	}
@@ -440,7 +440,7 @@ func newImportCmd() *cobra.Command {
 				UseLegacyDiff: useLegacyDiff(),
 			}
 
-			_, res := s.Import(commandContext(), backend.UpdateOperation{
+			_, res := s.Import(commandContext(), cli.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -456,7 +456,7 @@ func newImportCmd() *cobra.Command {
 			}
 
 			validImports, err := generateImportedDefinitions(
-				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
+				output, tokens.QName(s.ID().Stack), proj.Name, deployment, programGenerator, nameTable, imports,
 				protectResources)
 			if err != nil {
 				if _, ok := err.(*importer.DiagnosticsError); ok {

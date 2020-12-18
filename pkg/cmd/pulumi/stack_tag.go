@@ -21,7 +21,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -69,18 +68,13 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
-			if err != nil {
-				return err
-			}
-
-			if value, ok := tags[name]; ok {
+			if value, ok := s.Tags()[name]; ok {
 				fmt.Printf("%v\n", value)
 				return nil
 			}
 
 			return errors.Errorf(
-				"stack tag '%s' not found for stack '%s'", name, s.Ref())
+				"stack tag '%s' not found for stack '%s'", name, s.FriendlyName())
 		}),
 	}
 }
@@ -100,10 +94,7 @@ func newStackTagLsCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			tags, err := backend.GetStackTags(commandContext(), s)
-			if err != nil {
-				return err
-			}
+			tags := s.Tags()
 
 			if jsonOut {
 				return printJSON(tags)
@@ -156,14 +147,9 @@ func newStackTagRmCmd(stack *string) *cobra.Command {
 
 			ctx := commandContext()
 
-			tags, err := backend.GetStackTags(ctx, s)
-			if err != nil {
-				return err
-			}
-
+			tags := s.Tags()
 			delete(tags, name)
-
-			return backend.UpdateStackTags(ctx, s, tags)
+			return s.Backend().UpdateStackTags(ctx, s, tags)
 		}),
 	}
 }
@@ -187,17 +173,13 @@ func newStackTagSetCmd(stack *string) *cobra.Command {
 
 			ctx := commandContext()
 
-			tags, err := backend.GetStackTags(ctx, s)
-			if err != nil {
-				return err
-			}
-
+			tags := s.Tags()
 			if tags == nil {
 				tags = make(map[apitype.StackTagName]string)
 			}
 			tags[name] = value
 
-			return backend.UpdateStackTags(ctx, s, tags)
+			return s.Backend().UpdateStackTags(ctx, s, tags)
 		}),
 	}
 }

@@ -15,15 +15,17 @@
 package backend
 
 import (
+	"context"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v2/version"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
@@ -35,31 +37,34 @@ type MockRegisterResourceEvent struct {
 func (m MockRegisterResourceEvent) Goal() *resource.Goal               { return nil }
 func (m MockRegisterResourceEvent) Done(result *deploy.RegisterResult) {}
 
-type MockStackPersister struct {
+type SnapshotList struct {
 	SavedSnapshots []*deploy.Snapshot
 }
 
-func (m *MockStackPersister) Save(snap *deploy.Snapshot) error {
-	m.SavedSnapshots = append(m.SavedSnapshots, snap)
-	return nil
+func (l *SnapshotList) LastSnap() *deploy.Snapshot {
+	return l.SavedSnapshots[len(l.SavedSnapshots)-1]
 }
 
-func (m *MockStackPersister) SecretsManager() secrets.Manager {
-	return b64.NewBase64SecretsManager()
-}
-
-func (m *MockStackPersister) LastSnap() *deploy.Snapshot {
-	return m.SavedSnapshots[len(m.SavedSnapshots)-1]
-}
-
-func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *MockStackPersister) {
+func MockSetup(t *testing.T, baseSnap *deploy.Snapshot) (*SnapshotManager, *SnapshotList) {
 	err := baseSnap.VerifyIntegrity()
 	if !assert.NoError(t, err) {
 		t.FailNow()
 	}
 
-	sp := &MockStackPersister{}
-	return NewSnapshotManager(sp, baseSnap), sp
+	list := &SnapshotList{}
+	update := &MockUpdate{
+		PatchCheckpointF: func(ctx context.Context, deployment *apitype.DeploymentV3) error {
+			snapshot, err := stack.DeserializeDeploymentV3(*deployment, stack.DefaultSecretsProvider)
+			if err != nil {
+				return err
+			}
+
+			list.SavedSnapshots = append(list.SavedSnapshots, snapshot)
+			return nil
+		},
+	}
+
+	return NewSnapshotManager(context.Background(), update, baseSnap.SecretsManager, baseSnap), list
 }
 
 func NewResourceWithDeps(name string, deps []resource.URN) *resource.State {

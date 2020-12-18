@@ -22,7 +22,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -61,23 +60,11 @@ func newStackExportCmd() *cobra.Command {
 			// the backend/stack implements the ability the export previous checkpoints.
 			if version == "" {
 				deployment, err = s.ExportDeployment(ctx)
-				if err != nil {
-					return err
-				}
 			} else {
-				// Check that the stack and its backend supports the ability to do this.
-				be := s.Backend()
-				specificExpBE, ok := be.(backend.SpecificDeploymentExporter)
-				if !ok {
-					return errors.Errorf(
-						"the current backend (%s) does not provide the ability to export previous deployments",
-						be.Name())
-				}
-
-				deployment, err = specificExpBE.ExportDeploymentForVersion(ctx, s, version)
-				if err != nil {
-					return err
-				}
+				deployment, err = s.ExportDeploymentForVersion(ctx, version)
+			}
+			if err != nil {
+				return err
 			}
 
 			// Read from stdin or a specified file.

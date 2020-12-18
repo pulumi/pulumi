@@ -19,13 +19,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v2/backend/pulumi"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -90,7 +89,7 @@ func newPolicyPublishCmd() *cobra.Command {
 			// Attempt to publish the PolicyPack.
 			//
 
-			res := policyPack.Publish(commandContext(), backend.PublishOperation{
+			res := policyPack.Publish(commandContext(), cli.PublishOperation{
 				Root: root, PlugCtx: plugctx, PolicyPack: proj, Scopes: cancellationScopes})
 			if res != nil && res.Error() != nil {
 				return res.Error()
@@ -103,37 +102,35 @@ func newPolicyPublishCmd() *cobra.Command {
 	return cmd
 }
 
-func requirePolicyPack(policyPack string) (backend.PolicyPack, error) {
+func requirePolicyPack(policyPack string) (*cli.PolicyPack, error) {
 	//
 	// Attempt to log into cloud backend.
 	//
-
-	cloudURL, err := workspace.GetCurrentCloudURL()
-	if err != nil {
-		return nil, errors.Wrap(err,
-			"`pulumi policy` command requires the user to be logged into the Pulumi service")
-	}
 
 	displayOptions := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
 
-	b, err := httpstate.Login(commandContext(), cmdutil.Diag(), cloudURL, displayOptions)
+	b, err := currentBackend(displayOptions)
 	if err != nil {
 		return nil, err
+	}
+
+	if _, isPulumiClient := b.Client().(*pulumi.Client); !isPulumiClient {
+		return nil, errors.Wrap(err,
+			"`pulumi policy` command requires the user to be logged into the Pulumi service")
 	}
 
 	//
 	// Obtain PolicyPackReference.
 	//
 
-	policy, err := b.GetPolicyPack(commandContext(), policyPack, cmdutil.Diag())
+	policy, err := b.GetPolicyPack(commandContext(), policyPack)
 	if err != nil {
 		return nil, err
 	}
 	if policy != nil {
 		return policy, nil
 	}
-
 	return nil, fmt.Errorf("Could not find PolicyPack %q", policyPack)
 }

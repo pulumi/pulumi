@@ -1,3 +1,17 @@
+// Copyright 2016-2020, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package filestate
 
 import (
@@ -30,18 +44,18 @@ func TestWrappedBucket(t *testing.T) {
 
 	// Initialize a filestate backend, using the default Pulumi directory.
 	cloudURL := FilePathPrefix + "~"
-	b, err := New(nil, cloudURL)
+	client, err := NewClient(nil, cloudURL)
 	if err != nil {
 		t.Fatalf("Initializing new filestate backend: %v", err)
 	}
-	localBackend, ok := b.(*localBackend)
+	localClient, ok := client.(*fileClient)
 	if !ok {
-		t.Fatalf("backend wasn't of type localBackend?")
+		t.Fatalf("backend wasn't of type localClient?")
 	}
 
-	wrappedBucket, ok := localBackend.bucket.(*wrappedBucket)
+	wrappedBucket, ok := localClient.bucket.(*wrappedBucket)
 	if !ok {
-		t.Fatalf("localBackend.bucket wasn't of type wrappedBucket?")
+		t.Fatalf("localClient.bucket wasn't of type wrappedBucket?")
 	}
 
 	ctx := context.Background()

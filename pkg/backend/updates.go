@@ -20,15 +20,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 )
 
-// UpdateMetadata describes optional metadata about an update.
-type UpdateMetadata struct {
-	// Message is an optional message associated with the update.
-	Message string `json:"message"`
-	// Environment contains optional data from the deploying environment. e.g. the current
-	// source code control commit information.
-	Environment map[string]string `json:"environment"`
-}
-
 // UpdateResult is an enum for the result of the update.
 type UpdateResult string
 

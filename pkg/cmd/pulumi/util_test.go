@@ -18,13 +18,14 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	pul_testing "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
 	"github.com/stretchr/testify/assert"
 )
 
 // assertEnvValue assert the update metadata's Environment map contains the given value.
-func assertEnvValue(t *testing.T, md *backend.UpdateMetadata, key, val string) {
+func assertEnvValue(t *testing.T, md *cli.UpdateMetadata, key, val string) {
 	t.Helper()
 	got, ok := md.Environment[key]
 	if !ok {
@@ -58,7 +59,7 @@ func TestReadingGitRepo(t *testing.T) {
 
 	// Test the state of the world from an empty git repo
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -83,7 +84,7 @@ func TestReadingGitRepo(t *testing.T) {
 
 	var featureBranch1SHA string
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -103,7 +104,7 @@ func TestReadingGitRepo(t *testing.T) {
 	e.RunCommand("git", "checkout", "-b", "feature/branch2") // Same commit as feature/branch1.
 
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -118,7 +119,7 @@ func TestReadingGitRepo(t *testing.T) {
 	e.RunCommand("git", "checkout", "HEAD^1")
 
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -135,7 +136,7 @@ func TestReadingGitRepo(t *testing.T) {
 	e.RunCommand("git", "tag", "v0.0.0")
 
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -148,7 +149,7 @@ func TestReadingGitRepo(t *testing.T) {
 	e.RunCommand("git", "checkout", "v0.0.0")
 
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -180,7 +181,7 @@ func TestReadingGitRepo(t *testing.T) {
 	os.Setenv("GITHUB_REF", "branch-from-ci")
 
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))
@@ -216,7 +217,7 @@ func TestReadingGitLabMetadata(t *testing.T) {
 
 	// Test the state of the world from an empty git repo
 	{
-		test := &backend.UpdateMetadata{
+		test := &cli.UpdateMetadata{
 			Environment: make(map[string]string),
 		}
 		assert.NoError(t, addGitMetadata(e.RootPath, test))

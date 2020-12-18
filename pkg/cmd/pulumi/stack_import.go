@@ -27,6 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 )
 
@@ -54,7 +55,7 @@ func newStackImportCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			stackName := s.Ref().Name()
+			stackName := s.ID().Stack
 
 			// Read from stdin or a specified file
 			reader := os.Stdin
@@ -77,11 +78,11 @@ func newStackImportCmd() *cobra.Command {
 			// catches errors wherein someone imports the wrong stack's deployment (which can seriously hork things).
 			snapshot, err := stack.DeserializeUntypedDeployment(&deployment, stack.DefaultSecretsProvider)
 			if err != nil {
-				return checkDeploymentVersionError(err, stackName.String())
+				return checkDeploymentVersionError(err, stackName)
 			}
 			var result error
 			for _, res := range snapshot.Resources {
-				if res.URN.Stack() != stackName {
+				if res.URN.Stack() != tokens.QName(stackName) {
 					msg := fmt.Sprintf("resource '%s' is from a different stack (%s != %s)",
 						res.URN, res.URN.Stack(), stackName)
 					if force {

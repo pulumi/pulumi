@@ -31,10 +31,8 @@ import (
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
@@ -170,7 +168,7 @@ func runNew(args newArgs) error {
 	// otherwise `getStack` will fail to detect the project folder and fail.
 	// The main purpose of this lookup is getting a proper start with a project
 	// created via the web app.
-	var s backend.Stack
+	var s *cli.Stack
 	if args.stack != "" && strings.Count(args.stack, "/") == 2 {
 		existingStack, existingName, existingDesc, err := getStack(args.stack, opts)
 		if err != nil {
@@ -268,7 +266,7 @@ func runNew(args newArgs) error {
 
 	// Ensure the stack is selected.
 	if !args.generateOnly && s != nil {
-		contract.IgnoreError(state.SetCurrentStack(s.Ref().String()))
+		contract.IgnoreError(s.Backend().SetCurrentStack(s.ID()))
 	}
 
 	// Install dependencies.
@@ -468,31 +466,25 @@ func validateProjectName(projectName string, generateOnly bool, opts display.Opt
 }
 
 // getStack gets a stack and the project name & description, or returns nil if the stack doesn't exist.
-func getStack(stack string, opts display.Options) (backend.Stack, string, string, error) {
+func getStack(stack string, opts display.Options) (*cli.Stack, string, string, error) {
 	b, err := currentBackend(opts)
 	if err != nil {
 		return nil, "", "", err
 	}
 
-	stackRef, err := b.ParseStackReference(stack)
+	stackID, err := b.ParseStackIdentifier(stack)
 	if err != nil {
 		return nil, "", "", err
 	}
 
-	s, err := b.GetStack(commandContext(), stackRef)
+	s, err := b.GetStack(commandContext(), stackID)
 	if err != nil {
 		return nil, "", "", err
 	}
 
-	name := ""
-	description := ""
-	if s != nil {
-		if cs, ok := s.(httpstate.Stack); ok {
-			tags := cs.Tags()
-			name = tags[apitype.ProjectNameTag]
-			description = tags[apitype.ProjectDescriptionTag]
-		}
-	}
+	tags := s.Tags()
+	name := tags[apitype.ProjectNameTag]
+	description := tags[apitype.ProjectDescriptionTag]
 
 	return s, name, description, nil
 }
@@ -500,7 +492,7 @@ func getStack(stack string, opts display.Options) (backend.Stack, string, string
 // promptAndCreateStack creates and returns a new stack (prompting for the name as needed).
 func promptAndCreateStack(prompt promptForValueFunc,
 	stack string, projectName string, setCurrent bool, yes bool, opts display.Options,
-	secretsProvider string) (backend.Stack, error) {
+	secretsProvider string) (*cli.Stack, error) {
 
 	b, err := currentBackend(opts)
 	if err != nil {
@@ -540,16 +532,16 @@ func promptAndCreateStack(prompt promptForValueFunc,
 }
 
 // stackInit creates the stack.
-func stackInit(b backend.Backend, stackName string, setCurrent bool, secretsProvider string) (backend.Stack, error) {
-	stackRef, err := b.ParseStackReference(stackName)
+func stackInit(b *cli.Backend, stackName string, setCurrent bool, secretsProvider string) (*cli.Stack, error) {
+	stackID, err := b.ParseStackIdentifier(stackName)
 	if err != nil {
 		return nil, err
 	}
-	return createStack(b, stackRef, nil, setCurrent, secretsProvider)
+	return createStack(b, stackID, setCurrent, secretsProvider)
 }
 
 // saveConfig saves the config for the stack.
-func saveConfig(stack backend.Stack, c config.Map) error {
+func saveConfig(stack *cli.Stack, c config.Map) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -850,7 +842,7 @@ func parseConfig(configArray []string, path bool) (config.Map, error) {
 // If stackConfig is non-nil and a config value exists in stackConfig, it will be used as the default
 // value when prompting instead of the default value specified in templateConfig.
 func promptForConfig(
-	stack backend.Stack,
+	stack *cli.Stack,
 	templateConfig map[string]workspace.ProjectTemplateConfigValue,
 	commandLineConfig config.Map,
 	stackConfig config.Map,

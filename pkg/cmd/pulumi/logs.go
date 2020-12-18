@@ -79,7 +79,7 @@ func newLogsCmd() *cobra.Command {
 			if !jsonOut {
 				fmt.Printf(
 					opts.Color.Colorize(colors.BrightMagenta+"Collecting logs for stack %s since %s.\n\n"+colors.Reset),
-					s.Ref().String(),
+					s.FriendlyName(),
 					startTime.Format(timeFormat),
 				)
 			}

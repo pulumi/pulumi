@@ -11,6 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+//nolint:goconst
 package main
 
 import (
@@ -253,8 +255,11 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+	clientInstance = &backend.MockClient{
+		UserF: func(ctx context.Context) (string, error) {
+			return "user", nil
+		},
+		DoesProjectExistF: func(ctx context.Context, owner, name string) (bool, error) {
 			return name == projectName, nil
 		},
 	}
@@ -280,8 +285,11 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+	clientInstance = &backend.MockClient{
+		UserF: func(ctx context.Context) (string, error) {
+			return "user", nil
+		},
+		DoesProjectExistF: func(ctx context.Context, owner, name string) (bool, error) {
 			return name == projectName, nil
 		},
 	}
@@ -305,8 +313,11 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+	clientInstance = &backend.MockClient{
+		UserF: func(ctx context.Context) (string, error) {
+			return "user", nil
+		},
+		DoesProjectExistF: func(ctx context.Context, owner, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -336,8 +347,11 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+	clientInstance = &backend.MockClient{
+		UserF: func(ctx context.Context) (string, error) {
+			return "user", nil
+		},
+		DoesProjectExistF: func(ctx context.Context, owner, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -365,8 +379,11 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+	clientInstance = &backend.MockClient{
+		UserF: func(ctx context.Context) (string, error) {
+			return "user", nil
+		},
+		DoesProjectExistF: func(ctx context.Context, owner, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -394,8 +411,11 @@ func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
-	backendInstance = &backend.MockBackend{
-		DoesProjectExistF: func(ctx context.Context, name string) (bool, error) {
+	clientInstance = &backend.MockClient{
+		UserF: func(ctx context.Context) (string, error) {
+			return "user", nil
+		},
+		DoesProjectExistF: func(ctx context.Context, owner, name string) (bool, error) {
 			return true, nil
 		},
 	}
@@ -806,9 +826,9 @@ func loadStackName(t *testing.T) string {
 func removeStack(t *testing.T, name string) {
 	b, err := currentBackend(display.Options{})
 	assert.NoError(t, err)
-	ref, err := b.ParseStackReference(name)
+	id, err := b.ParseStackIdentifier(name)
 	assert.NoError(t, err)
-	stack, err := b.GetStack(context.Background(), ref)
+	stack, err := b.GetStack(context.Background(), id)
 	assert.NoError(t, err)
 	_, err = b.RemoveStack(context.Background(), stack, false)
 	assert.NoError(t, err)

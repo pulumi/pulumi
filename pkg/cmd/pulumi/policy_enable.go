@@ -17,7 +17,7 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	resourceanalyzer "github.com/pulumi/pulumi/pkg/v2/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -64,7 +64,7 @@ func newPolicyEnableCmd() *cobra.Command {
 
 			// Attempt to enable the Policy Pack.
 			return policyPack.Enable(commandContext(), args.policyGroup,
-				backend.PolicyPackOperation{
+				cli.PolicyPackOperation{
 					VersionTag: version,
 					Scopes:     cancellationScopes,
 					Config:     config,

@@ -16,11 +16,14 @@ package backend
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 )
@@ -41,28 +44,46 @@ func TestGetStackResourceOutputs(t *testing.T) {
 	deleted := deleteState("deletedType", "resc3", resource.PropertyMap{
 		resource.PropertyKey("deleted"): resource.NewStringProperty("deleted")})
 
-	// Mock backend that implements just enough methods to service `GetStackResourceOutputs`.
+	// Mock client that implements just enough methods to service `GetStackResourceOutputs`.
 	// Returns a single stack snapshot.
-	be := &MockBackend{
-		ParseStackReferenceF: func(s string) (StackReference, error) {
-			return nil, nil
-		},
-		GetStackF: func(ctx context.Context, stackRef StackReference) (Stack, error) {
-			return &MockStack{
-				SnapshotF: func(ctx context.Context) (*deploy.Snapshot, error) {
-					return &deploy.Snapshot{Resources: []*resource.State{
+	client := &backendClient{
+		client: &MockClient{
+			UserF: func(ctx context.Context) (string, error) {
+				return "user", nil
+			},
+			GetStackF: func(ctx context.Context, stackID StackIdentifier) (apitype.Stack, error) {
+				return apitype.Stack{
+					OrgName:     stackID.Owner,
+					ProjectName: stackID.Project,
+					StackName:   tokens.QName(stackID.Stack),
+				}, nil
+			},
+			ExportStackDeploymentF: func(ctx context.Context, stackID StackIdentifier,
+				version *int) (apitype.UntypedDeployment, error) {
+
+				snapshot := &deploy.Snapshot{
+					Resources: []*resource.State{
 						resc1, resc2, deleted,
-					}}, nil
-				},
-			}, nil
+					},
+				}
+				deployment, err := stack.SerializeDeployment(snapshot, snapshot.SecretsManager, false)
+				if err != nil {
+					return apitype.UntypedDeployment{}, err
+				}
+				bytes, err := json.Marshal(deployment)
+				if err != nil {
+					return apitype.UntypedDeployment{}, err
+				}
+				return apitype.UntypedDeployment{
+					Version:    apitype.DeploymentSchemaVersionCurrent,
+					Deployment: json.RawMessage(bytes),
+				}, nil
+			},
 		},
 	}
 
-	// Backend client, on which we will call `GetStackResourceOutputs`.
-	client := &backendClient{backend: be}
-
 	// Get resource outputs for mock stack.
-	outs, err := client.GetStackResourceOutputs(context.Background(), "fakeStack")
+	outs, err := client.GetStackResourceOutputs(context.Background(), "user/org/fakeStack")
 	assert.NoError(t, err)
 
 	// Verify resource outputs for resc1.

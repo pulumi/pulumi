@@ -28,7 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
@@ -105,7 +105,7 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if currentStack.Ref().Name().String() == destinationStackName {
+			if currentStack.ID().Stack == destinationStackName {
 				return errors.New("current stack and destination stack are the same")
 			}
 			currentProjectStack, err := loadProjectStack(currentStack)
@@ -144,8 +144,8 @@ func newConfigCopyCmd(stack *string) *cobra.Command {
 	return cpCommand
 }
 
-func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack,
-	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
+func copySingleConfigKey(configKey string, path bool, currentStack *cli.Stack,
+	currentProjectStack *workspace.ProjectStack, destinationStack *cli.Stack,
 	destinationProjectStack *workspace.ProjectStack) error {
 	var decrypter config.Decrypter
 	key, err := parseConfigKey(configKey)
@@ -186,11 +186,11 @@ func copySingleConfigKey(configKey string, path bool, currentStack backend.Stack
 	}
 
 	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.Ref())
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), currentStack.FriendlyName())
 }
 
-func copyEntireConfigMap(currentStack backend.Stack,
-	currentProjectStack *workspace.ProjectStack, destinationStack backend.Stack,
+func copyEntireConfigMap(currentStack *cli.Stack,
+	currentProjectStack *workspace.ProjectStack, destinationStack *cli.Stack,
 	destinationProjectStack *workspace.ProjectStack) error {
 
 	var decrypter config.Decrypter
@@ -343,7 +343,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 				return err
 			}
 
-			c, err := backend.GetLatestConfiguration(commandContext(), s)
+			c, err := s.Backend().GetLatestConfiguration(commandContext(), s)
 			if err != nil {
 				return err
 			}
@@ -386,7 +386,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 
 			err = ps.Save(configPath)
 			if err == nil {
-				fmt.Printf("refreshed configuration for stack '%s'\n", s.Ref().Name())
+				fmt.Printf("refreshed configuration for stack '%s'\n", s.FriendlyName())
 			}
 			return err
 		}),
@@ -509,23 +509,23 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 
 var stackConfigFile string
 
-func getProjectStackPath(stack backend.Stack) (string, error) {
+func getProjectStackPath(stack *cli.Stack) (string, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStackPath(stack.Ref().Name())
+		return workspace.DetectProjectStackPath(tokens.QName(stack.ID().Stack))
 	}
 	return stackConfigFile, nil
 }
 
-func loadProjectStack(stack backend.Stack) (*workspace.ProjectStack, error) {
+func loadProjectStack(stack *cli.Stack) (*workspace.ProjectStack, error) {
 	if stackConfigFile == "" {
-		return workspace.DetectProjectStack(stack.Ref().Name())
+		return workspace.DetectProjectStack(tokens.QName(stack.ID().Stack))
 	}
 	return workspace.LoadProjectStack(stackConfigFile)
 }
 
-func saveProjectStack(stack backend.Stack, ps *workspace.ProjectStack) error {
+func saveProjectStack(stack *cli.Stack, ps *workspace.ProjectStack) error {
 	if stackConfigFile == "" {
-		return workspace.SaveProjectStack(stack.Ref().Name(), ps)
+		return workspace.SaveProjectStack(tokens.QName(stack.ID().Stack), ps)
 	}
 	return ps.Save(stackConfigFile)
 }
@@ -572,7 +572,7 @@ type configValueJSON struct {
 	Secret      bool        `json:"secret"`
 }
 
-func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
+func listConfig(stack *cli.Stack, showSecrets bool, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -654,7 +654,7 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 	return nil
 }
 
-func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
+func getConfig(stack *cli.Stack, key config.Key, path, jsonOut bool) error {
 	ps, err := loadProjectStack(stack)
 	if err != nil {
 		return err
@@ -708,7 +708,7 @@ func getConfig(stack backend.Stack, key config.Key, path, jsonOut bool) error {
 	}
 
 	return errors.Errorf(
-		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.Ref())
+		"configuration key '%s' not found for stack '%s'", prettyKey(key), stack.FriendlyName())
 }
 
 var (
@@ -747,17 +747,17 @@ func looksLikeSecret(k config.Key, v string) bool {
 
 // getStackConfiguration loads configuration information for a given stack. If stackConfigFile is non empty,
 // it is uses instead of the default configuration file for the stack
-func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.StackConfiguration, error) {
+func getStackConfiguration(stack *cli.Stack, sm secrets.Manager) (cli.StackConfiguration, error) {
 	workspaceStack, err := loadProjectStack(stack)
 	if err != nil {
-		return backend.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
+		return cli.StackConfiguration{}, errors.Wrap(err, "loading stack configuration")
 	}
 
 	// If there are no secrets in the configuration, we should never use the decrypter, so it is safe to return
 	// one which panics if it is used. This provides for some nice UX in the common case (since, for example, building
 	// the correct decrypter for the local backend would involve prompting for a passphrase)
 	if !workspaceStack.Config.HasSecureValue() {
-		return backend.StackConfiguration{
+		return cli.StackConfiguration{
 			Config:    workspaceStack.Config,
 			Decrypter: config.NewPanicCrypter(),
 		}, nil
@@ -765,10 +765,10 @@ func getStackConfiguration(stack backend.Stack, sm secrets.Manager) (backend.Sta
 
 	crypter, err := sm.Decrypter()
 	if err != nil {
-		return backend.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
+		return cli.StackConfiguration{}, errors.Wrap(err, "getting configuration decrypter")
 	}
 
-	return backend.StackConfiguration{
+	return cli.StackConfiguration{
 		Config:    workspaceStack.Config,
 		Decrypter: crypter,
 	}, nil

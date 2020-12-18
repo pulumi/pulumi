@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -56,18 +55,21 @@ func newStackRenameCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name())
+
+			oldConfigPath, err := workspace.DetectProjectStackPath(tokens.QName(s.ID().Stack))
 			if err != nil {
 				return err
 			}
 
-			// Now perform the rename and get ready to rename the existing configuration to the new project file.
-			newStackName := args[0]
-			newStackRef, err := s.Rename(commandContext(), tokens.QName(newStackName))
+			// Support a qualified stack name, which would also rename the stack's project too.
+			// e.g. if you want to change the project name on the Pulumi Console to reflect a
+			// new value in Pulumi.yaml.
+			newID, err := s.Rename(commandContext(), args[0])
 			if err != nil {
 				return err
 			}
-			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name())
+
+			newConfigPath, err := workspace.DetectProjectStackPath(tokens.QName(newID.Stack))
 			if err != nil {
 				return err
 			}
@@ -86,11 +88,11 @@ func newStackRenameCmd() *cobra.Command {
 			}
 
 			// Update the current workspace state to have selected the new stack.
-			if err := state.SetCurrentStack(newStackName); err != nil {
+			if err := s.Backend().SetCurrentStack(newID); err != nil {
 				return errors.Wrap(err, "setting current stack")
 			}
 
-			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
+			fmt.Printf("Renamed %s to %s\n", s.FriendlyName(), s.Backend().StackFriendlyName(newID))
 			return nil
 		}),
 	}

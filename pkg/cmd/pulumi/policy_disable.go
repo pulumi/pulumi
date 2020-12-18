@@ -15,7 +15,7 @@
 package main
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 )
@@ -42,7 +42,7 @@ func newPolicyDisableCmd() *cobra.Command {
 			}
 
 			// Attempt to disable the Policy Pack.
-			return policyPack.Disable(commandContext(), args.policyGroup, backend.PolicyPackOperation{
+			return policyPack.Disable(commandContext(), args.policyGroup, cli.PolicyPackOperation{
 				VersionTag: &args.version, Scopes: cancellationScopes})
 		}),
 	}

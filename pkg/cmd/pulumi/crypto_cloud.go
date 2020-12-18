@@ -17,6 +17,7 @@ package main
 import (
 	"encoding/base64"
 
+	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -24,11 +25,13 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider string) (secrets.Manager, error) {
-	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
+func newCloudSecretsManager(stackID backend.StackIdentifier, configFile,
+	secretsProvider string) (secrets.Manager, error) {
+
+	contract.Assertf(stackID.Stack != "", "stackID.Stack %v", "!= \"\"")
 
 	if configFile == "" {
-		f, err := workspace.DetectProjectStackPath(stackName)
+		f, err := workspace.DetectProjectStackPath(tokens.QName(stackID.Stack))
 		if err != nil {
 			return nil, err
 		}

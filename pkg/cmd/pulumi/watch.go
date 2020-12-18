@@ -20,7 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -123,7 +123,7 @@ func newWatchCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 			}
 
-			res := s.Watch(commandContext(), backend.UpdateOperation{
+			res := s.Watch(commandContext(), cli.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,

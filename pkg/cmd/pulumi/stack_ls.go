@@ -18,15 +18,16 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/backend/cli"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
@@ -96,9 +97,9 @@ func newStackLsCmd() *cobra.Command {
 
 			// Get the current stack so we can print a '*' next to it.
 			var current string
-			if s, _ := state.CurrentStack(commandContext(), b); s != nil {
+			if s, _ := b.CurrentStack(commandContext()); s != nil {
 				// If we couldn't figure out the current stack, just don't print the '*' later on instead of failing.
-				current = s.Ref().String()
+				current = s.FriendlyName()
 			}
 
 			// List all of the stacks available.
@@ -108,7 +109,7 @@ func newStackLsCmd() *cobra.Command {
 			}
 			// Sort by stack name.
 			sort.Slice(stackSummaries, func(i, j int) bool {
-				return stackSummaries[i].Name().String() < stackSummaries[j].Name().String()
+				return stackSummaryFriendlyName(b, stackSummaries[i]) < stackSummaryFriendlyName(b, stackSummaries[j])
 			})
 
 			if jsonOut {
@@ -145,6 +146,18 @@ func parseTagFilter(t string) (string, *string) {
 	return parts[0], &parts[1]
 }
 
+func stackSummaryFriendlyName(b *cli.Backend, summary apitype.StackSummary) string {
+	return b.StackFriendlyName(stackIdentifierFromSummary(summary))
+}
+
+func stackIdentifierFromSummary(summary apitype.StackSummary) backend.StackIdentifier {
+	return backend.StackIdentifier{
+		Owner:   summary.OrgName,
+		Project: summary.ProjectName,
+		Stack:   summary.StackName,
+	}
+}
+
 // stackSummaryJSON is the shape of the --json output of this command. When --json is passed, we print an array
 // of stackSummaryJSON objects.  While we can add fields to this structure in the future, we should not change
 // existing fields.
@@ -157,27 +170,27 @@ type stackSummaryJSON struct {
 	URL              string `json:"url,omitempty"`
 }
 
-func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
+func formatStackSummariesJSON(b *cli.Backend, currentStack string, stackSummaries []apitype.StackSummary) error {
 	output := make([]stackSummaryJSON, len(stackSummaries))
 	for idx, summary := range stackSummaries {
+		friendlyName := stackSummaryFriendlyName(b, summary)
+
 		summaryJSON := stackSummaryJSON{
-			Name:          summary.Name().String(),
-			ResourceCount: summary.ResourceCount(),
-			Current:       summary.Name().String() == currentStack,
+			Name:          friendlyName,
+			ResourceCount: summary.ResourceCount,
+			Current:       friendlyName == currentStack,
 		}
 
-		if summary.LastUpdate() != nil {
+		if summary.LastUpdate != nil {
 			if isUpdateInProgress(summary) {
 				summaryJSON.UpdateInProgress = true
 			} else {
-				summaryJSON.LastUpdate = summary.LastUpdate().UTC().Format(timeFormat)
+				summaryJSON.LastUpdate = time.Unix(*summary.LastUpdate, 0).UTC().Format(timeFormat)
 			}
 		}
 
-		if httpBackend, ok := b.(httpstate.Backend); ok {
-			if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
-				summaryJSON.URL = consoleURL
-			}
+		if consoleURL, err := b.StackConsoleURL(stackIdentifierFromSummary(summary)); err == nil {
+			summaryJSON.URL = consoleURL
 		}
 
 		output[idx] = summaryJSON
@@ -186,58 +199,56 @@ func formatStackSummariesJSON(b backend.Backend, currentStack string, stackSumma
 	return printJSON(output)
 }
 
-func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSummaries []backend.StackSummary) error {
-	_, showURLColumn := b.(httpstate.Backend)
-
+func formatStackSummariesConsole(b *cli.Backend, currentStack string, stackSummaries []apitype.StackSummary) error {
 	// Header string and formatting options to align columns.
-	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT"}
-	if showURLColumn {
-		headers = append(headers, "URL")
-	}
+	headers := []string{"NAME", "LAST UPDATE", "RESOURCE COUNT", "URL"}
 
 	rows := []cmdutil.TableRow{}
 
+	showURLColumn := false
 	for _, summary := range stackSummaries {
 		const none = "n/a"
 
 		// Name column
-		name := summary.Name().String()
+		name := stackSummaryFriendlyName(b, summary)
 		if name == currentStack {
 			name += "*"
 		}
 
 		// Last update column
 		lastUpdate := none
-		if stackLastUpdate := summary.LastUpdate(); stackLastUpdate != nil {
+		if stackLastUpdate := summary.LastUpdate; stackLastUpdate != nil {
 			if isUpdateInProgress(summary) {
 				lastUpdate = "in progress"
 			} else {
-				lastUpdate = humanize.Time(*stackLastUpdate)
+				lastUpdate = humanize.Time(time.Unix(*stackLastUpdate, 0))
 			}
 		}
 
 		// ResourceCount column
 		resourceCount := none
-		if stackResourceCount := summary.ResourceCount(); stackResourceCount != nil {
+		if stackResourceCount := summary.ResourceCount; stackResourceCount != nil {
 			resourceCount = strconv.Itoa(*stackResourceCount)
 		}
 
 		// Render the columns.
 		columns := []string{name, lastUpdate, resourceCount}
-		if showURLColumn {
-			url := none
-			if httpBackend, ok := b.(httpstate.Backend); ok {
-				if consoleURL, err := httpBackend.StackConsoleURL(summary.Name()); err == nil {
-					url = consoleURL
-				}
-			}
 
-			columns = append(columns, url)
+		url := none
+		if consoleURL, err := b.StackConsoleURL(stackIdentifierFromSummary(summary)); err == nil && consoleURL != "" {
+			url, showURLColumn = consoleURL, true
 		}
+		columns = append(columns, url)
 
 		rows = append(rows, cmdutil.TableRow{Columns: columns})
 	}
 
+	if !showURLColumn {
+		headers = headers[:3]
+		for i := range rows {
+			rows[i].Columns = rows[i].Columns[:3]
+		}
+	}
 	cmdutil.PrintTable(cmdutil.Table{
 		Headers: headers,
 		Rows:    rows,
@@ -246,7 +257,7 @@ func formatStackSummariesConsole(b backend.Backend, currentStack string, stackSu
 	return nil
 }
 
-func isUpdateInProgress(u backend.StackSummary) bool {
+func isUpdateInProgress(u apitype.StackSummary) bool {
 	// When an update is in progress the last update time is set to zero.
-	return u.LastUpdate() != nil && u.LastUpdate().Unix() == 0
+	return u.LastUpdate != nil && *u.LastUpdate == 0
 }
