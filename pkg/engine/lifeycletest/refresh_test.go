@@ -776,7 +776,7 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", false)
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true)
 		assert.NoError(t, err)
 		return nil
 	})
@@ -812,4 +812,50 @@ func TestRefreshStepWillPersistUpdatedIDs(t *testing.T) {
 			t.Fatalf("unexpected resource %v", urn)
 		}
 	}
+}
+
+// TestRefreshUpdateWithDeletedResource validates that the engine handles a deleted resource without error on an
+// update with refresh.
+func TestRefreshUpdateWithDeletedResource(t *testing.T) {
+	p := &TestPlan{}
+
+	resURN := p.NewURN("pkgA:m:typA", "resA", "")
+	idBefore := resource.ID("myid")
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ReadF: func(
+					urn resource.URN, id resource.ID, inputs, state resource.PropertyMap,
+				) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p.Options.Host = host
+	p.Options.Refresh = true
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			{
+				Type:    resURN.Type(),
+				URN:     resURN,
+				Custom:  true,
+				ID:      idBefore,
+				Inputs:  resource.PropertyMap{},
+				Outputs: resource.PropertyMap{},
+			},
+		},
+	}
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap := p.Run(t, old)
+	assert.Equal(t, 0, len(snap.Resources))
 }
