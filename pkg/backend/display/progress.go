@@ -327,6 +327,13 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 			display.terminalWidth = terminalWidth
 			display.terminalHeight = terminalHeight
 
+			// Don't bother attempting to treat this display as a terminal if it has no width/height.
+			if display.isTerminal && (display.terminalWidth == 0 || display.terminalHeight == 0) {
+				display.isTerminal = false
+				_, err = fmt.Fprintln(stderr, "Treating display as non-terminal due to 0 width/height.")
+				contract.IgnoreError(err)
+			}
+
 			// Fetch the canonical stdout stream, configured appropriately.
 			_, stdout, _ = term.StdStreams()
 		}

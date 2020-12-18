@@ -16,6 +16,9 @@ CHANGELOG
 - Fix a bug in the core engine where ComponentResource state would be accessed before initialization.
   [#5949](https://github.com/pulumi/pulumi/pull/5949)
 
+- Prevent a panic by not attempting to show progress for zero width/height terminals.
+  [#5957](https://github.com/pulumi/pulumi/issues/5957)
+
 ## 2.15.6 (2020-12-12)
 
 - Fix a bug in the Go SDK that could result in dropped resource dependencies.
