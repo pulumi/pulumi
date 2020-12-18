@@ -1918,3 +1918,25 @@ func TestConfigSecrets(t *testing.T) {
 	assert.True(t, provider.Inputs["secret"].IsSecret())
 	assert.True(t, provider.Outputs["secret"].IsSecret())
 }
+
+func TestComponentOutputs(t *testing.T) {
+	// A component's outputs should never be returned by `RegisterResource`, even if (especially if) there are
+	// outputs from a prior deployment and the component's inputs have not changed.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urn, _, state, err := monitor.RegisterResource("component", "resA", false)
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{}, state)
+
+		err = monitor.RegisterResourceOutputs(urn, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		})
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 1),
+	}
+	p.Run(t, nil)
+}
