@@ -12,6 +12,9 @@ CHANGELOG
 
 - [sdk/dotnet] Add collection initializers for smooth support of Union<T, U> as element type
   [#5938](https://github.com/pulumi/pulumi/pull/5938)
+  
+- Fix a bug in the core engine where ComponentResource state would be accessed before initialization.
+  [#5949](https://github.com/pulumi/pulumi/pull/5949)
 
 ## 2.15.6 (2020-12-12)
 

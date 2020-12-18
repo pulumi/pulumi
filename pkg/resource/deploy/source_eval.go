@@ -929,6 +929,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Filter out partially-known values if the requestor does not support them.
 	outputs := result.State.Outputs
+
+	// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
+	if !req.GetCustom() && !remote {
+		// In the case of a SameStep, the old resource outputs are returned to the language host after the step is
+		// executed. The outputs of a ComponentResource may depend on resources that have not been registered at the
+		// time the ComponentResource is itself registered, as the outputs are set by a later call to
+		// RegisterResourceOutputs. Therefore, when the SameStep returns the old resource outputs for a
+		// ComponentResource, it may return references to resources that have not yet been registered, which will cause
+		// the SDK's calls to getResource to fail when it attempts to resolve those references.
+		//
+		// Work on a more targeted fix is tracked in https://github.com/pulumi/pulumi/issues/5978
+		outputs = resource.PropertyMap{}
+	}
+
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}

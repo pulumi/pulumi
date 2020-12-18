@@ -134,8 +134,7 @@ func TestSingleResourceDiffUnavailable(t *testing.T) {
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
-	// Now change the inputs to our resource and run a preview.
-	inputs = resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+	// Now run a preview. Expect a warning because the diff is unavailable.
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, true, p.BackendClient,
 		func(_ workspace.Project, _ deploy.Target, _ JournalEntries,
 			events []Event, res result.Result) result.Result {
@@ -1918,4 +1917,27 @@ func TestConfigSecrets(t *testing.T) {
 	provider := snap.Resources[0]
 	assert.True(t, provider.Inputs["secret"].IsSecret())
 	assert.True(t, provider.Outputs["secret"].IsSecret())
+}
+
+func TestComponentOutputs(t *testing.T) {
+	// A component's outputs should never be returned by `RegisterResource`, even if (especially if) there are
+	// outputs from a prior deployment and the component's inputs have not changed.
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		urn, _, state, err := monitor.RegisterResource("component", "resA", false)
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{}, state)
+
+		err = monitor.RegisterResourceOutputs(urn, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		})
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 1),
+	}
+	p.Run(t, nil)
 }
