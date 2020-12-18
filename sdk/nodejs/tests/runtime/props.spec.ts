@@ -112,7 +112,11 @@ interface TestInputs {
 }
 
 describe("runtime", () => {
-    beforeEach(runtime._reset);
+    beforeEach(() => {
+        runtime._reset();
+        runtime._resetResourcePackages();
+        runtime._resetResourceModules();
+    });
 
     describe("transferProperties", () => {
         it("marshals basic properties correctly", asyncTest(async () => {
