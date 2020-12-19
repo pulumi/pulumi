@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Do not read plugins and policy packs into memory prior to exctraction, as doing so can exhaust
+  the available memory on lower-end systems.
+  [#5983](https://github.com/pulumi/pulumi/pull/5983)
+
 - Fix a bug in the core engine where deleting/renaming a resource would panic on update + refresh.
   [#5980](https://github.com/pulumi/pulumi/pull/5980)
   
