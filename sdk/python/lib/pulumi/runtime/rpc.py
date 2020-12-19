@@ -114,7 +114,6 @@ async def serialize_property(value: 'Input[Any]',
 
     if known_types.is_resource(value):
         resource = cast('Resource', value)
-        deps.append(resource)
 
         is_custom = known_types.is_custom_resource(value)
         resource_id = cast('CustomResource', value).id if is_custom else None
