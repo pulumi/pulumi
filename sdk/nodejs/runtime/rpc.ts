@@ -645,6 +645,11 @@ export interface ResourcePackage {
 
 const resourcePackages = new Map<string, ResourcePackage[]>();
 
+/** @internal Used only for testing purposes. */
+export function _resetResourcePackages() {
+    resourcePackages.clear();
+}
+
 /**
  * registerResourcePackage registers a resource package that will be used to construct providers for any URNs matching
  * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
@@ -669,6 +674,11 @@ const resourceModules = new Map<string, ResourceModule[]>();
 
 function moduleKey(pkg: string, mod: string): string {
     return `${pkg}:${mod}`;
+}
+
+/** @internal Used only for testing purposes. */
+export function _resetResourceModules() {
+    resourceModules.clear();
 }
 
 /**
