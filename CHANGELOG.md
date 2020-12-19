@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a bug in the core engine where deleting/renaming a resource would panic on update + refresh.
+  [#5980](https://github.com/pulumi/pulumi/pull/5980)
+  
 - Fix a bug in the core engine that caused `ignoreChanges` to fail for resources being imported.
   [#5976](https://github.com/pulumi/pulumi/pull/5976)
 
