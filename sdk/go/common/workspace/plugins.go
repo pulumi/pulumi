@@ -298,8 +298,8 @@ func (info PluginInfo) installLock() (unlock func(), err error) {
 // If a failure occurs during installation, the `.partial` file will remain, indicating the plugin wasn't fully
 // installed. The next time the plugin is installed, the old installation directory will be removed and replaced with
 // a fresh install.
-func (info PluginInfo) Install(tarball io.ReadCloser) error {
-	defer contract.IgnoreClose(tarball)
+func (info PluginInfo) Install(tgz io.ReadCloser) error {
+	defer contract.IgnoreClose(tgz)
 
 	// Fetch the directory into which we will expand this tarball.
 	finalDir, err := info.DirPath()
@@ -360,18 +360,14 @@ func (info PluginInfo) Install(tarball io.ReadCloser) error {
 	}
 
 	// Uncompress the plugin.
-	tarballBytes, err := ioutil.ReadAll(tarball)
-	if err != nil {
-		return err
-	}
-	if err := archive.UnTGZ(tarballBytes, finalDir); err != nil {
+	if err := archive.ExtractTGZ(tgz, finalDir); err != nil {
 		return err
 	}
 
 	// Even though we deferred closing the tarball at the beginning of this function, go ahead and explicitly close
 	// it now since we're finished extracting it, to prevent subsequent output from being displayed oddly with
 	// the progress bar.
-	contract.IgnoreClose(tarball)
+	contract.IgnoreClose(tgz)
 
 	// Install dependencies, if needed.
 	proj, err := LoadPluginProject(filepath.Join(finalDir, "PulumiPlugin.yaml"))
