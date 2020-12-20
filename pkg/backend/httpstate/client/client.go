@@ -19,7 +19,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"path"
 	"regexp"
@@ -753,7 +752,7 @@ func (pc *Client) RemovePolicyPackByVersion(ctx context.Context, orgName string,
 }
 
 // DownloadPolicyPack applies a `PolicyPack` to the Pulumi organization.
-func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) ([]byte, error) {
+func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCloser, error) {
 	getS3Req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
@@ -763,14 +762,8 @@ func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) ([]byte, e
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
 	}
-	defer resp.Body.Close()
 
-	tarball, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
-	}
-
-	return tarball, nil
+	return resp.Body, nil
 }
 
 // GetUpdateEvents returns all events, taking an optional continuation token from a previous call.
