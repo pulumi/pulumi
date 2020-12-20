@@ -762,7 +762,6 @@ func (pc *Client) DownloadPolicyPack(ctx context.Context, url string) (io.ReadCl
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to download compressed PolicyPack")
 	}
-	defer resp.Body.Close()
 
 	return resp.Body, nil
 }
