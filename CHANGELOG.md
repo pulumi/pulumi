@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.16.0 (2020-12-21)
 
 - Do not read plugins and policy packs into memory prior to exctraction, as doing so can exhaust
   the available memory on lower-end systems.
@@ -9,7 +12,7 @@ CHANGELOG
 
 - Fix a bug in the core engine where deleting/renaming a resource would panic on update + refresh.
   [#5980](https://github.com/pulumi/pulumi/pull/5980)
-  
+
 - Fix a bug in the core engine that caused `ignoreChanges` to fail for resources being imported.
   [#5976](https://github.com/pulumi/pulumi/pull/5976)
 
@@ -19,7 +22,7 @@ CHANGELOG
 
 - [sdk/dotnet] Add collection initializers for smooth support of Union<T, U> as element type
   [#5938](https://github.com/pulumi/pulumi/pull/5938)
-  
+
 - Fix a bug in the core engine where ComponentResource state would be accessed before initialization.
   [#5949](https://github.com/pulumi/pulumi/pull/5949)
 
@@ -30,7 +33,7 @@ CHANGELOG
 
 - Fix a bug in the Go SDK that could result in dropped resource dependencies.
   [#5930](https://github.com/pulumi/pulumi/pull/5930)
-  
+
 - Temporarily disable resource ref feature.
   [#5932](https://github.com/pulumi/pulumi/pull/5932)
 
@@ -48,7 +51,7 @@ CHANGELOG
 
 - Enable resource reference feature by default.
   [#5905](https://github.com/pulumi/pulumi/pull/5905)
-  
+
 - [codegen/go] Fix Input/Output methods for Go resources.
   [#5916](https://github.com/pulumi/pulumi/pull/5916)
 
