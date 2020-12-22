@@ -252,7 +252,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
-	sg.deployment.goals[urn] = goal
+	sg.deployment.goals.set(urn, goal)
 	if providers.IsProviderType(goal.Type) {
 		sg.providers[urn] = new
 	}
@@ -1286,7 +1286,8 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 func (sg *stepGenerator) AnalyzeResources() result.Result {
 	var resources []plugin.AnalyzerStackResource
 	sg.deployment.news.mapRange(func(urn resource.URN, v *resource.State) bool {
-		goal := sg.deployment.goals[urn]
+		goal, ok := sg.deployment.goals.get(urn)
+		contract.Assertf(ok, "failed to load goal for %s", urn)
 		resource := plugin.AnalyzerStackResource{
 			AnalyzerResource: plugin.AnalyzerResource{
 				URN:  v.URN,
