@@ -118,8 +118,6 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet }}
-      - name: Clean
-        run: cd src\github.com\${{ github.repository }} && dotnet clean build.proj && dotnet nuget locals all --clear
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -149,6 +147,8 @@ jobs:
       - name: Fetch Tags
         run: |
           cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      - name: Clean
+        run: cd src\github.com\${{ github.repository }} && dotnet clean build.proj && dotnet nuget locals all --clear
       - name: Get dependencies
         run: |
           cd src\github.com\${{ github.repository }}
