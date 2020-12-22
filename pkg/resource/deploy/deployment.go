@@ -306,7 +306,7 @@ func NewDeployment(ctx *plugin.Context, target *Target, prev *Snapshot, source S
 	depGraph := graph.NewDependencyGraph(oldResources)
 
 	// Create a goals map for the deployment.
-	newGoals := sync.Map{}
+	newGoals := sync.Map{} // map[resource.URN]*resource.Goal
 
 	// Create a resource map for the deployment.
 	newResources := &resourceMap{}
