@@ -14,9 +14,17 @@
 
 import os
 import unittest
-from pulumi.x.automation import LocalWorkspace
+from pulumi.x.automation import LocalWorkspace, PluginInfo
+from typing import List
 
 extensions = ["json", "yaml", "yml"]
+
+
+def found_plugin(plugin_list: List[PluginInfo], name: str, version: str) -> bool:
+    for plugin in plugin_list:
+        if plugin.name == name and plugin.version == version:
+            return True
+    return False
 
 
 class TestLocalWorkspace(unittest.TestCase):
@@ -35,3 +43,17 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(settings.secrets_provider, "abc")
             self.assertEqual(settings.config["plain"], "plain")
             self.assertEqual(settings.config["secure"].secure, "secret")
+
+    def test_plugin_functions(self):
+        ws = LocalWorkspace()
+        # Install aws 3.0.0 plugin
+        ws.install_plugin("aws", "v3.0.0")
+        # Check the plugin is present
+        plugin_list = ws.list_plugins()
+        self.assertTrue(found_plugin(plugin_list, "aws", "3.0.0"))
+
+        # Remove the plugin
+        ws.remove_plugin("aws", "3.0.0")
+        # Check that the plugin has been removed
+        plugin_list = ws.list_plugins()
+        self.assertFalse(found_plugin(plugin_list, "aws", "3.0.0"))
