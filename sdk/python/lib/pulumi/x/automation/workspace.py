@@ -95,13 +95,13 @@ class Workspace(ABC):
     If none is specified, the stack will refer to ProjectSettings for this information.
     """
 
-    env_vars: Optional[Mapping[str, str]]
+    env_vars: Mapping[str, str]
     """
     Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
     """
 
     @abstractmethod
-    async def project_settings(self) -> Awaitable[ProjectSettings]:
+    def project_settings(self) -> ProjectSettings:
         """
         Returns the settings object for the current project if any.
 
@@ -261,7 +261,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def create_stack(self, stack_name: str) -> None:
+    def create_stack(self, stack_name: str) -> None:
         """
         Creates and sets a new stack with the stack name, failing if one already exists.
 

@@ -59,11 +59,11 @@ class ProjectSettings:
     """ A Pulumi project manifest. It describes metadata applying to all sub-stacks created from the project."""
     name: str
     runtime: Union[ProjectRuntime, ProjectRuntimeInfo]
-    main: Optional[str]
-    description: Optional[str]
-    author: Optional[str]
-    website: Optional[str]
-    license: Optional[str]
-    config: Optional[str]
-    template: Optional[ProjectTemplate]
-    backend: Optional[ProjectBackend]
+    main: Optional[str] = None
+    description: Optional[str] = None
+    author: Optional[str] = None
+    website: Optional[str] = None
+    license: Optional[str] = None
+    config: Optional[str] = None
+    template: Optional[ProjectTemplate] = None
+    backend: Optional[ProjectBackend] = None
