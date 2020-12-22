@@ -147,6 +147,8 @@ jobs:
       - name: Fetch Tags
         run: |
           cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      - name: Clean
+        run: dotnet nuget locals all --clear
       - name: Get dependencies
         run: |
           cd src\github.com\${{ github.repository }}
