@@ -21,7 +21,7 @@ install:: install_plugin
 test_all:: test_fast
 
 test_fast:: install
-	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	go test -race -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
