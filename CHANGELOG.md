@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+## 2.16.1 (2020-12-22)
+
 - Fix a panic due to unsafe concurrent map access.
   [#5995](https://github.com/pulumi/pulumi/pull/5995)
 

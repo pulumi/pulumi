@@ -166,6 +166,8 @@ jobs:
           go mod tidy
           go mod download
           popd
+      - name: Clean
+        run: dotnet clean build.proj && dotnet nuget locals all --clear
       - name: Build Pulumi
         run: |
           cd src\github.com\${{ github.repository }}
