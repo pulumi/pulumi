@@ -73,6 +73,9 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		return nil, err
 	}
 
+	// Create a goal map for the deployment.
+	newGoals := &goalMap{}
+
 	builtins := newBuiltinProvider(nil, nil)
 
 	// Create a new provider registry.
@@ -87,6 +90,7 @@ func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens
 		target:       target,
 		prev:         prev,
 		olds:         olds,
+		goals:        newGoals,
 		imports:      imports,
 		isImport:     true,
 		schemaLoader: schema.NewPluginLoader(ctx.Host),
