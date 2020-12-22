@@ -16,7 +16,10 @@
 // github.com/sdk/v2/go/x/auto Stack.Refresh(...optrefresh.Option)
 package optrefresh
 
-import "io"
+import (
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
+	"io"
+)
 
 // Parallel is the number of resource operations to run in parallel at once during the refresh
 // (1 for no parallelism). Defaults to unbounded. (default 2147483647)
@@ -54,6 +57,12 @@ func ProgressStreams(writers ...io.Writer) Option {
 	})
 }
 
+func DebugLogging(debugOpts debug.LoggingOptions) Option {
+	return optionFunc(func(opts *Options) {
+		opts.DebugLogOpts = debugOpts
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Refresh() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -74,6 +83,8 @@ type Options struct {
 	Target []string
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
 	ProgressStreams []io.Writer
+	// DebugLogOpts specifies additional settings for debug logging
+	DebugLogOpts debug.LoggingOptions
 }
 
 type optionFunc func(*Options)
