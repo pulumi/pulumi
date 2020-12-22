@@ -91,6 +91,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
 	"regexp"
 	"runtime"
@@ -216,6 +217,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 
 	var sharedArgs []string
+
+	sharedArgs = debug.AddArgs(&preOpts.DebugLogOpts, sharedArgs)
 	if preOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", preOpts.Message))
 	}
@@ -276,6 +279,8 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	var sharedArgs []string
+
+	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
 	if upOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", upOpts.Message))
 	}
@@ -351,7 +356,10 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		o.ApplyOption(refreshOpts)
 	}
 
-	args := []string{"refresh", "--yes", "--skip-preview"}
+	var args []string
+
+	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
+	args = append(args, "refresh", "--yes", "--skip-preview")
 	if refreshOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
 	}
@@ -408,7 +416,10 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		o.ApplyOption(destroyOpts)
 	}
 
-	args := []string{"destroy", "--yes", "--skip-preview"}
+	var args []string
+
+	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
+	args = append(args, "destroy", "--yes", "--skip-preview")
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
