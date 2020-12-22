@@ -16,12 +16,13 @@ import os
 import tempfile
 import json
 import yaml
+from datetime import datetime
 from typing import Optional, List, Awaitable, Mapping, Callable, Any
 
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
-from .workspace import Workspace
+from .workspace import Workspace, PluginInfo, PluginKind
 from .cmd import _run_pulumi_cmd, CommandResult
 
 setting_extensions = [".yaml", ".yml", ".json"]
@@ -135,15 +136,34 @@ class LocalWorkspace(Workspace):
     async def list_stacks(self) -> List[dict]:
         pass
 
-    async def install_plugin(self, plugin_name: str, version: str, kind: Optional[str]) -> None:
-        pass
+    def install_plugin(self, plugin_name: str, version: str, kind: str = "resource") -> None:
+        self._run_pulumi_cmd_sync(["plugin", "install", kind, plugin_name, version])
 
-    async def remove_plugin(self, plugin_name: Optional[str], version_range: Optional[str],
-                            kind: Optional[str]) -> None:
-        pass
+    def remove_plugin(self,
+                      plugin_name: Optional[str] = None,
+                      version_range: Optional[str] = None,
+                      kind: str = "resource") -> None:
+        args = ["plugin", "rm", kind]
+        if plugin_name:
+            args.append(plugin_name)
+        if version_range:
+            args.append(version_range)
+        args.append("--yes")
+        self._run_pulumi_cmd_sync(args)
 
-    async def list_plugins(self) -> None:
-        pass
+    def list_plugins(self) -> List[PluginInfo]:
+        result = self._run_pulumi_cmd_sync(["plugin", "ls", "--json"])
+        json_list = json.loads(result.stdout)
+        plugin_list: List[PluginInfo] = []
+        for plugin_json in json_list:
+            plugin = PluginInfo(name=plugin_json["name"],
+                                kind=PluginKind(plugin_json["kind"]),
+                                size=plugin_json["size"],
+                                version=plugin_json["version"],
+                                install_time=datetime.strptime(plugin_json["installTime"][:-5], "%Y-%m-%dT%H:%M:%S"),
+                                last_used=datetime.strptime(plugin_json["lastUsedTime"][:-5], "%Y-%m-%dT%H:%M:%S"))
+            plugin_list.append(plugin)
+        return plugin_list
 
     def _run_pulumi_cmd_sync(self, args: List[str]) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}

@@ -56,12 +56,13 @@ class WhoAmIResult:
 @dataclass
 class PluginInfo:
     name: str
-    path: str
+    # path: str
     kind: PluginKind
-    version: Optional[str]
     size: int
     install_time: datetime
-    server_url: str
+    last_used: datetime
+    version: Optional[str] = None
+    server_url: Optional[str] = None
 
 
 class Workspace(ABC):
@@ -95,7 +96,7 @@ class Workspace(ABC):
     If none is specified, the stack will refer to ProjectSettings for this information.
     """
 
-    env_vars: Mapping[str, str]
+    env_vars: Mapping[str, str] = {}
     """
     Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
     """
@@ -304,7 +305,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def install_plugin(self, plugin_name: str, version: str, kind: Optional[str]) -> None:
+    def install_plugin(self, plugin_name: str, version: str, kind: str) -> None:
         """
         Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
 
@@ -312,10 +313,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def remove_plugin(self,
-                            plugin_name: Optional[str],
-                            version_range: Optional[str],
-                            kind: Optional[str]) -> None:
+    def remove_plugin(self, plugin_name: Optional[str], version_range: Optional[str], kind: str) -> None:
         """
         Removes a plugin from the Workspace matching the specified name and version.
 
@@ -323,7 +321,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def list_plugins(self) -> None:
+    def list_plugins(self) -> List[PluginInfo]:
         """
         Returns a list of all plugins installed in the Workspace.
 

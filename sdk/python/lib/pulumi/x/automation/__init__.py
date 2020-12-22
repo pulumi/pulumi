@@ -13,3 +13,4 @@
 # limitations under the License.
 
 from .local_workspace import LocalWorkspace
+from .workspace import PluginInfo, PluginKind
