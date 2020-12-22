@@ -119,7 +119,7 @@ jobs:
         with:
           dotnet-version: ${{ matrix.dotnet }}
       - name: Clean
-        run: dotnet msbuild /t:Clean /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" && dotnet nuget locals all --clear
+        run: cd src\github.com\${{ github.repository }} && dotnet clean build.proj && dotnet nuget locals all --clear
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
