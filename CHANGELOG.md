@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a panic due to unsafe concurrent map access.
+  [#5995](https://github.com/pulumi/pulumi/pull/5995)
+
 - Fix regression in `venv` creation for python policy packs.
   [#5992](https://github.com/pulumi/pulumi/pull/5992)
 
