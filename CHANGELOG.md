@@ -2,11 +2,13 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Fix regression in `venv` creation for python policy packs.
+  [#5992](https://github.com/pulumi/pulumi/pull/5992)
 
 ## 2.16.0 (2020-12-21)
 
-- Do not read plugins and policy packs into memory prior to exctraction, as doing so can exhaust
+- Do not read plugins and policy packs into memory prior to extraction, as doing so can exhaust
   the available memory on lower-end systems.
   [#5983](https://github.com/pulumi/pulumi/pull/5983)
 
