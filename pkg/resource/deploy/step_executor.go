@@ -293,7 +293,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 
 		// If this is not a resource that is managed by Pulumi, then we can ignore it.
-		if _, hasGoal := se.deployment.goals.Load(newState.URN); hasGoal {
+		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
 			se.deployment.news.set(newState.URN, newState)
 		}
 	}
