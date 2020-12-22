@@ -56,13 +56,11 @@ class WhoAmIResult:
 @dataclass
 class PluginInfo:
     name: str
-    # path: str
     kind: PluginKind
     size: int
     install_time: datetime
     last_used: datetime
     version: Optional[str] = None
-    server_url: Optional[str] = None
 
 
 class Workspace(ABC):
