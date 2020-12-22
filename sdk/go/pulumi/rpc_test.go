@@ -550,13 +550,13 @@ func TestVersionedMap(t *testing.T) {
 	resourceModules := versionedMap{
 		versions: map[string][]Versioned{},
 	}
-	resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.1-alpha1")})
-	resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.2")})
-	resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("2.2.0")})
-	resourceModules.Store("unrelated", &testResourcePackage{version: semver.MustParse("1.0.3")})
-	resourceModules.Store("wild", &testResourcePackage{})
-	resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")})
-	resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-beta1")})
+	_ = resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.1-alpha1")})
+	_ = resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.2")})
+	_ = resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("2.2.0")})
+	_ = resourceModules.Store("unrelated", &testResourcePackage{version: semver.MustParse("1.0.3")})
+	_ = resourceModules.Store("wild", &testResourcePackage{})
+	_ = resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")})
+	_ = resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-beta1")})
 
 	tests := []struct {
 		name            string
