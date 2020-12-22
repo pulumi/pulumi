@@ -121,7 +121,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def stack_settings(self, stack_name: str) -> Awaitable[StackSettings]:
+    def stack_settings(self, stack_name: str) -> StackSettings:
         """
         Returns the settings object for the stack matching the specified stack name if any.
 

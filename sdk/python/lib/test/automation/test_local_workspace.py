@@ -16,12 +16,22 @@ import os
 import unittest
 from pulumi.x.automation import LocalWorkspace
 
+extensions = ["json", "yaml", "yml"]
+
 
 class TestLocalWorkspace(unittest.TestCase):
-    def test_reads_project_settings(self):
-        for ext in ["json", "yaml", "yml"]:
+    def test_project_settings(self):
+        for ext in extensions:
             ws = LocalWorkspace(work_dir=os.path.join(os.getcwd(), "data", ext))
             settings = ws.project_settings()
             self.assertEqual(settings.name, "testproj")
             self.assertEqual(settings.runtime, "go")
             self.assertEqual(settings.description, "A minimal Go Pulumi program")
+
+    def test_stack_settings(self):
+        for ext in extensions:
+            ws = LocalWorkspace(work_dir=os.path.join(os.getcwd(), "data", ext))
+            settings = ws.stack_settings("dev")
+            self.assertEqual(settings.secrets_provider, "abc")
+            self.assertEqual(settings.config["plain"], "plain")
+            self.assertEqual(settings.config["secure"].secure, "secret")

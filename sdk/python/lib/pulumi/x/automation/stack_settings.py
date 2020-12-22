@@ -22,14 +22,29 @@ class StackSettingsSecureConfigValue:
     secure: str
 
 
-StackSettingsConfigValue = Union[str, StackSettingsSecureConfigValue, Any]
-"""Stack configuration entry."""
-
-
 @dataclass
 class StackSettings:
     """A description of the Stack's configuration and encryption metadata."""
     secrets_provider: Optional[str]
     encrypted_key: Optional[str]
     encryption_salt: Optional[str]
-    config: Optional[Mapping[str, StackSettingsConfigValue]]
+    config: Optional[Mapping[str, Any]]
+
+    def __init__(self,
+                 secretsProvider: Optional[str] = None,
+                 encryptedKey: Optional[str] = None,
+                 encryptionSalt: Optional[str] = None,
+                 config: Optional[Mapping[str, Any]] = None):
+        self.secrets_provider = secretsProvider
+        self.encrypted_key = encryptedKey
+        self.encryption_salt = encryptionSalt
+        if config:
+            stack_config = {}
+            for key in config:
+                val = config[key]
+                if type(val) == str:
+                    stack_config[key] = val
+                elif "secure" in val:
+                    stack_config[key] = StackSettingsSecureConfigValue(**val)
+            if len(stack_config.keys()) > 0:
+                self.config = stack_config

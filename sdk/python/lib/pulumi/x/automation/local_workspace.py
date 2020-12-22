@@ -62,20 +62,27 @@ class LocalWorkspace(Workspace):
 
     def project_settings(self) -> ProjectSettings:
         for ext in setting_extensions:
-            is_json = ext == ".json"
             project_path = os.path.join(self.work_dir, f"Pulumi{ext}")
             if not os.path.exists(project_path):
                 continue
-            with open(project_path, 'r') as file:
-                settings = json.load(file) if is_json else yaml.safe_load(file)
+            with open(project_path, "r") as file:
+                settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
                 return ProjectSettings(**settings)
         raise FileNotFoundError(f"failed to find project settings file in workdir: {self.work_dir}")
 
     async def save_project_settings(self, settings: ProjectSettings) -> None:
         pass
 
-    async def stack_settings(self, stack_name: str) -> Awaitable[StackSettings]:
-        pass
+    def stack_settings(self, stack_name: str) -> StackSettings:
+        stack_settings_name = get_stack_settings_name(stack_name)
+        for ext in setting_extensions:
+            path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
+            if not os.path.exists(path):
+                continue
+            with open(path, "r") as file:
+                settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
+                return StackSettings(**settings)
+        raise FileNotFoundError(f"failed to find stack settings file in workdir: {self.work_dir}")
 
     async def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
         pass
@@ -142,3 +149,10 @@ class LocalWorkspace(Workspace):
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         envs = {**envs, **self.env_vars}
         return _run_pulumi_cmd(args, self.work_dir, envs)
+
+
+def get_stack_settings_name(name: str) -> str:
+    parts = name.split("/")
+    if len(parts) < 1:
+        return name
+    return parts[-1]
