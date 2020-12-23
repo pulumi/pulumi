@@ -117,6 +117,8 @@ var (
 		"venafi":        "Venafi",
 		"vsphere":       "vSphere",
 		"wavefront":     "Wavefront",
+		"equinix-metal": "Equinix Metal",
+		"splunk":        "Splunk",
 	}
 	// metaDescriptionRegexp attempts to extract the description from Resource.Comment.
 	// Extracts the first line, essentially the "human-friendly" part of the description.
