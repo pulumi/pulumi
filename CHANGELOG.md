@@ -3,6 +3,10 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a bug in the core engine that could cause previews to fail if a resource with changes had
+  unknown output property values.
+  [#6006](https://github.com/pulumi/pulumi/pull/6006)
+
 ## 2.16.1 (2020-12-22)
 
 - Fix a panic due to unsafe concurrent map access.
