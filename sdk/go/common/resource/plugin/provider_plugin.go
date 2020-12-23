@@ -751,10 +751,11 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	}
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
-		Label:         fmt.Sprintf("%s.outputs", label),
-		KeepUnknowns:  preview,
-		KeepSecrets:   true,
-		KeepResources: true,
+		Label:          fmt.Sprintf("%s.outputs", label),
+		RejectUnknowns: !preview,
+		KeepUnknowns:   preview,
+		KeepSecrets:    true,
+		KeepResources:  true,
 	})
 	if err != nil {
 		return "", nil, resourceStatus, err
@@ -970,7 +971,8 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 
 	outs, err := UnmarshalProperties(liveObject, MarshalOptions{
 		Label:          fmt.Sprintf("%s.outputs", label),
-		RejectUnknowns: true,
+		RejectUnknowns: !preview,
+		KeepUnknowns:   preview,
 		KeepSecrets:    true,
 		KeepResources:  true,
 	})
