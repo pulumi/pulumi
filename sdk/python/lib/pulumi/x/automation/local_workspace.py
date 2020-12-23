@@ -16,13 +16,12 @@ import os
 import tempfile
 import json
 import yaml
-from datetime import datetime
 from typing import Optional, List, Awaitable, Mapping, Callable, Any
 
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, PluginKind, StackSummary
+from .workspace import Workspace, PluginInfo, StackSummary
 from .cmd import _run_pulumi_cmd, CommandResult
 
 setting_extensions = [".yaml", ".yml", ".json"]

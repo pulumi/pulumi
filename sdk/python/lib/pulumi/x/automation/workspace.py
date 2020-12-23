@@ -68,21 +68,21 @@ class PluginInfo:
     name: str
     kind: PluginKind
     size: int
-    install_time: datetime
     last_used: datetime
-    version: Optional[str] = None
+    install_time: Optional[datetime]
+    version: Optional[str]
 
     def __init__(self,
                  name: str,
                  kind: PluginKind,
                  size: int,
-                 installTime: str,
                  lastUsedTime: str,
+                 installTime: Optional[str] = None,
                  version: Optional[str] = None) -> None:
         self.name = name
         self.kind = kind
         self.size = size
-        self.install_time = datetime.strptime(installTime[:-5], "%Y-%m-%dT%H:%M:%S")
+        self.install_time = datetime.strptime(installTime[:-5], "%Y-%m-%dT%H:%M:%S") if installTime else None
         self.last_used = datetime.strptime(lastUsedTime[:-5], "%Y-%m-%dT%H:%M:%S")
         self.version = version
 
