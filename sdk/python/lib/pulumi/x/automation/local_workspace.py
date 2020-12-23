@@ -104,11 +104,13 @@ class LocalWorkspace(Workspace):
         with open(path, "w") as file:
             json.dump(settings, file, indent=4) if found_ext == ".json" else yaml.dump(settings, stream=file)
 
-    async def serialize_args_for_op(self, stack_name: str) -> None:
-        pass
+    def serialize_args_for_op(self, stack_name: str) -> List[str]:
+        # Not used by LocalWorkspace
+        return []
 
-    async def post_command_callback(self, stack_name: str) -> None:
-        pass
+    def post_command_callback(self, stack_name: str) -> None:
+        # Not used by LocalWorkspace
+        return
 
     def get_config(self, stack_name: str, key: str) -> ConfigValue:
         self.select_stack(stack_name)

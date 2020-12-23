@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Optional, MutableMapping
+from typing import MutableMapping
 
 
 @dataclass
@@ -23,7 +23,7 @@ class ConfigValue:
     It has a plaintext value, and an option boolean indicating secretness.
     """
     value: str
-    secret: Optional[bool]
+    secret: bool = False
 
 
 ConfigMap = MutableMapping[str, ConfigValue]
