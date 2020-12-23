@@ -43,6 +43,7 @@ namespace Pulumi.X.Automation.Serialization
         {
             var options = new JsonSerializerOptions
             {
+                AllowTrailingCommas = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
@@ -58,12 +59,21 @@ namespace Pulumi.X.Automation.Serialization
             => new DeserializerBuilder()
             .WithNamingConvention(LowerCaseNamingConvention.Instance)
             .WithTypeConverter(new ProjectRuntimeYamlConverter())
+            .WithTypeConverter(new StackSettingsConfigValueYamlConverter())
             .Build();
 
         public static ISerializer BuildYamlSerializer()
-            => new SerializerBuilder()
-            .WithNamingConvention(LowerCaseNamingConvention.Instance)
-            .WithTypeConverter(new ProjectRuntimeYamlConverter())
-            .Build();
+        {
+            var stackSettingsConfigValueConverter = new StackSettingsConfigValueYamlConverter();
+
+            var builder = new SerializerBuilder()
+                .WithNamingConvention(LowerCaseNamingConvention.Instance)
+                .WithTypeConverter(new ProjectRuntimeYamlConverter())
+                .WithTypeConverter(stackSettingsConfigValueConverter);
+
+            stackSettingsConfigValueConverter.ValueSerializer = builder.BuildValueSerializer();
+
+            return builder.Build();
+        }
     }
 }
