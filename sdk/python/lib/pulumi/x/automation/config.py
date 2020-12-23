@@ -13,7 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Optional, Mapping
+from typing import Optional, MutableMapping
 
 
 @dataclass
@@ -26,5 +26,5 @@ class ConfigValue:
     secret: Optional[bool]
 
 
-ConfigMap = Mapping[str, ConfigValue]
+ConfigMap = MutableMapping[str, ConfigValue]
 """ConfigMap is a map of string to ConfigValue."""

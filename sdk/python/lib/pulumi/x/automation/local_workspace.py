@@ -16,12 +16,12 @@ import os
 import tempfile
 import json
 import yaml
-from typing import Optional, List, Awaitable, Mapping, Callable, Any
+from typing import Optional, List, Mapping, Callable, Any
 
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, StackSummary
+from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult
 from .cmd import _run_pulumi_cmd, CommandResult
 
 setting_extensions = [".yaml", ".yml", ".json"]
@@ -92,8 +92,17 @@ class LocalWorkspace(Workspace):
                 return StackSettings(**settings)
         raise FileNotFoundError(f"failed to find stack settings file in workdir: {self.work_dir}")
 
-    async def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
-        pass
+    def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
+        stack_settings_name = get_stack_settings_name(stack_name)
+        found_ext = ".yaml"
+        for ext in setting_extensions:
+            test_path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
+            if os.path.exists(test_path):
+                found_ext = ext
+                break
+        path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{found_ext}")
+        with open(path, "w") as file:
+            json.dump(settings, file, indent=4) if found_ext == ".json" else yaml.dump(settings, stream=file)
 
     async def serialize_args_for_op(self, stack_name: str) -> None:
         pass
@@ -101,32 +110,53 @@ class LocalWorkspace(Workspace):
     async def post_command_callback(self, stack_name: str) -> None:
         pass
 
-    async def get_config(self, stack_name: str, key: str) -> Awaitable[ConfigValue]:
-        pass
+    def get_config(self, stack_name: str, key: str) -> ConfigValue:
+        self.select_stack(stack_name)
+        result = self._run_pulumi_cmd_sync(["config", "get", key, "--json"])
+        val = json.loads(result.stdout)
+        return ConfigValue(**val)
 
-    async def get_all_config(self, stack_name: str) -> Awaitable[ConfigMap]:
-        pass
+    def get_all_config(self, stack_name: str) -> ConfigMap:
+        self.select_stack(stack_name)
+        result = self._run_pulumi_cmd_sync(["config", "--show-secrets", "--json"])
+        config_json = json.loads(result.stdout)
+        config_map: ConfigMap = {}
+        for key in config_json:
+            config_map[key] = ConfigValue(**config_json[key])
+        return config_map
 
-    async def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
-        pass
+    def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
+        self.select_stack(stack_name)
+        secret_arg = "--secret" if value.secret else "--plaintext"
+        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg])
 
-    async def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
-        pass
+    def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
+        for key in config:
+            self.set_config(stack_name, key, config[key])
 
-    async def remove_config(self, stack_name: str, key: str) -> None:
-        pass
+    def remove_config(self, stack_name: str, key: str) -> None:
+        self.select_stack(stack_name)
+        self._run_pulumi_cmd_sync(["config", "rm", key])
 
-    async def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
-        pass
+    def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
+        for key in keys:
+            self.remove_config(stack_name, key)
 
-    async def refresh_config(self, stack_name: str) -> None:
-        pass
+    def refresh_config(self, stack_name: str) -> None:
+        self.select_stack(stack_name)
+        self._run_pulumi_cmd_sync(["config", "refresh", "--force"])
+        self.get_all_config(stack_name)
 
-    async def who_am_i(self) -> None:
-        pass
+    def who_am_i(self) -> WhoAmIResult:
+        result = self._run_pulumi_cmd_sync(["whoami"])
+        return WhoAmIResult(user=result.stdout.strip())
 
-    async def stack(self) -> None:
-        pass
+    def stack(self) -> Optional[StackSummary]:
+        stacks = self.list_stacks()
+        for stack in stacks:
+            if stack.current:
+                return stack
+        return None
 
     def create_stack(self, stack_name: str) -> None:
         args = ["stack", "init", stack_name]
