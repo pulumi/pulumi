@@ -128,7 +128,7 @@ class Workspace(ABC):
         """
         Returns the settings object for the current project if any.
 
-        :return:
+        :return: ProjectSettings
         """
         pass
 
@@ -154,7 +154,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
+    def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
         """
         Overwrites the settings object for the stack matching the specified stack name.
 
@@ -189,7 +189,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def get_config(self, stack_name: str, key: str) -> Awaitable[ConfigValue]:
+    def get_config(self, stack_name: str, key: str) -> ConfigValue:
         """
         Returns the value associated with the specified stack name and key,
         scoped to the Workspace.
@@ -201,7 +201,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def get_all_config(self, stack_name: str) -> Awaitable[ConfigMap]:
+    def get_all_config(self, stack_name: str) -> ConfigMap:
         """
         Returns the config map for the specified stack name, scoped to the current Workspace.
 
@@ -211,7 +211,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
+    def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
         """
         Sets the specified key-value pair on the provided stack name.
 
@@ -223,7 +223,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
+    def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
         """
         Sets all values in the provided config map for the specified stack name.
 
@@ -234,7 +234,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def remove_config(self, stack_name: str, key: str) -> None:
+    def remove_config(self, stack_name: str, key: str) -> None:
         """
         Removes the specified key-value pair on the provided stack name.
 
@@ -245,7 +245,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
+    def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
         """
         Removes all values in the provided key list for the specified stack name.
 
@@ -256,7 +256,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def refresh_config(self, stack_name: str) -> None:
+    def refresh_config(self, stack_name: str) -> None:
         """
         Gets and sets the config map used with the last update for Stack matching stack name.
 
@@ -266,7 +266,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def who_am_i(self) -> None:
+    def who_am_i(self) -> WhoAmIResult:
         """
         Returns the currently authenticated user.
 
@@ -275,7 +275,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def stack(self) -> None:
+    def stack(self) -> Optional[StackSummary]:
         """
         Returns a summary of the currently selected stack, if any.
 
@@ -289,8 +289,8 @@ class Workspace(ABC):
         Creates and sets a new stack with the stack name, failing if one already exists.
 
         :param str stack_name: The name of the stack to create
-        :return: None, but throws a CommandException if the operation was unsuccessful for any reason
-        :rtype: None
+        :return: None
+        :raises CommandError Raised if a stack with the same name exists.
         """
         pass
 
@@ -300,8 +300,8 @@ class Workspace(ABC):
         Selects and sets an existing stack matching the stack stack_name, failing if none exists.
 
         :param str stack_name: The name of the stack to select
-        :return: None, but throws a CommandException if the operation was unsuccessful for any reason
-        :rtype: None
+        :return: None
+        :raises CommandError Raised if no matching stack exists.
         """
         pass
 
@@ -322,7 +322,6 @@ class Workspace(ABC):
         This queries underlying backend and may return stacks not present in the Workspace
         (as Pulumi.<stack>.yaml files).
 
-        :return: List[dict]
         """
         pass
 
