@@ -76,10 +76,12 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 	// Infer the result from the detailed diff.
 	var diffs, replaces []string
 	var detailedDiff map[string]*pulumirpc.PropertyDiff
-	if len(detailedDiff) == 0 {
+	if len(diff.DetailedDiff) == 0 {
+		diffs = make([]string, len(diff.ChangedKeys))
 		for i, k := range diff.ChangedKeys {
 			diffs[i] = string(k)
 		}
+		replaces = make([]string, len(diff.ReplaceKeys))
 		for i, k := range diff.ReplaceKeys {
 			replaces[i] = string(k)
 		}

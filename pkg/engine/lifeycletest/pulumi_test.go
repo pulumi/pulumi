@@ -17,7 +17,9 @@ package lifecycletest
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -86,6 +88,18 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 	t.Fatalf("Could not find target: %v in %v", target, names)
 	return ""
+}
+
+func TestMain(m *testing.M) {
+	grpcDefault := flag.Bool("grpc-providers", false, "enable or disable gRPC providers by default")
+
+	flag.Parse()
+
+	if *grpcDefault {
+		deploytest.UseGrpcProvidersByDefault = true
+	}
+
+	os.Exit(m.Run())
 }
 
 func TestEmptyProgramLifecycle(t *testing.T) {
