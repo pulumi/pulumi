@@ -227,7 +227,7 @@ describe("LocalWorkspace", () => {
 
         // pulumi preview
         await stack.preview();
-        // TODO: update assertions when we have stuctured output
+        // TODO: update assertions when we have structured output
 
         // pulumi refresh
         const refRes = await stack.refresh();
