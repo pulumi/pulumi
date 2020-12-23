@@ -17,7 +17,9 @@ package lifecycletest
 
 import (
 	"context"
+	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -86,6 +88,18 @@ func pickURN(t *testing.T, urns []resource.URN, names []string, target string) r
 
 	t.Fatalf("Could not find target: %v in %v", target, names)
 	return ""
+}
+
+func TestMain(m *testing.M) {
+	grpcDefault := flag.Bool("grpc-providers", false, "enable or disable gRPC providers by default")
+
+	flag.Parse()
+
+	if *grpcDefault {
+		deploytest.UseGrpcProvidersByDefault = true
+	}
+
+	os.Exit(m.Run())
 }
 
 func TestEmptyProgramLifecycle(t *testing.T) {
@@ -1576,6 +1590,91 @@ func TestProviderPreview(t *testing.T) {
 				},
 			}, nil
 		}),
+	}
+
+	preview := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		if !preview {
+			computed = "alpha"
+		}
+
+		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"foo": "bar",
+			"baz": map[string]interface{}{
+				"a": 42,
+				"b": computed,
+			},
+			"qux": []interface{}{
+				computed,
+				24,
+			},
+			"zed": computed,
+		})
+
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs: ins,
+		})
+		assert.NoError(t, err)
+
+		assert.True(t, state.DeepEquals(ins))
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run a preview. The inputs should be propagated to the outputs by the provider during the create.
+	preview, sawPreview = true, false
+	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.True(t, sawPreview)
+
+	// Run an update.
+	preview, sawPreview = false, false
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.False(t, sawPreview)
+
+	// Run another preview. The inputs should be propagated to the outputs during the update.
+	preview, sawPreview = true, false
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	assert.Nil(t, res)
+	assert.True(t, sawPreview)
+}
+
+func TestProviderPreviewGrpc(t *testing.T) {
+	sawPreview := false
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						sawPreview = true
+					}
+
+					assert.Equal(t, preview, news.ContainsUnknowns())
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						sawPreview = true
+					}
+
+					assert.Equal(t, preview, news.ContainsUnknowns())
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
 	}
 
 	preview := true
