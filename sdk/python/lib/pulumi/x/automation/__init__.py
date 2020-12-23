@@ -12,7 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from .config import ConfigMap, ConfigValue
+from .errors import StackNotFoundError, StackAlreadyExistsError, CommandError, ConcurrentUpdateError
 from .local_workspace import LocalWorkspace
 from .workspace import PluginInfo, PluginKind, StackSummary
 from .project_settings import ProjectSettings, ProjectRuntime, ProjectRuntimeInfo
 from .stack_settings import StackSettings
+from .stack import Stack

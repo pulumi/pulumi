@@ -112,10 +112,10 @@ describe("LocalWorkspace", () => {
 
         await stack.removeConfig("plain");
         values = await stack.getAllConfig();
-        assert.strictEqual(Object.keys(values).length, 1, "expected stack config to be empty");
+        assert.strictEqual(Object.keys(values).length, 1, "expected stack config to have 1 value");
         await stack.setConfig("foo", { value: "bar" });
         values = await stack.getAllConfig();
-        assert.strictEqual(Object.keys(values).length, 2, "expected stack config to be empty");
+        assert.strictEqual(Object.keys(values).length, 2, "expected stack config to have 2 values");
 
         await ws.removeStack(stackName);
     }));

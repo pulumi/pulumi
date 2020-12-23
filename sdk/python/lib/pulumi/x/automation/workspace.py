@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import (
     Callable,
-    Awaitable,
     Mapping,
     Any,
     List,
@@ -165,7 +164,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def serialize_args_for_op(self, stack_name: str) -> None:
+    def serialize_args_for_op(self, stack_name: str) -> List[str]:
         """
         A hook to provide additional args to CLI commands before they are executed.
         Provided with stack name, returns a list of args to append to an invoked command ["--config=...", ]
@@ -177,7 +176,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def post_command_callback(self, stack_name: str) -> None:
+    def post_command_callback(self, stack_name: str) -> None:
         """
         A hook executed after every command. Called with the stack name.
         An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml)

@@ -15,7 +15,17 @@
 import os
 import unittest
 from random import random
-from pulumi.x.automation import LocalWorkspace, PluginInfo, ProjectSettings, StackSummary
+from pulumi.x.automation import (
+    CommandError,
+    ConfigMap,
+    ConfigValue,
+    LocalWorkspace,
+    PluginInfo,
+    ProjectSettings,
+    StackSummary,
+    Stack,
+    StackAlreadyExistsError
+)
 from typing import List, Optional
 
 extensions = ["json", "yaml", "yml"]
@@ -23,6 +33,16 @@ extensions = ["json", "yaml", "yml"]
 
 def test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
+
+
+def stack_namer():
+    return f"int_test_{get_test_suffix()}"
+
+
+def normalize_config_key(key: str, project_name: str):
+    parts = key.split(":")
+    if len(parts) < 2:
+        return f"{project_name}:{key}"
 
 
 def get_test_suffix() -> int:
@@ -77,43 +97,107 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_functions(self):
         project_settings = ProjectSettings(name="python_test", runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = f"python_int_test_{get_test_suffix()}"
-        second_stack_name = f"python_int_test_second_{get_test_suffix()}"
+        stack_1_name = f"python_int_test_first_{get_test_suffix()}"
+        stack_2_name = f"python_int_test_second_{get_test_suffix()}"
 
-        # Create the stack
-        ws.create_stack(stack_name)
-        # Check the stack exists
+        # Create a stack
+        ws.create_stack(stack_1_name)
         stacks = ws.list_stacks()
-        first_stack = get_stack(stacks, stack_name)
-        self.assertIsNotNone(first_stack)
+        stack_1 = get_stack(stacks, stack_1_name)
+
+        # Check the stack exists
+        self.assertIsNotNone(stack_1)
         # Check that it's current
-        self.assertTrue(first_stack.current)
+        self.assertTrue(stack_1.current)
 
         # Create another stack
-        ws.create_stack(second_stack_name)
-        # Check the second stack exists
+        ws.create_stack(stack_2_name)
         stacks = ws.list_stacks()
-        first_stack = get_stack(stacks, stack_name)
-        second_stack = get_stack(stacks, second_stack_name)
-        self.assertIsNotNone(second_stack)
+        stack_1 = get_stack(stacks, stack_1_name)
+        stack_2 = get_stack(stacks, stack_2_name)
+
+        # Check the second stack exists
+        self.assertIsNotNone(stack_2)
         # Check that second stack is current but the first is not
-        self.assertFalse(first_stack.current)
-        self.assertTrue(second_stack.current)
+        self.assertFalse(stack_1.current)
+        self.assertTrue(stack_2.current)
 
         # Select the first stack again
-        ws.select_stack(stack_name)
-        # Check the first stack is now current
+        ws.select_stack(stack_1_name)
         stacks = ws.list_stacks()
-        first_stack = get_stack(stacks, stack_name)
-        self.assertTrue(first_stack.current)
+        stack_1 = get_stack(stacks, stack_1_name)
+
+        # Check the first stack is now current
+        self.assertTrue(stack_1.current)
+
+        # Get the current stack info
+        current_stack = ws.stack()
+
+        # Check that the name matches stack 1
+        self.assertEqual(current_stack.name, stack_1_name)
 
         # Remove both stacks
-        ws.remove_stack(stack_name)
-        ws.remove_stack(second_stack_name)
-
-        # Check that they are both gone
+        ws.remove_stack(stack_1_name)
+        ws.remove_stack(stack_2_name)
         stacks = ws.list_stacks()
-        first_stack = get_stack(stacks, stack_name)
-        second_stack = get_stack(stacks, second_stack_name)
-        self.assertIsNone(first_stack)
-        self.assertIsNone(second_stack)
+        stack_1 = get_stack(stacks, stack_1_name)
+        stack_2 = get_stack(stacks, stack_2_name)
+
+        # Check that they were both removed
+        self.assertIsNone(stack_1)
+        self.assertIsNone(stack_2)
+
+    def test_who_am_i(self):
+        ws = LocalWorkspace()
+        result = ws.who_am_i()
+        self.assertIsNotNone(result.user)
+
+    def test_stack_init(self):
+        project_settings = ProjectSettings(name="python_test", runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer()
+
+        Stack(stack_name, ws)
+        # Trying to create the stack again throws an error
+        self.assertRaises(StackAlreadyExistsError, Stack, stack_name, ws)
+        # Setting select_if_exists succeeds
+        self.assertEqual(Stack(stack_name, ws, select_if_exists=True).name, stack_name)
+        ws.remove_stack(stack_name)
+
+    def test_config_functions(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer()
+        stack = Stack(stack_name, ws)
+
+        config: ConfigMap = {
+            "plain": ConfigValue(value="abc"),
+            "secret": ConfigValue(value="def", secret=True)
+        }
+
+        plain_key = normalize_config_key("plain", project_name)
+        secret_key = normalize_config_key("secret", project_name)
+
+        self.assertRaises(CommandError, stack.get_config, plain_key)
+
+        values = stack.get_all_config()
+        self.assertEqual(len(values), 0)
+
+        stack.set_all_config(config)
+        values = stack.get_all_config()
+        self.assertEqual(values[plain_key].value, "abc")
+        self.assertFalse(values[plain_key].secret)
+        self.assertEqual(values[secret_key].value, "def")
+        self.assertTrue(values[secret_key].secret)
+
+        stack.remove_config("plain")
+        values = stack.get_all_config()
+        self.assertEqual(len(values), 1)
+
+        stack.set_config("foo", ConfigValue(value="bar"))
+        values = stack.get_all_config()
+        self.assertEqual(len(values), 2)
+
+        ws.remove_stack(stack_name)
+
