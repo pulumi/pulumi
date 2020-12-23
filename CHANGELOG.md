@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.16.2 (2020-12-23)
 
 - Fix a bug in the core engine that could cause previews to fail if a resource with changes had
   unknown output property values.
