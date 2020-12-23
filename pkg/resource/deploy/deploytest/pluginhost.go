@@ -17,6 +17,7 @@ package deploytest
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/blang/semver"
@@ -28,37 +29,100 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
+var UseGrpcProvidersByDefault = false
+
 type LoadProviderFunc func() (plugin.Provider, error)
 type LoadProviderWithHostFunc func(host plugin.Host) (plugin.Provider, error)
+
+type ProviderOption func(p *ProviderLoader)
+
+func WithoutGrpc(p *ProviderLoader) {
+	p.useGRPC = false
+}
+
+func WithGrpc(p *ProviderLoader) {
+	p.useGRPC = true
+}
 
 type ProviderLoader struct {
 	pkg          tokens.Package
 	version      semver.Version
 	load         LoadProviderFunc
 	loadWithHost LoadProviderWithHostFunc
+	useGRPC      bool
 }
 
-func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProviderFunc) *ProviderLoader {
-	return &ProviderLoader{
+func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProviderFunc, opts ...ProviderOption) *ProviderLoader {
+	p := &ProviderLoader{
 		pkg:     pkg,
 		version: version,
 		load:    load,
+		useGRPC: UseGrpcProvidersByDefault,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
 }
 
 func NewProviderLoaderWithHost(pkg tokens.Package, version semver.Version,
-	load LoadProviderWithHostFunc) *ProviderLoader {
+	load LoadProviderWithHostFunc, opts ...ProviderOption) *ProviderLoader {
 
-	return &ProviderLoader{
+	p := &ProviderLoader{
 		pkg:          pkg,
 		version:      version,
 		loadWithHost: load,
+		useGRPC:      UseGrpcProvidersByDefault,
 	}
+	for _, o := range opts {
+		o(p)
+	}
+	return p
+}
+
+type nopCloserT int
+
+func (nopCloserT) Close() error { return nil }
+
+var nopCloser io.Closer = nopCloserT(0)
+
+type grpcWrapper struct {
+	stop chan bool
+}
+
+func (w *grpcWrapper) Close() error {
+	go func() { w.stop <- true }()
+	return nil
+}
+
+func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer, error) {
+	wrapper := &grpcWrapper{stop: make(chan bool)}
+	port, _, err := rpcutil.Serve(0, wrapper.stop, []func(*grpc.Server) error{
+		func(srv *grpc.Server) error {
+			pulumirpc.RegisterResourceProviderServer(srv, plugin.NewProviderServer(provider))
+			return nil
+		},
+	}, nil)
+	if err != nil {
+		return nil, nil, fmt.Errorf("could not start resource provider service: %w", err)
+	}
+	conn, err := grpc.Dial(
+		fmt.Sprintf("127.0.0.1:%v", port),
+		grpc.WithInsecure(),
+		grpc.WithUnaryInterceptor(rpcutil.OpenTracingClientInterceptor()),
+		rpcutil.GrpcChannelOptions(),
+	)
+	if err != nil {
+		contract.IgnoreClose(wrapper)
+		return nil, nil, fmt.Errorf("could not connect to resource provider service: %v", err)
+	}
+	return plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false), wrapper, nil
 }
 
 type hostEngine struct {
@@ -108,7 +172,7 @@ type pluginHost struct {
 
 	engine *hostEngine
 
-	providers map[plugin.Provider]struct{}
+	providers map[plugin.Provider]io.Closer
 	closed    bool
 	m         sync.Mutex
 }
@@ -138,7 +202,7 @@ func NewPluginHost(sink, statusSink diag.Sink, languageRuntime plugin.LanguageRu
 		sink:            sink,
 		statusSink:      statusSink,
 		engine:          engine,
-		providers:       make(map[plugin.Provider]struct{}),
+		providers:       map[plugin.Provider]io.Closer{},
 	}
 }
 
@@ -180,10 +244,18 @@ func (host *pluginHost) Provider(pkg tokens.Package, version *semver.Version) (p
 		return nil, err
 	}
 
+	closer := nopCloser
+	if best.useGRPC {
+		prov, closer, err = wrapProviderWithGrpc(prov)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	host.m.Lock()
 	defer host.m.Unlock()
 
-	host.providers[prov] = struct{}{}
+	host.providers[prov] = closer
 	return prov, nil
 }
 
@@ -207,9 +279,16 @@ func (host *pluginHost) Close() error {
 	host.m.Lock()
 	defer host.m.Unlock()
 
+	var err error
+	for _, closer := range host.providers {
+		if pErr := closer.Close(); pErr != nil {
+			err = pErr
+		}
+	}
+
 	go func() { host.engine.stop <- true }()
 	host.closed = true
-	return nil
+	return err
 }
 func (host *pluginHost) ServerAddr() string {
 	return host.engine.address
