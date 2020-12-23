@@ -12,16 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from dataclasses import dataclass
-from enum import Enum
-from typing import Optional, Mapping, Any, Union
+from typing import Optional, Mapping, Any, Union, Literal
 
 
-class ProjectRuntime(str, Enum):
-    """Supported Pulumi program language runtimes."""
-    NODEJS = "nodejs"
-    PYTHON = "python"
-    GO = "go"
-    DOTNET = "dotnet"
+"""Supported Pulumi program language runtimes."""
+ProjectRuntime = Literal["nodejs", "python", "go", "dotnet"]
 
 
 @dataclass

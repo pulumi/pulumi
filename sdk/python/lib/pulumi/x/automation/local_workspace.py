@@ -22,7 +22,7 @@ from typing import Optional, List, Awaitable, Mapping, Callable, Any
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, PluginKind
+from .workspace import Workspace, PluginInfo, PluginKind, StackSummary
 from .cmd import _run_pulumi_cmd, CommandResult
 
 setting_extensions = [".yaml", ".yml", ".json"]
@@ -71,8 +71,16 @@ class LocalWorkspace(Workspace):
                 return ProjectSettings(**settings)
         raise FileNotFoundError(f"failed to find project settings file in workdir: {self.work_dir}")
 
-    async def save_project_settings(self, settings: ProjectSettings) -> None:
-        pass
+    def save_project_settings(self, settings: ProjectSettings) -> None:
+        found_ext = ".yaml"
+        for ext in setting_extensions:
+            test_path = os.path.join(self.work_dir, f"Pulumi{ext}")
+            if os.path.exists(test_path):
+                found_ext = ext
+                break
+        path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
+        with open(path, "w") as file:
+            json.dump(settings, file, indent=4) if found_ext == ".json" else yaml.dump(settings, stream=file)
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
@@ -127,14 +135,20 @@ class LocalWorkspace(Workspace):
             args.extend(["--secrets-provider", self.secrets_provider])
         self._run_pulumi_cmd_sync(args)
 
-    async def select_stack(self, stack_name: str) -> None:
-        pass
+    def select_stack(self, stack_name: str) -> None:
+        self._run_pulumi_cmd_sync(["stack", "select", stack_name])
 
-    async def remove_stack(self, stack_name: str) -> None:
-        pass
+    def remove_stack(self, stack_name: str) -> None:
+        self._run_pulumi_cmd_sync(["stack", "rm", "--yes", stack_name])
 
-    async def list_stacks(self) -> List[dict]:
-        pass
+    def list_stacks(self) -> List[StackSummary]:
+        result = self._run_pulumi_cmd_sync(["stack", "ls", "--json"])
+        json_list = json.loads(result.stdout)
+        stack_list: List[StackSummary] = []
+        for stack_json in json_list:
+            stack = StackSummary(**stack_json)
+            stack_list.append(stack)
+        return stack_list
 
     def install_plugin(self, plugin_name: str, version: str, kind: str = "resource") -> None:
         self._run_pulumi_cmd_sync(["plugin", "install", kind, plugin_name, version])
@@ -156,12 +170,7 @@ class LocalWorkspace(Workspace):
         json_list = json.loads(result.stdout)
         plugin_list: List[PluginInfo] = []
         for plugin_json in json_list:
-            plugin = PluginInfo(name=plugin_json["name"],
-                                kind=PluginKind(plugin_json["kind"]),
-                                size=plugin_json["size"],
-                                version=plugin_json["version"],
-                                install_time=datetime.strptime(plugin_json["installTime"][:-5], "%Y-%m-%dT%H:%M:%S"),
-                                last_used=datetime.strptime(plugin_json["lastUsedTime"][:-5], "%Y-%m-%dT%H:%M:%S"))
+            plugin = PluginInfo(**plugin_json)
             plugin_list.append(plugin)
         return plugin_list
 
