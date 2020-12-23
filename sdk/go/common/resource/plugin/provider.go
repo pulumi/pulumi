@@ -104,7 +104,8 @@ type CheckFailure struct {
 	Reason   string               // the reason the property failed to check.
 }
 
-var NotYetImplemented = errors.New("NYI")
+// ErrNotYetImplemented may be returned from a provider for optional methods that are not yet implemented.
+var ErrNotYetImplemented = errors.New("NYI")
 
 // DiffChanges represents the kind of changes detected by a diff operation.
 type DiffChanges int

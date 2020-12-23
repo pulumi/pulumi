@@ -58,7 +58,7 @@ func (p *providerServer) marshalOptions(label string) MarshalOptions {
 }
 
 func (p *providerServer) checkNYI(method string, err error) error {
-	if err == NotYetImplemented {
+	if err == ErrNotYetImplemented {
 		return status.Error(codes.Unimplemented, fmt.Sprintf("%v is not yet implemented", method))
 	}
 	return err
@@ -106,7 +106,7 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 				kind, replaces = pulumirpc.PropertyDiff_UPDATE_REPLACE, append(replaces, path)
 			}
 
-			detailedDiff[string(path)] = &pulumirpc.PropertyDiff{
+			detailedDiff[path] = &pulumirpc.PropertyDiff{
 				Kind:      kind,
 				InputDiff: diff.InputDiff,
 			}
@@ -123,7 +123,9 @@ func (p *providerServer) marshalDiff(diff DiffResult) (*pulumirpc.DiffResponse, 
 
 }
 
-func (p *providerServer) GetSchema(ctx context.Context, req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+func (p *providerServer) GetSchema(ctx context.Context,
+	req *pulumirpc.GetSchemaRequest) (*pulumirpc.GetSchemaResponse, error) {
+
 	schema, err := p.provider.GetSchema(int(req.GetVersion()))
 	if err != nil {
 		return nil, err
@@ -146,7 +148,9 @@ func (p *providerServer) Cancel(ctx context.Context, req *pbempty.Empty) (*pbemp
 	return &pbempty.Empty{}, nil
 }
 
-func (p *providerServer) CheckConfig(ctx context.Context, req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+func (p *providerServer) CheckConfig(ctx context.Context,
+	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
+
 	urn := resource.URN(req.GetUrn())
 
 	state, err := UnmarshalProperties(req.GetOlds(), p.unmarshalOptions("olds"))
@@ -197,7 +201,9 @@ func (p *providerServer) DiffConfig(ctx context.Context, req *pulumirpc.DiffRequ
 	return p.marshalDiff(diff)
 }
 
-func (p *providerServer) Configure(ctx context.Context, req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+func (p *providerServer) Configure(ctx context.Context,
+	req *pulumirpc.ConfigureRequest) (*pulumirpc.ConfigureResponse, error) {
+
 	var inputs resource.PropertyMap
 	if req.GetArgs() != nil {
 		args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
@@ -354,7 +360,8 @@ func (p *providerServer) Update(ctx context.Context, req *pulumirpc.UpdateReques
 		return nil, err
 	}
 
-	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(), req.GetPreview())
+	newState, _, err := p.provider.Update(urn, id, state, inputs, req.GetTimeout(), req.GetIgnoreChanges(),
+		req.GetPreview())
 	if err != nil {
 		return nil, err
 	}
@@ -382,7 +389,9 @@ func (p *providerServer) Delete(ctx context.Context, req *pulumirpc.DeleteReques
 	return &pbempty.Empty{}, nil
 }
 
-func (p *providerServer) Construct(ctx context.Context, req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+func (p *providerServer) Construct(ctx context.Context,
+	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
+
 	typ, name, parent := tokens.Type(req.GetType()), tokens.QName(req.GetName()), resource.URN(req.GetParent())
 
 	inputs, err := UnmarshalProperties(req.GetInputs(), p.unmarshalOptions("inputs"))
@@ -484,21 +493,26 @@ func (p *providerServer) Invoke(ctx context.Context, req *pulumirpc.InvokeReques
 	}, nil
 }
 
-func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest, server pulumirpc.ResourceProvider_StreamInvokeServer) error {
+func (p *providerServer) StreamInvoke(req *pulumirpc.InvokeRequest,
+	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
+
 	args, err := UnmarshalProperties(req.GetArgs(), p.unmarshalOptions("args"))
 	if err != nil {
 		return err
 	}
 
-	failures, err := p.provider.StreamInvoke(tokens.ModuleMember(req.GetTok()), args, func(item resource.PropertyMap) error {
-		rpcItem, err := MarshalProperties(item, p.marshalOptions("item"))
-		if err != nil {
-			return err
-		}
+	failures, err := p.provider.StreamInvoke(tokens.ModuleMember(req.GetTok()), args,
+		func(item resource.PropertyMap) error {
+			rpcItem, err := MarshalProperties(item, p.marshalOptions("item"))
+			if err != nil {
+				return err
+			}
 
-		return server.Send(&pulumirpc.InvokeResponse{Return: rpcItem})
-	})
-
+			return server.Send(&pulumirpc.InvokeResponse{Return: rpcItem})
+		})
+	if err != nil {
+		return err
+	}
 	if len(failures) == 0 {
 		return nil
 	}

@@ -58,7 +58,9 @@ type ProviderLoader struct {
 	useGRPC      bool
 }
 
-func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProviderFunc, opts ...ProviderOption) *ProviderLoader {
+func NewProviderLoader(pkg tokens.Package, version semver.Version, load LoadProviderFunc,
+	opts ...ProviderOption) *ProviderLoader {
+
 	p := &ProviderLoader{
 		pkg:     pkg,
 		version: version,
@@ -122,7 +124,8 @@ func wrapProviderWithGrpc(provider plugin.Provider) (plugin.Provider, io.Closer,
 		contract.IgnoreClose(wrapper)
 		return nil, nil, fmt.Errorf("could not connect to resource provider service: %v", err)
 	}
-	return plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false), wrapper, nil
+	wrapped := plugin.NewProviderWithClient(nil, provider.Pkg(), pulumirpc.NewResourceProviderClient(conn), false)
+	return wrapped, wrapper, nil
 }
 
 type hostEngine struct {
