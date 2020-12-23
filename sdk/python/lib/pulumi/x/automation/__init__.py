@@ -13,4 +13,6 @@
 # limitations under the License.
 
 from .local_workspace import LocalWorkspace
-from .workspace import PluginInfo, PluginKind
+from .workspace import PluginInfo, PluginKind, StackSummary
+from .project_settings import ProjectSettings, ProjectRuntime, ProjectRuntimeInfo
+from .stack_settings import StackSettings

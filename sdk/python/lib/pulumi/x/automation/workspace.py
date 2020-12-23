@@ -15,7 +15,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from enum import Enum
 from typing import (
     Callable,
     Awaitable,
@@ -23,17 +22,14 @@ from typing import (
     Any,
     List,
     Optional,
-
+    Literal
 )
 from .stack_settings import StackSettings
 from .project_settings import ProjectSettings
 from .config import ConfigMap, ConfigValue
 
 
-class PluginKind(str, Enum):
-    ANALYZER = "analyzer"
-    LANGUAGE = "language"
-    RESOURCE = "resource"
+PluginKind = Literal["analyzer", "language", "resource"]
 
 
 @dataclass
@@ -41,10 +37,24 @@ class StackSummary:
     """A summary of the status of a given stack."""
     name: str
     current: bool
-    last_update: Optional[str]
     update_in_progress: bool
+    last_update: Optional[datetime]
     resource_count: Optional[int]
     url: Optional[str]
+
+    def __init__(self,
+                 name: str,
+                 current: bool,
+                 updateInProgress: bool = False,
+                 lastUpdate: Optional[str] = None,
+                 resourceCount: Optional[int] = None,
+                 url: Optional[str] = None) -> None:
+        self.name = name
+        self.current = current
+        self.update_in_progress = updateInProgress
+        self.last_update = datetime.strptime(lastUpdate[:-5], "%Y-%m-%dT%H:%M:%S") if lastUpdate else None
+        self.resource_count = resourceCount
+        self.url = url
 
 
 @dataclass
@@ -61,6 +71,20 @@ class PluginInfo:
     install_time: datetime
     last_used: datetime
     version: Optional[str] = None
+
+    def __init__(self,
+                 name: str,
+                 kind: PluginKind,
+                 size: int,
+                 installTime: str,
+                 lastUsedTime: str,
+                 version: Optional[str] = None) -> None:
+        self.name = name
+        self.kind = kind
+        self.size = size
+        self.install_time = datetime.strptime(installTime[:-5], "%Y-%m-%dT%H:%M:%S")
+        self.last_used = datetime.strptime(lastUsedTime[:-5], "%Y-%m-%dT%H:%M:%S")
+        self.version = version
 
 
 class Workspace(ABC):
@@ -109,7 +133,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def save_project_settings(self, settings: ProjectSettings) -> None:
+    def save_project_settings(self, settings: ProjectSettings) -> None:
         """
         Overwrites the settings object in the current project.
         There can only be a single project per workspace. Fails is new project name does not match old.
@@ -271,7 +295,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def select_stack(self, stack_name: str) -> None:
+    def select_stack(self, stack_name: str) -> None:
         """
         Selects and sets an existing stack matching the stack stack_name, failing if none exists.
 
@@ -282,7 +306,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def remove_stack(self, stack_name: str) -> None:
+    def remove_stack(self, stack_name: str) -> None:
         """
         Deletes the stack and all associated configuration and history.
 
@@ -292,7 +316,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    async def list_stacks(self) -> List[dict]:
+    def list_stacks(self) -> List[StackSummary]:
         """
         Returns all Stacks created under the current Project.
         This queries underlying backend and may return stacks not present in the Workspace

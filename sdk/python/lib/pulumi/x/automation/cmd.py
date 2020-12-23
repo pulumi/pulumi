@@ -14,7 +14,8 @@
 
 import os
 import subprocess
-from typing import Optional, List, Mapping, Callable
+from typing import List, Mapping
+from .errors import create_command_error
 
 UNKNOWN_ERR_CODE = -2
 
@@ -23,17 +24,14 @@ class CommandResult:
     stdout: str
     stderr: str
     code: int
-    err: Optional[Exception]
 
-    def __init__(self, stdout: str, stderr: str, code: int, err: Optional[Exception] = None) -> None:
+    def __init__(self, stdout: str, stderr: str, code: int) -> None:
         self.stdout = stdout
         self.stderr = stderr
         self.code = code
-        self.err = err
 
     def __repr__(self) -> str:
-        err_str = str(self.err) if self.err else None
-        return f"code: {self.code}\n stdout: {self.stdout}\n stderr: {self.stderr}\n err: {err_str}\n"
+        return f"\n code: {self.code}\n stdout: {self.stdout}\n stderr: {self.stderr}"
 
 
 def _run_pulumi_cmd(args: List[str],
@@ -47,6 +45,10 @@ def _run_pulumi_cmd(args: List[str],
     cmd.extend(args)
 
     process = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
-    code = process.returncode or UNKNOWN_ERR_CODE
+    code = process.returncode if process.returncode is not None else UNKNOWN_ERR_CODE
 
-    return CommandResult(stderr=process.stderr, stdout=process.stdout, code=code)
+    result = CommandResult(stderr=process.stderr, stdout=process.stdout, code=code)
+    if code != 0:
+        raise create_command_error(result)
+
+    return result
