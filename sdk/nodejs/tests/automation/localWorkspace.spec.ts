@@ -149,8 +149,8 @@ describe("LocalWorkspace", () => {
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackName = `int_test${getTestSuffix()}`;
         const stack = await Stack.create(stackName, ws);
-        const histroy = await stack.history();
-        assert.strictEqual(histroy.length, 0);
+        const history = await stack.history();
+        assert.strictEqual(history.length, 0);
         const info = await stack.info();
         assert.strictEqual(typeof (info), "undefined");
         await ws.removeStack(stackName);
@@ -180,7 +180,7 @@ describe("LocalWorkspace", () => {
 
         // pulumi preview
         await stack.preview();
-        // TODO: update assertions when we have stuctured output
+        // TODO: update assertions when we have structured output
 
         // pulumi refresh
         const refRes = await stack.refresh();
