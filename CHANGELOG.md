@@ -26,6 +26,9 @@ CHANGELOG
 
 - [CLI] Add a confirmation prompt when using `pulumi policy rm`
   [#6034](https://github.com/pulumi/pulumi/pull/6034)
+  
+- Python Automation API.
+  [#5979](https://github.com/pulumi/pulumi/pull/5979)
 
 - [CLI] Ensure errors with the Pulumi credentials file
   give the user some information on how to resolve the problem

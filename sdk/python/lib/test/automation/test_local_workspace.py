@@ -215,3 +215,41 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNone(info)
 
         ws.remove_stack(stack_name)
+
+    def test_stack_lifecycle_local_program(self):
+        stack_name = stack_namer()
+        work_dir = test_path("data", "testproj")
+        ws = LocalWorkspace(work_dir=work_dir)
+        stack = Stack(stack_name, ws)
+
+        config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True)
+        }
+        stack.set_all_config(config)
+
+        # pulumi up
+        up_res = stack.up()
+        self.assertEqual(len(up_res.outputs), 3)
+        self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+        self.assertFalse(up_res.outputs["exp_static"].secret)
+        self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+        self.assertFalse(up_res.outputs["exp_cfg"].secret)
+        self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+        self.assertTrue(up_res.outputs["exp_secret"].secret)
+        self.assertEqual(up_res.summary.kind, "update")
+        self.assertEqual(up_res.summary.result, "succeeded")
+
+        # pulumi preview
+        stack.preview()
+        # TODO: update assertions when we have structured output
+
+        # pulumi refresh
+        refresh_res = stack.refresh()
+        self.assertEqual(refresh_res.summary.kind, "refresh")
+        self.assertEqual(refresh_res.summary.result, "succeeded")
+
+        # pulumi destroy
+        destroy_res = stack.destroy()
+        self.assertEqual(destroy_res.summary.kind, "destroy")
+        self.assertEqual(destroy_res.summary.result, "succeeded")

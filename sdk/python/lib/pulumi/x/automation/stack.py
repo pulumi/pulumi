@@ -14,6 +14,7 @@
 
 from __future__ import annotations
 import json
+from enum import Enum
 from datetime import datetime
 from dataclasses import dataclass
 from typing import List, Any, Mapping, MutableMapping, Literal, Optional, Callable
@@ -24,6 +25,11 @@ from .errors import StackAlreadyExistsError
 from .workspace import Workspace, PulumiFn
 
 SECRET_SENTINEL = "[secret]"
+
+
+class ExecKind(str, Enum):
+    LOCAL = "auto.local"
+    INLINE = "auto.inline"
 
 
 @dataclass
@@ -72,7 +78,7 @@ class UpdateSummary:
                  endTime: str,
                  version: Optional[int] = None,
                  Deployment: Optional[str] = None,
-                 resource_changes: Optional[OpMap] = None):
+                 resourceChanges: Optional[OpMap] = None):
         self.kind = kind
         self.start_time = datetime.strptime(startTime[:-5], "%Y-%m-%dT%H:%M:%S")
         self.end_time = datetime.strptime(endTime[:-5], "%Y-%m-%dT%H:%M:%S")
@@ -80,7 +86,7 @@ class UpdateSummary:
         self.environment = environment
         self.result = result
         self.Deployment = Deployment
-        self.resource_changes = resource_changes
+        self.resource_changes = resourceChanges
         self.version = version
         self.config: ConfigMap = {}
         for key in config:
@@ -114,42 +120,6 @@ class DestroyResult(BaseResult):
     pass
 
 
-@dataclass
-class BaseOptions:
-    parallel: Optional[int]
-    message: Optional[str]
-    target: Optional[List[str]]
-
-
-@dataclass
-class UpOptions(BaseOptions):
-    expect_no_changes: Optional[bool]
-    target_dependents: Optional[bool]
-    replace: Optional[List[str]]
-    on_output: Callable[[str], None]
-    program: Optional[PulumiFn]
-
-
-@dataclass
-class PreviewOptions(BaseOptions):
-    expect_no_changes: Optional[bool]
-    target_dependents: Optional[bool]
-    replace: Optional[List[str]]
-    program: Optional[PulumiFn]
-
-
-@dataclass
-class RefreshOptions(BaseOptions):
-    expect_no_changes: Optional[bool]
-    on_output: Callable[[str], None]
-
-
-@dataclass
-class DestroyOptions(BaseOptions):
-    target_dependents: Optional[bool]
-    on_output: Callable[[str], None]
-
-
 class Stack:
     name: str
     """The name identifying the Stack."""
@@ -168,6 +138,123 @@ class Stack:
                 workspace.select_stack(name)
             else:
                 raise
+
+    def up(self,
+           parallel: Optional[int] = None,
+           message: Optional[str] = None,
+           target: Optional[List[str]] = None,
+           expect_no_changes: Optional[bool] = None,
+           target_dependents: Optional[bool] = None,
+           replace: Optional[List[str]] = None,
+           on_output: Optional[Callable[[str], None]] = None,
+           program: Optional[PulumiFn] = None) -> UpResult:
+        """
+        Creates or updates the resources in a stack by executing the program in the Workspace.
+        https://www.pulumi.com/docs/reference/cli/pulumi_up/
+        """
+        args = ["up", "--yes", "--skip-preview"]
+        kind = ExecKind.LOCAL.value
+        inline_program = self.workspace.program or program
+        self.workspace.select_stack(self.name)
+
+        extra_args = _parse_extra_args(message=message,
+                                       expect_no_changes=expect_no_changes,
+                                       replace=replace,
+                                       target=target,
+                                       target_dependents=target_dependents,
+                                       parallel=parallel)
+        args.extend(extra_args)
+
+        if inline_program:
+            # TODO Inline programs
+            pass
+        args.extend(["--exec-kind", kind])
+
+        up_result = self._run_pulumi_cmd_sync(args, on_output)
+        outputs = self.outputs()
+        summary = self.info()
+        assert(summary is not None)
+        return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
+
+    def preview(self,
+                parallel: Optional[int] = None,
+                message: Optional[str] = None,
+                target: Optional[List[str]] = None,
+                expect_no_changes: Optional[bool] = None,
+                target_dependents: Optional[bool] = None,
+                replace: Optional[List[str]] = None,
+                program: Optional[PulumiFn] = None) -> PreviewResult:
+        """
+        Performs a dry-run update to a stack, returning pending changes.
+        https://www.pulumi.com/docs/reference/cli/pulumi_preview/
+        """
+        args = ["preview"]
+        kind = ExecKind.LOCAL.value
+        inline_program = self.workspace.program or program
+        self.workspace.select_stack(self.name)
+
+        extra_args = _parse_extra_args(message=message,
+                                       expect_no_changes=expect_no_changes,
+                                       replace=replace,
+                                       target=target,
+                                       target_dependents=target_dependents,
+                                       parallel=parallel)
+        args.extend(extra_args)
+
+        if inline_program:
+            # TODO Inline programs
+            pass
+        args.extend(["--exec-kind", kind])
+
+        preview_result = self._run_pulumi_cmd_sync(args)
+        summary = self.info()
+        assert(summary is not None)
+        return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr, summary=summary)
+
+    def refresh(self,
+                parallel: Optional[int] = None,
+                message: Optional[str] = None,
+                target: Optional[List[str]] = None,
+                expect_no_changes: Optional[bool] = None,
+                on_output: Optional[Callable[[str], None]] = None) -> RefreshResult:
+        """
+        Compares the current stack’s resource state with the state known to exist in the actual
+        cloud provider. Any such changes are adopted into the current stack.
+        """
+        args = ["refresh", "--yes", "--skip-preview"]
+        self.workspace.select_stack(self.name)
+
+        extra_args = _parse_extra_args(message=message,
+                                       target=target,
+                                       parallel=parallel,
+                                       expect_no_changes=expect_no_changes)
+        args.extend(extra_args)
+
+        refresh_result = self._run_pulumi_cmd_sync(args, on_output)
+        summary = self.info()
+        assert(summary is not None)
+        return RefreshResult(stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary)
+
+    def destroy(self,
+                parallel: Optional[int] = None,
+                message: Optional[str] = None,
+                target: Optional[List[str]] = None,
+                target_dependents: Optional[bool] = None,
+                on_output: Callable[[str], None] = None) -> DestroyResult:
+        """Destroy deletes all resources in a stack, leaving all history and configuration intact."""
+        args = ["destroy", "--yes", "--skip-preview"]
+        self.workspace.select_stack(self.name)
+
+        extra_args = _parse_extra_args(message=message,
+                                       target=target,
+                                       target_dependents=target_dependents,
+                                       parallel=parallel)
+        args.extend(extra_args)
+
+        destroy_result = self._run_pulumi_cmd_sync(args, on_output)
+        summary = self.info()
+        assert(summary is not None)
+        return DestroyResult(stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary)
 
     def get_config(self, key: str) -> ConfigValue:
         """Returns the config value associated with the specified key."""
@@ -212,6 +299,10 @@ class Stack:
         return outputs
 
     def history(self) -> List[UpdateSummary]:
+        """
+        Returns a list summarizing all previous and current results from Stack lifecycle operations
+        (up/preview/refresh/destroy).
+        """
         result = self._run_pulumi_cmd_sync(["history", "--json", "--show-secrets"])
         summary_json = json.loads(result.stdout)
 
@@ -221,12 +312,17 @@ class Stack:
         return summaries
 
     def info(self) -> Optional[UpdateSummary]:
+        """
+        Returns the current results from Stack lifecycle operations
+        """
         history = self.history()
         if not len(history):
             return None
         return history[0]
 
-    def _run_pulumi_cmd_sync(self, args: List[str]) -> CommandResult:
+    def _run_pulumi_cmd_sync(self,
+                             args: List[str],
+                             on_output: Optional[Callable[[str], None]] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.workspace.pulumi_home} if self.workspace.pulumi_home else {}
         envs = {**envs, **self.workspace.env_vars}
 
@@ -236,6 +332,26 @@ class Stack:
         result = _run_pulumi_cmd(args, self.workspace.work_dir, envs)
         self.workspace.post_command_callback(self.name)
         return result
+
+
+def _parse_extra_args(**kwargs) -> List[str]:
+    extra_args: List[str] = []
+
+    if "message" in kwargs and kwargs["message"] is not None:
+        extra_args.extend(["--message", kwargs["message"]])
+    if "expect_no_changes" in kwargs and kwargs["expect_no_changes"] is not None:
+        extra_args.append("--expect-no-changes")
+    if "replace" in kwargs and kwargs["replace"] is not None:
+        for r in kwargs["replace"]:
+            extra_args.extend(["--replace", r])
+    if "target" in kwargs and kwargs["target"] is not None:
+        for t in kwargs["target"]:
+            extra_args.extend(["--target", t])
+    if "target_dependents" in kwargs and kwargs["target_dependents"] is not None:
+        extra_args.append("--target-dependents")
+    if "parallel" in kwargs and kwargs["parallel"] is not None:
+        extra_args.extend(["--parallel", str(kwargs["parallel"])])
+    return extra_args
 
 
 def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:

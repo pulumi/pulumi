@@ -184,7 +184,7 @@ export class Stack {
         };
     }
     /**
-     * Preforms a dry-run update to a stack, returning pending changes.
+     * Performs a dry-run update to a stack, returning pending changes.
      * https://www.pulumi.com/docs/reference/cli/pulumi_preview/
      *
      * @param opts Options to customize the behavior of the preview.
