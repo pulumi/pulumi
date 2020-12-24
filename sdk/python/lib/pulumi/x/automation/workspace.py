@@ -23,12 +23,16 @@ from typing import (
     Optional,
     Literal
 )
+
 from .stack_settings import StackSettings
 from .project_settings import ProjectSettings
 from .config import ConfigMap, ConfigValue
 
 
 PluginKind = Literal["analyzer", "language", "resource"]
+
+# TODO improve typing to encapsulate stack exports
+PulumiFn = Callable[[], Any]
 
 
 @dataclass
@@ -110,8 +114,7 @@ class Workspace(ABC):
     See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
     """
 
-    # TODO improve typing to encapsulate stack exports
-    program: Optional[Callable[[], Any]]
+    program: Optional[PulumiFn]
     """
     The inline program `PulumiFn` to be used for Preview/Update operations if any.
     If none is specified, the stack will refer to ProjectSettings for this information.

@@ -15,6 +15,8 @@
 import os
 import unittest
 from random import random
+from typing import List, Optional
+
 from pulumi.x.automation import (
     CommandError,
     ConfigMap,
@@ -26,7 +28,7 @@ from pulumi.x.automation import (
     Stack,
     StackAlreadyExistsError
 )
-from typing import List, Optional
+
 
 extensions = ["json", "yaml", "yml"]
 
@@ -201,3 +203,15 @@ class TestLocalWorkspace(unittest.TestCase):
 
         ws.remove_stack(stack_name)
 
+    def test_stack_status_methods(self):
+        project_settings = ProjectSettings(name="python_test", runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer()
+        stack = Stack(stack_name, ws)
+
+        history = stack.history()
+        self.assertEqual(len(history), 0)
+        info = stack.info()
+        self.assertIsNone(info)
+
+        ws.remove_stack(stack_name)
