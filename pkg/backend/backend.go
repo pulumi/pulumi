@@ -12,7 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package backend encapsulates all extensibility points required to fully implement a new cloud provider.
 package backend
 
 import (
