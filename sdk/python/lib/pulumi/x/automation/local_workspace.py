@@ -16,6 +16,7 @@ import os
 import tempfile
 import json
 import yaml
+from dataclasses import dataclass
 from typing import Optional, List, Mapping, Callable, Any
 
 from .config import ConfigMap, ConfigValue

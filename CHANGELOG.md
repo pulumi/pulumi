@@ -11,6 +11,9 @@ CHANGELOG
   
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
+  
+- Python Automation API.
+  [#5979](https://github.com/pulumi/pulumi/pull/5979)
 
 ## 2.16.2 (2020-12-23)
 
