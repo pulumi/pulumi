@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Allow `serializeFunction` to capture secrets.
+  [#6013](https://github.com/pulumi/pulumi/pull/6013)
+
 ## 2.16.1 (2020-12-22)
 
 - Fix a panic due to unsafe concurrent map access.
