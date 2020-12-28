@@ -597,11 +597,35 @@ func primitiveValue(value interface{}) (string, error) {
 func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	var val string
 	if dv.Value != nil {
-		v, err := primitiveValue(dv.Value)
-		if err != nil {
-			return "", err
+		switch enum := t.(type) {
+		case *schema.EnumType:
+			enumName := tokenToName(enum.Token)
+			for _, e := range enum.Elements {
+				if e.Value != dv.Value {
+					continue
+				}
+
+				elName := e.Name
+				if elName == "" {
+					elName = fmt.Sprintf("%v", e.Value)
+				}
+				safeName, err := makeSafeEnumName(elName, enumName)
+				if err != nil {
+					return "", err
+				}
+				val = fmt.Sprintf("%s.%s.%s", mod.namespaceName, enumName, safeName)
+				break
+			}
+			if val == "" {
+				return "", errors.Errorf("default value '%v' not found in enum '%s'", dv.Value, enumName)
+			}
+		default:
+			v, err := primitiveValue(dv.Value)
+			if err != nil {
+				return "", err
+			}
+			val = v
 		}
-		val = v
 	}
 
 	if len(dv.Environment) != 0 {
