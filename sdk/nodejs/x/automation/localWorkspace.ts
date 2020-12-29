@@ -382,7 +382,7 @@ export class LocalWorkspace implements Workspace {
      * @param config The `ConfigMap` to upsert against the existing config.
      */
     async setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
-        const configAdds: Promise<any>[] = [];
+        const configAdds: Promise<void>[] = [];
         for (const [key, value] of Object.entries(config)) {
             configAdds.push(this.setConfig(stackName, key, value));
         }
@@ -408,7 +408,7 @@ export class LocalWorkspace implements Workspace {
      * @param keys The list of keys to remove from the underlying config
      */
     async removeAllConfig(stackName: string, keys: string[]): Promise<void> {
-        const configRemoves: Promise<any>[] = [];
+        const configRemoves: Promise<void>[] = [];
         for (const key of keys) {
             configRemoves.push(this.removeConfig(stackName, key));
         }
