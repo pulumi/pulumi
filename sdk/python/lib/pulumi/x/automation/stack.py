@@ -158,25 +158,20 @@ class Stack:
         Creates or updates the resources in a stack by executing the program in the Workspace.
         https://www.pulumi.com/docs/reference/cli/pulumi_up/
         """
+        program = program or self.workspace.program
+        extra_args = _parse_extra_args(**locals())
         args = ["up", "--yes", "--skip-preview"]
-        kind = ExecKind.LOCAL.value
-        inline_program = self.workspace.program or program
-        self.workspace.select_stack(self.name)
-
-        extra_args = _parse_extra_args(message=message,
-                                       expect_no_changes=expect_no_changes,
-                                       replace=replace,
-                                       target=target,
-                                       target_dependents=target_dependents,
-                                       parallel=parallel)
         args.extend(extra_args)
 
+        self.workspace.select_stack(self.name)
+        kind = ExecKind.LOCAL.value
         on_exit = None
-        if inline_program:
+
+        if program:
             kind = ExecKind.INLINE.value
             server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),
                                  options=_GRPC_CHANNEL_OPTIONS)
-            language_server = LanguageServer(inline_program)
+            language_server = LanguageServer(program)
             language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
 
             port = server.add_insecure_port(address="0.0.0.0:0")
@@ -210,25 +205,20 @@ class Stack:
         Performs a dry-run update to a stack, returning pending changes.
         https://www.pulumi.com/docs/reference/cli/pulumi_preview/
         """
+        program = program or self.workspace.program
+        extra_args = _parse_extra_args(**locals())
         args = ["preview"]
-        kind = ExecKind.LOCAL.value
-        inline_program = self.workspace.program or program
-        self.workspace.select_stack(self.name)
-
-        extra_args = _parse_extra_args(message=message,
-                                       expect_no_changes=expect_no_changes,
-                                       replace=replace,
-                                       target=target,
-                                       target_dependents=target_dependents,
-                                       parallel=parallel)
         args.extend(extra_args)
 
+        self.workspace.select_stack(self.name)
+        kind = ExecKind.LOCAL.value
         on_exit = None
-        if inline_program:
+
+        if program:
             kind = ExecKind.INLINE.value
             server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),
                                  options=_GRPC_CHANNEL_OPTIONS)
-            language_server = LanguageServer(inline_program)
+            language_server = LanguageServer(program)
             language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
 
             port = server.add_insecure_port(address="0.0.0.0:0")
@@ -258,15 +248,11 @@ class Stack:
         Compares the current stack’s resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
         """
+        extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes", "--skip-preview"]
-        self.workspace.select_stack(self.name)
-
-        extra_args = _parse_extra_args(message=message,
-                                       target=target,
-                                       parallel=parallel,
-                                       expect_no_changes=expect_no_changes)
         args.extend(extra_args)
 
+        self.workspace.select_stack(self.name)
         refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
         assert(summary is not None)
@@ -279,15 +265,11 @@ class Stack:
                 target_dependents: Optional[bool] = None,
                 on_output: Callable[[str], None] = None) -> DestroyResult:
         """Destroy deletes all resources in a stack, leaving all history and configuration intact."""
+        extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
-        self.workspace.select_stack(self.name)
-
-        extra_args = _parse_extra_args(message=message,
-                                       target=target,
-                                       target_dependents=target_dependents,
-                                       parallel=parallel)
         args.extend(extra_args)
 
+        self.workspace.select_stack(self.name)
         destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
         assert(summary is not None)
