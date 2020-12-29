@@ -18,7 +18,7 @@ Runtime settings and configuration.
 import asyncio
 import os
 import sys
-from typing import Optional, Awaitable, Union, Any, TYPE_CHECKING
+from typing import Optional, Union, Any, TYPE_CHECKING
 
 import grpc
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
@@ -93,26 +93,6 @@ class Settings:
 
 # default to "empty" settings.
 SETTINGS = Settings()
-
-
-def reset_options(project: Optional[str] = None,
-                  stack: Optional[str] = None,
-                  parallel: Optional[str] = None,
-                  engine_address: Optional[str] = None,
-                  monitor_address: Optional[str] = None,
-                  preview: Optional[bool] = None):
-
-    global ROOT
-    ROOT = None
-
-    configure(Settings(
-        project=project,
-        monitor=monitor_address,
-        engine=engine_address,
-        stack=stack,
-        parallel=parallel,
-        dry_run=preview
-    ))
 
 
 def configure(settings: Settings):
@@ -262,3 +242,24 @@ async def monitor_supports_secrets() -> bool:
 
 async def monitor_supports_resource_references() -> bool:
     return await monitor_supports_feature("resourceReferences")
+
+
+def reset_options(project: Optional[str] = None,
+                  stack: Optional[str] = None,
+                  parallel: Optional[str] = None,
+                  engine_address: Optional[str] = None,
+                  monitor_address: Optional[str] = None,
+                  preview: Optional[bool] = None):
+    """Resets globals to the values provided."""
+
+    global ROOT
+    ROOT = None
+
+    configure(Settings(
+        project=project,
+        monitor=monitor_address,
+        engine=engine_address,
+        stack=stack,
+        parallel=parallel,
+        dry_run=preview
+    ))
