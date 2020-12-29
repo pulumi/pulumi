@@ -18,6 +18,8 @@ LABEL "homepage"="https://pulumi.com/docs/reference/cd-github-actions/"
 RUN apt-get update -y && \
   apt-get install -y jq
 
+RUN pip install pipenv
+
 # Copy the entrypoint script.
 COPY ./entrypoint.sh /usr/bin/pulumi-action
 
