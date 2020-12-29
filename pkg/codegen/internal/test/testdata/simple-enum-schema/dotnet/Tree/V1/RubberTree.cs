@@ -77,6 +77,7 @@ namespace Pulumi.PlantProvider.Tree.V1
 
         public RubberTreeArgs()
         {
+            Farm = "(unknown)";
         }
     }
 }

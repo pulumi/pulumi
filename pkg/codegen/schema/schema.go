@@ -1534,21 +1534,17 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 			typ := &EnumType{Token: token}
 			typs.enums[token] = typ
 			typs.named[token] = typ
+
+			// Bind enums before object types because object type generation depends on enum values to be present.
+			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
+				return nil, errors.Wrapf(err, "failed to bind type %s", token)
+			}
 		}
 	}
 
 	// Process resources.
 	for _, r := range pkg.Resources {
 		typs.resources[r.Token] = &ResourceType{Token: r.Token}
-	}
-
-	// Process enums.
-	for token, spec := range complexTypes {
-		if len(spec.Enum) > 0 {
-			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
-				return nil, errors.Wrapf(err, "failed to bind type %s", token)
-			}
-		}
 	}
 
 	// Process object types.
