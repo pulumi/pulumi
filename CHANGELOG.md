@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- Parallelize bulk operations in NodeJS Automation API.
+  [#6022](https://github.com/pulumi/pulumi/pull/6022)
 
 ## 2.16.2 (2020-12-23)
 

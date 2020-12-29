@@ -78,7 +78,7 @@ export class LocalWorkspace implements Workspace {
      * This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up
      * any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
      *
-     * @param args A set of arguments to intialize a Stack with a pre-configured Pulumi CLI program that already exists on disk.
+     * @param args A set of arguments to initialize a Stack with a pre-configured Pulumi CLI program that already exists on disk.
      * @param opts Additional customizations to be applied to the Workspace.
      */
     static async createStack(args: LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
@@ -88,7 +88,7 @@ export class LocalWorkspace implements Workspace {
      * will be created on behalf of the user. Similarly, unless a `workDir` option is specified, the working directory
      * will default to a new temporary directory provided by the OS.
      *
-     * @param args A set of arguments to intialize a Stack with and inline `PulumiFn` program that runs in process.
+     * @param args A set of arguments to initialize a Stack with and inline `PulumiFn` program that runs in process.
      * @param opts Additional customizations to be applied to the Workspace.
      */
     static async createStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
@@ -105,7 +105,7 @@ export class LocalWorkspace implements Workspace {
      * This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up
      * any available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
      *
-     * @param args A set of arguments to intialize a Stack with a pre-configured Pulumi CLI program that already exists on disk.
+     * @param args A set of arguments to initialize a Stack with a pre-configured Pulumi CLI program that already exists on disk.
      * @param opts Additional customizations to be applied to the Workspace.
      */
     static async selectStack(args: LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
@@ -115,7 +115,7 @@ export class LocalWorkspace implements Workspace {
      * will be created on behalf of the user. Similarly, unless a `workDir` option is specified, the working directory
      * will default to a new temporary directory provided by the OS.
      *
-     * @param args A set of arguments to intialize a Stack with and inline `PulumiFn` program that runs in process.
+     * @param args A set of arguments to initialize a Stack with and inline `PulumiFn` program that runs in process.
      * @param opts Additional customizations to be applied to the Workspace.
      */
     static async selectStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
@@ -133,7 +133,7 @@ export class LocalWorkspace implements Workspace {
      * will be created on behalf of the user. Similarly, unless a `workDir` option is specified, the working directory
      * will default to a new temporary directory provided by the OS.
      *
-     * @param args A set of arguments to intialize a Stack with a pre-configured Pulumi CLI program that already exists on disk.
+     * @param args A set of arguments to initialize a Stack with a pre-configured Pulumi CLI program that already exists on disk.
      * @param opts Additional customizations to be applied to the Workspace.
      */
     static async createOrSelectStack(args: LocalProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
@@ -143,7 +143,7 @@ export class LocalWorkspace implements Workspace {
      * on behalf of the user. Similarly, unless a `workDir` option is specified, the working directory will default
      * to a new temporary directory provided by the OS.
      *
-     * @param args A set of arguments to intialize a Stack with and inline `PulumiFn` program that runs in process.
+     * @param args A set of arguments to initialize a Stack with and inline `PulumiFn` program that runs in process.
      * @param opts Additional customizations to be applied to the Workspace.
      */
     static async createOrSelectStack(args: InlineProgramArgs, opts?: LocalWorkspaceOptions): Promise<Stack>;
@@ -348,8 +348,7 @@ export class LocalWorkspace implements Workspace {
     async getConfig(stackName: string, key: string): Promise<ConfigValue> {
         await this.selectStack(stackName);
         const result = await this.runPulumiCmd(["config", "get", key, "--json"]);
-        const val = JSON.parse(result.stdout);
-        return val;
+        return JSON.parse(result.stdout);
     }
     /**
      * Returns the config map for the specified stack name, scoped to the current workspace.
@@ -360,8 +359,7 @@ export class LocalWorkspace implements Workspace {
     async getAllConfig(stackName: string): Promise<ConfigMap> {
         await this.selectStack(stackName);
         const result = await this.runPulumiCmd(["config", "--show-secrets", "--json"]);
-        const val = JSON.parse(result.stdout);
-        return val;
+        return JSON.parse(result.stdout);
     }
     /**
      * Sets the specified key-value pair on the provided stack name.
@@ -384,10 +382,11 @@ export class LocalWorkspace implements Workspace {
      * @param config The `ConfigMap` to upsert against the existing config.
      */
     async setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
+        const configAdds: Promise<void>[] = [];
         for (const [key, value] of Object.entries(config)) {
-            await this.setConfig(stackName, key, value);
+            configAdds.push(this.setConfig(stackName, key, value));
         }
+        await Promise.all(configAdds);
     }
     /**
      * Removes the specified key-value pair on the provided stack name.
@@ -409,10 +408,11 @@ export class LocalWorkspace implements Workspace {
      * @param keys The list of keys to remove from the underlying config
      */
     async removeAllConfig(stackName: string, keys: string[]): Promise<void> {
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
+        const configRemoves: Promise<void>[] = [];
         for (const key of keys) {
-            await this.removeConfig(stackName, key);
+            configRemoves.push(this.removeConfig(stackName, key));
         }
+        await Promise.all(configRemoves);
     }
     /**
      * Gets and sets the config map used with the last update for Stack matching stack name.
@@ -450,8 +450,7 @@ export class LocalWorkspace implements Workspace {
      */
     async listStacks(): Promise<StackSummary[]> {
         const result = await this.runPulumiCmd(["stack", "ls", "--json"]);
-        const stacks: StackSummary[] = JSON.parse(result.stdout);
-        return stacks;
+        return JSON.parse(result.stdout);
     }
     /**
      * Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
@@ -487,14 +486,12 @@ export class LocalWorkspace implements Workspace {
      */
     async listPlugins(): Promise<PluginInfo[]> {
         const result = await this.runPulumiCmd(["plugin", "ls", "--json"]);
-        const info: PluginInfo[] = JSON.parse(result.stdout, (key, value) => {
+        return JSON.parse(result.stdout, (key, value) => {
             if (key === "installTime" || key === "lastUsedTime") {
                 return new Date(value);
             }
             return value;
         });
-
-        return info;
     }
     /**
      * serializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
