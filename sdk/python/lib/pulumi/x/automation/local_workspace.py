@@ -22,7 +22,7 @@ from typing import Optional, List, Mapping, Callable, Any
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult
+from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn
 from .cmd import _run_pulumi_cmd, CommandResult
 
 setting_extensions = [".yaml", ".yml", ".json"]
@@ -44,8 +44,8 @@ class LocalWorkspace(Workspace):
     def __init__(self,
                  work_dir: Optional[str] = None,
                  pulumi_home: Optional[str] = None,
-                 program: Optional[Callable[[], Any]] = None,
-                 env_vars: Mapping[str, str] = None,
+                 program: Optional[PulumiFn] = None,
+                 env_vars: Optional[Mapping[str, str]] = None,
                  secrets_provider: Optional[str] = None,
                  project_settings: Optional[ProjectSettings] = None,
                  stack_settings: Optional[Mapping[str, StackSettings]] = None):
@@ -217,3 +217,7 @@ def get_stack_settings_name(name: str) -> str:
     if len(parts) < 1:
         return name
     return parts[-1]
+
+
+def default_project(project_name: str) -> ProjectSettings:
+    return ProjectSettings(name=project_name, runtime="python")
