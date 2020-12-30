@@ -130,7 +130,7 @@ class Workspace(ABC):
         """
         Returns the settings object for the current project if any.
 
-        :return: ProjectSettings
+        :returns: ProjectSettings
         """
         pass
 
@@ -140,8 +140,7 @@ class Workspace(ABC):
         Overwrites the settings object in the current project.
         There can only be a single project per workspace. Fails is new project name does not match old.
 
-        :param settings:
-        :return:
+        :param settings: The project settings to save.
         """
         pass
 
@@ -150,8 +149,8 @@ class Workspace(ABC):
         """
         Returns the settings object for the stack matching the specified stack name if any.
 
-        :param stack_name:
-        :return:
+        :param stack_name: The name of the stack.
+        :return: StackSettings
         """
         pass
 
@@ -160,9 +159,8 @@ class Workspace(ABC):
         """
         Overwrites the settings object for the stack matching the specified stack name.
 
-        :param stack_name:
-        :param settings:
-        :return:
+        :param stack_name: The name of the stack.
+        :param settings: The stack settings to save.
         """
         pass
 
@@ -173,8 +171,7 @@ class Workspace(ABC):
         Provided with stack name, returns a list of args to append to an invoked command ["--config=...", ]
         LocalWorkspace does not utilize this extensibility point.
 
-        :param stack_name:
-        :return:
+        :param stack_name: The name of the stack.
         """
         pass
 
@@ -185,8 +182,7 @@ class Workspace(ABC):
         An extensibility point to perform workspace cleanup (CLI operations may create/modify a Pulumi.stack.yaml)
         LocalWorkspace does not utilize this extensibility point.
 
-        :param stack_name:
-        :return:
+        :param stack_name: The name of the stack.
         """
         pass
 
@@ -196,9 +192,9 @@ class Workspace(ABC):
         Returns the value associated with the specified stack name and key,
         scoped to the Workspace.
 
-        :param stack_name:
-        :param key:
-        :return:
+        :param stack_name: The name of the stack.
+        :param key: The key for the config item to get.
+        :returns: ConfigValue
         """
         pass
 
@@ -207,8 +203,8 @@ class Workspace(ABC):
         """
         Returns the config map for the specified stack name, scoped to the current Workspace.
 
-        :param stack_name:
-        :return:
+        :param stack_name: The name of the stack.
+        :returns: ConfigMap
         """
         pass
 
@@ -217,10 +213,9 @@ class Workspace(ABC):
         """
         Sets the specified key-value pair on the provided stack name.
 
-        :param stack_name:
-        :param key:
-        :param value:
-        :return:
+        :param stack_name: The name of the stack.
+        :param key: The config key to add.
+        :param value: The config value to add.
         """
         pass
 
@@ -229,9 +224,8 @@ class Workspace(ABC):
         """
         Sets all values in the provided config map for the specified stack name.
 
-        :param stack_name:
-        :param config:
-        :return:
+        :param stack_name: The name of the stack.
+        :param config: A mapping of key to ConfigValue to set to config.
         """
         pass
 
@@ -240,9 +234,8 @@ class Workspace(ABC):
         """
         Removes the specified key-value pair on the provided stack name.
 
-        :param stack_name:
-        :param key:
-        :return:
+        :param stack_name: The name of the stack.
+        :param key: The key to remove from config.
         """
         pass
 
@@ -251,9 +244,8 @@ class Workspace(ABC):
         """
         Removes all values in the provided key list for the specified stack name.
 
-        :param stack_name:
-        :param keys:
-        :return:
+        :param stack_name: The name of the stack.
+        :param keys: The keys to remove from config.
         """
         pass
 
@@ -262,8 +254,7 @@ class Workspace(ABC):
         """
         Gets and sets the config map used with the last update for Stack matching stack name.
 
-        :param stack_name:
-        :return:
+        :param stack_name: The name of the stack.
         """
         pass
 
@@ -272,7 +263,7 @@ class Workspace(ABC):
         """
         Returns the currently authenticated user.
 
-        :return:
+        :returns: WhoAmIResult
         """
         pass
 
@@ -281,7 +272,7 @@ class Workspace(ABC):
         """
         Returns a summary of the currently selected stack, if any.
 
-        :return:
+        :returns: Optional[StackSummary]
         """
         pass
 
@@ -291,7 +282,7 @@ class Workspace(ABC):
         Creates and sets a new stack with the stack name, failing if one already exists.
 
         :param str stack_name: The name of the stack to create
-        :return: None
+        :returns: None
         :raises CommandError Raised if a stack with the same name exists.
         """
         pass
@@ -301,8 +292,8 @@ class Workspace(ABC):
         """
         Selects and sets an existing stack matching the stack stack_name, failing if none exists.
 
-        :param str stack_name: The name of the stack to select
-        :return: None
+        :param stack_name: The name of the stack to select
+        :returns: None
         :raises CommandError Raised if no matching stack exists.
         """
         pass
@@ -312,8 +303,7 @@ class Workspace(ABC):
         """
         Deletes the stack and all associated configuration and history.
 
-        :param str stack_name: The name of the stack to remove
-        :return: None
+        :param stack_name: The name of the stack to remove
         """
         pass
 
@@ -324,6 +314,7 @@ class Workspace(ABC):
         This queries underlying backend and may return stacks not present in the Workspace
         (as Pulumi.<stack>.yaml files).
 
+        :returns: List[StackSummary]
         """
         pass
 
@@ -332,6 +323,9 @@ class Workspace(ABC):
         """
         Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
 
+        :param plugin_name: The name of the plugin to install.
+        :param version: The version range to install.
+        :param kind: The kind of plugin.
         """
         pass
 
@@ -340,6 +334,9 @@ class Workspace(ABC):
         """
         Removes a plugin from the Workspace matching the specified name and version.
 
+        :param plugin_name: The name of the plugin to remove.
+        :param version_range: The version range to remove.
+        :param kind: The kind of plugin.
         """
         pass
 
@@ -348,5 +345,6 @@ class Workspace(ABC):
         """
         Returns a list of all plugins installed in the Workspace.
 
+        :returns: List[PluginInfo]
         """
         pass
