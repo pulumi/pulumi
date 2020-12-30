@@ -20,6 +20,7 @@ import (
 	"github.com/skratchdot/open-golang/open"
 	"github.com/spf13/cobra"
 
+	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
 	"github.com/pulumi/pulumi/pkg/v2/backend/state"
@@ -27,6 +28,7 @@ import (
 )
 
 func newConsoleCmd() *cobra.Command {
+	var stackName string
 	cmd := &cobra.Command{
 		Use:   "console",
 		Short: "Opens the current stack in the Pulumi Console",
@@ -35,19 +37,35 @@ func newConsoleCmd() *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			backend, err := currentBackend(opts)
-			if err != nil {
-				return err
-			}
-			stack, err := state.CurrentStack(commandContext(), backend)
+			currentBackend, err := currentBackend(opts)
 			if err != nil {
 				return err
 			}
 
 			// Do a type assertion in order to determine if this is a cloud backend based on whether the assertion
 			// succeeds or not.
-			cloudBackend, isCloud := backend.(httpstate.Backend)
+			cloudBackend, isCloud := currentBackend.(httpstate.Backend)
 			if isCloud {
+				// we only need to inspect the requested stack if we are using a cloud based backend
+				var stack backend.Stack
+				if stackName != "" {
+					ref, err := currentBackend.ParseStackReference(stackName)
+					if err != nil {
+						return err
+					}
+					selectedStack, err := currentBackend.GetStack(commandContext(), ref)
+					if err != nil {
+						return err
+					}
+					stack = selectedStack
+				} else {
+					currentStack, err := state.CurrentStack(commandContext(), currentBackend)
+					if err != nil {
+						return err
+					}
+					stack = currentStack
+				}
+
 				// Open the stack specific URL (e.g. app.pulumi.com/{org}/{project}/{stack}) for this
 				// stack if a stack is selected and is a cloud stack, else open the cloud backend URL
 				// home page, e.g. app.pulumi.com.
@@ -70,6 +88,8 @@ func newConsoleCmd() *cobra.Command {
 			return nil
 		}),
 	}
+	cmd.PersistentFlags().StringVarP(
+		&stackName, "stack", "s", "", "The name of the stack to view")
 	return cmd
 }
 
