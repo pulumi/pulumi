@@ -206,6 +206,30 @@ class TestLocalWorkspace(unittest.TestCase):
 
         ws.remove_stack(stack_name)
 
+    def test_bulk_config_ops(self):
+        project_name = "python_test"
+        project_settings = ProjectSettings(project_name, runtime="python")
+        ws = LocalWorkspace(project_settings=project_settings)
+        stack_name = stack_namer()
+        stack = Stack.create(stack_name, ws)
+
+        config: ConfigMap = {
+            "one": ConfigValue(value="one"),
+            "two": ConfigValue(value="two"),
+            "three": ConfigValue(value="three", secret=True),
+            "four": ConfigValue(value="four", secret=True),
+            "five": ConfigValue(value="five"),
+            "six": ConfigValue(value="six"),
+            "seven": ConfigValue(value="seven", secret=True),
+            "eight": ConfigValue(value="eight", secret=True),
+            "nine": ConfigValue(value="nine"),
+            "ten": ConfigValue(value="ten"),
+        }
+        stack.set_all_config(config)
+        stack.remove_all_config([key for key in config])
+
+        ws.remove_stack(stack_name)
+
     def test_stack_status_methods(self):
         project_settings = ProjectSettings(name="python_test", runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)

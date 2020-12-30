@@ -16,6 +16,7 @@ import os
 import tempfile
 import json
 import yaml
+from concurrent import futures
 from dataclasses import dataclass, asdict
 from typing import Optional, List, Mapping, Callable
 
@@ -266,16 +267,22 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg])
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
-        for key in config:
-            self.set_config(stack_name, key, config[key])
+        config_adds = []
+        with futures.ThreadPoolExecutor() as executor:
+            for key in config:
+                config_adds.append(executor.submit(self.set_config, stack_name, key, config[key]))
+        futures.wait(config_adds)
 
     def remove_config(self, stack_name: str, key: str) -> None:
         self.select_stack(stack_name)
         self._run_pulumi_cmd_sync(["config", "rm", key])
 
     def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
-        for key in keys:
-            self.remove_config(stack_name, key)
+        config_removes = []
+        with futures.ThreadPoolExecutor() as executor:
+            for key in keys:
+                config_removes.append(executor.submit(self.remove_config, stack_name, key))
+        futures.wait(config_removes)
 
     def refresh_config(self, stack_name: str) -> None:
         self.select_stack(stack_name)
