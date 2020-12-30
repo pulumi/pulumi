@@ -90,6 +90,12 @@ class PluginInfo:
         self.version = version
 
 
+@dataclass
+class Deployment:
+    version: Optional[int]
+    deployment: Optional[Mapping[str, Any]]
+
+
 class Workspace(ABC):
     """
     Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -346,5 +352,27 @@ class Workspace(ABC):
         Returns a list of all plugins installed in the Workspace.
 
         :returns: List[PluginInfo]
+        """
+        pass
+
+    @abstractmethod
+    def export_stack(self, stack_name: str) -> Deployment:
+        """
+        ExportStack exports the deployment state of the stack matching the given name.
+        This can be combined with ImportStack to edit a stack's state (such as recovery from failed deployments).
+
+        :param stack_name: The name of the stack to export.
+        :returns: Deployment
+        """
+        pass
+
+    @abstractmethod
+    def import_stack(self, stack_name: str, state: Deployment) -> None:
+        """
+        ImportStack imports the specified deployment state into a pre-existing stack.
+        This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
+
+        :param stack_name: The name of the stack to import.
+        :param state: The deployment state to import.
         """
         pass

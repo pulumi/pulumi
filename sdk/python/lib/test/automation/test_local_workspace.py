@@ -321,6 +321,33 @@ class TestLocalWorkspace(unittest.TestCase):
 
         stack.workspace.remove_stack(stack_name)
 
+    def test_import_export_stack(self):
+        stack_name = stack_namer()
+        project_name = "python_export_stack"
+        stack = LocalWorkspace.new_stack(stack_name, project_name=project_name, program=pulumi_program)
+
+        try:
+            stack_config: ConfigMap = {
+                "bar": ConfigValue(value="abc"),
+                "buzz": ConfigValue(value="secret", secret=True)
+            }
+
+            stack.set_all_config(stack_config)
+            stack.up()
+
+            # export stack
+            state = stack.export_stack()
+
+            # import stack
+            stack.import_stack(state)
+            self.assertEqual(stack.get_config("bar").value, "abc")
+
+        finally:
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+            stack.workspace.remove_stack(stack_name)
+
 
 def pulumi_program():
     config = Config()
@@ -328,3 +355,7 @@ def pulumi_program():
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
     return
+
+
+def get_test_org():
+    return os.getenv("PULUMI_TEST_ORG", "pulumi-test")

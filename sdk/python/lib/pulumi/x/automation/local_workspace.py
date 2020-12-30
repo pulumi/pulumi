@@ -23,7 +23,7 @@ from typing import Optional, List, Mapping, Callable
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn
+from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
 from .stack import Stack
 from .cmd import _run_pulumi_cmd, CommandResult
 
@@ -344,6 +344,20 @@ class LocalWorkspace(Workspace):
             plugin = PluginInfo(**plugin_json)
             plugin_list.append(plugin)
         return plugin_list
+
+    def export_stack(self, stack_name: str) -> Deployment:
+        self.select_stack(stack_name)
+        result = self._run_pulumi_cmd_sync(["stack", "export", "--show-secrets"])
+        state_json = json.loads(result.stdout)
+        return Deployment(**state_json)
+
+    def import_stack(self, stack_name: str, state: Deployment) -> None:
+        self.select_stack(stack_name)
+        file = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        json.dump(asdict(state), file, indent=4)
+        file.close()
+        self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name])
+        os.remove(file.name)
 
     def _run_pulumi_cmd_sync(self, args: List[str]) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}

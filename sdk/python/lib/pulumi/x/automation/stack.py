@@ -26,7 +26,7 @@ from .cmd import CommandResult, _run_pulumi_cmd
 from .config import ConfigValue, ConfigMap
 from .errors import StackAlreadyExistsError
 from .server import LanguageServer
-from .workspace import Workspace, PulumiFn
+from .workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
 
@@ -377,12 +377,26 @@ class Stack:
 
     def info(self) -> Optional[UpdateSummary]:
         """
-        Returns the current results from Stack lifecycle operations
+        Returns the current results from Stack lifecycle operations.
         """
         history = self.history()
         if not len(history):
             return None
         return history[0]
+
+    def export_stack(self) -> Deployment:
+        """
+        export_stack exports the deployment state of the stack.
+        This can be combined with Stack.import_state to edit a stack's state (such as recovery from failed deployments).
+        """
+        return self.workspace.export_stack(self.name)
+
+    def import_stack(self, state: Deployment) -> None:
+        """
+        import_stack imports the specified deployment state into a pre-existing stack.
+        This can be combined with Stack.export_state to edit a stack's state (such as recovery from failed deployments).
+        """
+        return self.workspace.import_stack(self.name, state)
 
     def _run_pulumi_cmd_sync(self,
                              args: List[str],
