@@ -29,7 +29,6 @@ from pulumi.x.automation import (
     Stack,
     StackAlreadyExistsError
 )
-from pulumi.x.automation.local_workspace import default_project
 
 
 extensions = ["json", "yaml", "yml"]
@@ -161,11 +160,13 @@ class TestLocalWorkspace(unittest.TestCase):
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer()
 
-        Stack(stack_name, ws)
+        Stack.create(stack_name, ws)
         # Trying to create the stack again throws an error
-        self.assertRaises(StackAlreadyExistsError, Stack, stack_name, ws)
-        # Setting select_if_exists succeeds
-        self.assertEqual(Stack(stack_name, ws, select_if_exists=True).name, stack_name)
+        self.assertRaises(StackAlreadyExistsError, Stack.create, stack_name, ws)
+        # Stack.select succeeds
+        self.assertEqual(Stack.select(stack_name, ws).name, stack_name)
+        # Stack.create_or_select succeeds
+        self.assertEqual(Stack.create_or_select(stack_name, ws).name, stack_name)
         ws.remove_stack(stack_name)
 
     def test_config_functions(self):
@@ -173,7 +174,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_settings = ProjectSettings(project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer()
-        stack = Stack(stack_name, ws)
+        stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
             "plain": ConfigValue(value="abc"),
@@ -209,7 +210,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_settings = ProjectSettings(name="python_test", runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
         stack_name = stack_namer()
-        stack = Stack(stack_name, ws)
+        stack = Stack.create(stack_name, ws)
 
         history = stack.history()
         self.assertEqual(len(history), 0)
@@ -221,9 +222,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_local_program(self):
         stack_name = stack_namer()
         work_dir = test_path("data", "testproj")
-        # TODO: create convenience functions (i.e. LocalWorkspace.create_stack or similar)
-        ws = LocalWorkspace(work_dir=work_dir)
-        stack = Stack(stack_name, ws)
+        stack = LocalWorkspace.new_stack(stack_name, work_dir=work_dir)
 
         config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
@@ -262,9 +261,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_inline_program(self):
         stack_name = stack_namer()
         project_name = "inline_python"
-        # TODO: create convenience functions (i.e. LocalWorkspace.create_stack or similar)
-        ws = LocalWorkspace(program=pulumi_program, project_settings=default_project(project_name))
-        stack = Stack(stack_name, ws)
+        stack = LocalWorkspace.new_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
