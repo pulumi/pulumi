@@ -126,6 +126,9 @@ class DestroyResult(BaseResult):
     pass
 
 
+StackInitMode = Literal["create", "select", "create_or_select"]
+
+
 class Stack:
     name: str
     """The name identifying the Stack."""
@@ -133,17 +136,59 @@ class Stack:
     workspace: Workspace
     """The Workspace the Stack was created from."""
 
-    def __init__(self, name: str, workspace: Workspace, select_if_exists: bool = False) -> None:
+    @classmethod
+    def create(cls, stack_name: str, workspace: Workspace) -> 'Stack':
+        """
+        Creates a new stack using the given workspace, and stack name.
+        It fails if a stack with that name already exists.
+
+        :param stack_name: The name identifying the Stack
+        :param workspace: The Workspace the Stack was created from.
+        :return: Stack
+        """
+        return Stack(stack_name, workspace, "create")
+
+    @classmethod
+    def select(cls, stack_name: str, workspace: Workspace) -> 'Stack':
+        """
+        Selects stack using the given workspace, and stack name.
+        It returns an error if the given Stack does not exist. All LocalWorkspace operations will call `select` before
+        running.
+
+        :param stack_name: The name identifying the Stack
+        :param workspace: The Workspace the Stack was created from.
+        :return: Stack
+        """
+        return Stack(stack_name, workspace, "select")
+
+    @classmethod
+    def create_or_select(cls, stack_name: str, workspace: Workspace) -> 'Stack':
+        """
+        Tries to create a new stack using the given workspace and stack name if the stack does not already exist,
+        or falls back to selecting the existing stack. If the stack does not exist,
+        it will be created and selected.
+
+        :param stack_name: The name identifying the Stack
+        :param workspace: The Workspace the Stack was created from.
+        :return: Stack
+        """
+        return Stack(stack_name, workspace, "create_or_select")
+
+    def __init__(self, name: str, workspace: Workspace, mode: StackInitMode) -> None:
         self.name = name
         self.workspace = workspace
 
-        try:
+        if mode == "create":
             workspace.create_stack(name)
-        except StackAlreadyExistsError:
-            if select_if_exists:
+        elif mode == "select":
+            workspace.select_stack(name)
+        elif mode == "create_or_select":
+            try:
+                workspace.create_stack(name)
+            except StackAlreadyExistsError:
                 workspace.select_stack(name)
-            else:
-                raise
+        else:
+            raise ValueError(f"unexpected Stack creation mode: {mode}")
 
     def up(self,
            parallel: Optional[int] = None,
