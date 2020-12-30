@@ -1281,6 +1281,21 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 	}
 
 	if value != nil {
+		switch typ := typ.(type) {
+		case *UnionType:
+			if typ.DefaultType != nil {
+				return bindDefaultValue(value, spec, typ.DefaultType)
+			}
+			for _, elementType := range typ.ElementTypes {
+				v, err := bindDefaultValue(value, spec, elementType)
+				if err == nil {
+					return v, nil
+				}
+			}
+		case *EnumType:
+			return bindDefaultValue(value, spec, typ.ElementType)
+		}
+
 		switch typ {
 		case BoolType:
 			if _, ok := value.(bool); !ok {
@@ -1519,6 +1534,11 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 			typ := &EnumType{Token: token}
 			typs.enums[token] = typ
 			typs.named[token] = typ
+
+			// Bind enums before object types because object type generation depends on enum values to be present.
+			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
+				return nil, errors.Wrapf(err, "failed to bind type %s", token)
+			}
 		}
 	}
 
@@ -1527,14 +1547,10 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 		typs.resources[r.Token] = &ResourceType{Token: r.Token}
 	}
 
-	// Process properties.
+	// Process object types.
 	for token, spec := range complexTypes {
 		if spec.Type == "object" {
 			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec.ObjectTypeSpec); err != nil {
-				return nil, errors.Wrapf(err, "failed to bind type %s", token)
-			}
-		} else if len(spec.Enum) > 0 {
-			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
 		}

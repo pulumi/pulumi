@@ -14,7 +14,8 @@
           "oneOf": [
             {"$ref": "#/types/plant-provider:tree/v1:Farm"},
             {"type": "string"}
-          ]
+          ],
+          "default": "(unknown)"
         }
       },
       "properties": {
@@ -52,7 +53,8 @@
           ]
         },
         "brightness": {
-          "$ref": "#/types/plant-provider::ContainerBrightness"
+          "$ref": "#/types/plant-provider::ContainerBrightness",
+          "default": 1.0
         }
       },
       "required": ["size"]

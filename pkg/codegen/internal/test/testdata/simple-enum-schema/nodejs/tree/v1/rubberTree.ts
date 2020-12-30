@@ -50,7 +50,7 @@ export class RubberTree extends pulumi.CustomResource {
                 throw new Error("Missing required property 'type'");
             }
             inputs["container"] = args ? args.container : undefined;
-            inputs["farm"] = args ? args.farm : undefined;
+            inputs["farm"] = (args ? args.farm : undefined) || "(unknown)";
             inputs["type"] = args ? args.type : undefined;
         } else {
             inputs["container"] = undefined /*out*/;
