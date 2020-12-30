@@ -21,11 +21,11 @@ import (
 	"strings"
 	"sync"
 
-	"golang.org/x/net/context"
-
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"golang.org/x/net/context"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -459,7 +459,16 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 	case v.IsResourceReference():
 		ref := v.ResourceReferenceValue()
 
-		resName := ref.URN.Name()
+		version := nullVersion
+		if len(ref.PackageVersion) > 0 {
+			var err error
+			version, err = semver.ParseTolerant(ref.PackageVersion)
+			if err != nil {
+				return nil, false, fmt.Errorf("failed to parse provider version: %s", ref.PackageVersion)
+			}
+		}
+
+		resName := ref.URN.Name().String()
 		resType := ref.URN.Type()
 
 		var resource Resource
@@ -467,24 +476,25 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 
 		isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"
 		if isProvider {
-			pkgName := resType.Name()
-			resourcePackageV, ok := resourcePackages.Load(packageKey(string(pkgName), ref.PackageVersion))
+			pkgName := resType.Name().String()
+			resourcePackageV, ok := resourcePackages.Load(pkgName, version)
 			if !ok {
 				err := fmt.Errorf("unable to deserialize provider %v, no resource package is registered for %v",
 					ref.URN, pkgName)
 				return nil, false, err
 			}
 			resourcePackage := resourcePackageV.(ResourcePackage)
-			resource, err = resourcePackage.ConstructProvider(string(resName), string(resType), nil, string(ref.URN))
+			resource, err = resourcePackage.ConstructProvider(resName, string(resType), string(ref.URN))
 		} else {
-			modName := resType.Module()
-			resourceModuleV, ok := resourceModules.Load(packageKey(string(modName), ref.PackageVersion))
+			pkgName := resType.Package().String()
+			modName := resType.Module().String()
+			resourceModuleV, ok := resourceModules.Load(moduleKey(pkgName, modName), version)
 			if !ok {
 				err := fmt.Errorf("unable to deserialize resource %v, no module is registered for %v", ref.URN, modName)
 				return nil, false, err
 			}
 			resourceModule := resourceModuleV.(ResourceModule)
-			resource, err = resourceModule.Construct(string(resName), string(resType), nil, string(ref.URN))
+			resource, err = resourceModule.Construct(resName, string(resType), string(ref.URN))
 		}
 		if err != nil {
 			return nil, false, err
@@ -681,40 +691,103 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 	}
 }
 
-type ResourcePackage interface {
-	ConstructProvider(name, typ string, args map[string]interface{}, urn string) (ProviderResource, error)
+type Versioned interface {
+	Version() semver.Version
 }
 
-var resourcePackages sync.Map // map[string]ResourcePackage
-
-func packageKey(name, version string) string {
-	return fmt.Sprintf("%s@%s", name, version)
+type versionedMap struct {
+	sync.RWMutex
+	versions map[string][]Versioned
 }
 
-// RegisterResourcePackage register a resource package with the Pulumi runtime.
-func RegisterResourcePackage(name, version string, pkg ResourcePackage) {
-	key := packageKey(name, version)
-	existing, hasExisting := resourcePackages.LoadOrStore(key, pkg)
-	if hasExisting {
-		panic(fmt.Errorf("a resource package for %v is already registered: %v", key, existing))
+// nullVersion represents the wildcard version (match any version).
+var nullVersion semver.Version
+
+func (vm *versionedMap) Load(key string, version semver.Version) (Versioned, bool) {
+	vm.RLock()
+	defer vm.RUnlock()
+
+	wildcard := version.EQ(nullVersion)
+
+	var bestVersion Versioned
+	for _, v := range vm.versions[key] {
+		// Unless we are matching a wildcard version, constrain search to matching major version.
+		if !wildcard && v.Version().Major != version.Major {
+			continue
+		}
+
+		// If we find an exact match, return that.
+		if v.Version().EQ(version) {
+			return v, true
+		}
+
+		if bestVersion == nil {
+			bestVersion = v
+			continue
+		}
+		if v.Version().GTE(bestVersion.Version()) {
+			bestVersion = v
+		}
 	}
+
+	return bestVersion, bestVersion != nil
+}
+
+func (vm *versionedMap) Store(key string, value Versioned) error {
+	vm.Lock()
+	defer vm.Unlock()
+
+	hasVersion := func(versions []Versioned, version semver.Version) bool {
+		for _, v := range versions {
+			if v.Version().EQ(value.Version()) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if _, exists := vm.versions[key]; exists && hasVersion(vm.versions[key], value.Version()) {
+		return fmt.Errorf("existing registration for %v: %s", key, value.Version())
+	}
+
+	vm.versions[key] = append(vm.versions[key], value)
+
+	return nil
+}
+
+type ResourcePackage interface {
+	Versioned
+	ConstructProvider(name, typ string, urn string) (ProviderResource, error)
 }
 
 type ResourceModule interface {
-	Construct(name, typ string, args map[string]interface{}, urn string) (Resource, error)
+	Versioned
+	Construct(name, typ string, urn string) (Resource, error)
 }
 
-var resourceModules sync.Map // map[string]ResourceModule
+var resourcePackages versionedMap
+var resourceModules versionedMap
 
-func moduleKey(name, version string) string {
-	return fmt.Sprintf("%s@%s", name, version)
+// RegisterResourcePackage register a resource package with the Pulumi runtime.
+func RegisterResourcePackage(pkg string, resourcePackage ResourcePackage) {
+	if err := resourcePackages.Store(pkg, resourcePackage); err != nil {
+		panic(err)
+	}
+}
+
+func moduleKey(pkg, mod string) string {
+	return fmt.Sprintf("%s:%s", pkg, mod)
 }
 
 // RegisterResourceModule register a resource module with the Pulumi runtime.
-func RegisterResourceModule(name, version string, module ResourceModule) {
-	key := moduleKey(name, version)
-	existing, hasExisting := resourceModules.LoadOrStore(key, module)
-	if hasExisting {
-		panic(fmt.Errorf("a resource module for %v is already registered: %v", key, existing))
+func RegisterResourceModule(pkg, mod string, module ResourceModule) {
+	key := moduleKey(pkg, mod)
+	if err := resourceModules.Store(key, module); err != nil {
+		panic(err)
 	}
+}
+
+func init() {
+	resourcePackages = versionedMap{versions: make(map[string][]Versioned)}
+	resourceModules = versionedMap{versions: make(map[string][]Versioned)}
 }

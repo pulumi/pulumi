@@ -21,6 +21,8 @@ class Container(dict):
                  color: Optional[str] = None,
                  material: Optional[str] = None):
         pulumi.set(__self__, "size", size)
+        if brightness is None:
+            brightness = 1
         if brightness is not None:
             pulumi.set(__self__, "brightness", brightness)
         if color is not None:

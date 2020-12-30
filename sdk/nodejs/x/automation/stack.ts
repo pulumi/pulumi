@@ -22,6 +22,8 @@ import { PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../../proto/language_grpc_pb.js");
 
+const secretSentinel = "[secret]";
+
 /**
  * Stack is an isolated, independently configurable instance of a Pulumi program.
  * Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
@@ -171,16 +173,14 @@ export class Stack {
         args.push("--exec-kind", kind);
         const upResult = await this.runPulumiCmd(args, opts?.onOutput);
         onExit(upResult.code);
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
-        const outputs = await this.outputs();
-        const summary = await this.info();
-        const result: UpResult = {
+
+        const [outputs, summary] = await Promise.all([this.outputs(), this.info()]);
+        return {
             stdout: upResult.stdout,
             stderr: upResult.stderr,
             summary: summary!,
-            outputs,
+            outputs: outputs!,
         };
-        return result;
     }
     /**
      * Preforms a dry-run update to a stack, returning pending changes.
@@ -253,12 +253,11 @@ export class Stack {
         const preResult = await this.runPulumiCmd(args);
         onExit(preResult.code);
         const summary = await this.info();
-        const result: PreviewResult = {
+        return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
             summary: summary!,
         };
-        return result;
     }
     /**
      * Compares the current stack’s resource state with the state known to exist in the actual
@@ -289,12 +288,11 @@ export class Stack {
 
         const refResult = await this.runPulumiCmd(args, opts?.onOutput);
         const summary = await this.info();
-        const result: RefreshResult = {
+        return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
             summary: summary!,
         };
-        return result;
     }
     /**
      * Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -324,12 +322,11 @@ export class Stack {
 
         const preResult = await this.runPulumiCmd(args, opts?.onOutput);
         const summary = await this.info();
-        const result: DestroyResult = {
+        return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
             summary: summary!,
         };
-        return result;
     }
     /**
      * Returns the config value associated with the specified key.
@@ -389,15 +386,16 @@ export class Stack {
      */
     async outputs(): Promise<OutputMap> {
         await this.workspace.selectStack(this.name);
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
-        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json"]);
-        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]);
+        const [maskedResult, plaintextResult] = await Promise.all([
+            this.runPulumiCmd(["stack", "output", "--json"]),
+            this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]),
+        ]);
         const maskedOuts = JSON.parse(maskedResult.stdout);
         const plaintextOuts = JSON.parse(plaintextResult.stdout);
         const outputs: OutputMap = {};
-        const secretSentinal = "[secret]";
+
         for (const [key, value] of Object.entries(plaintextOuts)) {
-            const secret = maskedOuts[key] === secretSentinal;
+            const secret = maskedOuts[key] === secretSentinel;
             outputs[key] = { value, secret };
         }
 
@@ -409,13 +407,12 @@ export class Stack {
      */
     async history(): Promise<UpdateSummary[]> {
         const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
-        const summaries: UpdateSummary[] = JSON.parse(result.stdout, (key, value) => {
+        return JSON.parse(result.stdout, (key, value) => {
             if (key === "startTime" || key === "endTime") {
                 return new Date(value);
             }
             return value;
         });
-        return summaries;
     }
     async info(): Promise<UpdateSummary | undefined> {
         const history = await this.history();

@@ -286,9 +286,8 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		m := resource.NewStringProperty(s)
 		return &m, nil
 	case *structpb.Value_ListValue:
-		// If there's already an array, prefer to swap elements within it.
-		var elems []resource.PropertyValue
 		lst := v.GetListValue()
+		elems := make([]resource.PropertyValue, len(lst.GetValues()))
 		for i, elem := range lst.GetValues() {
 			e, err := UnmarshalPropertyValue(elem, opts)
 			if err != nil {
