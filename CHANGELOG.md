@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Allow `serializeFunction` to capture secrets.
+  [#6013](https://github.com/pulumi/pulumi/pull/6013)
+
 - Parallelize bulk operations in NodeJS Automation API.
   [#6022](https://github.com/pulumi/pulumi/pull/6022)
 
