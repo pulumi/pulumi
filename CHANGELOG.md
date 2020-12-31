@@ -11,6 +11,9 @@ CHANGELOG
   
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
+  
+- [CLI] Add a confirmation promt when using `pulumi policy rm`
+  [#6034](https://github.com/pulumi/pulumi/pull/6034)
 
 ## 2.16.2 (2020-12-23)
 
