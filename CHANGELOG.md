@@ -15,6 +15,9 @@ CHANGELOG
 - Python Automation API.
   [#5979](https://github.com/pulumi/pulumi/pull/5979)
 
+- Support recovery workflow (import/export/cancel) in Python Automation API.
+  [#6037](https://github.com/pulumi/pulumi/pull/6037)
+
 ## 2.16.2 (2020-12-23)
 
 - Fix a bug in the core engine that could cause previews to fail if a resource with changes had
