@@ -29,7 +29,7 @@ import (
 //
 // NOTE: This test is intended to be run inside the aforementioned container, unlike the actions test below.
 func TestPulumiDockerImage(t *testing.T) {
-	const stackOwner = "stack72"
+	const stackOwner = "moolumi"
 
 	if os.Getenv("RUN_CONTAINER_TESTS") == "" {
 		t.Skip("Skipping container runtime tests because RUN_CONTAINER_TESTS not set.")
@@ -122,7 +122,7 @@ func TestPulumiActionsImage(t *testing.T) {
 // container. It is assumed that Pulumi program has a configuration key named "runtime" and
 // will print "Hello from {{ runtime }}".
 func testRuntimeWorksInContainer(t *testing.T, runtime, container string) {
-	const stackOwner = "stack72"
+	const stackOwner = "moolumi"
 
 	stackName := fmt.Sprintf("%s/container-%s-%x", stackOwner, runtime, time.Now().UnixNano())
 
