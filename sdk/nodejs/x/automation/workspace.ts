@@ -187,7 +187,16 @@ export interface Workspace {
      * Returns a list of all plugins installed in the Workspace.
      */
     listPlugins(): Promise<PluginInfo[]>;
-    // TODO import/export
+    /**
+     * exportStack exports the deployment state of the stack.
+     * This can be combined with Workspace.importStack to edit a stack's state (such as recovery from failed deployments).
+     */
+    exportStack(stackName: string): Promise<Deployment>;
+    /**
+     * importStack imports the specified deployment state into a pre-existing stack.
+     * This can be combined with Workspace.exportStack to edit a stack's state (such as recovery from failed deployments).
+     */
+    importStack(stackName: string, state: Deployment): Promise<void>;
 }
 
 /**
@@ -200,6 +209,14 @@ export interface StackSummary {
     updateInProgress: boolean;
     resourceCount?: number;
     url?: string;
+}
+
+/**
+ * Deployment encapsulates the state of a stack deployment.
+ */
+export interface Deployment {
+    version: number;
+    deployment: object;
 }
 
 /**

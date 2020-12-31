@@ -16,10 +16,7 @@ import * as assert from "assert";
 import * as upath from "upath";
 
 import { Config } from "../../index";
-import { ConfigMap } from "../../x/automation/config";
-import { LocalWorkspace } from "../../x/automation/localWorkspace";
-import { ProjectSettings } from "../../x/automation/projectSettings";
-import { Stack } from "../../x/automation/stack";
+import { ConfigMap, LocalWorkspace, ProjectSettings, Stack } from "../../x/automation";
 import { asyncTest } from "../util";
 
 describe("LocalWorkspace", () => {
@@ -95,7 +92,7 @@ describe("LocalWorkspace", () => {
         const secretKey = normalizeConfigKey("secret", projectName);
 
         try {
-            const empty = await stack.getConfig(plainKey);
+            await stack.getConfig(plainKey);
         } catch (error) {
             caught++;
         }
@@ -240,6 +237,40 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
         await stack.workspace.removeStack(stackName);
+    }));
+    it(`imports and exports stacks`, asyncTest(async() => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "import_export_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        try {
+            await stack.setAllConfig({
+                                         "bar": { value: "abc" },
+                                         "buzz": { value: "secret", secret: true },
+                                     });
+            await stack.up();
+
+            // export stack
+            const state = await stack.exportStack();
+
+            // import stack
+            await stack.importStack(state);
+            const configVal = await stack.getConfig("bar");
+            assert.strictEqual(configVal.value, "abc");
+        } finally {
+            const destroyRes = await stack.destroy();
+            assert.strictEqual(destroyRes.summary.kind, "destroy");
+            assert.strictEqual(destroyRes.summary.result, "succeeded");
+            await stack.workspace.removeStack(stackName);
+        }
     }));
 });
 
