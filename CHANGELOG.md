@@ -11,6 +11,9 @@ CHANGELOG
   
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
+  
+- Fix a typo in the unit testing mocks to get the outputs while registering them
+  [#6040](https://github.com/pulumi/pulumi/pull/6040)
 
 ## 2.16.2 (2020-12-23)
 
