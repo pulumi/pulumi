@@ -181,7 +181,8 @@ func GetStoredCredentials() (Credentials, error) {
 
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, errors.Wrapf(err, "unmarshalling credentials file")
+		return Credentials{}, errors.Wrapf(err, "failed to read Pulumi credentials file. Please re-run "+
+			"`pulumi login` to reset your credentials file")
 	}
 
 	var secrets []string
