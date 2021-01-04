@@ -84,7 +84,7 @@ const (
 // Should generally mirror backend.UpdateInfo, but we clone it in this package to add
 // flexibility in case there is a breaking change in the backend-type.
 type UpdateInfo struct {
-	UpdateVersion int `json:"updateVersion"`
+	Version int `json:"version"`
 	// Information known before an update is started.
 	Kind        UpdateKind             `json:"kind"`
 	StartTime   int64                  `json:"startTime"`
