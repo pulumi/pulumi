@@ -4,6 +4,7 @@ using System.Text;
 using Pulumi.X.Automation;
 using Pulumi.X.Automation.Serialization;
 using Xunit;
+using YamlDotNet.Core;
 
 namespace Pulumi.Tests.X.Automation
 {
@@ -61,7 +62,7 @@ config:
       three: three
 ";
 
-            Assert.Throws<NotSupportedException>(
+            Assert.Throws<YamlException>(
                 () => Serializer.DeserializeYaml<StackSettings>(yaml));
         }
 
