@@ -672,7 +672,7 @@ func (g *generator) useLookupInvokeForm(token string) bool {
 	}
 	fnLookup := "Lookup" + fn[3:]
 	pkgContext, has := g.contexts[pkg][mod]
-	if has && pkgContext.names.has(fnLookup) {
+	if has && pkgContext.names.Has(fnLookup) {
 		return true
 	}
 	return false

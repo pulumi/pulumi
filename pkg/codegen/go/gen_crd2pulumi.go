@@ -2,6 +2,7 @@ package gen
 
 import (
 	"bytes"
+	"github.com/pulumi/pulumi/pkg/v2/codegen"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
@@ -32,7 +33,7 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 		buffer := &bytes.Buffer{}
 
 		for _, r := range pkg.resources {
-			imports := stringSet{}
+			imports := codegen.NewStringSet()
 			pkg.getImports(r, imports)
 			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
 
