@@ -63,6 +63,85 @@ func (i *OtherResource) ToOtherResourceOutputWithContext(ctx context.Context) Ot
 	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutput)
 }
 
+func (i *OtherResource) ToOtherResourcePtrOutput() OtherResourcePtrOutput {
+	return i.ToOtherResourcePtrOutputWithContext(context.Background())
+}
+
+func (i *OtherResource) ToOtherResourcePtrOutputWithContext(ctx context.Context) OtherResourcePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(OtherResourcePtrOutput)
+}
+
+type OtherResourcePtrInput interface {
+	pulumi.Input
+
+	ToOtherResourcePtrOutput() OtherResourcePtrOutput
+	ToOtherResourcePtrOutputWithContext(ctx context.Context) OtherResourcePtrOutput
+}
+
+type otherResourcePtrType OtherResourceArgs
+
+func (*otherResourcePtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**OtherResource)(nil))
+}
+
+func (i *otherResourcePtrType) ToOtherResourcePtrOutput() OtherResourcePtrOutput {
+	return i.ToOtherResourcePtrOutputWithContext(context.Background())
+}
+
+func (i *otherResourcePtrType) ToOtherResourcePtrOutputWithContext(ctx context.Context) OtherResourcePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutput).ToOtherResourcePtrOutput()
+}
+
+// OtherResourceArrayInput is an input type that accepts OtherResourceArray and OtherResourceArrayOutput values.
+// You can construct a concrete instance of `OtherResourceArrayInput` via:
+//
+//          OtherResourceArray{ OtherResourceArgs{...} }
+type OtherResourceArrayInput interface {
+	pulumi.Input
+
+	ToOtherResourceArrayOutput() OtherResourceArrayOutput
+	ToOtherResourceArrayOutputWithContext(context.Context) OtherResourceArrayOutput
+}
+
+type OtherResourceArray []OtherResourceInput
+
+func (OtherResourceArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]OtherResource)(nil))
+}
+
+func (i OtherResourceArray) ToOtherResourceArrayOutput() OtherResourceArrayOutput {
+	return i.ToOtherResourceArrayOutputWithContext(context.Background())
+}
+
+func (i OtherResourceArray) ToOtherResourceArrayOutputWithContext(ctx context.Context) OtherResourceArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceArrayOutput)
+}
+
+// OtherResourceMapInput is an input type that accepts OtherResourceMap and OtherResourceMapOutput values.
+// You can construct a concrete instance of `OtherResourceMapInput` via:
+//
+//          OtherResourceMap{ "key": OtherResourceArgs{...} }
+type OtherResourceMapInput interface {
+	pulumi.Input
+
+	ToOtherResourceMapOutput() OtherResourceMapOutput
+	ToOtherResourceMapOutputWithContext(context.Context) OtherResourceMapOutput
+}
+
+type OtherResourceMap map[string]OtherResourceInput
+
+func (OtherResourceMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]OtherResource)(nil))
+}
+
+func (i OtherResourceMap) ToOtherResourceMapOutput() OtherResourceMapOutput {
+	return i.ToOtherResourceMapOutputWithContext(context.Background())
+}
+
+func (i OtherResourceMap) ToOtherResourceMapOutputWithContext(ctx context.Context) OtherResourceMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceMapOutput)
+}
+
 type OtherResourceOutput struct {
 	*pulumi.OutputState
 }
@@ -79,6 +158,75 @@ func (o OtherResourceOutput) ToOtherResourceOutputWithContext(ctx context.Contex
 	return o
 }
 
+func (o OtherResourceOutput) ToOtherResourcePtrOutput() OtherResourcePtrOutput {
+	return o.ToOtherResourcePtrOutputWithContext(context.Background())
+}
+
+func (o OtherResourceOutput) ToOtherResourcePtrOutputWithContext(ctx context.Context) OtherResourcePtrOutput {
+	return o.ApplyT(func(v OtherResource) *OtherResource {
+		return &v
+	}).(OtherResourcePtrOutput)
+}
+
+type OtherResourcePtrOutput struct {
+	*pulumi.OutputState
+}
+
+func (OtherResourcePtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**OtherResource)(nil))
+}
+
+func (o OtherResourcePtrOutput) ToOtherResourcePtrOutput() OtherResourcePtrOutput {
+	return o
+}
+
+func (o OtherResourcePtrOutput) ToOtherResourcePtrOutputWithContext(ctx context.Context) OtherResourcePtrOutput {
+	return o
+}
+
+type OtherResourceArrayOutput struct{ *pulumi.OutputState }
+
+func (OtherResourceArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]OtherResource)(nil))
+}
+
+func (o OtherResourceArrayOutput) ToOtherResourceArrayOutput() OtherResourceArrayOutput {
+	return o
+}
+
+func (o OtherResourceArrayOutput) ToOtherResourceArrayOutputWithContext(ctx context.Context) OtherResourceArrayOutput {
+	return o
+}
+
+func (o OtherResourceArrayOutput) Index(i pulumi.IntInput) OtherResourceOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) OtherResource {
+		return vs[0].([]OtherResource)[vs[1].(int)]
+	}).(OtherResourceOutput)
+}
+
+type OtherResourceMapOutput struct{ *pulumi.OutputState }
+
+func (OtherResourceMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]OtherResource)(nil))
+}
+
+func (o OtherResourceMapOutput) ToOtherResourceMapOutput() OtherResourceMapOutput {
+	return o
+}
+
+func (o OtherResourceMapOutput) ToOtherResourceMapOutputWithContext(ctx context.Context) OtherResourceMapOutput {
+	return o
+}
+
+func (o OtherResourceMapOutput) MapIndex(k pulumi.StringInput) OtherResourceOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) OtherResource {
+		return vs[0].(map[string]OtherResource)[vs[1].(string)]
+	}).(OtherResourceOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(OtherResourceOutput{})
+	pulumi.RegisterOutputType(OtherResourcePtrOutput{})
+	pulumi.RegisterOutputType(OtherResourceArrayOutput{})
+	pulumi.RegisterOutputType(OtherResourceMapOutput{})
 }
