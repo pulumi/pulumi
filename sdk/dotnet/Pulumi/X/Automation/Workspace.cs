@@ -56,35 +56,6 @@ namespace Pulumi.X.Automation
         public abstract IDictionary<string, string>? EnvironmentVariables { get; set; }
 
         /// <summary>
-        /// Returns project settings for the current project if any.
-        /// </summary>
-        public abstract Task<ProjectSettings?> GetProjectSettingsAsync(CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Overwrites the settings for the current project.
-        /// <para/>
-        /// There can only be a single project per workspace. Fails if new project name does not match old.
-        /// </summary>
-        /// <param name="settings">The settings object to save.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task SaveProjectSettingsAsync(ProjectSettings settings, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Returns stack settings for the stack matching the specified stack name if any.
-        /// </summary>
-        /// <param name="stackName">The name of the stack.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task<StackSettings?> GetStackSettingsAsync(string stackName, CancellationToken cancellationToken = default);
-
-        /// <summary>
-        /// Overwrite the settings for the stack matching the specified stack name.
-        /// </summary>
-        /// <param name="stackName">The name of the stack to operate on.</param>
-        /// <param name="settings">The settings object to save.</param>
-        /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task SaveStackSettingsAsync(string stackName, StackSettings settings, CancellationToken cancellationToken = default);
-
-        /// <summary>
         /// Hook to provide additional args to every CLI command before they are executed.
         /// <para/>
         /// Provided with a stack name, returns an array of args to append to an invoked command <c>["--config=...", ]</c>.

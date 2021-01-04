@@ -328,29 +328,7 @@ namespace Pulumi.X.Automation
 
         private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
 
-        /// <inheritdoc/>
-        public override async Task<ProjectSettings?> GetProjectSettingsAsync(CancellationToken cancellationToken = default)
-        {
-            foreach (var ext in SettingsExtensions)
-            {
-                var isJson = ext == ".json";
-                var path = Path.Combine(this.WorkDir, $"Pulumi{ext}");
-                if (!File.Exists(path))
-                    continue;
-
-                var content = await File.ReadAllTextAsync(path, cancellationToken);
-                if (isJson)
-                    return this._serializer.DeserializeJson<ProjectSettings>(content);
-
-                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
-                return model.Convert();
-            }
-
-            return null;
-        }
-
-        /// <inheritdoc/>
-        public override Task SaveProjectSettingsAsync(ProjectSettings settings, CancellationToken cancellationToken = default)
+        private Task SaveProjectSettingsAsync(ProjectSettings settings, CancellationToken cancellationToken = default)
         {
             var foundExt = ".yaml";
             foreach (var ext in SettingsExtensions)
@@ -377,27 +355,7 @@ namespace Pulumi.X.Automation
             return parts[^1];
         }
 
-        /// <inheritdoc/>
-        public override async Task<StackSettings?> GetStackSettingsAsync(string stackName, CancellationToken cancellationToken = default)
-        {
-            var settingsName = GetStackSettingsName(stackName);
-
-            foreach (var ext in SettingsExtensions)
-            {
-                var isJson = ext == ".json";
-                var path = Path.Combine(this.WorkDir, $"Pulumi.{settingsName}{ext}");
-                if (!File.Exists(path))
-                    continue;
-
-                var content = await File.ReadAllTextAsync(path, cancellationToken);
-                return isJson ? this._serializer.DeserializeJson<StackSettings>(content) : this._serializer.DeserializeYaml<StackSettings>(content);
-            }
-
-            return null;
-        }
-
-        /// <inheritdoc/>
-        public override Task SaveStackSettingsAsync(string stackName, StackSettings settings, CancellationToken cancellationToken = default)
+        private Task SaveStackSettingsAsync(string stackName, StackSettings settings, CancellationToken cancellationToken = default)
         {
             var settingsName = GetStackSettingsName(stackName);
 

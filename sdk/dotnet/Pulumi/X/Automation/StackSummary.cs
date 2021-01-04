@@ -1,4 +1,6 @@
-﻿namespace Pulumi.X.Automation
+﻿using System;
+
+namespace Pulumi.X.Automation
 {
     public class StackSummary
     {
@@ -6,7 +8,7 @@
 
         public bool IsCurrent { get; }
 
-        public string? LastUpdate { get; }
+        public DateTimeOffset? LastUpdate { get; }
 
         public bool IsUpdateInProgress { get; }
 
@@ -14,10 +16,10 @@
 
         public string? Url { get; }
 
-        public StackSummary(
+        internal StackSummary(
             string name,
             bool isCurrent,
-            string? lastUpdate,
+            DateTimeOffset? lastUpdate,
             bool isUpdateInProgress,
             int? resourceCount,
             string? url)

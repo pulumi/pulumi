@@ -1,8 +1,10 @@
-﻿namespace Pulumi.X.Automation.Serialization
+﻿using Pulumi.X.Automation.Serialization.Json;
+
+namespace Pulumi.X.Automation.Serialization
 {
     // necessary because this version of System.Text.Json
     // can't deserialize a type that doesn't have a parameterless constructor
-    internal class ProjectSettingsModel
+    internal class ProjectSettingsModel : IJsonModel<ProjectSettings>
     {
         public string? Name { get; set; }
 

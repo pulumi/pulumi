@@ -69,8 +69,8 @@ namespace Pulumi.X.Automation
                     request.Parallel,
                     request.DryRun);
 
-                    var deployment = new Deployment(runInfo);
-                    await deployment.RunInstanceAsync(() => _program());
+                var deployment = new Deployment(runInfo);
+                await deployment.RunInstanceAsync(() => _program());
             }
             catch (Exception e) // Use more specific exceptions
             {

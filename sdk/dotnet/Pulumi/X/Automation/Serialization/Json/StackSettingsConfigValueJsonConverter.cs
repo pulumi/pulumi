@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -33,29 +32,23 @@ namespace Pulumi.X.Automation.Serialization.Json
                 return new StackSettingsConfigValue(secret, true);
             }
 
-            var dictionary = JsonSerializer.Deserialize<IDictionary<string, object>>(element.GetRawText(), options);
-            return new StackSettingsConfigValue(dictionary);
+            throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
         }
 
         public override void Write(Utf8JsonWriter writer, StackSettingsConfigValue value, JsonSerializerOptions options)
         {
-            // object
-            if (value.IsObject)
-            {
-                JsonSerializer.Serialize(writer, value.ValueObject, options: options);
-            }
             // secure string
-            else if (value.IsSecure)
+            if (value.IsSecure)
             {
                 var securePropertyName = options.PropertyNamingPolicy?.ConvertName("Secure") ?? "Secure";
                 writer.WriteStartObject();
-                writer.WriteString(securePropertyName, value.ValueString);
+                writer.WriteString(securePropertyName, value.Value);
                 writer.WriteEndObject();
             }
             // plain string
             else
             {
-                writer.WriteStringValue(value.ValueString);
+                writer.WriteStringValue(value.Value);
             }
         }
     }

@@ -6,29 +6,29 @@ namespace Pulumi.X.Automation
     {
         public string Name { get; }
 
-        public string Path { get; }
+        public string? Path { get; }
 
         public PluginKind Kind { get; }
 
         public string? Version { get; }
 
-        public long Size { get; } // TODO: or double? will know once get to implementation
+        public long Size { get; }
 
         public DateTimeOffset InstallTime { get; }
 
         public DateTimeOffset LastUsedTime { get; }
 
-        public string ServerUrl { get; }
+        public string? ServerUrl { get; }
 
-        public PluginInfo(
+        internal PluginInfo(
             string name,
-            string path,
+            string? path,
             PluginKind kind,
             string? version,
             long size,
             DateTimeOffset installTime,
             DateTimeOffset lastUsedTime,
-            string serverUrl)
+            string? serverUrl)
         {
             this.Name = name;
             this.Path = path;

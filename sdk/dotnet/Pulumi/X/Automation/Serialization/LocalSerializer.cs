@@ -44,11 +44,15 @@ namespace Pulumi.X.Automation.Serialization
             var options = new JsonSerializerOptions
             {
                 AllowTrailingCommas = true,
+                IgnoreNullValues = true,
                 PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
             options.Converters.Add(new JsonStringEnumConverter(new LowercaseJsonNamingPolicy()));
-            options.Converters.Add(new ProjectSettingsJsonConverter());
+            options.Converters.Add(new MapToModelJsonConverter<ConfigValue, ConfigValueModel>());
+            options.Converters.Add(new MapToModelJsonConverter<PluginInfo, PluginInfoModel>());
+            options.Converters.Add(new MapToModelJsonConverter<ProjectSettings, ProjectSettingsModel>());
+            options.Converters.Add(new MapToModelJsonConverter<StackSummary, StackSummaryModel>());
             options.Converters.Add(new ProjectRuntimeJsonConverter());
             options.Converters.Add(new StackSettingsConfigValueJsonConverter());
 
@@ -58,22 +62,17 @@ namespace Pulumi.X.Automation.Serialization
         public static IDeserializer BuildYamlDeserializer()
             => new DeserializerBuilder()
             .WithNamingConvention(LowerCaseNamingConvention.Instance)
+            .IgnoreUnmatchedProperties()
             .WithTypeConverter(new ProjectRuntimeYamlConverter())
             .WithTypeConverter(new StackSettingsConfigValueYamlConverter())
             .Build();
 
         public static ISerializer BuildYamlSerializer()
-        {
-            var stackSettingsConfigValueConverter = new StackSettingsConfigValueYamlConverter();
-
-            var builder = new SerializerBuilder()
-                .WithNamingConvention(LowerCaseNamingConvention.Instance)
-                .WithTypeConverter(new ProjectRuntimeYamlConverter())
-                .WithTypeConverter(stackSettingsConfigValueConverter);
-
-            stackSettingsConfigValueConverter.ValueSerializer = builder.BuildValueSerializer();
-
-            return builder.Build();
-        }
+            => new SerializerBuilder()
+            .WithNamingConvention(LowerCaseNamingConvention.Instance)
+            .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
+            .WithTypeConverter(new ProjectRuntimeYamlConverter())
+            .WithTypeConverter(new StackSettingsConfigValueYamlConverter())
+            .Build();
     }
 }
