@@ -288,11 +288,6 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = ns + "." + typ
 		}
 	case *schema.UnionType:
-		unionT := "Union"
-		if wrapInput {
-			unionT = "InputUnion"
-		}
-
 		elementTypeSet := stringSet{}
 		var elementTypes []string
 		for _, e := range t.ElementTypes {
@@ -309,18 +304,19 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			}
 		}
 
-		if len(elementTypes) == 1 {
+		switch len(elementTypes) {
+		case 1:
 			return mod.typeString(t.ElementTypes[0], qualifier, input, state, wrapInput, requireInitializers, optional)
+		case 2:
+			unionT := "Union"
+			if wrapInput {
+				unionT = "InputUnion"
+			}
+			typ = fmt.Sprintf("%s<%s>", unionT, strings.Join(elementTypes, ", "))
+			wrapInput = false
+		default:
+			typ = "object"
 		}
-
-		for _, e := range elementTypes[:len(elementTypes)-1] {
-			typ = fmt.Sprintf("%s%s<%s, ", typ, unionT, e)
-		}
-		last := elementTypes[len(elementTypes)-1]
-		term := strings.Repeat(">", len(elementTypes)-1)
-
-		wrapInput = false
-		typ += last + term
 	default:
 		switch t {
 		case schema.BoolType:
