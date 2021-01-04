@@ -373,7 +373,7 @@ jobs:
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     steps:
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
