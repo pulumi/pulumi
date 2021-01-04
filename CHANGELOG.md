@@ -12,6 +12,10 @@ CHANGELOG
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
 
+- [CLI] Ensure errors with the Pulumi credentials file
+  give the user some information on how to resolve the problem
+  [#6044](https://github.com/pulumi/pulumi/pull/6044)
+
 ## 2.16.2 (2020-12-23)
 
 - Fix a bug in the core engine that could cause previews to fail if a resource with changes had
