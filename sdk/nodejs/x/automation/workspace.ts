@@ -220,8 +220,15 @@ export interface StackSummary {
  * Deployment encapsulates the state of a stack deployment.
  */
 export interface Deployment {
+    /**
+     * Version indicates the schema of the encoded deployment.
+     */
     version: number;
-    deployment: object;
+    /**
+     * The pulumi deployment.
+     */
+    // TODO: Expand type to encapsulate deployment.
+    deployment: any;
 }
 
 /**
