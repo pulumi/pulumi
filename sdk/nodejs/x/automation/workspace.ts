@@ -190,11 +190,16 @@ export interface Workspace {
     /**
      * exportStack exports the deployment state of the stack.
      * This can be combined with Workspace.importStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param stackName the name of the stack.
      */
     exportStack(stackName: string): Promise<Deployment>;
     /**
      * importStack imports the specified deployment state into a pre-existing stack.
      * This can be combined with Workspace.exportStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param stackName the name of the stack.
+     * @param state the stack state to import.
      */
     importStack(stackName: string, state: Deployment): Promise<void>;
 }

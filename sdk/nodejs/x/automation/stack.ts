@@ -443,6 +443,8 @@ export class Stack {
     /**
      * importStack imports the specified deployment state into a pre-existing stack.
      * This can be combined with Stack.exportStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param state the stack state to import.
      */
     async importStack(state: Deployment): Promise<void> {
         return this.workspace.importStack(this.name, state);
