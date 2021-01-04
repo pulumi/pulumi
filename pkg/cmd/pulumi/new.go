@@ -348,7 +348,17 @@ func newNewCmd() *cobra.Command {
 			"* `pulumi new --secrets-provider=\"awskms://1234abcd-12ab-34cd-56ef-1234567890ab?region=us-east-1\"`\n" +
 			"* `pulumi new --secrets-provider=\"azurekeyvault://mykeyvaultname.vault.azure.net/keys/mykeyname\"`\n" +
 			"* `pulumi new --secrets-provider=\"gcpkms://projects/p/locations/l/keyRings/r/cryptoKeys/k\"`\n" +
-			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`",
+			"* `pulumi new --secrets-provider=\"hashivault://mykey\"`" +
+			"\n\n" +
+			"To create a project from a specific source control location, pass the url as follows e.g.\n" +
+			"* `pulumi new https://gitlab.com/<user>/<repo>`\n" +
+			"* `pulumi new https://bitbucket.org/<user>/<repo>`\n" +
+			"* `pulumi new https://github.com/<user>/<repo>`\n" +
+			"\n" +
+			"To create the project from a branch of a specific source control location, pass the url to the branch, e.g.\n" +
+			"* `pulumi new https://gitlab.com/<user>/<repo>/tree/<branch>`\n" +
+			"* `pulumi new https://bitbucket.org/<user>/<repo>/tree/<branch>`\n" +
+			"* `pulumi new https://github.com/<user>/<repo>/tree/<branch>`\n",
 		Args: cmdutil.MaximumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, cliArgs []string) error {
 			if len(cliArgs) > 0 {
