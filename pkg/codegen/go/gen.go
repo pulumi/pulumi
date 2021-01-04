@@ -1573,11 +1573,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Resources
 		for _, r := range pkg.resources {
-			imports := codegen.NewStringSet()
-			pkg.getImports(r, imports)
+			importsAndAliases := map[string]string{}
+			pkg.getImports(r, importsAndAliases)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
 			if err := pkg.genResource(buffer, r); err != nil {
 				return nil, err
@@ -1588,11 +1588,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Functions
 		for _, f := range pkg.functions {
-			imports := codegen.NewStringSet()
-			pkg.getImports(f, imports)
+			importsAndAliases := map[string]string{}
+			pkg.getImports(f, importsAndAliases)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, nil, imports)
+			pkg.genHeader(buffer, nil, importsAndAliases)
 
 			pkg.genFunction(buffer, f)
 
@@ -1601,13 +1601,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Types
 		if len(pkg.types) > 0 {
-			imports := codegen.NewStringSet()
+			importsAndAliases := map[string]string{}
 			for _, t := range pkg.types {
-				pkg.getImports(t, imports)
+				pkg.getImports(t, importsAndAliases)
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
 			for _, t := range pkg.types {
 				pkg.genType(buffer, t)
@@ -1620,7 +1620,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Enums
 		if len(pkg.enums) > 0 {
-			imports := codegen.NewStringSet()
+			imports := map[string]string{}
 			for _, e := range pkg.enums {
 				pkg.getImports(e, imports)
 			}
@@ -1639,11 +1639,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Utilities
 		if pkg.needsUtils || len(mod) == 0 {
 			buffer := &bytes.Buffer{}
-			imports := codegen.NewStringSet(
-				"github.com/blang/semver",
-				"github.com/pulumi/pulumi/sdk/v2/go/pulumi",
-			)
-			pkg.genHeader(buffer, []string{"os", "reflect", "strconv", "strings"}, imports)
+			importsAndAliases := map[string]string{
+				"github.com/blang/semver": "",
+				"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
+			}
+			pkg.genHeader(buffer, []string{"os", "reflect", "strconv", "strings"}, importsAndAliases)
 
 			fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
 
