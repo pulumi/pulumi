@@ -1,8 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
+using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Pulumi.X.Automation.Commands;
 using Pulumi.X.Automation.Commands.Exceptions;
 
@@ -166,6 +175,79 @@ namespace Pulumi.X.Automation
         /// <param name="cancellationToken">A cancellation token.</param>
         public Task<ImmutableDictionary<string, ConfigValue>> RefreshConfigAsync(CancellationToken cancellationToken = default)
             => this.Workspace.RefreshConfigAsync(this.Name, cancellationToken);
+
+        // TODO: docs, input UpOptions, return value
+        public async Task Up(CancellationToken cancellationToken = default)
+        {
+            IHost? host = null;
+            try
+            {
+                // just mimicking typescript implementation's behavior - TODO: extract this to a reusable helper
+                if (this.Workspace.Program != null)
+                {
+                    var portTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+                    host = Host.CreateDefaultBuilder()
+                        .ConfigureWebHostDefaults(webBuilder =>
+                        {
+                            webBuilder
+                                .ConfigureKestrel(kestrelOptions =>
+                                {
+                                    kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
+                                    {
+                                        // TODO: not sure if we need to do anything special to mimic typescript implementation's grpc.ServerCredentials.createInsecure()
+                                        listenOptions.UseHttps();
+                                    });
+                                })
+                                .ConfigureServices(services =>
+                                {
+                                    services.AddSingleton(this.Workspace.Program); // to be injected into LanguageRuntimeService
+                                    services.AddGrpc(grpcOptions =>
+                                    {
+                                        grpcOptions.MaxReceiveMessageSize = LanguageRuntimeService.MaxRpcMesageSize;
+                                        grpcOptions.MaxSendMessageSize = LanguageRuntimeService.MaxRpcMesageSize;
+                                    });
+                                })
+                                .Configure(app =>
+                                {
+                                    app.UseRouting();
+                                    app.UseEndpoints(endpoints =>
+                                    {
+                                        endpoints.MapGrpcService<LanguageRuntimeService>();
+                                    });
+                                });
+                        })
+                        .Build();
+
+                    // before starting the host, set up this callback to tell us what port was selected
+                    host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStarted.Register(() =>
+                    {
+                        try
+                        {
+                            var serverFeatures = host.Services.GetRequiredService<IServer>().Features;
+                            var addresses = serverFeatures.Get<IServerAddressesFeature>().Addresses.ToList();
+                            Debug.Assert(addresses.Count == 1, "Server should only be listening on one address");
+                            var uri = new Uri(addresses[0]);
+                            portTcs.TrySetResult(uri.Port);
+                        }
+                        catch (Exception ex)
+                        {
+                            portTcs.TrySetException(ex);
+                        }
+                    });
+                    await host.StartAsync(cancellationToken);
+                    var port = await portTcs.Task;
+                    // TODO: args.Add($"--client=127.0.0.1:{port}"); and kind=inline etc
+                }
+            }
+            finally
+            {
+                if (host != null)
+                {
+                    await host.StopAsync(cancellationToken);
+                    host.Dispose();
+                }
+            }
+        }
 
         private Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,

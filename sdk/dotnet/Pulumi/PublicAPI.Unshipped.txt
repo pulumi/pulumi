@@ -149,6 +149,7 @@ Pulumi.X.Automation.XStack.RemoveConfigAsync(System.Collections.Generic.IEnumera
 Pulumi.X.Automation.XStack.RemoveConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack.SetConfigAsync(System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack.SetConfigValueAsync(string key, Pulumi.X.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.XStack.Up(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack.Workspace.get -> Pulumi.X.Automation.Workspace
 abstract Pulumi.X.Automation.Workspace.CreateStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
 abstract Pulumi.X.Automation.Workspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
