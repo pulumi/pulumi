@@ -12,6 +12,10 @@ CHANGELOG
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
 
+- [CLI] Support JSON outputs (`--json`) for `update`, 
+  `destroy` and `refresh` operations
+  [#6045](https://github.com/pulumi/pulumi/pull/6045)
+
 ## 2.16.2 (2020-12-23)
 
 - Fix a bug in the core engine that could cause previews to fail if a resource with changes had
