@@ -173,8 +173,9 @@ export class Stack {
         args.push("--exec-kind", kind);
         const upResult = await this.runPulumiCmd(args, opts?.onOutput);
         onExit(upResult.code);
-
-        const [outputs, summary] = await Promise.all([this.outputs(), this.info()]);
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+        const outputs = await this.outputs();
+        const summary = await this.info();
         return {
             stdout: upResult.stdout,
             stderr: upResult.stderr,
@@ -386,10 +387,9 @@ export class Stack {
      */
     async outputs(): Promise<OutputMap> {
         await this.workspace.selectStack(this.name);
-        const [maskedResult, plaintextResult] = await Promise.all([
-            this.runPulumiCmd(["stack", "output", "--json"]),
-            this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]),
-        ]);
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json"]);
+        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]);
         const maskedOuts = JSON.parse(maskedResult.stdout);
         const plaintextOuts = JSON.parse(plaintextResult.stdout);
         const outputs: OutputMap = {};

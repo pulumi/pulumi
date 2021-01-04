@@ -5,9 +5,6 @@ CHANGELOG
 
 - Allow `serializeFunction` to capture secrets.
   [#6013](https://github.com/pulumi/pulumi/pull/6013)
-
-- Parallelize bulk operations in NodeJS Automation API.
-  [#6022](https://github.com/pulumi/pulumi/pull/6022)
   
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
