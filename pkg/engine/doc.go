@@ -19,12 +19,4 @@
 // - Define events and their associated handlers.
 // - Manage journal entries for resource operations.
 // - Manage plugins, including installation, version handling, and loading.
-//
-// The following interfaces are defined:
-// - The QueryInfo interface, which handles information common to query operations (list, watch).
-// - The RequiredPolicy interface, which represents a set of policies to apply during an update.
-// - The SnapshotManager interface, which manages an in-memory resource graph.
-// - The SnapshotMutation interface, which manages an in-flight snapshot mutation.
-// - The UpdateInfo interface, which handles information common to resource operations (update, preview, destroy,
-// import, refresh).
 package engine
