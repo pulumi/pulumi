@@ -13,7 +13,4 @@
 // limitations under the License.
 
 // Package stack manages the serialized and configurable state associated with a stack (i.e., deployment target).
-//
-// The following interfaces are defined:
-// - The SecretsProvider interface, used to create a secret manager.
 package stack
