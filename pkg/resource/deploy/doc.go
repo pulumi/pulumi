@@ -28,5 +28,6 @@
 // - The Source interface, used to generate a set of resources for the planner.
 // - The SourceIterator interface, used to enumerate a list of resources for a Source.
 // - The SourceResourceMonitor interface, used to direct resource operations from a Source to resource providers.
+// - The Step interface, which defines a deployment operation.
 // - The StepExecutorEvents interface, used to hook resource lifecycle events.
 package deploy
