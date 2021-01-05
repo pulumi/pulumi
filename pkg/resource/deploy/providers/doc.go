@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package providers contains the logic for first-class providers (versioning, loading, resource operations).
+// Package providers contains the logic for managing provider resources (versioning, loading, resource operations).
 package providers
