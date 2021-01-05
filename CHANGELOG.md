@@ -5,15 +5,22 @@ CHANGELOG
 
 - Allow `serializeFunction` to capture secrets.
   [#6013](https://github.com/pulumi/pulumi/pull/6013)
-
-- Parallelize bulk operations in NodeJS Automation API.
-  [#6022](https://github.com/pulumi/pulumi/pull/6022)
   
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
   
 - Fix a typo in the unit testing mocks to get the outputs while registering them
   [#6040](https://github.com/pulumi/pulumi/pull/6040)
+
+- Support recovery workflow (import/export/cancel) in NodeJS Automation API.
+  [#6038](https://github.com/pulumi/pulumi/pull/6038)
+  
+- [CLI] Add a confirmation prompt when using `pulumi policy rm`
+  [#6034](https://github.com/pulumi/pulumi/pull/6034)
+
+- [CLI] Ensure errors with the Pulumi credentials file
+  give the user some information on how to resolve the problem
+  [#6044](https://github.com/pulumi/pulumi/pull/6044)
 
 ## 2.16.2 (2020-12-23)
 
