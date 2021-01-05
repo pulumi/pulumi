@@ -1,3 +1,4 @@
+//nolint:goconst
 package lifecycletest
 
 import (
@@ -716,9 +717,10 @@ func TestProviderVersionOption(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, deploytest.ResourceOptions{
-			Version: "1.0.0",
-		})
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
+			deploytest.ResourceOptions{
+				Version: "1.0.0",
+			})
 		assert.NoError(t, err)
 
 		if provID == "" {
@@ -760,11 +762,12 @@ func TestProviderVersionInput(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"version": resource.NewStringProperty("1.0.0"),
-			},
-		})
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
+			deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"version": resource.NewStringProperty("1.0.0"),
+				},
+			})
 		assert.NoError(t, err)
 
 		if provID == "" {
@@ -806,12 +809,13 @@ func TestProviderVersionInputAndOption(t *testing.T) {
 	}
 
 	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true, deploytest.ResourceOptions{
-			Inputs: resource.PropertyMap{
-				"version": resource.NewStringProperty("1.5.0"),
-			},
-			Version: "1.0.0",
-		})
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), "provA", true,
+			deploytest.ResourceOptions{
+				Inputs: resource.PropertyMap{
+					"version": resource.NewStringProperty("1.5.0"),
+				},
+				Version: "1.0.0",
+			})
 		assert.NoError(t, err)
 
 		if provID == "" {
