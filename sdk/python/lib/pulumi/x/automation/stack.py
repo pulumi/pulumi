@@ -20,7 +20,7 @@ from concurrent import futures
 from enum import Enum
 from datetime import datetime
 from dataclasses import dataclass
-from typing import List, Any, Mapping, MutableMapping, Literal, Optional, Callable
+from typing import List, Any, Mapping, MutableMapping, Optional, Callable
 
 from .cmd import CommandResult, _run_pulumi_cmd
 from .config import ConfigValue, ConfigMap
@@ -38,6 +38,12 @@ class ExecKind(str, Enum):
     INLINE = "auto.inline"
 
 
+class StackInitMode(Enum):
+    CREATE = "create"
+    SELECT = "select"
+    CREATE_OR_SELECT = "create_or_select"
+
+
 @dataclass
 class OutputValue:
     value: Any
@@ -46,41 +52,32 @@ class OutputValue:
 
 OutputMap = MutableMapping[str, OutputValue]
 
-UpdateKind = Literal["update", "preview", "refresh", "rename", "destroy", "import"]
-"""The kind of update that was performed on the stack."""
-
-UpdateResult = Literal["not-started", "in-progress", "succeeded", "failed"]
-"""Represents the current status of a given update."""
-
-OpType = Literal["same", "create", "update", "delete", "replace", "create-replacement", "deleted-replaced"]
-"""The granular CRUD operation performed on a particular resource during an update."""
-
-OpMap = MutableMapping[OpType, int]
+OpMap = MutableMapping[str, int]
 
 
 @dataclass
 class UpdateSummary:
     # pre-update info
-    kind: UpdateKind
+    kind: str
     start_time: datetime
     message: str
     environment: Mapping[str, str]
     config: ConfigMap
 
     # post-update info
-    result: UpdateResult
+    result: str
     end_time: datetime
     version: Optional[int]
     Deployment: Optional[str]
     resource_changes: Optional[OpMap]
 
     def __init__(self,
-                 kind: UpdateKind,
+                 kind: str,
                  startTime: str,
                  message: str,
                  environment: Mapping[str, str],
                  config: Mapping[str, dict],
-                 result: UpdateResult,
+                 result: str,
                  endTime: str,
                  version: Optional[int] = None,
                  Deployment: Optional[str] = None,
@@ -126,9 +123,6 @@ class DestroyResult(BaseResult):
     pass
 
 
-StackInitMode = Literal["create", "select", "create_or_select"]
-
-
 class Stack:
     name: str
     """The name identifying the Stack."""
@@ -146,7 +140,7 @@ class Stack:
         :param workspace: The Workspace the Stack was created from.
         :return: Stack
         """
-        return Stack(stack_name, workspace, "create")
+        return Stack(stack_name, workspace, StackInitMode.CREATE)
 
     @classmethod
     def select(cls, stack_name: str, workspace: Workspace) -> 'Stack':
@@ -159,7 +153,7 @@ class Stack:
         :param workspace: The Workspace the Stack was created from.
         :return: Stack
         """
-        return Stack(stack_name, workspace, "select")
+        return Stack(stack_name, workspace, StackInitMode.SELECT)
 
     @classmethod
     def create_or_select(cls, stack_name: str, workspace: Workspace) -> 'Stack':
@@ -172,23 +166,21 @@ class Stack:
         :param workspace: The Workspace the Stack was created from.
         :return: Stack
         """
-        return Stack(stack_name, workspace, "create_or_select")
+        return Stack(stack_name, workspace, StackInitMode.CREATE_OR_SELECT)
 
     def __init__(self, name: str, workspace: Workspace, mode: StackInitMode) -> None:
         self.name = name
         self.workspace = workspace
 
-        if mode == "create":
+        if mode is StackInitMode.CREATE:
             workspace.create_stack(name)
-        elif mode == "select":
+        elif mode is StackInitMode.SELECT:
             workspace.select_stack(name)
-        elif mode == "create_or_select":
+        elif mode is StackInitMode.CREATE_OR_SELECT:
             try:
                 workspace.create_stack(name)
             except StackAlreadyExistsError:
                 workspace.select_stack(name)
-        else:
-            raise ValueError(f"unexpected Stack creation mode: {mode}")
 
     def up(self,
            parallel: Optional[int] = None,

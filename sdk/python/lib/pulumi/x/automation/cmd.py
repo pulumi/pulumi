@@ -31,7 +31,7 @@ class CommandResult:
         self.stderr = stderr
         self.code = code
 
-    def __repr__(self) -> str:
+    def __str__(self) -> str:
         return f"\n code: {self.code}\n stdout: {self.stdout}\n stderr: {self.stderr}"
 
 

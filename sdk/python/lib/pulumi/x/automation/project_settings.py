@@ -13,11 +13,7 @@
 # limitations under the License.
 
 from dataclasses import dataclass
-from typing import Optional, Mapping, Any, Union, Literal
-
-
-"""Supported Pulumi program language runtimes."""
-ProjectRuntime = Literal["nodejs", "python", "go", "dotnet"]
+from typing import Optional, Mapping, Any, Union
 
 
 @dataclass
@@ -50,11 +46,10 @@ class ProjectBackend:
     url: Optional[str]
 
 
-@dataclass
 class ProjectSettings:
     """ A Pulumi project manifest. It describes metadata applying to all sub-stacks created from the project."""
     name: str
-    runtime: Union[ProjectRuntime, ProjectRuntimeInfo]
+    runtime: Union[str, ProjectRuntimeInfo]
     main: Optional[str] = None
     description: Optional[str] = None
     author: Optional[str] = None
@@ -63,3 +58,28 @@ class ProjectSettings:
     config: Optional[str] = None
     template: Optional[ProjectTemplate] = None
     backend: Optional[ProjectBackend] = None
+
+    def __init__(self,
+                 name: str,
+                 runtime: Union[str, ProjectRuntimeInfo],
+                 main: Optional[str] = None,
+                 description: Optional[str] = None,
+                 author: Optional[str] = None,
+                 website: Optional[str] = None,
+                 license: Optional[str] = None,
+                 config: Optional[str] = None,
+                 template: Optional[ProjectTemplate] = None,
+                 backend: Optional[ProjectBackend] = None):
+        if isinstance(runtime, str) and runtime not in ["nodejs", "python", "go", "dotnet"]:
+            raise ValueError(f"Invalid value {runtime!r} for runtime. "
+                             f"Must be one of 'nodejs', 'python', 'go', 'dotnet'.")
+        self.name = name
+        self.runtime = runtime
+        self.main = main
+        self.description = description
+        self.author = author
+        self.website = website
+        self.license = license
+        self.config = config
+        self.template = template
+        self.backend = backend

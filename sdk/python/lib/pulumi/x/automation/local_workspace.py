@@ -16,7 +16,6 @@ import os
 import tempfile
 import json
 import yaml
-from concurrent import futures
 from dataclasses import dataclass, asdict
 from typing import Optional, List, Mapping, Callable
 
@@ -27,7 +26,7 @@ from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, Pulumi
 from .stack import Stack
 from .cmd import _run_pulumi_cmd, CommandResult
 
-setting_extensions = [".yaml", ".yml", ".json"]
+_setting_extensions = [".yaml", ".yml", ".json"]
 
 StackInitializer = Callable[[str, Workspace], Stack]
 
@@ -57,12 +56,12 @@ class LocalWorkspace(Workspace):
     """
 
     @classmethod
-    def new_stack(cls,
-                  stack_name: str,
-                  project_name: Optional[str] = None,
-                  program: Optional[PulumiFn] = None,
-                  work_dir: Optional[str] = None,
-                  opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    def create_new_stack(cls,
+                         stack_name: str,
+                         project_name: Optional[str] = None,
+                         program: Optional[PulumiFn] = None,
+                         work_dir: Optional[str] = None,
+                         opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
         """
         Creates a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
         Pulumi CLI program from the specified workdir.
@@ -195,7 +194,7 @@ class LocalWorkspace(Workspace):
                 self.save_stack_settings(key, stack_settings[key])
 
     def project_settings(self) -> ProjectSettings:
-        for ext in setting_extensions:
+        for ext in _setting_extensions:
             project_path = os.path.join(self.work_dir, f"Pulumi{ext}")
             if not os.path.exists(project_path):
                 continue
@@ -206,7 +205,7 @@ class LocalWorkspace(Workspace):
 
     def save_project_settings(self, settings: ProjectSettings) -> None:
         found_ext = ".yaml"
-        for ext in setting_extensions:
+        for ext in _setting_extensions:
             test_path = os.path.join(self.work_dir, f"Pulumi{ext}")
             if os.path.exists(test_path):
                 found_ext = ext
@@ -217,7 +216,7 @@ class LocalWorkspace(Workspace):
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
-        for ext in setting_extensions:
+        for ext in _setting_extensions:
             path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
             if not os.path.exists(path):
                 continue
@@ -229,7 +228,7 @@ class LocalWorkspace(Workspace):
     def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
         stack_settings_name = get_stack_settings_name(stack_name)
         found_ext = ".yaml"
-        for ext in setting_extensions:
+        for ext in _setting_extensions:
             test_path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
             if os.path.exists(test_path):
                 found_ext = ext
@@ -267,22 +266,18 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg])
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
-        config_adds = []
-        with futures.ThreadPoolExecutor() as executor:
-            for key in config:
-                config_adds.append(executor.submit(self.set_config, stack_name, key, config[key]))
-        futures.wait(config_adds)
+        # TODO: Do this in parallel after https://github.com/pulumi/pulumi/issues/6050
+        for key, value in config.items():
+            self.set_config(stack_name, key, value)
 
     def remove_config(self, stack_name: str, key: str) -> None:
         self.select_stack(stack_name)
         self._run_pulumi_cmd_sync(["config", "rm", key])
 
     def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
-        config_removes = []
-        with futures.ThreadPoolExecutor() as executor:
-            for key in keys:
-                config_removes.append(executor.submit(self.remove_config, stack_name, key))
-        futures.wait(config_removes)
+        # TODO: Do this in parallel after https://github.com/pulumi/pulumi/issues/6050
+        for key in keys:
+            self.remove_config(stack_name, key)
 
     def refresh_config(self, stack_name: str) -> None:
         self.select_stack(stack_name)
@@ -321,16 +316,16 @@ class LocalWorkspace(Workspace):
             stack_list.append(stack)
         return stack_list
 
-    def install_plugin(self, plugin_name: str, version: str, kind: str = "resource") -> None:
-        self._run_pulumi_cmd_sync(["plugin", "install", kind, plugin_name, version])
+    def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
+        self._run_pulumi_cmd_sync(["plugin", "install", kind, name, version])
 
     def remove_plugin(self,
-                      plugin_name: Optional[str] = None,
+                      name: Optional[str] = None,
                       version_range: Optional[str] = None,
                       kind: str = "resource") -> None:
         args = ["plugin", "rm", kind]
-        if plugin_name:
-            args.append(plugin_name)
+        if name:
+            args.append(name)
         if version_range:
             args.append(version_range)
         args.append("--yes")

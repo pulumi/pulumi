@@ -15,7 +15,14 @@
 from .config import ConfigMap, ConfigValue
 from .errors import StackNotFoundError, StackAlreadyExistsError, CommandError, ConcurrentUpdateError
 from .local_workspace import LocalWorkspace
-from .workspace import PluginInfo, PluginKind, StackSummary
-from .project_settings import ProjectSettings, ProjectRuntime, ProjectRuntimeInfo
+from .workspace import PluginInfo, StackSummary
+from .project_settings import ProjectSettings, ProjectRuntimeInfo
 from .stack_settings import StackSettings
-from .stack import Stack
+from .stack import (
+    Stack,
+    UpdateSummary,
+    UpResult,
+    PreviewResult,
+    RefreshResult,
+    DestroyResult
+)

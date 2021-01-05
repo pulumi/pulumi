@@ -246,7 +246,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_local_program(self):
         stack_name = stack_namer()
         work_dir = test_path("data", "testproj")
-        stack = LocalWorkspace.new_stack(stack_name, work_dir=work_dir)
+        stack = LocalWorkspace.create_new_stack(stack_name, work_dir=work_dir)
 
         config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
@@ -285,7 +285,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_inline_program(self):
         stack_name = stack_namer()
         project_name = "inline_python"
-        stack = LocalWorkspace.new_stack(stack_name, program=pulumi_program, project_name=project_name)
+        stack = LocalWorkspace.create_new_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),

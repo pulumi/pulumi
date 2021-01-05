@@ -20,16 +20,12 @@ from typing import (
     Mapping,
     Any,
     List,
-    Optional,
-    Literal
+    Optional
 )
 
 from .stack_settings import StackSettings
 from .project_settings import ProjectSettings
 from .config import ConfigMap, ConfigValue
-
-
-PluginKind = Literal["analyzer", "language", "resource"]
 
 # TODO improve typing to encapsulate stack exports
 PulumiFn = Callable[[], Any]
@@ -69,7 +65,7 @@ class WhoAmIResult:
 @dataclass
 class PluginInfo:
     name: str
-    kind: PluginKind
+    kind: str
     size: int
     last_used: datetime
     install_time: Optional[datetime]
@@ -77,7 +73,7 @@ class PluginInfo:
 
     def __init__(self,
                  name: str,
-                 kind: PluginKind,
+                 kind: str,
                  size: int,
                  lastUsedTime: str,
                  installTime: Optional[str] = None,
@@ -319,22 +315,22 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    def install_plugin(self, plugin_name: str, version: str, kind: str) -> None:
+    def install_plugin(self, name: str, version: str, kind: str) -> None:
         """
         Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
 
-        :param plugin_name: The name of the plugin to install.
-        :param version: The version range to install.
+        :param name: The name of the plugin to install.
+        :param version: The version to install.
         :param kind: The kind of plugin.
         """
         pass
 
     @abstractmethod
-    def remove_plugin(self, plugin_name: Optional[str], version_range: Optional[str], kind: str) -> None:
+    def remove_plugin(self, name: Optional[str], version_range: Optional[str], kind: str) -> None:
         """
         Removes a plugin from the Workspace matching the specified name and version.
 
-        :param plugin_name: The name of the plugin to remove.
+        :param name: The name of the plugin to remove.
         :param version_range: The version range to remove.
         :param kind: The kind of plugin.
         """
