@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Respect the `version` resource option for provider resources.
+  [#6055](https://github.com/pulumi/pulumi/pull/6055)
+
 - Allow `serializeFunction` to capture secrets.
   [#6013](https://github.com/pulumi/pulumi/pull/6013)
   
