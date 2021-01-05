@@ -19,6 +19,9 @@ CHANGELOG
   give the user some information on how to resolve the problem
   [#6044](https://github.com/pulumi/pulumi/pull/6044)
 
+- Add suport for pipenv on the github action
+  [6019](https://github.com/pulumi/pulumi/pull/6019)
+
 ## 2.16.2 (2020-12-23)
 
 - Fix a bug in the core engine that could cause previews to fail if a resource with changes had
