@@ -109,8 +109,7 @@ type ListStacksFilter struct {
 	TagValue     *string
 }
 
-// Backend is an interface that represents actions the engine will interact with to manage stacks of cloud resources.
-// It can be implemented any number of ways to provide pluggable backend implementations of the Pulumi Cloud.
+// Backend is the contract between the Pulumi engine and pluggable backend implementations of the Pulumi Cloud Service.
 type Backend interface {
 	// Name returns a friendly name for this backend.
 	Name() string
