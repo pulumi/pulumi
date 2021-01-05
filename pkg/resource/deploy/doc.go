@@ -15,19 +15,4 @@
 // Package deploy contains the logic for planning and executing resource deployments. This includes the following:
 // - Manage the deployment lifecycle by coordinating the execution and parallelism of the underlying operations.
 // - A builtin provider for interacting with the engine.
-//
-// The following interfaces are defined:
-// - The BackendClient interface, used to retrieve information about stacks from a backend.
-// - The Events interface, used to hook engine events.
-// - The PolicyEvents interface, used to hook policy events.
-// - The ProviderSource interface, used to look up provider plugins.
-// - The QuerySource interface, used to synchronously wait for a query result.
-// - The ReadResourceEvent interface, which defines a step to read the state of an existing resource.
-// - The RegisterResourceEvent interface, which defines a step to provision a resource.
-// - The RegisterResourceOutputsEvent interface, which defines a step to complete provisioning of a resource.
-// - The Source interface, used to generate a set of resources for the planner.
-// - The SourceIterator interface, used to enumerate a list of resources for a Source.
-// - The SourceResourceMonitor interface, used to direct resource operations from a Source to resource providers.
-// - The Step interface, which defines a deployment operation.
-// - The StepExecutorEvents interface, used to hook resource lifecycle events.
 package deploy
