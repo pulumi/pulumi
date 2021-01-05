@@ -18,7 +18,7 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
 import { LanguageServer, maxRPCMessageSize } from "./server";
-import { PulumiFn, Workspace } from "./workspace";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../../proto/language_grpc_pb.js");
 
@@ -421,6 +421,35 @@ export class Stack {
         }
         return history[0];
     }
+    /**
+     * Cancel stops a stack's currently running update. It returns an error if no update is currently running.
+     * Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
+     * if a resource operation was pending when the update was canceled.
+     * This command is not supported for local backends.
+     */
+    async cancel(): Promise<void> {
+        await this.workspace.selectStack(this.name);
+        await this.runPulumiCmd(["cancel", "--yes"]);
+    }
+
+    /**
+     * exportStack exports the deployment state of the stack.
+     * This can be combined with Stack.importStack to edit a stack's state (such as recovery from failed deployments).
+     */
+    async exportStack(): Promise<Deployment> {
+        return this.workspace.exportStack(this.name);
+    }
+
+    /**
+     * importStack imports the specified deployment state into a pre-existing stack.
+     * This can be combined with Stack.exportStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param state the stack state to import.
+     */
+    async importStack(state: Deployment): Promise<void> {
+        return this.workspace.importStack(this.name, state);
+    }
+
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {};
         const pulumiHome = this.workspace.pulumiHome;

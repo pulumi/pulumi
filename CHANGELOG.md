@@ -9,7 +9,10 @@ CHANGELOG
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
   
-- [CLI] Add a confirmation promt when using `pulumi policy rm`
+- Support recovery workflow (import/export/cancel) in NodeJS Automation API.
+  [#6038](https://github.com/pulumi/pulumi/pull/6038)
+  
+- [CLI] Add a confirmation prompt when using `pulumi policy rm`
   [#6034](https://github.com/pulumi/pulumi/pull/6034)
 
 - [CLI] Ensure errors with the Pulumi credentials file

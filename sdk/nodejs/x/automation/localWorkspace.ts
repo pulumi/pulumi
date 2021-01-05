@@ -22,7 +22,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
+import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
@@ -490,6 +490,33 @@ export class LocalWorkspace implements Workspace {
             }
             return value;
         });
+    }
+    /**
+     * exportStack exports the deployment state of the stack.
+     * This can be combined with Workspace.importStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param stackName the name of the stack.
+     */
+    async exportStack(stackName: string): Promise<Deployment> {
+        await this.selectStack(stackName);
+        const result = await this.runPulumiCmd(["stack", "export", "--show-secrets"]);
+        return JSON.parse(result.stdout);
+    }
+    /**
+     * importStack imports the specified deployment state into a pre-existing stack.
+     * This can be combined with Workspace.exportStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param stackName the name of the stack.
+     * @param state the stack state to import.
+     */
+    async importStack(stackName: string, state: Deployment): Promise<void> {
+        await this.selectStack(stackName);
+        const randomSuffix = Math.floor(100000 + Math.random() * 900000);
+        const filepath = upath.joinSafe(os.tmpdir(), `automation-${randomSuffix}`);
+        const contents = JSON.stringify(state, null, 4);
+        fs.writeFileSync(filepath, contents);
+        await this.runPulumiCmd(["stack", "import", "--file", filepath]);
+        fs.unlinkSync(filepath);
     }
     /**
      * serializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
