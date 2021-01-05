@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
 from typing import MutableMapping
 
 
-@dataclass
 class ConfigValue:
     """
     ConfigValue is the input/output of a `pulumi config` command.
@@ -24,6 +22,10 @@ class ConfigValue:
     """
     value: str
     secret: bool = False
+
+    def __init__(self, value: str, secret: bool = False):
+        self.value = value
+        self.secret = secret
 
 
 ConfigMap = MutableMapping[str, ConfigValue]

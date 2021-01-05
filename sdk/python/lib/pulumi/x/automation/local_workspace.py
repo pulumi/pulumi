@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,14 +16,14 @@ import os
 import tempfile
 import json
 import yaml
-from dataclasses import dataclass, asdict
+from datetime import datetime
 from typing import Optional, List, Mapping, Callable
 
 from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
 from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn
-from .stack import Stack
+from .stack import Stack, _DATETIME_FORMAT
 from .cmd import _run_pulumi_cmd, CommandResult
 
 _setting_extensions = [".yaml", ".yml", ".json"]
@@ -31,7 +31,6 @@ _setting_extensions = [".yaml", ".yml", ".json"]
 StackInitializer = Callable[[str, Workspace], Stack]
 
 
-@dataclass
 class LocalWorkspaceOptions:
     work_dir: Optional[str] = None
     pulumi_home: Optional[str] = None
@@ -40,6 +39,22 @@ class LocalWorkspaceOptions:
     secrets_provider: Optional[str] = None
     project_settings: Optional[ProjectSettings] = None
     stack_settings: Optional[Mapping[str, StackSettings]] = None
+
+    def __init__(self,
+                 work_dir: Optional[str] = None,
+                 pulumi_home: Optional[str] = None,
+                 program: Optional[PulumiFn] = None,
+                 env_vars: Optional[Mapping[str, str]] = None,
+                 secrets_provider: Optional[str] = None,
+                 project_settings: Optional[ProjectSettings] = None,
+                 stack_settings: Optional[Mapping[str, StackSettings]] = None):
+        self.work_dir = work_dir
+        self.pulumi_home = pulumi_home
+        self.program = program
+        self.env_vars = env_vars
+        self.secrets_provider = secrets_provider
+        self.project_settings = project_settings
+        self.stack_settings = stack_settings
 
 
 class LocalWorkspace(Workspace):
@@ -222,7 +237,11 @@ class LocalWorkspace(Workspace):
                 continue
             with open(path, "r") as file:
                 settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
-                return StackSettings(**settings)
+                return StackSettings(
+                    secrets_provider=settings["secretsProvider"] if "secretsProvider" in settings else None,
+                    encrypted_key=settings["encryptedKey"] if "encryptedKey" in settings else None,
+                    encryption_salt=settings["encryptionSalt"] if "encryptionSalt" in settings else None,
+                    config=settings["config"] if "config" in settings else None)
         raise FileNotFoundError(f"failed to find stack settings file in workdir: {self.work_dir}")
 
     def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
@@ -312,7 +331,13 @@ class LocalWorkspace(Workspace):
         json_list = json.loads(result.stdout)
         stack_list: List[StackSummary] = []
         for stack_json in json_list:
-            stack = StackSummary(**stack_json)
+            stack = StackSummary(
+                name=stack_json["name"],
+                current=stack_json["current"],
+                update_in_progress=stack_json["updateInProgress"],
+                last_update=datetime.strptime(stack_json["lastUpdate"], _DATETIME_FORMAT) if "lastUpdate" in stack_json else None,
+                resource_count=stack_json["resourceCount"] if "resourceCount" in stack_json else None,
+                url=stack_json["url"] if "url" in stack_json else None)
             stack_list.append(stack)
         return stack_list
 
@@ -336,7 +361,14 @@ class LocalWorkspace(Workspace):
         json_list = json.loads(result.stdout)
         plugin_list: List[PluginInfo] = []
         for plugin_json in json_list:
-            plugin = PluginInfo(**plugin_json)
+            plugin = PluginInfo(
+                name=plugin_json["name"],
+                kind=plugin_json["kind"],
+                size=plugin_json["size"],
+                last_used_time=datetime.strptime(plugin_json["lastUsedTime"], _DATETIME_FORMAT),
+                install_time=datetime.strptime(plugin_json["installTime"], _DATETIME_FORMAT) if "installTime" in plugin_json else None,
+                version=plugin_json["version"] if "version" in plugin_json else None
+            )
             plugin_list.append(plugin)
         return plugin_list
 
@@ -375,7 +407,7 @@ def _inline_source_stack_helper(stack_name: str,
     if not workspace_options.project_settings:
         workspace_options.project_settings = default_project(project_name)
 
-    ws = LocalWorkspace(**asdict(workspace_options))
+    ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)
 
 
@@ -390,5 +422,5 @@ def _local_source_stack_helper(stack_name: str,
     workspace_options = opts or LocalWorkspaceOptions()
     workspace_options.work_dir = work_dir
 
-    ws = LocalWorkspace(**asdict(workspace_options))
+    ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)

@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
-from typing import Optional, Mapping, Any, Union
+from typing import Optional, Mapping, Any
 
 
-@dataclass
 class StackSettingsSecureConfigValue:
     """ A secret Stack config entry."""
     secure: str
 
+    def __init__(self, secure: str):
+        self.secure = secure
 
-@dataclass
+
 class StackSettings:
     """A description of the Stack's configuration and encryption metadata."""
     secrets_provider: Optional[str]
@@ -31,13 +31,13 @@ class StackSettings:
     config: Optional[Mapping[str, Any]]
 
     def __init__(self,
-                 secretsProvider: Optional[str] = None,
-                 encryptedKey: Optional[str] = None,
-                 encryptionSalt: Optional[str] = None,
+                 secrets_provider: Optional[str] = None,
+                 encrypted_key: Optional[str] = None,
+                 encryption_salt: Optional[str] = None,
                  config: Optional[Mapping[str, Any]] = None):
-        self.secrets_provider = secretsProvider
-        self.encrypted_key = encryptedKey
-        self.encryption_salt = encryptionSalt
+        self.secrets_provider = secrets_provider
+        self.encrypted_key = encrypted_key
+        self.encryption_salt = encryption_salt
         if config:
             stack_config = {}
             for key in config:

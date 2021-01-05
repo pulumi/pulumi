@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,6 @@
 # limitations under the License.
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from datetime import datetime
 from typing import (
     Callable,
@@ -31,7 +30,6 @@ from .config import ConfigMap, ConfigValue
 PulumiFn = Callable[[], Any]
 
 
-@dataclass
 class StackSummary:
     """A summary of the status of a given stack."""
     name: str
@@ -44,30 +42,31 @@ class StackSummary:
     def __init__(self,
                  name: str,
                  current: bool,
-                 updateInProgress: bool = False,
-                 lastUpdate: Optional[str] = None,
-                 resourceCount: Optional[int] = None,
+                 update_in_progress: bool = False,
+                 last_update: Optional[datetime] = None,
+                 resource_count: Optional[int] = None,
                  url: Optional[str] = None) -> None:
         self.name = name
         self.current = current
-        self.update_in_progress = updateInProgress
-        self.last_update = datetime.strptime(lastUpdate[:-5], "%Y-%m-%dT%H:%M:%S") if lastUpdate else None
-        self.resource_count = resourceCount
+        self.update_in_progress = update_in_progress
+        self.last_update = last_update
+        self.resource_count = resource_count
         self.url = url
 
 
-@dataclass
 class WhoAmIResult:
     """The currently logged-in Pulumi identity."""
     user: str
 
+    def __init__(self, user: str):
+        self.user = user
 
-@dataclass
+
 class PluginInfo:
     name: str
     kind: str
     size: int
-    last_used: datetime
+    last_used_time: datetime
     install_time: Optional[datetime]
     version: Optional[str]
 
@@ -75,14 +74,14 @@ class PluginInfo:
                  name: str,
                  kind: str,
                  size: int,
-                 lastUsedTime: str,
-                 installTime: Optional[str] = None,
+                 last_used_time: datetime,
+                 install_time: Optional[datetime] = None,
                  version: Optional[str] = None) -> None:
         self.name = name
         self.kind = kind
         self.size = size
-        self.install_time = datetime.strptime(installTime[:-5], "%Y-%m-%dT%H:%M:%S") if installTime else None
-        self.last_used = datetime.strptime(lastUsedTime[:-5], "%Y-%m-%dT%H:%M:%S")
+        self.install_time = install_time
+        self.last_used = last_used_time
         self.version = version
 
 

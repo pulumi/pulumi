@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ import grpc
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from dataclasses import dataclass
 from typing import List, Any, Mapping, MutableMapping, Optional, Callable
 
 from .cmd import CommandResult, _run_pulumi_cmd
@@ -31,6 +30,7 @@ from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
 
 _SECRET_SENTINEL = "[secret]"
+_DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
 class ExecKind(str, Enum):
@@ -44,10 +44,13 @@ class StackInitMode(Enum):
     CREATE_OR_SELECT = "create_or_select"
 
 
-@dataclass
 class OutputValue:
     value: Any
     secret: bool
+
+    def __init__(self, value: Any, secret: bool):
+        self.value = value
+        self.secret = secret
 
 
 OutputMap = MutableMapping[str, OutputValue]
@@ -55,7 +58,6 @@ OutputMap = MutableMapping[str, OutputValue]
 OpMap = MutableMapping[str, int]
 
 
-@dataclass
 class UpdateSummary:
     # pre-update info
     kind: str
@@ -68,57 +70,61 @@ class UpdateSummary:
     result: str
     end_time: datetime
     version: Optional[int]
-    Deployment: Optional[str]
+    deployment: Optional[str]
     resource_changes: Optional[OpMap]
 
     def __init__(self,
                  kind: str,
-                 startTime: str,
+                 start_time: datetime,
                  message: str,
                  environment: Mapping[str, str],
                  config: Mapping[str, dict],
                  result: str,
-                 endTime: str,
+                 end_time: datetime,
                  version: Optional[int] = None,
-                 Deployment: Optional[str] = None,
-                 resourceChanges: Optional[OpMap] = None):
+                 deployment: Optional[str] = None,
+                 resource_changes: Optional[OpMap] = None):
         self.kind = kind
-        self.start_time = datetime.strptime(startTime[:-5], "%Y-%m-%dT%H:%M:%S")
-        self.end_time = datetime.strptime(endTime[:-5], "%Y-%m-%dT%H:%M:%S")
+        self.start_time = start_time
+        self.end_time = end_time
         self.message = message
         self.environment = environment
         self.result = result
-        self.Deployment = Deployment
-        self.resource_changes = resourceChanges
+        self.Deployment = deployment
+        self.resource_changes = resource_changes
         self.version = version
         self.config: ConfigMap = {}
         for key in config:
             self.config[key] = ConfigValue(**config[key])
 
 
-@dataclass
 class BaseResult:
     stdout: str
     stderr: str
     summary: UpdateSummary
 
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        self.stdout = stdout
+        self.stderr = stderr
+        self.summary = summary
 
-@dataclass
+
 class UpResult(BaseResult):
     outputs: OutputMap
 
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
+        super().__init__(stdout, stderr, summary)
+        self.outputs = outputs
 
-@dataclass
+
 class PreviewResult(BaseResult):
     pass
 
 
-@dataclass
 class RefreshResult(BaseResult):
     pass
 
 
-@dataclass
 class DestroyResult(BaseResult):
     pass
 
@@ -360,11 +366,21 @@ class Stack:
         (up/preview/refresh/destroy).
         """
         result = self._run_pulumi_cmd_sync(["history", "--json", "--show-secrets"])
-        summary_json = json.loads(result.stdout)
+        summary_list = json.loads(result.stdout)
 
         summaries: List[UpdateSummary] = []
-        for summary in summary_json:
-            summaries.append(UpdateSummary(**summary))
+        for summary_json in summary_list:
+            summary = UpdateSummary(kind=summary_json["kind"],
+                                    start_time=datetime.strptime(summary_json["startTime"], _DATETIME_FORMAT),
+                                    message=summary_json["message"],
+                                    environment=summary_json["environment"],
+                                    config=summary_json["config"],
+                                    result=summary_json["result"],
+                                    end_time=datetime.strptime(summary_json["endTime"], _DATETIME_FORMAT),
+                                    version=summary_json["version"] if "version" in summary_json else None,
+                                    deployment=summary_json["Deployment"] if "Deployment" in summary_json else None,
+                                    resource_changes=summary_json["resourceChanges"] if "resourceChanges" in summary_json else None)
+            summaries.append(summary)
         return summaries
 
     def info(self) -> Optional[UpdateSummary]:
