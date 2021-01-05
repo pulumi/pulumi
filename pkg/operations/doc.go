@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package operations contains logic for getting information about resources. This currently includes cloud-specific
+// Package operations contains logic for getting information about resources. This currently includes provider-specific
 // resource logs and a resource map with parent/child information.
 //
 // The following interfaces are defined:
