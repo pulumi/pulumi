@@ -14,7 +14,4 @@
 
 // Package operations contains logic for getting information about resources. This currently includes provider-specific
 // resource logs and a resource map with parent/child information.
-//
-// The following interfaces are defined:
-// - The Provider interface, which handles operational requests about the state of Components (logging, metrics).
 package operations
