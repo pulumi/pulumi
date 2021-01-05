@@ -15,7 +15,4 @@
 // Package integration implements an integration test framework for Pulumi. This framework supports running the full
 // resource lifecycle in all supported languages, and then performing assertions on the state (resources, events,
 // errors, etc.)
-//
-// The following interfaces are defined:
-// - The TestStatsReporter interface, for reporting results and metadata from a test run.
 package integration
