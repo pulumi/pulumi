@@ -188,11 +188,7 @@ func convertPrimitiveValues(from model.Expression, to model.Type) (model.Express
 		}
 	case to.AssignableFrom(model.StringType):
 		if stringValue, ok := convertLiteralToString(from); ok {
-			expression = &model.TemplateExpression{
-				Parts: []model.Expression{&model.LiteralValueExpression{
-					Value: cty.StringVal(stringValue),
-				}},
-			}
+			expression = model.NewQuotedStringLiteral(stringValue)
 		}
 	}
 	if expression == nil {
@@ -210,12 +206,8 @@ func convertPrimitiveValues(from model.Expression, to model.Type) (model.Express
 // extractStringValue returns a string if the given expression is a template expression containing a single string
 // literal value.
 func extractStringValue(arg model.Expression) (string, bool) {
-	template, ok := arg.(*model.TemplateExpression)
-	if !ok || len(template.Parts) != 1 {
-		return "", false
-	}
-	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
-	if !ok || lit.Type() != model.StringType {
+	lit, ok := model.IsQuotedStringLiteral(arg)
+	if !ok {
 		return "", false
 	}
 	return lit.Value.AsString(), true

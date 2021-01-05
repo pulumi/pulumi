@@ -64,12 +64,8 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return signature, nil
 	}
 
-	template, ok := args[0].(*model.TemplateExpression)
-	if !ok || len(template.Parts) != 1 {
-		return signature, hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
-	}
-	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
-	if !ok || lit.Type() != model.StringType {
+	lit, ok := model.IsQuotedStringLiteral(args[0])
+	if !ok {
 		return signature, hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
 	}
 

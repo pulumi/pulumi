@@ -5,11 +5,11 @@ class MyStack : Stack
 {
     public MyStack()
     {
-        var provider = new Aws.Provider("provider", new Aws.ProviderArgs
+        var provider = new Aws.Provider("bucket", new Aws.ProviderArgs
         {
             Region = "us-west-2",
         });
-        var bucket1 = new Aws.S3.Bucket("bucket1", new Aws.S3.BucketArgs
+        var bucket1 = new Aws.S3.Bucket("bucket", new Aws.S3.BucketArgs
         {
         }, new CustomResourceOptions
         {

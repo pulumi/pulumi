@@ -19,6 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/zclconf/go-cty/cty"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -72,4 +73,25 @@ func ConstantReference(c *Constant) *ScopeTraversalExpression {
 	diags := x.Typecheck(false)
 	contract.Assert(len(diags) == 0)
 	return x
+}
+
+func NewQuotedStringLiteral(s string) *TemplateExpression {
+	return &TemplateExpression{
+		Parts: []Expression{&LiteralValueExpression{
+			Tokens: syntax.NewLiteralValueTokens(cty.StringVal(s)),
+			Value:  cty.StringVal(s),
+		}},
+	}
+}
+
+func IsQuotedStringLiteral(x Expression) (*LiteralValueExpression, bool) {
+	template, ok := x.(*TemplateExpression)
+	if !ok || len(template.Parts) != 1 {
+		return nil, false
+	}
+	lit, ok := template.Parts[0].(*LiteralValueExpression)
+	if !ok || lit.Type() != StringType {
+		return nil, false
+	}
+	return lit, true
 }

@@ -145,6 +145,8 @@ func makeResourceOptions(state *resource.State, names NameTable) (*model.Block, 
 			Value:  cty.True,
 		})
 	}
+	resourceOptions = appendResourceOption(resourceOptions, "urnName",
+		model.NewQuotedStringLiteral(string(state.URN.Name())))
 	return resourceOptions, nil
 }
 
@@ -462,13 +464,7 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 			Args: []model.Expression{arg},
 		}, nil
 	case value.IsString():
-		return &model.TemplateExpression{
-			Parts: []model.Expression{
-				&model.LiteralValueExpression{
-					Value: cty.StringVal(value.StringValue()),
-				},
-			},
-		}, nil
+		return model.NewQuotedStringLiteral(value.StringValue()), nil
 	default:
 		contract.Failf("unexpected property value %v", value)
 		return nil, nil

@@ -313,11 +313,19 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 				case "ignoreChanges":
 					t = model.NewListType(ResourcePropertyType)
 					resourceOptions.IgnoreChanges = item.Value
+				case "urnName":
+					lit, ok := model.IsQuotedStringLiteral(item.Value)
+					if !ok {
+						diagnostics = append(diagnostics, urnNameMustBeStringLiteral(item.Value))
+					} else {
+						resourceOptions.URNName = lit
+					}
+					continue
 				default:
 					diagnostics = append(diagnostics, unsupportedAttribute(item.Name, item.Syntax.NameRange))
 					continue
 				}
-				if model.InputType(t).ConversionFrom(item.Value.Type()) == model.NoConversion {
+				if !model.InputType(t).ConversionFrom(item.Value.Type()).Exists() {
 					diagnostics = append(diagnostics, model.ExprNotConvertible(model.InputType(t), item.Value))
 				}
 			case *model.Block:

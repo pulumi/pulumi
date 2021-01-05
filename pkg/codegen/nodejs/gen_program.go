@@ -305,8 +305,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	optionsBag := g.genResourceOptions(r.Options)
 
-	name := r.Name()
-	variableName := makeValidIdentifier(name)
+	variableName := makeValidIdentifier(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
@@ -349,7 +348,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 			g.Fgenf(w, "%sif (%.v) {\n", g.Indent, rangeExpr)
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s = ", g.Indent, variableName)
-				instantiate(g.makeResourceName(name, ""))
+				instantiate(g.makeResourceName(r.URNName(), ""))
 				g.Fgenf(w, ";\n")
 			})
 			g.Fgenf(w, "%s}\n", g.Indent)
@@ -368,7 +367,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 				g.Fgenf(w, "%sfor (const range of %.v) {\n", g.Indent, rangeExpr)
 			}
 
-			resName := g.makeResourceName(name, "range."+resKey)
+			resName := g.makeResourceName(r.URNName(), "range."+resKey)
 			g.Indented(func() {
 				g.Fgenf(w, "%s%s.push(", g.Indent, variableName)
 				instantiate(resName)
@@ -378,7 +377,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		}
 	} else {
 		g.Fgenf(w, "%sconst %s = ", g.Indent, variableName)
-		instantiate(g.makeResourceName(name, ""))
+		instantiate(g.makeResourceName(r.URNName(), ""))
 		g.Fgenf(w, ";\n")
 	}
 
