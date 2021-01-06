@@ -37,6 +37,7 @@ func newDestroyCmd() *cobra.Command {
 	var execKind string
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var diffDisplay bool
 	var eventLogPath string
 	var parallel int
@@ -91,6 +92,7 @@ func newDestroyCmd() *cobra.Command {
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+				JSONDisplay:          jsonDisplay,
 			}
 
 			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
@@ -179,6 +181,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the destroy diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")

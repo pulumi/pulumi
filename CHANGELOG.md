@@ -22,6 +22,10 @@ CHANGELOG
   give the user some information on how to resolve the problem
   [#6044](https://github.com/pulumi/pulumi/pull/6044)
 
+- [CLI] Support JSON outputs (`--json`) for `update`, 
+  `destroy` and `refresh` operations
+  [#6045](https://github.com/pulumi/pulumi/pull/6045)
+
 ## 2.16.2 (2020-12-23)
 
 - Fix a bug in the core engine that could cause previews to fail if a resource with changes had

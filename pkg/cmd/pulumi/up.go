@@ -54,6 +54,7 @@ func newUpCmd() *cobra.Command {
 	var client string
 
 	// Flags for engine.UpdateOptions.
+	var jsonDisplay bool
 	var policyPackPaths []string
 	var policyPackConfigPaths []string
 	var diffDisplay bool
@@ -369,6 +370,7 @@ func newUpCmd() *cobra.Command {
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+				JSONDisplay:          jsonDisplay,
 			}
 
 			if len(args) > 0 {
@@ -435,6 +437,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&diffDisplay, "diff", false,
 		"Display operation as a rich diff showing the overall change")
+	cmd.Flags().BoolVarP(
+		&jsonDisplay, "json", "j", false,
+		"Serialize the update diffs, operations, and overall output as JSON")
 	cmd.PersistentFlags().IntVarP(
 		&parallel, "parallel", "p", defaultParallel,
 		"Allow P resource operations to run in parallel at once (1 for no parallelism). Defaults to unbounded.")
