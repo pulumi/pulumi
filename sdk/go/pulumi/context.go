@@ -171,8 +171,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	resultV := reflect.ValueOf(result)
-	if resultV.Kind() != reflect.Ptr || resultV.Elem().Kind() != reflect.Struct {
-		return errors.New("result must be a pointer to a struct value")
+	if !(resultV.Kind() == reflect.Ptr &&
+		(resultV.Elem().Kind() == reflect.Struct ||
+			(resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String))) {
+		return errors.New("result must be a pointer to a struct or map value")
 	}
 
 	options := &invokeOptions{}
@@ -305,8 +307,9 @@ func (ctx *Context) ReadResource(
 		if propsType.Kind() == reflect.Ptr {
 			propsType = propsType.Elem()
 		}
-		if propsType.Kind() != reflect.Struct {
-			return errors.New("props must be a struct or a pointer to a struct")
+		if !(propsType.Kind() == reflect.Struct ||
+			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
+			return errors.New("props must be a struct or map or a pointer to a struct or map")
 		}
 	}
 
