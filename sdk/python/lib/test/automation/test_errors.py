@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import os
 import subprocess
 import unittest
 from pulumi.x.automation import (
@@ -48,6 +49,10 @@ class TestErrors(unittest.TestCase):
 
             if lang in ["javascript", "typescript"]:
                 subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
+            if lang == "python":
+                subprocess.run(["python3", "-m", "venv", "venv"], check=True, cwd=project_dir, capture_output=True)
+                subprocess.run([os.path.join("venv", "bin", "pip"), "install", "-r", "requirements.txt"],
+                               check=True, cwd=project_dir, capture_output=True)
 
             stack = LocalWorkspace.create_new_stack(stack_name, work_dir=project_dir)
 
