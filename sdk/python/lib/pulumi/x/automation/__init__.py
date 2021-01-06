@@ -12,18 +12,40 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from .config import ConfigMap, ConfigValue
+from .config import (
+    ConfigMap,
+    ConfigValue
+)
+
 from .errors import (
     StackNotFoundError,
     StackAlreadyExistsError,
     CommandError,
     ConcurrentUpdateError,
-    InlineSourceRuntimeError
+    InlineSourceRuntimeError,
+    RuntimeError,
+    CompilationError
 )
-from .local_workspace import LocalWorkspace
-from .workspace import PluginInfo, StackSummary
-from .project_settings import ProjectSettings, ProjectRuntimeInfo
-from .stack_settings import StackSettings
+
+from .local_workspace import (
+    LocalWorkspace,
+    LocalWorkspaceOptions
+)
+
+from .workspace import (
+    PluginInfo,
+    StackSummary
+)
+
+from .project_settings import (
+    ProjectSettings,
+    ProjectRuntimeInfo,
+)
+
+from .stack_settings import (
+    StackSettings
+)
+
 from .stack import (
     Stack,
     UpdateSummary,
