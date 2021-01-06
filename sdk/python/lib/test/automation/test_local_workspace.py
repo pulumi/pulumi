@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@ from pulumi.x.automation import (
     CommandError,
     ConfigMap,
     ConfigValue,
+    InlineSourceRuntimeError,
     LocalWorkspace,
     PluginInfo,
     ProjectSettings,
@@ -321,10 +322,28 @@ class TestLocalWorkspace(unittest.TestCase):
 
         stack.workspace.remove_stack(stack_name)
 
+    def test_inline_python_error(self):
+        stack_name = stack_namer()
+        project_name = "runtime_error_python"
+        stack = LocalWorkspace.create_new_stack(stack_name, program=failing_program, project_name=project_name)
+        inline_error_text = "python inline source runtime error"
+
+        try:
+            self.assertRaises(InlineSourceRuntimeError, stack.up)
+            self.assertRaisesRegex(InlineSourceRuntimeError, inline_error_text, stack.up)
+            self.assertRaises(InlineSourceRuntimeError, stack.preview)
+            self.assertRaisesRegex(InlineSourceRuntimeError, inline_error_text, stack.preview)
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
 
 def pulumi_program():
     config = Config()
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
-    return
+
+
+def failing_program():
+    my_list = []
+    oh_no = my_list[0]

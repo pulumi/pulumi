@@ -43,9 +43,16 @@ class StackAlreadyExistsError(CommandError):
         self.name = "StackAlreadyExistsError"
 
 
+class InlineSourceRuntimeError(CommandError):
+    def __init__(self, command_result: 'CommandResult'):
+        super().__init__(command_result)
+        self.name = "InlineSourceRuntimeError"
+
+
 not_found_regex = re.compile("no stack named.*found")
 already_exists_regex = re.compile("stack.*already exists")
 conflict_text = "[409] Conflict: Another update is currently in progress."
+inline_source_error_text = "python inline source runtime error"
 
 
 def create_command_error(command_result: 'CommandResult') -> CommandError:
@@ -56,4 +63,6 @@ def create_command_error(command_result: 'CommandResult') -> CommandError:
         return StackAlreadyExistsError(command_result)
     if conflict_text in stderr:
         return ConcurrentUpdateError(command_result)
+    if inline_source_error_text in command_result.stdout:
+        return InlineSourceRuntimeError(command_result)
     return CommandError(command_result)

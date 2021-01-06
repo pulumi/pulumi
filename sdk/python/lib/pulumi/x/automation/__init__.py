@@ -13,7 +13,13 @@
 # limitations under the License.
 
 from .config import ConfigMap, ConfigValue
-from .errors import StackNotFoundError, StackAlreadyExistsError, CommandError, ConcurrentUpdateError
+from .errors import (
+    StackNotFoundError,
+    StackAlreadyExistsError,
+    CommandError,
+    ConcurrentUpdateError,
+    InlineSourceRuntimeError
+)
 from .local_workspace import LocalWorkspace
 from .workspace import PluginInfo, StackSummary
 from .project_settings import ProjectSettings, ProjectRuntimeInfo

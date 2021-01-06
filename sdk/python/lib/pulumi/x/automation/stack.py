@@ -23,7 +23,7 @@ from typing import List, Any, Mapping, MutableMapping, Optional, Callable
 
 from .cmd import CommandResult, _run_pulumi_cmd
 from .config import ConfigValue, ConfigMap
-from .errors import StackAlreadyExistsError
+from .errors import StackAlreadyExistsError, CommandError
 from .server import LanguageServer
 from .workspace import Workspace, PulumiFn
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
@@ -220,21 +220,23 @@ class Stack:
             port = server.add_insecure_port(address="0.0.0.0:0")
             server.start()
 
-            def on_exit(code: int):
-                language_server.on_pulumi_exit(code, preview=False)
+            def on_exit():
+                language_server.on_pulumi_exit()
                 server.stop(0)
             args.append(f"--client=127.0.0.1:{port}")
 
         args.extend(["--exec-kind", kind])
 
-        up_result = self._run_pulumi_cmd_sync(args, on_output)
-        if on_exit is not None:
-            on_exit(up_result.code)
-
-        outputs = self.outputs()
-        summary = self.info()
-        assert(summary is not None)
-        return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
+        try:
+            up_result = self._run_pulumi_cmd_sync(args, on_output)
+            outputs = self.outputs()
+            summary = self.info()
+            assert (summary is not None)
+            return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
+        except CommandError as exn:
+            if on_exit is not None:
+                on_exit()
+            raise
 
     def preview(self,
                 parallel: Optional[int] = None,
@@ -267,19 +269,21 @@ class Stack:
             port = server.add_insecure_port(address="0.0.0.0:0")
             server.start()
 
-            def on_exit(code: int):
-                language_server.on_pulumi_exit(code, preview=True)
+            def on_exit():
+                language_server.on_pulumi_exit()
                 server.stop(0)
             args.append(f"--client=127.0.0.1:{port}")
         args.extend(["--exec-kind", kind])
 
-        preview_result = self._run_pulumi_cmd_sync(args)
-        if on_exit is not None:
-            on_exit(preview_result.code)
-
-        summary = self.info()
-        assert(summary is not None)
-        return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr, summary=summary)
+        try:
+            preview_result = self._run_pulumi_cmd_sync(args)
+            summary = self.info()
+            assert (summary is not None)
+            return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr, summary=summary)
+        except CommandError as exn:
+            if on_exit is not None:
+                on_exit()
+                raise
 
     def refresh(self,
                 parallel: Optional[int] = None,
