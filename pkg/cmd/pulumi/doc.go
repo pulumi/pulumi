@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package main defines all of the commands for the Pulumi CLI, and also includes logic related to the CLI lifecycle
-// such as updating, tracing, profiling, and environmental config options. All of the command logic is dispatched
-// using the Cobra CLI package and is wrapped in a panic handler.
+// This is the implementation of the Pulumi CLI, including logic related to the CLI lifecycle such as updating, tracing,
+// profiling, and environmental config options. All of the command logic is dispatched using the Cobra CLI package and
+// is wrapped in a panic handler.
 package main
