@@ -2,19 +2,22 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
   [#6055](https://github.com/pulumi/pulumi/pull/6055)
 
 - Allow `serializeFunction` to capture secrets.
   [#6013](https://github.com/pulumi/pulumi/pull/6013)
-  
+
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
-  
+
 - Support recovery workflow (import/export/cancel) in NodeJS Automation API.
   [#6038](https://github.com/pulumi/pulumi/pull/6038)
-  
+
 - [CLI] Add a confirmation prompt when using `pulumi policy rm`
   [#6034](https://github.com/pulumi/pulumi/pull/6034)
 
