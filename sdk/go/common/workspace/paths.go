@@ -16,12 +16,12 @@ package workspace
 
 import (
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/pkg/errors"
+	user "github.com/tweekmonster/luser"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -45,7 +45,7 @@ const (
 	PolicyDir = "policies"
 	// StackDir is the name of the directory that holds stack information for projects.
 	StackDir = "stacks"
-	// lockDir is the name of the directory that holds locking information for projects.
+	// LockDir is the name of the directory that holds locking information for projects.
 	LockDir = "locks"
 	// TemplateDir is the name of the directory containing templates.
 	TemplateDir = "templates"

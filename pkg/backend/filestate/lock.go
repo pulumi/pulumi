@@ -18,24 +18,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/pkg/apitype"
-	"github.com/pulumi/pulumi/pkg/backend"
-	"github.com/pulumi/pulumi/pkg/diag"
-	"github.com/pulumi/pulumi/pkg/engine"
-	"github.com/pulumi/pulumi/pkg/operations"
-	"github.com/pulumi/pulumi/pkg/resource/config"
-	"github.com/pulumi/pulumi/pkg/tokens"
-	"github.com/pulumi/pulumi/pkg/util/contract"
-	"github.com/pulumi/pulumi/pkg/util/fsutil"
-	"github.com/pulumi/pulumi/pkg/util/logging"
-	"github.com/pulumi/pulumi/pkg/util/result"
-	"github.com/pulumi/pulumi/pkg/workspace"
-	uuid "github.com/satori/go.uuid"
 	"os"
 	"os/user"
 	"path/filepath"
 	"strings"
 	"time"
+
+	uuid "github.com/gofrs/uuid"
+
+	"github.com/pulumi/pulumi/pkg/v2/backend"
+	"github.com/pulumi/pulumi/pkg/v2/engine"
+	"github.com/pulumi/pulumi/pkg/v2/operations"
+	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
 type lockContent struct {
@@ -71,8 +74,12 @@ type lockableBackend struct {
 	lockID string
 }
 
-func NewLockableBackend(lb *localBackend) Backend {
-	return &lockableBackend{lb: lb, lockID: uuid.NewV4().String()}
+func NewLockableBackend(lb *localBackend) (Backend, error) {
+	id, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+	return &lockableBackend{lb: lb, lockID: id.String()}, nil
 }
 
 func (b *lockableBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
@@ -85,94 +92,108 @@ func (b *lockableBackend) CreateStack(ctx context.Context, stackRef backend.Stac
 	return b.lb.CreateStack(ctx, stackRef, opts)
 }
 
-func (b *lockableBackend) RemoveStack(ctx context.Context, stackRef backend.StackReference,
+func (b *lockableBackend) DoesProjectExist(ctx context.Context, name string) (bool, error) {
+	return b.lb.DoesProjectExist(ctx, name)
+}
+
+func (b *lockableBackend) RemoveStack(ctx context.Context, stack backend.Stack,
 	force bool) (bool, error) {
-	err := b.Lock(stackRef)
+	err := b.Lock(stack.Ref())
 	if err != nil {
 		return false, err
 	}
-	defer b.Unlock(stackRef)
-	return b.lb.RemoveStack(ctx, stackRef, force)
+	defer b.Unlock(stack.Ref())
+	return b.lb.RemoveStack(ctx, stack, force)
 }
 
-func (b *lockableBackend) RenameStack(ctx context.Context, stackRef backend.StackReference,
-	newName tokens.QName) error {
-	err := b.Lock(stackRef)
-	if err != nil {
-		return err
-	}
-	defer b.Unlock(stackRef)
-	return b.lb.RenameStack(ctx, stackRef, newName)
-}
-
-func (b *lockableBackend) Preview(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stackRef)
-	return b.lb.Preview(ctx, stackRef, op)
-}
-
-func (b *lockableBackend) Refresh(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stackRef)
-	return b.lb.Refresh(ctx, stackRef, op)
-}
-
-func (b *lockableBackend) Destroy(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stackRef)
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stackRef)
-	return b.lb.Destroy(ctx, stackRef, op)
-}
-
-func (b *lockableBackend) ExportDeployment(ctx context.Context,
-	stackRef backend.StackReference) (*apitype.UntypedDeployment, error) {
-	err := b.Lock(stackRef)
+func (b *lockableBackend) RenameStack(ctx context.Context, stack backend.Stack,
+	newName tokens.QName) (backend.StackReference, error) {
+	err := b.Lock(stack.Ref())
 	if err != nil {
 		return nil, err
 	}
-	defer b.Unlock(stackRef)
-	return b.lb.ExportDeployment(ctx, stackRef)
+	defer b.Unlock(stack.Ref())
+	return b.lb.RenameStack(ctx, stack, newName)
 }
 
-func (b *lockableBackend) ImportDeployment(ctx context.Context, stackRef backend.StackReference,
-	deployment *apitype.UntypedDeployment) error {
-	err := b.Lock(stackRef)
-	if err != nil {
-		return err
-	}
-	defer b.Unlock(stackRef)
-	return b.lb.ImportDeployment(ctx, stackRef, deployment)
-}
-
-func (b *lockableBackend) Update(ctx context.Context, stackRef backend.StackReference,
+func (b *lockableBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stackRef)
+	err := b.Lock(stack.Ref())
 	if err != nil {
 		return nil, result.FromError(err)
 	}
-	defer b.Unlock(stackRef)
-	return b.lb.Update(ctx, stackRef, op)
+	defer b.Unlock(stack.Ref())
+	return b.lb.Preview(ctx, stack, op)
 }
 
-func (b *lockableBackend) UpdateStackTags(ctx context.Context,
-	stackRef backend.StackReference, tags map[apitype.StackTagName]string) error {
-	err := b.Lock(stackRef)
+func (b *lockableBackend) Refresh(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	err := b.Lock(stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(stack.Ref())
+	return b.lb.Refresh(ctx, stack, op)
+}
+
+func (b *lockableBackend) Destroy(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	err := b.Lock(stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(stack.Ref())
+	return b.lb.Destroy(ctx, stack, op)
+}
+
+func (b *lockableBackend) ExportDeployment(ctx context.Context,
+	stack backend.Stack) (*apitype.UntypedDeployment, error) {
+	err := b.Lock(stack.Ref())
+	if err != nil {
+		return nil, err
+	}
+	defer b.Unlock(stack.Ref())
+	return b.lb.ExportDeployment(ctx, stack)
+}
+
+func (b *lockableBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
+	deployment *apitype.UntypedDeployment) error {
+	err := b.Lock(stack.Ref())
 	if err != nil {
 		return err
 	}
-	defer b.Unlock(stackRef)
-	return b.lb.UpdateStackTags(ctx, stackRef, tags)
+	defer b.Unlock(stack.Ref())
+	return b.lb.ImportDeployment(ctx, stack, deployment)
+}
+
+func (b *lockableBackend) Import(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	err := b.Lock(stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(stack.Ref())
+	return b.lb.Import(ctx, stack, op, imports)
+}
+
+func (b *lockableBackend) Update(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+	err := b.Lock(stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(stack.Ref())
+	return b.lb.Update(ctx, stack, op)
+}
+
+func (b *lockableBackend) UpdateStackTags(ctx context.Context,
+	stack backend.Stack, tags map[apitype.StackTagName]string) error {
+	err := b.Lock(stack.Ref())
+	if err != nil {
+		return err
+	}
+	defer b.Unlock(stack.Ref())
+	return b.lb.UpdateStackTags(ctx, stack, tags)
 }
 
 func (b *lockableBackend) checkForLock(ctxt context.Context, stackRef backend.StackReference) error {
@@ -295,13 +316,21 @@ func (b *lockableBackend) lockPath(stack tokens.QName) string {
 }
 
 func (b *lockableBackend) ListStacks(ctx context.Context,
-	projectFilter *tokens.PackageName) ([]backend.StackSummary, error) {
+	projectFilter backend.ListStacksFilter) ([]backend.StackSummary, error) {
 	return b.lb.ListStacks(ctx, projectFilter)
 }
 
-func (b *lockableBackend) Query(ctx context.Context, stackRef backend.StackReference,
-	op backend.UpdateOperation) result.Result {
-	return b.lb.Query(ctx, stackRef, op)
+func (b *lockableBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+	return b.lb.ListPolicyGroups(ctx, orgName)
+}
+
+func (b *lockableBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+	return b.lb.ListPolicyPacks(ctx, orgName)
+}
+
+func (b *lockableBackend) Query(ctx context.Context,
+	op backend.QueryOperation) result.Result {
+	return b.lb.Query(ctx, op)
 }
 
 func (b *lockableBackend) GetHistory(ctx context.Context,
@@ -309,20 +338,20 @@ func (b *lockableBackend) GetHistory(ctx context.Context,
 	return b.lb.GetHistory(ctx, stackRef)
 }
 
-func (b *lockableBackend) GetLogs(ctx context.Context, stackRef backend.StackReference,
+func (b *lockableBackend) GetLogs(ctx context.Context, stack backend.Stack,
 	cfg backend.StackConfiguration,
 	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return b.lb.GetLogs(ctx, stackRef, cfg, query)
+	return b.lb.GetLogs(ctx, stack, cfg, query)
 }
 
 func (b *lockableBackend) GetLatestConfiguration(ctx context.Context,
-	stackRef backend.StackReference) (config.Map, error) {
-	return b.lb.GetLatestConfiguration(ctx, stackRef)
+	stack backend.Stack) (config.Map, error) {
+	return b.lb.GetLatestConfiguration(ctx, stack)
 }
 
 func (b *lockableBackend) GetStackTags(ctx context.Context,
-	stackRef backend.StackReference) (map[apitype.StackTagName]string, error) {
-	return b.lb.GetStackTags(ctx, stackRef)
+	stack backend.Stack) (map[apitype.StackTagName]string, error) {
+	return b.lb.GetStackTags(ctx, stack)
 }
 
 func (b *lockableBackend) Logout() error {
@@ -353,6 +382,19 @@ func (b *lockableBackend) ParseStackReference(stackRefName string) (backend.Stac
 func (b *lockableBackend) GetStack(ctx context.Context,
 	stackRef backend.StackReference) (backend.Stack, error) {
 	return b.lb.GetStack(ctx, stackRef)
+}
+
+func (b *lockableBackend) SupportsOrganizations() bool {
+	return b.lb.SupportsOrganizations()
+}
+
+func (b *lockableBackend) ValidateStackName(stackName string) error {
+	return b.lb.ValidateStackName(stackName)
+}
+
+func (b *lockableBackend) Watch(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation) result.Result {
+	return b.lb.Watch(ctx, stack, op)
 }
 
 func (b *lockableBackend) local() {
