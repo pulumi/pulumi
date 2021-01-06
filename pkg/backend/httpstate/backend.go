@@ -1114,6 +1114,7 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 		}
 
 		beUpdates = append(beUpdates, backend.UpdateInfo{
+			Version:         update.Version,
 			Kind:            update.Kind,
 			Message:         update.Message,
 			Environment:     update.Environment,
