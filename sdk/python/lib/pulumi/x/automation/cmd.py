@@ -14,11 +14,11 @@
 
 import os
 import subprocess
-from typing import List, Mapping
+from typing import List, Mapping, Optional, Callable, Any
 
 from .errors import create_command_error
 
-UNKNOWN_ERR_CODE = -2
+OnOutput = Callable[[str], Any]
 
 
 class CommandResult:
@@ -37,7 +37,8 @@ class CommandResult:
 
 def _run_pulumi_cmd(args: List[str],
                     cwd: str,
-                    additional_env: Mapping[str, str]) -> CommandResult:
+                    additional_env: Mapping[str, str],
+                    on_output: Optional[OnOutput] = None) -> CommandResult:
     # All commands should be run in non-interactive mode.
     # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
     args.append("--non-interactive")
@@ -45,10 +46,30 @@ def _run_pulumi_cmd(args: List[str],
     cmd = ["pulumi"]
     cmd.extend(args)
 
-    process = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
-    code = process.returncode if process.returncode is not None else UNKNOWN_ERR_CODE
+    stdout_chunks: List[str] = []
+    stderr_chunks: List[str] = []
 
-    result = CommandResult(stderr=process.stderr, stdout=process.stdout, code=code)
+    # TODO: figure out why this won't stream output
+    with subprocess.Popen(cmd,
+                          stdout=subprocess.PIPE,
+                          stderr=subprocess.PIPE,
+                          encoding="utf-8",
+                          cwd=cwd,
+                          env=env) as process:
+        while True:
+            output = process.stdout.readline()
+            err = process.stderr.readline()
+            if output == "" and err == "" and process.poll() is not None:
+                code = process.poll()
+                break
+            if output:
+                if on_output:
+                    on_output(output.strip())
+                stdout_chunks.append(output.strip())
+            if err:
+                stderr_chunks.append(err.strip())
+
+    result = CommandResult(stderr=''.join(stderr_chunks), stdout=''.join(stdout_chunks), code=code)
     if code != 0:
         raise create_command_error(result)
 

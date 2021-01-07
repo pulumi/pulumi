@@ -291,35 +291,37 @@ class TestLocalWorkspace(unittest.TestCase):
             "bar": ConfigValue(value="abc"),
             "buzz": ConfigValue(value="secret", secret=True)
         }
-        stack.set_all_config(stack_config)
 
-        # pulumi up
-        up_res = stack.up()
-        self.assertEqual(len(up_res.outputs), 3)
-        self.assertEqual(up_res.outputs["exp_static"].value, "foo")
-        self.assertFalse(up_res.outputs["exp_static"].secret)
-        self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
-        self.assertFalse(up_res.outputs["exp_cfg"].secret)
-        self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
-        self.assertTrue(up_res.outputs["exp_secret"].secret)
-        self.assertEqual(up_res.summary.kind, "update")
-        self.assertEqual(up_res.summary.result, "succeeded")
+        try:
+            stack.set_all_config(stack_config)
 
-        # pulumi preview
-        stack.preview()
-        # TODO: update assertions when we have structured output
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
 
-        # pulumi refresh
-        refresh_res = stack.refresh()
-        self.assertEqual(refresh_res.summary.kind, "refresh")
-        self.assertEqual(refresh_res.summary.result, "succeeded")
+            # pulumi preview
+            stack.preview()
+            # TODO: update assertions when we have structured output
 
-        # pulumi destroy
-        destroy_res = stack.destroy()
-        self.assertEqual(destroy_res.summary.kind, "destroy")
-        self.assertEqual(destroy_res.summary.result, "succeeded")
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
 
-        stack.workspace.remove_stack(stack_name)
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
 
 
 def pulumi_program():

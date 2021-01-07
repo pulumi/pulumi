@@ -314,7 +314,7 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    def install_plugin(self, name: str, version: str, kind: str) -> None:
+    def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
         """
         Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
 
@@ -325,7 +325,10 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
-    def remove_plugin(self, name: Optional[str], version_range: Optional[str], kind: str) -> None:
+    def remove_plugin(self,
+                      name: Optional[str] = None,
+                      version_range: Optional[str] = None,
+                      kind: str = "resource") -> None:
         """
         Removes a plugin from the Workspace matching the specified name and version.
 

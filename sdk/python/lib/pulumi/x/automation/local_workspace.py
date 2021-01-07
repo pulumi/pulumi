@@ -24,7 +24,7 @@ from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
 from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn
 from .stack import Stack, _DATETIME_FORMAT
-from .cmd import _run_pulumi_cmd, CommandResult
+from .cmd import _run_pulumi_cmd, CommandResult, OnOutput
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
@@ -372,10 +372,10 @@ class LocalWorkspace(Workspace):
             plugin_list.append(plugin)
         return plugin_list
 
-    def _run_pulumi_cmd_sync(self, args: List[str]) -> CommandResult:
+    def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         envs = {**envs, **self.env_vars}
-        return _run_pulumi_cmd(args, self.work_dir, envs)
+        return _run_pulumi_cmd(args, self.work_dir, envs, on_output)
 
 
 def get_stack_settings_name(name: str) -> str:

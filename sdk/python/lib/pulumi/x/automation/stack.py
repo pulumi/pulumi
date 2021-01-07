@@ -19,9 +19,9 @@ import grpc
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional, Callable
+from typing import List, Any, Mapping, MutableMapping, Optional
 
-from .cmd import CommandResult, _run_pulumi_cmd
+from .cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from .config import ConfigValue, ConfigMap
 from .errors import StackAlreadyExistsError, CommandError
 from .server import LanguageServer
@@ -195,7 +195,7 @@ class Stack:
            expect_no_changes: Optional[bool] = None,
            target_dependents: Optional[bool] = None,
            replace: Optional[List[str]] = None,
-           on_output: Optional[Callable[[str], None]] = None,
+           on_output: Optional[OnOutput] = None,
            program: Optional[PulumiFn] = None) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -290,7 +290,7 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
-                on_output: Optional[Callable[[str], None]] = None) -> RefreshResult:
+                on_output: Optional[OnOutput] = None) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
@@ -310,7 +310,7 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 target_dependents: Optional[bool] = None,
-                on_output: Callable[[str], None] = None) -> DestroyResult:
+                on_output: Optional[OnOutput] = None) -> DestroyResult:
         """Destroy deletes all resources in a stack, leaving all history and configuration intact."""
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
@@ -398,14 +398,14 @@ class Stack:
 
     def _run_pulumi_cmd_sync(self,
                              args: List[str],
-                             on_output: Optional[Callable[[str], None]] = None) -> CommandResult:
+                             on_output: Optional[OnOutput] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.workspace.pulumi_home} if self.workspace.pulumi_home else {}
         envs = {**envs, **self.workspace.env_vars}
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
         args.extend(additional_args)
 
-        result = _run_pulumi_cmd(args, self.workspace.work_dir, envs)
+        result = _run_pulumi_cmd(args, self.workspace.work_dir, envs, on_output)
         self.workspace.post_command_callback(self.name)
         return result
 

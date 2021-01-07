@@ -52,5 +52,6 @@ from .stack import (
     UpResult,
     PreviewResult,
     RefreshResult,
-    DestroyResult
+    DestroyResult,
+    fully_qualified_stack_name
 )
