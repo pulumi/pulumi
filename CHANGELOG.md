@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix an issue where python debug messages print unexpectedly.
+  [#6967](https://github.com/pulumi/pulumi/pull/6067)
+  
 - [CLI] Add `version` to the stack history output to be able to
   correlate events back to the Pulumi SaaS
   [#6063](https://github.com/pulumi/pulumi/pull/6063)
