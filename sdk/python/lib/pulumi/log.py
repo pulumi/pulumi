@@ -38,8 +38,6 @@ def debug(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[i
     engine = get_engine()
     if engine is not None:
         _log(engine, engine_pb2.DEBUG, msg, resource, stream_id, ephemeral)
-    else:
-        print("debug: " + msg, file=sys.stderr)
 
 
 def info(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None, ephemeral: Optional[bool] = None) -> None:

@@ -3,24 +3,39 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- Allow `serializeFunction` to capture secrets.
-  [#6013](https://github.com/pulumi/pulumi/pull/6013)
+- Fix an issue where python debug messages print unexpectedly.
+  [#6967](https://github.com/pulumi/pulumi/pull/6067)
   
-- [CLI] Allow `pulumi console` to accept a stack name
-  [#6031](https://github.com/pulumi/pulumi/pull/6031)
+- [CLI] Add `version` to the stack history output to be able to
+  correlate events back to the Pulumi SaaS
+  [#6063](https://github.com/pulumi/pulumi/pull/6063)
   
 - Fix a typo in the unit testing mocks to get the outputs while registering them
   [#6040](https://github.com/pulumi/pulumi/pull/6040)
 
+## 2.17.0 (2021-01-06)
+
+- Respect the `version` resource option for provider resources.
+  [#6055](https://github.com/pulumi/pulumi/pull/6055)
+
+- Allow `serializeFunction` to capture secrets.
+  [#6013](https://github.com/pulumi/pulumi/pull/6013)
+
+- [CLI] Allow `pulumi console` to accept a stack name
+  [#6031](https://github.com/pulumi/pulumi/pull/6031)
+
 - Support recovery workflow (import/export/cancel) in NodeJS Automation API.
   [#6038](https://github.com/pulumi/pulumi/pull/6038)
-  
+
 - [CLI] Add a confirmation prompt when using `pulumi policy rm`
   [#6034](https://github.com/pulumi/pulumi/pull/6034)
 
 - [CLI] Ensure errors with the Pulumi credentials file
   give the user some information on how to resolve the problem
   [#6044](https://github.com/pulumi/pulumi/pull/6044)
+
+- [sdk/go] Support maps in Invoke outputs and Read inputs
+  [#6014](https://github.com/pulumi/pulumi/pull/6014)
 
 ## 2.16.2 (2020-12-23)
 

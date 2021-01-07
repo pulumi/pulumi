@@ -77,6 +77,7 @@ This command displays data about previous updates for a stack.`,
 // updateInfoJSON is the shape of the --json output for a configuration value.  While we can add fields to this
 // structure in the future, we should not change existing fields.
 type updateInfoJSON struct {
+	Version     int                        `json:"version"`
 	Kind        string                     `json:"kind"`
 	StartTime   string                     `json:"startTime"`
 	Message     string                     `json:"message"`
@@ -97,6 +98,7 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 	updatesJSON := make([]updateInfoJSON, len(updates))
 	for idx, update := range updates {
 		info := updateInfoJSON{
+			Version:     update.Version,
 			Kind:        string(update.Kind),
 			StartTime:   time.Unix(update.StartTime, 0).UTC().Format(timeFormat),
 			Message:     update.Message,
@@ -155,7 +157,7 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, opts display.Options) e
 	}
 
 	for _, update := range updates {
-
+		fmt.Printf("Version: %d\n", update.Version)
 		fmt.Printf("UpdateKind: %v\n", update.Kind)
 		if update.Result == "succeeded" {
 			fmt.Print(opts.Color.Colorize(fmt.Sprintf("%sStatus: %v%s\n", colors.Green, update.Result, colors.Reset)))
