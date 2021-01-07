@@ -3,6 +3,7 @@ using Pulumi.X.Automation.Serialization.Json;
 
 namespace Pulumi.X.Automation.Serialization
 {
+    // necessary for constructor deserialization
     internal class PluginInfoModel : IJsonModel<PluginInfo>
     {
         public string Name { get; set; } = null!;

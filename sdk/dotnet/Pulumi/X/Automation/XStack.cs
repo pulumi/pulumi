@@ -12,8 +12,10 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Newtonsoft.Json;
 using Pulumi.X.Automation.Commands;
 using Pulumi.X.Automation.Commands.Exceptions;
+using Pulumi.X.Automation.Serialization;
 
 namespace Pulumi.X.Automation
 {
@@ -176,77 +178,336 @@ namespace Pulumi.X.Automation
         public Task<ImmutableDictionary<string, ConfigValue>> RefreshConfigAsync(CancellationToken cancellationToken = default)
             => this.Workspace.RefreshConfigAsync(this.Name, cancellationToken);
 
-        // TODO: docs, input UpOptions, return value
-        public async Task Up(CancellationToken cancellationToken = default)
+        /// <summary>
+        /// Creates or updates the resources in a stack by executing the program in the Workspace.
+        /// <para/>
+        /// https://www.pulumi.com/docs/reference/cli/pulumi_up/
+        /// </summary>
+        /// <param name="options">Options to customize the behavior of the update.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public async Task<UpResult> UpAsync(
+            UpOptions? options = null,
+            CancellationToken cancellationToken = default)
         {
-            IHost? host = null;
+            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
+            var execKind = ExecKind.Local;
+            var program = this.Workspace.Program;
+            var args = new List<string>()
+            {
+                "up",
+                "--yes",
+                "--skip-preview",
+            };
+
+            if (options != null)
+            {
+                if (options.Program != null)
+                    program = options.Program;
+
+                if (!string.IsNullOrWhiteSpace(options.Message))
+                {
+                    args.Add("--message");
+                    args.Add(options.Message);
+                }
+
+                if (options.ExpectNoChanges is true)
+                    args.Add("--expect-no-changes");
+
+                if (options.Replace?.Any() == true)
+                {
+                    foreach (var item in options.Replace)
+                    {
+                        args.Add("--replace");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.Target?.Any() == true)
+                {
+                    foreach (var item in options.Target)
+                    {
+                        args.Add("--target");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.TargetDependents is true)
+                    args.Add("--target-dependents");
+
+                if (options.Parallel.HasValue)
+                {
+                    args.Add("--parallel");
+                    args.Add(options.Parallel.Value.ToString());
+                }
+            }
+
+            InlineProgramSession? inlineSession = null;
             try
             {
-                // just mimicking typescript implementation's behavior - TODO: extract this to a reusable helper
-                if (this.Workspace.Program != null)
+                if (program != null)
                 {
-                    var portTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    host = Host.CreateDefaultBuilder()
-                        .ConfigureWebHostDefaults(webBuilder =>
-                        {
-                            webBuilder
-                                .ConfigureKestrel(kestrelOptions =>
-                                {
-                                    kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
-                                    {
-                                        // TODO: not sure if we need to do anything special to mimic typescript implementation's grpc.ServerCredentials.createInsecure()
-                                        listenOptions.UseHttps();
-                                    });
-                                })
-                                .ConfigureServices(services =>
-                                {
-                                    services.AddSingleton(this.Workspace.Program); // to be injected into LanguageRuntimeService
-                                    services.AddGrpc(grpcOptions =>
-                                    {
-                                        grpcOptions.MaxReceiveMessageSize = LanguageRuntimeService.MaxRpcMesageSize;
-                                        grpcOptions.MaxSendMessageSize = LanguageRuntimeService.MaxRpcMesageSize;
-                                    });
-                                })
-                                .Configure(app =>
-                                {
-                                    app.UseRouting();
-                                    app.UseEndpoints(endpoints =>
-                                    {
-                                        endpoints.MapGrpcService<LanguageRuntimeService>();
-                                    });
-                                });
-                        })
-                        .Build();
-
-                    // before starting the host, set up this callback to tell us what port was selected
-                    host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStarted.Register(() =>
-                    {
-                        try
-                        {
-                            var serverFeatures = host.Services.GetRequiredService<IServer>().Features;
-                            var addresses = serverFeatures.Get<IServerAddressesFeature>().Addresses.ToList();
-                            Debug.Assert(addresses.Count == 1, "Server should only be listening on one address");
-                            var uri = new Uri(addresses[0]);
-                            portTcs.TrySetResult(uri.Port);
-                        }
-                        catch (Exception ex)
-                        {
-                            portTcs.TrySetException(ex);
-                        }
-                    });
-                    await host.StartAsync(cancellationToken);
-                    var port = await portTcs.Task;
-                    // TODO: args.Add($"--client=127.0.0.1:{port}"); and kind=inline etc
+                    execKind = ExecKind.Inline;
+                    inlineSession = new InlineProgramSession(program, cancellationToken);
+                    await inlineSession.StartAsync().ConfigureAwait(false);
+                    var port = await inlineSession.GetPortAsync().ConfigureAwait(false);
+                    args.Add($"--client=127.0.0.1:{port}");
                 }
+
+                args.Add("--exec-kind");
+                args.Add(execKind);
+
+                var upResult = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+                var output = await this.GetOutputAsync(cancellationToken).ConfigureAwait(false);
+                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+
+                return new UpResult(
+                    upResult.StandardOutput,
+                    upResult.StandardError,
+                    summary!,
+                    output);
             }
             finally
             {
-                if (host != null)
+                if (inlineSession != null)
                 {
-                    await host.StopAsync(cancellationToken);
-                    host.Dispose();
+                    await inlineSession.DisposeAsync().ConfigureAwait(false);
                 }
             }
+        }
+
+        /// <summary>
+        /// Performs a dry-run update to a stack, returning pending changes.
+        /// <para/>
+        /// https://www.pulumi.com/docs/reference/cli/pulumi_preview/
+        /// </summary>
+        /// <param name="options">Options to customize the behavior of the update.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public async Task<UpdateResult> PreviewAsync(
+            PreviewOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
+            var execKind = ExecKind.Local;
+            var program = this.Workspace.Program;
+            var args = new List<string>() { "preview" };
+
+            if (options != null)
+            {
+                if (options.Program != null)
+                    program = options.Program;
+
+                if (!string.IsNullOrWhiteSpace(options.Message))
+                {
+                    args.Add("--message");
+                    args.Add(options.Message);
+                }
+
+                if (options.ExpectNoChanges is true)
+                    args.Add("--expect-no-changes");
+
+                if (options.Replace?.Any() == true)
+                {
+                    foreach (var item in options.Replace)
+                    {
+                        args.Add("--replace");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.Target?.Any() == true)
+                {
+                    foreach (var item in options.Target)
+                    {
+                        args.Add("--target");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.TargetDependents is true)
+                    args.Add("--target-dependents");
+
+                if (options.Parallel.HasValue)
+                {
+                    args.Add("--parallel");
+                    args.Add(options.Parallel.Value.ToString());
+                }
+            }
+
+            InlineProgramSession? inlineSession = null;
+            try
+            {
+                if (program != null)
+                {
+                    execKind = ExecKind.Inline;
+                    inlineSession = new InlineProgramSession(program, cancellationToken);
+                    await inlineSession.StartAsync().ConfigureAwait(false);
+                    var port = await inlineSession.GetPortAsync().ConfigureAwait(false);
+                    args.Add($"--client=127.0.0.1:{port}");
+                }
+
+                args.Add("--exec-kind");
+                args.Add(execKind);
+
+                var upResult = await this.RunCommandAsync(args, null, cancellationToken).ConfigureAwait(false);
+                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+
+                return new UpdateResult(
+                    upResult.StandardOutput,
+                    upResult.StandardError,
+                    summary!);
+            }
+            finally
+            {
+                if (inlineSession != null)
+                {
+                    await inlineSession.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Compares the current stack’s resource state with the state known to exist in the actual
+        /// cloud provider. Any such changes are adopted into the current stack.
+        /// </summary>
+        /// <param name="options">Options to customize the behavior of the refresh.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public async Task<UpdateResult> RefreshAsync(
+            RefreshOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
+            var args = new List<string>()
+            {
+                "refresh",
+                "--yes",
+                "--skip-preview",
+            };
+
+            if (options != null)
+            {
+                if (!string.IsNullOrWhiteSpace(options.Message))
+                {
+                    args.Add("--message");
+                    args.Add(options.Message);
+                }
+
+                if (options.ExpectNoChanges is true)
+                    args.Add("--expect-no-changes");
+
+                if (options.Target?.Any() == true)
+                {
+                    foreach (var item in options.Target)
+                    {
+                        args.Add("--target");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.Parallel.HasValue)
+                {
+                    args.Add("--parallel");
+                    args.Add(options.Parallel.Value.ToString());
+                }
+            }
+
+            var result = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+            var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            return new UpdateResult(
+                result.StandardOutput,
+                result.StandardError,
+                summary!);
+        }
+
+        /// <summary>
+        /// Destroy deletes all resources in a stack, leaving all history and configuration intact.
+        /// </summary>
+        /// <param name="options">Options to customize the behavior of the destroy.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public async Task<UpdateResult> DestroyAsync(
+            DestroyOptions? options = null,
+            CancellationToken cancellationToken = default)
+        {
+            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
+            var args = new List<string>()
+            {
+                "destroy",
+                "--yes",
+                "--skip-preview",
+            };
+
+            if (options != null)
+            {
+                if (!string.IsNullOrWhiteSpace(options.Message))
+                {
+                    args.Add("--message");
+                    args.Add(options.Message);
+                }
+
+                if (options.Target?.Any() == true)
+                {
+                    foreach (var item in options.Target)
+                    {
+                        args.Add("--target");
+                        args.Add(item);
+                    }
+                }
+
+                if (options.TargetDependents is true)
+                    args.Add("--target-dependents");
+
+                if (options.Parallel.HasValue)
+                {
+                    args.Add("--parallel");
+                    args.Add(options.Parallel.Value.ToString());
+                }
+            }
+
+            var result = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+            var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+            return new UpdateResult(
+                result.StandardOutput,
+                result.StandardError,
+                summary!);
+        }
+
+        /// <summary>
+        /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
+        /// </summary>
+        private async Task<ImmutableDictionary<string, OutputValue>> GetOutputAsync(CancellationToken cancellationToken)
+        {
+            await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
+
+            // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, cancellationToken).ConfigureAwait(false);
+            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
+            var maskedOutput = JsonConvert.DeserializeObject<Dictionary<string, object>>(maskedResult.StandardOutput);
+            var plaintextOutput = JsonConvert.DeserializeObject<Dictionary<string, object>>(plaintextResult.StandardOutput);
+            
+            var output = new Dictionary<string, OutputValue>();
+            foreach (var (key, value) in plaintextOutput)
+            {
+                var secret = maskedOutput[key] is string maskedValue && maskedValue == "[secret]";
+                output[key] = new OutputValue(value, secret);
+            }
+
+            return output.ToImmutableDictionary();
+        }
+
+        /// <summary>
+        /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
+        /// </summary>
+        private async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(CancellationToken cancellationToken)
+        {
+            var result = await this.RunCommandAsync(new[] { "history", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
+            var settings = LocalSerializer.BuildJsonSerializerSettings();
+            var list = JsonConvert.DeserializeObject<List<UpdateSummary>>(result.StandardOutput, settings);
+            return list.ToImmutableList();
+        }
+
+        private async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken)
+        {
+            var history = await this.GetHistoryAsync(cancellationToken).ConfigureAwait(false);
+            return history.FirstOrDefault();
         }
 
         private Task<CommandResult> RunCommandAsync(
@@ -258,11 +519,91 @@ namespace Pulumi.X.Automation
         public void Dispose()
             => this.Workspace.Dispose();
 
+        private static class ExecKind
+        {
+            public const string Local = "auto.local";
+            public const string Inline = "auto.inline";
+        }
+
         private enum StackInitMode // TODO: change name of this as per XStack
         {
             Create,
             Select,
             CreateOrSelect
+        }
+
+        private class InlineProgramSession : IAsyncDisposable
+        {
+            private readonly TaskCompletionSource<int> _portTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+            private readonly CancellationToken _cancelToken;
+            private readonly IHost _host;
+            private readonly CancellationTokenRegistration _portRegistration;
+
+            public InlineProgramSession(PulumiFn program, CancellationToken cancellationToken)
+            {
+                this._cancelToken = cancellationToken;
+                this._host = Host.CreateDefaultBuilder()
+                    .ConfigureWebHostDefaults(webBuilder =>
+                    {
+                        webBuilder
+                            .ConfigureKestrel(kestrelOptions =>
+                            {
+                                kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
+                                {
+                                    // TODO: not sure if we need to do anything special to mimic typescript implementation's grpc.ServerCredentials.createInsecure()
+                                    listenOptions.UseHttps();
+                                });
+                            })
+                            .ConfigureServices(services =>
+                            {
+                                services.AddSingleton(program); // to be injected into LanguageRuntimeService
+                                services.AddGrpc(grpcOptions =>
+                                {
+                                    grpcOptions.MaxReceiveMessageSize = LanguageRuntimeService.MaxRpcMesageSize;
+                                    grpcOptions.MaxSendMessageSize = LanguageRuntimeService.MaxRpcMesageSize;
+                                });
+                            })
+                            .Configure(app =>
+                            {
+                                app.UseRouting();
+                                app.UseEndpoints(endpoints =>
+                                {
+                                    endpoints.MapGrpcService<LanguageRuntimeService>();
+                                });
+                            });
+                    })
+                    .Build();
+
+                // before starting the host, set up this callback to tell us what port was selected
+                this._portRegistration = this._host.Services.GetRequiredService<IHostApplicationLifetime>().ApplicationStarted.Register(() =>
+                {
+                    try
+                    {
+                        var serverFeatures = this._host.Services.GetRequiredService<IServer>().Features;
+                        var addresses = serverFeatures.Get<IServerAddressesFeature>().Addresses.ToList();
+                        Debug.Assert(addresses.Count == 1, "Server should only be listening on one address");
+                        var uri = new Uri(addresses[0]);
+                        this._portTcs.TrySetResult(uri.Port);
+                    }
+                    catch (Exception ex)
+                    {
+                        this._portTcs.TrySetException(ex);
+                    }
+                });
+            }
+
+            public Task StartAsync()
+                => this._host.StartAsync(this._cancelToken);
+
+            public Task<int> GetPortAsync()
+                => this._portTcs.Task;
+
+            public async ValueTask DisposeAsync()
+            {
+                this._portRegistration.Unregister();
+                await this._host.StopAsync(this._cancelToken).ConfigureAwait(false);
+                this._host.Dispose();
+            }
         }
     }
 }

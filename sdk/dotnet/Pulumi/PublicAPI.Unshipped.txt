@@ -9,6 +9,12 @@ Pulumi.X.Automation.ConfigValue.IsSecret.get -> bool
 Pulumi.X.Automation.ConfigValue.IsSecret.set -> void
 Pulumi.X.Automation.ConfigValue.Value.get -> string
 Pulumi.X.Automation.ConfigValue.Value.set -> void
+Pulumi.X.Automation.DestroyOptions
+Pulumi.X.Automation.DestroyOptions.DestroyOptions() -> void
+Pulumi.X.Automation.DestroyOptions.OnOutput.get -> System.Action<string>
+Pulumi.X.Automation.DestroyOptions.OnOutput.set -> void
+Pulumi.X.Automation.DestroyOptions.TargetDependents.get -> bool?
+Pulumi.X.Automation.DestroyOptions.TargetDependents.set -> void
 Pulumi.X.Automation.InlineProgramArgs
 Pulumi.X.Automation.InlineProgramArgs.InlineProgramArgs(string projectName, string stackName, Pulumi.X.Automation.PulumiFn program) -> void
 Pulumi.X.Automation.InlineProgramArgs.ProjectName.get -> string
@@ -33,8 +39,17 @@ Pulumi.X.Automation.LocalWorkspaceOptions.StackSettings.get -> System.Collection
 Pulumi.X.Automation.LocalWorkspaceOptions.StackSettings.set -> void
 Pulumi.X.Automation.LocalWorkspaceOptions.WorkDir.get -> string
 Pulumi.X.Automation.LocalWorkspaceOptions.WorkDir.set -> void
+Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.Create = 1 -> Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.CreateReplacement = 5 -> Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.Delete = 3 -> Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.DeleteReplaced = 6 -> Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.Replace = 4 -> Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.Same = 0 -> Pulumi.X.Automation.OperationType
+Pulumi.X.Automation.OperationType.Update = 2 -> Pulumi.X.Automation.OperationType
 Pulumi.X.Automation.OutputValue
-Pulumi.X.Automation.OutputValue.OutputValue() -> void
+Pulumi.X.Automation.OutputValue.IsSecret.get -> bool
+Pulumi.X.Automation.OutputValue.Value.get -> object
 Pulumi.X.Automation.PluginInfo
 Pulumi.X.Automation.PluginInfo.InstallTime.get -> System.DateTimeOffset
 Pulumi.X.Automation.PluginInfo.Kind.get -> Pulumi.X.Automation.PluginKind
@@ -48,6 +63,16 @@ Pulumi.X.Automation.PluginKind
 Pulumi.X.Automation.PluginKind.Analyzer = 0 -> Pulumi.X.Automation.PluginKind
 Pulumi.X.Automation.PluginKind.Language = 1 -> Pulumi.X.Automation.PluginKind
 Pulumi.X.Automation.PluginKind.Resource = 2 -> Pulumi.X.Automation.PluginKind
+Pulumi.X.Automation.PreviewOptions
+Pulumi.X.Automation.PreviewOptions.ExpectNoChanges.get -> bool?
+Pulumi.X.Automation.PreviewOptions.ExpectNoChanges.set -> void
+Pulumi.X.Automation.PreviewOptions.PreviewOptions() -> void
+Pulumi.X.Automation.PreviewOptions.Program.get -> Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.PreviewOptions.Program.set -> void
+Pulumi.X.Automation.PreviewOptions.Replace.get -> System.Collections.Generic.List<string>
+Pulumi.X.Automation.PreviewOptions.Replace.set -> void
+Pulumi.X.Automation.PreviewOptions.TargetDependents.get -> bool?
+Pulumi.X.Automation.PreviewOptions.TargetDependents.set -> void
 Pulumi.X.Automation.ProjectBackend
 Pulumi.X.Automation.ProjectBackend.ProjectBackend() -> void
 Pulumi.X.Automation.ProjectBackend.Url.get -> string
@@ -112,6 +137,12 @@ Pulumi.X.Automation.ProjectTemplateConfigValue.ProjectTemplateConfigValue() -> v
 Pulumi.X.Automation.ProjectTemplateConfigValue.Secret.get -> bool?
 Pulumi.X.Automation.ProjectTemplateConfigValue.Secret.set -> void
 Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.RefreshOptions
+Pulumi.X.Automation.RefreshOptions.ExpectNoChanges.get -> bool?
+Pulumi.X.Automation.RefreshOptions.ExpectNoChanges.set -> void
+Pulumi.X.Automation.RefreshOptions.OnOutput.get -> System.Action<string>
+Pulumi.X.Automation.RefreshOptions.OnOutput.set -> void
+Pulumi.X.Automation.RefreshOptions.RefreshOptions() -> void
 Pulumi.X.Automation.StackSettings
 Pulumi.X.Automation.StackSettings.Config.get -> System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.StackSettingsConfigValue>
 Pulumi.X.Automation.StackSettings.Config.set -> void
@@ -133,6 +164,55 @@ Pulumi.X.Automation.StackSummary.LastUpdate.get -> System.DateTimeOffset?
 Pulumi.X.Automation.StackSummary.Name.get -> string
 Pulumi.X.Automation.StackSummary.ResourceCount.get -> int?
 Pulumi.X.Automation.StackSummary.Url.get -> string
+Pulumi.X.Automation.UpOptions
+Pulumi.X.Automation.UpOptions.ExpectNoChanges.get -> bool?
+Pulumi.X.Automation.UpOptions.ExpectNoChanges.set -> void
+Pulumi.X.Automation.UpOptions.OnOutput.get -> System.Action<string>
+Pulumi.X.Automation.UpOptions.OnOutput.set -> void
+Pulumi.X.Automation.UpOptions.Program.get -> Pulumi.X.Automation.PulumiFn
+Pulumi.X.Automation.UpOptions.Program.set -> void
+Pulumi.X.Automation.UpOptions.Replace.get -> System.Collections.Generic.List<string>
+Pulumi.X.Automation.UpOptions.Replace.set -> void
+Pulumi.X.Automation.UpOptions.TargetDependents.get -> bool?
+Pulumi.X.Automation.UpOptions.TargetDependents.set -> void
+Pulumi.X.Automation.UpOptions.UpOptions() -> void
+Pulumi.X.Automation.UpResult
+Pulumi.X.Automation.UpResult.Outputs.get -> System.Collections.Immutable.IImmutableDictionary<string, Pulumi.X.Automation.OutputValue>
+Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateKind.Destroy = 4 -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateKind.Import = 5 -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateKind.Preview = 1 -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateKind.Refresh = 2 -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateKind.Rename = 3 -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateKind.Update = 0 -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateOptions
+Pulumi.X.Automation.UpdateOptions.Message.get -> string
+Pulumi.X.Automation.UpdateOptions.Message.set -> void
+Pulumi.X.Automation.UpdateOptions.Parallel.get -> int?
+Pulumi.X.Automation.UpdateOptions.Parallel.set -> void
+Pulumi.X.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>
+Pulumi.X.Automation.UpdateOptions.Target.set -> void
+Pulumi.X.Automation.UpdateOptions.UpdateOptions() -> void
+Pulumi.X.Automation.UpdateResult
+Pulumi.X.Automation.UpdateResult.StandardError.get -> string
+Pulumi.X.Automation.UpdateResult.StandardOutput.get -> string
+Pulumi.X.Automation.UpdateResult.Summary.get -> Pulumi.X.Automation.UpdateSummary
+Pulumi.X.Automation.UpdateState
+Pulumi.X.Automation.UpdateState.Failed = 3 -> Pulumi.X.Automation.UpdateState
+Pulumi.X.Automation.UpdateState.InProgress = 1 -> Pulumi.X.Automation.UpdateState
+Pulumi.X.Automation.UpdateState.NotStarted = 0 -> Pulumi.X.Automation.UpdateState
+Pulumi.X.Automation.UpdateState.Succeeded = 2 -> Pulumi.X.Automation.UpdateState
+Pulumi.X.Automation.UpdateSummary
+Pulumi.X.Automation.UpdateSummary.Config.get -> System.Collections.Immutable.IImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>
+Pulumi.X.Automation.UpdateSummary.Deployment.get -> string
+Pulumi.X.Automation.UpdateSummary.EndTime.get -> System.DateTimeOffset
+Pulumi.X.Automation.UpdateSummary.Environment.get -> System.Collections.Immutable.IImmutableDictionary<string, string>
+Pulumi.X.Automation.UpdateSummary.Kind.get -> Pulumi.X.Automation.UpdateKind
+Pulumi.X.Automation.UpdateSummary.Message.get -> string
+Pulumi.X.Automation.UpdateSummary.ResourceChanges.get -> System.Collections.Immutable.IImmutableDictionary<Pulumi.X.Automation.OperationType, int>
+Pulumi.X.Automation.UpdateSummary.Result.get -> Pulumi.X.Automation.UpdateState
+Pulumi.X.Automation.UpdateSummary.StartTime.get -> System.DateTimeOffset
+Pulumi.X.Automation.UpdateSummary.Version.get -> int?
 Pulumi.X.Automation.WhoAmIResult
 Pulumi.X.Automation.WhoAmIResult.User.get -> string
 Pulumi.X.Automation.WhoAmIResult.WhoAmIResult(string user) -> void
@@ -140,16 +220,19 @@ Pulumi.X.Automation.Workspace
 Pulumi.X.Automation.Workspace.CreateStackAsync(string stackName) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.Workspace.SelectStackAsync(string stackName) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack
+Pulumi.X.Automation.XStack.DestroyAsync(Pulumi.X.Automation.DestroyOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.X.Automation.UpdateResult>
 Pulumi.X.Automation.XStack.Dispose() -> void
 Pulumi.X.Automation.XStack.GetConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>>
 Pulumi.X.Automation.XStack.GetConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.X.Automation.ConfigValue>
 Pulumi.X.Automation.XStack.Name.get -> string
+Pulumi.X.Automation.XStack.PreviewAsync(Pulumi.X.Automation.PreviewOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.X.Automation.UpdateResult>
+Pulumi.X.Automation.XStack.RefreshAsync(Pulumi.X.Automation.RefreshOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.X.Automation.UpdateResult>
 Pulumi.X.Automation.XStack.RefreshConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.X.Automation.ConfigValue>>
 Pulumi.X.Automation.XStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack.RemoveConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack.SetConfigAsync(System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 Pulumi.X.Automation.XStack.SetConfigValueAsync(string key, Pulumi.X.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
-Pulumi.X.Automation.XStack.Up(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.X.Automation.XStack.UpAsync(Pulumi.X.Automation.UpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.X.Automation.UpResult>
 Pulumi.X.Automation.XStack.Workspace.get -> Pulumi.X.Automation.Workspace
 abstract Pulumi.X.Automation.Workspace.CreateStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
 abstract Pulumi.X.Automation.Workspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>

@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Pulumi.X.Automation.Runtime;
 using Pulumirpc;
@@ -24,21 +23,6 @@ namespace Pulumi.X.Automation
         public LanguageRuntimeService(PulumiFn program)
         {
             _program = program;
-        }
-
-        public override Task<Pulumirpc.PluginInfo> GetPluginInfo(Empty request, ServerCallContext context)
-        {
-            var pluginInfo = new Pulumirpc.PluginInfo
-            {
-                Version = "1.0.0"
-            };
-            return Task.FromResult(pluginInfo);
-        }
-
-        public override Task<GetRequiredPluginsResponse> GetRequiredPlugins(GetRequiredPluginsRequest request, ServerCallContext context)
-        {
-            var response = new GetRequiredPluginsResponse();
-            return Task.FromResult(response);
         }
 
         public override async Task<RunResponse> Run(RunRequest request, ServerCallContext context)

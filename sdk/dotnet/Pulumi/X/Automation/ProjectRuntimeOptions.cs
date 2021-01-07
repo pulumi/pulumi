@@ -1,7 +1,4 @@
-﻿using System.Text.Json.Serialization;
-using YamlDotNet.Serialization;
-
-namespace Pulumi.X.Automation
+﻿namespace Pulumi.X.Automation
 {
     /// <summary>
     /// Various configuration options that apply to different language runtimes.

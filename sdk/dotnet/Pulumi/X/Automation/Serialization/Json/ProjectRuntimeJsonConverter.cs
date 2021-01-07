@@ -1,72 +1,82 @@
 ﻿using System;
-using System.Text.Json;
-using System.Text.Json.Serialization;
+using System.Diagnostics.CodeAnalysis;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace Pulumi.X.Automation.Serialization.Json
 {
     internal class ProjectRuntimeJsonConverter : JsonConverter<ProjectRuntime>
     {
-        public override ProjectRuntime Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+        public override ProjectRuntime ReadJson(
+            JsonReader reader,
+            Type objectType,
+            [AllowNull] ProjectRuntime existingValue,
+            bool hasExistingValue,
+            JsonSerializer serializer)
         {
-            if (reader.TokenType == JsonTokenType.String)
+            if (reader.TokenType is JsonToken.String)
             {
-                var runtimeName = DeserializeName(ref reader, typeToConvert);
+                var runtimeName = DeserializeName(reader.Value as string, objectType);
                 return new ProjectRuntime(runtimeName);
             }
 
-            if (reader.TokenType != JsonTokenType.StartObject)
-                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Expecting string or object.");
+            if (reader.TokenType != JsonToken.StartObject)
+                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Expecting string or object.");
 
-            reader.Read();
-            if (reader.TokenType != JsonTokenType.PropertyName
-                || !string.Equals(nameof(ProjectRuntime.Name), reader.GetString(), StringComparison.OrdinalIgnoreCase))
-                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Expecting runtime name property.");
+            var element = serializer.Deserialize<JObject>(reader);
+            if (element is null)
+                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Expecting string or object.");
 
-            reader.Read();
-            if (reader.TokenType != JsonTokenType.String)
-                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Runtime name property should be a string.");
+            if (!element.TryGetValue(nameof(ProjectRuntime.Name), StringComparison.OrdinalIgnoreCase, out var nameProperty))
+                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Expecting runtime name property.");
 
-            var name = DeserializeName(ref reader, typeToConvert);
+            if (nameProperty.Type != JTokenType.String)
+                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Runtime name property should be a string.");
 
-            reader.Read();
-            if (reader.TokenType == JsonTokenType.EndObject)
+            var name = DeserializeName(nameProperty.Value<string>(), objectType);
+
+            if (!element.TryGetValue(nameof(ProjectRuntime.Options), StringComparison.OrdinalIgnoreCase, out var optionsProperty))
                 return new ProjectRuntime(name);
 
-            if (reader.TokenType != JsonTokenType.PropertyName
-                || !string.Equals(nameof(ProjectRuntime.Options), reader.GetString(), StringComparison.OrdinalIgnoreCase))
-                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Expecting runtime options property.");
+            if (optionsProperty.Type != JTokenType.Object)
+                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Runtime options property should be an object.");
 
-            reader.Read();
-            if (reader.TokenType != JsonTokenType.StartObject)
-                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Runtime options property should be an object.");
-
-            var runtimeOptions = JsonSerializer.Deserialize<ProjectRuntimeOptions>(ref reader, options);
-            reader.Read(); // read final EndObject token
-
+            var runtimeOptions = serializer.Deserialize<ProjectRuntimeOptions>(optionsProperty.CreateReader());
             return new ProjectRuntime(name) { Options = runtimeOptions };
 
-            static ProjectRuntimeName DeserializeName(ref Utf8JsonReader reader, Type typeToConvert)
+            static ProjectRuntimeName DeserializeName(string? stringValue, Type objectType)
             {
-                var runtimeStr = reader.GetString();
-                if (string.IsNullOrWhiteSpace(runtimeStr))
-                    throw new JsonException($"A valid runtime name was not provided when deserializing [{typeToConvert.FullName}].");
+                if (string.IsNullOrWhiteSpace(stringValue))
+                    throw new JsonException($"A valid runtime name was not provided when deserializing [{objectType.FullName}].");
 
-                if (Enum.TryParse<ProjectRuntimeName>(runtimeStr, true, out var runtimeName))
+                if (Enum.TryParse<ProjectRuntimeName>(stringValue, true, out var runtimeName))
                     return runtimeName;
 
-                throw new JsonException($"Unexpected runtime name of \"{runtimeStr}\" provided when deserializing [{typeToConvert.FullName}].");
+                throw new JsonException($"Unexpected runtime name of \"{stringValue}\" provided when deserializing [{objectType.FullName}].");
             }
         }
 
-        public override void Write(Utf8JsonWriter writer, ProjectRuntime value, JsonSerializerOptions options)
+        public override void WriteJson(
+            JsonWriter writer,
+            [AllowNull] ProjectRuntime value,
+            JsonSerializer serializer)
         {
-            if (value.Options is null)
+            if (value is null)
             {
-                writer.WriteStringValue(value.Name.ToString().ToLower());
+                writer.WriteNull();
+            }
+            else if (value.Options is null)
+            {
+                writer.WriteValue(value.Name.ToString().ToLower());
             }
             else
             {
-                JsonSerializer.Serialize(writer, value);
+                writer.WriteStartObject();
+                writer.WritePropertyName("name");
+                writer.WriteValue(value.Name.ToString().ToLower());
+                writer.WritePropertyName("options");
+                serializer.Serialize(writer, value.Options);
+                writer.WriteEndObject();
             }
         }
     }

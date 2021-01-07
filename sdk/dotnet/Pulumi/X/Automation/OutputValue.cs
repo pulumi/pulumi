@@ -1,13 +1,17 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Pulumi.X.Automation
+﻿namespace Pulumi.X.Automation
 {
-    public class OutputValue
+    public sealed class OutputValue
     {
-        
+        public object Value { get; }
+
+        public bool IsSecret { get; }
+
+        internal OutputValue(
+            object value,
+            bool isSecret)
+        {
+            this.Value = value;
+            this.IsSecret = isSecret;
+        }
     }
 }
