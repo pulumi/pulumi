@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [CLI] Add `version` to the stack history output to be able to
+  correlate events back to the Pulumi SaaS
+  [#6063](https://github.com/pulumi/pulumi/pull/6063)
 
 ## 2.17.0 (2021-01-06)
 
