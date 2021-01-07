@@ -1,66 +1,54 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Pulumi.X.Automation.Serialization.Json
 {
     internal class StackSettingsConfigValueJsonConverter : JsonConverter<StackSettingsConfigValue>
     {
-        public override StackSettingsConfigValue ReadJson(
-            JsonReader reader,
-            Type objectType,
-            [AllowNull] StackSettingsConfigValue existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer)
+        public override StackSettingsConfigValue Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
+            var element = JsonSerializer.Deserialize<JsonElement>(ref reader, options);
+
             // check if plain string
-            if (reader.TokenType is JsonToken.String
-                && reader.Value is string valueStr)
-                return new StackSettingsConfigValue(valueStr, false);
+            if (element.ValueKind == JsonValueKind.String)
+            {
+                var value = element.GetString();
+                return new StackSettingsConfigValue(value, false);
+            }
 
             // confirm object
-            if (reader.TokenType != JsonToken.StartObject)
-                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Expecting object if not plain string.");
+            if (element.ValueKind != JsonValueKind.Object)
+                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Expecting object if not plain string.");
 
-            // parse object
-            var element = serializer.Deserialize<JObject>(reader);
-            if (element is null)
-                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Expecting object if not plain string.");
-
-            if (element.TryGetValue("secure", StringComparison.OrdinalIgnoreCase, out var secureProperty) == true)
+            // check if secure string
+            var securePropertyName = options.PropertyNamingPolicy?.ConvertName("Secure") ?? "Secure";
+            if (element.TryGetProperty(securePropertyName, out var secureProperty))
             {
-                if (secureProperty.Type != JTokenType.String)
-                    throw new JsonException($"Unable to deserialize [{objectType.FullName}] as a secure string. Expecting a string secret.");
+                if (secureProperty.ValueKind != JsonValueKind.String)
+                    throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}] as a secure string. Expecting a string secret.");
 
-                var secret = secureProperty.Value<string>();
+                var secret = secureProperty.GetString();
                 return new StackSettingsConfigValue(secret, true);
             }
 
             throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
         }
 
-        public override void WriteJson(
-            JsonWriter writer,
-            [AllowNull] StackSettingsConfigValue value,
-            JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, StackSettingsConfigValue value, JsonSerializerOptions options)
         {
-            if (value is null)
-            {
-                writer.WriteNull();
-            }
             // secure string
-            else if (value.IsSecure)
+            if (value.IsSecure)
             {
+                var securePropertyName = options.PropertyNamingPolicy?.ConvertName("Secure") ?? "Secure";
                 writer.WriteStartObject();
-                writer.WritePropertyName("secure");
-                writer.WriteValue(value.Value);
+                writer.WriteString(securePropertyName, value.Value);
                 writer.WriteEndObject();
             }
             // plain string
             else
             {
-                writer.WriteValue(value.Value);
+                writer.WriteStringValue(value.Value);
             }
         }
     }

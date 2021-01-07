@@ -1,35 +1,26 @@
 ﻿using System;
-using System.Diagnostics.CodeAnalysis;
-using Newtonsoft.Json;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Pulumi.X.Automation.Serialization.Json
 {
-    // necessary for constructor deserialization
+    // necessary because this version of System.Text.Json
+    // can't deserialize a type that doesn't have a parameterless constructor
     internal class MapToModelJsonConverter<T, TModel> : JsonConverter<T>
         where TModel : IJsonModel<T>
     {
-        public override T ReadJson(
-            JsonReader reader,
-            Type objectType,
-            [AllowNull] T existingValue,
-            bool hasExistingValue,
-            JsonSerializer serializer)
+        public override T Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
-            var model = serializer.Deserialize<TModel>(reader);
+            var model = JsonSerializer.Deserialize<TModel>(ref reader, options);
             if (model is null)
-                throw new JsonException($"Unable to deserialize [{objectType.FullName}]. Expecting object.");
+                throw new JsonException($"Unable to deserialize [{typeToConvert.FullName}]. Expecting object.");
 
             return model.Convert();
         }
 
-        public override bool CanWrite => false;
-
-        public override void WriteJson(
-            JsonWriter writer,
-            [AllowNull] T value,
-            JsonSerializer serializer)
+        public override void Write(Utf8JsonWriter writer, T value, JsonSerializerOptions options)
         {
-            throw new NotImplementedException();
+            JsonSerializer.Serialize(writer, value, options);
         }
     }
 }

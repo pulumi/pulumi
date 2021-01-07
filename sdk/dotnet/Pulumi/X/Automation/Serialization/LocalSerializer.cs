@@ -1,7 +1,5 @@
-﻿using System;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
-using Newtonsoft.Json.Serialization;
+﻿using System.Text.Json;
+using System.Text.Json.Serialization;
 using Pulumi.X.Automation.Serialization.Json;
 using Pulumi.X.Automation.Serialization.Yaml;
 using YamlDotNet.Serialization;
@@ -11,14 +9,14 @@ namespace Pulumi.X.Automation.Serialization
 {
     internal class LocalSerializer
     {
-        private readonly JsonSerializerSettings _jsonSettings;
+        private readonly JsonSerializerOptions _jsonOptions;
         private readonly IDeserializer _yamlDeserializer;
         private readonly ISerializer _yamlSerializer;
 
         public LocalSerializer()
         {
             // configure json
-            this._jsonSettings = BuildJsonSerializerSettings();
+            this._jsonOptions = BuildJsonSerializerOptions();
 
             // configure yaml
             this._yamlDeserializer = BuildYamlDeserializer();
@@ -26,45 +24,40 @@ namespace Pulumi.X.Automation.Serialization
         }
 
         public T DeserializeJson<T>(string content)
-        {
-            var result = JsonConvert.DeserializeObject<T>(content, this._jsonSettings);
-            return result ?? throw new InvalidOperationException("JSON result is null.");
-        }
+            => JsonSerializer.Deserialize<T>(content, this._jsonOptions);
 
         public T DeserializeYaml<T>(string content)
             where T : class
             => this._yamlDeserializer.Deserialize<T>(content);
 
         public string SerializeJson<T>(T @object)
-            => JsonConvert.SerializeObject(@object, this._jsonSettings);
+            => JsonSerializer.Serialize(@object, this._jsonOptions);
 
         public string SerializeYaml<T>(T @object)
             where T : class
             => this._yamlSerializer.Serialize(@object);
 
-        public static JsonSerializerSettings BuildJsonSerializerSettings()
+        public static JsonSerializerOptions BuildJsonSerializerOptions()
         {
-            var lowercaseNamingStrategy = new LowercaseNamingStrategy();
-            var settings = new JsonSerializerSettings
+            var options = new JsonSerializerOptions
             {
-                ConstructorHandling = ConstructorHandling.AllowNonPublicDefaultConstructor,
-                ContractResolver = new DefaultContractResolver
-                {
-                    NamingStrategy = lowercaseNamingStrategy,
-                },
-                NullValueHandling = NullValueHandling.Ignore,
+                AllowTrailingCommas = true,
+                IgnoreNullValues = true,
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
             };
 
-            settings.Converters.Add(new StringEnumConverter(lowercaseNamingStrategy, allowIntegerValues: false));
-            settings.Converters.Add(new MapToModelJsonConverter<ConfigValue, ConfigValueModel>());
-            settings.Converters.Add(new MapToModelJsonConverter<PluginInfo, PluginInfoModel>());
-            settings.Converters.Add(new MapToModelJsonConverter<ProjectSettings, ProjectSettingsModel>());
-            settings.Converters.Add(new MapToModelJsonConverter<StackSummary, StackSummaryModel>());
-            settings.Converters.Add(new MapToModelJsonConverter<UpdateSummary, UpdateSummaryModel>());
-            settings.Converters.Add(new ProjectRuntimeJsonConverter());
-            settings.Converters.Add(new StackSettingsConfigValueJsonConverter());
+            options.Converters.Add(new JsonStringEnumConverter(new LowercaseJsonNamingPolicy()));
+            options.Converters.Add(new SystemObjectJsonConverter());
+            options.Converters.Add(new MapToModelJsonConverter<ConfigValue, ConfigValueModel>());
+            options.Converters.Add(new MapToModelJsonConverter<PluginInfo, PluginInfoModel>());
+            options.Converters.Add(new MapToModelJsonConverter<ProjectSettings, ProjectSettingsModel>());
+            options.Converters.Add(new MapToModelJsonConverter<StackSummary, StackSummaryModel>());
+            options.Converters.Add(new MapToModelJsonConverter<UpdateSummary, UpdateSummaryModel>());
+            options.Converters.Add(new ProjectRuntimeJsonConverter());
+            options.Converters.Add(new ResourceChangesJsonConverter());
+            options.Converters.Add(new StackSettingsConfigValueJsonConverter());
 
-            return settings;
+            return options;
         }
 
         public static IDeserializer BuildYamlDeserializer()

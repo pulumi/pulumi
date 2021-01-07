@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Builder;
@@ -12,7 +13,6 @@ using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Newtonsoft.Json;
 using Pulumi.X.Automation.Commands;
 using Pulumi.X.Automation.Commands.Exceptions;
 using Pulumi.X.Automation.Serialization;
@@ -480,8 +480,9 @@ namespace Pulumi.X.Automation
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
             var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, cancellationToken).ConfigureAwait(false);
             var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
-            var maskedOutput = JsonConvert.DeserializeObject<Dictionary<string, object>>(maskedResult.StandardOutput);
-            var plaintextOutput = JsonConvert.DeserializeObject<Dictionary<string, object>>(plaintextResult.StandardOutput);
+            var options = LocalSerializer.BuildJsonSerializerOptions();
+            var maskedOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, options);
+            var plaintextOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, options);
             
             var output = new Dictionary<string, OutputValue>();
             foreach (var (key, value) in plaintextOutput)
@@ -499,8 +500,8 @@ namespace Pulumi.X.Automation
         private async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(CancellationToken cancellationToken)
         {
             var result = await this.RunCommandAsync(new[] { "history", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
-            var settings = LocalSerializer.BuildJsonSerializerSettings();
-            var list = JsonConvert.DeserializeObject<List<UpdateSummary>>(result.StandardOutput, settings);
+            var options = LocalSerializer.BuildJsonSerializerOptions();
+            var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, options);
             return list.ToImmutableList();
         }
 
