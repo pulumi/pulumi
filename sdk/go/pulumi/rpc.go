@@ -190,6 +190,10 @@ func marshalInputAndDetermineSecret(v interface{},
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
 		if input, ok := v.(Input); ok {
+			if inputType := reflect.ValueOf(input); inputType.Kind() == reflect.Ptr && inputType.IsNil() {
+				// input type is a ptr type with a nil backing value
+				return resource.PropertyValue{}, nil, secret, nil
+			}
 			valueType = input.ElementType()
 
 			// If the element type of the input is not identical to the type of the destination and the destination is

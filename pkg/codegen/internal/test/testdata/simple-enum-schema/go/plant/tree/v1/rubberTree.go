@@ -60,7 +60,7 @@ type rubberTreeState struct {
 type RubberTreeState struct {
 	Container plant.ContainerPtrInput
 	Farm      pulumi.StringPtrInput
-	Type      RubberTreeVariety
+	Type      *RubberTreeVariety
 }
 
 func (RubberTreeState) ElementType() reflect.Type {

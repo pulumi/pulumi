@@ -559,8 +559,12 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	// await it.
 	valueType, isInput := v.Type(), false
 	if v.CanInterface() && valueType.Implements(inputType) {
-		input, isNonNil := v.Interface().(Input)
-		if !isNonNil {
+		input, ok := v.Interface().(Input)
+		if !ok {
+			// A non-input type is already fully-resolved.
+			return true, false, nil, nil
+		}
+		if val := reflect.ValueOf(input); val.Kind() == reflect.Ptr && val.IsNil() {
 			// A nil input is already fully-resolved.
 			return true, false, nil, nil
 		}
