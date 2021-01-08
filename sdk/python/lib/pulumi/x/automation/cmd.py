@@ -14,13 +14,12 @@
 
 import os
 import subprocess
+import tempfile
 from typing import List, Mapping, Optional, Callable, Any
 
 from .errors import create_command_error
 
 OnOutput = Callable[[str], Any]
-
-_UNKNOWN_ERROR = -2
 
 
 class CommandResult:
@@ -48,34 +47,31 @@ def _run_pulumi_cmd(args: List[str],
     cmd = ["pulumi"]
     cmd.extend(args)
 
+    stderr_file = tempfile.NamedTemporaryFile(delete=False)
     stdout_chunks: List[str] = []
-    stderr_chunks: List[str] = []
-    code = _UNKNOWN_ERROR
 
-    # TODO: Capture stderr in a file object.
-    # Details of complicating factors: https://stackoverflow.com/a/18423003
     with subprocess.Popen(cmd,
                           stdout=subprocess.PIPE,
-                          stderr=subprocess.STDOUT,
+                          stderr=stderr_file,
                           cwd=cwd,
-                          env=env,
-                          encoding="utf-8") as process:
+                          env=env) as process:
         while True:
-            output = process.stdout.readline()
+            output = process.stdout.readline().decode(encoding="utf-8")
             if output == "" and process.poll() is not None:
                 break
             if output:
                 text = output.strip()
-                if text.split(' ')[0] in ["warning:", "error:"]:
-                    stderr_chunks.append(text)
-                else:
-                    if on_output:
-                        on_output(text)
-                    stdout_chunks.append(text)
+                if on_output:
+                    on_output(text)
+                stdout_chunks.append(text)
 
         code = process.returncode
 
-    result = CommandResult(stderr=''.join(stderr_chunks), stdout=''.join(stdout_chunks), code=code)
+    with open(stderr_file.name) as stderr:
+        stderr_contents = stderr.read()
+    os.remove(stderr_file.name)
+
+    result = CommandResult(stderr=stderr_contents, stdout=''.join(stdout_chunks), code=code)
     if code != 0:
         raise create_command_error(result)
 
