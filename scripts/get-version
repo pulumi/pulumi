@@ -8,7 +8,7 @@ fi
 
 # Allow version to be set manually when building outside of git repo
 if [ ! -z ${PULUMI_VERSION+x} ]; then
-    echo "v${PULUMI_VERSION}"
+    echo "${PULUMI_VERSION}"
     exit 0
 fi
 
