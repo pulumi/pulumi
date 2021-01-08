@@ -1,4 +1,4 @@
-﻿module testproj
+module testproj
 
 go 1.14
 
