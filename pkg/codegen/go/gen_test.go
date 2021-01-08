@@ -130,7 +130,12 @@ func TestEnumUsage(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			pulumi.All(
-				tree.URN(), tree.Container.Material(), tree.Container.Color(), tree.Container.Size(), tree.Container.Brightness(), tree.Type,
+				tree.URN(),
+				tree.Container.Material(),
+				tree.Container.Color(),
+				tree.Container.Size(),
+				tree.Container.Brightness(),
+				tree.Type,
 			).ApplyT(func(all []interface{}) error {
 				urn := all[0].(pulumi.URN)
 				material := all[1].(*string)
