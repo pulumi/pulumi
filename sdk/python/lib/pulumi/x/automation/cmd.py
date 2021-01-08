@@ -20,6 +20,8 @@ from .errors import create_command_error
 
 OnOutput = Callable[[str], Any]
 
+_UNKNOWN_ERROR = -2
+
 
 class CommandResult:
     stdout: str
@@ -48,26 +50,29 @@ def _run_pulumi_cmd(args: List[str],
 
     stdout_chunks: List[str] = []
     stderr_chunks: List[str] = []
+    code = _UNKNOWN_ERROR
 
-    # TODO: figure out why this won't stream output
+    # TODO: Capture stderr in a file object.
     with subprocess.Popen(cmd,
                           stdout=subprocess.PIPE,
-                          stderr=subprocess.PIPE,
-                          encoding="utf-8",
+                          stderr=subprocess.STDOUT,
                           cwd=cwd,
-                          env=env) as process:
+                          env=env,
+                          encoding="utf-8") as process:
         while True:
             output = process.stdout.readline()
-            err = process.stderr.readline()
-            if output == "" and err == "" and process.poll() is not None:
-                code = process.poll()
+            if output == "" and process.poll() is not None:
                 break
             if output:
-                if on_output:
-                    on_output(output.strip())
-                stdout_chunks.append(output.strip())
-            if err:
-                stderr_chunks.append(err.strip())
+                text = output.strip()
+                if text.split(' ')[0] in ["warning:", "error:"]:
+                    stderr_chunks.append(text)
+                else:
+                    if on_output:
+                        on_output(text)
+                    stdout_chunks.append(text)
+
+        code = process.returncode
 
     result = CommandResult(stderr=''.join(stderr_chunks), stdout=''.join(stdout_chunks), code=code)
     if code != 0:
