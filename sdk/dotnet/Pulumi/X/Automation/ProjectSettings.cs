@@ -33,6 +33,13 @@
             this.Runtime = runtime;
         }
 
+        public ProjectSettings(
+            string name,
+            ProjectRuntimeName runtime)
+            : this(name, new ProjectRuntime(runtime))
+        {
+        }
+
         internal static ProjectSettings Default(string name)
             => new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.NodeJS));
     }

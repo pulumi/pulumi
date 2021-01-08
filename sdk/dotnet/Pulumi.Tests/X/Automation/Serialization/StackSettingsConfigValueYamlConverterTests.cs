@@ -1,12 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using Pulumi.X.Automation;
+﻿using Pulumi.X.Automation;
 using Pulumi.X.Automation.Serialization;
 using Xunit;
 using YamlDotNet.Core;
 
-namespace Pulumi.Tests.X.Automation
+namespace Pulumi.Tests.X.Automation.Serialization
 {
     public class StackSettingsConfigValueYamlConverterTests
     {

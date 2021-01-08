@@ -4,7 +4,7 @@ using Pulumi.X.Automation;
 using Pulumi.X.Automation.Serialization;
 using Xunit;
 
-namespace Pulumi.Tests.X.Automation
+namespace Pulumi.Tests.X.Automation.Serialization
 {
     public class StackSettingsConfigValueJsonConverterTests
     {

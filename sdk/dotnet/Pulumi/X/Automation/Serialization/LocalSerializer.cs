@@ -62,7 +62,7 @@ namespace Pulumi.X.Automation.Serialization
 
         public static IDeserializer BuildYamlDeserializer()
             => new DeserializerBuilder()
-            .WithNamingConvention(LowerCaseNamingConvention.Instance)
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .IgnoreUnmatchedProperties()
             .WithTypeConverter(new ProjectRuntimeYamlConverter())
             .WithTypeConverter(new StackSettingsConfigValueYamlConverter())
@@ -70,7 +70,7 @@ namespace Pulumi.X.Automation.Serialization
 
         public static ISerializer BuildYamlSerializer()
             => new SerializerBuilder()
-            .WithNamingConvention(LowerCaseNamingConvention.Instance)
+            .WithNamingConvention(CamelCaseNamingConvention.Instance)
             .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
             .WithTypeConverter(new ProjectRuntimeYamlConverter())
             .WithTypeConverter(new StackSettingsConfigValueYamlConverter())

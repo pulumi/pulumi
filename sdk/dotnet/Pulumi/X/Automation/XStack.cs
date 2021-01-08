@@ -497,7 +497,7 @@ namespace Pulumi.X.Automation
         /// <summary>
         /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
         /// </summary>
-        private async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(CancellationToken cancellationToken)
+        public async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(CancellationToken cancellationToken = default)
         {
             var result = await this.RunCommandAsync(new[] { "history", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
             var options = LocalSerializer.BuildJsonSerializerOptions();
@@ -505,7 +505,7 @@ namespace Pulumi.X.Automation
             return list.ToImmutableList();
         }
 
-        private async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken)
+        public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default)
         {
             var history = await this.GetHistoryAsync(cancellationToken).ConfigureAwait(false);
             return history.FirstOrDefault();

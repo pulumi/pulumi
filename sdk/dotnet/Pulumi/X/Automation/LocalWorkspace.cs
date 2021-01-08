@@ -300,15 +300,6 @@ namespace Pulumi.X.Automation
 
                 if (options.EnvironmentVariables != null)
                     this.EnvironmentVariables = new Dictionary<string, string>(options.EnvironmentVariables);
-
-                if (options.ProjectSettings != null)
-                    readyTasks.Add(this.SaveProjectSettingsAsync(options.ProjectSettings, cancellationToken));
-
-                if (options.StackSettings != null && options.StackSettings.Any())
-                {
-                    foreach (var pair in options.StackSettings)
-                        readyTasks.Add(this.SaveStackSettingsAsync(pair.Key, pair.Value, cancellationToken));
-                }
             }
 
             if (string.IsNullOrWhiteSpace(dir))
@@ -323,12 +314,44 @@ namespace Pulumi.X.Automation
             }
 
             this.WorkDir = dir;
+
+            if (options?.ProjectSettings != null)
+                readyTasks.Add(this.SaveProjectSettingsAsync(options.ProjectSettings, cancellationToken));
+
+            if (options?.StackSettings != null && options.StackSettings.Any())
+            {
+                foreach (var pair in options.StackSettings)
+                    readyTasks.Add(this.SaveStackSettingsAsync(pair.Key, pair.Value, cancellationToken));
+            }
+
             this._readyTask = Task.WhenAll(readyTasks);
         }
 
         private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
 
-        private Task SaveProjectSettingsAsync(ProjectSettings settings, CancellationToken cancellationToken = default)
+        /// <inheritdoc/>
+        public override async Task<ProjectSettings?> GetProjectSettingsAsync(CancellationToken cancellationToken = default)
+        {
+            foreach (var ext in SettingsExtensions)
+            {
+                var isJson = ext == ".json";
+                var path = Path.Combine(this.WorkDir, $"Pulumi{ext}");
+                if (!File.Exists(path))
+                    continue;
+
+                var content = await File.ReadAllTextAsync(path, cancellationToken);
+                if (isJson)
+                    return this._serializer.DeserializeJson<ProjectSettings>(content);
+
+                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
+                return model.Convert();
+            }
+
+            return null;
+        }
+
+        /// <inheritdoc/>
+        public override Task SaveProjectSettingsAsync(ProjectSettings settings, CancellationToken cancellationToken = default)
         {
             var foundExt = ".yaml";
             foreach (var ext in SettingsExtensions)
@@ -355,7 +378,27 @@ namespace Pulumi.X.Automation
             return parts[^1];
         }
 
-        private Task SaveStackSettingsAsync(string stackName, StackSettings settings, CancellationToken cancellationToken = default)
+        /// <inheritdoc/>
+        public override async Task<StackSettings?> GetStackSettingsAsync(string stackName, CancellationToken cancellationToken = default)
+        {
+            var settingsName = GetStackSettingsName(stackName);
+
+            foreach (var ext in SettingsExtensions)
+            {
+                var isJson = ext == ".json";
+                var path = Path.Combine(this.WorkDir, $"Pulumi.{settingsName}{ext}");
+                if (!File.Exists(path))
+                    continue;
+
+                var content = await File.ReadAllTextAsync(path, cancellationToken);
+                return isJson ? this._serializer.DeserializeJson<StackSettings>(content) : this._serializer.DeserializeYaml<StackSettings>(content);
+            }
+
+            return null;
+        }
+
+        /// <inheritdoc/>
+        public override Task SaveStackSettingsAsync(string stackName, StackSettings settings, CancellationToken cancellationToken = default)
         {
             var settingsName = GetStackSettingsName(stackName);
 
@@ -401,7 +444,7 @@ namespace Pulumi.X.Automation
         private async Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(CancellationToken cancellationToken)
         {
             var result = await this.RunCommandAsync(new[] { "config", "--show-secrets", "--json" }, cancellationToken);
-            var dict = JsonSerializer.Deserialize<Dictionary<string, ConfigValue>>(result.StandardOutput);
+            var dict = this._serializer.DeserializeJson<Dictionary<string, ConfigValue>>(result.StandardOutput);
             return dict.ToImmutableDictionary();
         }
 
@@ -488,7 +531,7 @@ namespace Pulumi.X.Automation
         public override async Task<ImmutableList<StackSummary>> ListStacksAsync(CancellationToken cancellationToken = default)
         {
             var result = await this.RunCommandAsync(new[] { "stack", "ls", "--json" }, cancellationToken);
-            var stacks = JsonSerializer.Deserialize<List<StackSummary>>(result.StandardOutput);
+            var stacks = this._serializer.DeserializeJson<List<StackSummary>>(result.StandardOutput);
             return stacks.ToImmutableList();
         }
 
@@ -520,7 +563,7 @@ namespace Pulumi.X.Automation
         public override async Task<ImmutableList<PluginInfo>> ListPluginsAsync(CancellationToken cancellationToken = default)
         {
             var result = await this.RunCommandAsync(new[] { "plugin", "ls", "--json" }, cancellationToken);
-            var plugins = JsonSerializer.Deserialize<List<PluginInfo>>(result.StandardOutput);
+            var plugins = this._serializer.DeserializeJson<List<PluginInfo>>(result.StandardOutput);
             return plugins.ToImmutableList();
         }
 
