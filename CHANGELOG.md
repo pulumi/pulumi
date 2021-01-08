@@ -2,6 +2,11 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Fix an issue with go sdk generation where optional strict enum values
+  could not be omitted. Note - this is a breaking change to go sdk's enum
+  values. However we currently only support strict enums in the azure-nextgen
+  provider's schema.
+  [#6069](https://github.com/pulumi/pulumi/pull/6069) 
 
 - Fix an issue where python debug messages print unexpectedly.
   [#6967](https://github.com/pulumi/pulumi/pull/6067)
