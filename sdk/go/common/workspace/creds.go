@@ -133,13 +133,12 @@ func getCredsFilePath() (string, error) {
 // GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
 // have not logged in.
 func GetCurrentCloudURL() (string, error) {
-	var url string
-
 	// Allow PULUMI_BACKEND_URL to override the current cloud URL selection
 	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
-		url = backend
+		return backend, nil
 	}
 
+	var url string
 	// Try detecting backend from config
 	projPath, err := DetectProjectPath()
 	if err == nil && projPath != "" {
