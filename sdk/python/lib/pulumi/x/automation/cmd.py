@@ -53,6 +53,7 @@ def _run_pulumi_cmd(args: List[str],
     code = _UNKNOWN_ERROR
 
     # TODO: Capture stderr in a file object.
+    # Details of complicating factors: https://stackoverflow.com/a/18423003
     with subprocess.Popen(cmd,
                           stdout=subprocess.PIPE,
                           stderr=subprocess.STDOUT,
