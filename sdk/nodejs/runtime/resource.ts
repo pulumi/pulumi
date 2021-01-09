@@ -340,6 +340,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                         (monitor as any).registerResource(req, (rpcErr: grpc.ServiceError, innerResponse: any) => {
                             if (rpcErr) {
                                 err = rpcErr;
+
                                 // If the monitor is unavailable, it is in the process of shutting down or has already
                                 // shut down. Don't emit an error and don't do any more RPCs, just exit.
                                 if (rpcErr.code === grpc.status.UNAVAILABLE || rpcErr.code === grpc.status.CANCELLED) {
@@ -351,7 +352,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 
                                 // Node lets us hack the message as long as we do it before accessing the `stack` property.
                                 log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`);
-                                preallocError.message = `failed to register new resource ${name} [${t}]: ${rpcErr.message}`;
+                                preallocError.message = `problem registering resource: ${rpcErr.details}`;
                                 reject(preallocError);
                             }
                             else {
@@ -370,6 +371,13 @@ export function registerResource(res: Resource, t: string, name: string, custom:
                     };
                 }
             } catch (e) {
+                // Issue an error so that we can be sure it will surface to the end user. Although the engine
+                // didn't give us back a URN yet, fake one up so that the error is associated with the resource.
+                log.error(e.message, <any>{
+                    urn: createUrn(req.getName(), req.getType(), req.getParent()),
+                });
+
+                // Also resolve all output properties to the error so that any attempted use of them fails.
                 err = e;
                 resp = {
                     getUrn: () => "",
