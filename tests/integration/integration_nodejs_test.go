@@ -93,7 +93,7 @@ func TestMissingAssets(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	stdout, _ := e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
 	assert.Contains(t, stdout, "error: problem registering resource: failed to compute asset hash: "+
-		"failed to open asset file 'MISSING': open MISSING: no such file or directory")
+		"failed to open asset file 'MISSING'")
 	e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
 }
 
