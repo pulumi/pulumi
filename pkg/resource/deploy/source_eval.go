@@ -27,7 +27,6 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
@@ -53,12 +52,11 @@ type EvalRunInfo struct {
 // NewEvalSource returns a planning source that fetches resources by evaluating a package with a set of args and
 // a confgiuration map.  This evaluation is performed using the given plugin context and may optionally use the
 // given plugin host (or the default, if this is nil).  Note that closing the eval source also closes the host.
-func NewEvalSource(plugctx *plugin.Context, d diag.Sink, runinfo *EvalRunInfo,
+func NewEvalSource(plugctx *plugin.Context, runinfo *EvalRunInfo,
 	defaultProviderVersions map[tokens.Package]*semver.Version, dryRun bool) Source {
 
 	return &evalSource{
 		plugctx:                 plugctx,
-		d:                       d,
 		runinfo:                 runinfo,
 		defaultProviderVersions: defaultProviderVersions,
 		dryRun:                  dryRun,
@@ -67,7 +65,6 @@ func NewEvalSource(plugctx *plugin.Context, d diag.Sink, runinfo *EvalRunInfo,
 
 type evalSource struct {
 	plugctx                 *plugin.Context                    // the plugin context.
-	d                       diag.Sink                          // the diagnostics sink for this eval source.
 	runinfo                 *EvalRunInfo                       // the directives to use when running the program.
 	defaultProviderVersions map[tokens.Package]*semver.Version // the default provider versions for this source.
 	dryRun                  bool                               // true if this is a dry-run operation only.
@@ -75,12 +72,6 @@ type evalSource struct {
 
 func (src *evalSource) Close() error {
 	return nil
-}
-
-// Diag returns the diagnostics sink for this evaluation source. This can be used to issue
-// informational, warning, and error messages during evaluation, for example.
-func (src *evalSource) Diag() diag.Sink {
-	return src.d
 }
 
 // Project is the name of the project being run by this evaluation source.
@@ -399,7 +390,6 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	d                         diag.Sink                          // the diagnostics sink for the resource monitor.
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
 	constructInfo             plugin.ConstructInfo               // information for construct calls.
@@ -433,7 +423,6 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		d:                         src.Diag(),
 		providers:                 provs,
 		defaultProviders:          d,
 		regChan:                   regChan,
@@ -478,11 +467,6 @@ func (rm *resmon) Address() string {
 func (rm *resmon) Cancel() error {
 	close(rm.cancel)
 	return <-rm.done
-}
-
-// Diag returns the diagnostics sink for this resource monitor.
-func (rm *resmon) Diag() diag.Sink {
-	return rm.d
 }
 
 // getProviderReference fetches the provider reference for a resource, read, or invoke from the given package with the
@@ -827,11 +811,6 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			KeepResources:      true,
 		})
 	if err != nil {
-		// Issue an error so that the engine yields an error outcome for this evaluation. We haven't constructed
-		// the resource yet, so we'll fake up a URN to get better diagnostics.
-		urn := resource.NewURN(
-			tokens.QName(rm.constructInfo.Stack), tokens.PackageName(rm.constructInfo.Project), parent.Type(), t, name)
-		rm.Diag().Errorf(diag.Message(urn, "problem with resource properties: %v"), err)
 		return nil, err
 	}
 	if providers.IsProviderType(t) && req.GetVersion() != "" {

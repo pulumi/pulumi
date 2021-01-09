@@ -403,7 +403,7 @@ func newUpdateSource(
 
 	// If that succeeded, create a new source that will perform interpretation of the compiled program.
 	// TODO[pulumi/pulumi#88]: we are passing `nil` as the arguments map; we need to allow a way to pass these.
-	return deploy.NewEvalSource(plugctx, opts.Diag, &deploy.EvalRunInfo{
+	return deploy.NewEvalSource(plugctx, &deploy.EvalRunInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,
