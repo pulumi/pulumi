@@ -178,7 +178,8 @@ func TestRegisterNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	iter, res := NewEvalSource(ctx,
+		cmdutil.Diag(), runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.Nil(t, res)
 
 	processed := 0
@@ -259,7 +260,8 @@ func TestRegisterDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(fixedProgram(steps))
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
+	iter, res := NewEvalSource(ctx, cmdutil.Diag(),
+		runInfo, nil, false).Iterate(context.Background(), Options{}, &testProviderSource{})
 	assert.Nil(t, res)
 
 	processed, defaults := 0, make(map[string]struct{})
@@ -370,7 +372,8 @@ func TestReadInvokeNoDefaultProviders(t *testing.T) {
 	ctx, err := newTestPluginContext(program)
 	assert.NoError(t, err)
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	iter, res := NewEvalSource(ctx, cmdutil.Diag(),
+		runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
 	assert.Nil(t, res)
 
 	reads := 0
@@ -443,7 +446,8 @@ func TestReadInvokeDefaultProviders(t *testing.T) {
 
 	providerSource := &testProviderSource{providers: make(map[providers.Reference]plugin.Provider)}
 
-	iter, res := NewEvalSource(ctx, runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
+	iter, res := NewEvalSource(ctx, cmdutil.Diag(),
+		runInfo, nil, false).Iterate(context.Background(), Options{}, providerSource)
 	assert.Nil(t, res)
 
 	reads, registers := 0, 0
