@@ -80,6 +80,23 @@ func TestEngineEvents(t *testing.T) {
 
 }
 
+func TestMissingAssets(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory("missing_assets")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "test")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	stdout, _ := e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+	assert.Contains(t, stdout, "error: problem with resource properties: failed to compute asset hash: "+
+		"failed to open asset file 'MISSING': open MISSING: no such file or directory")
+	e.RunCommand("pulumi", "stack", "rm", "--yes", "--force")
+}
+
 // TestProjectMain tests out the ability to override the main entrypoint.
 func TestProjectMain(t *testing.T) {
 	test := integration.ProgramTestOptions{
