@@ -65,7 +65,7 @@ not_found_regex = re.compile("no stack named.*found")
 already_exists_regex = re.compile("stack.*already exists")
 conflict_text = "[409] Conflict: Another update is currently in progress."
 inline_source_error_text = "python inline source runtime error"
-runtime_error_regex = re.compile("failed with an unhandled exception|panic: runtime error")
+runtime_error_regex = re.compile("failed with an unhandled exception|panic: runtime error|an unhandled error occurred:")
 compilation_error_regex = re.compile("Build FAILED.|Unable to compile TypeScript|: syntax error:|: undefined:")
 
 

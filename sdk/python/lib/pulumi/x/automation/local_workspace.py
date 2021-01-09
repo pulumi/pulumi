@@ -199,7 +199,7 @@ class LocalWorkspace(Workspace):
         self.pulumi_home = pulumi_home
         self.program = program
         self.secrets_provider = secrets_provider
-        self.envs = env_vars or {}
+        self.env_vars = env_vars or {}
         self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
 
         if project_settings:
@@ -207,6 +207,12 @@ class LocalWorkspace(Workspace):
         if stack_settings:
             for key in stack_settings:
                 self.save_stack_settings(key, stack_settings[key])
+
+    def __repr__(self):
+        work_dir = f"work_dir={self.work_dir!r}" if self.work_dir else ""
+        program = f"program={self.program.__name__}" if self.program else ""
+
+        return f"{self.__class__.__name__}({work_dir if not self.program else ''}{program})"
 
     def project_settings(self) -> ProjectSettings:
         for ext in _setting_extensions:

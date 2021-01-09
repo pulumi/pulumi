@@ -14,6 +14,8 @@
 
 from typing import MutableMapping
 
+_SECRET_SENTINEL = "[secret]"
+
 
 class ConfigValue:
     """
@@ -26,6 +28,9 @@ class ConfigValue:
     def __init__(self, value: str, secret: bool = False):
         self.value = value
         self.secret = secret
+
+    def __repr__(self):
+        return _SECRET_SENTINEL if self.secret else repr(self.value)
 
 
 ConfigMap = MutableMapping[str, ConfigValue]

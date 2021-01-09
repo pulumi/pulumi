@@ -71,7 +71,7 @@ def _run_pulumi_cmd(args: List[str],
         stderr_contents = stderr.read()
     os.remove(stderr_file.name)
 
-    result = CommandResult(stderr=stderr_contents, stdout=''.join(stdout_chunks), code=code)
+    result = CommandResult(stderr=stderr_contents, stdout='\n'.join(stdout_chunks), code=code)
     if code != 0:
         raise create_command_error(result)
 

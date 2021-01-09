@@ -22,14 +22,13 @@ from datetime import datetime
 from typing import List, Any, Mapping, MutableMapping, Optional
 
 from .cmd import CommandResult, _run_pulumi_cmd, OnOutput
-from .config import ConfigValue, ConfigMap
+from .config import ConfigValue, ConfigMap, _SECRET_SENTINEL
 from .errors import StackAlreadyExistsError, CommandError
 from .server import LanguageServer
 from .workspace import Workspace, PulumiFn
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
 
-_SECRET_SENTINEL = "[secret]"
 _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 
 
@@ -51,6 +50,9 @@ class OutputValue:
     def __init__(self, value: Any, secret: bool):
         self.value = value
         self.secret = secret
+
+    def __repr__(self):
+        return _SECRET_SENTINEL if self.secret else repr(self.value)
 
 
 OutputMap = MutableMapping[str, OutputValue]
@@ -97,6 +99,9 @@ class UpdateSummary:
         for key in config:
             self.config[key] = ConfigValue(**config[key])
 
+    def __repr__(self):
+        return f"UpdateSummary(result={self.result!r}, version={self.version!r}, start_time='{self.start_time!s} UTC', end_time='{self.end_time!s} UTC')"
+
 
 class BaseResult:
     stdout: str
@@ -107,6 +112,9 @@ class BaseResult:
         self.stdout = stdout
         self.stderr = stderr
         self.summary = summary
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(result={self.summary.result!r}, start_time='{self.summary.start_time!s} UTC', end_time='{self.summary.end_time!s} UTC')"
 
 
 class UpResult(BaseResult):
@@ -187,6 +195,9 @@ class Stack:
                 workspace.create_stack(name)
             except StackAlreadyExistsError:
                 workspace.select_stack(name)
+
+    def __repr__(self):
+        return f"Stack(stack_name={self.name!r})"
 
     def up(self,
            parallel: Optional[int] = None,
