@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [sdk/nodejs] Always read and write NodeJS runtime options from the environment.
+  [#6076](https://github.com/pulumi/pulumi/pull/6076)
+
 - Fix an issue where python debug messages print unexpectedly.
   [#6967](https://github.com/pulumi/pulumi/pull/6067)
   
