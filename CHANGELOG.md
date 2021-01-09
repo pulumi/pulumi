@@ -10,6 +10,9 @@ CHANGELOG
   correlate events back to the Pulumi SaaS
   [#6063](https://github.com/pulumi/pulumi/pull/6063)
 
+- Fix silent failures when assets are missing.
+  [#6075](https://github.com/pulumi/pulumi/pull/6075)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
