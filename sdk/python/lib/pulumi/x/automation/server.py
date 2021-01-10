@@ -56,6 +56,7 @@ class LanguageServer(LanguageRuntimeServicer):
         loop = asyncio.new_event_loop()
 
         # Suppress the log output for asyncio (see pulumi-language-python-exec for detailed explanation)
+        asyncio_log_level = logging.getLogger("asyncio").level
         logging.getLogger("asyncio").setLevel(logging.CRITICAL)
 
         try:
@@ -70,6 +71,8 @@ class LanguageServer(LanguageRuntimeServicer):
             loop.close()
             sys.stdout.flush()
             sys.stderr.flush()
+            # Reset the asyncio logger to the original level
+            logging.getLogger("asyncio").setLevel(asyncio_log_level)
 
         return result
 
