@@ -211,6 +211,17 @@ class Stack:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
         https://www.pulumi.com/docs/reference/cli/pulumi_up/
+
+        :param parallel: Parallel is the number of resource operations to run in parallel at once.
+                         (1 for no parallelism). Defaults to unbounded (2147483647).
+        :param message: Message (optional) to associate with the update operation.
+        :param target: Specify an exclusive list of resource URNs to destroy.
+        :param expect_no_changes: Return an error if any changes occur during this update.
+        :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param replace: Specify resources to replace.
+        :param on_output: A function to process the stdout stream.
+        :param program: The inline program.
+        :returns: UpResult
         """
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
@@ -244,10 +255,9 @@ class Stack:
             summary = self.info()
             assert (summary is not None)
             return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
-        except CommandError as exn:
+        finally:
             if on_exit is not None:
                 on_exit()
-            raise
 
     def preview(self,
                 parallel: Optional[int] = None,
@@ -260,6 +270,16 @@ class Stack:
         """
         Performs a dry-run update to a stack, returning pending changes.
         https://www.pulumi.com/docs/reference/cli/pulumi_preview/
+
+        :param parallel: Parallel is the number of resource operations to run in parallel at once.
+                         (1 for no parallelism). Defaults to unbounded (2147483647).
+        :param message: Message to associate with the preview operation.
+        :param target: Specify an exclusive list of resource URNs to update.
+        :param expect_no_changes: Return an error if any changes occur during this update.
+        :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param replace: Specify resources to replace.
+        :param program: The inline program.
+        :returns: PreviewResult
         """
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
@@ -305,6 +325,14 @@ class Stack:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
+
+        :param parallel: Parallel is the number of resource operations to run in parallel at once.
+                         (1 for no parallelism). Defaults to unbounded (2147483647).
+        :param message: Message (optional) to associate with the refresh operation.
+        :param target: Specify an exclusive list of resource URNs to refresh.
+        :param expect_no_changes: Return an error if any changes occur during this update.
+        :param on_output: A function to process the stdout stream.
+        :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes", "--skip-preview"]
@@ -322,7 +350,17 @@ class Stack:
                 target: Optional[List[str]] = None,
                 target_dependents: Optional[bool] = None,
                 on_output: Optional[OnOutput] = None) -> DestroyResult:
-        """Destroy deletes all resources in a stack, leaving all history and configuration intact."""
+        """
+        Destroy deletes all resources in a stack, leaving all history and configuration intact.
+
+        :param parallel: Parallel is the number of resource operations to run in parallel at once.
+                         (1 for no parallelism). Defaults to unbounded (2147483647).
+        :param message: Message (optional) to associate with the destroy operation.
+        :param target: Specify an exclusive list of resource URNs to destroy.
+        :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
+        :param on_output: A function to process the stdout stream.
+        :returns: DestroyResult
+        """
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
@@ -334,27 +372,53 @@ class Stack:
         return DestroyResult(stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary)
 
     def get_config(self, key: str) -> ConfigValue:
-        """Returns the config value associated with the specified key."""
+        """
+        Returns the config value associated with the specified key.
+
+        :param key: The key for the config item to get.
+        :returns: ConfigValue
+        """
         return self.workspace.get_config(self.name, key)
 
     def get_all_config(self) -> ConfigMap:
-        """Returns the full config map associated with the stack in the Workspace."""
+        """
+        Returns the full config map associated with the stack in the Workspace.
+
+        :returns: ConfigMap
+        """
         return self.workspace.get_all_config(self.name)
 
     def set_config(self, key: str, value: ConfigValue) -> None:
-        """Sets a config key-value pair on the Stack in the associated Workspace."""
+        """
+        Sets a config key-value pair on the Stack in the associated Workspace.
+
+        :param key: The config key to add.
+        :param value: The config value to add.
+        """
         self.workspace.set_config(self.name, key, value)
 
     def set_all_config(self, config: ConfigMap) -> None:
-        """Sets all specified config values on the stack in the associated Workspace."""
+        """
+        Sets all specified config values on the stack in the associated Workspace.
+
+        :param config: A mapping of key to ConfigValue to set to config.
+        """
         self.workspace.set_all_config(self.name, config)
 
     def remove_config(self, key: str) -> None:
-        """Removes the specified config key from the Stack in the associated Workspace."""
+        """
+        Removes the specified config key from the Stack in the associated Workspace.
+
+        :param key: The key to remove from config.
+        """
         self.workspace.remove_config(self.name, key)
 
     def remove_all_config(self, keys: List[str]) -> None:
-        """Removes the specified config keys from the Stack in the associated Workspace."""
+        """
+        Removes the specified config keys from the Stack in the associated Workspace.
+
+        :param keys: The keys to remove from config.
+        """
         self.workspace.remove_all_config(self.name, keys)
 
     def refresh_config(self) -> None:
@@ -362,7 +426,11 @@ class Stack:
         self.workspace.refresh_config(self.name)
 
     def outputs(self) -> OutputMap:
-        """Gets the current set of Stack outputs from the last Stack.up()."""
+        """
+        Gets the current set of Stack outputs from the last Stack.up().
+
+        :returns: OutputMap
+        """
         self.workspace.select_stack(self.name)
 
         masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json"])
@@ -379,6 +447,8 @@ class Stack:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).
+
+        :returns: List[UpdateSummary]
         """
         result = self._run_pulumi_cmd_sync(["history", "--json", "--show-secrets"])
         summary_list = json.loads(result.stdout)
@@ -400,7 +470,9 @@ class Stack:
 
     def info(self) -> Optional[UpdateSummary]:
         """
-        Returns the current results from Stack lifecycle operations
+        Returns the current results from Stack lifecycle operations.
+
+        :returns: Optional[UpdateSummary]
         """
         history = self.history()
         if not len(history):
@@ -445,9 +517,16 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
     """
     Returns a stack name formatted with the greatest possible specificity:
     org/project/stack or user/project/stack
+
     Using this format avoids ambiguity in stack identity guards creating or selecting the wrong stack.
+
     Note that filestate backends (local file, S3, Azure Blob) do not support stack names in this
     format, and instead only use the stack name without an org/user or project to qualify it.
     See: https://github.com/pulumi/pulumi/issues/2522
+
+    :param org: The name of the org or user.
+    :param project: The name of the project.
+    :param stack: The name of the stack.
+    :returns: The fully qualified stack name.
     """
     return f"{org}/{project}/{stack}"
