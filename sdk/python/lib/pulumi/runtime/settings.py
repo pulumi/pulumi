@@ -37,7 +37,7 @@ class Settings:
     engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]
     project: Optional[str]
     stack: Optional[str]
-    parallel: Optional[str]
+    parallel: Optional[int]
     dry_run: Optional[bool]
     test_mode_enabled: Optional[bool]
     legacy_apply_enabled: Optional[bool]
@@ -51,7 +51,7 @@ class Settings:
                  engine: Optional[Union[str, Any]] = None,
                  project: Optional[str] = None,
                  stack: Optional[str] = None,
-                 parallel: Optional[str] = None,
+                 parallel: Optional[int] = None,
                  dry_run: Optional[bool] = None,
                  test_mode_enabled: Optional[bool] = None,
                  legacy_apply_enabled: Optional[bool] = None):
@@ -246,7 +246,7 @@ async def monitor_supports_resource_references() -> bool:
 
 def reset_options(project: Optional[str] = None,
                   stack: Optional[str] = None,
-                  parallel: Optional[str] = None,
+                  parallel: Optional[int] = None,
                   engine_address: Optional[str] = None,
                   monitor_address: Optional[str] = None,
                   preview: Optional[bool] = None):

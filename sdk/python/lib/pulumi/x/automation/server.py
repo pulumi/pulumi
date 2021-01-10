@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+import logging
+import traceback
 
 from .workspace import PulumiFn
 from ...log import *
 from ...runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
 from ...runtime import run_in_stack, reset_options, set_all_config
+from ...errors import RunError
 
 
 class LanguageServer(LanguageRuntimeServicer):
@@ -35,29 +37,39 @@ class LanguageServer(LanguageRuntimeServicer):
         return language_pb2.GetRequiredPluginsResponse()
 
     def Run(self, request, context):
+        # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
+        engine_address = request.args[0] if request.args else ""
+        reset_options(
+            project=request.project,
+            monitor_address=request.monitor_address,
+            engine_address=engine_address,
+            stack=request.stack,
+            parallel=request.parallel,
+            preview=request.dryRun
+        )
+
+        if request.config:
+            set_all_config(request.config)
+
+        # The strategy here is derived from sdk/python/cmd/pulumi-language-python-exec
         result = language_pb2.RunResponse()
+        loop = asyncio.new_event_loop()
 
-        loop = None
+        # Suppress the log output for asyncio (see pulumi-language-python-exec for detailed explanation)
+        logging.getLogger("asyncio").setLevel(logging.CRITICAL)
+
         try:
-            engine_address = request.args[0] if request.args else ""
-            reset_options(
-                project=request.project,
-                monitor_address=request.monitor_address,
-                engine_address=engine_address,
-                stack=request.stack,
-                parallel=request.parallel,
-                preview=request.dryRun
-            )
-
-            if request.config:
-                set_all_config(request.config)
-            loop = asyncio.new_event_loop()
             loop.run_until_complete(run_in_stack(self.program))
+        except RunError as exn:
+            result.error = str(exn)
+            return result
         except Exception as exn:
-            result.error = str(f"python inline source runtime error: {exn}")
+            result.error = str(f"python inline source runtime error: {exn}\n{traceback.format_exc()}")
+            return result
         finally:
-            if loop:
-                loop.close()
+            loop.close()
+            sys.stdout.flush()
+            sys.stderr.flush()
 
         return result
 
