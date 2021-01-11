@@ -10,6 +10,9 @@ CHANGELOG
   correlate events back to the Pulumi SaaS
   [#6063](https://github.com/pulumi/pulumi/pull/6063)
 
+- [sdk/dotnet] Moved urn value retrieval into if statement for MockMonitor
+  [#6081](https://github.com/pulumi/pulumi/pull/6081)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
