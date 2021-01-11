@@ -29,7 +29,10 @@ from .errors import (
 
 from .local_workspace import (
     LocalWorkspace,
-    LocalWorkspaceOptions
+    LocalWorkspaceOptions,
+    create_stack,
+    select_stack,
+    create_or_select_stack
 )
 
 from .workspace import (
@@ -53,5 +56,5 @@ from .stack import (
     PreviewResult,
     RefreshResult,
     DestroyResult,
-    fully_qualified_stack_name
+    fully_qualified_stack_name,
 )

@@ -23,12 +23,10 @@ from .config import ConfigMap, ConfigValue
 from .project_settings import ProjectSettings
 from .stack_settings import StackSettings
 from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn
-from .stack import Stack, _DATETIME_FORMAT
+from .stack import _DATETIME_FORMAT, Stack
 from .cmd import _run_pulumi_cmd, CommandResult, OnOutput
 
 _setting_extensions = [".yaml", ".yml", ".json"]
-
-StackInitializer = Callable[[str, Workspace], Stack]
 
 
 class LocalWorkspaceOptions:
@@ -56,7 +54,6 @@ class LocalWorkspaceOptions:
         self.project_settings = project_settings
         self.stack_settings = stack_settings
 
-
 class LocalWorkspace(Workspace):
     """
     LocalWorkspace is a default implementation of the Workspace interface.
@@ -69,125 +66,6 @@ class LocalWorkspace(Workspace):
     alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.<stack>.yaml file.
     This is identical to the behavior of Pulumi CLI driven workspaces.
     """
-
-    @classmethod
-    def create_new_stack(cls,
-                         stack_name: str,
-                         project_name: Optional[str] = None,
-                         program: Optional[PulumiFn] = None,
-                         work_dir: Optional[str] = None,
-                         opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
-        """
-        Creates a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
-        Pulumi CLI program from the specified workdir.
-
-        **Inline Programs**
-
-        For inline programs, the program and project_name keyword arguments must be provided. This program is fully
-        debuggable and runs in process. If no project_settings option is specified, default project settings will be
-        created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
-        default to a new temporary directory provided by the OS.
-
-        **Local Programs**
-
-        For local programs, the work_dir keyword argument must be provided.
-        This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
-        available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-
-        :param stack_name: The name of the stack.
-        :param project_name: The name of the project - required for inline programs.
-        :param program: The inline program - required for inline programs.
-        :param work_dir: The directory for a CLI-driven stack - required for local programs.
-        :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-               variables to pass through to every command.
-        :return: Stack
-        """
-        args = locals()
-        if _is_inline_program(**args):
-            # Type checks are ignored because we have already asserted that the correct args are present.
-            return _inline_source_stack_helper(stack_name, program, project_name, Stack.create, opts)  # type: ignore
-        elif _is_local_program(**args):
-            return _local_source_stack_helper(stack_name, work_dir, Stack.create, opts)  # type: ignore
-        raise ValueError(f"unexpected args: {' '.join(args)}")
-
-    @classmethod
-    def select_existing_stack(cls,
-                              stack_name: str,
-                              project_name: Optional[str] = None,
-                              program: Optional[PulumiFn] = None,
-                              work_dir: Optional[str] = None,
-                              opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
-        """
-        Selects a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
-        Pulumi CLI program from the specified workdir.
-
-        **Inline Programs**
-
-        For inline programs, the program and project_name keyword arguments must be provided. This program is fully
-        debuggable and runs in process. If no project_settings option is specified, default project settings will be
-        created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
-        default to a new temporary directory provided by the OS.
-
-        **Local Programs**
-
-        For local programs, the work_dir keyword argument must be provided.
-        This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
-        available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-
-        :param stack_name: The name of the stack.
-        :param project_name: The name of the project - required for inline programs.
-        :param program: The inline program - required for inline programs.
-        :param work_dir: The directory for a CLI-driven stack - required for local programs.
-        :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-               variables to pass through to every command.
-        :return: Stack
-        """
-        args = locals()
-        if _is_inline_program(**args):
-            return _inline_source_stack_helper(stack_name, program, project_name, Stack.select, opts)  # type: ignore
-        elif _is_local_program(**args):
-            return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
-        raise ValueError(f"unexpected args: {' '.join(args)}")
-
-    @classmethod
-    def create_or_select_stack(cls,
-                               stack_name: str,
-                               project_name: Optional[str] = None,
-                               program: Optional[PulumiFn] = None,
-                               work_dir: Optional[str] = None,
-                               opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
-        """
-        Creates or selects an existing Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi
-        program or the local Pulumi CLI program from the specified workdir.
-
-        **Inline Programs**
-
-        For inline programs, the program and project_name keyword arguments must be provided. This program is fully
-        debuggable and runs in process. If no project_settings option is specified, default project settings will be
-        created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
-        default to a new temporary directory provided by the OS.
-
-        **Local Programs**
-
-        For local programs, the work_dir keyword argument must be provided.
-        This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
-        available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
-
-        :param stack_name: The name of the stack.
-        :param project_name: The name of the project - required for inline programs.
-        :param program: The inline program - required for inline programs.
-        :param work_dir: The directory for a CLI-driven stack - required for local programs.
-        :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
-               variables to pass through to every command.
-        :return: Stack
-        """
-        args = locals()
-        if _is_inline_program(**args):
-            return _inline_source_stack_helper(stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
-        elif _is_local_program(**args):
-            return _local_source_stack_helper(stack_name, work_dir, Stack.create_or_select, opts)  # type: ignore
-        raise ValueError(f"unexpected args: {' '.join(args)}")
-
     def __init__(self,
                  work_dir: Optional[str] = None,
                  pulumi_home: Optional[str] = None,
@@ -384,22 +262,130 @@ class LocalWorkspace(Workspace):
         return _run_pulumi_cmd(args, self.work_dir, envs, on_output)
 
 
-def get_stack_settings_name(name: str) -> str:
-    parts = name.split("/")
-    if len(parts) < 1:
-        return name
-    return parts[-1]
-
-
-def default_project(project_name: str) -> ProjectSettings:
-    return ProjectSettings(name=project_name, runtime="python")
-
-
 def _is_inline_program(**kwargs) -> bool:
     for key in ["program", "project_name"]:
         if key not in kwargs or kwargs[key] is None:
             return False
     return True
+
+
+StackInitializer = Callable[[str, Workspace], Stack]
+
+
+
+def create_stack(stack_name: str,
+                 project_name: Optional[str] = None,
+                 program: Optional[PulumiFn] = None,
+                 work_dir: Optional[str] = None,
+                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    """
+    Creates a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
+    Pulumi CLI program from the specified workdir.
+
+    **Inline Programs**
+
+    For inline programs, the program and project_name keyword arguments must be provided. This program is fully
+    debuggable and runs in process. If no project_settings option is specified, default project settings will be
+    created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
+    default to a new temporary directory provided by the OS.
+
+    **Local Programs**
+
+    For local programs, the work_dir keyword argument must be provided.
+    This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
+    available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+
+    :param stack_name: The name of the stack.
+    :param project_name: The name of the project - required for inline programs.
+    :param program: The inline program - required for inline programs.
+    :param work_dir: The directory for a CLI-driven stack - required for local programs.
+    :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
+           variables to pass through to every command.
+    :return: Stack
+    """
+    args = locals()
+    if _is_inline_program(**args):
+        # Type checks are ignored because we have already asserted that the correct args are present.
+        return _inline_source_stack_helper(stack_name, program, project_name, Stack.create, opts)  # type: ignore
+    elif _is_local_program(**args):
+        return _local_source_stack_helper(stack_name, work_dir, Stack.create, opts)  # type: ignore
+    raise ValueError(f"unexpected args: {' '.join(args)}")
+
+
+def select_stack(stack_name: str,
+                 project_name: Optional[str] = None,
+                 program: Optional[PulumiFn] = None,
+                 work_dir: Optional[str] = None,
+                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    """
+    Selects a Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi program or the local
+    Pulumi CLI program from the specified workdir.
+
+    **Inline Programs**
+
+    For inline programs, the program and project_name keyword arguments must be provided. This program is fully
+    debuggable and runs in process. If no project_settings option is specified, default project settings will be
+    created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
+    default to a new temporary directory provided by the OS.
+
+    **Local Programs**
+
+    For local programs, the work_dir keyword argument must be provided.
+    This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
+    available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+
+    :param stack_name: The name of the stack.
+    :param project_name: The name of the project - required for inline programs.
+    :param program: The inline program - required for inline programs.
+    :param work_dir: The directory for a CLI-driven stack - required for local programs.
+    :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
+           variables to pass through to every command.
+    :return: Stack
+    """
+    args = locals()
+    if _is_inline_program(**args):
+        return _inline_source_stack_helper(stack_name, program, project_name, Stack.select, opts)  # type: ignore
+    elif _is_local_program(**args):
+        return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
+    raise ValueError(f"unexpected args: {' '.join(args)}")
+
+
+def create_or_select_stack(stack_name: str,
+                           project_name: Optional[str] = None,
+                           program: Optional[PulumiFn] = None,
+                           work_dir: Optional[str] = None,
+                           opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    """
+    Creates or selects an existing Stack with a LocalWorkspace utilizing the specified inline (in process) Pulumi
+    program or the local Pulumi CLI program from the specified workdir.
+
+    **Inline Programs**
+
+    For inline programs, the program and project_name keyword arguments must be provided. This program is fully
+    debuggable and runs in process. If no project_settings option is specified, default project settings will be
+    created on behalf of the user. Similarly, unless a `work_dir` option is specified, the working directory will
+    default to a new temporary directory provided by the OS.
+
+    **Local Programs**
+
+    For local programs, the work_dir keyword argument must be provided.
+    This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
+    available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+
+    :param stack_name: The name of the stack.
+    :param project_name: The name of the project - required for inline programs.
+    :param program: The inline program - required for inline programs.
+    :param work_dir: The directory for a CLI-driven stack - required for local programs.
+    :param opts: Extensibility options to configure a LocalWorkspace; e.g: settings to seed and environment
+           variables to pass through to every command.
+    :return: Stack
+    """
+    args = locals()
+    if _is_inline_program(**args):
+        return _inline_source_stack_helper(stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
+    elif _is_local_program(**args):
+        return _local_source_stack_helper(stack_name, work_dir, Stack.create_or_select, opts)  # type: ignore
+    raise ValueError(f"unexpected args: {' '.join(args)}")
 
 
 def _inline_source_stack_helper(stack_name: str,
@@ -430,3 +416,14 @@ def _local_source_stack_helper(stack_name: str,
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)
+
+
+def default_project(project_name: str) -> ProjectSettings:
+    return ProjectSettings(name=project_name, runtime="python")
+
+
+def get_stack_settings_name(name: str) -> str:
+    parts = name.split("/")
+    if len(parts) < 1:
+        return name
+    return parts[-1]

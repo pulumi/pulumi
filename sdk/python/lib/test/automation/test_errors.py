@@ -16,10 +16,10 @@ import os
 import subprocess
 import unittest
 from pulumi.x.automation import (
+    create_stack,
     InlineSourceRuntimeError,
     RuntimeError,
     CompilationError,
-    LocalWorkspace,
 )
 from .test_local_workspace import stack_namer, test_path
 
@@ -31,7 +31,7 @@ class TestErrors(unittest.TestCase):
     def test_inline_runtime_error_python(self):
         stack_name = stack_namer()
         project_name = "inline_runtime_error_python"
-        stack = LocalWorkspace.create_new_stack(stack_name, program=failing_program, project_name=project_name)
+        stack = create_stack(stack_name, program=failing_program, project_name=project_name)
         inline_error_text = "python inline source runtime error"
 
         try:
@@ -54,7 +54,7 @@ class TestErrors(unittest.TestCase):
                 subprocess.run([os.path.join("venv", "bin", "pip"), "install", "-r", "requirements.txt"],
                                check=True, cwd=project_dir, capture_output=True)
 
-            stack = LocalWorkspace.create_new_stack(stack_name, work_dir=project_dir)
+            stack = create_stack(stack_name, work_dir=project_dir)
 
             try:
                 self.assertRaises(RuntimeError, stack.up)
@@ -68,7 +68,7 @@ class TestErrors(unittest.TestCase):
     def test_compilation_error_go(self):
         stack_name = stack_namer()
         project_dir = test_path("errors", compilation_error_project, "go")
-        stack = LocalWorkspace.create_new_stack(stack_name, work_dir=project_dir)
+        stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
             self.assertRaises(CompilationError, stack.up)
@@ -79,7 +79,7 @@ class TestErrors(unittest.TestCase):
     def test_compilation_error_dotnet(self):
         stack_name = stack_namer()
         project_dir = test_path("errors", compilation_error_project, "dotnet")
-        stack = LocalWorkspace.create_new_stack(stack_name, work_dir=project_dir)
+        stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
             self.assertRaises(CompilationError, stack.up)
@@ -91,7 +91,7 @@ class TestErrors(unittest.TestCase):
         stack_name = stack_namer()
         project_dir = test_path("errors", compilation_error_project, "typescript")
         subprocess.run(["npm", "install"], check=True, cwd=project_dir, capture_output=True)
-        stack = LocalWorkspace.create_new_stack(stack_name, work_dir=project_dir)
+        stack = create_stack(stack_name, work_dir=project_dir)
 
         try:
             self.assertRaises(CompilationError, stack.up)
