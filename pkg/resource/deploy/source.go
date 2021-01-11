@@ -102,7 +102,7 @@ type RegisterResourceOutputsEvent interface {
 	Done()
 }
 
-// ReadResourceEvent is an event that asks the engine to read the state of a resource that already exists.
+// ReadResourceEvent is an event that asks the engine to read the state of an existing resource.
 type ReadResourceEvent interface {
 	SourceEvent
 
