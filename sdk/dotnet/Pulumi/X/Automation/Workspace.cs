@@ -29,7 +29,7 @@ namespace Pulumi.X.Automation
         /// </summary>
         public abstract string WorkDir { get; }
 
-        /// <summary>as
+        /// <summary>
         /// The directory override for CLI metadata if set.
         /// <para/>
         /// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
@@ -172,7 +172,7 @@ namespace Pulumi.X.Automation
         /// </summary>
         public virtual async Task<StackSummary?> GetStackAsync(CancellationToken cancellationToken = default)
         {
-            var stacks = await this.ListStacksAsync(cancellationToken);
+            var stacks = await this.ListStacksAsync(cancellationToken).ConfigureAwait(false);
             return stacks.FirstOrDefault(x => x.IsCurrent);
         }
 
@@ -227,7 +227,7 @@ namespace Pulumi.X.Automation
         /// <param name="version">The version of the plugin e.g. "v1.0.0".</param>
         /// <param name="kind">The kind of plugin e.g. "resource".</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task InstallPluginAsync(string name, string version, string kind = "resource", CancellationToken cancellationToken = default);
+        public abstract Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes a plugin from the Workspace matching the specified name and version.
@@ -236,7 +236,7 @@ namespace Pulumi.X.Automation
         /// <param name="versionRange">The optional semver range to check when removing plugins matching the given name e.g. "1.0.0", ">1.0.0".</param>
         /// <param name="kind">The kind of plugin e.g. "resource".</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task RemovePluginAsync(string? name = null, string? versionRange = null, string kind = "resource", CancellationToken cancellationToken = default);
+        public abstract Task RemovePluginAsync(string? name = null, string? versionRange = null, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns a list of all plugins installed in the Workspace.
@@ -249,11 +249,11 @@ namespace Pulumi.X.Automation
             Action<string>? onOutput,
             CancellationToken cancellationToken)
         {
-            var additionalArgs = await this.SerializeArgsForOpAsync(stackName, cancellationToken);
+            var additionalArgs = await this.SerializeArgsForOpAsync(stackName, cancellationToken).ConfigureAwait(false);
             var completeArgs = args.Concat(additionalArgs).ToList();
 
-            var result = await this.RunCommandAsync(completeArgs, onOutput, cancellationToken);
-            await this.PostCommandCallbackAsync(stackName, cancellationToken);
+            var result = await this.RunCommandAsync(completeArgs, onOutput, cancellationToken).ConfigureAwait(false);
+            await this.PostCommandCallbackAsync(stackName, cancellationToken).ConfigureAwait(false);
             return result;
         }
 

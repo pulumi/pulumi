@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using Newtonsoft.Json;
 using Pulumi.X.Automation;
 using Pulumi.X.Automation.Serialization;
 using Xunit;
@@ -107,27 +106,7 @@ nested:
   testtwo: 123
 ";
 
-            var dict = Serializer.DeserializeYaml<IDictionary<string, object>>(yaml);
-            Console.WriteLine("ok");
-        }
-
-        [Fact]
-        public void Dynamic_With_NewtonsoftJson()
-        {
-            const string json = @"
-{
-    ""one"": 123,
-    ""two"": ""two"",
-    ""three"": true,
-    ""four"": 3.14,
-    ""nested"": {
-        ""test"": ""test"",
-        ""testtwo"": 123,
-    }
-}
-";
-
-            var dict = JsonConvert.DeserializeObject<IDictionary<string, object>>(json);
+            var dict = Serializer.DeserializeYaml<Dictionary<string, object>>(yaml);
             Console.WriteLine("ok");
         }
 
@@ -146,7 +125,7 @@ nested:
 }
 ";
 
-            var dict = Serializer.DeserializeJson<IDictionary<string, object>>(json);
+            var dict = Serializer.DeserializeJson<Dictionary<string, object>>(json);
             Console.WriteLine("ok");
         }
     }

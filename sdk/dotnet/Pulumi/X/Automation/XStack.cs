@@ -14,7 +14,6 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Pulumi.X.Automation.Commands;
 using Pulumi.X.Automation.Commands.Exceptions;
 using Pulumi.X.Automation.Serialization;
@@ -49,7 +48,7 @@ namespace Pulumi.X.Automation
             CancellationToken cancellationToken = default)
         {
             var stack = new XStack(name, workspace, StackInitMode.Create, cancellationToken);
-            await stack._readyTask;
+            await stack._readyTask.ConfigureAwait(false);
             return stack;
         }
 
@@ -67,7 +66,7 @@ namespace Pulumi.X.Automation
             CancellationToken cancellationToken = default)
         {
             var stack = new XStack(name, workspace, StackInitMode.Select, cancellationToken);
-            await stack._readyTask;
+            await stack._readyTask.ConfigureAwait(false);
             return stack;
         }
 
@@ -86,7 +85,7 @@ namespace Pulumi.X.Automation
             CancellationToken cancellationToken = default)
         {
             var stack = new XStack(name, workspace, StackInitMode.CreateOrSelect, cancellationToken);
-            await stack._readyTask;
+            await stack._readyTask.ConfigureAwait(false);
             return stack;
         }
 
@@ -559,12 +558,11 @@ namespace Pulumi.X.Automation
                             })
                             .ConfigureServices(services =>
                             {
-                                services.AddLogging(logging =>
-                                {
-                                    logging.AddConsole();
-                                    logging.SetMinimumLevel(LogLevel.Trace);
-                                });
-                                services.AddSingleton(program); // to be injected into LanguageRuntimeService
+                                // TODO: allow logging to be configured so it can be captured by the consumer?
+                                services.AddLogging();
+
+                                // to be injected into LanguageRuntimeService
+                                services.AddSingleton(new LanguageRuntimeService.LanguageRuntimeServiceArgs(program, cancellationToken));
                                 services.AddGrpc(grpcOptions =>
                                 {
                                     grpcOptions.MaxReceiveMessageSize = LanguageRuntimeService.MaxRpcMesageSize;

@@ -84,8 +84,8 @@ namespace Pulumi.X.Automation.Commands
             proc.Exited += async (_, @event) =>
             {
                 var code = proc.ExitCode;
-                var stdOut = await proc.StandardOutput.ReadToEndAsync();
-                var stdErr = await proc.StandardError.ReadToEndAsync();
+                var stdOut = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
+                var stdErr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
 
                 var result = new CommandResult(code, stdOut, stdErr);
                 if (code != 0)
@@ -100,7 +100,7 @@ namespace Pulumi.X.Automation.Commands
             };
 
             proc.Start();
-            return await tcs.Task;
+            return await tcs.Task.ConfigureAwait(false);
         }
     }
 }

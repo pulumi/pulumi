@@ -261,9 +261,9 @@ namespace Pulumi.X.Automation
                 new LocalPulumiCmd(),
                 args,
                 cancellationToken);
-            await ws._readyTask;
+            await ws._readyTask.ConfigureAwait(false);
 
-            return await initFunc(args.StackName, ws, cancellationToken);
+            return await initFunc(args.StackName, ws, cancellationToken).ConfigureAwait(false);
         }
 
         private static async Task<XStack> CreateStackHelperAsync(
@@ -275,9 +275,9 @@ namespace Pulumi.X.Automation
                 new LocalPulumiCmd(),
                 args,
                 cancellationToken);
-            await ws._readyTask;
+            await ws._readyTask.ConfigureAwait(false);
 
-            return await initFunc(args.StackName, ws, cancellationToken);
+            return await initFunc(args.StackName, ws, cancellationToken).ConfigureAwait(false);
         }
 
         internal LocalWorkspace(
@@ -339,7 +339,7 @@ namespace Pulumi.X.Automation
                 if (!File.Exists(path))
                     continue;
 
-                var content = await File.ReadAllTextAsync(path, cancellationToken);
+                var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
                 if (isJson)
                     return this._serializer.DeserializeJson<ProjectSettings>(content);
 
@@ -390,7 +390,7 @@ namespace Pulumi.X.Automation
                 if (!File.Exists(path))
                     continue;
 
-                var content = await File.ReadAllTextAsync(path, cancellationToken);
+                var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
                 return isJson ? this._serializer.DeserializeJson<StackSettings>(content) : this._serializer.DeserializeYaml<StackSettings>(content);
             }
 
@@ -429,21 +429,21 @@ namespace Pulumi.X.Automation
         /// <inheritdoc/>
         public override async Task<ConfigValue> GetConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default)
         {
-            await this.SelectStackAsync(stackName, cancellationToken);
-            var result = await this.RunCommandAsync(new[] { "config", "get", key, "--json" }, cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(new[] { "config", "get", key, "--json" }, cancellationToken).ConfigureAwait(false);
             return JsonSerializer.Deserialize<ConfigValue>(result.StandardOutput);
         }
 
         /// <inheritdoc/>
         public override async Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(string stackName, CancellationToken cancellationToken = default)
         {
-            await this.SelectStackAsync(stackName, cancellationToken);
-            return await this.GetConfigAsync(cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+            return await this.GetConfigAsync(cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(CancellationToken cancellationToken)
         {
-            var result = await this.RunCommandAsync(new[] { "config", "--show-secrets", "--json" }, cancellationToken);
+            var result = await this.RunCommandAsync(new[] { "config", "--show-secrets", "--json" }, cancellationToken).ConfigureAwait(false);
             var dict = this._serializer.DeserializeJson<Dictionary<string, ConfigValue>>(result.StandardOutput);
             return dict.ToImmutableDictionary();
         }
@@ -451,55 +451,55 @@ namespace Pulumi.X.Automation
         /// <inheritdoc/>
         public override async Task SetConfigValueAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default)
         {
-            await this.SelectStackAsync(stackName, cancellationToken);
-            await this.SetConfigValueAsync(key, value, cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+            await this.SetConfigValueAsync(key, value, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public override async Task SetConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
         {
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
-            await this.SelectStackAsync(stackName, cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
 
             foreach (var (key, value) in configMap)
-                await this.SetConfigValueAsync(key, value, cancellationToken);
+                await this.SetConfigValueAsync(key, value, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task SetConfigValueAsync(string key, ConfigValue value, CancellationToken cancellationToken)
         {
             var secretArg = value.IsSecret ? "--secret" : "--plaintext";
-            await this.RunCommandAsync(new[] { "config", "set", key, value.Value, secretArg }, cancellationToken);
+            await this.RunCommandAsync(new[] { "config", "set", key, value.Value, secretArg }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public override async Task RemoveConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default)
         {
-            await this.SelectStackAsync(stackName, cancellationToken);
-            await this.RunCommandAsync(new[] { "config", "rm", key }, cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+            await this.RunCommandAsync(new[] { "config", "rm", key }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public override async Task RemoveConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
         {
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
-            await this.SelectStackAsync(stackName, cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
 
             foreach (var key in keys)
-                await this.RunCommandAsync(new[] { "config", "rm", key }, cancellationToken);
+                await this.RunCommandAsync(new[] { "config", "rm", key }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public override async Task<ImmutableDictionary<string, ConfigValue>> RefreshConfigAsync(string stackName, CancellationToken cancellationToken = default)
         {
-            await this.SelectStackAsync(stackName, cancellationToken);
-            await this.RunCommandAsync(new[] { "config", "refresh", "--force" }, cancellationToken);
-            return await this.GetConfigAsync(cancellationToken);
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+            await this.RunCommandAsync(new[] { "config", "refresh", "--force" }, cancellationToken).ConfigureAwait(false);
+            return await this.GetConfigAsync(cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
         public override async Task<WhoAmIResult> WhoAmIAsync(CancellationToken cancellationToken = default)
         {
-            var result = await this.RunCommandAsync(new[] { "whoami" }, cancellationToken);
+            var result = await this.RunCommandAsync(new[] { "whoami" }, cancellationToken).ConfigureAwait(false);
             return new WhoAmIResult(result.StandardOutput.Trim());
         }
 
@@ -530,23 +530,23 @@ namespace Pulumi.X.Automation
         /// <inheritdoc/>
         public override async Task<ImmutableList<StackSummary>> ListStacksAsync(CancellationToken cancellationToken = default)
         {
-            var result = await this.RunCommandAsync(new[] { "stack", "ls", "--json" }, cancellationToken);
+            var result = await this.RunCommandAsync(new[] { "stack", "ls", "--json" }, cancellationToken).ConfigureAwait(false);
             var stacks = this._serializer.DeserializeJson<List<StackSummary>>(result.StandardOutput);
             return stacks.ToImmutableList();
         }
 
         /// <inheritdoc/>
-        public override Task InstallPluginAsync(string name, string version, string kind = "resource", CancellationToken cancellationToken = default)
-            => this.RunCommandAsync(new[] { "plugin", "install", kind, name, version }, cancellationToken);
+        public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
+            => this.RunCommandAsync(new[] { "plugin", "install", kind.ToString().ToLower(), name, version }, cancellationToken);
 
         /// <inheritdoc/>
-        public override Task RemovePluginAsync(string? name = null, string? versionRange = null, string kind = "resource", CancellationToken cancellationToken = default)
+        public override Task RemovePluginAsync(string? name = null, string? versionRange = null, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
         {
             var args = new List<string>()
             {
                 "plugin",
                 "rm",
-                kind,
+                kind.ToString().ToLower(),
             };
 
             if (!string.IsNullOrWhiteSpace(name))
@@ -562,7 +562,7 @@ namespace Pulumi.X.Automation
         /// <inheritdoc/>
         public override async Task<ImmutableList<PluginInfo>> ListPluginsAsync(CancellationToken cancellationToken = default)
         {
-            var result = await this.RunCommandAsync(new[] { "plugin", "ls", "--json" }, cancellationToken);
+            var result = await this.RunCommandAsync(new[] { "plugin", "ls", "--json" }, cancellationToken).ConfigureAwait(false);
             var plugins = this._serializer.DeserializeJson<List<PluginInfo>>(result.StandardOutput);
             return plugins.ToImmutableList();
         }

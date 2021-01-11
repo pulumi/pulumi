@@ -9,24 +9,23 @@ using Pulumirpc;
 
 namespace Pulumi.X.Automation
 {
-    internal class LanguageRuntimeService : LanguageRuntime.LanguageRuntimeBase, IDisposable
+    internal class LanguageRuntimeService : LanguageRuntime.LanguageRuntimeBase
     {
+        private static readonly SemaphoreSlim Semaphore = new SemaphoreSlim(1, 1);
+
         // MaxRpcMesageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
         public const int MaxRpcMesageSize = 1024 * 1024 * 400;
 
-        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
-        private CancellationToken Token => _cts.Token;
-        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
-
         private readonly PulumiFn _program;
+        private readonly CancellationToken _cancelToken;
         private readonly ILogger<LanguageRuntimeService> _logger;
-        private bool _isDisposed;
 
         public LanguageRuntimeService(
-            PulumiFn program,
+            LanguageRuntimeServiceArgs args,
             ILogger<LanguageRuntimeService> logger)
         {
-            this._program = program;
+            this._program = args.Program;
+            this._cancelToken = args.CancellationToken;
             this._logger = logger;
         }
 
@@ -40,13 +39,14 @@ namespace Pulumi.X.Automation
         {
             var contextId = Guid.NewGuid();
             this._logger.LogInformation("Waiting for lock with id {0}", contextId);
-            await this._semaphore.WaitAsync();
+            await Semaphore.WaitAsync().ConfigureAwait(false);
 
             this._logger.LogInformation("Obtained lock with id {0}", contextId);
-            if (Token.IsCancellationRequested)
+            if (this._cancelToken.IsCancellationRequested // if caller of UpAsync has cancelled
+                || context.CancellationToken.IsCancellationRequested) // if CLI has cancelled
             {
-                this._logger.LogInformation("Releasing lock with id {0}", contextId);
-                this._semaphore.Release();
+                this._logger.LogInformation("Operation cancelled, releasing lock with id {0}", contextId);
+                Semaphore.Release();
                 return new RunResponse();
             }
 
@@ -64,7 +64,7 @@ namespace Pulumi.X.Automation
                     request.Parallel,
                     request.DryRun);
 
-                await Deployment.RunInlineAsync(settings, this._program);
+                await Deployment.RunInlineAsync(settings, this._program).ConfigureAwait(false);
                 Deployment.Instance = null!;
             }
             catch (Exception e) // Use more specific exceptions
@@ -75,31 +75,25 @@ namespace Pulumi.X.Automation
             finally
             {
                 this._logger.LogInformation("Releasing lock with id {0}", contextId);
-                this._semaphore.Release();
+                Semaphore.Release();
             }
 
             return new RunResponse();
         }
 
-        protected virtual void Dispose(bool disposing)
+        public class LanguageRuntimeServiceArgs
         {
-            if (!this._isDisposed)
+            public PulumiFn Program { get; }
+
+            public CancellationToken CancellationToken { get; }
+
+            public LanguageRuntimeServiceArgs(
+                PulumiFn program,
+                CancellationToken cancellationToken)
             {
-                if (disposing)
-                {
-                    this._cts.Dispose();
-                    //_semaphore.Dispose(); // This can deadlock if there are calls still waiting for the semaphore.
-                }
-
-                this._isDisposed = true;
+                this.Program = program;
+                this.CancellationToken = cancellationToken;
             }
-        }
-
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
         }
     }
 }
