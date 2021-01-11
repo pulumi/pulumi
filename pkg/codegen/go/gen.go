@@ -276,8 +276,12 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
+		var prefix string
+		if optional {
+			prefix = "*"
+		}
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token)
+		return prefix + pkg.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		en := pkg.inputType(t.ElementType, false)
 		return strings.TrimSuffix(en, "Input") + "ArrayInput"
