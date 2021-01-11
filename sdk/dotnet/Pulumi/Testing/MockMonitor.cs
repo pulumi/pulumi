@@ -33,10 +33,10 @@ namespace Pulumi.Testing
         public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
         {
             var args = ToDictionary(request.Args);
-            var urn = (string)args["urn"];
 
             if (request.Tok == "pulumi:pulumi:getResource")
             {
+                var urn = (string)args["urn"];
                 object? registeredResource;
                 lock (_registeredResources)
                 {
