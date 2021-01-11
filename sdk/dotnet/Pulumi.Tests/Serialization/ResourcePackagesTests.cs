@@ -13,6 +13,10 @@ namespace Pulumi.Tests.Serialization
             {
                 Assert.True(false, "Unknown resource found");
             }
+            if (ResourcePackages.TryGetResourceType("test:index/UnknownResource", "", out _))
+            {
+                Assert.True(false, "Unknown resource found");
+            }
             if (ResourcePackages.TryGetResourceType("unknown:index/TestResource", "0.0.1", out _))
             {
                 Assert.True(false, "Unknown resource found");
@@ -22,9 +26,9 @@ namespace Pulumi.Tests.Serialization
                 Assert.True(false, "Resource with non-matching assembly version found");
             }
         }
-        
+
         [Fact]
-        public void BlankReturnsHighestVersion()
+        public void NullReturnsHighestVersion()
         {
             if (ResourcePackages.TryGetResourceType("test:index/TestResource", null, out var type))
             {
@@ -35,7 +39,20 @@ namespace Pulumi.Tests.Serialization
                 Assert.True(false, "Test resource not found");
             }
         }
-        
+
+        [Fact]
+        public void BlankReturnsHighestVersion()
+        {
+            if (ResourcePackages.TryGetResourceType("test:index/TestResource", "", out var type))
+            {
+                Assert.Equal(typeof(Version202TestResource), type);
+            }
+            else
+            {
+                Assert.True(false, "Test resource not found");
+            }
+        }
+
         [Fact]
         public void MajorVersionRespected()
         {
@@ -48,7 +65,7 @@ namespace Pulumi.Tests.Serialization
                 Assert.True(false, "Test resource not found");
             }
         }
-        
+
         [Fact]
         public void WildcardSelectedIfOthersDontMatch()
         {
@@ -69,7 +86,7 @@ namespace Pulumi.Tests.Serialization
             {
             }
         }
-        
+
         [ResourceType("test:index/TestResource", "1.0.2")]
         private class Version102TestResource : CustomResource
         {
@@ -77,7 +94,7 @@ namespace Pulumi.Tests.Serialization
             {
             }
         }
-        
+
         [ResourceType("test:index/TestResource", "2.0.2")]
         private class Version202TestResource : CustomResource
         {
@@ -85,7 +102,7 @@ namespace Pulumi.Tests.Serialization
             {
             }
         }
-        
+
         [ResourceType("test:index/TestResource", null)]
         private class WildcardTestResource : CustomResource
         {
@@ -93,7 +110,7 @@ namespace Pulumi.Tests.Serialization
             {
             }
         }
-        
+
         [ResourceType("test:index/UnrelatedResource", "1.0.3")]
         private class OtherResource : CustomResource
         {
