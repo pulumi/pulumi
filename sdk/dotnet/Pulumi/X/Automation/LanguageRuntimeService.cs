@@ -2,7 +2,6 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
 using Microsoft.Extensions.Logging;
 using Pulumi.X.Automation.Runtime;
@@ -29,16 +28,6 @@ namespace Pulumi.X.Automation
         {
             this._program = program;
             this._logger = logger;
-        }
-
-        public override Task<Pulumirpc.PluginInfo> GetPluginInfo(Empty request, ServerCallContext context)
-        {
-            var pluginInfo = new Pulumirpc.PluginInfo
-            {
-                Version = "1.0.0"
-            };
-
-            return Task.FromResult(pluginInfo);
         }
 
         public override Task<GetRequiredPluginsResponse> GetRequiredPlugins(GetRequiredPluginsRequest request, ServerCallContext context)
@@ -76,6 +65,7 @@ namespace Pulumi.X.Automation
                     request.DryRun);
 
                 await Deployment.RunInlineAsync(settings, this._program);
+                Deployment.Instance = null!;
             }
             catch (Exception e) // Use more specific exceptions
             {

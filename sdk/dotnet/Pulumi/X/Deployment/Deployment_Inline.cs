@@ -7,7 +7,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal Deployment(RuntimeSettings? settings)
+        internal Deployment(RuntimeSettings settings)
         {
             if (settings is null)
                 throw new ArgumentNullException(nameof(settings));
@@ -15,6 +15,7 @@ namespace Pulumi
             _projectName = settings.Project;
             _stackName = settings.Stack;
             _isDryRun = settings.IsDryRun;
+            SetAllConfig(settings.Config);
 
             //var queryMode = Environment.GetEnvironmentVariable("PULUMI_QUERY_MODE");
             //var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
@@ -43,21 +44,7 @@ namespace Pulumi
         internal static Task<int> RunInlineAsync(RuntimeSettings settings, PulumiFn func)
             => CreateInlineRunner(settings).RunAsync(() => Task.FromResult(func()), null);
 
-        private static IRunner CreateInlineRunner(RuntimeSettings? settings)
-        {
-            // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
-
-            Serilog.Log.Debug("Deployment.RunInline called.");
-            lock (_instanceLock)
-            {
-                if (_instance != null)
-                    throw new NotSupportedException("Deployment.Run can only be called a single time.");
-
-                Serilog.Log.Debug("Creating new inline Deployment.");
-                var deployment = new Deployment(settings);
-                Instance = new DeploymentInstance(deployment);
-                return deployment._runner;
-            }
-        }
+        private static IRunner CreateInlineRunner(RuntimeSettings settings)
+            => CreateRunner(() => new Deployment(settings));
     }
 }
