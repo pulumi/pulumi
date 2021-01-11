@@ -26,8 +26,7 @@ namespace Pulumi.X.Automation.Serialization
         public ProjectBackend? Backend { get; set; }
 
         public ProjectSettings Convert()
-        {
-            return new ProjectSettings(this.Name!, this.Runtime ?? new ProjectRuntime(ProjectRuntimeName.NodeJS))
+            => new ProjectSettings(this.Name!, this.Runtime ?? new ProjectRuntime(ProjectRuntimeName.NodeJS))
             {
                 Main = this.Main,
                 Description = this.Description,
@@ -38,6 +37,5 @@ namespace Pulumi.X.Automation.Serialization
                 Template = this.Template,
                 Backend = this.Backend,
             };
-        }
     }
 }
