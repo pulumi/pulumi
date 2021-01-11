@@ -4,6 +4,8 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Security.Cryptography;
+using System.Security.Cryptography.X509Certificates;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -11,8 +13,10 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Hosting.Server;
 using Microsoft.AspNetCore.Hosting.Server.Features;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Pulumi.X.Automation.Commands;
 using Pulumi.X.Automation.Commands.Exceptions;
 using Pulumi.X.Automation.Serialization;
@@ -551,12 +555,17 @@ namespace Pulumi.X.Automation
                             {
                                 kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
                                 {
-                                    // TODO: not sure if we need to do anything special to mimic typescript implementation's grpc.ServerCredentials.createInsecure()
-                                    listenOptions.UseHttps();
+                                    // TODO: HTTPS?
+                                    listenOptions.Protocols = HttpProtocols.Http2;
                                 });
                             })
                             .ConfigureServices(services =>
                             {
+                                services.AddLogging(logging =>
+                                {
+                                    logging.AddConsole();
+                                    logging.SetMinimumLevel(LogLevel.Trace);
+                                });
                                 services.AddSingleton(program); // to be injected into LanguageRuntimeService
                                 services.AddGrpc(grpcOptions =>
                                 {

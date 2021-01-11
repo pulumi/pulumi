@@ -2,7 +2,9 @@
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Pulumi.X.Automation.Runtime;
 using Pulumirpc;
 
@@ -18,24 +20,44 @@ namespace Pulumi.X.Automation
         private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
 
         private readonly PulumiFn _program;
+        private readonly ILogger<LanguageRuntimeService> _logger;
         private bool _isDisposed;
 
-        public LanguageRuntimeService(PulumiFn program)
+        public LanguageRuntimeService(
+            PulumiFn program,
+            ILogger<LanguageRuntimeService> logger)
         {
-            _program = program;
+            this._program = program;
+            this._logger = logger;
+        }
+
+        public override Task<Pulumirpc.PluginInfo> GetPluginInfo(Empty request, ServerCallContext context)
+        {
+            var pluginInfo = new Pulumirpc.PluginInfo
+            {
+                Version = "1.0.0"
+            };
+
+            return Task.FromResult(pluginInfo);
+        }
+
+        public override Task<GetRequiredPluginsResponse> GetRequiredPlugins(GetRequiredPluginsRequest request, ServerCallContext context)
+        {
+            var response = new GetRequiredPluginsResponse();
+            return Task.FromResult(response);
         }
 
         public override async Task<RunResponse> Run(RunRequest request, ServerCallContext context)
         {
             var contextId = Guid.NewGuid();
-            Console.WriteLine($"Waiting for lock with id {contextId}");
-            await _semaphore.WaitAsync();
+            this._logger.LogInformation("Waiting for lock with id {0}", contextId);
+            await this._semaphore.WaitAsync();
 
-            Console.WriteLine($"Obtained lock with id {contextId}");
+            this._logger.LogInformation("Obtained lock with id {0}", contextId);
             if (Token.IsCancellationRequested)
             {
-                Console.WriteLine($"Releasing lock with id {contextId}");
-                _semaphore.Release();
+                this._logger.LogInformation("Releasing lock with id {0}", contextId);
+                this._semaphore.Release();
                 return new RunResponse();
             }
 
@@ -54,7 +76,7 @@ namespace Pulumi.X.Automation
                     request.DryRun);
 
                 var deployment = new Deployment(runInfo);
-                await deployment.RunInstanceAsync(() => _program());
+                await deployment.RunInstanceAsync(this._program);
             }
             catch (Exception e) // Use more specific exceptions
             {
@@ -63,8 +85,8 @@ namespace Pulumi.X.Automation
             }
             finally
             {
-                Console.WriteLine($"Releasing lock with id {contextId}");
-                _semaphore.Release();
+                this._logger.LogInformation("Releasing lock with id {0}", contextId);
+                this._semaphore.Release();
             }
 
             return new RunResponse();
@@ -72,15 +94,15 @@ namespace Pulumi.X.Automation
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            if (!this._isDisposed)
             {
                 if (disposing)
                 {
-                    _cts.Dispose();
+                    this._cts.Dispose();
                     //_semaphore.Dispose(); // This can deadlock if there are calls still waiting for the semaphore.
                 }
 
-                _isDisposed = true;
+                this._isDisposed = true;
             }
         }
 

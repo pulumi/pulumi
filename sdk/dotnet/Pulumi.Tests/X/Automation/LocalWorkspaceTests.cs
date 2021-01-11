@@ -11,8 +11,9 @@ namespace Pulumi.Tests.X.Automation
 {
     public class LocalWorkspaceTests
     {
+        // TODO: Change this path when the Automation API is promoted to release (remove X directory)
         private static readonly string DataDirectory =
-            Path.Combine(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "data");
+            Path.Combine(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "X", "Automation", "Data");
 
         private static string GetTestSuffix()
         {
@@ -173,20 +174,25 @@ namespace Pulumi.Tests.X.Automation
             });
 
             var stackNames = new List<string>();
-            for (var i = 0; i < 2; i++)
+            try
             {
-                var stackName = GetStackName();
-                stackNames.Add(stackName);
-                await XStack.CreateAsync(stackName, workspace);
-                var summary = await workspace.GetStackAsync();
-                Assert.NotNull(summary);
-                Assert.True(summary!.IsCurrent);
-                var stacks = await workspace.ListStacksAsync();
-                Assert.Equal(i + 1, stacks.Count);
+                for (var i = 0; i < 2; i++)
+                {
+                    var stackName = GetStackName();
+                    await XStack.CreateAsync(stackName, workspace);
+                    stackNames.Add(stackName);
+                    var summary = await workspace.GetStackAsync();
+                    Assert.NotNull(summary);
+                    Assert.True(summary!.IsCurrent);
+                    var stacks = await workspace.ListStacksAsync();
+                    Assert.Equal(i + 1, stacks.Count);
+                }
             }
-
-            foreach (var name in stackNames)
-                await workspace.RemoveStackAsync(name);
+            finally
+            {
+                foreach (var name in stackNames)
+                    await workspace.RemoveStackAsync(name);
+            }
 
             static string GetStackName()
                 => $"int_test{GetTestSuffix()}";
@@ -207,11 +213,17 @@ namespace Pulumi.Tests.X.Automation
 
             var stackName = $"int_test{GetTestSuffix()}";
             var stack = await XStack.CreateAsync(stackName, workspace);
-            var history = await stack.GetHistoryAsync();
-            Assert.Empty(history);
-            var info = await stack.GetInfoAsync();
-            Assert.Null(info);
-            await workspace.RemoveStackAsync(stackName);
+            try
+            {
+                var history = await stack.GetHistoryAsync();
+                Assert.Empty(history);
+                var info = await stack.GetInfoAsync();
+                Assert.Null(info);
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
         }
 
         [Fact]
@@ -276,13 +288,12 @@ namespace Pulumi.Tests.X.Automation
             PulumiFn program = () =>
             {
                 var config = new Pulumi.Config();
-                var result = new Dictionary<string, object?>
+                return new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
                     ["exp_cfg"] = config.Get("bar"),
                     ["exp_secret"] = config.GetSecret("buzz"),
                 };
-                return Task.FromResult((Dictionary<string, object?>?)result);
             };
 
             var stackName = $"int_test{GetTestSuffix()}";

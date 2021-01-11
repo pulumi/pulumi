@@ -1,6 +1,6 @@
 ﻿using System;
-using System.Collections.Immutable;
 using System.Threading.Tasks;
+using Pulumi.X.Automation;
 using Pulumi.X.Automation.Runtime;
 
 namespace Pulumi
@@ -40,11 +40,7 @@ namespace Pulumi
             _logger = new Logger(this, Engine);
         }
 
-        internal Task<int> RunInstanceAsync(Action action)
-            => RunAsync(() =>
-            {
-                action();
-                return ImmutableDictionary<string, object?>.Empty;
-            });
+        internal Task<int> RunInstanceAsync(PulumiFn func)
+            => RunAsync(() => func());
     }
 }
