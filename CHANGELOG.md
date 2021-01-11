@@ -13,6 +13,9 @@ CHANGELOG
 - Fix silent failures when assets are missing.
   [#6075](https://github.com/pulumi/pulumi/pull/6075)
 
+- [sdk/dotnet] Moved urn value retrieval into if statement for MockMonitor
+  [#6081](https://github.com/pulumi/pulumi/pull/6081)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
