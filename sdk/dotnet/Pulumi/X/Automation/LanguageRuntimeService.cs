@@ -66,7 +66,7 @@ namespace Pulumi.X.Automation
                 var args = request.Args;
                 var engineAddr = args != null && args.Any() ? args[0] : "";
 
-                var runInfo = new RuntimeSettings(
+                var settings = new RuntimeSettings(
                     engineAddr,
                     request.MonitorAddress,
                     request.Config,
@@ -75,8 +75,7 @@ namespace Pulumi.X.Automation
                     request.Parallel,
                     request.DryRun);
 
-                var deployment = new Deployment(runInfo);
-                await deployment.RunInstanceAsync(this._program);
+                await Deployment.RunInlineAsync(settings, this._program);
             }
             catch (Exception e) // Use more specific exceptions
             {

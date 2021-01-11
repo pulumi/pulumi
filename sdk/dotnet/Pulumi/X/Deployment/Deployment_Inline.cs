@@ -40,7 +40,24 @@ namespace Pulumi
             _logger = new Logger(this, Engine);
         }
 
-        internal Task<int> RunInstanceAsync(PulumiFn func)
-            => RunAsync(() => func());
+        internal static Task<int> RunInlineAsync(RuntimeSettings settings, PulumiFn func)
+            => CreateInlineRunner(settings).RunAsync(() => Task.FromResult(func()), null);
+
+        private static IRunner CreateInlineRunner(RuntimeSettings? settings)
+        {
+            // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
+
+            Serilog.Log.Debug("Deployment.RunInline called.");
+            lock (_instanceLock)
+            {
+                if (_instance != null)
+                    throw new NotSupportedException("Deployment.Run can only be called a single time.");
+
+                Serilog.Log.Debug("Creating new inline Deployment.");
+                var deployment = new Deployment(settings);
+                Instance = new DeploymentInstance(deployment);
+                return deployment._runner;
+            }
+        }
     }
 }

@@ -245,15 +245,15 @@ namespace Pulumi.X.Automation
                 }
             }
 
-            InlineProgramSession? inlineSession = null;
+            InlineLanguageHost? inlineHost = null;
             try
             {
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineSession = new InlineProgramSession(program, cancellationToken);
-                    await inlineSession.StartAsync().ConfigureAwait(false);
-                    var port = await inlineSession.GetPortAsync().ConfigureAwait(false);
+                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    await inlineHost.StartAsync().ConfigureAwait(false);
+                    var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
                 }
 
@@ -272,9 +272,9 @@ namespace Pulumi.X.Automation
             }
             finally
             {
-                if (inlineSession != null)
+                if (inlineHost != null)
                 {
-                    await inlineSession.DisposeAsync().ConfigureAwait(false);
+                    await inlineHost.DisposeAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -337,15 +337,15 @@ namespace Pulumi.X.Automation
                 }
             }
 
-            InlineProgramSession? inlineSession = null;
+            InlineLanguageHost? inlineHost = null;
             try
             {
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineSession = new InlineProgramSession(program, cancellationToken);
-                    await inlineSession.StartAsync().ConfigureAwait(false);
-                    var port = await inlineSession.GetPortAsync().ConfigureAwait(false);
+                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    await inlineHost.StartAsync().ConfigureAwait(false);
+                    var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
                 }
 
@@ -362,9 +362,9 @@ namespace Pulumi.X.Automation
             }
             finally
             {
-                if (inlineSession != null)
+                if (inlineHost != null)
                 {
-                    await inlineSession.DisposeAsync().ConfigureAwait(false);
+                    await inlineHost.DisposeAsync().ConfigureAwait(false);
                 }
             }
         }
@@ -537,14 +537,14 @@ namespace Pulumi.X.Automation
             CreateOrSelect
         }
 
-        private class InlineProgramSession : IAsyncDisposable
+        private class InlineLanguageHost : IAsyncDisposable
         {
             private readonly TaskCompletionSource<int> _portTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             private readonly CancellationToken _cancelToken;
             private readonly IHost _host;
             private readonly CancellationTokenRegistration _portRegistration;
 
-            public InlineProgramSession(PulumiFn program, CancellationToken cancellationToken)
+            public InlineLanguageHost(PulumiFn program, CancellationToken cancellationToken)
             {
                 this._cancelToken = cancellationToken;
                 this._host = Host.CreateDefaultBuilder()
