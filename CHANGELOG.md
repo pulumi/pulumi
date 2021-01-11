@@ -26,6 +26,9 @@ CHANGELOG
   determine if an output has a secret within the output.
   [#6092](https://github.com/pulumi/pulumi/pull/6092)
 
+- [sdk/dotnet] Fix looking up empty version in `ResourcePackages.TryGetResourceType`.
+  [#6084](https://github.com/pulumi/pulumi/pull/6084)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
