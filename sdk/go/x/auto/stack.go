@@ -644,9 +644,9 @@ func (ur *UpResult) GetPermalink() (string, error) {
 // GetPermalink returns the permalink URL in the Pulumi Console for the update
 // or refresh operation. This will error for alternate, local backends.
 func GetPermalink(stdout string) (string, error) {
-	const permalinkSearchStr = "View Live: "
-	var startRegex = regexp.MustCompile(permalinkSearchStr)
-	var endRegex = regexp.MustCompile("\n")
+	const permalinkSearchStr = "View Live: |Permalink: "
+	startRegex := regexp.MustCompile(permalinkSearchStr)
+	endRegex := regexp.MustCompile("\n")
 
 	// Find the start of the permalink in the output.
 	start := startRegex.FindStringIndex(stdout)
