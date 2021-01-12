@@ -18,6 +18,14 @@ CHANGELOG
 - [sdk/dotnet] Moved urn value retrieval into if statement for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
 
+- [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value.
+  [#6092](https://github.com/pulumi/pulumi/pull/6092)
+
+- [sdk/dotnet] Added `Pulumi.Output.IsSecretAsync` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6092](https://github.com/pulumi/pulumi/pull/6092)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.

@@ -28,6 +28,22 @@ namespace Pulumi
             => Output<T>.CreateSecret(value);
 
         /// <summary>
+        /// Returns a new <see cref="Output{T}"/> which is a copy of the existing output but marked as
+        /// a non-secret. The original output is not modified in any way.
+        /// </summary>
+        public static Output<T> Unsecret<T>(Output<T> output)
+            => output.WithIsSecret(Task.FromResult(false));
+
+        /// <summary>
+        /// Retrieves the secretness status of the given output.
+        /// </summary>
+        public static async Task<bool> IsSecretAsync<T>(Output<T> output)
+        {
+            var dataTask = await output.DataTask.ConfigureAwait(false);
+            return dataTask.IsSecret;
+        }
+
+        /// <summary>
         /// Combines all the <see cref="Input{T}"/> values in <paramref name="inputs"/>
         /// into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>
         /// containing all their underlying values.  If any of the <see cref="Input{T}"/>s are not
