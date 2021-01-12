@@ -16,6 +16,7 @@
 package pulumi
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -68,6 +69,9 @@ func (testInputs) ElementType() reflect.Type {
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
 	// Create interesting inputs.
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
@@ -107,7 +111,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 		assert.Equal(t, 0, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
-		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 		assert.False(t, secret)
 		if assert.Nil(t, err) {
 			if assert.NotNil(t, resV) {
@@ -264,6 +268,9 @@ type testResource struct {
 }
 
 func TestResourceState(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	var theResource testResource
 	state := makeResourceState("", "", &theResource, nil, nil, nil)
 
@@ -297,7 +304,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(false, nil, nil, "foo", "bar", s, nil)
+	state.resolve(ctx, false, nil, nil, "foo", "bar", s, nil)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),
@@ -351,7 +358,7 @@ func TestResourceState(t *testing.T) {
 	}, pdeps)
 	assert.Equal(t, []URN{"foo"}, deps)
 
-	res, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+	res, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 	assert.Nil(t, err)
 	assert.False(t, secret)
 	assert.Equal(t, map[string]interface{}{
@@ -384,27 +391,33 @@ func TestResourceState(t *testing.T) {
 }
 
 func TestUnmarshalSecret(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
-	_, isSecret, err := unmarshalPropertyValue(secret)
+	_, isSecret, err := unmarshalPropertyValue(ctx, secret)
 	assert.Nil(t, err)
 	assert.True(t, isSecret)
 
 	var sv string
-	isSecret, err = unmarshalOutput(secret, reflect.ValueOf(&sv).Elem())
+	isSecret, err = unmarshalOutput(ctx, secret, reflect.ValueOf(&sv).Elem())
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", sv)
 	assert.True(t, isSecret)
 }
 
 func TestUnmarshalInternalMapValue(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	m := make(map[string]interface{})
 	m["foo"] = "bar"
 	m["__default"] = "buzz"
 	pmap := resource.NewObjectProperty(resource.NewPropertyMapFromMap(m))
 
 	var mv map[string]string
-	_, err := unmarshalOutput(pmap, reflect.ValueOf(&mv).Elem())
+	_, err = unmarshalOutput(ctx, pmap, reflect.ValueOf(&mv).Elem())
 	assert.Nil(t, err)
 	val, ok := mv["foo"]
 	assert.True(t, ok)
@@ -417,6 +430,9 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 // its on-the-wire gRPC format succeeds including a nested secret property.
 func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	// Create interesting inputs.
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
@@ -456,7 +472,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		assert.Equal(t, 0, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
-		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 		assert.True(t, secret)
 		if assert.Nil(t, err) {
 			if assert.NotNil(t, resV) {
