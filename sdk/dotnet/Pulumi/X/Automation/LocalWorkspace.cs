@@ -23,6 +23,9 @@ namespace Pulumi.X.Automation
     /// for Project and Stack settings.Modifying ProjectSettings will
     /// alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.{stack}.yaml file.
     /// This is identical to the behavior of Pulumi CLI driven workspaces.
+    /// <para/>
+    /// If not provided a working directory - causing LocalWorkspace to create a temp directory,
+    /// than the temp directory will be cleaned up on <see cref="Dispose"/>.
     /// </summary>
     public sealed class LocalWorkspace : Workspace
     {
@@ -315,6 +318,7 @@ namespace Pulumi.X.Automation
 
             this.WorkDir = dir;
 
+            // these are after working dir is set because they start immediately
             if (options?.ProjectSettings != null)
                 readyTasks.Add(this.SaveProjectSettingsAsync(options.ProjectSettings, cancellationToken));
 

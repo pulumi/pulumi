@@ -40,11 +40,19 @@ namespace Pulumi.X.Automation
 
         /// <summary>
         /// The settings object for the current project.
+        /// <para/>
+        /// If provided when initializing <see cref="LocalWorkspace"/> a project settings
+        /// file will be written to when the workspace is initialized via
+        /// <see cref="LocalWorkspace.SaveProjectSettingsAsync(ProjectSettings, System.Threading.CancellationToken)"/>.
         /// </summary>
         public ProjectSettings? ProjectSettings { get; set; }
 
         /// <summary>
         /// A map of Stack names and corresponding settings objects.
+        /// <para/>
+        /// If provided when initializing <see cref="LocalWorkspace"/> stack settings
+        /// file(s) will be written to when the workspace is initialized via
+        /// <see cref="LocalWorkspace.SaveStackSettingsAsync(string, Automation.StackSettings, System.Threading.CancellationToken)"/>.
         /// </summary>
         public IDictionary<string, StackSettings>? StackSettings { get; set; }
     }

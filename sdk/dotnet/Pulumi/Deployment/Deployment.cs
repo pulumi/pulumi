@@ -32,7 +32,7 @@ namespace Pulumi
     /// </summary>
     public sealed partial class Deployment : IDeploymentInternal
     {
-        private static AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
+        private static readonly AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
         private static readonly object _instanceLock = new object();
 
         /// <summary>

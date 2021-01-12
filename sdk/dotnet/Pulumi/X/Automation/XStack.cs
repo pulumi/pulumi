@@ -20,6 +20,17 @@ using Pulumi.X.Automation.Serialization;
 
 namespace Pulumi.X.Automation
 {
+    /// <summary>
+    /// <see cref="XStack"/> is an isolated, independently configurable instance of a
+    /// Pulumi program. <see cref="XStack"/> exposes methods for the full pulumi lifecycle
+    /// (up/preview/refresh/destroy), as well as managing configuration.
+    /// <para/>
+    /// Multiple stacks are commonly used to denote different phases of development
+    /// (such as development, staging, and production) or feature branches (such as
+    /// feature-x-dev, jane-feature-x-dev).
+    /// <para/>
+    /// Will dispose the <see cref="Workspace"/> on <see cref="Dispose"/>.
+    /// </summary>
     public sealed class XStack : IDisposable // TODO: come up with a name for this
     {
         private readonly Task _readyTask;
