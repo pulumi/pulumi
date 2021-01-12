@@ -363,7 +363,7 @@ namespace Pulumi.Tests.X.Automation
             var stackNameTwo = $"int_test2_{GetTestSuffix()}";
 
             var hasReachedSemaphoreOne = false;
-            using var semaphoreOne = new SemaphoreSlim(0, 2);
+            using var semaphoreOne = new SemaphoreSlim(0, 1);
 
             PulumiFn programOne = () =>
             {
@@ -375,9 +375,6 @@ namespace Pulumi.Tests.X.Automation
                 Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameOne, Deployment.Instance.StackName);
                 hasReachedSemaphoreOne = true;
-                semaphoreOne.Wait();
-                Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
-                Assert.Equal(stackNameOne, Deployment.Instance.StackName);
                 semaphoreOne.Wait();
                 Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameOne, Deployment.Instance.StackName);
@@ -461,10 +458,9 @@ namespace Pulumi.Tests.X.Automation
 
             // alternately allow them to progress
             semaphoreOne.Release();
-            semaphoreTwo.Release();
-            semaphoreOne.Release();
-
             var upResultOne = await upTaskOne;
+            
+            semaphoreTwo.Release();
             var upResultTwo = await upTaskTwo;
 
             AssertUpResult(upResultOne, "1");
