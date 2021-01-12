@@ -393,12 +393,12 @@ func marshalInputAndDetermineSecret(v interface{},
 	}
 }
 
-func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error) {
+func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {
 	switch {
 	case v.IsComputed() || v.IsOutput():
 		return nil, false, nil
 	case v.IsSecret():
-		sv, _, err := unmarshalPropertyValue(v.SecretValue().Element)
+		sv, _, err := unmarshalPropertyValue(ctx, v.SecretValue().Element)
 		if err != nil {
 			return nil, false, err
 		}
@@ -408,7 +408,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		rv := make([]interface{}, len(arr))
 		secret := false
 		for i, e := range arr {
-			ev, esecret, err := unmarshalPropertyValue(e)
+			ev, esecret, err := unmarshalPropertyValue(ctx, e)
 			secret = secret || esecret
 			if err != nil {
 				return nil, false, err
@@ -420,7 +420,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		m := make(map[string]interface{})
 		secret := false
 		for k, e := range v.ObjectValue() {
-			ev, esecret, err := unmarshalPropertyValue(e)
+			ev, esecret, err := unmarshalPropertyValue(ctx, e)
 			secret = secret || esecret
 			if err != nil {
 				return nil, false, err
@@ -446,7 +446,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		case archive.IsAssets():
 			as := make(map[string]interface{})
 			for k, v := range archive.Assets {
-				a, asecret, err := unmarshalPropertyValue(resource.NewPropertyValue(v))
+				a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
 				secret = secret || asecret
 				if err != nil {
 					return nil, false, err
@@ -488,7 +488,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 				return nil, false, err
 			}
 			resourcePackage := resourcePackageV.(ResourcePackage)
-			resource, err = resourcePackage.ConstructProvider(resName, string(resType), string(ref.URN))
+			resource, err = resourcePackage.ConstructProvider(ctx, resName, string(resType), string(ref.URN))
 		} else {
 			pkgName := resType.Package().String()
 			modName := resType.Module().String()
@@ -498,7 +498,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 				return nil, false, err
 			}
 			resourceModule := resourceModuleV.(ResourceModule)
-			resource, err = resourceModule.Construct(resName, string(resType), string(ref.URN))
+			resource, err = resourceModule.Construct(ctx, resName, string(resType), string(ref.URN))
 		}
 		if err != nil {
 			return nil, false, err
@@ -511,7 +511,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 
 // unmarshalOutput unmarshals a single output variable into its runtime representation.
 // returning a bool that indicates secretness
-func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error) {
+func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {
 	contract.Assert(dest.CanSet())
 
 	// Check for nils and unknowns. The destination will be left with the zero value.
@@ -533,7 +533,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 			return false, fmt.Errorf("expected a %s, got an asset", dest.Type())
 		}
 
-		asset, secret, err := unmarshalPropertyValue(v)
+		asset, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
@@ -544,19 +544,19 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 			return false, fmt.Errorf("expected a %s, got an archive", dest.Type())
 		}
 
-		archive, secret, err := unmarshalPropertyValue(v)
+		archive, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
 		dest.Set(reflect.ValueOf(archive))
 		return secret, nil
 	case v.IsSecret():
-		if _, err := unmarshalOutput(v.SecretValue().Element, dest); err != nil {
+		if _, err := unmarshalOutput(ctx, v.SecretValue().Element, dest); err != nil {
 			return false, err
 		}
 		return true, nil
 	case v.IsResourceReference():
-		res, secret, err := unmarshalPropertyValue(v)
+		res, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
@@ -608,7 +608,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		slice := reflect.MakeSlice(dest.Type(), len(arr), len(arr))
 		secret := false
 		for i, e := range arr {
-			isecret, err := unmarshalOutput(e, slice.Index(i))
+			isecret, err := unmarshalOutput(ctx, e, slice.Index(i))
 			if err != nil {
 				return false, err
 			}
@@ -634,7 +634,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 				continue
 			}
 			elem := reflect.New(elemType).Elem()
-			esecret, err := unmarshalOutput(e, elem)
+			esecret, err := unmarshalOutput(ctx, e, elem)
 			if err != nil {
 				return false, err
 			}
@@ -653,7 +653,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		}
 
 		// If we're unmarshaling into the empty interface type, use the property type as the type of the result.
-		result, secret, err := unmarshalPropertyValue(v)
+		result, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
@@ -683,7 +683,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 				continue
 			}
 
-			osecret, err := unmarshalOutput(e, fieldV)
+			osecret, err := unmarshalOutput(ctx, e, fieldV)
 			secret = secret || osecret
 			if err != nil {
 				return false, err
@@ -761,12 +761,12 @@ func (vm *versionedMap) Store(key string, value Versioned) error {
 
 type ResourcePackage interface {
 	Versioned
-	ConstructProvider(name, typ string, urn string) (ProviderResource, error)
+	ConstructProvider(ctx *Context, name, typ, urn string) (ProviderResource, error)
 }
 
 type ResourceModule interface {
 	Versioned
-	Construct(name, typ string, urn string) (Resource, error)
+	Construct(ctx *Context, name, typ, urn string) (Resource, error)
 }
 
 var resourcePackages versionedMap

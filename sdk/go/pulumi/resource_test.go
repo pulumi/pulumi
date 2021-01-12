@@ -24,7 +24,7 @@ type testResourcePackage struct {
 	version semver.Version
 }
 
-func (rp *testResourcePackage) ConstructProvider(name, typ string, urn string) (ProviderResource, error) {
+func (rp *testResourcePackage) ConstructProvider(ctx *Context, name, typ, urn string) (ProviderResource, error) {
 	return &testProv{}, nil
 }
 
@@ -36,7 +36,7 @@ type testResourceModule struct {
 	version semver.Version
 }
 
-func (rm *testResourceModule) Construct(name, typ string, urn string) (Resource, error) {
+func (rm *testResourceModule) Construct(ctx *Context, name, typ, urn string) (Resource, error) {
 	return &testRes{}, nil
 }
 
