@@ -100,7 +100,10 @@ class UpdateSummary:
             self.config[key] = ConfigValue(**config[key])
 
     def __repr__(self):
-        return f"UpdateSummary(result={self.result!r}, version={self.version!r}, start_time='{self.start_time!s} UTC', end_time='{self.end_time!s} UTC')"
+        return f"UpdateSummary(result={self.result!r}, version={self.version!r}, " \
+               f"start_time={self.start_time!r}, end_time={self.end_time!r}, kind={self.kind!r}, " \
+               f"message={self.message!r}, environment={self.environment!r}, " \
+               f"resource_changes={self.resource_changes!r}, config={self.config!r}, Deployment={self.Deployment!r})"
 
 
 class BaseResult:
@@ -114,7 +117,7 @@ class BaseResult:
         self.summary = summary
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(result={self.summary.result!r}, start_time='{self.summary.start_time!s} UTC', end_time='{self.summary.end_time!s} UTC')"
+        return f"{self.__class__.__name__}(summary={self.summary!r}, stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class UpResult(BaseResult):
@@ -123,6 +126,10 @@ class UpResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
         super().__init__(stdout, stderr, summary)
         self.outputs = outputs
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(outputs={self.outputs!r}, summary={self.summary!r}, " \
+               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class PreviewResult(BaseResult):
@@ -185,6 +192,14 @@ class Stack:
     def __init__(self, name: str, workspace: Workspace, mode: StackInitMode) -> None:
         self.name = name
         self.workspace = workspace
+        self._mode = mode
+
+        if not isinstance(name, str):
+            raise TypeError("name must be of type 'str'")
+        if not isinstance(workspace, Workspace):
+            raise TypeError("workspace must be of type 'Workspace'")
+        if not isinstance(mode, StackInitMode):
+            raise TypeError("mode must be of type 'StackInitMode'")
 
         if mode is StackInitMode.CREATE:
             workspace.create_stack(name)
@@ -197,7 +212,10 @@ class Stack:
                 workspace.select_stack(name)
 
     def __repr__(self):
-        return f"Stack(stack_name={self.name!r})"
+        return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r}, mode={self._mode!r})"
+
+    def __str__(self):
+        return f"Stack(stack_name={self.name!r}, workspace={self.workspace!r})"
 
     def up(self,
            parallel: Optional[int] = None,

@@ -54,6 +54,7 @@ class LocalWorkspaceOptions:
         self.project_settings = project_settings
         self.stack_settings = stack_settings
 
+
 class LocalWorkspace(Workspace):
     """
     LocalWorkspace is a default implementation of the Workspace interface.
@@ -87,10 +88,9 @@ class LocalWorkspace(Workspace):
                 self.save_stack_settings(key, stack_settings[key])
 
     def __repr__(self):
-        work_dir = f"work_dir={self.work_dir!r}" if self.work_dir else ""
-        program = f"program={self.program.__name__}" if self.program else ""
-
-        return f"{self.__class__.__name__}({work_dir if not self.program else ''}{program})"
+        return f"{self.__class__.__name__}(work_dir={self.work_dir!r}, program={self.program.__name__}, " \
+               f"pulumi_home={self.pulumi_home!r}, env_vars={self.env_vars!r}, " \
+               f"secrets_provider={self.secrets_provider})"
 
     def project_settings(self) -> ProjectSettings:
         for ext in _setting_extensions:
@@ -270,7 +270,6 @@ def _is_inline_program(**kwargs) -> bool:
 
 
 StackInitializer = Callable[[str, Workspace], Stack]
-
 
 
 def create_stack(stack_name: str,
