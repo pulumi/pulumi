@@ -98,6 +98,7 @@ func currentBackend(opts display.Options) (backend.Backend, error) {
 		return nil, errors.Wrapf(err, "could not get cloud url")
 	}
 
+	fmt.Printf("currentBackend\n")
 	if filestate.IsFileStateBackendURL(url) {
 		return filestate.New(cmdutil.Diag(), url)
 	}

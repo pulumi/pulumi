@@ -24,20 +24,11 @@ import (
 	"strings"
 	"time"
 
-	uuid "github.com/gofrs/uuid"
-
 	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
@@ -69,135 +60,8 @@ func (l *lockContent) String() string {
 	return fmt.Sprintf("%v@%v (pid %v) at %v", l.Username, l.Hostname, l.Pid, l.Timestamp.Format(time.RFC3339))
 }
 
-type lockableBackend struct {
-	lb     *localBackend
-	lockID string
-}
-
-func NewLockableBackend(lb *localBackend) (Backend, error) {
-	id, err := uuid.NewV4()
-	if err != nil {
-		return nil, err
-	}
-	return &lockableBackend{lb: lb, lockID: id.String()}, nil
-}
-
-func (b *lockableBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
-	opts interface{}) (backend.Stack, error) {
-	err := b.Lock(stackRef)
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(stackRef)
-	return b.lb.CreateStack(ctx, stackRef, opts)
-}
-
-func (b *lockableBackend) DoesProjectExist(ctx context.Context, name string) (bool, error) {
-	return b.lb.DoesProjectExist(ctx, name)
-}
-
-func (b *lockableBackend) RemoveStack(ctx context.Context, stack backend.Stack,
-	force bool) (bool, error) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return false, err
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.RemoveStack(ctx, stack, force)
-}
-
-func (b *lockableBackend) RenameStack(ctx context.Context, stack backend.Stack,
-	newName tokens.QName) (backend.StackReference, error) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.RenameStack(ctx, stack, newName)
-}
-
-func (b *lockableBackend) Preview(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.Preview(ctx, stack, op)
-}
-
-func (b *lockableBackend) Refresh(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.Refresh(ctx, stack, op)
-}
-
-func (b *lockableBackend) Destroy(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.Destroy(ctx, stack, op)
-}
-
-func (b *lockableBackend) ExportDeployment(ctx context.Context,
-	stack backend.Stack) (*apitype.UntypedDeployment, error) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, err
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.ExportDeployment(ctx, stack)
-}
-
-func (b *lockableBackend) ImportDeployment(ctx context.Context, stack backend.Stack,
-	deployment *apitype.UntypedDeployment) error {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return err
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.ImportDeployment(ctx, stack, deployment)
-}
-
-func (b *lockableBackend) Import(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.Import(ctx, stack, op, imports)
-}
-
-func (b *lockableBackend) Update(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return nil, result.FromError(err)
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.Update(ctx, stack, op)
-}
-
-func (b *lockableBackend) UpdateStackTags(ctx context.Context,
-	stack backend.Stack, tags map[apitype.StackTagName]string) error {
-	err := b.Lock(stack.Ref())
-	if err != nil {
-		return err
-	}
-	defer b.Unlock(stack.Ref())
-	return b.lb.UpdateStackTags(ctx, stack, tags)
-}
-
-func (b *lockableBackend) checkForLock(ctxt context.Context, stackRef backend.StackReference) error {
-	allFiles, err := listBucket(b.lb.bucket, b.lockDir())
+func (b *localBackend) checkForLock(ctxt context.Context, stackRef backend.StackReference) error {
+	allFiles, err := listBucket(b.bucket, b.lockDir())
 	if err != nil {
 		return err
 	}
@@ -218,7 +82,7 @@ func (b *lockableBackend) checkForLock(ctxt context.Context, stackRef backend.St
 			"process(es) to end or manually delete the lock file(s).", len(lockKeys))
 
 		for _, lock := range lockKeys {
-			content, err := b.lb.bucket.ReadAll(ctxt, lock)
+			content, err := b.bucket.ReadAll(ctxt, lock)
 			if err != nil {
 				return err
 			}
@@ -229,7 +93,7 @@ func (b *lockableBackend) checkForLock(ctxt context.Context, stackRef backend.St
 			}
 
 			// this is kind of weird but necessary because url is a string and not a url.URL
-			url := b.lb.url + filepath.Join("/", lock)
+			url := b.url + filepath.Join("/", lock)
 			errorString = errorString + fmt.Sprintf("\n  %v: created by %v", url, l.String())
 		}
 
@@ -238,10 +102,10 @@ func (b *lockableBackend) checkForLock(ctxt context.Context, stackRef backend.St
 	return nil
 }
 
-func (b *lockableBackend) checkForLockRace(stackRef backend.StackReference) error {
+func (b *localBackend) checkForLockRace(stackRef backend.StackReference) error {
 	// Check the locks to make sure ONLY our lock exists. If we find multiple locks then we know
 	// we had a race condition and we should clean up and abort
-	allFiles, err := listBucket(b.lb.bucket, b.lockDir())
+	allFiles, err := listBucket(b.bucket, b.lockDir())
 	if err != nil {
 		return err
 	}
@@ -256,7 +120,8 @@ func (b *lockableBackend) checkForLockRace(stackRef backend.StackReference) erro
 	return nil
 }
 
-func (b *lockableBackend) Lock(stackRef backend.StackReference) error {
+func (b *localBackend) Lock(stackRef backend.StackReference) error {
+	fmt.Printf("Locking %s\n", stackRef.String())
 	ctxt := context.TODO()
 
 	err := b.checkForLock(ctxt, stackRef)
@@ -274,7 +139,7 @@ func (b *lockableBackend) Lock(stackRef backend.StackReference) error {
 		return err
 	}
 
-	err = b.lb.bucket.WriteAll(ctxt, b.lockPath(stackRef.Name()), content, nil)
+	err = b.bucket.WriteAll(ctxt, b.lockPath(stackRef.Name()), content, nil)
 	if err != nil {
 		return err
 	}
@@ -288,114 +153,29 @@ func (b *lockableBackend) Lock(stackRef backend.StackReference) error {
 	return nil
 }
 
-func (b *lockableBackend) Unlock(stackRef backend.StackReference) {
-	err := b.lb.bucket.Delete(context.TODO(), b.lockPath(stackRef.Name()))
+func (b *localBackend) Unlock(stackRef backend.StackReference) {
+	err := b.bucket.Delete(context.TODO(), b.lockPath(stackRef.Name()))
 	if err != nil {
 		logging.Errorf("there was a problem deleting the lock at %v, things may have been left in a bad "+
 			"state and a manual clean up may be required: %v",
-			filepath.Join(b.lb.url, b.lockPath(stackRef.Name())), err)
+			filepath.Join(b.url, b.lockPath(stackRef.Name())), err)
 	}
 }
 
-func (b *lockableBackend) isLockForThisStack(file string, stackRef backend.StackReference) bool {
+func (b *localBackend) isLockForThisStack(file string, stackRef backend.StackReference) bool {
 	return strings.HasPrefix(file, b.lockPrefix(stackRef.Name()))
 }
 
-func (b *lockableBackend) lockDir() string {
+func (b *localBackend) lockDir() string {
 	return filepath.Join(workspace.BookkeepingDir, workspace.LockDir)
 }
 
-func (b *lockableBackend) lockPrefix(stack tokens.QName) string {
+func (b *localBackend) lockPrefix(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
 	return filepath.Join(b.lockDir(), fsutil.QnamePath(stack)+".")
 }
 
-func (b *lockableBackend) lockPath(stack tokens.QName) string {
+func (b *localBackend) lockPath(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
 	return b.lockPrefix(stack) + b.lockID + ".json"
-}
-
-func (b *lockableBackend) ListStacks(ctx context.Context,
-	projectFilter backend.ListStacksFilter) ([]backend.StackSummary, error) {
-	return b.lb.ListStacks(ctx, projectFilter)
-}
-
-func (b *lockableBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
-	return b.lb.ListPolicyGroups(ctx, orgName)
-}
-
-func (b *lockableBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
-	return b.lb.ListPolicyPacks(ctx, orgName)
-}
-
-func (b *lockableBackend) Query(ctx context.Context,
-	op backend.QueryOperation) result.Result {
-	return b.lb.Query(ctx, op)
-}
-
-func (b *lockableBackend) GetHistory(ctx context.Context,
-	stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
-	return b.lb.GetHistory(ctx, stackRef)
-}
-
-func (b *lockableBackend) GetLogs(ctx context.Context, stack backend.Stack,
-	cfg backend.StackConfiguration,
-	query operations.LogQuery) ([]operations.LogEntry, error) {
-	return b.lb.GetLogs(ctx, stack, cfg, query)
-}
-
-func (b *lockableBackend) GetLatestConfiguration(ctx context.Context,
-	stack backend.Stack) (config.Map, error) {
-	return b.lb.GetLatestConfiguration(ctx, stack)
-}
-
-func (b *lockableBackend) GetStackTags(ctx context.Context,
-	stack backend.Stack) (map[apitype.StackTagName]string, error) {
-	return b.lb.GetStackTags(ctx, stack)
-}
-
-func (b *lockableBackend) Logout() error {
-	return b.lb.Logout()
-}
-
-func (b *lockableBackend) CurrentUser() (string, error) {
-	return b.lb.CurrentUser()
-}
-
-func (b *lockableBackend) GetPolicyPack(ctx context.Context, policyPack string,
-	d diag.Sink) (backend.PolicyPack, error) {
-	return b.lb.GetPolicyPack(ctx, policyPack, d)
-}
-
-func (b *lockableBackend) Name() string {
-	return b.lb.Name()
-}
-
-func (b *lockableBackend) URL() string {
-	return b.lb.URL()
-}
-
-func (b *lockableBackend) ParseStackReference(stackRefName string) (backend.StackReference, error) {
-	return b.lb.ParseStackReference(stackRefName)
-}
-
-func (b *lockableBackend) GetStack(ctx context.Context,
-	stackRef backend.StackReference) (backend.Stack, error) {
-	return b.lb.GetStack(ctx, stackRef)
-}
-
-func (b *lockableBackend) SupportsOrganizations() bool {
-	return b.lb.SupportsOrganizations()
-}
-
-func (b *lockableBackend) ValidateStackName(stackName string) error {
-	return b.lb.ValidateStackName(stackName)
-}
-
-func (b *lockableBackend) Watch(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return b.lb.Watch(ctx, stack, op)
-}
-
-func (b *lockableBackend) local() {
 }
