@@ -14,6 +14,9 @@ CHANGELOG
 - [CLI] Add `version` to the stack history output to be able to
   correlate events back to the Pulumi SaaS
   [#6063](https://github.com/pulumi/pulumi/pull/6063)
+  
+- Fix a typo in the unit testing mocks to get the outputs while registering them
+  [#6040](https://github.com/pulumi/pulumi/pull/6040)
 
 - [sdk/dotnet] Moved urn value retrieval into if statement for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
