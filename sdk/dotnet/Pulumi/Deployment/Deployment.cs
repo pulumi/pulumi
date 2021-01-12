@@ -1,7 +1,7 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Testing;
 
@@ -32,7 +32,7 @@ namespace Pulumi
     /// </summary>
     public sealed partial class Deployment : IDeploymentInternal
     {
-        private static DeploymentInstance? _instance;
+        private static AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
         private static readonly object _instanceLock = new object();
 
         /// <summary>
@@ -41,8 +41,8 @@ namespace Pulumi
         /// </summary>
         public static DeploymentInstance Instance
         {
-            get => _instance ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
-            internal set => _instance = value;
+            get => _instance.Value ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
+            internal set => _instance.Value = value;
         }
 
         internal static IDeploymentInternal InternalInstance

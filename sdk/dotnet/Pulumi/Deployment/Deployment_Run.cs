@@ -121,7 +121,7 @@ namespace Pulumi
             Deployment deployment;
             lock (_instanceLock)
             {
-                if (_instance != null)
+                if (_instance.Value != null)
                     throw new NotSupportedException($"Multiple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
 
                 deployment = new Deployment(engine, monitor, options);
@@ -142,7 +142,7 @@ namespace Pulumi
             {
                 lock (_instanceLock)
                 {
-                    _instance = null;
+                    _instance.Value = null;
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace Pulumi
             Serilog.Log.Debug("Deployment.Run called.");
             lock (_instanceLock)
             {
-                if (_instance != null)
+                if (_instance.Value != null)
                     throw new NotSupportedException("Deployment.Run can only be called a single time.");
 
                 Serilog.Log.Debug("Creating new Deployment.");

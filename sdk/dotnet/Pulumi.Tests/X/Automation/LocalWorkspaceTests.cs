@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.X.Automation;
 using Pulumi.X.Automation.Commands.Exceptions;
@@ -248,6 +249,8 @@ namespace Pulumi.Tests.X.Automation
 
             // pulumi up
             var upResult = await stack.UpAsync();
+            Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+            Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
             Assert.Equal(3, upResult.Outputs.Count);
 
             // exp_static
@@ -315,6 +318,8 @@ namespace Pulumi.Tests.X.Automation
 
             // pulumi up
             var upResult = await stack.UpAsync();
+            Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+            Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
             Assert.Equal(3, upResult.Outputs.Count);
 
             // exp_static
@@ -347,6 +352,145 @@ namespace Pulumi.Tests.X.Automation
             Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
 
             await stack.Workspace.RemoveStackAsync(stackName);
+        }
+
+        [Fact]
+        public async Task InlineProgramAllowsParallelExecution()
+        {
+            const string projectNameOne = "parallel_inline_node1";
+            const string projectNameTwo = "parallel_inline_node2";
+            var stackNameOne = $"int_test1_{GetTestSuffix()}";
+            var stackNameTwo = $"int_test2_{GetTestSuffix()}";
+
+            var hasReachedSemaphoreOne = false;
+            using var semaphoreOne = new SemaphoreSlim(0, 2);
+
+            PulumiFn programOne = () =>
+            {
+                // we want to assert before and after each interaction with
+                // the semaphore because we want to alternately stutter
+                // programOne and programTwo so we can assert they aren't
+                // touching eachothers instances
+                var config = new Pulumi.Config();
+                Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
+                Assert.Equal(stackNameOne, Deployment.Instance.StackName);
+                hasReachedSemaphoreOne = true;
+                semaphoreOne.Wait();
+                Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
+                Assert.Equal(stackNameOne, Deployment.Instance.StackName);
+                semaphoreOne.Wait();
+                Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
+                Assert.Equal(stackNameOne, Deployment.Instance.StackName);
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "1",
+                    ["exp_cfg"] = config.Get("bar"),
+                    ["exp_secret"] = config.GetSecret("buzz"),
+                };
+            };
+
+            var hasReachedSemaphoreTwo = false;
+            using var semaphoreTwo = new SemaphoreSlim(0, 1);
+
+            PulumiFn programTwo = () =>
+            {
+                var config = new Pulumi.Config();
+                Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
+                Assert.Equal(stackNameTwo, Deployment.Instance.StackName);
+                hasReachedSemaphoreTwo = true;
+                semaphoreTwo.Wait();
+                Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
+                Assert.Equal(stackNameTwo, Deployment.Instance.StackName);
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "2",
+                    ["exp_cfg"] = config.Get("bar"),
+                    ["exp_secret"] = config.GetSecret("buzz"),
+                };
+            };
+
+            using var stackOne = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameOne, stackNameOne, programOne)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            using var stackTwo = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameTwo, stackNameTwo, programTwo)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            await stackOne.SetConfigAsync(new Dictionary<string, ConfigValue>()
+            {
+                ["bar"] = new ConfigValue("1"),
+                ["buzz"] = new ConfigValue("1", isSecret: true),
+            });
+
+            await stackTwo.SetConfigAsync(new Dictionary<string, ConfigValue>()
+            {
+                ["bar"] = new ConfigValue("2"),
+                ["buzz"] = new ConfigValue("2", isSecret: true),
+            });
+
+            var upTaskOne = stackOne.UpAsync();
+            // wait until we hit semaphore one
+            while (!hasReachedSemaphoreOne)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                if (upTaskOne.IsFaulted)
+                    throw upTaskOne.Exception!;
+                else if (upTaskOne.IsCompleted)
+                    throw new Exception("Never hit semaphore in first UP task.");
+            }
+
+            var upTaskTwo = stackTwo.UpAsync();
+            // wait until we hit semaphore two
+            while (!hasReachedSemaphoreTwo)
+            {
+                await Task.Delay(TimeSpan.FromSeconds(2));
+                if (upTaskTwo.IsFaulted)
+                    throw upTaskTwo.Exception!;
+                else if (upTaskTwo.IsCompleted)
+                    throw new Exception("Never hit semaphore in second UP task.");
+            }
+
+            // alternately allow them to progress
+            semaphoreOne.Release();
+            semaphoreTwo.Release();
+            semaphoreOne.Release();
+
+            var upResultOne = await upTaskOne;
+            var upResultTwo = await upTaskTwo;
+
+            AssertUpResult(upResultOne, "1");
+            AssertUpResult(upResultTwo, "2");
+
+            static void AssertUpResult(UpResult upResult, string value)
+            {
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
+
+                // exp_static
+                Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal(value, expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
+
+                // exp_cfg
+                Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal(value, expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
+
+                // exp_secret
+                Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal(value, expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
+            }
         }
     }
 }
