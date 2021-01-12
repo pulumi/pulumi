@@ -32,6 +32,9 @@ CHANGELOG
 - [sdk/dotnet] Fix looking up empty version in `ResourcePackages.TryGetResourceType`.
   [#6084](https://github.com/pulumi/pulumi/pull/6084)
 
+- [automation api] Add debug logging settings for common automation API operations
+  [#6095](https://github.com/pulumi/pulumi/pull/6095)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
