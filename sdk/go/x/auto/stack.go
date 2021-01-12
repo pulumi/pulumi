@@ -646,7 +646,7 @@ func (ur *UpResult) GetPermalink() (string, error) {
 func GetPermalink(stdout string) (string, error) {
 	const permalinkSearchStr = "View Live: |Permalink: "
 	startRegex := regexp.MustCompile(permalinkSearchStr)
-	var endRegex = regexp.MustCompile("\n")
+	endRegex := regexp.MustCompile("\n")
 
 	// Find the start of the permalink in the output.
 	start := startRegex.FindStringIndex(stdout)

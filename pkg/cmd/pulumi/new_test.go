@@ -16,9 +16,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/stretchr/testify/require"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend"
@@ -193,6 +195,52 @@ func TestCreatingProjectWithDefaultName(t *testing.T) {
 
 	proj := loadProject(t, tempdir)
 	assert.Equal(t, defaultProjectName, proj.Name.String())
+}
+
+func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
+	skipIfShortOrNoPulumiAccessToken(t)
+
+	b, err := currentBackend(display.Options{})
+	require.NoError(t, err)
+	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
+
+	fileStateDir, _ := ioutil.TempDir("", "local-state-dir")
+	defer os.RemoveAll(fileStateDir)
+
+	// Now override to local filesystem backend
+	backendURL := "file://" + fileStateDir
+	_ = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "how now brown cow")
+	_ = os.Setenv(workspace.PulumiBackendURLEnvVar, backendURL)
+	defer func() {
+		_ = os.Unsetenv(workspace.PulumiBackendURLEnvVar)
+		_ = os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+	}()
+
+	backendInstance = nil
+	tempdir, _ := ioutil.TempDir("", "test-env-local")
+	defer os.RemoveAll(tempdir)
+	assert.NoError(t, os.Chdir(tempdir))
+	defaultProjectName := filepath.Base(tempdir)
+
+	var args = newArgs{
+		interactive:       true,
+		prompt:            promptForValue,
+		secretsProvider:   "default",
+		stack:             stackName,
+		templateNameOrURL: "typescript",
+		yes:               true,
+	}
+
+	assert.NoError(t, runNew(args))
+	proj := loadProject(t, tempdir)
+	assert.Equal(t, defaultProjectName, proj.Name.String())
+	// Expect the stack directory to have a checkpoint file for the stack.
+	_, err = os.Stat(filepath.Join(fileStateDir, workspace.BookkeepingDir, workspace.StackDir, stackName+".json"))
+	assert.NoError(t, err)
+
+	b, err = currentBackend(display.Options{})
+	require.NoError(t, err)
+	assert.Equal(t, backendURL, b.URL())
 }
 
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
