@@ -6,6 +6,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using SecurityGroup;
+using StorageClass;
 
 namespace Pulumi.Example
 {
@@ -14,6 +16,12 @@ namespace Pulumi.Example
     {
         [Output("provider")]
         public Output<Pulumi.Kubernetes.Provider?> Provider { get; private set; } = null!;
+
+        [Output("securityGroup")]
+        public Output<Pulumi.Aws.Ec2/securityGroup.SecurityGroup?> SecurityGroup { get; private set; } = null!;
+
+        [Output("storageClasses")]
+        public Output<ImmutableDictionary<string, Pulumi.Kubernetes.Storage.k8s.io/v1.StorageClass>?> StorageClasses { get; private set; } = null!;
 
 
         /// <summary>
@@ -60,6 +68,9 @@ namespace Pulumi.Example
 
     public sealed class ComponentArgs : Pulumi.ResourceArgs
     {
+        [Input("metadata")]
+        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? Metadata { get; set; }
+
         public ComponentArgs()
         {
         }
