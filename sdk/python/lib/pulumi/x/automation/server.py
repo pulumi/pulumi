@@ -12,8 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import logging
 import traceback
+from contextlib import suppress
 
 from .workspace import PulumiFn
 from ...log import *
@@ -55,10 +55,6 @@ class LanguageServer(LanguageRuntimeServicer):
         result = language_pb2.RunResponse()
         loop = asyncio.new_event_loop()
 
-        # Suppress the log output for asyncio (see pulumi-language-python-exec for detailed explanation)
-        asyncio_log_level = logging.getLogger("asyncio").level
-        logging.getLogger("asyncio").setLevel(logging.CRITICAL)
-
         try:
             loop.run_until_complete(run_in_stack(self.program))
         except RunError as exn:
@@ -68,11 +64,18 @@ class LanguageServer(LanguageRuntimeServicer):
             result.error = str(f"python inline source runtime error: {exn}\n{traceback.format_exc()}")
             return result
         finally:
+            # If there's an exception during `run_in_stack`, it may result in pending asyncio tasks remaining unresolved
+            # at the time the loop is closed, which results in a `Task was destroyed but it is pending!` error being
+            # logged to stdout. To avoid this, we collect all the unresolved tasks in the loop and cancel them before
+            # closing the loop.
+            pending = asyncio.all_tasks(loop)
+            for task in pending:
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    loop.run_until_complete(task)
             loop.close()
             sys.stdout.flush()
             sys.stderr.flush()
-            # Reset the asyncio logger to the original level
-            logging.getLogger("asyncio").setLevel(asyncio_log_level)
 
         return result
 
