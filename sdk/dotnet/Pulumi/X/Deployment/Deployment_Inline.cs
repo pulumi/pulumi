@@ -42,9 +42,6 @@ namespace Pulumi
         }
 
         internal static Task<int> RunInlineAsync(RuntimeSettings settings, PulumiFn func)
-            => CreateInlineRunner(settings).RunAsync(() => Task.FromResult(func()), null);
-
-        private static IRunner CreateInlineRunner(RuntimeSettings settings)
-            => CreateRunner(() => new Deployment(settings));
+            => CreateRunnerAndRunAsync(() => new Deployment(settings), runner => runner.RunAsync(() => Task.FromResult(func()), null));
     }
 }

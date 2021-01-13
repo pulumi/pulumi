@@ -33,7 +33,6 @@ namespace Pulumi
     public sealed partial class Deployment : IDeploymentInternal
     {
         private static readonly AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
-        private static readonly object _instanceLock = new object();
 
         /// <summary>
         /// The current running deployment instance. This is only available from inside the function

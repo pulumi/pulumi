@@ -48,7 +48,6 @@ namespace Pulumi.X.Automation
                 request.DryRun);
 
             await Deployment.RunInlineAsync(settings, this._program).ConfigureAwait(false);
-            Deployment.Instance = null!;
             return new RunResponse();
         }
 
