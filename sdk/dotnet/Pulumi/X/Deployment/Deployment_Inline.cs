@@ -7,7 +7,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal Deployment(RuntimeSettings settings)
+        private Deployment(RuntimeSettings settings)
         {
             if (settings is null)
                 throw new ArgumentNullException(nameof(settings));

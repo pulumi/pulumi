@@ -33,6 +33,7 @@ namespace Pulumi
     /// </summary>
     public sealed partial class Deployment : IDeploymentInternal
     {
+        private static readonly object _instanceLock = new object();
         private static readonly AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
 
         /// <summary>
@@ -42,11 +43,21 @@ namespace Pulumi
         public static DeploymentInstance Instance
         {
             get => _instance.Value ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
-            internal set => _instance.Value = value;
+            internal set
+            {
+                lock (_instanceLock)
+                {
+                    if (_instance.Value != null)
+                    {
+                        throw new InvalidOperationException("Deployment.Instance should only be set once at the beginning of a 'Run' call.");
+                    }
+
+                    _instance.Value = value;
+                }
+            }
         }
 
-        internal static IDeploymentInternal InternalInstance
-            => Instance.Internal;
+        internal static IDeploymentInternal InternalInstance => Instance.Internal;
 
         private static readonly bool _disableResourceReferences =
             Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES") == "1" ||
@@ -113,7 +124,7 @@ namespace Pulumi
         /// This constructor is called from <see cref="TestAsync{TStack}"/> with
         /// a mocked monitor and dummy values for project and stack.
         /// </summary>
-        private Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
+        internal Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
