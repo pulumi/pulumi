@@ -17,16 +17,16 @@ namespace Pulumi.Tests.Mocks
             return Task.FromResult<object>(args);
         }
 
-        public Task<(string id, object state)> NewResourceAsync(string type, string name, ImmutableDictionary<string, object> inputs, string? provider, string? id)
+        public Task<(string? id, object state)> NewResourceAsync(string type, string name, ImmutableDictionary<string, object> inputs, string? provider, string? id)
         {
             switch (type)
             {
                 case "aws:ec2/instance:Instance":
-                    return Task.FromResult<(string, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
+                    return Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
                         { "publicIp", "203.0.113.12" },
                     }));
                 case "pkg:index:MyCustom":
-                    return Task.FromResult<(string, object)>((name + "_id", inputs));
+                    return Task.FromResult<(string?, object)>((name + "_id", inputs));
                 default:
                     throw new Exception($"Unknown resource {type}");
             }

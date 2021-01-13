@@ -167,15 +167,18 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 }
 
                 this.DependentResources.Add(customResource);
+
+                var id = await SerializeAsync($"{ctx}.id", customResource.Id, keepResources).ConfigureAwait(false);
                 if (keepResources)
                 {
                     var urn = await SerializeAsync($"{ctx}.urn", customResource.Urn, keepResources).ConfigureAwait(false);
                     var builder = ImmutableDictionary.CreateBuilder<string, object?>();
                     builder.Add(Constants.SpecialSigKey, Constants.SpecialResourceSig);
                     builder.Add(Constants.ResourceUrnName, urn);
+                    builder.Add(Constants.ResourceIdName, id as string == Constants.UnknownValue ? "" : id);
                     return builder.ToImmutable();
                 }
-                return await SerializeAsync($"{ctx}.id", customResource.Id, keepResources).ConfigureAwait(false);
+                return id;
             }
 
             if (prop is ComponentResource componentResource)

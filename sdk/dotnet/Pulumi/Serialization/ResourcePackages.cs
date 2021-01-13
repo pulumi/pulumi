@@ -15,17 +15,24 @@ namespace Pulumi
         private static ImmutableDictionary<string, ImmutableList<(string?, Type)>>? _resourceTypes;
         private static readonly object _resourceTypesLock = new object();
         
-        internal static Resource Construct(string type, string version, string urn)
+        internal static bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
         {
             if (!TryGetResourceType(type, version, out var resourceType))
             {
-                throw new InvalidOperationException($"Unable to deserialize resource {urn}.");
+                resource = null;
+                return false;
             }
 
             var urnParts = urn.Split("::");
             var urnName = urnParts[3];
             var constructorInfo = resourceType.GetConstructors().Single(c => c.GetParameters().Length == 3);
-            return (Resource)constructorInfo.Invoke(new[] {urnName, (object?)null, new CustomResourceOptions {Urn = urn}});
+
+            var resourceOptions = typeof(CustomResource).IsAssignableFrom(resourceType) ?
+                (ResourceOptions)new CustomResourceOptions {Urn = urn} :
+                (ResourceOptions)new ComponentResourceOptions {Urn = urn};
+
+            resource = (Resource)constructorInfo.Invoke(new[] {urnName, (object?)null, resourceOptions});
+            return true;
         }
 
         internal static bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
@@ -60,7 +67,7 @@ namespace Pulumi
             var pairs =
                 from a in LoadReferencedAssemblies()
                 from t in a.GetTypes()
-                where typeof(CustomResource).IsAssignableFrom(t)
+                where typeof(Resource).IsAssignableFrom(t)
                 let attr = t.GetCustomAttribute<ResourceTypeAttribute>()
                 where attr != null
                 let versionType = (attr.Version, t)
