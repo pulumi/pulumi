@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- C# Automation API.
+  [#5761](https://github.com/pulumi/pulumi/pull/5761)
 
 ## 2.17.1 (2021-01-13)
 
