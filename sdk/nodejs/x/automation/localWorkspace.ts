@@ -239,7 +239,7 @@ export class LocalWorkspace implements Workspace {
     }
     /**
      * Overwrites the settings object in the current project.
-     * There can only be a single project per workspace. Fails is new project name does not match old.
+     * There can only be a single project per workspace. Fails if new project name does not match old.
      * LocalWorkspace writes this value to a Pulumi.yaml file in Workspace.WorkDir().
      *
      * @param settings The settings object to save to the Workspace.
