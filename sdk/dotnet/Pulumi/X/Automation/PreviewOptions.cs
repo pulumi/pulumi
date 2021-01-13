@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 
 namespace Pulumi.X.Automation
 {
@@ -14,5 +16,18 @@ namespace Pulumi.X.Automation
         public bool? TargetDependents { get; set; }
 
         public PulumiFn? Program { get; set; }
+
+        /// <summary>
+        /// The collection of assemblies containing all necessary <see cref="CustomResource"/> implementations.
+        /// Only comes into play during inline program execution, when a <see cref="Program"/> is provided.
+        /// <para/>
+        /// Useful when control is needed over what assemblies Pulumi should search for <see cref="CustomResource"/>
+        /// discovery - such as when the executing assembly does not itself reference the assemblies that contain
+        /// those implementations.
+        /// <para/>
+        /// If not provided, <see cref="AppDomain.CurrentDomain"/> and its referenced assemblies will be used
+        /// for <see cref="CustomResource"/> discovery.
+        /// </summary>
+        public IList<Assembly>? ResourcePackageAssemblies { get; set; }
     }
 }

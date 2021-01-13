@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.X.Automation.Commands;
@@ -49,6 +50,19 @@ namespace Pulumi.X.Automation
         /// If none is specified, the stack will refer to <see cref="ProjectSettings"/> for this information.
         /// </summary>
         public abstract PulumiFn? Program { get; set; }
+
+        /// <summary>
+        /// The collection of assemblies containing all necessary <see cref="CustomResource"/> implementations.
+        /// Only comes into play during inline program execution, when a <see cref="Program"/> is provided.
+        /// <para/>
+        /// Useful when control is needed over what assemblies Pulumi should search for <see cref="CustomResource"/>
+        /// discovery - such as when the executing assembly does not itself reference the assemblies that contain
+        /// those implementations.
+        /// <para/>
+        /// If not provided, <see cref="AppDomain.CurrentDomain"/> and its referenced assemblies will be used
+        /// for <see cref="CustomResource"/> discovery.
+        /// </summary>
+        public abstract IList<Assembly>? ResourcePackageAssemblies { get; set; }
 
         /// <summary>
         /// Environment values scoped to the current workspace. These will be supplied to every Pulumi command.

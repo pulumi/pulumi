@@ -33,6 +33,8 @@ Pulumi.X.Automation.LocalWorkspaceOptions.ProjectSettings.get -> Pulumi.X.Automa
 Pulumi.X.Automation.LocalWorkspaceOptions.ProjectSettings.set -> void
 Pulumi.X.Automation.LocalWorkspaceOptions.PulumiHome.get -> string
 Pulumi.X.Automation.LocalWorkspaceOptions.PulumiHome.set -> void
+Pulumi.X.Automation.LocalWorkspaceOptions.ResourcePackageAssemblies.get -> System.Collections.Generic.IList<System.Reflection.Assembly>
+Pulumi.X.Automation.LocalWorkspaceOptions.ResourcePackageAssemblies.set -> void
 Pulumi.X.Automation.LocalWorkspaceOptions.SecretsProvider.get -> string
 Pulumi.X.Automation.LocalWorkspaceOptions.SecretsProvider.set -> void
 Pulumi.X.Automation.LocalWorkspaceOptions.StackSettings.get -> System.Collections.Generic.IDictionary<string, Pulumi.X.Automation.StackSettings>
@@ -71,6 +73,8 @@ Pulumi.X.Automation.PreviewOptions.Program.get -> Pulumi.X.Automation.PulumiFn
 Pulumi.X.Automation.PreviewOptions.Program.set -> void
 Pulumi.X.Automation.PreviewOptions.Replace.get -> System.Collections.Generic.List<string>
 Pulumi.X.Automation.PreviewOptions.Replace.set -> void
+Pulumi.X.Automation.PreviewOptions.ResourcePackageAssemblies.get -> System.Collections.Generic.IList<System.Reflection.Assembly>
+Pulumi.X.Automation.PreviewOptions.ResourcePackageAssemblies.set -> void
 Pulumi.X.Automation.PreviewOptions.TargetDependents.get -> bool?
 Pulumi.X.Automation.PreviewOptions.TargetDependents.set -> void
 Pulumi.X.Automation.ProjectBackend
@@ -174,6 +178,8 @@ Pulumi.X.Automation.UpOptions.Program.get -> Pulumi.X.Automation.PulumiFn
 Pulumi.X.Automation.UpOptions.Program.set -> void
 Pulumi.X.Automation.UpOptions.Replace.get -> System.Collections.Generic.List<string>
 Pulumi.X.Automation.UpOptions.Replace.set -> void
+Pulumi.X.Automation.UpOptions.ResourcePackageAssemblies.get -> System.Collections.Generic.IList<System.Reflection.Assembly>
+Pulumi.X.Automation.UpOptions.ResourcePackageAssemblies.set -> void
 Pulumi.X.Automation.UpOptions.TargetDependents.get -> bool?
 Pulumi.X.Automation.UpOptions.TargetDependents.set -> void
 Pulumi.X.Automation.UpOptions.UpOptions() -> void
@@ -256,6 +262,8 @@ abstract Pulumi.X.Automation.Workspace.RemoveConfigAsync(string stackName, Syste
 abstract Pulumi.X.Automation.Workspace.RemoveConfigValueAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.X.Automation.Workspace.RemovePluginAsync(string name = null, string versionRange = null, Pulumi.X.Automation.PluginKind kind = Pulumi.X.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.X.Automation.Workspace.RemoveStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.X.Automation.Workspace.ResourcePackageAssemblies.get -> System.Collections.Generic.IList<System.Reflection.Assembly>
+abstract Pulumi.X.Automation.Workspace.ResourcePackageAssemblies.set -> void
 abstract Pulumi.X.Automation.Workspace.SaveProjectSettingsAsync(Pulumi.X.Automation.ProjectSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.X.Automation.Workspace.SaveStackSettingsAsync(string stackName, Pulumi.X.Automation.StackSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.X.Automation.Workspace.SecretsProvider.get -> string
@@ -285,6 +293,8 @@ override Pulumi.X.Automation.LocalWorkspace.RemoveConfigAsync(string stackName, 
 override Pulumi.X.Automation.LocalWorkspace.RemoveConfigValueAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.X.Automation.LocalWorkspace.RemovePluginAsync(string name = null, string versionRange = null, Pulumi.X.Automation.PluginKind kind = Pulumi.X.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.X.Automation.LocalWorkspace.RemoveStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.X.Automation.LocalWorkspace.ResourcePackageAssemblies.get -> System.Collections.Generic.IList<System.Reflection.Assembly>
+override Pulumi.X.Automation.LocalWorkspace.ResourcePackageAssemblies.set -> void
 override Pulumi.X.Automation.LocalWorkspace.SaveProjectSettingsAsync(Pulumi.X.Automation.ProjectSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.X.Automation.LocalWorkspace.SaveStackSettingsAsync(string stackName, Pulumi.X.Automation.StackSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.X.Automation.LocalWorkspace.SecretsProvider.get -> string

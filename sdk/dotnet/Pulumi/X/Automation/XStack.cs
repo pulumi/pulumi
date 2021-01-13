@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -176,7 +177,7 @@ namespace Pulumi.X.Automation
             => this.Workspace.RemoveConfigValueAsync(this.Name, key, cancellationToken);
 
         /// <summary>
-        /// Removes the specified config keys from the Stack in the assocaited Workspace.
+        /// Removes the specified config keys from the Stack in the associated Workspace.
         /// </summary>
         /// <param name="keys">The config keys to remove.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
@@ -204,6 +205,7 @@ namespace Pulumi.X.Automation
             await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var resourcePackageAssemblies = this.Workspace.ResourcePackageAssemblies;
             var args = new List<string>()
             {
                 "up",
@@ -215,6 +217,9 @@ namespace Pulumi.X.Automation
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.ResourcePackageAssemblies != null)
+                    resourcePackageAssemblies = options.ResourcePackageAssemblies;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -259,7 +264,7 @@ namespace Pulumi.X.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, resourcePackageAssemblies, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -301,12 +306,16 @@ namespace Pulumi.X.Automation
             await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var resourcePackageAssemblies = this.Workspace.ResourcePackageAssemblies;
             var args = new List<string>() { "preview" };
 
             if (options != null)
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.ResourcePackageAssemblies != null)
+                    resourcePackageAssemblies = options.ResourcePackageAssemblies;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -351,7 +360,7 @@ namespace Pulumi.X.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, resourcePackageAssemblies, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -552,7 +561,10 @@ namespace Pulumi.X.Automation
             private readonly IHost _host;
             private readonly CancellationTokenRegistration _portRegistration;
 
-            public InlineLanguageHost(PulumiFn program, CancellationToken cancellationToken)
+            public InlineLanguageHost(
+                PulumiFn program,
+                IEnumerable<Assembly>? resourcePackageAssemblies,
+                CancellationToken cancellationToken)
             {
                 this._cancelToken = cancellationToken;
                 this._host = Host.CreateDefaultBuilder()
@@ -573,7 +585,12 @@ namespace Pulumi.X.Automation
                                 services.AddLogging();
 
                                 // to be injected into LanguageRuntimeService
-                                services.AddSingleton(new LanguageRuntimeService.LanguageRuntimeServiceArgs(program, cancellationToken));
+                                var args = new LanguageRuntimeService.LanguageRuntimeServiceArgs(
+                                    program,
+                                    resourcePackageAssemblies,
+                                    cancellationToken);
+                                services.AddSingleton(args);
+
                                 services.AddGrpc(grpcOptions =>
                                 {
                                     grpcOptions.MaxReceiveMessageSize = LanguageRuntimeService.MaxRpcMesageSize;

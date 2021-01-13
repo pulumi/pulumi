@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -13,11 +15,13 @@ namespace Pulumi.X.Automation
         public const int MaxRpcMesageSize = 1024 * 1024 * 400;
 
         private readonly PulumiFn _program;
+        private readonly IEnumerable<Assembly>? _resourcePackageAssemblies;
         private readonly CancellationToken _cancelToken;
 
         public LanguageRuntimeService(LanguageRuntimeServiceArgs args)
         {
             this._program = args.Program;
+            this._resourcePackageAssemblies = args.ResourcePackageAssemblies;
             this._cancelToken = args.CancellationToken;
         }
 
@@ -47,7 +51,7 @@ namespace Pulumi.X.Automation
                 request.Parallel,
                 request.DryRun);
 
-            await Deployment.RunInlineAsync(settings, this._program).ConfigureAwait(false);
+            await Deployment.RunInlineAsync(settings, this._program, this._resourcePackageAssemblies).ConfigureAwait(false);
             return new RunResponse();
         }
 
@@ -55,13 +59,17 @@ namespace Pulumi.X.Automation
         {
             public PulumiFn Program { get; }
 
+            public IEnumerable<Assembly>? ResourcePackageAssemblies { get; }
+
             public CancellationToken CancellationToken { get; }
 
             public LanguageRuntimeServiceArgs(
                 PulumiFn program,
+                IEnumerable<Assembly>? resourcePackageAssemblies,
                 CancellationToken cancellationToken)
             {
                 this.Program = program;
+                this.ResourcePackageAssemblies = resourcePackageAssemblies;
                 this.CancellationToken = cancellationToken;
             }
         }

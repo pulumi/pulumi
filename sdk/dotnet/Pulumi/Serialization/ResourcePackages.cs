@@ -10,14 +10,35 @@ using Semver;
 
 namespace Pulumi
 {
-    internal static class ResourcePackages
+    internal class ResourcePackages
     {
-        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>>? _resourceTypes;
-        private static readonly object _resourceTypesLock = new object();
-        
-        internal static Resource Construct(string type, string version, string urn)
+        private static Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> CurrentDomainResourceTypes
+            = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(
+                () => DiscoverResourceTypes(LoadCurrentDomainReferencedAssemblies()));
+
+        private readonly ImmutableList<Assembly>? _assemblies;
+        private readonly Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> _resourceTypes;
+
+        /// <param name="assemblies">
+        /// Assemblies that should be used to discover resource types. If <c>null</c>, than <see cref="AppDomain.CurrentDomain"/>
+        /// will be used to find referenced assemblies and discover resource types.
+        /// </param>
+        public ResourcePackages(IEnumerable<Assembly>? assemblies)
         {
-            if (!TryGetResourceType(type, version, out var resourceType))
+            this._assemblies = assemblies?.ToImmutableList();
+            this._resourceTypes = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(
+                () =>
+                {
+                    if (this._assemblies is null)
+                        return CurrentDomainResourceTypes.Value;
+
+                    return DiscoverResourceTypes(this._assemblies);
+                });
+        }
+        
+        public Resource Construct(string type, string version, string urn)
+        {
+            if (!this.TryGetResourceType(type, version, out var resourceType))
             {
                 throw new InvalidOperationException($"Unable to deserialize resource {urn}.");
             }
@@ -28,15 +49,10 @@ namespace Pulumi
             return (Resource)constructorInfo.Invoke(new[] {urnName, (object?)null, new CustomResourceOptions {Urn = urn}});
         }
 
-        internal static bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
+        public bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
         {
-            lock (_resourceTypesLock)
-            {
-                _resourceTypes ??= DiscoverResourceTypes();
-            }
-
             var minimalVersion = !string.IsNullOrEmpty(version) ? SemVersion.Parse(version) : new SemVersion(0);
-            var yes = _resourceTypes.TryGetValue(name, out var types);
+            var yes = this._resourceTypes.Value.TryGetValue(name, out var types);
             if (!yes)
             {
                 type = null;
@@ -55,10 +71,10 @@ namespace Pulumi
             return type != null;
         }
         
-        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>> DiscoverResourceTypes()
+        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>> DiscoverResourceTypes(IEnumerable<Assembly> assemblies)
         {
             var pairs =
-                from a in LoadReferencedAssemblies()
+                from a in assemblies
                 from t in a.GetTypes()
                 where typeof(CustomResource).IsAssignableFrom(t)
                 let attr = t.GetCustomAttribute<ResourceTypeAttribute>()
@@ -74,7 +90,7 @@ namespace Pulumi
         // recursively.
         // Note: If an assembly is referenced but its types are never used anywhere in the program, that reference
         // will be optimized out and won't appear in the result of the enumeration.
-        private static IEnumerable<Assembly> LoadReferencedAssemblies()
+        private static IEnumerable<Assembly> LoadCurrentDomainReferencedAssemblies()
         {
             var yieldedAssemblies = new HashSet<string>();
             var assembliesToCheck = new Queue<Assembly>();

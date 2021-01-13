@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -44,6 +45,9 @@ namespace Pulumi.X.Automation
 
         /// <inheritdoc/>
         public override PulumiFn? Program { get; set; }
+
+        /// <inheritdoc/>
+        public override IList<Assembly>? ResourcePackageAssemblies { get; set; }
 
         /// <inheritdoc/>
         public override IDictionary<string, string>? EnvironmentVariables { get; set; }
@@ -299,6 +303,7 @@ namespace Pulumi.X.Automation
 
                 this.PulumiHome = options.PulumiHome;
                 this.Program = options.Program;
+                this.ResourcePackageAssemblies = options.ResourcePackageAssemblies;
                 this.SecretsProvider = options.SecretsProvider;
 
                 if (options.EnvironmentVariables != null)

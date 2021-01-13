@@ -59,6 +59,30 @@ namespace Pulumi
 
         internal static IDeploymentInternal InternalInstance => Instance.Internal;
 
+        private static readonly object _resourcePackagesLock = new object();
+        private static readonly AsyncLocal<ResourcePackages?> _resourcePackages = new AsyncLocal<ResourcePackages?>();
+
+        /// <summary>
+        /// Resource packages for the current running deployment instance. This is only available from inside the function
+        /// passed to <see cref="Deployment.RunAsync(Action)"/> (or its overloads).
+        /// </summary>
+        internal static ResourcePackages ResourcePackages
+        {
+            get => _resourcePackages.Value ?? throw new InvalidOperationException("Trying to acquire Deployment.ResourcePackages before 'Run' was called.");
+            set
+            {
+                lock (_resourcePackagesLock)
+                {
+                    if (_resourcePackages.Value != null)
+                    {
+                        throw new InvalidOperationException("Deployment.ResourcePackages should only be set once at the beginning of a 'Run' call.");
+                    }
+
+                    _resourcePackages.Value = value;
+                }
+            }
+        }
+
         private static readonly bool _disableResourceReferences =
             Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES") == "1" ||
             string.Equals(Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES"), "TRUE", StringComparison.OrdinalIgnoreCase);

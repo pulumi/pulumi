@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Reflection;
 using System.Threading.Tasks;
 using Pulumi.X.Automation;
 using Pulumi.X.Automation.Runtime;
@@ -41,7 +43,10 @@ namespace Pulumi
             _logger = new Logger(this, Engine);
         }
 
-        internal static Task<int> RunInlineAsync(RuntimeSettings settings, PulumiFn func)
-            => CreateRunnerAndRunAsync(() => new Deployment(settings), runner => runner.RunAsync(() => Task.FromResult(func()), null));
+        internal static Task<int> RunInlineAsync(RuntimeSettings settings, PulumiFn func, IEnumerable<Assembly>? resourcePackageAssemblies)
+            => CreateRunnerAndRunAsync(
+                () => new Deployment(settings),
+                runner => runner.RunAsync(() => Task.FromResult(func()), null),
+                resourcePackageAssemblies);
     }
 }
