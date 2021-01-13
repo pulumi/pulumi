@@ -510,6 +510,8 @@ class Stack:
         """
         export_stack exports the deployment state of the stack.
         This can be combined with Stack.import_state to edit a stack's state (such as recovery from failed deployments).
+
+        :returns: Deployment
         """
         return self.workspace.export_stack(self.name)
 
@@ -517,6 +519,8 @@ class Stack:
         """
         import_stack imports the specified deployment state into a pre-existing stack.
         This can be combined with Stack.export_state to edit a stack's state (such as recovery from failed deployments).
+
+        :param state: The deployment state to import.
         """
         return self.workspace.import_stack(self.name, state)
 
