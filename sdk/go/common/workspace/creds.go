@@ -75,6 +75,15 @@ func DeleteAccount(key string) error {
 	return StoreCredentials(creds)
 }
 
+func DeleteAllAccounts() error {
+	credsFile, err := getCredsFilePath()
+	if err != nil {
+		return err
+	}
+
+	return os.Remove(credsFile)
+}
+
 // StoreAccount saves the given account underneath the given key.
 func StoreAccount(key string, account Account, current bool) error {
 	creds, err := GetStoredCredentials()
