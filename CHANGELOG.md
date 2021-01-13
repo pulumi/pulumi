@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+- [automation api] Add debug logging settings for common automation API operations
+  [#6095](https://github.com/pulumi/pulumi/pull/6095)
 
 ## 2.17.1 (2021-01-13)
 

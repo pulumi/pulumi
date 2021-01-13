@@ -25,7 +25,6 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
@@ -36,7 +35,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 )
 
-func Example() error {
+func Example() {
 	ctx := context.Background()
 
 	// This stack creates an output
@@ -47,12 +46,12 @@ func Example() error {
 		return nil
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to create stackA")
+		// return errors.Wrap(err, "failed to create stackA")
 	}
 	// deploy the stack
 	aRes, err := stackA.Up(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to update bucket stackA")
+		// return errors.Wrap(err, "failed to update bucket stackA")
 	}
 
 	// this stack creates an uses stackA's output to create a new output
@@ -70,17 +69,16 @@ func Example() error {
 		return nil
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to create object stackB")
+		// return errors.Wrap(err, "failed to create object stackB")
 	}
 	// deploy the stack
 	bRes, err := stackB.Up(ctx)
 	if err != nil {
-		return errors.Wrap(err, "failed to update stackB")
+		// return errors.Wrap(err, "failed to update stackB")
 	}
 
 	// Success!
 	fmt.Println(bRes.Summary.Result)
-	return nil
 }
 
 func ExampleFullyQualifiedStackName() {
@@ -631,7 +629,7 @@ func ExampleSetupFn() {
 	NewStackRemoteSource(ctx, stackName, repo)
 }
 
-func ExampleStack() error {
+func ExampleStack() {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName("org", "project", "dev_stack")
 	cfg := ConfigMap{
@@ -648,7 +646,7 @@ func ExampleStack() error {
 	pDir := filepath.Join(".", "project")
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
-		return err
+		// Handle failure creating stack.
 	}
 
 	defer func() {
@@ -659,13 +657,13 @@ func ExampleStack() error {
 
 	err = s.SetAllConfig(ctx, cfg)
 	if err != nil {
-		return err
+		// Handle failure setting configurations.
 	}
 
 	// -- pulumi up --
 	res, err := s.Up(ctx)
 	if err != nil {
-		return err
+		// Handle failure updating stack.
 	}
 	fmt.Println(len(res.Outputs))
 
@@ -673,7 +671,7 @@ func ExampleStack() error {
 
 	prev, err := s.Preview(ctx)
 	if err != nil {
-		return err
+		// Handle failure previewing stack.
 	}
 	// no changes after the update
 	fmt.Println(prev.ChangeSummary["same"])
@@ -681,9 +679,8 @@ func ExampleStack() error {
 	// -- pulumi refresh --
 
 	ref, err := s.Refresh(ctx)
-
 	if err != nil {
-		return err
+		// Handle error during refresh.
 	}
 	// Success!
 	fmt.Println(ref.Summary.Result)
@@ -692,41 +689,44 @@ func ExampleStack() error {
 
 	_, err = s.Destroy(ctx)
 	if err != nil {
-		return err
+		// Handle error during destroy.
 	}
-	return nil
 }
 
-func ExampleNewStack() error {
+func ExampleNewStack() {
 	ctx := context.Background()
 	w, err := NewLocalWorkspace(ctx)
 	if err != nil {
-		return err
+		// Handle error creating workspace.
 	}
 
 	stackName := FullyQualifiedStackName("org", "proj", "stack")
 	stack, err := NewStack(ctx, stackName, w)
 	if err != nil {
-		return err
+		// Handle error creating stack.
 	}
 	_, err = stack.Up(ctx)
-	return err
+	if err != nil {
+		// Handle error updating stack.
+	}
 }
 
-func ExampleUpsertStack() error {
+func ExampleUpsertStack() {
 	ctx := context.Background()
 	w, err := NewLocalWorkspace(ctx)
 	if err != nil {
-		return err
+		// Handle error creating workspace.
 	}
 
 	stackName := FullyQualifiedStackName("org", "proj", "stack")
 	stack, err := UpsertStack(ctx, stackName, w)
 	if err != nil {
-		return err
+		// Handle error creating/updating stack.
 	}
 	_, err = stack.Up(ctx)
-	return err
+	if err != nil {
+		// Handle error during update.
+	}
 }
 
 func ExampleNewStackInlineSource() {
