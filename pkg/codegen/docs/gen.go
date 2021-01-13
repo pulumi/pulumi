@@ -114,6 +114,7 @@ var (
 		"spotinst":      "Spotinst",
 		"tls":           "TLS",
 		"vault":         "Vault",
+		"venafi":        "Venafi",
 		"vsphere":       "vSphere",
 		"wavefront":     "Wavefront",
 	}
@@ -230,6 +231,9 @@ type resourceDocArgs struct {
 	Comment            string
 	ExamplesSection    []exampleSection
 	DeprecationMessage string
+
+	// Import
+	ImportDocs string
 
 	// ConstructorParams is a map from language to the rendered HTML for the constructor's
 	// arguments.
@@ -1404,6 +1408,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		Comment:            docInfo.description,
 		DeprecationMessage: r.DeprecationMessage,
 		ExamplesSection:    docInfo.examples,
+		ImportDocs:         docInfo.importDetails,
 
 		ConstructorParams:      renderedCtorParams,
 		ConstructorParamsTyped: typedCtorParams,

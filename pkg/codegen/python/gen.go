@@ -653,7 +653,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 		if prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
-			fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n\n", pname, escaped)
 		}
 
@@ -749,7 +749,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	if !res.IsProvider && res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
+		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 
 	// Produce a class definition with optional """ comment.
@@ -757,7 +757,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "    warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
+		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 	// Now generate an initializer with arguments for all input properties.
 	fmt.Fprintf(w, "    def __init__(__self__,\n")
@@ -830,7 +830,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "            if %s is not None:\n", pname)
-			fmt.Fprintf(w, "                warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "                pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
 		}
 
@@ -1066,7 +1066,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	if fun.DeprecationMessage != "" {
 		escaped := strings.ReplaceAll(fun.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "warnings.warn(\"%s\", DeprecationWarning)\n\n", escaped)
+		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
 
 	// If there is a return type, emit it.
@@ -1785,7 +1785,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		if input && prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
-			fmt.Fprintf(w, "            warnings.warn(\"%s\", DeprecationWarning)\n", escaped)
+			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
 		}
 

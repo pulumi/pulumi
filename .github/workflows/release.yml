@@ -17,40 +17,70 @@ env:
   TRAVIS_PUBLISH_PACKAGES: true
 
 jobs:
-  docker:
-    name: Build Docker Images
+  chocolatey:
+    name: Chocolatey update
     runs-on: ubuntu-latest
     needs: publish-sdks
     steps:
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: docker-build
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create choco-deploy $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+  docker:
+    name: Build Slim Docker Images
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create containers $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   docs:
     name: Build Package Docs
     runs-on: ubuntu-latest
     needs: publish-sdks
     steps:
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: homebrew-bump
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create cli-docs-build $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   homebrew:
     name: Update Homebrew
     runs-on: macos-latest
     needs: publish-sdks
     steps:
-      - name: Repository Dispatch
-        uses: peter-evans/repository-dispatch@v1
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
         with:
-          token: ${{ secrets.PULUMI_BOT_TOKEN }}
-          event-type: homebrew-bump
-          client-payload: '{"ref": "${{ github.ref }}", "sha": "${{ github.sha }}"}'
-
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl create homebrew-bump $(pulumictl get version --language generic -o) ${{ github.sha }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   publish-sdks:
     name: Publish SDKs
     runs-on: ubuntu-latest
@@ -58,9 +88,9 @@ jobs:
     strategy:
       matrix:
         go-version: [ 1.15.x ]
-        python-version: [ 3.7.x ]
+        python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
-        node-version: [ 10.x ]
+        node-version: [ 14.x ]
         language: [ "nodejs", "python", "dotnet" ]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
@@ -92,10 +122,10 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Update path
         run: |
-          echo "::add-path::${{ runner.temp }}/opt/pulumi/bin"
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Set Go Dep path
         run: |
-          echo "::set-env name=PULUMI_GO_DEP_ROOT::$(dirname $(pwd))"
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
@@ -108,6 +138,9 @@ jobs:
     name: Publish Binaries
     runs-on: macos-latest
     needs: build-and-test
+    strategy:
+      matrix:
+        go-version: [ 1.15.x ]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
@@ -133,7 +166,8 @@ jobs:
           role-session-name: pulumi@githubActions
           role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
       - name: Set Release Version
-        run: echo "::set-env name=GORELEASER_CURRENT_TAG::v$(pulumictl get version --language generic -o)"
+        run: |
+          echo "GORELEASER_CURRENT_TAG=v$(pulumictl get version --language generic -o)" >> $GITHUB_ENV
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v2
         with:
@@ -158,9 +192,9 @@ jobs:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
         go-version: [1.15.x]
-        python-version: [ 3.7.x ]
+        python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
-        node-version: [ 10.x ]
+        node-version: [ 14.x ]
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set up Go ${{ matrix.go-version }}
@@ -220,5 +254,78 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+  windows-release:
+    name: Windows Build + Release
+    strategy:
+      matrix:
+        go-version: [1.15.x]
+        node-version: [14.x]
+        python-version: [3.8.x]
+        dotnet: [3.1.x]
+    runs-on: windows-latest
+    env:
+      GOPATH: ${{ github.workspace }}
+      PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+    steps:
+      - name: Install DotNet ${{ matrix.dotnet }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python Deps
+        run: |
+          pip3 install pyenv-win
+          pip3 install pipenv
+      - name: Set Build Env Vars
+        shell: bash
+        run: |
+          echo "::add-path::D:\\Pulumi\\bin"
+      - name: Install AWS CLI Tools
+        uses: chrislennon/action-aws-cli@v1.1
+      - name: Check out scripts repo into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          repository: pulumi/scripts
+          path: ./src/github.com/pulumi/scripts
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          path: ./src/github.com/${{ github.repository }}
+      - name: Fetch Tags
+        run: |
+          cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      - name: Get dependencies
+        run: |
+          cd src\github.com\${{ github.repository }}
+          pushd .
+          cd sdk
+          go mod tidy
+          go mod download
+          popd
+          pushd .
+          cd pkg
+          go mod tidy
+          go mod download
+          popd
+          pushd .
+          cd tests
+          go mod tidy
+          go mod download
+          popd
+      - name: Publish Binary
+        run: |
+          cd src\github.com\${{ github.repository }}
+          dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
 
 

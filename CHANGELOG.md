@@ -3,6 +3,61 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- Fix a bug that could prevent `pulumi import` from succeeding.
+  [#5730](https://github.com/pulumi/pulumi/pull/5730)
+
+- [Docs] Add support for the generation of Import documentation in the resource docs.
+  This documentation will only be available if the resource is importable.
+  [#5667](https://github.com/pulumi/pulumi/pull/5667)
+  
+- [codegen/go] Add support for ResourceType and isComponent to enable multi-language
+  components in Go. This change also generates Input/Output types for all resources
+  in downstream Go SDKs.
+  [#5497](https://github.com/pulumi/pulumi/pull/5497)
+
+## 2.13.2 (2020-11-06)
+
+- Fix a bug that was causing errors when (de)serializing custom resources.
+  [#5709](https://github.com/pulumi/pulumi/pull/5709)
+
+## 2.13.1 (2020-11-06)
+
+- [cli] Ensure `pulumi history` annotes when secrets are unable to be decrypted
+  [#5701](https://github.com/pulumi/pulumi/pull/5701)
+
+- Fix a bug in the Python SDK that caused incompatibilities with versions of the CLI prior to
+  2.13.0.
+  [#5702](https://github.com/pulumi/pulumi/pull/5702)
+
+## 2.13.0 (2020-11-04)
+
+- Add internal scaffolding for using cross-language components from Go.
+  [#5558](https://github.com/pulumi/pulumi/pull/5558)
+
+- Support python 3.9.
+  [#5669](https://github.com/pulumi/pulumi/pull/5669)
+
+- [cli] Ensure that the CLI doesn't panic when using pulumi watch and using ComponentResources with non-standard naming
+  [#5675](https://github.com/pulumi/pulumi/pull/5675)
+
+- [cli] Ensure that the CLI doesn't panic when trying to assemble a graph on a stack that has no snapshot available
+  [#5678](https://github.com/pulumi/pulumi/pull/5678)
+
+- Add boolean values to Go SDK
+  [#5687](https://github.com/pulumi/pulumi/pull/5687)
+
+## 2.12.1 (2020-10-23)
+
+- [cli] Ensure that the CLI doesn't panic when using pulumi watch and policies are enabled
+  [#5569](https://github.com/pulumi/pulumi/pull/5569)
+  
+- [cli] Ensure that the CLI doesn't panic when using the JSON output as part of previews
+  and policies are enabled
+  [#5610](https://github.com/pulumi/pulumi/pull/5610)
+
+
+## 2.12.0 (2020-10-14)
+
 - NodeJS Automation API.
   [#5347](https://github.com/pulumi/pulumi/pull/5347)
 
@@ -20,6 +75,10 @@ CHANGELOG
   previous and more conservative behavior for previews.
   [#5443](https://github.com/pulumi/pulumi/pull/5443).
 
+- Add an import command to the Pulumi CLI. This command can be used to import existing resources
+  into a Pulumi stack.
+  [#4765](https://github.com/pulumi/pulumi/pull/4765)
+
 - [cli] Remove eternal loop if a configured passphrase is invalid.
   [#5507](https://github.com/pulumi/pulumi/pull/5507)
 
@@ -34,10 +93,10 @@ CHANGELOG
 
 - Support self-contained executables as binary option for .NET programs.
   [#5519](https://github.com/pulumi/pulumi/pull/5519)
-  
+
 - [cli] Ensure old secret provider variables are cleaned up when changing between secret providers
   [#5545](https://github.com/pulumi/pulumi/pull/5545)
-  
+
 - [cli] Respect logging verbosity as part of pulumi plugin install commands
   [#5549](https://github.com/pulumi/pulumi/pull/5549)
 
@@ -46,7 +105,7 @@ CHANGELOG
 
 - [cli] Validate cloudUrl formats before `pulumi login` and throw an error if incorrect format specified
   [#5550](https://github.com/pulumi/pulumi/pull/5545)
-  
+
 - [automation api] Add support for passing a private ssh key for git authentication that doesn't rely on a file path
   [#5557](https://github.com/pulumi/pulumi/pull/5557)
 

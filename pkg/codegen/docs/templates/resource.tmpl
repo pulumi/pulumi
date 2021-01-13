@@ -185,4 +185,9 @@ The following state arguments are supported:
 
 {{ end }}
 
+{{ if .ImportDocs  }}
+## Import
+{{ htmlSafe .ImportDocs }}
+{{ end }}
+
 {{ template "package_details" .PackageDetails }}

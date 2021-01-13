@@ -37,8 +37,9 @@ type exampleSection struct {
 }
 
 type docInfo struct {
-	description string
-	examples    []exampleSection
+	description   string
+	examples      []exampleSection
+	importDetails string
 }
 
 func decomposeDocstring(docstring string) docInfo {
@@ -116,9 +117,15 @@ func decomposeDocstring(docstring string) docInfo {
 	}
 
 	description := schema.RenderDocsToString(source, parsed)
+	importDetails := ""
+	parts := strings.Split(description, "\n\n## Import")
+	if len(parts) > 1 { // we only care about the Import section details here!!
+		importDetails = parts[1]
+	}
 
 	return docInfo{
-		description: description,
-		examples:    examples,
+		description:   parts[0], // When we split the description above, the main part of the description is always part[0]
+		examples:      examples,
+		importDetails: importDetails,
 	}
 }

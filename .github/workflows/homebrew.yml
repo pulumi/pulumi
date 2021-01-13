@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: dawidd6/action-homebrew-bump-formula@v3
         with:
-          token: ${{secrets.GITHUB_TOKEN}}
+          token: ${{secrets.PULUMI_BOT_TOKEN}}
           formula: pulumi
           tag: ${{env.VERSION}}
           revision: ${{env.COMMIT_SHA}}

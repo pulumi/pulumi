@@ -85,6 +85,10 @@ type modContext struct {
 	disableUnionOutputTypes bool              // Disable unions in output types.
 }
 
+func (mod *modContext) String() string {
+	return mod.mod
+}
+
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	details, ok := mod.typeDetails[t]
 	if !ok {
@@ -834,6 +838,8 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
 	case *schema.MapType:
 		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+	case *schema.EnumType:
+		return true
 	case *schema.ObjectType:
 		for _, p := range t.Properties {
 			mod.getTypeImports(p.Type, recurse, imports, seen)
@@ -995,12 +1001,12 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 
 	relRoot := mod.getRelativePath()
 	if nested {
-		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
-		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
+		enumsImport := ""
 		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
 		if containsEnums {
-			imports = append(imports, fmt.Sprintf("import * as enums from \"%s/types/enums\";", relRoot))
+			enumsImport = ", enums"
 		}
+		imports = append(imports, fmt.Sprintf(`import { input as inputs, output as outputs%s } from "%s/types";`, enumsImport, relRoot))
 	}
 
 	if utilities {
@@ -1105,19 +1111,21 @@ func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, leve
 	}
 }
 
-func makeSafeEnumName(name string) string {
-	return makeValidIdentifier(title(name))
-}
-
-func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
 	fmt.Fprintf(w, "export const %s = {\n", enumName)
 	for _, e := range enum.Elements {
+		// If the enum doesn't have a name, set the value as the name.
 		if e.Name == "" {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
-		e.Name = makeSafeEnumName(e.Name)
+		safeName, err := makeSafeEnumName(e.Name)
+		if err != nil {
+			return err
+		}
+		e.Name = safeName
+
 		printComment(w, e.Comment, e.DeprecationMessage, indent)
 		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
 		if val, ok := e.Value.(string); ok {
@@ -1131,6 +1139,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) {
 
 	printComment(w, enum.Comment, "", "")
 	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
+	return nil
 }
 
 type fs map[string][]byte
@@ -1240,12 +1249,13 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	if mod.hasEnums() {
-		imports := map[string]codegen.StringSet{}
-
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, []string{}, imports)
+		mod.genHeader(buffer, []string{}, nil)
 
-		mod.genEnums(buffer, mod.enums)
+		err := mod.genEnums(buffer, mod.enums)
+		if err != nil {
+			return err
+		}
 
 		var fileName string
 		if modDir == "" {
@@ -1342,17 +1352,19 @@ func (mod *modContext) genIndex(exports []string) string {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
 
-		fmt.Fprintf(w, "export {")
-		for i, mod := range sorted {
-			if i > 0 {
-				fmt.Fprint(w, ", ")
-			}
-			fmt.Fprint(w, mod)
-		}
-		fmt.Fprintf(w, "};\n")
+		printExports(w, sorted)
 	}
 
 	return w.String()
+}
+
+func printExports(w io.Writer, exports []string) {
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "export {\n")
+	for _, mod := range exports {
+		fmt.Fprintf(w, "    %s,\n", mod)
+	}
+	fmt.Fprintf(w, "};\n")
 }
 
 func (mod *modContext) hasEnums() bool {
@@ -1364,13 +1376,15 @@ func (mod *modContext) hasEnums() bool {
 	}
 	if len(mod.children) > 0 {
 		for _, mod := range mod.children {
-			return mod.hasEnums()
+			if mod.hasEnums() {
+				return true
+			}
 		}
 	}
 	return false
 }
 
-func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) {
+func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) error {
 	if len(mod.children) > 0 {
 		children := codegen.NewStringSet()
 
@@ -1388,25 +1402,22 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 			for _, mod := range sorted {
 				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
 			}
-			fmt.Fprintf(buffer, "export {")
-			for i, mod := range sorted {
-				if i > 0 {
-					fmt.Fprint(buffer, ", ")
-				}
-				fmt.Fprint(buffer, mod)
-			}
-			fmt.Fprintf(buffer, "};\n")
+			printExports(buffer, sorted)
 		}
 	}
 	if len(enums) > 0 {
 		fmt.Fprintf(buffer, "\n")
 		for i, enum := range enums {
-			mod.genEnum(buffer, enum)
+			err := mod.genEnum(buffer, enum)
+			if err != nil {
+				return err
+			}
 			if i != len(enums)-1 {
 				fmt.Fprintf(buffer, "\n")
 			}
 		}
 	}
+	return nil
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.

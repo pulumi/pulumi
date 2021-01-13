@@ -330,6 +330,13 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	name := strings.ToLower(packageName[len("Pulumi."):])
 
 	version := strings.TrimSpace(bytes.NewBuffer(b).String())
+	parts := strings.SplitN(version, "\n", 2)
+	if len(parts) == 2 {
+		// version.txt may contain two lines, in which case it's "plugin name\nversion"
+		name = strings.TrimSpace(parts[0])
+		version = strings.TrimSpace(parts[1])
+	}
+
 	if !strings.HasPrefix(version, "v") {
 		// Version file has stripped off the "v" that we need. So add it back here.
 		version = fmt.Sprintf("v%v", version)

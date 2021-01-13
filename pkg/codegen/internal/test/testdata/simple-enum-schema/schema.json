@@ -9,8 +9,30 @@
         },
         "type": {
           "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+        },
+        "farm": {
+          "oneOf": [
+            {"$ref": "#/types/plant-provider:tree/v1:Farm"},
+            {"type": "string"}
+          ]
         }
-      }
+      },
+      "properties": {
+        "container": {
+          "$ref": "#/types/plant-provider::Container"
+        },
+        "type": {
+          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+        },
+        "farm": {
+          "oneOf": [
+            {"$ref": "#/types/plant-provider:tree/v1:Farm"},
+            {"type": "string"}
+          ]
+        }
+      },
+      "required": ["type"],
+      "requiredInputs": ["type"]
     }
   },
   "types": {
@@ -28,6 +50,9 @@
             {"$ref": "#/types/plant-provider::ContainerColor"},
             {"type": "string"}
           ]
+        },
+        "brightness": {
+          "$ref": "#/types/plant-provider::ContainerBrightness"
         }
       },
       "required": ["size"]
@@ -66,6 +91,19 @@
         }
       ]
     },
+    "plant-provider::ContainerBrightness": {
+      "type": "number",
+      "enum": [
+        {
+          "name": "ZeroPointOne",
+          "value": 0.1
+        },
+        {
+          "name": "One",
+          "value": 1.0
+        }
+      ]
+    },
     "plant-provider:tree/v1:RubberTreeVariety": {
       "type": "string",
       "description": "types of rubber trees",
@@ -83,10 +121,26 @@
           "description": "A tineke rubber tree."
         }
       ]
+    },
+    "plant-provider:tree/v1:Farm": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "Pulumi Planters Inc."
+        },
+        {
+          "value": "Plants'R'Us"
+        }
+      ]
     }
   },
   "language": {
-    "csharp": {},
+    "csharp": {
+      "namespaces": {
+        "plant-provider": "PlantProvider",
+        "tree/v1": "Tree.V1"
+      }
+    },
     "go": {},
     "nodejs": {},
     "python": {}

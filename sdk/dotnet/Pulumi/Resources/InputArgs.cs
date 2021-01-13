@@ -75,7 +75,7 @@ namespace Pulumi
                 return null;
 
             var serializer = new Serializer(excessiveDebugOutput: false);
-            var obj = await serializer.SerializeAsync(context, input).ConfigureAwait(false);
+            var obj = await serializer.SerializeAsync(context, input, false).ConfigureAwait(false);
             var value = Serializer.CreateValue(obj);
             return JsonFormatter.Default.Format(value);
         }

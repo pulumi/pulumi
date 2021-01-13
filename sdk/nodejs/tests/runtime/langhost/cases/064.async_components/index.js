@@ -29,10 +29,10 @@ class CompResource extends pulumi.ComponentResource {
 
 const comp = new CompResource("comp", {});
 comp.a.apply(v => {
-    assert.equal(v, 1);
+    assert.strictEqual(v, 1);
 });
 comp.b.apply(v => {
-    assert.equal(v, 2);
+    assert.strictEqual(v, 2);
 });
 
 // Have a custom resource depend on the async component.  We should still pick up 'a' and 'b' as

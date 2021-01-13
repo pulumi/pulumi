@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Google.Protobuf.Collections;
@@ -25,6 +26,10 @@ namespace Pulumi.Serialization
             if (TryDeserializeAssetOrArchive(value, out var assetOrArchive))
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
+            }
+            else if (TryDeserializeResource(value, out var resource))
+            {
+                return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
             }
 
             var innerData = func(value);
@@ -202,6 +207,58 @@ namespace Pulumi.Serialization
                 return new StringAsset(text);
 
             throw new InvalidOperationException("Value was marked as Asset, but did not conform to required shape.");
+        }
+
+        private static bool TryDeserializeResource(
+            Value value, [NotNullWhen(true)] out Resource? resource)
+        {
+            if (!IsSpecialStruct(value, out var sig) || sig != Constants.SpecialResourceSig)
+            {
+                resource = null;
+                return false;
+            }
+
+            string? urn;
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceUrnName, out urn))
+            {
+                throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+            }
+
+            string? version;
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version))
+            {
+                throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+            }
+
+            var urnParts = urn.Split("::");
+            var urnName = urnParts[3];
+            var qualifiedType = urnParts[2];
+            var qualifiedTypeParts = qualifiedType.Split('$');
+            var type = qualifiedTypeParts[qualifiedTypeParts.Length-1];
+
+            var typeParts = type.Split(':');
+            var pkgName = typeParts[0];
+            var modName = typeParts.Length > 1 ? typeParts[1] : "";
+            var typeName = typeParts.Length > 2 ? typeParts[2] : "";
+
+            var isProvider = pkgName == "pulumi" && modName == "providers";
+            if (isProvider) {
+                IResourcePackage? package;
+                if (!ResourcePackages.TryGetResourcePackage(typeName, version, out package))
+                {
+                    throw new InvalidOperationException($"Unable to deserialize provider {urn}, no resource package is registered for type {typeName}.");
+                }
+                resource = package.ConstructProvider(urnName, type, null, urn);
+                return true;
+            }
+
+            IResourceModule? module;
+            if (!ResourceModules.TryGetResourceModule(modName, version, out module))
+            {
+                throw new InvalidOperationException($"Unable to deserialize resource {urn}, no module is registered for {modName}.");
+            }
+            resource = module.Construct(urnName, type, null, urn);
+            return true;
         }
 
         private static bool TryGetStringValue(

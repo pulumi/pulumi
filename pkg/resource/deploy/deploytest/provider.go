@@ -18,7 +18,7 @@ import (
 	"fmt"
 
 	"github.com/blang/semver"
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
@@ -129,7 +129,12 @@ func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeo
 	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
 
 	if prov.CreateF == nil {
-		return resource.ID(uuid.NewV4().String()), resource.PropertyMap{}, resource.StatusOK, nil
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return "", nil, resource.StatusOK, err
+		}
+		return resource.ID(uuid.String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}
 	return prov.CreateF(urn, props, timeout, preview)
 }

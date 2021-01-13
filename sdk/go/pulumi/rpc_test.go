@@ -70,7 +70,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
-	out2.fulfill(nil, false, false, nil)
+	out2.fulfill(nil, false, false, nil, nil)
 	inputs := testInputs{
 		S:           String("a string"),
 		A:           Bool(true),
@@ -296,7 +296,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(false, nil, nil, "foo", "bar", s)
+	state.resolve(false, nil, nil, "foo", "bar", s, nil)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),
@@ -419,7 +419,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
-	out2.fulfill(nil, false, true, nil)
+	out2.fulfill(nil, false, true, nil, nil)
 	inputs := testInputs{
 		S:           String("a string"),
 		A:           Bool(true),
@@ -506,7 +506,7 @@ func (UntypedArgs) ElementType() reflect.Type {
 func TestMapInputMarhsalling(t *testing.T) {
 	var theResource simpleResource
 	out := newOutput(reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
-	out.resolve("outputty", true, false)
+	out.resolve("outputty", true, false, nil)
 
 	inputs1 := Map(map[string]Input{
 		"prop": out,

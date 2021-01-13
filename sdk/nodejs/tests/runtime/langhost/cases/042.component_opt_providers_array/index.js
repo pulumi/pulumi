@@ -40,7 +40,7 @@ function createResources(name, createChildren, parent) {
 	// Override provider
 	const provider = new Provider(`${name}-p`, { parent });
 	const r3 = new Resource(`${name}/r3`, createChildren, { parent, provider });
-	assert.equal(r3.getProvider("test:index:Resource"), provider);
+	assert.strictEqual(r3.getProvider("test:index:Resource"), provider);
 }
 
 function createComponents(name, createChildren, parent) {

@@ -43,6 +43,8 @@ type Stack interface {
 	Preview(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Update this stack.
 	Update(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
+	// Import resources into this stack.
+	Import(ctx context.Context, op UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result)
 	// Refresh this stack's state from the cloud provider.
 	Refresh(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Destroy this stack's resources.
@@ -80,6 +82,13 @@ func PreviewStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 // UpdateStack updates the target stack with the current workspace's contents (config and code).
 func UpdateStack(ctx context.Context, s Stack, op UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return s.Backend().Update(ctx, s, op)
+}
+
+// ImportStack updates the target stack with the current workspace's contents (config and code).
+func ImportStack(ctx context.Context, s Stack, op UpdateOperation,
+	imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	return s.Backend().Import(ctx, s, op, imports)
 }
 
 // RefreshStack refresh's the stack's state from the cloud provider.

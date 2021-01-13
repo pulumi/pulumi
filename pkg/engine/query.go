@@ -71,7 +71,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	contract.Assert(proj != nil)
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
-		opts.host, nil, diag, statusDiag, false, tracingSpan)
+		opts.Host, nil, diag, statusDiag, false, tracingSpan)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -81,7 +81,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 		Events:      emitter,
 		Diag:        diag,
 		StatusDiag:  statusDiag,
-		host:        opts.host,
+		host:        opts.Host,
 		pwd:         pwd,
 		main:        main,
 		plugctx:     plugctx,

@@ -16,8 +16,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
+
+const errorDecryptingValue = "ERROR_UNABLE_TO_DECRYPT"
 
 func newStackHistoryCmd() *cobra.Command {
 	var stack string
@@ -109,8 +110,13 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 			}
 			if !v.Secure() || (v.Secure() && decrypter != nil) {
 				value, err := v.Value(decrypter)
-				contract.AssertNoError(err)
-				configValue.Value = makeStringRef(value)
+				if err != nil {
+					// We don't actually want to error here
+					// we are just going to mark as "UNKNOWN" and then let the command continue
+					configValue.Value = makeStringRef(errorDecryptingValue)
+				} else {
+					configValue.Value = makeStringRef(value)
+				}
 
 				if v.Object() {
 					var obj interface{}
@@ -120,7 +126,6 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 					configValue.ObjectValue = obj
 				}
 			}
-
 			info.Config[k.String()] = configValue
 		}
 		info.Result = string(update.Result)

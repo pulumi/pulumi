@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -47,8 +47,14 @@ func Pack(dir string, stderr io.Writer) ([]byte, error) {
 	// by parsing the output of the command. However, if we're using `yarn`, we can specify a
 	// filename.
 	var packfile string
+
 	if !npm {
-		packfile = fmt.Sprintf("%s.tgz", uuid.NewV4().String())
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return nil, err
+		}
+		packfile = fmt.Sprintf("%s.tgz", uuid.String())
 		c.Args = append(c.Args, "--filename", packfile)
 	}
 

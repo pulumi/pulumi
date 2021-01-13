@@ -35,43 +35,43 @@ class MyResource extends pulumi.CustomResource {
 let res = new MyResource("testResource1");
 res.urn.apply(urn => {
     console.log(`URN: ${urn}`);
-    assert.equal(urn, "test:index:MyResource::testResource1");
+    assert.strictEqual(urn, "test:index:MyResource::testResource1");
 });
 res.id.apply(id => {
     console.log(`ID: ${id}`);
-    assert.equal(id, "testResource1");
+    assert.strictEqual(id, "testResource1");
 });
 res.outprop1.apply(prop => {
     console.log(`OutProp1: ${prop}`);
-    assert.equal(prop, "output properties ftw");
+    assert.strictEqual(prop, "output properties ftw");
 });
 res.outprop2.apply(prop => {
     console.log(`OutProp2: ${prop}`);
-    assert.equal(prop, 998.6);
+    assert.strictEqual(prop, 998.6);
 });
 res.outprop3.apply(prop => {
     console.log(`OutProp3: ${prop}`);
-    assert.equal(prop, undefined);
+    assert.strictEqual(prop, undefined);
 });
 
 let resOutput = pulumi.output(res);
 resOutput.urn.apply(urn => {
     console.log(`URN: ${urn}`);
-    assert.equal(urn, "test:index:MyResource::testResource1");
+    assert.strictEqual(urn, "test:index:MyResource::testResource1");
 });
 resOutput.id.apply(id => {
     console.log(`ID: ${id}`);
-    assert.equal(id, "testResource1");
+    assert.strictEqual(id, "testResource1");
 });
 resOutput.outprop1.apply(prop => {
     console.log(`OutProp1: ${prop}`);
-    assert.equal(prop, "output properties ftw");
+    assert.strictEqual(prop, "output properties ftw");
 });
 resOutput.outprop2.apply(prop => {
     console.log(`OutProp2: ${prop}`);
-    assert.equal(prop, 998.6);
+    assert.strictEqual(prop, 998.6);
 });
 resOutput.outprop3.apply(prop => {
     console.log(`OutProp3: ${prop}`);
-    assert.equal(prop, undefined);
+    assert.strictEqual(prop, undefined);
 });
