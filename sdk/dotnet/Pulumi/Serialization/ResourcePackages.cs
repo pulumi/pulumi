@@ -106,7 +106,10 @@ namespace Pulumi
                 }
             }
 
-            static bool PossibleMatch(AssemblyName? assembly) => assembly != null && !assembly.FullName.StartsWith("System", StringComparison.Ordinal);
+            static bool PossibleMatch(AssemblyName? assembly)
+                => assembly != null
+                && !assembly.FullName.StartsWith("System", StringComparison.Ordinal)
+                && assembly.ContentType != AssemblyContentType.WindowsRuntime;
         }
     }
 }

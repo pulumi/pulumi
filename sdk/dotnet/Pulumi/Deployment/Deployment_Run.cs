@@ -131,7 +131,7 @@ namespace Pulumi
         /// </para>
         /// </summary>
         public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
-            => CreateRunner().RunAsync<TStack>(serviceProvider);
+            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync<TStack>(serviceProvider));
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
@@ -149,9 +149,7 @@ namespace Pulumi
         /// <returns>Test result containing created resources and errors, if any.</returns>
         public static Task<ImmutableArray<Resource>> TestWithServiceProviderAsync<TStack>(IMocks mocks, IServiceProvider serviceProvider, TestOptions? options = null)
             where TStack : Stack
-        {
-            return TestAsync(mocks, (deployment) => deployment._runner.RunAsync<TStack>(serviceProvider), options);
-        }
+            => TestAsync(mocks, runner => runner.RunAsync<TStack>(serviceProvider), options);
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
@@ -166,41 +164,19 @@ namespace Pulumi
         /// <returns>Test result containing created resources and errors, if any.</returns>
         public static Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, TestOptions? options = null)
             where TStack : Stack, new()
-        {
-            return TestAsync(mocks, (deployment)=> deployment._runner.RunAsync<TStack>(), options);
-        }
+            => TestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
 
-        private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<Deployment, Task<int>> runAsync, TestOptions? options = null)
+        private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
         {
             var engine = new MockEngine();
             var monitor = new MockMonitor(mocks);
-            Deployment deployment;
-            lock (_instanceLock)
+            await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, options), runAsync).ConfigureAwait(false);
+            return engine.Errors.Count switch
             {
-                if (_instance != null)
-                    throw new NotSupportedException($"Multiple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
-
-                deployment = new Deployment(engine, monitor, options);
-                Instance = new DeploymentInstance(deployment);
-            }
-
-            try
-            {
-                await runAsync(deployment);
-                return engine.Errors.Count switch
-                {
-                    1 => throw new RunException(engine.Errors.Single()),
-                    int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
-                    _ => monitor.Resources.ToImmutableArray()
-                };
-            }
-            finally
-            {
-                lock (_instanceLock)
-                {
-                    _instance = null;
-                }
-            }
+                1 => throw new RunException(engine.Errors.Single()),
+                int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                _ => monitor.Resources.ToImmutableArray()
+            };
         }
 
         // this method *must* remain marked async
