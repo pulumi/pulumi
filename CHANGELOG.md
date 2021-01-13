@@ -32,6 +32,12 @@ CHANGELOG
 - [sdk/dotnet] Fix looking up empty version in `ResourcePackages.TryGetResourceType`.
   [#6084](https://github.com/pulumi/pulumi/pull/6084)
 
+- Python Automation API.
+  [#5979](https://github.com/pulumi/pulumi/pull/5979)
+
+- Support recovery workflow (import/export/cancel) in Python Automation API.
+  [#6037](https://github.com/pulumi/pulumi/pull/6037)
+
 ## 2.17.0 (2021-01-06)
 
 - Respect the `version` resource option for provider resources.
@@ -48,9 +54,6 @@ CHANGELOG
 
 - [CLI] Add a confirmation prompt when using `pulumi policy rm`
   [#6034](https://github.com/pulumi/pulumi/pull/6034)
-  
-- Python Automation API.
-  [#5979](https://github.com/pulumi/pulumi/pull/5979)
 
 - [CLI] Ensure errors with the Pulumi credentials file
   give the user some information on how to resolve the problem

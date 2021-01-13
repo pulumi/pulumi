@@ -23,9 +23,9 @@ from typing import List, Any, Mapping, MutableMapping, Optional
 
 from .cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from .config import ConfigValue, ConfigMap, _SECRET_SENTINEL
-from .errors import StackAlreadyExistsError, CommandError
+from .errors import StackAlreadyExistsError
 from .server import LanguageServer
-from .workspace import Workspace, PulumiFn
+from .workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
 
@@ -329,10 +329,9 @@ class Stack:
             summary = self.info()
             assert (summary is not None)
             return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr, summary=summary)
-        except CommandError as exn:
+        finally:
             if on_exit is not None:
                 on_exit()
-                raise
 
     def refresh(self,
                 parallel: Optional[int] = None,
@@ -496,6 +495,34 @@ class Stack:
         if not len(history):
             return None
         return history[0]
+
+    def cancel(self) -> None:
+        """
+        Cancel stops a stack's currently running update. It returns an error if no update is currently running.
+        Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
+        if a resource operation was pending when the update was canceled.
+        This command is not supported for local backends.
+        """
+        self.workspace.select_stack(self.name)
+        self._run_pulumi_cmd_sync(["cancel", "--yes"])
+
+    def export_stack(self) -> Deployment:
+        """
+        export_stack exports the deployment state of the stack.
+        This can be combined with Stack.import_state to edit a stack's state (such as recovery from failed deployments).
+
+        :returns: Deployment
+        """
+        return self.workspace.export_stack(self.name)
+
+    def import_stack(self, state: Deployment) -> None:
+        """
+        import_stack imports the specified deployment state into a pre-existing stack.
+        This can be combined with Stack.export_state to edit a stack's state (such as recovery from failed deployments).
+
+        :param state: The deployment state to import.
+        """
+        return self.workspace.import_stack(self.name, state)
 
     def _run_pulumi_cmd_sync(self,
                              args: List[str],
