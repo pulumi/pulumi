@@ -99,10 +99,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             process.on("unhandledRejection", uncaughtHandler);
 
             try {
-                await runtime.runInPulumiStack(async () => {
-                    result = this.program();
-                    return result;
-                });
+                await runtime.runInPulumiStack(this.program);
                 await runtime.disconnect();
                 process.off("uncaughtException", uncaughtHandler);
                 process.off("unhandledRejection", uncaughtHandler);

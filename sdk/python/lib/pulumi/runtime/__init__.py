@@ -18,6 +18,7 @@ The runtime implementation of the Pulumi Python SDK.
 
 from .config import (
     set_config,
+    set_all_config,
     get_config,
     get_config_env,
     get_config_env_key,
@@ -33,6 +34,7 @@ from .settings import (
     Settings,
     configure,
     is_dry_run,
+    reset_options,
 )
 
 from .stack import (
