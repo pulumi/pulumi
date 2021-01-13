@@ -2,8 +2,12 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-- [automation api] Add debug logging settings for common automation API operations
+
+- [automation/go] Add debug logging settings for common automation API operations
   [#6095](https://github.com/pulumi/pulumi/pull/6095)
+  
+- [automation/go] Set DryRun on previews so unknowns are identified correctly.
+  [#6099](https://github.com/pulumi/pulumi/pull/6099)
 
 ## 2.17.1 (2021-01-13)
 
