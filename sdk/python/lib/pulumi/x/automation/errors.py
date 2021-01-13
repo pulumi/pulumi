@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,17 +43,45 @@ class StackAlreadyExistsError(CommandError):
         self.name = "StackAlreadyExistsError"
 
 
+class InlineSourceRuntimeError(CommandError):
+    def __init__(self, command_result: 'CommandResult'):
+        super().__init__(command_result)
+        self.name = "InlineSourceRuntimeError"
+
+
+class RuntimeError(CommandError):
+    def __init__(self, command_result: 'CommandResult'):
+        super().__init__(command_result)
+        self.name = "RuntimeError"
+
+
+class CompilationError(CommandError):
+    def __init__(self, command_result: 'CommandResult'):
+        super().__init__(command_result)
+        self.name = "CompilationError"
+
+
 not_found_regex = re.compile("no stack named.*found")
 already_exists_regex = re.compile("stack.*already exists")
 conflict_text = "[409] Conflict: Another update is currently in progress."
+inline_source_error_text = "python inline source runtime error"
+runtime_error_regex = re.compile("failed with an unhandled exception|panic: runtime error|an unhandled error occurred:")
+compilation_error_regex = re.compile("Build FAILED.|Unable to compile TypeScript|: syntax error:|: undefined:")
 
 
 def create_command_error(command_result: 'CommandResult') -> CommandError:
     stderr = command_result.stderr
+    stdout = command_result.stdout
     if not_found_regex.search(stderr):
         return StackNotFoundError(command_result)
     if already_exists_regex.search(stderr):
         return StackAlreadyExistsError(command_result)
     if conflict_text in stderr:
         return ConcurrentUpdateError(command_result)
+    if compilation_error_regex.search(stdout):
+        return CompilationError(command_result)
+    if inline_source_error_text in stdout:
+        return InlineSourceRuntimeError(command_result)
+    if runtime_error_regex.search(stdout):
+        return RuntimeError(command_result)
     return CommandError(command_result)

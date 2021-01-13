@@ -33,7 +33,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-// Stack is a stack associated with a particular backend implementation.
+// Stack is used to manage stacks of resources against a pluggable backend.
 type Stack interface {
 	Ref() StackReference                                    // this stack's identity.
 	Snapshot(ctx context.Context) (*deploy.Snapshot, error) // the latest deployment snapshot.

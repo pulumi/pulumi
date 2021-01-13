@@ -18,7 +18,6 @@ import (
 	"encoding/json"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"

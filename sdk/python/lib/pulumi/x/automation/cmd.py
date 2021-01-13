@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,11 +14,12 @@
 
 import os
 import subprocess
-from typing import List, Mapping
+import tempfile
+from typing import List, Mapping, Optional, Callable, Any
 
 from .errors import create_command_error
 
-UNKNOWN_ERR_CODE = -2
+OnOutput = Callable[[str], Any]
 
 
 class CommandResult:
@@ -31,13 +32,17 @@ class CommandResult:
         self.stderr = stderr
         self.code = code
 
-    def __repr__(self) -> str:
+    def __repr__(self):
+        return f"CommandResult(stdout={self.stdout!r}, stderr={self.stderr!r}, code={self.code!r})"
+
+    def __str__(self) -> str:
         return f"\n code: {self.code}\n stdout: {self.stdout}\n stderr: {self.stderr}"
 
 
 def _run_pulumi_cmd(args: List[str],
                     cwd: str,
-                    additional_env: Mapping[str, str]) -> CommandResult:
+                    additional_env: Mapping[str, str],
+                    on_output: Optional[OnOutput] = None) -> CommandResult:
     # All commands should be run in non-interactive mode.
     # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
     args.append("--non-interactive")
@@ -45,10 +50,31 @@ def _run_pulumi_cmd(args: List[str],
     cmd = ["pulumi"]
     cmd.extend(args)
 
-    process = subprocess.run(cmd, cwd=cwd, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
-    code = process.returncode if process.returncode is not None else UNKNOWN_ERR_CODE
+    stderr_file = tempfile.NamedTemporaryFile(delete=False)
+    stdout_chunks: List[str] = []
 
-    result = CommandResult(stderr=process.stderr, stdout=process.stdout, code=code)
+    with subprocess.Popen(cmd,
+                          stdout=subprocess.PIPE,
+                          stderr=stderr_file,
+                          cwd=cwd,
+                          env=env) as process:
+        while True:
+            output = process.stdout.readline().decode(encoding="utf-8")
+            if output == "" and process.poll() is not None:
+                break
+            if output:
+                text = output.strip()
+                if on_output:
+                    on_output(text)
+                stdout_chunks.append(text)
+
+        code = process.returncode
+
+    with open(stderr_file.name) as stderr:
+        stderr_contents = stderr.read()
+    os.remove(stderr_file.name)
+
+    result = CommandResult(stderr=stderr_contents, stdout='\n'.join(stdout_chunks), code=code)
     if code != 0:
         raise create_command_error(result)
 

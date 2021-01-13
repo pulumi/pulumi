@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ from typing import List, Optional
 
 from pulumi import Config, export
 from pulumi.x.automation import (
+    create_stack,
     CommandError,
     ConfigMap,
     ConfigValue,
@@ -246,7 +247,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_local_program(self):
         stack_name = stack_namer()
         work_dir = test_path("data", "testproj")
-        stack = LocalWorkspace.new_stack(stack_name, work_dir=work_dir)
+        stack = create_stack(stack_name, work_dir=work_dir)
 
         config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
@@ -285,67 +286,42 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_stack_lifecycle_inline_program(self):
         stack_name = stack_namer()
         project_name = "inline_python"
-        stack = LocalWorkspace.new_stack(stack_name, program=pulumi_program, project_name=project_name)
+        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
             "bar": ConfigValue(value="abc"),
             "buzz": ConfigValue(value="secret", secret=True)
         }
-        stack.set_all_config(stack_config)
-
-        # pulumi up
-        up_res = stack.up()
-        self.assertEqual(len(up_res.outputs), 3)
-        self.assertEqual(up_res.outputs["exp_static"].value, "foo")
-        self.assertFalse(up_res.outputs["exp_static"].secret)
-        self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
-        self.assertFalse(up_res.outputs["exp_cfg"].secret)
-        self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
-        self.assertTrue(up_res.outputs["exp_secret"].secret)
-        self.assertEqual(up_res.summary.kind, "update")
-        self.assertEqual(up_res.summary.result, "succeeded")
-
-        # pulumi preview
-        stack.preview()
-        # TODO: update assertions when we have structured output
-
-        # pulumi refresh
-        refresh_res = stack.refresh()
-        self.assertEqual(refresh_res.summary.kind, "refresh")
-        self.assertEqual(refresh_res.summary.result, "succeeded")
-
-        # pulumi destroy
-        destroy_res = stack.destroy()
-        self.assertEqual(destroy_res.summary.kind, "destroy")
-        self.assertEqual(destroy_res.summary.result, "succeeded")
-
-        stack.workspace.remove_stack(stack_name)
-
-    def test_import_export_stack(self):
-        stack_name = stack_namer()
-        project_name = "python_export_stack"
-        stack = LocalWorkspace.new_stack(stack_name, project_name=project_name, program=pulumi_program)
 
         try:
-            stack_config: ConfigMap = {
-                "bar": ConfigValue(value="abc"),
-                "buzz": ConfigValue(value="secret", secret=True)
-            }
-
             stack.set_all_config(stack_config)
-            stack.up()
 
-            # export stack
-            state = stack.export_stack()
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(len(up_res.outputs), 3)
+            self.assertEqual(up_res.outputs["exp_static"].value, "foo")
+            self.assertFalse(up_res.outputs["exp_static"].secret)
+            self.assertEqual(up_res.outputs["exp_cfg"].value, "abc")
+            self.assertFalse(up_res.outputs["exp_cfg"].secret)
+            self.assertEqual(up_res.outputs["exp_secret"].value, "secret")
+            self.assertTrue(up_res.outputs["exp_secret"].secret)
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
 
-            # import stack
-            stack.import_stack(state)
-            self.assertEqual(stack.get_config("bar").value, "abc")
+            # pulumi preview
+            stack.preview()
+            # TODO: update assertions when we have structured output
 
-        finally:
+            # pulumi refresh
+            refresh_res = stack.refresh()
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy
             destroy_res = stack.destroy()
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
             stack.workspace.remove_stack(stack_name)
 
 
@@ -354,8 +330,3 @@ def pulumi_program():
     export("exp_static", "foo")
     export("exp_cfg", config.get("bar"))
     export("exp_secret", config.get_secret("buzz"))
-    return
-
-
-def get_test_org():
-    return os.getenv("PULUMI_TEST_ORG", "pulumi-test")

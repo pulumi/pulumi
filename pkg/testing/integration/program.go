@@ -33,12 +33,8 @@ import (
 	"testing"
 	"time"
 
-	user "github.com/tweekmonster/luser"
-
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/operations"
@@ -54,6 +50,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/stretchr/testify/assert"
+	user "github.com/tweekmonster/luser"
 )
 
 const PythonRuntime = "python"

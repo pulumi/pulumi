@@ -35,6 +35,28 @@ jobs:
           additional-tags: v${{ env.VERSION }}
           tag-latest: true
           build-args: PULUMI_VERSION=v${{ env.VERSION }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      - name: Get Public ECR Authorization token
+        run: |
+          aws --region us-east-1 ecr-public get-authorization-token \
+            --query 'authorizationData.authorizationToken' | \
+            tr -d '"' | base64 --decode | cut -d: -f2 | \
+            docker login -u AWS --password-stdin https://public.ecr.aws
+      - name: Publish pulumi/pulumi image to AWS Public ECR
+        run: |
+          docker tag pulumi/pulumi:v${{ env.VERSION }} public.ecr.aws/pulumi/pulumi:v${{ env.VERSION }}
+          docker tag pulumi/pulumi:latest public.ecr.aws/pulumi/pulumi:latest
+          docker push public.ecr.aws/pulumi/pulumi:v${{ env.VERSION }}
+          docker push public.ecr.aws/pulumi/pulumi:latest
   base:
     name: base sdk image build
     runs-on: ubuntu-latest
@@ -110,6 +132,29 @@ jobs:
           slug: pulumi/pulumi-${{matrix.sdk}}
           readme: docker/README.md
           description: Pulumi CLI container for ${{ matrix.sdk }}
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      - name: Get Public ECR Authorization token
+        run: |
+          aws --region us-east-1 ecr-public get-authorization-token \
+            --query 'authorizationData.authorizationToken' | \
+            tr -d '"' | base64 --decode | cut -d: -f2 | \
+            docker login -u AWS --password-stdin https://public.ecr.aws
+      - name: Publish pulumi/pulumi-${{matrix.sdk}} image to AWS Public ECR
+        run: |
+          docker tag pulumi/pulumi-${{matrix.sdk}}:latest public.ecr.aws/pulumi/pulumi-${{matrix.sdk}}:latest
+          docker push public.ecr.aws/pulumi/pulumi-${{matrix.sdk}}:latest
+
+          docker tag pulumi/pulumi-${{matrix.sdk}}:${{ env.VERSION }} public.ecr.aws/pulumi/pulumi-${{matrix.sdk}}:${{ env.VERSION }}
+          docker push public.ecr.aws/pulumi/pulumi-${{matrix.sdk}}:${{ env.VERSION }}
   os_sdk:
     name: os language sdk image
     runs-on: ubuntu-latest
@@ -132,6 +177,26 @@ jobs:
           additional-tags: ${{ env.VERSION }}-${{ matrix.os }}
           build-args: PULUMI_VERSION=${{ env.VERSION }}
           tag-latest: true
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-region: us-east-2
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          role-duration-seconds: 3600
+          role-external-id: upload-pulumi-release
+          role-session-name: pulumi@githubActions
+          role-to-assume: ${{ secrets.AWS_UPLOAD_ROLE_ARN }}
+      - name: Get Public ECR Authorization token
+        run: |
+          aws --region us-east-1 ecr-public get-authorization-token \
+            --query 'authorizationData.authorizationToken' | \
+            tr -d '"' | base64 --decode | cut -d: -f2 | \
+            docker login -u AWS --password-stdin https://public.ecr.aws
+      - name: Publish pulumi/pulumi-${{matrix.sdk}} image to AWS Public ECR
+        run: |
+          docker tag pulumi/pulumi-${{matrix.sdk}}:${{ env.VERSION }}-${{ matrix.os }} public.ecr.aws/pulumi/pulumi-${{matrix.sdk}}:${{ env.VERSION }}-${{ matrix.os }}
+          docker push public.ecr.aws/pulumi/pulumi-${{matrix.sdk}}:${{ env.VERSION }}-${{ matrix.os }}
   image-scan:
     name: scan container images
     runs-on: ubuntu-latest

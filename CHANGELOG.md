@@ -2,13 +2,44 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- Fix an issue with go sdk generation where optional strict enum values
+  could not be omitted. Note - this is a breaking change to go sdk's enum
+  values. However we currently only support strict enums in the azure-nextgen
+  provider's schema.
+  [#6069](https://github.com/pulumi/pulumi/pull/6069) 
+
+- Fix an issue where python debug messages print unexpectedly.
+  [#6967](https://github.com/pulumi/pulumi/pull/6067)
+  
+- [CLI] Add `version` to the stack history output to be able to
+  correlate events back to the Pulumi SaaS
+  [#6063](https://github.com/pulumi/pulumi/pull/6063)
+  
+- Fix a typo in the unit testing mocks to get the outputs while registering them
+  [#6040](https://github.com/pulumi/pulumi/pull/6040)
+
+- [sdk/dotnet] Moved urn value retrieval into if statement for MockMonitor
+  [#6081](https://github.com/pulumi/pulumi/pull/6081)
+
+- [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value.
+  [#6092](https://github.com/pulumi/pulumi/pull/6092)
+
+- [sdk/dotnet] Added `Pulumi.Output.IsSecretAsync` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6092](https://github.com/pulumi/pulumi/pull/6092)
+
+- [sdk/dotnet] Fix looking up empty version in `ResourcePackages.TryGetResourceType`.
+  [#6084](https://github.com/pulumi/pulumi/pull/6084)
+
+## 2.17.0 (2021-01-06)
+
+- Respect the `version` resource option for provider resources.
+  [#6055](https://github.com/pulumi/pulumi/pull/6055)
 
 - Allow `serializeFunction` to capture secrets.
   [#6013](https://github.com/pulumi/pulumi/pull/6013)
 
-- Parallelize bulk operations in NodeJS Automation API.
-  [#6022](https://github.com/pulumi/pulumi/pull/6022)
-  
 - [CLI] Allow `pulumi console` to accept a stack name
   [#6031](https://github.com/pulumi/pulumi/pull/6031)
   
@@ -17,6 +48,22 @@ CHANGELOG
 
 - Support recovery workflow (import/export/cancel) in Python Automation API.
   [#6037](https://github.com/pulumi/pulumi/pull/6037)
+
+- Support recovery workflow (import/export/cancel) in NodeJS Automation API.
+  [#6038](https://github.com/pulumi/pulumi/pull/6038)
+
+- [CLI] Add a confirmation prompt when using `pulumi policy rm`
+  [#6034](https://github.com/pulumi/pulumi/pull/6034)
+  
+- Python Automation API.
+  [#5979](https://github.com/pulumi/pulumi/pull/5979)
+
+- [CLI] Ensure errors with the Pulumi credentials file
+  give the user some information on how to resolve the problem
+  [#6044](https://github.com/pulumi/pulumi/pull/6044)
+
+- [sdk/go] Support maps in Invoke outputs and Read inputs
+  [#6014](https://github.com/pulumi/pulumi/pull/6014)
 
 ## 2.16.2 (2020-12-23)
 

@@ -46,7 +46,7 @@ install:: build install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
 	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
 	rm -f $(PULUMI_NUGET)/*.nupkg
-	find . -name '*${VERSION_PREFIX}-*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
+	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
 dotnet_test:: install
 	# include the version prefix/suffix to avoid generating a separate nupkg file

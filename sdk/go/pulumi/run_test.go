@@ -176,6 +176,7 @@ func TestReadResource(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
+		// Test struct-tag-based marshaling.
 		var res testResource2
 		err := ctx.ReadResource("test:resource:type", "resA", ID("someID"), &testResource2Inputs{
 			Foo: String("oof"),
@@ -203,6 +204,20 @@ func TestReadResource(t *testing.T) {
 		assert.Equal(t, []Resource{&res}, deps)
 		assert.Equal(t, "qux", foo)
 
+		// Test map marshaling.
+		var res2 testResource2
+		err = ctx.ReadResource("test:resource:type", "resA", ID("someID"), Map{
+			"foo": String("oof"),
+		}, &res2)
+		assert.NoError(t, err)
+
+		foo, known, secret, deps, err = await(res2.Foo)
+		assert.NoError(t, err)
+		assert.True(t, known)
+		assert.False(t, secret)
+		assert.Equal(t, []Resource{&res2}, deps)
+		assert.Equal(t, "qux", foo)
+
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
@@ -224,15 +239,25 @@ func TestInvoke(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
+		// Test struct unmarshaling.
 		var result invokeResult
 		err := ctx.Invoke("test:index:func", &invokeArgs{
 			Bang: "gnab",
 			Bar:  "rab",
 		}, &result)
-
 		assert.NoError(t, err)
 		assert.Equal(t, "oof", result.Foo)
 		assert.Equal(t, "zab", result.Baz)
+
+		// Test map unmarshaling.
+		var result2 map[string]interface{}
+		err = ctx.Invoke("test:index:func", &invokeArgs{
+			Bang: "gnab",
+			Bar:  "rab",
+		}, &result2)
+		assert.NoError(t, err)
+		assert.Equal(t, "oof", result2["foo"].(string))
+		assert.Equal(t, "zab", result2["baz"].(string))
 
 		return nil
 	}, WithMocks("project", "stack", mocks))

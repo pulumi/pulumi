@@ -130,16 +130,23 @@ func TestEnumUsage(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			pulumi.All(
-				tree.URN(), tree.Container.Material(), tree.Container.Color(), tree.Container.Size(), tree.Type,
+				tree.URN(),
+				tree.Container.Material(),
+				tree.Container.Color(),
+				tree.Container.Size(),
+				tree.Container.Brightness(),
+				tree.Type,
 			).ApplyT(func(all []interface{}) error {
 				urn := all[0].(pulumi.URN)
 				material := all[1].(*string)
 				color := all[2].(*string)
 				size := all[3].(*int)
-				typ := all[4].(string)
+				brightness := all[4].(*float64)
+				typ := all[5].(string)
 				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
 				assert.Equal(t, *color, "red", "unexpected color on resource: %v", urn)
 				assert.Equal(t, *size, 4, "unexpected size on resource: %v", urn)
+				assert.Nil(t, brightness)
 				assert.Equal(t, typ, "Ruby", "unexpected type on resource: %v", urn)
 				wg.Done()
 				return nil

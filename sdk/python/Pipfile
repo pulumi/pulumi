@@ -4,6 +4,7 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+# Keep this list in sync with setup.py
 protobuf = ">=3.6.0"
 grpcio = ">=1.9.1,!=1.30.0"
 dill = ">=0.3.0"

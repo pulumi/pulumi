@@ -171,8 +171,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	resultV := reflect.ValueOf(result)
-	if resultV.Kind() != reflect.Ptr || resultV.Elem().Kind() != reflect.Struct {
-		return errors.New("result must be a pointer to a struct value")
+	if !(resultV.Kind() == reflect.Ptr &&
+		(resultV.Elem().Kind() == reflect.Struct ||
+			(resultV.Elem().Kind() == reflect.Map && resultV.Elem().Type().Key().Kind() == reflect.String))) {
+		return errors.New("result must be a pointer to a struct or map value")
 	}
 
 	options := &invokeOptions{}
@@ -255,7 +257,7 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	}
 
 	// fail if there are secrets returned from the invoke
-	hasSecret, err := unmarshalOutput(resource.NewObjectProperty(outProps), resultV.Elem())
+	hasSecret, err := unmarshalOutput(ctx, resource.NewObjectProperty(outProps), resultV.Elem())
 	if err != nil {
 		return err
 	}
@@ -305,8 +307,9 @@ func (ctx *Context) ReadResource(
 		if propsType.Kind() == reflect.Ptr {
 			propsType = propsType.Elem()
 		}
-		if propsType.Kind() != reflect.Struct {
-			return errors.New("props must be a struct or a pointer to a struct")
+		if !(propsType.Kind() == reflect.Struct ||
+			(propsType.Kind() == reflect.Map && propsType.Key().Kind() == reflect.String)) {
+			return errors.New("props must be a struct or map or a pointer to a struct or map")
 		}
 	}
 
@@ -347,7 +350,7 @@ func (ctx *Context) ReadResource(
 		var state *structpb.Struct
 		var err error
 		defer func() {
-			res.resolve(ctx.DryRun(), err, inputs, urn, resID, state, nil)
+			res.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, nil)
 			ctx.endRPC(err)
 		}()
 
@@ -526,7 +529,7 @@ func (ctx *Context) registerResource(
 		deps := make(map[string][]Resource)
 		var err error
 		defer func() {
-			resState.resolve(ctx.DryRun(), err, inputs, urn, resID, state, deps)
+			resState.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, deps)
 			ctx.endRPC(err)
 		}()
 
@@ -800,7 +803,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 }
 
 // resolve resolves the resource outputs using the given error and/or values.
-func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInputs, urn, id string,
+func (state *resourceState) resolve(ctx *Context, dryrun bool, err error, inputs *resourceInputs, urn, id string,
 	result *structpb.Struct, deps map[string][]Resource) {
 
 	var inprops resource.PropertyMap
@@ -861,7 +864,7 @@ func (state *resourceState) resolve(dryrun bool, err error, inputs *resourceInpu
 
 		// Allocate storage for the unmarshalled output.
 		dest := reflect.New(output.ElementType()).Elem()
-		secret, err := unmarshalOutput(v, dest)
+		secret, err := unmarshalOutput(ctx, v, dest)
 		if err != nil {
 			output.reject(err)
 		} else {
