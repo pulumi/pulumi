@@ -20,6 +20,7 @@ import (
 	"math"
 	"net/url"
 	"os"
+	"path"
 	"regexp"
 	"sort"
 	"strings"
@@ -592,11 +593,21 @@ func (pkg *Package) TokenToModule(tok string) string {
 		return ""
 	default:
 		matches := pkg.moduleFormat.FindStringSubmatch(components[1])
-		if len(matches) < 2 || matches[1] == "index" {
+		if len(matches) < 2 || strings.HasPrefix(matches[1], "index") {
 			return ""
 		}
 		return matches[1]
 	}
+}
+
+func (pkg *Package) TokenToRuntimeModule(tok string) string {
+	// token := pkg ":" module ":" member
+
+	components := strings.Split(tok, ":")
+	if len(components) != 3 {
+		return ""
+	}
+	return components[1]
 }
 
 func (pkg *Package) GetResource(token string) (*Resource, bool) {
@@ -690,7 +701,7 @@ type ObjectTypeSpec struct {
 type ComplexTypeSpec struct {
 	ObjectTypeSpec
 
-	// Enum, if present, if the list of possible values for an enum type.
+	// Enum, if present, is the list of possible values for an enum type.
 	Enum []*EnumValueSpec `json:"enum,omitempty"`
 }
 
@@ -975,47 +986,35 @@ func (t *types) bindPrimitiveType(name string) (Type, error) {
 	}
 }
 
-// externalSchemaRef contains the parsed fields for an external schema ref.
-type externalSchemaRef struct {
-	Package string          // The package component of the schema ref
-	Version *semver.Version // The version component of the schema ref
-}
-
 // typeSpecRef contains the parsed fields from a type spec reference.
 type typeSpecRef struct {
-	*externalSchemaRef
+	URL *url.URL // The parsed URL
 
-	URL   *url.URL // The parsed URL
-	Token string   // The type token
-	Kind  string   // The kind of reference, either 'resources' or 'types'
+	Package string          // The package component of the schema ref
+	Version *semver.Version // The version component of the schema ref
+
+	Kind  string // The kind of reference: 'resources', 'types', or 'provider'
+	Token string // The type token
 }
 
-// Regexs used to parse type spec refs. These are declared at the package scope to avoid repeatedly recompiling them.
-var refPathRegex = regexp.MustCompile(`^/?(?P<package>\w+)/(?P<version>v?\d+\.\d+\.\d+)/schema\.json$`)
-var refFragmentRegex = regexp.MustCompile(`^/(?P<kind>resources|types)/(?P<token>.*:.*:.*)$`)
+const (
+	resourcesRef = "resources"
+	typesRef     = "types"
+	providerRef  = "provider"
+)
 
-func parseTypeSpecRef(ref string) (typeSpecRef, error) {
+// Regex used to parse external schema paths. This is declared at the package scope to avoid repeated recompilation.
+var refPathRegex = regexp.MustCompile(`^/?(?P<package>\w+)/(?P<version>v[^/]*)/schema\.json$`)
+
+func (t *types) parseTypeSpecRef(ref string) (typeSpecRef, error) {
 	parsedURL, err := url.Parse(ref)
 	if err != nil {
 		return typeSpecRef{}, errors.Wrapf(err, "failed to parse ref URL: %s", ref)
 	}
 
-	fragment, err := url.PathUnescape(parsedURL.Fragment)
-	if err != nil {
-		return typeSpecRef{}, errors.Wrapf(err, "failed to unescape fragment: %s", parsedURL.Fragment)
-	}
-
-	fragmentMatch := refFragmentRegex.FindStringSubmatch(fragment)
-	if len(fragmentMatch) != 3 {
-		return typeSpecRef{}, fmt.Errorf("failed to parse fragment: %s", fragment)
-	}
-
-	result := typeSpecRef{
-		URL:   parsedURL,
-		Kind:  fragmentMatch[1],
-		Token: fragmentMatch[2],
-	}
-
+	// Parse the package name and version if the URL contains a path. If there is no path--if the URL is just a
+	// fragment--then the reference refers to the package being bound.
+	pkgName, pkgVersion := t.pkg.Name, t.pkg.Version
 	if len(parsedURL.Path) > 0 {
 		path, err := url.PathUnescape(parsedURL.Path)
 		if err != nil {
@@ -1033,13 +1032,58 @@ func parseTypeSpecRef(ref string) (typeSpecRef, error) {
 			return typeSpecRef{}, errors.Wrapf(err, "failed to parse package version: %s", versionToken)
 		}
 
-		result.externalSchemaRef = &externalSchemaRef{
-			Package: pkg,
-			Version: &version,
-		}
+		pkgName, pkgVersion = pkg, &version
 	}
 
-	return result, nil
+	// Parse the fragment into a reference kind and token. The fragment is in one of two forms:
+	// 1. #/provider
+	// 2. #/(resources|types)/some:type:token
+	//
+	// Unfortunately, early code generators were lax and emitted unescaped backslashes in the type token, so we can't
+	// just split on "/".
+	fragment := path.Clean(parsedURL.EscapedFragment())
+	if path.IsAbs(fragment) {
+		fragment = fragment[1:]
+	}
+
+	kind, token := "", ""
+	slash := strings.Index(fragment, "/")
+	if slash == -1 {
+		kind = fragment
+	} else {
+		kind, token = fragment[:slash], fragment[slash+1:]
+	}
+
+	switch kind {
+	case "provider":
+		if token != "" {
+			return typeSpecRef{}, fmt.Errorf("invalid provider reference '%v'", ref)
+		}
+		token = "pulumi:providers:" + pkgName
+	case "resources", "types":
+		token, err = url.PathUnescape(token)
+		if err != nil {
+			return typeSpecRef{}, errors.Wrapf(err, "failed to unescape token: %s", token)
+		}
+	default:
+		return typeSpecRef{}, fmt.Errorf("invalid type reference '%v'", ref)
+	}
+
+	return typeSpecRef{
+		URL:     parsedURL,
+		Package: pkgName,
+		Version: pkgVersion,
+		Kind:    kind,
+		Token:   token,
+	}, nil
+}
+
+func versionEquals(a, b *semver.Version) bool {
+	// We treat "nil" as "unconstrained".
+	if a == nil || b == nil {
+		return true
+	}
+	return a.Equals(*b)
 }
 
 func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
@@ -1055,37 +1099,37 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 		return AnyType, nil
 	}
 
-	ref, err := parseTypeSpecRef(spec.Ref)
+	ref, err := t.parseTypeSpecRef(spec.Ref)
 	if err != nil {
 		return nil, err
 	}
 
-	if ref.externalSchemaRef != nil {
-		pkg, err := t.loader.LoadPackage(ref.externalSchemaRef.Package, ref.externalSchemaRef.Version)
+	// If this is a reference to an external sch
+	referencesExternalSchema := ref.Package != t.pkg.Name || !versionEquals(ref.Version, t.pkg.Version)
+	if referencesExternalSchema {
+		pkg, err := t.loader.LoadPackage(ref.Package, ref.Version)
 		if err != nil {
 			return nil, errors.Wrapf(err, "resolving package %v", ref.URL)
 		}
 
 		switch ref.Kind {
-		case "types":
+		case typesRef:
 			typ, ok := pkg.GetType(ref.Token)
 			if !ok {
-				return nil, fmt.Errorf("type %v not found in package %v",
-					ref.Token, ref.externalSchemaRef.Package)
+				return nil, fmt.Errorf("type %v not found in package %v", ref.Token, ref.Package)
 			}
 			return typ, nil
-		case "resources":
+		case resourcesRef, providerRef:
 			typ, ok := pkg.GetResourceType(ref.Token)
 			if !ok {
-				return nil, fmt.Errorf("resource type %v not found in package %v",
-					ref.Token, ref.externalSchemaRef.Package)
+				return nil, fmt.Errorf("resource type %v not found in package %v", ref.Token, ref.Package)
 			}
 			return typ, nil
 		}
 	}
 
 	switch ref.Kind {
-	case "types":
+	case typesRef:
 		if typ, ok := t.objects[ref.Token]; ok {
 			return typ, nil
 		}
@@ -1105,7 +1149,7 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 			t.tokens[ref.Token] = typ
 		}
 		return typ, nil
-	case "resources":
+	case resourcesRef, providerRef:
 		typ, ok := t.resources[ref.Token]
 		if !ok {
 			typ = &ResourceType{Token: ref.Token}
@@ -1237,6 +1281,21 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 	}
 
 	if value != nil {
+		switch typ := typ.(type) {
+		case *UnionType:
+			if typ.DefaultType != nil {
+				return bindDefaultValue(value, spec, typ.DefaultType)
+			}
+			for _, elementType := range typ.ElementTypes {
+				v, err := bindDefaultValue(value, spec, elementType)
+				if err == nil {
+					return v, nil
+				}
+			}
+		case *EnumType:
+			return bindDefaultValue(value, spec, typ.ElementType)
+		}
+
 		switch typ {
 		case BoolType:
 			if _, ok := value.(bool); !ok {
@@ -1475,6 +1534,11 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 			typ := &EnumType{Token: token}
 			typs.enums[token] = typ
 			typs.named[token] = typ
+
+			// Bind enums before object types because object type generation depends on enum values to be present.
+			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
+				return nil, errors.Wrapf(err, "failed to bind type %s", token)
+			}
 		}
 	}
 
@@ -1483,14 +1547,10 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 		typs.resources[r.Token] = &ResourceType{Token: r.Token}
 	}
 
-	// Process properties.
+	// Process object types.
 	for token, spec := range complexTypes {
 		if spec.Type == "object" {
 			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec.ObjectTypeSpec); err != nil {
-				return nil, errors.Wrapf(err, "failed to bind type %s", token)
-			}
-		} else if len(spec.Enum) > 0 {
-			if err := typs.bindEnumTypeDetails(typs.enums[token], token, spec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
 		}
@@ -1554,6 +1614,12 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, e
 		return nil, errors.Wrap(err, "error binding provider")
 	}
 	res.IsProvider = true
+
+	types.resources[res.Token] = &ResourceType{
+		Token:    res.Token,
+		Resource: res,
+	}
+
 	return res, nil
 }
 

@@ -264,15 +264,9 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	req providers.ProviderRequest) (*registerResourceEvent, <-chan *RegisterResult, error) {
 
 	// Attempt to get the config for the package.
-	cfg, err := d.config.GetPackageConfig(req.Package())
+	inputs, err := d.config.GetPackageConfig(req.Package())
 	if err != nil {
 		return nil, nil, err
-	}
-
-	// Create the inputs for the provider resource.
-	inputs := make(resource.PropertyMap)
-	for k, v := range cfg {
-		inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
 	}
 
 	// Request that the engine instantiate a specific version of this provider, if one was requested. We'll figure out
@@ -396,14 +390,15 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 // resmon implements the pulumirpc.ResourceMonitor interface and acts as the gateway between a language runtime's
 // evaluation of a program and the internal resource planning and deployment logic.
 type resmon struct {
-	providers        ProviderSource                     // the provider source itself.
-	defaultProviders *defaultProviders                  // the default provider manager.
-	constructInfo    plugin.ConstructInfo               // information for construct calls.
-	regChan          chan *registerResourceEvent        // the channel to send resource registrations to.
-	regOutChan       chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
-	regReadChan      chan *readResourceEvent            // the channel to send resource reads to.
-	cancel           chan bool                          // a channel that can cancel the server.
-	done             chan error                         // a channel that resolves when the server completes.
+	providers                 ProviderSource                     // the provider source itself.
+	defaultProviders          *defaultProviders                  // the default provider manager.
+	constructInfo             plugin.ConstructInfo               // information for construct calls.
+	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
+	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
+	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
+	cancel                    chan bool                          // a channel that can cancel the server.
+	done                      chan error                         // a channel that resolves when the server completes.
+	disableResourceReferences bool                               // true if resource references are disabled.
 }
 
 var _ SourceResourceMonitor = (*resmon)(nil)
@@ -428,12 +423,13 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 
 	// New up an engine RPC server.
 	resmon := &resmon{
-		providers:        provs,
-		defaultProviders: d,
-		regChan:          regChan,
-		regOutChan:       regOutChan,
-		regReadChan:      regReadChan,
-		cancel:           cancel,
+		providers:                 provs,
+		defaultProviders:          d,
+		regChan:                   regChan,
+		regOutChan:                regOutChan,
+		regReadChan:               regReadChan,
+		cancel:                    cancel,
+		disableResourceReferences: opts.DisableResourceReferences,
 	}
 
 	// Fire up a gRPC server and start listening for incomings.
@@ -534,6 +530,8 @@ func (rm *resmon) SupportsFeature(ctx context.Context,
 	switch req.Id {
 	case "secrets":
 		hasSupport = true
+	case "resourceReferences":
+		hasSupport = !rm.disableResourceReferences
 	}
 
 	logging.V(5).Infof("ResourceMonitor.SupportsFeature(id: %s) = %t", req.Id, hasSupport)
@@ -815,6 +813,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	if err != nil {
 		return nil, err
 	}
+	if providers.IsProviderType(t) && req.GetVersion() != "" {
+		props["version"] = resource.NewStringProperty(req.GetVersion())
+	}
 
 	propertyDependencies := make(map[resource.PropertyKey][]resource.URN)
 	if len(req.GetPropertyDependencies()) == 0 {
@@ -931,6 +932,20 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	// Filter out partially-known values if the requestor does not support them.
 	outputs := result.State.Outputs
+
+	// Local ComponentResources may contain unresolved resource refs, so ignore those outputs.
+	if !req.GetCustom() && !remote {
+		// In the case of a SameStep, the old resource outputs are returned to the language host after the step is
+		// executed. The outputs of a ComponentResource may depend on resources that have not been registered at the
+		// time the ComponentResource is itself registered, as the outputs are set by a later call to
+		// RegisterResourceOutputs. Therefore, when the SameStep returns the old resource outputs for a
+		// ComponentResource, it may return references to resources that have not yet been registered, which will cause
+		// the SDK's calls to getResource to fail when it attempts to resolve those references.
+		//
+		// Work on a more targeted fix is tracked in https://github.com/pulumi/pulumi/issues/5978
+		outputs = resource.PropertyMap{}
+	}
+
 	if !req.GetSupportsPartialValues() {
 		logging.V(5).Infof("stripping unknowns from RegisterResource response for urn %v", result.State.URN)
 		filtered := resource.PropertyMap{}

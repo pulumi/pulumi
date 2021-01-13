@@ -48,6 +48,10 @@ namespace Pulumi
         internal static IDeploymentInternal InternalInstance
             => Instance.Internal;
 
+        private static readonly bool _disableResourceReferences =
+            Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES") == "1" ||
+            string.Equals(Environment.GetEnvironmentVariable("PULUMI_DISABLE_RESOURCE_REFERENCES"), "TRUE", StringComparison.OrdinalIgnoreCase);
+
         private readonly string _projectName;
         private readonly string _stackName;
         private readonly bool _isDryRun;

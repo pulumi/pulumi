@@ -9,16 +9,6 @@ import sys
 import traceback
 import runpy
 
-# python 3.9 does not have grpcio support on Windows yet (https://github.com/grpc/grpc/issues/24344).
-# Return an error suggesting a python downgrade in this case.
-# TODO[pulumi/pulumi#5676]: Remove this check once Windows is supported.
-
-if sys.version_info >= (3, 9) and sys.platform.startswith("win32"):
-    print("""
-It looks like you are attempting to run pulumi using python 3.9 on Windows, which is not yet supported.
-Please downgrade your version of python to <= 3.8.""", file=sys.stderr)
-    sys.exit(1)
-
 # The user might not have installed Pulumi yet in their environment - provide a high-quality error message in that case.
 try:
     import pulumi
@@ -67,7 +57,7 @@ if __name__ == "__main__":
 
     # Finally, swap in the args, chdir if needed, and run the program as if it had been executed directly.
     sys.argv = [args.PROGRAM] + args.ARGS
-    if not args.pwd is None:
+    if args.pwd is not None:
         os.chdir(args.pwd)
 
     successful = False
@@ -96,7 +86,7 @@ if __name__ == "__main__":
         successful = True
     except pulumi.RunError as e:
         pulumi.log.error(str(e))
-    except Exception as e:
+    except Exception:
         pulumi.log.error("Program failed with an unhandled exception:")
         pulumi.log.error(traceback.format_exc())
     finally:

@@ -21,7 +21,7 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 import copy
 
 from .runtime import known_types
-from .runtime.resource import register_resource, register_resource_outputs, read_resource
+from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
@@ -378,6 +378,11 @@ class ResourceOptions:
     property must be removed from the resource's options.
     """
 
+    urn: Optional[str]
+    """
+    The URN of a previously-registered resource of this type to read from the engine.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -393,7 +398,8 @@ class ResourceOptions:
                  id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
-                 transformations: Optional[List[ResourceTransformation]] = None) -> None:
+                 transformations: Optional[List[ResourceTransformation]] = None,
+                 urn: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -425,6 +431,7 @@ class ResourceOptions:
         :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
+        :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -446,6 +453,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
+        self.urn = urn
 
         if depends_on is not None:
             for dep in depends_on:
@@ -516,6 +524,7 @@ class ResourceOptions:
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
+        dest.urn = dest.urn if source.urn is None else source.urn
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
@@ -720,7 +729,10 @@ class Resource:
                 self._aliases.append(collapse_alias_to_urn(
                     alias, name, t, opts.parent))
 
-        if opts.id is not None:
+        if opts.urn is not None:
+            # This is a resource that already exists. Read its state from the engine.
+            get_resource(self, props, custom, opts.urn)
+        elif opts.id is not None:
             # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
                 raise Exception(
@@ -855,7 +867,7 @@ class ComponentResource(Resource):
                resource.
         :param bool remote: True if this is a remote component resource.
         """
-        Resource.__init__(self, t, name, False, props, opts, remote)
+        Resource.__init__(self, t, name, False, props, opts, remote, False)
         self.__dict__["id"] = None
 
     def register_outputs(self, outputs):

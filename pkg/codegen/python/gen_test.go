@@ -48,6 +48,31 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("pulumi_example", "arg_function.py"),
 			},
 		},
+		{
+			"External resource schema",
+			"external-resource-schema",
+			[]string{
+				filepath.Join("pulumi_example", "_inputs.py"),
+				filepath.Join("pulumi_example", "arg_function.py"),
+				filepath.Join("pulumi_example", "cat.py"),
+				filepath.Join("pulumi_example", "component.py"),
+				filepath.Join("pulumi_example", "workload.py"),
+			},
+		},
+		{
+			"Simple schema with enum types",
+			"simple-enum-schema",
+			[]string{
+				filepath.Join("pulumi_plant_provider", "_enums.py"),
+				filepath.Join("pulumi_plant_provider", "_inputs.py"),
+				filepath.Join("pulumi_plant_provider", "outputs.py"),
+				filepath.Join("pulumi_plant_provider", "__init__.py"),
+				filepath.Join("pulumi_plant_provider", "tree", "__init__.py"),
+				filepath.Join("pulumi_plant_provider", "tree", "v1", "_enums.py"),
+				filepath.Join("pulumi_plant_provider", "tree", "v1", "__init__.py"),
+				filepath.Join("pulumi_plant_provider", "tree", "v1", "rubber_tree.py"),
+			},
+		},
 	}
 
 	testDir := filepath.Join("..", "internal", "test", "testdata")

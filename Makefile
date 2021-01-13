@@ -48,6 +48,9 @@ generate::
 build:: generate
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
+build_debug:: generate
+	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+
 install:: generate
 	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
@@ -73,7 +76,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
-	cd tests && $(GO_TEST) -v -p=1 ${TESTS_PKGS}
+	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
@@ -85,17 +88,10 @@ publish_packages:
 	$(call STEP_MESSAGE)
 	./scripts/publish_packages.sh
 
-# Run the integration tests for our DockerHub containers. We do so only via the
-# "Travis Cron" job type, because (1) the tests can only be ran _after_ we publish
-# the current SDK version, since it is required by the Docker build. And (2) the
-# tests (currently) aren't reliable enough to run as part of every push to master.
-#
-# So instead we run the ~daily on master. Where we know the current SDK version
-# will have been published.
-.PHONY: test_containers_cron
-test_containers_cron:
+.PHONY: test_containers
+test_containers:
 	$(call STEP_MESSAGE)
-	./scripts/build-docker.sh ${VERSION} --test
+	./scripts/test-containers.sh ${VERSION}
 
 # The travis_* targets are entrypoints for CI.
 .PHONY: travis_cron travis_push travis_pull_request travis_api

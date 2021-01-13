@@ -65,9 +65,16 @@ func isLegalIdentifierPart(c rune) bool {
 func makeValidIdentifier(name string) string {
 	var builder strings.Builder
 	for i, c := range name {
-		if i == 0 && !isLegalIdentifierStart(c) || i > 0 && !isLegalIdentifierPart(c) {
+		if i == 0 && c == '@' {
+			builder.WriteRune(c)
+			continue
+		}
+		if !isLegalIdentifierPart(c) {
 			builder.WriteRune('_')
 		} else {
+			if i == 0 && !isLegalIdentifierStart(c) {
+				builder.WriteRune('_')
+			}
 			builder.WriteRune(c)
 		}
 	}
@@ -83,7 +90,7 @@ func propertyName(name string) string {
 	return makeValidIdentifier(Title(name))
 }
 
-func makeSafeEnumName(name string) (string, error) {
+func makeSafeEnumName(name, typeName string) (string, error) {
 	// Replace common single character enum names.
 	safeName := codegen.ExpandShortEnumName(name)
 
@@ -98,6 +105,11 @@ func makeSafeEnumName(name string) (string, error) {
 	// If there are multiple underscores in a row, replace with one.
 	regex := regexp.MustCompile(`_+`)
 	safeName = regex.ReplaceAllString(safeName, "_")
+
+	// If the enum name starts with an underscore, add the type name as a prefix.
+	if strings.HasPrefix(safeName, "_") {
+		safeName = typeName + safeName
+	}
 
 	// "Equals" conflicts with a method on the EnumType struct, change it to EqualsValue.
 	if safeName == "Equals" {

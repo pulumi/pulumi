@@ -18,9 +18,11 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
 import { LanguageServer, maxRPCMessageSize } from "./server";
-import { PulumiFn, Workspace } from "./workspace";
+import { Deployment, PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../../proto/language_grpc_pb.js");
+
+const secretSentinel = "[secret]";
 
 /**
  * Stack is an isolated, independently configurable instance of a Pulumi program.
@@ -171,19 +173,18 @@ export class Stack {
         args.push("--exec-kind", kind);
         const upResult = await this.runPulumiCmd(args, opts?.onOutput);
         onExit(upResult.code);
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
         const summary = await this.info();
-        const result: UpResult = {
+        return {
             stdout: upResult.stdout,
             stderr: upResult.stderr,
             summary: summary!,
-            outputs,
+            outputs: outputs!,
         };
-        return result;
     }
     /**
-     * Preforms a dry-run update to a stack, returning pending changes.
+     * Performs a dry-run update to a stack, returning pending changes.
      * https://www.pulumi.com/docs/reference/cli/pulumi_preview/
      *
      * @param opts Options to customize the behavior of the preview.
@@ -253,12 +254,11 @@ export class Stack {
         const preResult = await this.runPulumiCmd(args);
         onExit(preResult.code);
         const summary = await this.info();
-        const result: PreviewResult = {
+        return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
             summary: summary!,
         };
-        return result;
     }
     /**
      * Compares the current stack’s resource state with the state known to exist in the actual
@@ -289,12 +289,11 @@ export class Stack {
 
         const refResult = await this.runPulumiCmd(args, opts?.onOutput);
         const summary = await this.info();
-        const result: RefreshResult = {
+        return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
             summary: summary!,
         };
-        return result;
     }
     /**
      * Destroy deletes all resources in a stack, leaving all history and configuration intact.
@@ -324,12 +323,11 @@ export class Stack {
 
         const preResult = await this.runPulumiCmd(args, opts?.onOutput);
         const summary = await this.info();
-        const result: DestroyResult = {
+        return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
             summary: summary!,
         };
-        return result;
     }
     /**
      * Returns the config value associated with the specified key.
@@ -389,15 +387,15 @@ export class Stack {
      */
     async outputs(): Promise<OutputMap> {
         await this.workspace.selectStack(this.name);
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const maskedResult = await this.runPulumiCmd(["stack", "output", "--json"]);
         const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]);
         const maskedOuts = JSON.parse(maskedResult.stdout);
         const plaintextOuts = JSON.parse(plaintextResult.stdout);
         const outputs: OutputMap = {};
-        const secretSentinal = "[secret]";
+
         for (const [key, value] of Object.entries(plaintextOuts)) {
-            const secret = maskedOuts[key] === secretSentinal;
+            const secret = maskedOuts[key] === secretSentinel;
             outputs[key] = { value, secret };
         }
 
@@ -409,13 +407,12 @@ export class Stack {
      */
     async history(): Promise<UpdateSummary[]> {
         const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
-        const summaries: UpdateSummary[] = JSON.parse(result.stdout, (key, value) => {
+        return JSON.parse(result.stdout, (key, value) => {
             if (key === "startTime" || key === "endTime") {
                 return new Date(value);
             }
             return value;
         });
-        return summaries;
     }
     async info(): Promise<UpdateSummary | undefined> {
         const history = await this.history();
@@ -424,6 +421,35 @@ export class Stack {
         }
         return history[0];
     }
+    /**
+     * Cancel stops a stack's currently running update. It returns an error if no update is currently running.
+     * Note that this operation is _very dangerous_, and may leave the stack in an inconsistent state
+     * if a resource operation was pending when the update was canceled.
+     * This command is not supported for local backends.
+     */
+    async cancel(): Promise<void> {
+        await this.workspace.selectStack(this.name);
+        await this.runPulumiCmd(["cancel", "--yes"]);
+    }
+
+    /**
+     * exportStack exports the deployment state of the stack.
+     * This can be combined with Stack.importStack to edit a stack's state (such as recovery from failed deployments).
+     */
+    async exportStack(): Promise<Deployment> {
+        return this.workspace.exportStack(this.name);
+    }
+
+    /**
+     * importStack imports the specified deployment state into a pre-existing stack.
+     * This can be combined with Stack.exportStack to edit a stack's state (such as recovery from failed deployments).
+     *
+     * @param state the stack state to import.
+     */
+    async importStack(state: Deployment): Promise<void> {
+        return this.workspace.importStack(this.name, state);
+    }
+
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {};
         const pulumiHome = this.workspace.pulumiHome;

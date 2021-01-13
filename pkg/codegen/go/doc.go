@@ -81,17 +81,15 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 	return link + "Args"
 }
 
-// GetDocLinkForBuiltInType returns the godoc URL for a built-in type.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return fmt.Sprintf("https://golang.org/pkg/builtin/#%s", typeName)
-}
-
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
 func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
 	modPkg, ok := d.packages[moduleName]
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
 		os.Exit(1)
+	}
+	if _, ok := t.(*schema.EnumType); ok {
+		return modPkg.inputType(t, optional)
 	}
 	return modPkg.plainType(t, optional)
 }
@@ -104,6 +102,15 @@ func (d *DocLanguageHelper) GeneratePackagesMap(pkg *schema.Package, tool string
 // GetPropertyName returns the property name specific to Go.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return strings.Title(p.Name), nil
+}
+
+// GetEnumName returns the enum name specific to Go.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name, typeName)
 }
 
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {

@@ -37,8 +37,7 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
 )
 
-// QuerySource evaluates a query program, and provides the ability to synchronously wait for
-// completion.
+// QuerySource is used to synchronously wait for a query result.
 type QuerySource interface {
 	Wait() result.Result
 }

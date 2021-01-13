@@ -17,6 +17,38 @@ env:
   TRAVIS_PUBLISH_PACKAGES: true
 
 jobs:
+  templates_smoke_test:
+    name: Trigger Templates Smoke Test
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl dispatch -r pulumi/templates -c trigger-cron $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+  examples_smoke_test:
+    name: Trigger Examples Smoke Test
+    runs-on: ubuntu-latest
+    needs: publish-sdks
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Repository Dispatch
+        run: |
+          pulumictl dispatch -r pulumi/examples -c trigger-cron $(pulumictl get version --language generic -o)
+        env:
+          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   chocolatey:
     name: Chocolatey update
     runs-on: ubuntu-latest
@@ -25,7 +57,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -36,12 +68,12 @@ jobs:
   docker:
     name: Build Slim Docker Images
     runs-on: ubuntu-latest
-    needs: publish-sdks
+    needs: [publish-sdks, verify-containers]
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -57,7 +89,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -73,7 +105,7 @@ jobs:
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@d62853bc9e466834c74cefb34fad78535582e21a
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
@@ -137,7 +169,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: build-and-test
+    needs: [build-and-test, windows-release]
     strategy:
       matrix:
         go-version: [ 1.15.x ]
@@ -152,7 +184,7 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@6277ebec57d2f9283d245d365f0b05bcc23d85e0
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
         with:
           repo: pulumi/pulumictl
       - name: Configure AWS Credentials
@@ -221,7 +253,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "::add-path::${{ runner.temp }}/opt/pulumi/bin"
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
@@ -229,7 +261,7 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Set Go Dep path
         run: |
-          echo "::set-env name=PULUMI_GO_DEP_ROOT::$(dirname $(pwd))"
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
       - name: Ensure
         run: |
           make ensure
@@ -260,12 +292,15 @@ jobs:
       matrix:
         go-version: [1.15.x]
         node-version: [14.x]
-        python-version: [3.8.x]
+        python-version: [3.9.x]
         dotnet: [3.1.x]
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
@@ -283,6 +318,8 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Clean
+        run: dotnet nuget locals all --clear
       - name: Install Python Deps
         run: |
           pip3 install pyenv-win
@@ -290,7 +327,7 @@ jobs:
       - name: Set Build Env Vars
         shell: bash
         run: |
-          echo "::add-path::D:\\Pulumi\\bin"
+          echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
       - name: Install AWS CLI Tools
         uses: chrislennon/action-aws-cli@v1.1
       - name: Check out scripts repo into the Go module directory
@@ -327,5 +364,29 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
-
-
+  verify-containers:
+    name: Run Container Tests
+    needs: [publish-binaries, publish-sdks]
+    strategy:
+      matrix:
+        go-version: [1.15.x]
+        python-version: [ 3.9.x ]
+        dotnet-version: [ 3.1.x ]
+        node-version: [ 14.x ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Run Container Tests
+        run: make test_containers VERSION=v$(pulumictl get version --language generic -o)

@@ -51,22 +51,24 @@ func newStackRenameCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
+			// Look up the stack to be moved, and find the path to the project file's location.
 			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
-
 			oldConfigPath, err := workspace.DetectProjectStackPath(s.Ref().Name())
 			if err != nil {
 				return err
 			}
 
-			newConfigPath, err := workspace.DetectProjectStackPath(tokens.QName(args[0]))
+			// Now perform the rename and get ready to rename the existing configuration to the new project file.
+			newStackName := args[0]
+			newStackRef, err := s.Rename(commandContext(), tokens.QName(newStackName))
 			if err != nil {
 				return err
 			}
-
-			if err := s.Rename(commandContext(), tokens.QName(args[0])); err != nil {
+			newConfigPath, err := workspace.DetectProjectStackPath(newStackRef.Name())
+			if err != nil {
 				return err
 			}
 
@@ -84,11 +86,11 @@ func newStackRenameCmd() *cobra.Command {
 			}
 
 			// Update the current workspace state to have selected the new stack.
-			if err := state.SetCurrentStack(args[0]); err != nil {
+			if err := state.SetCurrentStack(newStackName); err != nil {
 				return errors.Wrap(err, "setting current stack")
 			}
 
-			fmt.Printf("Renamed %s\n", s.Ref().String())
+			fmt.Printf("Renamed %s to %s\n", s.Ref().String(), newStackRef.String())
 			return nil
 		}),
 	}

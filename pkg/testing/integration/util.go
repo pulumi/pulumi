@@ -15,7 +15,6 @@
 package integration
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -103,38 +102,6 @@ func writeCommandOutput(commandName, runDir string, output []byte) (string, erro
 	}
 
 	return logFile, nil
-}
-
-type prefixer struct {
-	writer    io.Writer
-	prefix    []byte
-	anyOutput bool
-}
-
-// newPrefixer wraps an io.Writer, prepending a fixed prefix after each \n emitting on the wrapped writer
-func newPrefixer(writer io.Writer, prefix string) *prefixer {
-	return &prefixer{writer, []byte(prefix), false}
-}
-
-var _ io.Writer = (*prefixer)(nil)
-
-func (prefixer *prefixer) Write(p []byte) (int, error) {
-	n := 0
-	lines := bytes.SplitAfter(p, []byte{'\n'})
-	for _, line := range lines {
-		if len(line) > 0 {
-			_, err := prefixer.writer.Write(prefixer.prefix)
-			if err != nil {
-				return n, err
-			}
-		}
-		m, err := prefixer.writer.Write(line)
-		n += m
-		if err != nil {
-			return n, err
-		}
-	}
-	return n, nil
 }
 
 // CopyFile copies a single file from src to dst

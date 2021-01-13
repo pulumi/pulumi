@@ -58,6 +58,7 @@ import {
 } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+const providerproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 interface ResourceResolverOperation {
@@ -84,6 +85,102 @@ interface ResourceResolverOperation {
     aliases: URN[];
     // An ID to import, if any.
     import: ID | undefined;
+}
+
+/**
+ * Get an existing resource's state from the engine.
+ */
+export function getResource(res: Resource, props: Inputs, custom: boolean, urn: string): void {
+    // Extract the resource type from the URN.
+    const urnParts = urn.split("::");
+    const qualifiedType = urnParts[2];
+    const urnName = urnParts[3];
+    const type = qualifiedType.split("$").pop()!;
+
+    const label = `resource:urn=${urn}`;
+    log.debug(`Getting resource: urn=${urn}`);
+
+    const monitor: any = getMonitor();
+    const resopAsync = prepareResource(label, res, custom, props, {});
+
+    const preallocError = new Error();
+    debuggablePromise(resopAsync.then(async (resop) => {
+        const inputs = await serializeProperties(label, { urn });
+
+        const req = new providerproto.InvokeRequest();
+        req.setTok("pulumi:pulumi:getResource");
+        req.setArgs(gstruct.Struct.fromJavaScript(inputs));
+        req.setProvider("");
+        req.setVersion("");
+
+        // Now run the operation, serializing the invocation if necessary.
+        const opLabel = `monitor.getResource(${label})`;
+        runAsyncResourceOp(opLabel, async () => {
+            let resp: any;
+            let err: Error | undefined;
+            try {
+                if (monitor) {
+                    resp = await debuggablePromise(new Promise((resolve, reject) =>
+                        monitor.invoke(req, (rpcError: grpc.ServiceError, innerResponse: any) => {
+                            log.debug(`getResource Invoke RPC finished: err: ${rpcError}, resp: ${innerResponse}`);
+                            if (rpcError) {
+                                if (rpcError.code === grpc.status.UNAVAILABLE || rpcError.code === grpc.status.CANCELLED) {
+                                    err = rpcError;
+                                    terminateRpcs();
+                                    rpcError.message = "Resource monitor is terminating";
+                                    (<any>preallocError).code = rpcError.code;
+                                }
+
+                                preallocError.message = `failed to get resource:urn=${urn}: ${rpcError.message}`;
+                                reject(new Error(rpcError.details));
+                            }
+                            else {
+                                resolve(innerResponse);
+                            }
+                        })), opLabel);
+
+                    // If the invoke failed, raise an error
+                    const failures: any = resp.getFailuresList();
+                    if (failures && failures.length) {
+                        let reasons = "";
+                        for (let i = 0; i < failures.length; i++) {
+                            if (reasons !== "") {
+                                reasons += "; ";
+                            }
+                            reasons += `${failures[i].getReason()} (${failures[i].getProperty()})`;
+                        }
+                        throw new Error(`getResource Invoke failed: ${reasons}`);
+                    }
+
+                    // Otherwise, return the response.
+                    const m = resp.getReturn().getFieldsMap();
+                    resp = {
+                        urn: m.get("urn").toJavaScript(),
+                        id: m.get("id").toJavaScript() || undefined,
+                        state: m.get("state").getStructValue(),
+                    };
+                }
+            } catch (e) {
+                err = e;
+                resp = {
+                    urn: "",
+                    id: undefined,
+                    state: undefined,
+                };
+            }
+
+            resop.resolveURN(resp.urn, err);
+
+            // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
+            // undefined so that later parts of our system don't have to deal with values like 'null'.
+            if (resop.resolveID) {
+                const id = resp.id || undefined;
+                resop.resolveID(id, id !== undefined, err);
+            }
+
+            await resolveOutputs(res, type, urnName, props, resp.state, {}, resop.resolvers, err);
+        });
+    }), label);
 }
 
 /**
@@ -119,6 +216,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
 
         // Now run the operation, serializing the invocation if necessary.
@@ -208,6 +306,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setIgnorechangesList(opts.ignoreChanges || []);
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");

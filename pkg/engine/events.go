@@ -517,24 +517,13 @@ func (e *eventEmitter) preludeEvent(isPreview bool, cfg config.Map) {
 	})
 }
 
-func (e *eventEmitter) previewSummaryEvent(resourceChanges ResourceChanges, policyPacks map[string]string) {
+func (e *eventEmitter) summaryEvent(preview, maybeCorrupt bool, duration time.Duration, resourceChanges ResourceChanges,
+	policyPacks map[string]string) {
+
 	contract.Requiref(e != nil, "e", "!= nil")
 
 	e.ch <- NewEvent(SummaryEvent, SummaryEventPayload{
-		IsPreview:       true,
-		MaybeCorrupt:    false,
-		Duration:        0,
-		ResourceChanges: resourceChanges,
-		PolicyPacks:     policyPacks,
-	})
-}
-
-func (e *eventEmitter) updateSummaryEvent(maybeCorrupt bool,
-	duration time.Duration, resourceChanges ResourceChanges, policyPacks map[string]string) {
-	contract.Requiref(e != nil, "e", "!= nil")
-
-	e.ch <- NewEvent(SummaryEvent, SummaryEventPayload{
-		IsPreview:       false,
+		IsPreview:       preview,
 		MaybeCorrupt:    maybeCorrupt,
 		Duration:        duration,
 		ResourceChanges: resourceChanges,

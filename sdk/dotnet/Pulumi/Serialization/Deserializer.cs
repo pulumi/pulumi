@@ -225,39 +225,16 @@ namespace Pulumi.Serialization
             }
 
             string? version;
-            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version))
-            {
-                throw new InvalidOperationException("Value was marked as a Resource, but did not conform to required shape.");
+            if (!TryGetStringValue(value.StructValue.Fields, Constants.ResourceVersionName, out version)) {
+                version = "";
             }
 
             var urnParts = urn.Split("::");
-            var urnName = urnParts[3];
             var qualifiedType = urnParts[2];
             var qualifiedTypeParts = qualifiedType.Split('$');
-            var type = qualifiedTypeParts[qualifiedTypeParts.Length-1];
+            var type = qualifiedTypeParts[^1];
 
-            var typeParts = type.Split(':');
-            var pkgName = typeParts[0];
-            var modName = typeParts.Length > 1 ? typeParts[1] : "";
-            var typeName = typeParts.Length > 2 ? typeParts[2] : "";
-
-            var isProvider = pkgName == "pulumi" && modName == "providers";
-            if (isProvider) {
-                IResourcePackage? package;
-                if (!ResourcePackages.TryGetResourcePackage(typeName, version, out package))
-                {
-                    throw new InvalidOperationException($"Unable to deserialize provider {urn}, no resource package is registered for type {typeName}.");
-                }
-                resource = package.ConstructProvider(urnName, type, null, urn);
-                return true;
-            }
-
-            IResourceModule? module;
-            if (!ResourceModules.TryGetResourceModule(modName, version, out module))
-            {
-                throw new InvalidOperationException($"Unable to deserialize resource {urn}, no module is registered for {modName}.");
-            }
-            resource = module.Construct(urnName, type, null, urn);
+            resource = ResourcePackages.Construct(type, version, urn);
             return true;
         }
 

@@ -89,10 +89,13 @@
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
         "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/registrations.spec.ts",
         "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
         "tests/runtime/langhost/run.spec.ts",
 
-        "tests/automation/localWorkspace.spec.ts"
+        "tests/automation/localWorkspace.spec.ts",
+
+        "tests_with_mocks/mocks.spec.ts",
     ]
 }

@@ -87,6 +87,11 @@ namespace Pulumi
         /// </summary>
         public List<Input<Alias>> Aliases { get; set; } = new List<Input<Alias>>();
 
+        /// <summary>
+        /// The URN of a previously-registered resource of this type to read from the engine.
+        /// </summary>
+        public string? Urn { get; set; }
+
         internal abstract ResourceOptions Clone();
     }
 }

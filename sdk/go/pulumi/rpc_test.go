@@ -16,9 +16,11 @@
 package pulumi
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
@@ -67,6 +69,9 @@ func (testInputs) ElementType() reflect.Type {
 // TestMarshalRoundtrip ensures that marshaling a complex structure to and from its on-the-wire gRPC format succeeds.
 func TestMarshalRoundtrip(t *testing.T) {
 	// Create interesting inputs.
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
@@ -106,7 +111,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 		assert.Equal(t, 0, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
-		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 		assert.False(t, secret)
 		if assert.Nil(t, err) {
 			if assert.NotNil(t, resV) {
@@ -263,6 +268,9 @@ type testResource struct {
 }
 
 func TestResourceState(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	var theResource testResource
 	state := makeResourceState("", "", &theResource, nil, nil, nil)
 
@@ -296,7 +304,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(false, nil, nil, "foo", "bar", s, nil)
+	state.resolve(ctx, false, nil, nil, "foo", "bar", s, nil)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),
@@ -350,7 +358,7 @@ func TestResourceState(t *testing.T) {
 	}, pdeps)
 	assert.Equal(t, []URN{"foo"}, deps)
 
-	res, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+	res, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 	assert.Nil(t, err)
 	assert.False(t, secret)
 	assert.Equal(t, map[string]interface{}{
@@ -383,27 +391,33 @@ func TestResourceState(t *testing.T) {
 }
 
 func TestUnmarshalSecret(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	secret := resource.MakeSecret(resource.NewPropertyValue("foo"))
 
-	_, isSecret, err := unmarshalPropertyValue(secret)
+	_, isSecret, err := unmarshalPropertyValue(ctx, secret)
 	assert.Nil(t, err)
 	assert.True(t, isSecret)
 
 	var sv string
-	isSecret, err = unmarshalOutput(secret, reflect.ValueOf(&sv).Elem())
+	isSecret, err = unmarshalOutput(ctx, secret, reflect.ValueOf(&sv).Elem())
 	assert.Nil(t, err)
 	assert.Equal(t, "foo", sv)
 	assert.True(t, isSecret)
 }
 
 func TestUnmarshalInternalMapValue(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	m := make(map[string]interface{})
 	m["foo"] = "bar"
 	m["__default"] = "buzz"
 	pmap := resource.NewObjectProperty(resource.NewPropertyMapFromMap(m))
 
 	var mv map[string]string
-	_, err := unmarshalOutput(pmap, reflect.ValueOf(&mv).Elem())
+	_, err = unmarshalOutput(ctx, pmap, reflect.ValueOf(&mv).Elem())
 	assert.Nil(t, err)
 	val, ok := mv["foo"]
 	assert.True(t, ok)
@@ -416,6 +430,9 @@ func TestUnmarshalInternalMapValue(t *testing.T) {
 // its on-the-wire gRPC format succeeds including a nested secret property.
 func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	// Create interesting inputs.
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
 	out2 := newOutputState(reflect.TypeOf(""))
@@ -455,7 +472,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		assert.Equal(t, 0, len(pdeps))
 
 		// Now just unmarshal and ensure the resulting map matches.
-		resV, secret, err := unmarshalPropertyValue(resource.NewObjectProperty(resolved))
+		resV, secret, err := unmarshalPropertyValue(ctx, resource.NewObjectProperty(resolved))
 		assert.True(t, secret)
 		if assert.Nil(t, err) {
 			if assert.NotNil(t, resV) {
@@ -542,5 +559,143 @@ func TestMapInputMarhsalling(t *testing.T) {
 		for i := range c.depUrns {
 			assert.Equal(t, URN(c.depUrns[i]), depUrns[i])
 		}
+	}
+}
+
+func TestVersionedMap(t *testing.T) {
+	resourceModules := versionedMap{
+		versions: map[string][]Versioned{},
+	}
+	_ = resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.1-alpha1")})
+	_ = resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("1.0.2")})
+	_ = resourceModules.Store("test", &testResourcePackage{version: semver.MustParse("2.2.0")})
+	_ = resourceModules.Store("unrelated", &testResourcePackage{version: semver.MustParse("1.0.3")})
+	_ = resourceModules.Store("wild", &testResourcePackage{})
+	_ = resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")})
+	_ = resourceModules.Store("unreleased", &testResourcePackage{version: semver.MustParse("1.0.0-beta1")})
+
+	tests := []struct {
+		name            string
+		pkg             string
+		version         semver.Version
+		expectFound     bool
+		expectedVersion semver.Version
+	}{
+		{
+			name:        "unknown not found",
+			pkg:         "unknown",
+			version:     semver.Version{},
+			expectFound: false,
+		},
+		{
+			name:        "unknown not found",
+			pkg:         "unknown",
+			version:     semver.MustParse("0.0.1"),
+			expectFound: false,
+		},
+		{
+			name:        "different major version not found",
+			pkg:         "test",
+			version:     semver.MustParse("0.0.1"),
+			expectFound: false,
+		},
+		{
+			name:        "different major version not found",
+			pkg:         "test",
+			version:     semver.MustParse("3.0.0"),
+			expectFound: false,
+		},
+		{
+			name:            "wildcard returns highest version",
+			pkg:             "test",
+			version:         semver.Version{},
+			expectFound:     true,
+			expectedVersion: semver.MustParse("2.2.0"),
+		},
+		{
+			name:            "major version respected 1.0.0",
+			pkg:             "test",
+			version:         semver.MustParse("1.0.0"),
+			expectFound:     true,
+			expectedVersion: semver.MustParse("1.0.2"),
+		},
+		{
+			name:            "major version respected 2.0.0",
+			pkg:             "test",
+			version:         semver.MustParse("2.0.0"),
+			expectFound:     true,
+			expectedVersion: semver.MustParse("2.2.0"),
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			pkg, found := resourceModules.Load(tt.pkg, tt.version)
+			assert.Equal(t, tt.expectFound, found)
+			if tt.expectFound {
+				assert.Equal(t, tt.expectedVersion, pkg.Version())
+			}
+		})
+	}
+}
+
+func TestRegisterResourcePackage(t *testing.T) {
+	pkg := "test"
+
+	tests := []struct {
+		name            string
+		resourcePackage ResourcePackage
+	}{
+		{
+			name:            "wildcard version",
+			resourcePackage: &testResourcePackage{},
+		},
+		{
+			name:            "version",
+			resourcePackage: &testResourcePackage{version: semver.MustParse("1.2.3")},
+		},
+		{
+			name:            "alpha version",
+			resourcePackage: &testResourcePackage{version: semver.MustParse("1.0.0-alpha1")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			RegisterResourcePackage(pkg, tt.resourcePackage)
+			assert.Panics(t, func() {
+				RegisterResourcePackage(pkg, tt.resourcePackage)
+			})
+		})
+	}
+}
+
+func TestRegisterResourceModule(t *testing.T) {
+	pkg := "testPkg"
+	mod := "testMod"
+
+	tests := []struct {
+		name           string
+		resourceModule ResourceModule
+	}{
+		{
+			name:           "wildcard version",
+			resourceModule: &testResourceModule{},
+		},
+		{
+			name:           "version",
+			resourceModule: &testResourceModule{version: semver.MustParse("1.2.3")},
+		},
+		{
+			name:           "alpha version",
+			resourceModule: &testResourceModule{version: semver.MustParse("1.0.0-alpha1")},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			RegisterResourceModule(pkg, mod, tt.resourceModule)
+			assert.Panics(t, func() {
+				RegisterResourceModule(pkg, mod, tt.resourceModule)
+			})
+		})
 	}
 }

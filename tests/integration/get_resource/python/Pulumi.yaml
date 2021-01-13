@@ -1,0 +1,3 @@
+name: get_resource
+description: A simple Python program that gets an existing resource from the engine.
+runtime: python

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import os
 import sys
 from typing import Any, Awaitable, Optional, TYPE_CHECKING
 import grpc
@@ -94,8 +95,15 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
         monitor = get_monitor()
         inputs = await rpc.serialize_properties(props, {})
         version = opts.version or ""
+        accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
         log.debug(f"Invoking function prepared: tok={tok}")
-        req = provider_pb2.InvokeRequest(tok=tok, args=inputs, provider=provider_ref, version=version)
+        req = provider_pb2.InvokeRequest(
+            tok=tok,
+            args=inputs,
+            provider=provider_ref,
+            version=version,
+            acceptResources=accept_resources,
+        )
 
         def do_invoke():
             try:

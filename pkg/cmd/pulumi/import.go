@@ -15,6 +15,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -195,7 +196,7 @@ type programGeneratorFunc func(p *hcl2.Program) (map[string][]byte, hcl.Diagnost
 
 func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectName tokens.PackageName,
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
-	imports []deploy.Import, protectResources bool) error {
+	imports []deploy.Import, protectResources bool) (bool, error) {
 
 	resourceTable := map[resource.URN]*resource.State{}
 	for _, r := range snap.Resources {
@@ -220,20 +221,20 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 	}
 
 	if len(resources) == 0 {
-		return nil
+		return false, nil
 	}
 
 	cwd, err := os.Getwd()
 	if err != nil {
-		return err
+		return false, err
 	}
 	sink := cmdutil.Diag()
 	ctx, err := plugin.NewContext(sink, sink, nil, nil, cwd, nil, true, nil)
 	if err != nil {
-		return err
+		return false, err
 	}
 	loader := schema.NewPluginLoader(ctx.Host)
-	return importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *hcl2.Program) error {
+	return true, importer.GenerateLanguageDefinitions(out, loader, func(w io.Writer, p *hcl2.Program) error {
 		files, _, err := programGenerator(p)
 		if err != nil {
 			return err
@@ -349,7 +350,8 @@ func newImportCmd() *cobra.Command {
 				importFile = f
 			}
 
-			output := io.Writer(os.Stdout)
+			var outputResult bytes.Buffer
+			output := io.Writer(&outputResult)
 			if outputFilePath != "" {
 				f, err := os.Create(outputFilePath)
 				if err != nil {
@@ -453,32 +455,44 @@ func newImportCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			if outputFilePath == "" {
-				_, err := output.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
-					"will cause Pulumi to report that an update will happen on the next update command.\n\n"))
-				if err != nil {
-					return result.FromError(err)
-				}
-				if protectResources {
-					_, err := output.Write([]byte("Please note, that the imported resources are marked as protected. " +
-						"To destroy them\n" +
-						"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
-						"the destroy will take effect.\n\n"))
-					if err != nil {
-						return result.FromError(err)
-					}
-				}
-			}
-
-			if err = generateImportedDefinitions(
+			validImports, err := generateImportedDefinitions(
 				output, s.Ref().Name(), proj.Name, deployment, programGenerator, nameTable, imports,
-				protectResources); err != nil {
-
+				protectResources)
+			if err != nil {
 				if _, ok := err.(*importer.DiagnosticsError); ok {
 					err = errors.Wrap(err, "internal error")
 				}
 				return result.FromError(err)
 			}
+
+			if validImports {
+				// we only want to output the helper string if there is a set of valid imports to convert into code
+				// this protects against invalid package types or import errors that will not actually result in
+				// in a codegen call
+				// It's a little bit more memory but is a better experience that writing to stdout and then an error
+				// occurring
+				var helperOutputResult bytes.Buffer
+				helperWriter := io.Writer(&helperOutputResult)
+				if outputFilePath == "" {
+					_, err := helperWriter.Write([]byte("Please copy the following code into your Pulumi application. Not doing so\n" +
+						"will cause Pulumi to report that an update will happen on the next update command.\n\n"))
+					if err != nil {
+						return result.FromError(err)
+					}
+					if protectResources {
+						_, err := helperWriter.Write([]byte("Please note, that the imported resources are marked as protected. " +
+							"To destroy them\n" +
+							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
+							"the destroy will take effect.\n\n"))
+						if err != nil {
+							return result.FromError(err)
+						}
+					}
+					fmt.Printf(helperOutputResult.String())
+				}
+			}
+
+			fmt.Printf(outputResult.String())
 
 			if res != nil {
 				if res.Error() == context.Canceled {
@@ -491,9 +505,11 @@ func newImportCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringVar(
-		&parentSpec, "parent", "", "The name and URN of the parent resource in the format name=urn")
+		//nolint:lll
+		&parentSpec, "parent", "", "The name and URN of the parent resource in the format name=urn, where name is the variable name of the parent resource")
 	cmd.PersistentFlags().StringVar(
-		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn")
+		//nolint:lll
+		&providerSpec, "provider", "", "The name and URN of the provider to use for the import in the format name=urn, where name is the variable name for the provider resource")
 	cmd.PersistentFlags().StringVarP(
 		&importFilePath, "file", "f", "", "The path to a JSON-encoded file containing a list of resources to import")
 	cmd.PersistentFlags().StringVarP(

@@ -85,16 +85,16 @@ type incomingChain struct {
 // resolved, we (the engine) can assume that any chain given to us by the step generator is already
 // ready to execute.
 type stepExecutor struct {
-	plan            *Plan    // The plan currently being executed.
-	opts            Options  // The options for this current plan.
-	preview         bool     // Whether or not we are doing a preview.
-	pendingNews     sync.Map // Resources that have been created but are pending a RegisterResourceOutputs.
-	continueOnError bool     // True if we want to continue the plan after a step error.
+	deployment      *Deployment // The deployment currently being executed.
+	opts            Options     // The options for this current deployment.
+	preview         bool        // Whether or not we are doing a preview.
+	pendingNews     sync.Map    // Resources that have been created but are pending a RegisterResourceOutputs.
+	continueOnError bool        // True if we want to continue the deployment after a step error.
 
 	workers        sync.WaitGroup     // WaitGroup tracking the worker goroutines that are owned by this step executor.
 	incomingChains chan incomingChain // Incoming chains that we are to execute
 
-	ctx      context.Context    // cancellation context for the current plan.
+	ctx      context.Context    // cancellation context for the current deployment.
 	cancel   context.CancelFunc // CancelFunc that cancels the above context.
 	sawError atomic.Value       // atomic boolean indicating whether or not the step excecutor saw that there was an error.
 }
@@ -174,7 +174,7 @@ func (se *stepExecutor) ExecuteRegisterResourceOutputs(e RegisterResourceOutputs
 			// of these are particularly appealing right now.
 			outErr := errors.Wrap(eventerr, "resource complete event returned an error")
 			diagMsg := diag.RawMessage(reg.URN(), outErr.Error())
-			se.plan.Diag().Errorf(diagMsg)
+			se.deployment.Diag().Errorf(diagMsg)
 			se.cancelDueToError()
 			return
 		}
@@ -228,7 +228,7 @@ func (se *stepExecutor) executeChain(workerID int, chain chain) {
 				// The errStepApplyFailed sentinel signals that the error that failed this chain was a step apply
 				// error and that we shouldn't log it. Everything else should be logged to the diag system as usual.
 				diagMsg := diag.RawMessage(step.URN(), err.Error())
-				se.plan.Diag().Errorf(diagMsg)
+				se.deployment.Diag().Errorf(diagMsg)
 			}
 			return
 		}
@@ -282,13 +282,19 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		}
 	}
 
-	// Ensure that any secrets properties in the output are marked as such.
+	// Ensure that any secrets properties in the output are marked as such and that the resource is tracked in the set
+	// of registered resources.
 	if step.New() != nil {
 		newState := step.New()
 		for _, k := range newState.AdditionalSecretOutputs {
 			if v, has := newState.Outputs[k]; has && !v.IsSecret() {
 				newState.Outputs[k] = resource.MakeSecret(v)
 			}
+		}
+
+		// If this is not a resource that is managed by Pulumi, then we can ignore it.
+		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
+			se.deployment.news.set(newState.URN, newState)
 		}
 	}
 
@@ -331,7 +337,7 @@ func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
 // There are two reasons why a worker would exit:
 //
 //  1. A worker exits if se.ctx is canceled. There are two ways that se.ctx gets canceled: first, if there is
-//     a step error in another worker, it will cancel the context. Second, if the plan executor experiences an
+//     a step error in another worker, it will cancel the context. Second, if the deployment executor experiences an
 //     error when generating steps or doing pre or post-step events, it will cancel the context.
 //  2. A worker exits if it experiences an error when running a step.
 //
@@ -380,10 +386,10 @@ func (se *stepExecutor) worker(workerID int, launchAsync bool) {
 	}
 }
 
-func newStepExecutor(ctx context.Context, cancel context.CancelFunc, plan *Plan, opts Options,
+func newStepExecutor(ctx context.Context, cancel context.CancelFunc, deployment *Deployment, opts Options,
 	preview, continueOnError bool) *stepExecutor {
 	exec := &stepExecutor{
-		plan:            plan,
+		deployment:      deployment,
 		opts:            opts,
 		preview:         preview,
 		continueOnError: continueOnError,

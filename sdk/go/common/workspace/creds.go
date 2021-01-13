@@ -23,6 +23,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
 )
 
@@ -30,6 +31,10 @@ import (
 // We use this in testing so that tests which log in and out do not impact the local developer's
 // credentials or tests interacting with one another
 const PulumiCredentialsPathEnvVar = "PULUMI_CREDENTIALS_PATH"
+
+// PulumiBackendURLEnvVar is an environment variable which can be used to set the backend that will be
+// used instead of the currently logged in backend or the current projects backend.
+const PulumiBackendURLEnvVar = "PULUMI_BACKEND_URL"
 
 // GetAccount returns an account underneath a given key.
 //
@@ -126,8 +131,14 @@ func getCredsFilePath() (string, error) {
 }
 
 // GetCurrentCloudURL returns the URL of the cloud we are currently connected to. This may be empty if we
-// have not logged in.
+// have not logged in. Note if PULUMI_BACKEND_URL is set, the corresponding value is returned
+// instead irrespective of the backend for current project or stored credentials.
 func GetCurrentCloudURL() (string, error) {
+	// Allow PULUMI_BACKEND_URL to override the current cloud URL selection
+	if backend := os.Getenv(PulumiBackendURLEnvVar); backend != "" {
+		return backend, nil
+	}
+
 	var url string
 	// Try detecting backend from config
 	projPath, err := DetectProjectPath()
@@ -170,7 +181,8 @@ func GetStoredCredentials() (Credentials, error) {
 
 	var creds Credentials
 	if err = json.Unmarshal(c, &creds); err != nil {
-		return Credentials{}, errors.Wrapf(err, "unmarshalling credentials file")
+		return Credentials{}, errors.Wrapf(err, "failed to read Pulumi credentials file. Please re-run "+
+			"`pulumi login` to reset your credentials file")
 	}
 
 	var secrets []string
@@ -203,5 +215,26 @@ func StoreCredentials(creds Credentials) error {
 	if err != nil {
 		return errors.Wrapf(err, "marshalling credentials object")
 	}
-	return ioutil.WriteFile(credsFile, raw, 0600)
+
+	// Use a temporary file and atomic os.Rename to ensure the file contents are
+	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
+	tempCredsFile, err := ioutil.TempFile(filepath.Dir(credsFile), "credentials-*.json")
+	if err != nil {
+		return err
+	}
+	_, err = tempCredsFile.Write(raw)
+	if err != nil {
+		return err
+	}
+	err = tempCredsFile.Close()
+	if err != nil {
+		return err
+	}
+	err = os.Rename(tempCredsFile.Name(), credsFile)
+	if err != nil {
+		contract.IgnoreError(os.Remove(tempCredsFile.Name()))
+		return err
+	}
+
+	return nil
 }

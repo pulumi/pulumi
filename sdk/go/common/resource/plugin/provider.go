@@ -15,6 +15,7 @@
 package plugin
 
 import (
+	"errors"
 	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
@@ -102,6 +103,9 @@ type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
 }
+
+// ErrNotYetImplemented may be returned from a provider for optional methods that are not yet implemented.
+var ErrNotYetImplemented = errors.New("NYI")
 
 // DiffChanges represents the kind of changes detected by a diff operation.
 type DiffChanges int

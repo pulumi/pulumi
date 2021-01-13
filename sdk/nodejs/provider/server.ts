@@ -19,6 +19,7 @@ import * as grpc from "@grpc/grpc-js";
 
 import { Provider } from "./provider";
 
+import * as log from "../log";
 import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
 import * as runtime from "../runtime";
@@ -83,6 +84,7 @@ class Server implements grpc.UntypedServiceImplementation {
     public configure(call: any, callback: any): void {
         const resp = new provproto.ConfigureResponse();
         resp.setAcceptsecrets(true);
+        resp.setAcceptresources(true);
         callback(undefined, resp);
     }
 
@@ -278,8 +280,6 @@ class Server implements grpc.UntypedServiceImplementation {
             const deserializedInputs = runtime.deserializeProperties(req.getInputs());
             for (const k of Object.keys(deserializedInputs)) {
                 const inputDeps = inputDependencies.get(k);
-                console.log(`${k}: ${inputDeps ? JSON.stringify(inputDeps.getUrnsList()) : []}`);
-
                 const deps = (inputDeps ? <resource.URN[]>inputDeps.getUrnsList() : [])
                     .map(depUrn => new resource.DependencyResource(depUrn));
                 const input = deserializedInputs[k];
@@ -415,7 +415,9 @@ export async function main(provider: Provider, args: string[]) {
     const uncaughtHandler = (err: Error) => {
         if (!uncaughtErrors.has(err)) {
             uncaughtErrors.add(err);
-            console.error(err.stack || err.message || ("" + err));
+            // Use `pulumi.log.error` here to tell the engine there was a fatal error, which should
+            // stop processing subsequent resource operations.
+            log.error(err.stack || err.message || ("" + err));
         }
     };
 

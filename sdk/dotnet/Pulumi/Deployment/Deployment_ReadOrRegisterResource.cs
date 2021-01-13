@@ -39,6 +39,20 @@ namespace Pulumi
             Resource resource, bool remote, Func<string, Resource> newDependency, ResourceArgs args,
             ResourceOptions options)
         {
+            if (options.Urn != null)
+            {
+                // This is a resource that already exists. Read its state from the engine.
+                var result = await InvokeRawAsync(
+                    "pulumi:pulumi:getResource",
+                    new GetResourceInvokeArgs {Urn = options.Urn},
+                    new InvokeOptions());
+                
+                var urn = result.Fields["urn"].StringValue;
+                var id = result.Fields["id"].StringValue;
+                var state = result.Fields["state"].StructValue;
+                return (urn, id, state, ImmutableDictionary<string, ImmutableHashSet<Resource>>.Empty);
+            }
+            
             if (options.Id != null)
             {
                 var id = await options.Id.ToOutput().GetValueAsync().ConfigureAwait(false);
@@ -132,6 +146,13 @@ namespace Pulumi
                     source.TrySetDefaultResult(isKnown: !_isDryRun);
                 }
             }
+        }
+
+        // Arguments type for the `getResource` invoke.
+        private class GetResourceInvokeArgs : InvokeArgs
+        {
+            [Input("urn", required: true)]
+            public string Urn { get; set; } = null!;
         }
     }
 }

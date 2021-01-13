@@ -45,6 +45,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
@@ -308,12 +309,9 @@ func getPluginsFromDir(
 
 // packageJSON is the minimal amount of package.json information we care about.
 type packageJSON struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
-	Pulumi  struct {
-		Resource bool   `json:"resource"`
-		Server   string `json:"server"`
-	} `json:"pulumi"`
+	Name    string                  `json:"name"`
+	Version string                  `json:"version"`
+	Pulumi  plugin.PulumiPluginJSON `json:"pulumi"`
 }
 
 // getPackageInfo returns a bool indicating whether the given package.json package has an associated Pulumi
@@ -338,6 +336,12 @@ func getPackageInfo(info packageJSON) (bool, string, string, string, error) {
 
 // getPluginName takes a parsed package.json file and returns the corresponding Pulumi plugin name.
 func getPluginName(info packageJSON) (string, error) {
+	// If it's specified in the "pulumi" section, return it as-is.
+	if info.Pulumi.Name != "" {
+		return info.Pulumi.Name, nil
+	}
+
+	// Otherwise, derive it from the top-level package name.
 	name := info.Name
 	if name == "" {
 		return "", errors.New("missing expected \"name\" property")
@@ -356,9 +360,14 @@ func getPluginName(info packageJSON) (string, error) {
 
 // getPluginVersion takes a parsed package.json file and returns the semantic version of the Pulumi plugin.
 func getPluginVersion(info packageJSON) (string, error) {
-	version := info.Version
+	// See if it's specified in the "pulumi" section.
+	version := info.Pulumi.Version
 	if version == "" {
-		return "", errors.New("Missing expected \"version\" property")
+		// If not, use the top-level package version.
+		version = info.Version
+		if version == "" {
+			return "", errors.New("Missing expected \"version\" property")
+		}
 	}
 	if strings.IndexRune(version, 'v') != 0 {
 		return fmt.Sprintf("v%s", version), nil

@@ -46,17 +46,17 @@ type ImportOptions struct {
 	Parallel int    // the degree of parallelism for resource operations (<=1 for serial).
 }
 
-// NewPlan creates a new deployment plan from a resource snapshot plus a package to evaluate.
+// NewImportDeployment creates a new import deployment from a resource snapshot plus a set of resources to import.
 //
 // From the old and new states, it understands how to orchestrate an evaluation and analyze the resulting resources.
-// The plan may be used to simply inspect a series of operations, or actually perform them; these operations are
+// The deployment may be used to simply inspect a series of operations, or actually perform them; these operations are
 // generated based on analysis of the old and new states.  If a resource exists in new, but not old, for example, it
 // results in a create; if it exists in both, but is different, it results in an update; and so on and so forth.
 //
-// Note that a plan uses internal concurrency and parallelism in various ways, so it must be closed if for some reason
-// a plan isn't carried out to its final conclusion.  This will result in cancelation and reclamation of OS resources.
-func NewImportPlan(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
-	preview bool) (*Plan, error) {
+// Note that a deployment uses internal concurrency and parallelism in various ways, so it must be closed if for some
+// reason it isn't carried out to its final conclusion. This will result in cancellation and reclamation of resources.
+func NewImportDeployment(ctx *plugin.Context, target *Target, projectName tokens.PackageName, imports []Import,
+	preview bool) (*Deployment, error) {
 
 	contract.Assert(ctx != nil)
 	contract.Assert(target != nil)
@@ -73,6 +73,9 @@ func NewImportPlan(ctx *plugin.Context, target *Target, projectName tokens.Packa
 		return nil, err
 	}
 
+	// Create a goal map for the deployment.
+	newGoals := &goalMap{}
+
 	builtins := newBuiltinProvider(nil, nil)
 
 	// Create a new provider registry.
@@ -81,12 +84,13 @@ func NewImportPlan(ctx *plugin.Context, target *Target, projectName tokens.Packa
 		return nil, err
 	}
 
-	// Return the prepared plan.
-	return &Plan{
+	// Return the prepared deployment.
+	return &Deployment{
 		ctx:          ctx,
 		target:       target,
 		prev:         prev,
 		olds:         olds,
+		goals:        newGoals,
 		imports:      imports,
 		isImport:     true,
 		schemaLoader: schema.NewPluginLoader(ctx.Host),
@@ -110,9 +114,9 @@ func (noopOutputsEvent) Outputs() resource.PropertyMap { return resource.Propert
 func (noopOutputsEvent) Done()                         {}
 
 type importer struct {
-	plan     *Plan
-	executor *stepExecutor
-	preview  bool
+	deployment *Deployment
+	executor   *stepExecutor
+	preview    bool
 }
 
 func (i *importer) executeSerial(ctx context.Context, steps ...Step) bool {
@@ -129,17 +133,19 @@ func (i *importer) wait(ctx context.Context, token completionToken) bool {
 }
 
 func (i *importer) registerExistingResources(ctx context.Context) bool {
-	// Issue same steps per existing resource to make sure that they are recorded in the snapshot.
-	// We issue these steps serially s.t. the resources remain in the order in which they appear in the state.
-	for _, r := range i.plan.prev.Resources {
-		if r.Delete {
-			continue
-		}
+	if i != nil && i.deployment != nil && i.deployment.prev != nil {
+		// Issue same steps per existing resource to make sure that they are recorded in the snapshot.
+		// We issue these steps serially s.t. the resources remain in the order in which they appear in the state.
+		for _, r := range i.deployment.prev.Resources {
+			if r.Delete {
+				continue
+			}
 
-		new := *r
-		new.ID = ""
-		if !i.executeSerial(ctx, NewSameStep(i.plan, noopEvent(0), r, &new)) {
-			return false
+			new := *r
+			new.ID = ""
+			if !i.executeSerial(ctx, NewSameStep(i.deployment, noopEvent(0), r, &new)) {
+				return false
+			}
 		}
 	}
 	return true
@@ -147,20 +153,20 @@ func (i *importer) registerExistingResources(ctx context.Context) bool {
 
 func (i *importer) getOrCreateStackResource(ctx context.Context) (resource.URN, bool, bool) {
 	// Get or create the root resource.
-	if i.plan.prev != nil {
-		for _, res := range i.plan.prev.Resources {
+	if i.deployment.prev != nil {
+		for _, res := range i.deployment.prev.Resources {
 			if res.Type == resource.RootStackType {
 				return res.URN, false, true
 			}
 		}
 	}
 
-	projectName, stackName := i.plan.source.Project(), i.plan.target.Name
+	projectName, stackName := i.deployment.source.Project(), i.deployment.target.Name
 	typ, name := resource.RootStackType, fmt.Sprintf("%s-%s", projectName, stackName)
 	urn := resource.NewURN(stackName, projectName, "", typ, tokens.QName(name))
 	state := resource.NewState(typ, urn, false, false, "", resource.PropertyMap{}, nil, "", false, false, nil, nil, "",
 		nil, false, nil, nil, nil, "")
-	if !i.executeSerial(ctx, NewCreateStep(i.plan, noopEvent(0), state)) {
+	if !i.executeSerial(ctx, NewCreateStep(i.deployment, noopEvent(0), state)) {
 		return "", false, false
 	}
 	return urn, true, true
@@ -176,12 +182,12 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 	// replace it appropriately or we should not use the ambient config at all.
 	var defaultProviderRequests []providers.ProviderRequest
 	defaultProviders := map[resource.URN]struct{}{}
-	for _, imp := range i.plan.imports {
+	for _, imp := range i.deployment.imports {
 		if imp.Provider != "" {
 			// If the provider for this import exists, map its URN to its provider reference. If it does not exist,
 			// the import step will issue an appropriate error or errors.
 			ref := string(imp.Provider)
-			if state, ok := i.plan.olds[imp.Provider]; ok {
+			if state, ok := i.deployment.olds[imp.Provider]; ok {
 				r, err := providers.NewReference(imp.Provider, state.ID)
 				contract.AssertNoError(err)
 				ref = r.String()
@@ -190,10 +196,13 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 			continue
 		}
 
+		if imp.Type.Package() == "" {
+			return nil, result.Error("incorrect package type specified"), false
+		}
 		req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
-		urn := i.plan.generateURN("", typ, name)
-		if state, ok := i.plan.olds[urn]; ok {
+		urn := i.deployment.generateURN("", typ, name)
+		if state, ok := i.deployment.olds[urn]; ok {
 			ref, err := providers.NewReference(urn, state.ID)
 			contract.AssertNoError(err)
 			urnToReference[urn] = ref.String()
@@ -215,35 +224,35 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 		return defaultProviderRequests[i].String() < defaultProviderRequests[j].String()
 	})
 	for idx, req := range defaultProviderRequests {
+		if req.Package() == "" {
+			return nil, result.Error("incorrect package type specified"), false
+		}
+
 		typ, name := providers.MakeProviderType(req.Package()), req.Name()
-		urn := i.plan.generateURN("", typ, name)
+		urn := i.deployment.generateURN("", typ, name)
 
 		// Fetch, prepare, and check the configuration for this provider.
-		cfg, err := i.plan.target.GetPackageConfig(req.Package())
+		inputs, err := i.deployment.target.GetPackageConfig(req.Package())
 		if err != nil {
 			return nil, result.Errorf("failed to fetch provider config: %v", err), false
 		}
 
 		// Calculate the inputs for the provider using the ambient config.
-		inputs := resource.PropertyMap{}
-		for k, v := range cfg {
-			inputs[resource.PropertyKey(k.Name())] = resource.NewStringProperty(v)
-		}
 		if v := req.Version(); v != nil {
 			inputs["version"] = resource.NewStringProperty(v.String())
 		}
-		inputs, failures, err := i.plan.providers.Check(urn, nil, inputs, false)
+		inputs, failures, err := i.deployment.providers.Check(urn, nil, inputs, false)
 		if err != nil {
 			return nil, result.Errorf("failed to validate provider config: %v", err), false
 		}
 
 		state := resource.NewState(typ, urn, true, false, "", inputs, nil, "", false, false, nil, nil, "", nil, false,
 			nil, nil, nil, "")
-		if issueCheckErrors(i.plan, state, urn, failures) {
+		if issueCheckErrors(i.deployment, state, urn, failures) {
 			return nil, nil, false
 		}
 
-		steps[idx] = NewCreateStep(i.plan, noopEvent(0), state)
+		steps[idx] = NewCreateStep(i.deployment, noopEvent(0), state)
 	}
 
 	// Issue the create steps.
@@ -267,7 +276,7 @@ func (i *importer) registerProviders(ctx context.Context) (map[resource.URN]stri
 }
 
 func (i *importer) importResources(ctx context.Context) result.Result {
-	contract.Assert(len(i.plan.imports) != 0)
+	contract.Assert(len(i.deployment.imports) != 0)
 
 	if !i.registerExistingResources(ctx) {
 		return nil
@@ -285,13 +294,13 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 	// Create a step per resource to import and execute them in parallel. If there are duplicates, fail the import.
 	urns := map[resource.URN]struct{}{}
-	steps := make([]Step, 0, len(i.plan.imports))
-	for _, imp := range i.plan.imports {
+	steps := make([]Step, 0, len(i.deployment.imports))
+	for _, imp := range i.deployment.imports {
 		parent := imp.Parent
 		if parent == "" {
 			parent = stackURN
 		}
-		urn := i.plan.generateURN(parent, imp.Type, imp.Name)
+		urn := i.deployment.generateURN(parent, imp.Type, imp.Name)
 
 		// Check for duplicate imports.
 		if _, has := urns[urn]; has {
@@ -301,7 +310,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 
 		// If the resource already exists and the ID matches the ID to import, skip this resource. If the ID does
 		// not match, the step itself will issue an error.
-		if old, ok := i.plan.olds[urn]; ok {
+		if old, ok := i.deployment.olds[urn]; ok {
 			oldID := old.ID
 			if old.ImportID != "" {
 				oldID = old.ImportID
@@ -315,7 +324,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 		if providerURN == "" {
 			req := providers.NewProviderRequest(imp.Version, imp.Type.Package())
 			typ, name := providers.MakeProviderType(req.Package()), req.Name()
-			providerURN = i.plan.generateURN("", typ, name)
+			providerURN = i.deployment.generateURN("", typ, name)
 		}
 
 		// Fetch the provider reference for this import. All provider URNs should be mapped.
@@ -325,7 +334,7 @@ func (i *importer) importResources(ctx context.Context) result.Result {
 		// Create the new desired state. Note that the resource is protected.
 		new := resource.NewState(urn.Type(), urn, true, false, imp.ID, resource.PropertyMap{}, nil, parent, imp.Protect,
 			false, nil, nil, provider, nil, false, nil, nil, nil, "")
-		steps = append(steps, newImportPlanStep(i.plan, new))
+		steps = append(steps, newImportDeploymentStep(i.deployment, new))
 	}
 
 	if !i.executeParallel(ctx, steps...) {

@@ -306,7 +306,7 @@
   <!-- Tests -->
   <Target Name="Tests"
 	      DependsOnTargets="BuildTests">
-    <Exec Command="go test -v -timeout 5m -parallel $(TestParallelism) .\backend\..."
+    <Exec Command="go test -timeout 5m -parallel $(TestParallelism) .\backend\..."
           IgnoreExitCode="true"
           WorkingDirectory="$(PkgDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="BackendTestsExitCode" />
@@ -315,7 +315,7 @@
     <Error Text="backend tests (.\pkg\backend) failed"
            Condition="$(BackendTestsExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) .\examples"
+    <Exec Command="go test -timeout 1h -cover -parallel $(TestParallelism) .\examples"
           IgnoreExitCode="true"
           WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="ExamplesTestExitCode" />
@@ -324,7 +324,7 @@
     <Error Text="examples tests (.\tests\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/>
 
-    <Exec Command="go test -v -timeout 40m -cover -parallel $(TestParallelism) -tags=all .\integration"
+    <Exec Command="go test -timeout 1h -cover -parallel $(TestParallelism) -tags=all .\integration"
           IgnoreExitCode="true"
           WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="IntegrationTestExitCode" />

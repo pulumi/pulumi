@@ -40,8 +40,10 @@ type PackageInfo struct {
 	ModuleNameOverrides map[string]string `json:"moduleNameOverrides,omitempty"`
 	// Toggle compatibility mode for a specified target.
 	Compatibility string `json:"compatibility,omitempty"`
-	// Indicates whether the package generates input/output classes.
+	// Deprecated: This bool is no longer needed since all providers now use input/output classes.
 	UsesIOClasses bool `json:"usesIOClasses,omitempty"`
+	// Indicates whether the pulumiplugin.json file should be generated.
+	EmitPulumiPluginFile bool `json:"emitPulumiPluginFile,omitempty"`
 }
 
 // Importer implements schema.Language for Python.

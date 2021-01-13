@@ -106,6 +106,9 @@ namespace Pulumi.Serialization
             if (targetType == typeof(JsonElement))
                 return TryConvertJsonElement(context, val);
 
+            if (targetType.IsSubclassOf(typeof(Resource)) || targetType == typeof(Resource))
+                return TryEnsureType<Resource>(context, val);
+
             if (targetType.IsEnum)
             {
                 var underlyingType = targetType.GetEnumUnderlyingType();
@@ -353,6 +356,11 @@ namespace Pulumi.Serialization
                 targetType == typeof(Archive) ||
                 targetType == typeof(AssetOrArchive) ||
                 targetType == typeof(JsonElement))
+            {
+                return;
+            }
+
+            if (targetType.IsSubclassOf(typeof(Resource)) || targetType == typeof(Resource))
             {
                 return;
             }

@@ -696,3 +696,15 @@ func TestConstructNode(t *testing.T) {
 	}
 	integration.ProgramTest(t, opts)
 }
+
+func TestGetResourceNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:                      filepath.Join("get_resource", "nodejs"),
+		Dependencies:             []string{"@pulumi/pulumi"},
+		AllowEmptyPreviewChanges: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+			assert.Equal(t, "foo", stack.Outputs["foo"])
+		},
+	})
+}

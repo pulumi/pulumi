@@ -22,6 +22,7 @@ func NewResource(ctx *pulumi.Context,
 	if args == nil {
 		args = &ResourceArgs{}
 	}
+
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {
@@ -75,15 +76,15 @@ type ResourceInput interface {
 	ToResourceOutputWithContext(ctx context.Context) ResourceOutput
 }
 
-func (Resource) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil)).Elem()
+func (*Resource) ElementType() reflect.Type {
+	return reflect.TypeOf((*Resource)(nil))
 }
 
-func (i Resource) ToResourceOutput() ResourceOutput {
+func (i *Resource) ToResourceOutput() ResourceOutput {
 	return i.ToResourceOutputWithContext(context.Background())
 }
 
-func (i Resource) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
+func (i *Resource) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ResourceOutput)
 }
 
@@ -92,7 +93,7 @@ type ResourceOutput struct {
 }
 
 func (ResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ResourceOutput)(nil)).Elem()
+	return reflect.TypeOf((*Resource)(nil))
 }
 
 func (o ResourceOutput) ToResourceOutput() ResourceOutput {

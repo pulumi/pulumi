@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -248,7 +249,7 @@ func (pack *cloudPolicyPack) Remove(ctx context.Context, op backend.PolicyPackOp
 
 const packageDir = "package"
 
-func installRequiredPolicy(finalDir string, tarball []byte) error {
+func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 	// If part of the directory tree is missing, ioutil.TempDir will return an error, so make sure
 	// the path we're going to create the temporary folder in actually exists.
 	if err := os.MkdirAll(filepath.Dir(finalDir), 0700); err != nil {
@@ -272,7 +273,7 @@ func installRequiredPolicy(finalDir string, tarball []byte) error {
 	}()
 
 	// Uncompress the policy pack.
-	err = archive.UnTGZ(tarball, tempDir)
+	err = archive.ExtractTGZ(tgz, tempDir)
 	if err != nil {
 		return err
 	}
@@ -321,15 +322,15 @@ func completeNodeJSInstall(finalDir string) error {
 }
 
 func completePythonInstall(finalDir, projPath string, proj *workspace.PolicyPackProject) error {
-	if err := python.InstallDependencies(finalDir, false /*showOutput*/, func(virtualenv string) error {
-		// Save project with venv info.
-		proj.Runtime.SetOption("virtualenv", virtualenv)
-		if err := proj.Save(projPath); err != nil {
-			return errors.Wrapf(err, "saving project at %s", projPath)
-		}
-		return nil
-	}); err != nil {
+	const venvDir = "venv"
+	if err := python.InstallDependencies(finalDir, venvDir, false /*showOutput*/); err != nil {
 		return err
+	}
+
+	// Save project with venv info.
+	proj.Runtime.SetOption("virtualenv", venvDir)
+	if err := proj.Save(projPath); err != nil {
+		return errors.Wrapf(err, "saving project at %s", projPath)
 	}
 
 	return nil

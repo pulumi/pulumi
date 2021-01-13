@@ -28,7 +28,7 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, "import", ctx.ParentSpan)
+	info, err := newDeploymentContext(u, "import", ctx.ParentSpan)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -40,7 +40,7 @@ func Import(u UpdateInfo, ctx *Context, opts UpdateOptions, imports []deploy.Imp
 	}
 	defer emitter.Close()
 
-	return update(ctx, info, planOptions{
+	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,
 		Events:        emitter,

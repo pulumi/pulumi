@@ -15,7 +15,7 @@
 import { ResourceError } from "./errors";
 import { Input, Inputs, interpolate, Output, output } from "./output";
 import { getStackResource, unknownValue } from "./runtime";
-import { readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
+import { getResource, readResource, registerResource, registerResourceOutputs } from "./runtime/resource";
 import { getProject, getStack } from "./runtime/settings";
 import * as utils from "./utils";
 
@@ -323,7 +323,11 @@ export abstract class Resource {
             }
         }
 
-        if (opts.id) {
+        if (opts.urn) {
+            // This is a resource that already exists. Read its state from the engine.
+            getResource(this, props, custom, opts.urn);
+        }
+        else if (opts.id) {
             // If this is a custom resource that already exists, read its state from the provider.
             if (!custom) {
                 throw new ResourceError(
@@ -515,6 +519,10 @@ export interface ResourceOptions {
      * parents walking from the resource up to the stack.
      */
     transformations?: ResourceTransformation[];
+    /**
+     * The URN of a previously-registered resource of this type to read from the engine.
+     */
+    urn?: URN;
 
     // !!! IMPORTANT !!! If you add a new field to this type, make sure to add test that verifies
     // that mergeOptions works properly for it.

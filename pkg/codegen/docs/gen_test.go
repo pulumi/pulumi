@@ -316,9 +316,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 			}
 		})
 
-		// Unique nested properties are those that only appear inside a nested object and therefore
-		// are never mapped to their snake_case. Therefore, such properties must be rendered with a
-		// camelCase.
+		// Unique nested properties are those that only appear inside a nested object and should also be snake_cased.
 		t.Run("UniqueNestedProperties", func(t *testing.T) {
 			n := nestedTypes[1]
 			assert.Equal(t, "Resource<wbr>Options2", n.Name, "got %v instead of Resource<wbr>Options2", n.Name)
@@ -332,8 +330,9 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 
 			for name := range nestedObject.Properties {
 				found := false
+				pyName := python.PyName(name)
 				for _, prop := range pyProps {
-					if prop.Name == name {
+					if prop.Name == pyName {
 						found = true
 						break
 					}
@@ -366,6 +365,7 @@ func TestResourceDocHeader(t *testing.T) {
 		ExpectedTitleTag string
 		ResourceName     string
 		ModuleName       string
+		ExpectedMetaDesc string
 	}{
 		{
 			Name:         "PackageLevelResourceHeader",
@@ -373,12 +373,14 @@ func TestResourceDocHeader(t *testing.T) {
 			// Empty string indicates the package-level root module.
 			ModuleName:       "",
 			ExpectedTitleTag: "Resource PackageLevelResource | Package prov",
+			ExpectedMetaDesc: "Explore the PackageLevelResource resource of the prov package, including examples, input properties, output properties, lookup functions, and supporting types. This is a package-level resource.",
 		},
 		{
 			Name:             "ModuleLevelResourceHeader",
 			ResourceName:     "Resource",
 			ModuleName:       "module",
-			ExpectedTitleTag: "Resource Resource | Module module | Package prov",
+			ExpectedTitleTag: "prov.module.Resource",
+			ExpectedMetaDesc: "Documentation for the prov.module.Resource resource with examples, input properties, output properties, lookup functions, and supporting types.",
 		},
 	}
 
@@ -396,6 +398,7 @@ func TestResourceDocHeader(t *testing.T) {
 			}
 			h := mod.genResourceHeader(r)
 			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
+			assert.Equal(t, test.ExpectedMetaDesc, h.MetaDesc)
 		})
 	}
 }

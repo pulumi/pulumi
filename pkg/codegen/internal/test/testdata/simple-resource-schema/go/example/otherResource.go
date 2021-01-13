@@ -22,6 +22,7 @@ func NewOtherResource(ctx *pulumi.Context,
 	if args == nil {
 		args = &OtherResourceArgs{}
 	}
+
 	var resource OtherResource
 	err := ctx.RegisterRemoteComponentResource("example::OtherResource", name, args, &resource, opts...)
 	if err != nil {
@@ -50,15 +51,15 @@ type OtherResourceInput interface {
 	ToOtherResourceOutputWithContext(ctx context.Context) OtherResourceOutput
 }
 
-func (OtherResource) ElementType() reflect.Type {
-	return reflect.TypeOf((*OtherResource)(nil)).Elem()
+func (*OtherResource) ElementType() reflect.Type {
+	return reflect.TypeOf((*OtherResource)(nil))
 }
 
-func (i OtherResource) ToOtherResourceOutput() OtherResourceOutput {
+func (i *OtherResource) ToOtherResourceOutput() OtherResourceOutput {
 	return i.ToOtherResourceOutputWithContext(context.Background())
 }
 
-func (i OtherResource) ToOtherResourceOutputWithContext(ctx context.Context) OtherResourceOutput {
+func (i *OtherResource) ToOtherResourceOutputWithContext(ctx context.Context) OtherResourceOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutput)
 }
 
@@ -67,7 +68,7 @@ type OtherResourceOutput struct {
 }
 
 func (OtherResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*OtherResourceOutput)(nil)).Elem()
+	return reflect.TypeOf((*OtherResource)(nil))
 }
 
 func (o OtherResourceOutput) ToOtherResourceOutput() OtherResourceOutput {

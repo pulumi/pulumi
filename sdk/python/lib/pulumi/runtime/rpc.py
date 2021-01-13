@@ -22,8 +22,10 @@ import functools
 import inspect
 from abc import ABC, abstractmethod
 from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, TYPE_CHECKING, cast
+from enum import Enum
 
 from google.protobuf import struct_pb2
+from semver import VersionInfo as Version # type:ignore
 import six
 from . import known_types, settings
 from .. import log
@@ -54,12 +56,14 @@ _special_resource_sig = "5cf8f73096256a8f31e491e813e4eb8e"
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
+
 def isLegalProtobufValue(value: Any) -> bool:
     """
     Returns True if the given value is a legal Protobuf value as per the source at
     https://github.com/protocolbuffers/protobuf/blob/master/python/google/protobuf/internal/well_known_types.py#L714-L732
     """
     return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
+
 
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
@@ -110,7 +114,6 @@ async def serialize_property(value: 'Input[Any]',
 
     if known_types.is_resource(value):
         resource = cast('Resource', value)
-        deps.append(resource)
 
         is_custom = known_types.is_custom_resource(value)
         resource_id = cast('CustomResource', value).id if is_custom else None
@@ -232,6 +235,7 @@ async def serialize_property(value: 'Input[Any]',
 
     return value
 
+
 # pylint: disable=too-many-return-statements
 def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
     """
@@ -266,34 +270,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
         if props_struct[_special_sig_key] == _special_secret_sig:
             return wrap_rpc_secret(deserialize_property(props_struct["value"]))
         if props_struct[_special_sig_key] == _special_resource_sig:
-            urn = props_struct["urn"]
-            version = props_struct["version"]
-
-            urn_parts = urn.split("::")
-            urn_name = urn_parts[3]
-            qualified_type = urn_parts[2]
-            typ = qualified_type.split("$")[-1]
-
-            typ_parts = typ.split(":")
-            pkg_name = typ_parts[0]
-            mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
-            typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
-
-            resource = None
-            is_provider = pkg_name == "pulumi" and mod_name == "providers"
-            if is_provider:
-                resource_package = _RESOURCE_PACKAGES.get(_package_key(typ_name, version))
-                if resource_package is None:
-                    raise Exception(f"Unable to deserialize provider {urn}, no resource package is registered for {typ_name}.")
-                resource = resource_package.construct_provider(urn_name, typ, {}, urn)
-            else:
-                resource_module = _RESOURCE_MODULES.get(_module_key(typ_name, version))
-                if resource_module is None:
-                    raise Exception(f"Unable to deserialize resource {urn}, no resource module is registered for {mod_name}.")
-                resource_module.construct(urn_name, typ, {}, urn)
-
-            return cast('Resource', resource)
-
+            return deserialize_resource(props_struct, keep_unknowns)
         raise AssertionError("Unrecognized signature when unmarshalling resource property")
 
     # Struct is duck-typed like a dictionary, so we can iterate over it in the normal ways. Note
@@ -316,11 +293,45 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
 
     return output
 
+
+def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> 'Resource':
+    urn = ref_struct["urn"]
+    version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
+
+    urn_parts = urn.split("::")
+    urn_name = urn_parts[3]
+    qualified_type = urn_parts[2]
+    typ = qualified_type.split("$")[-1]
+
+    typ_parts = typ.split(":")
+    pkg_name = typ_parts[0]
+    mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
+    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
+
+    is_provider = pkg_name == "pulumi" and mod_name == "providers"
+    if is_provider:
+        resource_package = get_resource_package(typ_name, version)
+        if resource_package is not None:
+            return cast('Resource', resource_package.construct_provider(urn_name, typ, urn))
+    else:
+        resource_module = get_resource_module(pkg_name, mod_name, version)
+        if resource_module is not None:
+            return cast('Resource', resource_module.construct(urn_name, typ, urn))
+
+    # If we've made it here, deserialize the reference as either a URN or an ID (if present).
+    if "id" in ref_struct:
+        id = ref_struct["id"]
+        return deserialize_property(UNKNOWN if id == "" else id, keep_unknowns)
+
+    return urn
+
+
 def is_rpc_secret(value: Any) -> bool:
     """
     Returns if a given python value is actually a wrapped secret.
     """
     return isinstance(value, dict) and _special_sig_key in value and value[_special_sig_key] == _special_secret_sig
+
 
 def wrap_rpc_secret(value: Any) -> Any:
     """
@@ -334,6 +345,7 @@ def wrap_rpc_secret(value: Any) -> Any:
         "value": value,
     }
 
+
 def unwrap_rpc_secret(value: Any) -> Any:
     """
     Given a value, if it is a wrapped secret value, return the underlying, otherwise return the value unmodified.
@@ -342,6 +354,7 @@ def unwrap_rpc_secret(value: Any) -> Any:
         return value["value"]
 
     return value
+
 
 def deserialize_property(value: Any, keep_unknowns: Optional[bool] = None) -> Any:
     """
@@ -463,6 +476,8 @@ def translate_output_properties(output: Any,
 
     If output is a `float` and `typ` is `int`, the value is cast to `int`.
 
+    If output is in [`str`, `int`, `float`] and `typ` is an enum type, instantiate the enum type.
+
     Otherwise, if output is a primitive (i.e. not a dict or list), the value is returned without modification.
 
     :param Optional[type] typ: The output's target type.
@@ -492,7 +507,7 @@ def translate_output_properties(output: Any,
             # If typ is an output type, get its types, so we can pass
             # the type along for each property.
             types = _types.output_type_types(typ)
-            get_type = lambda k: types.get(k) # pylint: disable=unnecessary-lambda
+            get_type = lambda k: types.get(k)  # pylint: disable=unnecessary-lambda
         elif typ:
             # If typ is a dict, get the type for its values, to pass
             # along for each key.
@@ -535,6 +550,9 @@ def translate_output_properties(output: Any,
                 raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
         return [translate_output_properties(v, output_transformer, element_type) for v in output]
 
+    if typ and isinstance(output, (int, float, str)) and inspect.isclass(typ) and issubclass(typ, Enum):
+        return typ(output)
+
     if isinstance(output, float) and typ is int:
         return int(output)
 
@@ -557,17 +575,17 @@ def contains_unknowns(val: Any) -> bool:
     return impl(val, [])
 
 
-async def resolve_outputs(res: 'Resource',
-                          serialized_props: struct_pb2.Struct,
-                          outputs: struct_pb2.Struct,
-                          deps: Mapping[str, Set['Resource']],
-                          resolvers: Dict[str, Resolver]):
+def resolve_outputs(res: 'Resource',
+                    serialized_props: struct_pb2.Struct,
+                    outputs: struct_pb2.Struct,
+                    deps: Mapping[str, Set['Resource']],
+                    resolvers: Dict[str, Resolver]):
 
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
     # Get the resource's output types, so we can convert dicts from the engine into actual
-    # instantiated output types as needed.
+    # instantiated output types or primitive types into enums as needed.
     types = _types.resource_types(type(res))
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
@@ -585,10 +603,10 @@ async def resolve_outputs(res: 'Resource',
                 # the user.
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
 
-    await resolve_properties(resolvers, all_properties, deps)
+    resolve_properties(resolvers, all_properties, deps)
 
-async def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
 
+def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
     for key, value in all_properties.items():
         # Skip "id" and "urn", since we handle those specially.
         if key in ["id", "urn"]:
@@ -644,42 +662,106 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     failed to resolve.
 
     :param resolvers: Resolvers associated with a resource's outputs.
-    :param exn: The exception that occured when trying (and failing) to create this resource.
+    :param exn: The exception that occurred when trying (and failing) to create this resource.
     """
     for key, resolve in resolvers.items():
         log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, None, exn)
 
+
+def same_version(a: Optional[Version], b: Optional[Version]) -> bool:
+    # We treat None as a wildcard, so it always equals every other version.
+    return a is None or b is None or a == b
+
+
+def check_version(want: Optional[Version], have: Optional[Version]) -> bool:
+    if want is None or have is None:
+        return True
+    return have.major == want.major() and have.minor() >= want.minor() and have.patch() >= want.patch()
+
+
 class ResourcePackage(ABC):
     @abstractmethod
-    def construct_provider(self, name: str, typ: str, inputs: Mapping[str, Any], urn: str) -> 'ProviderResource':
+    def version(self) -> Optional[Version]:
         pass
 
-_RESOURCE_PACKAGES: Dict[str, Any] = dict()
+    @abstractmethod
+    def construct_provider(self, name: str, typ: str, urn: str) -> 'ProviderResource':
+        pass
 
-def _package_key(typ: str, version: str) -> str:
-    return f"{typ}@{version}"
 
-def register_resource_package(typ: str, version: str, package):
-    key = _package_key(typ, version)
-    existing = _RESOURCE_PACKAGES.get(key, None)
-    if existing is not None:
-        raise ValueError(f"Cannot re-register package {key}. Previous registration was {existing}, new registration was {package}.")
-    _RESOURCE_PACKAGES[key] = package
+_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = dict()
+
+
+def register_resource_package(pkg: str, package: ResourcePackage):
+    resource_packages = _RESOURCE_PACKAGES.get(pkg, None)
+    if resource_packages is not None:
+        for existing in resource_packages:
+            if same_version(existing.version(), package.version()):
+                raise ValueError(f"Cannot re-register package {pkg}@{package.version()}. Previous registration was {existing}, new registration was {package}.")
+    else:
+        resource_packages = []
+        _RESOURCE_PACKAGES[pkg] = resource_packages
+
+    log.debug(f"registering package {pkg}@{package.version()}")
+    resource_packages.append(package)
+
+
+def get_resource_package(pkg: str, version: str) -> Optional[ResourcePackage]:
+    ver = None if version == "" else Version.parse(version)
+
+    best_package = None
+    for package in _RESOURCE_PACKAGES.get(pkg, []):
+        if not check_version(ver, package.version()):
+            continue
+        if best_package is None or package.version() > best_package.version():
+            best_package = package
+
+    return best_package
+
 
 class ResourceModule(ABC):
     @abstractmethod
-    def construct(self, name: str, typ: str, inputs: Mapping[str, Any], urn: str) -> 'Resource':
+    def version(self) -> Optional[Version]:
         pass
 
-_RESOURCE_MODULES: Dict[str, ResourceModule] = dict()
+    @abstractmethod
+    def construct(self, name: str, typ: str, urn: str) -> 'Resource':
+        pass
 
-def _module_key(typ: str, version: str) -> str:
-    return f"{typ}@{version}"
 
-def register_resource_module(typ: str, version: str, module: ResourceModule):
-    key = _module_key(typ, version)
-    existing = _RESOURCE_MODULES.get(key, None)
-    if existing is not None:
-        raise ValueError(f"Cannot re-register module {key}. Previous registration was {existing}, new registration was {module}.")
-    _RESOURCE_MODULES[key] = module
+_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = dict()
+
+
+def _module_key(pkg: str, mod: str) -> str:
+    return f"{pkg}:{mod}"
+
+
+def register_resource_module(pkg: str, mod: str, module: ResourceModule):
+    key = _module_key(pkg, mod)
+
+    resource_modules = _RESOURCE_MODULES.get(key, None)
+    if resource_modules is not None:
+        for existing in resource_modules:
+            if same_version(existing.version(), module.version()):
+                raise ValueError(f"Cannot re-register module {key}@{module.version()}. Previous registration was {existing}, new registration was {module}.")
+    else:
+        resource_modules = []
+        _RESOURCE_MODULES[key] = resource_modules
+
+    log.debug(f"registering module {key}@{module.version()}")
+    resource_modules.append(module)
+
+
+def get_resource_module(pkg: str, mod: str, version: str) -> Optional[ResourceModule]:
+    key = _module_key(pkg, mod)
+    ver = None if version == "" else Version.parse(version)
+
+    best_module = None
+    for module in _RESOURCE_MODULES.get(key, []):
+        if not check_version(ver, module.version()):
+            continue
+        if best_module is None or module.version() > best_module.version():
+            best_module = module
+
+    return best_module

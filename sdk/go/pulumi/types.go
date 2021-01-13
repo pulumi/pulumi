@@ -276,7 +276,7 @@ func makeContextful(fn interface{}, elementType reflect.Type) interface{} {
 		}
 		outs = []reflect.Type{ft.Out(0), ft.Out(1)}
 	default:
-		panic(errors.New("appplier must return exactly one or two values"))
+		panic(errors.New("applier must return exactly one or two values"))
 	}
 
 	ins := []reflect.Type{contextType, ft.In(0)}
@@ -308,7 +308,7 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 			panic(errors.New("applier's second return type must be assignable to error"))
 		}
 	default:
-		panic(errors.New("appplier must return exactly one or two values"))
+		panic(errors.New("applier must return exactly one or two values"))
 	}
 
 	// Okay
@@ -559,8 +559,12 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	// await it.
 	valueType, isInput := v.Type(), false
 	if v.CanInterface() && valueType.Implements(inputType) {
-		input, isNonNil := v.Interface().(Input)
-		if !isNonNil {
+		input, ok := v.Interface().(Input)
+		if !ok {
+			// A non-input type is already fully-resolved.
+			return true, false, nil, nil
+		}
+		if val := reflect.ValueOf(input); val.Kind() == reflect.Ptr && val.IsNil() {
 			// A nil input is already fully-resolved.
 			return true, false, nil, nil
 		}

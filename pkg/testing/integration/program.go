@@ -33,12 +33,8 @@ import (
 	"testing"
 	"time"
 
-	user "github.com/tweekmonster/luser"
-
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-
 	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 	"github.com/pulumi/pulumi/pkg/v2/operations"
@@ -54,6 +50,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/stretchr/testify/assert"
+	user "github.com/tweekmonster/luser"
 )
 
 const PythonRuntime = "python"
@@ -619,16 +617,6 @@ func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *Program
 	return pt
 }
 
-// fprintf works like fmt.FPrintf, except it explicitly drops the return values. This keeps the linters happy, since
-// they don't like to see errors dropped on the floor. It is possible that our call to fmt.Fprintf will fail, even
-// for "standard" streams like `stdout` and `stderr`, if they have been set to non-blocking by an external process.
-// In that case, we just drop the error on the floor and continue. We see this behavior in Travis when we try to write
-// a lot of messages quickly (as we do when logging test failures)
-func fprintf(w io.Writer, format string, a ...interface{}) {
-	_, err := fmt.Fprintf(w, format, a...)
-	contract.IgnoreError(err)
-}
-
 // ProgramTester contains state associated with running a single test pass.
 type ProgramTester struct {
 	t            *testing.T          // the Go tester for this run.
@@ -880,8 +868,8 @@ func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd str
 		}
 
 		if pt.opts.Verbose {
-			fprintf(pt.opts.Stdout, "acquired pip install lock\n")
-			defer fprintf(pt.opts.Stdout, "released pip install lock\n")
+			pt.t.Log("acquired pip install lock")
+			defer pt.t.Log("released pip install lock")
 		}
 		defer func() {
 			if err := pipMutex.Unlock(); err != nil {
@@ -931,8 +919,8 @@ func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string)
 		}
 
 		if pt.opts.Verbose {
-			fprintf(pt.opts.Stdout, "acquired pip install lock\n")
-			defer fprintf(pt.opts.Stdout, "released pip install lock\n")
+			pt.t.Log("acquired pip install lock")
+			defer pt.t.Log("released pip install lock")
 		}
 		defer func() {
 			if err := pipMutex.Unlock(); err != nil {
@@ -1062,7 +1050,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	pt.t.Logf("Initializing project (dir %s; stack %s)", dir, stackName)
 
 	// Login as needed.
 	stackInitName := string(pt.opts.GetStackNameWithOwner())
@@ -1130,7 +1118,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 func (pt *ProgramTester) TestLifeCycleDestroy() error {
 	if pt.projdir != "" {
 		// Destroy and remove the stack.
-		fprintf(pt.opts.Stdout, "Destroying stack\n")
+		pt.t.Log("Destroying stack")
 		destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
 		if pt.opts.GetDebugUpdates() {
 			destroy = append(destroy, "-d")
@@ -1140,7 +1128,7 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 
 		if pt.t.Failed() {
-			fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
+			pt.t.Logf("Test failed, retaining stack '%s'", pt.opts.GetStackNameWithOwner())
 			return nil
 		}
 
@@ -1155,7 +1143,7 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 	dir := pt.projdir
 	// Now preview and update the real changes.
-	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
+	pt.t.Log("Performing primary preview and update")
 	initErr := pt.PreviewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
@@ -1165,7 +1153,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.SkipExportImport {
-		fprintf(pt.opts.Stdout, "Roundtripping checkpoint via stack export and stack import\n")
+		pt.t.Log("Roundtripping checkpoint via stack export and stack import")
 
 		if err := pt.exportImport(dir); err != nil {
 			return err
@@ -1177,7 +1165,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		if !pt.opts.AllowEmptyUpdateChanges {
 			msg = "(no changes expected)"
 		}
-		fprintf(pt.opts.Stdout, "Performing empty preview and update%s\n", msg)
+		pt.t.Logf("Performing empty preview and update%s", msg)
 		if err := pt.PreviewAndUpdate(
 			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
 
@@ -1250,7 +1238,7 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	if !pt.opts.SkipPreview {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir, shouldFail); err != nil {
 			if shouldFail {
-				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
+				pt.t.Log("Permitting failure (ExpectFailure=true for this preview)")
 				return nil
 			}
 			return err
@@ -1261,7 +1249,7 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	if !pt.opts.SkipUpdate {
 		if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir, shouldFail); err != nil {
 			if shouldFail {
-				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+				pt.t.Log("Permitting failure (ExpectFailure=true for this update)")
 				return nil
 			}
 			return err
@@ -1289,7 +1277,7 @@ func (pt *ProgramTester) query(dir string, name string, shouldFail bool) error {
 	// Now run a query.
 	if err := pt.runPulumiCommand("pulumi-query-"+name, query, dir, shouldFail); err != nil {
 		if shouldFail {
-			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			pt.t.Log("Permitting failure (ExpectFailure=true for this update)")
 			return nil
 		}
 		return err
@@ -1314,7 +1302,7 @@ func (pt *ProgramTester) testEdits(dir string) error {
 }
 
 func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
-	fprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
+	pt.t.Logf("Applying edit '%v' and rerunning preview and update", edit.Dir)
 
 	if edit.Additive {
 		// Just copy new files into dir
@@ -1498,9 +1486,9 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 		Events:       events,
 	}
 
-	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
+	pt.t.Log("Performing extra runtime validation.")
 	extraRuntimeValidation(pt.t, stackInfo)
-	fprintf(pt.opts.Stdout, "Extra runtime validation complete.\n")
+	pt.t.Log("Extra runtime validation complete.")
 	return nil
 }
 
@@ -1513,31 +1501,19 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", err
 	}
 
-	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
-	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
-	var prefix string
-	if len(sourceDir) <= 30 {
-		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir)
-	} else {
-		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir[len(sourceDir)-30:])
+	if pt.opts.Stdout == nil {
+		pt.opts.Stdout = os.Stdout
 	}
-	stdout := pt.opts.Stdout
-	if stdout == nil {
-		stdout = newPrefixer(os.Stdout, prefix)
-		pt.opts.Stdout = stdout
-	}
-	stderr := pt.opts.Stderr
-	if stderr == nil {
-		stderr = newPrefixer(os.Stderr, prefix)
-		pt.opts.Stderr = stderr
+	if pt.opts.Stderr == nil {
+		pt.opts.Stderr = os.Stderr
 	}
 
-	fprintf(pt.opts.Stdout, "sample: %v\n", sourceDir)
+	pt.t.Logf("sample: %v", sourceDir)
 	bin, err := pt.getBin()
 	if err != nil {
 		return "", "", err
 	}
-	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
+	pt.t.Logf("pulumi: %v\n", bin)
 
 	stackName := string(pt.opts.GetStackName())
 
@@ -1600,7 +1576,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		}
 	}
 
-	fprintf(stdout, "projdir: %v\n", projdir)
+	pt.t.Logf("projdir: %v", projdir)
 	return tmpdir, projdir, nil
 }
 
@@ -1675,7 +1651,7 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 				}
 			}
 
-			fprintf(pt.opts.Stdout, "adding resolution for %s to version %s\n", packageName, packageVersion)
+			pt.t.Logf("adding resolution for %s to version %s", packageName, packageVersion)
 			resolutions["**/"+packageName] = packageVersion
 		}
 

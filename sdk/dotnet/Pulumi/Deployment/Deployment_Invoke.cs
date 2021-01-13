@@ -19,6 +19,19 @@ namespace Pulumi
         private async Task<T> InvokeAsync<T>(
             string token, InvokeArgs args, InvokeOptions? options, bool convertResult)
         {
+            var result = await InvokeRawAsync(token, args, options);
+            
+            if (!convertResult)
+            {
+                return default!;
+            }
+
+            var data = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
+            return data.Value;
+        }
+
+        private async Task<Struct> InvokeRawAsync(string token, InvokeArgs args, InvokeOptions? options)
+        {
             var label = $"Invoking function: token={token} asynchronously";
             Log.Debug(label);
 
@@ -41,6 +54,7 @@ namespace Pulumi
                 Provider = provider ?? "",
                 Version = options?.Version ?? "",
                 Args = serialized,
+                AcceptResources = !_disableResourceReferences,
             });
 
             if (result.Failures.Count > 0)
@@ -59,13 +73,7 @@ namespace Pulumi
                 throw new InvokeException($"Invoke of '{token}' failed: {reasons}");
             }
 
-            if (!convertResult)
-            {
-                return default!;
-            }
-
-            var data = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result.Return });
-            return data.Value;
+            return result.Return;
         }
 
         private static ProviderResource? GetProvider(string token, InvokeOptions? options)

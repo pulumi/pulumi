@@ -18,14 +18,13 @@ Mocks for testing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Optional, Awaitable, Tuple, Union, Any, TYPE_CHECKING
+from typing import Dict, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
-import grpc
 from google.protobuf import empty_pb2
 from . import rpc
 from .settings import Settings, configure, get_stack, get_project, get_root_resource
 from .sync_await import _sync_await
-from ..runtime.proto import engine_pb2, engine_pb2_grpc, provider_pb2, resource_pb2, resource_pb2_grpc
+from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
 
 if TYPE_CHECKING:
@@ -56,7 +55,7 @@ class Mocks(ABC):
         return {}
 
     @abstractmethod
-    def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[str, dict]:
+    def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
@@ -71,10 +70,17 @@ class Mocks(ABC):
 
 
 class MockMonitor:
+    class ResourceRegistration(NamedTuple):
+        urn: str
+        id: str
+        state: dict
+
     mocks: Mocks
+    resources: Dict[str, ResourceRegistration]
 
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
+        self.resources = dict()
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":
@@ -87,6 +93,14 @@ class MockMonitor:
     def Invoke(self, request):
         args = rpc.deserialize_properties(request.args)
 
+        if request.tok == "pulumi:pulumi:getResource":
+            registered_resource = self.resources.get(args["urn"])
+            if registered_resource is None:
+                raise Exception(f"unknown resource {args['urn']}")
+            ret_proto = _sync_await(rpc.serialize_properties(registered_resource._asdict(), {}))
+            fields = {"failures": None, "return": ret_proto}
+            return provider_pb2.InvokeResponse(**fields)
+
         ret = self.mocks.call(request.tok, args, request.provider)
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
@@ -97,11 +111,14 @@ class MockMonitor:
     def ReadResource(self, request):
         state = rpc.deserialize_properties(request.properties)
 
-        _, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
+        id_, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
 
         props_proto = _sync_await(rpc.serialize_properties(state, {}))
 
         urn = self.make_urn(request.parent, request.type, request.name)
+
+        self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
+
         return resource_pb2.ReadResourceResponse(urn=urn, properties=props_proto)
 
     def RegisterResource(self, request):
@@ -115,6 +132,8 @@ class MockMonitor:
         id_, state = self.mocks.new_resource(request.type, request.name, inputs, request.provider, request.importId)
 
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
+
+        self.resources[urn] = MockMonitor.ResourceRegistration(urn, id_, state)
 
         return resource_pb2.RegisterResourceResponse(urn=urn, id=id_, object=obj_proto)
 

@@ -6,6 +6,9 @@ PYPI_VERSION     := $(shell cd ../../scripts && ./get-py-version HEAD)
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
 
+PROJECT_PKGS    := $(shell go list ./cmd/...)
+TESTPARALLELISM := 10
+
 include ../../build/common.mk
 
 ensure::
@@ -39,9 +42,13 @@ install_plugin:: build_plugin
 install:: install_package install_plugin
 
 test_fast:: build
+	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
-	pipenv run python -m unittest discover -s lib/test -v
-	pipenv run python -m unittest discover -s lib/test_with_mocks -v
+	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
+	pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py
+	pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
+	# Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
+	pushd lib/test_with_mocks ; pipenv run python -m pytest ; popd
 
 test_all:: test_fast
 

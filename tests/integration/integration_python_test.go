@@ -259,7 +259,7 @@ func TestPython3NotInstalled(t *testing.T) {
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
 	expectedError := fmt.Sprintf(
-		"error: Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+		"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
 		[]string{badPython})
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "python"),
@@ -346,6 +346,23 @@ func TestLargeResourcePython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Dir: filepath.Join("large_resource", "python"),
+	})
+}
+
+// Test enum outputs
+func TestEnumOutputsPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Dir: filepath.Join("enums", "python"),
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stack.Outputs)
+
+			assert.Equal(t, "Burgundy", stack.Outputs["myTreeType"])
+			assert.Equal(t, "Pulumi Planters Inc.foo", stack.Outputs["myTreeFarmChanged"])
+			assert.Equal(t, "My Burgundy Rubber tree is from Pulumi Planters Inc.", stack.Outputs["mySentence"])
+		},
 	})
 }
 
@@ -437,4 +454,17 @@ func TestConstructPython(t *testing.T) {
 		},
 	}
 	integration.ProgramTest(t, opts)
+}
+
+func TestGetResourcePython(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
+	}
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("get_resource", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		AllowEmptyPreviewChanges: true,
+	})
 }

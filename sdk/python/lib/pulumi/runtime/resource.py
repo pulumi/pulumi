@@ -12,16 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import os
 import sys
 import traceback
 
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Union, TYPE_CHECKING, cast
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast
 from google.protobuf import struct_pb2
 import grpc
 
 from . import rpc, settings, known_types
 from .. import log
-from ..runtime.proto import resource_pb2
+from .invoke import invoke
+from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
 from ..metadata import get_project, get_stack
 
@@ -138,8 +140,103 @@ async def prepare_resource(res: 'Resource',
     )
 
 
-def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> None:
+def resource_output(res: 'Resource') -> Tuple[Callable[[Any, bool, bool, Optional[Exception]], None], 'Output']:
     from .. import Output  # pylint: disable=import-outside-toplevel
+
+    value_future: asyncio.Future[Any] = asyncio.Future()
+    known_future: asyncio.Future[bool] = asyncio.Future()
+    secret_future: asyncio.Future[bool] = asyncio.Future()
+
+    def resolve(value: Any, known: bool, secret: bool, exn: Optional[Exception]):
+        if exn is not None:
+            value_future.set_exception(exn)
+            known_future.set_exception(exn)
+            secret_future.set_exception(exn)
+        else:
+            value_future.set_result(value)
+            known_future.set_result(known)
+            secret_future.set_result(secret)
+
+    return (resolve, Output({res}, value_future, known_future, secret_future))
+
+
+def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> None:
+    log.debug(f"getting resource: urn={urn}")
+
+    # Extract the resource type from the URN.
+    urn_parts = urn.split("::")
+    qualified_type = urn_parts[2]
+    ty = qualified_type.split("$")[-1]
+
+    # Initialize the URN property on the resource.
+    (resolve_urn, res.__dict__["urn"]) = resource_output(res)
+
+    # If this is a custom resource, initialize its ID property.
+    resolve_id: Optional[Callable[[Any, bool, bool, Optional[Exception]], None]] = None
+    if custom:
+        (resolve_id, res.__dict__["id"]) = resource_output(res)
+
+    # Like the other resource functions, "transfer" all input properties onto unresolved futures on res.
+    resolvers = rpc.transfer_properties(res, props)
+
+    async def do_get():
+        try:
+            resolver = await prepare_resource(res, ty, custom, props, None)
+
+            monitor = settings.get_monitor()
+            inputs = await rpc.serialize_properties({"urn": urn}, {})
+            req = provider_pb2.InvokeRequest(tok="pulumi:pulumi:getResource", args=inputs, provider="", version="")
+
+            def do_invoke():
+                try:
+                    return monitor.Invoke(req)
+                except grpc.RpcError as exn:
+                    # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
+                    # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
+                    # the .code() member. Pylint doesn't know this because it's not known statically.
+                    #
+                    # Neither pylint nor I are the only ones who find this confusing:
+                    # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+                    # pylint: disable=no-member
+                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                        sys.exit(0)
+
+                    details = exn.details()
+                raise Exception(details)
+
+            resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
+
+            # If the invoke failed, raise an error.
+            if resp.failures:
+                raise Exception(f"getResource failed: {resp.failures[0].reason} ({resp.failures[0].property})")
+
+        except Exception as exn:
+            log.debug(
+                f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            resolve_urn(None, True, False, exn)
+            if resolve_id is not None:
+                resolve_id(None, True, False, exn)
+            raise
+
+        # Otherwise, grab the URN, ID, and output properties and resolve all of them.
+        resp = getattr(resp, 'return')
+
+        log.debug(f"getResource completed successfully: ty={ty}, urn={resp['urn']}")
+        resolve_urn(resp["urn"], True, False, None)
+        if resolve_id:
+            # The ID is known if (and only if) it is a non-empty string. If it's either None or an
+            # empty string, we should treat it as unknown. TFBridge in particular is known to send
+            # the empty string as an ID when doing a preview.
+            is_known = bool(resp["id"])
+            resolve_id(resp["id"], is_known, False, None)
+
+        rpc.resolve_outputs(res, resolver.serialized_props, resp["state"], {}, resolvers)
+
+    asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
+
+
+def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> None:
     if opts.id is None:
         raise Exception(
             "Cannot read resource whose options are lacking an ID value")
@@ -152,14 +249,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     #
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
     log.debug("preparing read resource for RPC")
-    urn_future: asyncio.Future[Any] = asyncio.Future()
-    urn_known: asyncio.Future[bool] = asyncio.Future()
-    urn_secret: asyncio.Future[bool] = asyncio.Future()
-    urn_known.set_result(True)
-    urn_secret.set_result(False)
-    resolve_urn = urn_future.set_result
-    resolve_urn_exn = urn_future.set_exception
-    res.__dict__["urn"] = Output({res}, urn_future, urn_known, urn_secret)
+    (resolve_urn, res.__dict__["urn"]) = resource_output(res)
 
     # Furthermore, since resources being Read must always be custom resources (enforced in the
     # Resource constructor), we'll need to set up the ID field which will be populated at the end of
@@ -168,23 +258,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     # Note that we technically already have the ID (opts.id), but it's more consistent with the rest
     # of the model to resolve it asynchronously along with all of the other resources.
 
-    resolve_value: asyncio.Future[Any] = asyncio.Future()
-    resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
-    resolve_secret: asyncio.Future[bool] = asyncio.Future()
-    res.__dict__["id"] = Output(
-        {res}, resolve_value, resolve_perform_apply, resolve_secret)
-
-    def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
-        if exn is not None:
-            resolve_value.set_exception(exn)
-            resolve_perform_apply.set_exception(exn)
-            resolve_secret.set_exception(exn)
-        else:
-            resolve_value.set_result(value)
-            resolve_perform_apply.set_result(perform_apply)
-            resolve_secret.set_result(False)
-
-    resolve_id = do_resolve
+    (resolve_id, res.__dict__["id"]) = resource_output(res)
 
     # Like below, "transfer" all input properties onto unresolved futures on res.
     resolvers = rpc.transfer_properties(res, props)
@@ -209,6 +283,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                 additional_secret_outputs = map(
                     res.translate_input_property, opts.additional_secret_outputs)
 
+            accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
             req = resource_pb2.ReadResourceRequest(
                 type=ty,
                 name=name,
@@ -219,6 +294,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                 dependencies=resolver.dependencies,
                 version=opts.version or "",
                 acceptSecrets=True,
+                acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
             )
 
@@ -249,14 +325,14 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
-            resolve_urn_exn(exn)
-            resolve_id(None, False, exn)
+            resolve_urn(None, True, False, exn)
+            resolve_id(None, True, False, exn)
             raise
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
-        resolve_urn(resp.urn)
-        resolve_id(resolved_id, True, None)  # Read IDs are always known.
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers)
+        resolve_urn(resp.urn, True, False, None)
+        resolve_id(resolved_id, True, False, None) # Read IDs are always known.
+        rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
@@ -277,7 +353,6 @@ def register_resource(res: 'Resource',
     """
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}, remote={remote}")
     monitor = settings.get_monitor()
-    from .. import Output  # pylint: disable=import-outside-toplevel
 
     # Prepare the resource.
 
@@ -285,36 +360,12 @@ def register_resource(res: 'Resource',
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
     log.debug("preparing resource for RPC")
-    urn_future: asyncio.Future[Any] = asyncio.Future()
-    urn_known: asyncio.Future[bool] = asyncio.Future()
-    urn_secret: asyncio.Future[bool] = asyncio.Future()
-    urn_known.set_result(True)
-    urn_secret.set_result(False)
-    resolve_urn = urn_future.set_result
-    resolve_urn_exn = urn_future.set_exception
-    res.__dict__["urn"] = Output({res}, urn_future, urn_known, urn_secret)
+    (resolve_urn, res.__dict__["urn"]) = resource_output(res)
 
     # If a custom resource, make room for the ID property.
-    resolve_id: Optional[Callable[[
-        Any, bool, Optional[Exception]], None]] = None
+    resolve_id: Optional[Callable[[Any, bool, bool, Optional[Exception]], None]] = None
     if custom:
-        resolve_value: asyncio.Future[Any] = asyncio.Future()
-        resolve_perform_apply: asyncio.Future[bool] = asyncio.Future()
-        resolve_secret: asyncio.Future[bool] = asyncio.Future()
-        res.__dict__["id"] = Output(
-            {res}, resolve_value, resolve_perform_apply, resolve_secret)
-
-        def do_resolve(value: Any, perform_apply: bool, exn: Optional[Exception]):
-            if exn is not None:
-                resolve_value.set_exception(exn)
-                resolve_perform_apply.set_exception(exn)
-                resolve_secret.set_exception(exn)
-            else:
-                resolve_value.set_result(value)
-                resolve_perform_apply.set_result(perform_apply)
-                resolve_secret.set_result(False)
-
-        resolve_id = do_resolve
+        (resolve_id, res.__dict__["id"]) = resource_output(res)
 
     # Now "transfer" all input properties into unresolved futures on res.  This way,
     # this resource will look like it has all its output properties to anyone it is
@@ -368,6 +419,7 @@ def register_resource(res: 'Resource',
                 else:
                     raise Exception("Expected custom_timeouts to be a CustomTimeouts object")
 
+            accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
             req = resource_pb2.RegisterResourceRequest(
                 type=ty,
                 name=name,
@@ -383,6 +435,7 @@ def register_resource(res: 'Resource',
                 ignoreChanges=ignore_changes,
                 version=opts.version or "",
                 acceptSecrets=True,
+                acceptResources=accept_resources,
                 additionalSecretOutputs=additional_secret_outputs,
                 importId=opts.import_,
                 customTimeouts=custom_timeouts,
@@ -417,19 +470,19 @@ def register_resource(res: 'Resource',
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
-            resolve_urn_exn(exn)
+            resolve_urn(None, True, False, exn)
             if resolve_id is not None:
-                resolve_id(None, False, exn)
+                resolve_id(None, True, False, exn)
             raise
 
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
-        resolve_urn(resp.urn)
-        if resolve_id:
+        resolve_urn(resp.urn, True, False, None)
+        if resolve_id is not None:
             # The ID is known if (and only if) it is a non-empty string. If it's either None or an
             # empty string, we should treat it as unknown. TFBridge in particular is known to send
             # the empty string as an ID when doing a preview.
             is_known = bool(resp.id)
-            resolve_id(resp.id, is_known, None)
+            resolve_id(resp.id, is_known, False, None)
 
         deps = {}
         rpc_deps = resp.propertyDependencies
@@ -439,7 +492,7 @@ def register_resource(res: 'Resource',
                 deps[k] = set(map(new_dependency, urns))
 
 
-        await rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
+        rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())

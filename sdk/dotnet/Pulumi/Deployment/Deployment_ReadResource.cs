@@ -37,6 +37,7 @@ namespace Pulumi
                 Properties = prepareResult.SerializedProps,
                 Version = options?.Version ?? "",
                 AcceptSecrets = true,
+                AcceptResources = !_disableResourceReferences,
             };
 
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);

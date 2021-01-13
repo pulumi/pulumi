@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package stack contains the serialized and configurable state associated with an stack; or, in other
-// words, a deployment target.  It pertains to resources and deployment plans, but is a package unto itself.
 package stack
 
 import (

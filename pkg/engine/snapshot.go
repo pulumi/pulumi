@@ -20,8 +20,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 )
 
-// SnapshotManager is responsible for maintaining the in-memory representation
-// of the current state of the resource world.
+// SnapshotManager manages an in-memory resource graph.
 type SnapshotManager interface {
 	io.Closer
 

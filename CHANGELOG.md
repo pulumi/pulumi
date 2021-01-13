@@ -2,6 +2,203 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.17.1 (2021-01-13)
+
+- Fix an issue with go sdk generation where optional strict enum values
+  could not be omitted. Note - this is a breaking change to go sdk's enum
+  values. However we currently only support strict enums in the azure-nextgen provider's schema.
+  [#6069](https://github.com/pulumi/pulumi/pull/6069)
+
+- Fix an issue where python debug messages print unexpectedly.
+  [#6967](https://github.com/pulumi/pulumi/pull/6067)
+
+- [CLI] Add `version` to the stack history output to be able to
+  correlate events back to the Pulumi SaaS
+  [#6063](https://github.com/pulumi/pulumi/pull/6063)
+
+- Fix a typo in the unit testing mocks to get the outputs
+  while registering them
+  [#6040](https://github.com/pulumi/pulumi/pull/6040)
+
+- [sdk/dotnet] Moved urn value retrieval into if statement
+  for MockMonitor
+  [#6081](https://github.com/pulumi/pulumi/pull/6081)
+
+- [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will
+  take an existing secret output and
+  create a non-secret variant with an unwrapped secret value.
+  [#6092](https://github.com/pulumi/pulumi/pull/6092)
+
+- [sdk/dotnet] Added `Pulumi.Output.IsSecretAsync` which will
+  take an existing output and
+  determine if an output has a secret within the output.
+  [#6092](https://github.com/pulumi/pulumi/pull/6092)
+
+- [sdk/dotnet] Fix looking up empty version in
+  `ResourcePackages.TryGetResourceType`.
+  [#6084](https://github.com/pulumi/pulumi/pull/6084)
+
+- Python Automation API.
+  [#5979](https://github.com/pulumi/pulumi/pull/5979)
+
+- Support recovery workflow (import/export/cancel) in Python Automation API.
+  [#6037](https://github.com/pulumi/pulumi/pull/6037)
+
+## 2.17.0 (2021-01-06)
+
+- Respect the `version` resource option for provider resources.
+  [#6055](https://github.com/pulumi/pulumi/pull/6055)
+
+- Allow `serializeFunction` to capture secrets.
+  [#6013](https://github.com/pulumi/pulumi/pull/6013)
+
+- [CLI] Allow `pulumi console` to accept a stack name
+  [#6031](https://github.com/pulumi/pulumi/pull/6031)
+
+- Support recovery workflow (import/export/cancel) in NodeJS Automation API.
+  [#6038](https://github.com/pulumi/pulumi/pull/6038)
+
+- [CLI] Add a confirmation prompt when using `pulumi policy rm`
+  [#6034](https://github.com/pulumi/pulumi/pull/6034)
+
+- [CLI] Ensure errors with the Pulumi credentials file
+  give the user some information on how to resolve the problem
+  [#6044](https://github.com/pulumi/pulumi/pull/6044)
+
+- [sdk/go] Support maps in Invoke outputs and Read inputs
+  [#6014](https://github.com/pulumi/pulumi/pull/6014)
+
+## 2.16.2 (2020-12-23)
+
+- Fix a bug in the core engine that could cause previews to fail if a resource with changes had
+  unknown output property values.
+  [#6006](https://github.com/pulumi/pulumi/pull/6006)
+
+## 2.16.1 (2020-12-22)
+
+- Fix a panic due to unsafe concurrent map access.
+  [#5995](https://github.com/pulumi/pulumi/pull/5995)
+
+- Fix regression in `venv` creation for python policy packs.
+  [#5992](https://github.com/pulumi/pulumi/pull/5992)
+
+## 2.16.0 (2020-12-21)
+
+- Do not read plugins and policy packs into memory prior to extraction, as doing so can exhaust
+  the available memory on lower-end systems.
+  [#5983](https://github.com/pulumi/pulumi/pull/5983)
+
+- Fix a bug in the core engine where deleting/renaming a resource would panic on update + refresh.
+  [#5980](https://github.com/pulumi/pulumi/pull/5980)
+
+- Fix a bug in the core engine that caused `ignoreChanges` to fail for resources being imported.
+  [#5976](https://github.com/pulumi/pulumi/pull/5976)
+
+- Fix a bug in the core engine that could cause resources references to marshal improperly
+  during preview.
+  [#5960](https://github.com/pulumi/pulumi/pull/5960)
+
+- [sdk/dotnet] Add collection initializers for smooth support of Union<T, U> as element type
+  [#5938](https://github.com/pulumi/pulumi/pull/5938)
+
+- Fix a bug in the core engine where ComponentResource state would be accessed before initialization.
+  [#5949](https://github.com/pulumi/pulumi/pull/5949)
+
+- Prevent a panic by not attempting to show progress for zero width/height terminals.
+  [#5957](https://github.com/pulumi/pulumi/issues/5957)
+
+## 2.15.6 (2020-12-12)
+
+- Fix a bug in the Go SDK that could result in dropped resource dependencies.
+  [#5930](https://github.com/pulumi/pulumi/pull/5930)
+
+- Temporarily disable resource ref feature.
+  [#5932](https://github.com/pulumi/pulumi/pull/5932)
+
+## 2.15.5 (2020-12-11)
+
+- Re-apply fix for running multiple `pulumi` processes concurrently.
+  [#5893](https://github.com/pulumi/pulumi/issues/5893)
+
+- [cli] Prevent a panic when using `pulumi import` with local filesystems
+  [#5906](https://github.com/pulumi/pulumi/issues/5906)
+
+- [sdk/nodejs] Fix issue that would cause unit tests using mocks to fail with unhandled errors when
+  a resource references another resources that's been registered with `registerResourceModule`.
+  [#5914](https://github.com/pulumi/pulumi/pull/5914)
+
+- Enable resource reference feature by default.
+  [#5905](https://github.com/pulumi/pulumi/pull/5905)
+
+- [codegen/go] Fix Input/Output methods for Go resources.
+  [#5916](https://github.com/pulumi/pulumi/pull/5916)
+
+- [sdk/python] Implement getResource in the mock monitor.
+  [#5919](https://github.com/pulumi/pulumi/pull/5919)
+
+- [sdk/dotnet] Implement getResource in the mock monitor and fix some issues around
+  deserializing resources.
+  [#5921](https://github.com/pulumi/pulumi/pull/5921)
+
+## 2.15.4 (2020-12-08)
+
+- Fix a problem where `pulumi import` could panic on an import error due to missing error message.
+  [#5884](https://github.com/pulumi/pulumi/pull/5884)
+- Correct the system name detected for Jenkins CI. [#5891](https://github.com/pulumi/pulumi/pull/5891)
+
+- Fix python execution for users running Python installed through the Windows App Store
+  on Windows 10 [#5874](https://github.com/pulumi/pulumi/pull/5874)
+
+## 2.15.3 (2020-12-07)
+
+- Fix errors when running `pulumi` in Windows-based CI environments.
+  [#5879](https://github.com/pulumi/pulumi/issues/5879)
+
+## 2.15.2 (2020-12-07)
+
+- Fix a problem where `pulumi import` could panic on importing arrays and sets, due to
+  incorrect array resizing logic. [#5872](https://github.com/pulumi/pulumi/pull/5872).
+
+## 2.15.1 (2020-12-04)
+
+- Address potential issues when running multiple `pulumi` processes concurrently.
+  [#5857](https://github.com/pulumi/pulumi/pull/5857)
+
+- Automatically install missing Python dependencies.
+  [#5787](https://github.com/pulumi/pulumi/pull/5787)
+
+- [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key for a passphrase provider
+  [#5865](https://github.com/pulumi/pulumi/pull/5865/)
+
+## 2.15.0 (2020-12-02)
+
+- [sdk/python] Add deserialization support for enums.
+  [#5615](https://github.com/pulumi/pulumi/pull/5615)
+
+- Correctly rename `Pulumi.*.yaml` stack files during a rename that includes an
+  organization in its name [#5812](https://github.com/pulumi/pulumi/pull/5812).
+
+- Respect `PULUMI_PYTHON_CMD` in scripts.
+  [#5782](https://github.com/pulumi/pulumi/pull/5782)
+
+- Add `PULUMI_BACKEND_URL` environment variable to configure the state backend.
+  [#5789](https://github.com/pulumi/pulumi/pull/5789)
+
+- [sdk/dotnet] Add support for dependency injection into TStack instance by adding an overload to `Deployment.RunAsync`. The overload accepts an `IServiceProvider` that is used to create the instance of TStack. Also added a new method `Deployment.TestWithServiceProviderAsync` for testing stacks that use dependency injection.
+  [#5723](https://github.com/pulumi/pulumi/pull/5723/)
+
+- [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key in Azure KeyVault
+  [#5842](https://github.com/pulumi/pulumi/pull/5842/)
+
+## 2.14.0 (2020-11-18)
+
+- Propagate secretness of provider configuration through to the statefile. This ensures
+  that any configuration values marked as secret (i.e. values set with
+  `pulumi config set --secret`) that are used as inputs to providers are encrypted
+  before they are stored.
+  [#5742](https://github.com/pulumi/pulumi/pull/5742)
 
 - Fix a bug that could prevent `pulumi import` from succeeding.
   [#5730](https://github.com/pulumi/pulumi/pull/5730)
@@ -9,11 +206,32 @@ CHANGELOG
 - [Docs] Add support for the generation of Import documentation in the resource docs.
   This documentation will only be available if the resource is importable.
   [#5667](https://github.com/pulumi/pulumi/pull/5667)
-  
+
 - [codegen/go] Add support for ResourceType and isComponent to enable multi-language
   components in Go. This change also generates Input/Output types for all resources
   in downstream Go SDKs.
   [#5497](https://github.com/pulumi/pulumi/pull/5497)
+
+- Support python 3.9 on Windows.
+  [#5739](https://github.com/pulumi/pulumi/pull/5739)
+
+- `pulumi-language-go` and `pulumi new` now explicitly requires Go 1.14.0 or greater.
+  [#5741](https://github.com/pulumi/pulumi/pull/5741)
+
+- Update .NET `Grpc` libraries to 2.33.1 and `Protobuf` to 3.13.0 (forked to increase
+  the recursion limit) [#5757](https://github.com/pulumi/pulumi/pull/5757)
+
+- Fix plugin install failures on Windows.
+  [#5759](https://github.com/pulumi/pulumi/pull/5759)
+
+- .NET: Report plugin install errors during `pulumi new`.
+  [#5760](https://github.com/pulumi/pulumi/pull/5760)
+
+- Correct error message on KeyNotFoundException against StackReference.
+  [#5740](https://github.com/pulumi/pulumi/pull/5740)
+
+- [cli] Small UX change on the policy violations output to render as `type: name`
+  [#5773](https://github.com/pulumi/pulumi/pull/5773)
 
 ## 2.13.2 (2020-11-06)
 
@@ -50,7 +268,7 @@ CHANGELOG
 
 - [cli] Ensure that the CLI doesn't panic when using pulumi watch and policies are enabled
   [#5569](https://github.com/pulumi/pulumi/pull/5569)
-  
+
 - [cli] Ensure that the CLI doesn't panic when using the JSON output as part of previews
   and policies are enabled
   [#5610](https://github.com/pulumi/pulumi/pull/5610)

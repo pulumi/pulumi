@@ -19,6 +19,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"sort"
 	"strings"
@@ -271,12 +272,29 @@ func (display *ProgressDisplay) writeBlankLine() {
 // ShowProgressEvents displays the engine events with docker's progress view.
 func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName, proj tokens.PackageName,
 	events <-chan engine.Event, done chan<- bool, opts Options, isPreview bool) {
+
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
 	// Create a ticker that will update all our status messages once a second.  Any
 	// in-flight resources will get a varying .  ..  ... ticker appended to them to
 	// let the user know what is still being worked on.
-	spinner, ticker := cmdutil.NewSpinnerAndTicker(
-		fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
-		nil, 1 /*timesPerSecond*/)
+	var spinner cmdutil.Spinner
+	var ticker *time.Ticker
+	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
+		spinner, ticker = cmdutil.NewSpinnerAndTicker(
+			fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op),
+			nil, 1 /*timesPerSecond*/)
+	} else {
+		spinner = &nopSpinner{}
+		ticker = time.NewTicker(math.MaxInt64)
+	}
 
 	// The channel we push progress messages into, and which ShowProgressOutput pulls
 	// from to display to the console.
@@ -299,15 +317,26 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		nonInteractiveSpinner:  spinner,
 	}
 
-	terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
-	if err == nil {
-		// If the terminal has a size, use it.
-		display.isTerminal = opts.IsInteractive
-		display.terminalWidth = terminalWidth
-		display.terminalHeight = terminalHeight
-	} else {
-		// Else assume we are not displaying in a terminal.
-		display.isTerminal = false
+	// Assume we are not displaying in a terminal by default.
+	display.isTerminal = false
+	if stdout == os.Stdout {
+		terminalWidth, terminalHeight, err := terminal.GetSize(int(os.Stdout.Fd()))
+		if err == nil {
+			// If the terminal has a size, use it.
+			display.isTerminal = opts.IsInteractive
+			display.terminalWidth = terminalWidth
+			display.terminalHeight = terminalHeight
+
+			// Don't bother attempting to treat this display as a terminal if it has no width/height.
+			if display.isTerminal && (display.terminalWidth == 0 || display.terminalHeight == 0) {
+				display.isTerminal = false
+				_, err = fmt.Fprintln(stderr, "Treating display as non-terminal due to 0 width/height.")
+				contract.IgnoreError(err)
+			}
+
+			// Fetch the canonical stdout stream, configured appropriately.
+			_, stdout, _ = term.StdStreams()
+		}
 	}
 
 	go func() {
@@ -319,7 +348,6 @@ func ShowProgressEvents(op string, action apitype.UpdateKind, stack tokens.QName
 		close(progressOutput)
 	}()
 
-	_, stdout, _ := term.StdStreams()
 	ShowProgressOutput(progressOutput, stdout, display.isTerminal)
 
 	ticker.Stop()
@@ -845,8 +873,8 @@ func (display *ProgressDisplay) printPolicyViolations() bool {
 			policyEvent.PolicyPackName,
 			policyEvent.PolicyPackVersion, colors.Reset,
 			policyEvent.PolicyName,
-			policyEvent.ResourceURN.Name(),
-			policyEvent.ResourceURN.Type())
+			policyEvent.ResourceURN.Type(),
+			policyEvent.ResourceURN.Name())
 		display.writeSimpleMessage(policyNameLine)
 
 		// The message may span multiple lines, so we massage it so it will be indented properly.

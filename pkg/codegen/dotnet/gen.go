@@ -187,7 +187,9 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	pkg, nsName := "Pulumi."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
 
 	if mod.isK8sCompatMode() {
-		return pkg + ".Types." + qualifier + "." + namespaceName(mod.namespaces, nsName)
+		if qualifier != "" {
+			return pkg + ".Types." + qualifier + "." + namespaceName(mod.namespaces, nsName)
+		}
 	}
 
 	typ := pkg
@@ -234,8 +236,22 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		wrapInput = false
 		typ = fmt.Sprintf(mapFmt, mod.typeString(t.ElementType, qualifier, input, state, false, false, false))
 	case *schema.ObjectType:
-		typ = mod.tokenToNamespace(t.Token, qualifier)
-		if (typ == mod.namespaceName && qualifier == "") || typ == mod.namespaceName+"."+qualifier {
+		namingCtx := mod
+		if t.Package != mod.pkg {
+			// If object type belongs to another package, we apply naming convensions from that package,
+			// including namespace naming and compatibility mode.
+			var info CSharpPackageInfo
+			if v, ok := t.Package.Language["csharp"].(CSharpPackageInfo); ok {
+				info = v
+			}
+			namingCtx = &modContext{
+				pkg:           t.Package,
+				namespaces:    info.Namespaces,
+				compatibility: info.Compatibility,
+			}
+		}
+		typ = namingCtx.tokenToNamespace(t.Token, qualifier)
+		if (typ == namingCtx.namespaceName && qualifier == "") || typ == namingCtx.namespaceName+"."+qualifier {
 			typ = qualifier
 		}
 		if typ != "" {
@@ -251,11 +267,16 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ += "Result"
 		}
 	case *schema.ResourceType:
-		typ = mod.tokenToNamespace(t.Token, "")
-		if typ != "" {
-			typ += "."
+		if strings.HasPrefix(t.Token, "pulumi:providers:") {
+			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
+			typ = fmt.Sprintf("Pulumi.%s.Provider", namespaceName(mod.namespaces, pkgName))
+		} else {
+			typ = mod.tokenToNamespace(t.Token, "")
+			if typ != "" {
+				typ += "."
+			}
+			typ += tokenToName(t.Token)
 		}
-		typ += tokenToName(t.Token)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -267,11 +288,6 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = ns + "." + typ
 		}
 	case *schema.UnionType:
-		unionT := "Union"
-		if wrapInput {
-			unionT = "InputUnion"
-		}
-
 		elementTypeSet := stringSet{}
 		var elementTypes []string
 		for _, e := range t.ElementTypes {
@@ -288,18 +304,19 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			}
 		}
 
-		if len(elementTypes) == 1 {
+		switch len(elementTypes) {
+		case 1:
 			return mod.typeString(t.ElementTypes[0], qualifier, input, state, wrapInput, requireInitializers, optional)
+		case 2:
+			unionT := "Union"
+			if wrapInput {
+				unionT = "InputUnion"
+			}
+			typ = fmt.Sprintf("%s<%s>", unionT, strings.Join(elementTypes, ", "))
+			wrapInput = false
+		default:
+			typ = "object"
 		}
-
-		for _, e := range elementTypes[:len(elementTypes)-1] {
-			typ = fmt.Sprintf("%s%s<%s, ", typ, unionT, e)
-		}
-		last := elementTypes[len(elementTypes)-1]
-		term := strings.Repeat(">", len(elementTypes)-1)
-
-		wrapInput = false
-		typ += last + term
 	default:
 		switch t {
 		case schema.BoolType:
@@ -576,11 +593,35 @@ func primitiveValue(value interface{}) (string, error) {
 func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	var val string
 	if dv.Value != nil {
-		v, err := primitiveValue(dv.Value)
-		if err != nil {
-			return "", err
+		switch enum := t.(type) {
+		case *schema.EnumType:
+			enumName := tokenToName(enum.Token)
+			for _, e := range enum.Elements {
+				if e.Value != dv.Value {
+					continue
+				}
+
+				elName := e.Name
+				if elName == "" {
+					elName = fmt.Sprintf("%v", e.Value)
+				}
+				safeName, err := makeSafeEnumName(elName, enumName)
+				if err != nil {
+					return "", err
+				}
+				val = fmt.Sprintf("%s.%s.%s", mod.namespaceName, enumName, safeName)
+				break
+			}
+			if val == "" {
+				return "", errors.Errorf("default value '%v' not found in enum '%s'", dv.Value, enumName)
+			}
+		default:
+			v, err := primitiveValue(dv.Value)
+			if err != nil {
+				return "", err
+			}
+			val = v
 		}
-		val = v
 	}
 
 	if len(dv.Environment) != 0 {
@@ -665,6 +706,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
+	fmt.Fprintf(w, "    [%sResourceType(\"%s\")]\n", namespaceName(mod.namespaces, mod.pkg.Name), r.Token)
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
@@ -1019,7 +1061,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			e.Name = fmt.Sprintf("%v", e.Value)
 		}
 
-		safeName, err := makeSafeEnumName(e.Name)
+		safeName, err := makeSafeEnumName(e.Name, enumName)
 		if err != nil {
 			return err
 		}
@@ -1417,10 +1459,10 @@ func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
 	err := csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
+		Name:      namespaceName(mod.namespaces, mod.pkg.Name),
 		Namespace: mod.namespaceName,
 		ClassName: "Utilities",
 		Tool:      mod.tool,
-		Version:   mod.pkg.Version.String(),
 	})
 	if err != nil {
 		return "", err
@@ -1649,7 +1691,23 @@ type LanguageResource struct {
 	Package string // The package name (e.g. Apps.V1)
 }
 
-func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPackageInfo) (map[string]*modContext, error) {
+func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*modContext, *CSharpPackageInfo, error) {
+	// Decode .NET-specific info for each package as we discover them.
+	infos := map[*schema.Package]*CSharpPackageInfo{}
+	var getPackageInfo = func(p *schema.Package) *CSharpPackageInfo {
+		info, ok := infos[p]
+		if !ok {
+			if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+				panic(err)
+			}
+			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+			info = &csharpInfo
+			infos[p] = info
+		}
+		return info
+	}
+	infos[pkg] = getPackageInfo(pkg)
+
 	propertyNames := map[*schema.Property]string{}
 	computePropertyNames(pkg.Config, propertyNames)
 	computePropertyNames(pkg.Provider.InputProperties, propertyNames)
@@ -1678,18 +1736,17 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 	modules := map[string]*modContext{}
 	details := map[*schema.ObjectType]*typeDetails{}
 
-	assemblyName := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
-
-	var getMod func(modName string) *modContext
-	getMod = func(modName string) *modContext {
+	var getMod func(modName string, p *schema.Package) *modContext
+	getMod = func(modName string, p *schema.Package) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
-			ns := assemblyName
+			info := getPackageInfo(p)
+			ns := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
 			if modName != "" {
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
 			mod = &modContext{
-				pkg:                    pkg,
+				pkg:                    p,
 				mod:                    modName,
 				tool:                   tool,
 				namespaceName:          ns,
@@ -1705,7 +1762,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 				if parentName == "." {
 					parentName = ""
 				}
-				parent := getMod(parentName)
+				parent := getMod(parentName, p)
 				parent.children = append(parent.children, mod)
 			}
 
@@ -1714,41 +1771,41 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 		return mod
 	}
 
-	getModFromToken := func(token string) *modContext {
-		return getMod(pkg.TokenToModule(token))
+	getModFromToken := func(token string, p *schema.Package) *modContext {
+		return getMod(p.TokenToModule(token), p)
 	}
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		cfg := getMod("config")
-		cfg.namespaceName = assemblyName
+		cfg := getMod("config", pkg)
+		cfg.namespaceName = "Pulumi." + namespaceName(infos[pkg].Namespaces, pkg.Name)
 	}
 
 	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { getModFromToken(t.Token).details(t).outputType = true })
+		visitObjectTypes(v.Type, func(t *schema.ObjectType) { getModFromToken(t.Token, pkg).details(t).outputType = true })
 	}
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getModFromToken(r.Token)
+		mod := getModFromToken(r.Token, pkg)
 		mod.resources = append(mod.resources, r)
 		for _, p := range r.Properties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).outputType = true
+				getModFromToken(t.Token, t.Package).details(t).outputType = true
 			})
 		}
 		for _, p := range r.InputProperties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
 				if r.IsProvider {
-					getModFromToken(t.Token).details(t).outputType = true
+					getModFromToken(t.Token, t.Package).details(t).outputType = true
 				}
-				getModFromToken(t.Token).details(t).inputType = true
+				getModFromToken(t.Token, t.Package).details(t).inputType = true
 			})
 		}
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).inputType = true
-				getModFromToken(t.Token).details(t).stateType = true
+				getModFromToken(t.Token, t.Package).details(t).inputType = true
+				getModFromToken(t.Token, t.Package).details(t).stateType = true
 			})
 		}
 	}
@@ -1760,11 +1817,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
-		mod := getModFromToken(f.Token)
+		mod := getModFromToken(f.Token, pkg)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
-				details := getModFromToken(t.Token).details(t)
+				details := getModFromToken(t.Token, t.Package).details(t)
 				if !details.inputType {
 					details.inputType = true
 					details.functionType = true
@@ -1773,7 +1830,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
-				details := getModFromToken(t.Token).details(t)
+				details := getModFromToken(t.Token, t.Package).details(t)
 				if !details.outputType {
 					details.outputType = true
 					details.functionType = true
@@ -1786,29 +1843,23 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := getModFromToken(typ.Token)
+			mod := getModFromToken(typ.Token, pkg)
 			mod.types = append(mod.types, typ)
 		case *schema.EnumType:
-			mod := getModFromToken(typ.Token)
+			mod := getModFromToken(typ.Token, pkg)
 			mod.enums = append(mod.enums, typ)
 		default:
 			continue
 		}
 	}
 
-	return modules, nil
+	return modules, infos[pkg], nil
 }
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
 // key is the resource schema token.
 func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
-	// Decode .NET-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
-
-	modules, err := generateModuleContextMap(tool, pkg, info)
+	modules, info, err := generateModuleContextMap(tool, pkg)
 	if err != nil {
 		return nil, err
 	}
@@ -1832,13 +1883,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode .NET-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
-
-	modules, err := generateModuleContextMap(tool, pkg, info)
+	modules, info, err := generateModuleContextMap(tool, pkg)
 	if err != nil {
 		return nil, err
 	}

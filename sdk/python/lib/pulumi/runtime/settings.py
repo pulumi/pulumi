@@ -18,7 +18,7 @@ Runtime settings and configuration.
 import asyncio
 import os
 import sys
-from typing import Optional, Awaitable, Union, Any, TYPE_CHECKING
+from typing import Optional, Union, Any, TYPE_CHECKING
 
 import grpc
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
@@ -31,12 +31,13 @@ if TYPE_CHECKING:
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
 
+
 class Settings:
     monitor: Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
     engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]
     project: Optional[str]
     stack: Optional[str]
-    parallel: Optional[str]
+    parallel: Optional[int]
     dry_run: Optional[bool]
     test_mode_enabled: Optional[bool]
     legacy_apply_enabled: Optional[bool]
@@ -50,7 +51,7 @@ class Settings:
                  engine: Optional[Union[str, Any]] = None,
                  project: Optional[str] = None,
                  stack: Optional[str] = None,
-                 parallel: Optional[str] = None,
+                 parallel: Optional[int] = None,
                  dry_run: Optional[bool] = None,
                  test_mode_enabled: Optional[bool] = None,
                  legacy_apply_enabled: Optional[bool] = None):
@@ -68,7 +69,6 @@ class Settings:
 
         if self.legacy_apply_enabled is None:
             self.legacy_apply_enabled = os.getenv("PULUMI_ENABLE_LEGACY_APPLY", "false") == "true"
-
 
         # Actually connect to the monitor/engine over gRPC.
         if monitor is not None:
@@ -89,6 +89,7 @@ class Settings:
                 self.engine = engine
         else:
             self.engine = None
+
 
 # default to "empty" settings.
 SETTINGS = Settings()
@@ -128,6 +129,7 @@ def _set_test_mode_enabled(v: Optional[bool]):
 def require_test_mode_enabled():
     if not is_test_mode_enabled():
         raise RunError('Program run without the Pulumi engine available; re-run using the `pulumi` CLI')
+
 
 def is_legacy_apply_enabled():
     return bool(SETTINGS.legacy_apply_enabled)
@@ -212,6 +214,7 @@ async def monitor_supports_feature(feature: str) -> bool:
             return False
 
         req = resource_pb2.SupportsFeatureRequest(id=feature)
+
         def do_rpc_call():
             try:
                 resp = monitor.SupportsFeature(req)
@@ -232,8 +235,31 @@ async def monitor_supports_feature(feature: str) -> bool:
 
     return SETTINGS.feature_support[feature]
 
+
 async def monitor_supports_secrets() -> bool:
     return await monitor_supports_feature("secrets")
 
+
 async def monitor_supports_resource_references() -> bool:
     return await monitor_supports_feature("resourceReferences")
+
+
+def reset_options(project: Optional[str] = None,
+                  stack: Optional[str] = None,
+                  parallel: Optional[int] = None,
+                  engine_address: Optional[str] = None,
+                  monitor_address: Optional[str] = None,
+                  preview: Optional[bool] = None):
+    """Resets globals to the values provided."""
+
+    global ROOT
+    ROOT = None
+
+    configure(Settings(
+        project=project,
+        monitor=monitor_address,
+        engine=engine_address,
+        stack=stack,
+        parallel=parallel,
+        dry_run=preview
+    ))

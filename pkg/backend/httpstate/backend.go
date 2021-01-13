@@ -762,10 +762,11 @@ func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	return b.client.DeleteStack(ctx, stackID, force)
 }
 
-func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, newName tokens.QName) error {
+func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
+	newName tokens.QName) (backend.StackReference, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Support a qualified stack name, which would also rename the stack's project too.
@@ -773,27 +774,45 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, new
 	// new value in Pulumi.yaml.
 	newRef, err := b.ParseStackReference(string(newName))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	newIdentity, err := b.getCloudStackIdentifier(newRef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if stackID.Owner != newIdentity.Owner {
-		url := "."
+		errMsg := fmt.Sprintf(
+			"New stack owner, %s, does not match existing owner, %s.\n\n",
+			stackID.Owner, newIdentity.Owner)
 
-		if consoleURL, err := b.StackConsoleURL(stack.Ref()); err == nil {
-			url = ":\n" + consoleURL + "/settings/options"
+		// Re-parse the name using the parseStackName function to avoid the logic in ParseStackReference
+		// that auto-populates the owner property with the currently logged in account. We actually want to
+		// give a different error message if the raw stack name itself didn't include an owner part.
+		parsedName, err := b.parseStackName(string(newName))
+		contract.IgnoreError(err)
+		if parsedName.Owner == "" {
+			errMsg += fmt.Sprintf(
+				"       Did you forget to include the owner name? If yes, rerun the command as follows:\n\n"+
+					"           $ pulumi stack rename %s/%s\n\n",
+				stackID.Owner, newName)
 		}
-		errMsg := "You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
-			"of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
-			"\"Settings\" page of the stack and then clicking the \"Transfer Stack\" button" + url
 
-		return errors.Errorf(errMsg)
+		errMsgSuffix := "."
+		if consoleURL, err := b.StackConsoleURL(stack.Ref()); err == nil {
+			errMsgSuffix = ":\n\n           " + consoleURL + "/settings/options"
+		}
+		errMsg += "       You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
+			"       of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
+			"       \"Settings\" page of the stack and then clicking the \"Transfer Stack\" button"
+
+		return nil, errors.New(errMsg + errMsgSuffix)
 	}
 
-	return b.client.RenameStack(ctx, stackID, newIdentity)
+	if err = b.client.RenameStack(ctx, stackID, newIdentity); err != nil {
+		return nil, err
+	}
+	return newRef, nil
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
@@ -1095,6 +1114,7 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 		}
 
 		beUpdates = append(beUpdates, backend.UpdateInfo{
+			Version:         update.Version,
 			Kind:            update.Kind,
 			Message:         update.Message,
 			Environment:     update.Environment,

@@ -94,4 +94,18 @@ namespace Pulumi
     public sealed class EnumTypeAttribute : Attribute
     {
     }
+    
+    [AttributeUsage(AttributeTargets.Class)]
+    public class ResourceTypeAttribute : Attribute
+    {
+        public string Type { get; }
+        
+        public string? Version { get; }
+
+        public ResourceTypeAttribute(string type, string? version)
+        {
+            Type = type;
+            Version = version;
+        }
+    }
 }

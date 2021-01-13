@@ -14,7 +14,8 @@
           "oneOf": [
             {"$ref": "#/types/plant-provider:tree/v1:Farm"},
             {"type": "string"}
-          ]
+          ],
+          "default": "(unknown)"
         }
       },
       "properties": {
@@ -52,7 +53,8 @@
           ]
         },
         "brightness": {
-          "$ref": "#/types/plant-provider::ContainerBrightness"
+          "$ref": "#/types/plant-provider::ContainerBrightness",
+          "default": 1.0
         }
       },
       "required": ["size"]
@@ -141,8 +143,14 @@
         "tree/v1": "Tree.V1"
       }
     },
-    "go": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant"
+    },
     "nodejs": {},
-    "python": {}
+    "python": {
+      "moduleNameOverrides": {
+        "tree/v1": "tree/v1"
+      }
+    }
   }
 }

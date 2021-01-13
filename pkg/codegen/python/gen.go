@@ -35,6 +35,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
@@ -67,6 +68,12 @@ func (imports imports) addTypeIf(mod *modContext, tok string, input bool, predic
 	}
 }
 
+func (imports imports) addEnum(mod *modContext, tok string) {
+	if imp := mod.importEnumFromToken(tok); imp != "" {
+		stringSet(imports).add(imp)
+	}
+}
+
 func (imports imports) addResource(mod *modContext, tok string) {
 	if imp := mod.importResourceFromToken(tok); imp != "" {
 		stringSet(imports).add(imp)
@@ -94,6 +101,7 @@ type modContext struct {
 	pkg                  *schema.Package
 	mod                  string
 	types                []*schema.ObjectType
+	enums                []*schema.EnumType
 	resources            []*schema.Resource
 	functions            []*schema.Function
 	typeDetails          map[*schema.ObjectType]*typeDetails
@@ -122,13 +130,7 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 }
 
 func (mod *modContext) tokenToType(tok string, input, functionType bool) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
-	components := strings.Split(tok, ":")
-	contract.Assertf(len(components) == 3, "malformed token %v", tok)
-
-	modName, name := mod.tokenToModule(tok), title(components[2])
+	modName, name := mod.tokenToModule(tok), tokenToName(tok)
 
 	var suffix string
 	switch {
@@ -161,6 +163,23 @@ func (mod *modContext) tokenToType(tok string, input, functionType bool) string 
 	return fmt.Sprintf("'%s%s%s%s'", modName, prefix, name, suffix)
 }
 
+func (mod *modContext) tokenToEnum(tok string) string {
+	modName, name := mod.tokenToModule(tok), tokenToName(tok)
+
+	if modName == "" && modName != mod.mod {
+		return fmt.Sprintf("'_root_enums.%s'", name)
+	}
+
+	if modName == mod.mod {
+		modName = ""
+	}
+	if modName != "" {
+		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
+	}
+
+	return fmt.Sprintf("'%s%s'", modName, name)
+}
+
 func (mod *modContext) tokenToResource(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -168,7 +187,12 @@ func (mod *modContext) tokenToResource(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	modName, name := mod.tokenToModule(tok), title(components[2])
+	// Is it a provider resource?
+	if components[0] == "pulumi" && components[1] == "providers" {
+		return fmt.Sprintf("pulumi_%s.Provider", components[2])
+	}
+
+	modName, name := mod.tokenToModule(tok), tokenToName(tok)
 
 	if modName == mod.mod {
 		modName = ""
@@ -181,8 +205,12 @@ func (mod *modContext) tokenToResource(tok string) string {
 }
 
 func tokenToName(tok string) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
+
 	return title(components[2])
 }
 
@@ -365,6 +393,16 @@ func (mod *modContext) gen(fs fs) error {
 		}
 	}
 
+	// Enums
+	if len(mod.enums) > 0 {
+		buffer := &bytes.Buffer{}
+		if err := mod.genEnums(buffer, mod.enums); err != nil {
+			return err
+		}
+
+		addFile("_enums.py", buffer.String())
+	}
+
 	// Index
 	if !mod.isEmpty() {
 		fs.add(path.Join(dir, "__init__.py"), []byte(mod.genInit(exports)))
@@ -456,10 +494,100 @@ func (mod *modContext) genInit(exports []string) string {
 		fmt.Fprintf(w, ")\n")
 	}
 
+	// If there are resources in this module, register the module with the runtime.
+	if len(mod.resources) != 0 {
+		mod.genResourceModule(w)
+	}
+
 	return w.String()
 }
 
+func (mod *modContext) getRelImportFromRoot() string {
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	return relPathToRelImport(relRoot)
+}
+
+// genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
+// Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
+// hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
+// definition and its registration to support rehydrating providers.
+func (mod *modContext) genResourceModule(w io.Writer) {
+	contract.Assert(len(mod.resources) != 0)
+
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	relImport := relPathToRelImport(relRoot)
+
+	fmt.Fprintf(w, "\ndef _register_module():\n")
+	fmt.Fprintf(w, "    import pulumi\n")
+	fmt.Fprintf(w, "    from %s import _utilities\n", relImport)
+
+	// Check for provider-only modules.
+	var provider *schema.Resource
+	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
+		provider = mod.resources[0]
+	} else {
+		fmt.Fprintf(w, "\n\n    class Module(pulumi.runtime.ResourceModule):\n")
+		fmt.Fprintf(w, "        _version = _utilities.get_semver_version()\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "        def version(self):\n")
+		fmt.Fprintf(w, "            return Module._version\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "        def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:\n")
+
+		registrations, first := codegen.StringSet{}, true
+		for _, r := range mod.resources {
+			if r.IsProvider {
+				contract.Assert(provider == nil)
+				provider = r
+				continue
+			}
+
+			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
+
+			conditional := "elif"
+			if first {
+				conditional, first = "if", false
+			}
+			fmt.Fprintf(w, "            %v typ == \"%v\":\n", conditional, r.Token)
+			fmt.Fprintf(w, "                return %v(name, pulumi.ResourceOptions(urn=urn))\n", tokenToName(r.Token))
+		}
+		fmt.Fprintf(w, "            else:\n")
+		fmt.Fprintf(w, "                raise Exception(f\"unknown resource type {typ}\")\n")
+		fmt.Fprintf(w, "\n\n")
+		fmt.Fprintf(w, "    _module_instance = Module()\n")
+		for _, name := range registrations.SortedValues() {
+			fmt.Fprintf(w, "    pulumi.runtime.register_resource_module(\"%v\", \"%v\", _module_instance)\n", mod.pkg.Name, name)
+		}
+	}
+
+	if provider != nil {
+		fmt.Fprintf(w, "\n\n    class Package(pulumi.runtime.ResourcePackage):\n")
+		fmt.Fprintf(w, "        _version = _utilities.get_semver_version()\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "        def version(self):\n")
+		fmt.Fprintf(w, "            return Package._version\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "        def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:\n")
+		fmt.Fprintf(w, "            if typ != \"%v\":\n", provider.Token)
+		fmt.Fprintf(w, "                raise Exception(f\"unknown provider type {typ}\")\n")
+		fmt.Fprintf(w, "            return Provider(name, pulumi.ResourceOptions(urn=urn))\n")
+		fmt.Fprintf(w, "\n\n")
+		fmt.Fprintf(w, "    pulumi.runtime.register_resource_package(\"%v\", Package())\n", mod.pkg.Name)
+	}
+
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "_register_module()\n")
+}
+
 func (mod *modContext) importTypeFromToken(tok string, input bool) string {
+	parts := strings.Split(tok, ":")
+	contract.Assert(len(parts) == 3)
+	refPkgName := parts[0]
+
 	modName := mod.tokenToModule(tok)
 	if modName == mod.mod {
 		if input {
@@ -468,33 +596,59 @@ func (mod *modContext) importTypeFromToken(tok string, input bool) string {
 		return "from . import outputs"
 	}
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
+	importPath := mod.getRelImportFromRoot()
+	if mod.pkg.Name != parts[0] {
+		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
+	}
 
 	if modName == "" {
 		imp, as := "outputs", "_root_outputs"
 		if input {
 			imp, as = "_inputs", "_root_inputs"
 		}
-		return fmt.Sprintf("from %s import %s as %s", relImport, imp, as)
+		return fmt.Sprintf("from %s import %s as %s", importPath, imp, as)
 	}
 
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s import %[2]s as _%[2]s", relImport, components[0])
+	return fmt.Sprintf("from %s import %[2]s as _%[2]s", importPath, components[0])
+}
+
+func (mod *modContext) importEnumFromToken(tok string) string {
+	modName := mod.tokenToModule(tok)
+	if modName == mod.mod {
+		return "from ._enums import *"
+	}
+
+	importPath := mod.getRelImportFromRoot()
+
+	if modName == "" {
+		return fmt.Sprintf("from %s import _enums as _root_enums", importPath)
+	}
+
+	components := strings.Split(modName, "/")
+	return fmt.Sprintf("from %s import %s", importPath, components[0])
 }
 
 func (mod *modContext) importResourceFromToken(tok string) string {
+	parts := strings.Split(tok, ":")
+	contract.Assert(len(parts) == 3)
+
+	// If it's a provider resource, import the top-level package.
+	if parts[0] == "pulumi" && parts[1] == "providers" {
+		return fmt.Sprintf("import pulumi_%s", parts[2])
+	}
+
+	refPkgName := parts[0]
+
 	modName := mod.tokenToResource(tok)
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
+	importPath := mod.getRelImportFromRoot()
+	if mod.pkg.Name != parts[0] {
+		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
+	}
 
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s import %s", relImport, components[0])
+	return fmt.Sprintf("from %s import %s", importPath, components[0])
 }
 
 // emitConfigVariables emits all config variables in the given module, returning the resulting file.
@@ -506,6 +660,8 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
 			imports.addType(mod, T.Token, false /*input*/)
+		case *schema.EnumType:
+			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -559,6 +715,8 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 							// No need to import `._inputs` inside _inputs.py.
 							return imp != "from ._inputs import *"
 						})
+					case *schema.EnumType:
+						imports.addEnum(mod, T.Token)
 					case *schema.ResourceType:
 						imports.addResource(mod, T.Token)
 					}
@@ -569,11 +727,16 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 					switch T := t.(type) {
 					case *schema.ObjectType:
 						imports.addType(mod, T.Token, false /*input*/)
+					case *schema.EnumType:
+						imports.addEnum(mod, T.Token)
 					case *schema.ResourceType:
 						imports.addResource(mod, T.Token)
 					}
 				})
 			}
+		}
+		for _, e := range mod.enums {
+			imports.addEnum(mod, e.Token)
 		}
 
 		mod.genHeader(w, true /*needsSDK*/, imports)
@@ -704,6 +867,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
 			imports.addType(mod, T.Token, false /*input*/)
+		case *schema.EnumType:
+			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -711,7 +876,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	visitObjectTypesFromProperties(res.InputProperties, inputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.addType(mod, T.Token, !res.IsProvider)
+			imports.addType(mod, T.Token, true /*input*/)
+		case *schema.EnumType:
+			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
 			imports.addResource(mod, T.Token)
 		}
@@ -721,6 +888,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				imports.addType(mod, T.Token, true /*input*/)
+			case *schema.EnumType:
+				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -822,14 +991,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		// Check that required arguments are present.
 		if prop.IsRequired {
-			fmt.Fprintf(w, "            if %s is None:\n", pname)
+			fmt.Fprintf(w, "            if %s is None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                raise TypeError(\"Missing required property '%s'\")\n", pname)
 		}
 
 		// Check that the property isn't deprecated
 		if prop.DeprecationMessage != "" {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
-			fmt.Fprintf(w, "            if %s is not None:\n", pname)
+			fmt.Fprintf(w, "            if %s is not None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
 			fmt.Fprintf(w, "                pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
 		}
@@ -1034,6 +1203,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				imports.addType(mod, T.Token, true /*input*/)
+			case *schema.EnumType:
+				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -1044,6 +1215,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				imports.addType(mod, T.Token, false /*input*/)
+			case *schema.EnumType:
+				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
 				imports.addResource(mod, T.Token)
 			}
@@ -1165,6 +1338,67 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	return w.String(), nil
 }
 
+func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
+	// Header
+	mod.genHeader(w, false /*needsSDK*/, nil)
+
+	// Enum import
+	fmt.Fprintf(w, "from enum import Enum\n\n")
+
+	// Export only the symbols we want exported.
+	fmt.Fprintf(w, "__all__ = [\n")
+	for _, enum := range enums {
+		fmt.Fprintf(w, "    '%s',\n", tokenToName(enum.Token))
+
+	}
+	fmt.Fprintf(w, "]\n\n\n")
+
+	for i, enum := range enums {
+		if err := mod.genEnum(w, enum); err != nil {
+			return err
+		}
+		if i != len(enums)-1 {
+			fmt.Fprintf(w, "\n\n")
+		}
+	}
+	return nil
+}
+
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
+	indent := "    "
+	enumName := tokenToName(enum.Token)
+	underlyingType := mod.typeString(enum.ElementType, false, false, false, false)
+
+	switch enum.ElementType {
+	case schema.StringType, schema.IntType, schema.NumberType:
+		fmt.Fprintf(w, "class %s(%s, Enum):\n", enumName, underlyingType)
+		printComment(w, enum.Comment, indent)
+		for _, e := range enum.Elements {
+			// If the enum doesn't have a name, set the value as the name.
+			if e.Name == "" {
+				e.Name = fmt.Sprintf("%v", e.Value)
+			}
+
+			name, err := makeSafeEnumName(e.Name, enumName)
+			if err != nil {
+				return err
+			}
+			e.Name = name
+
+			fmt.Fprintf(w, "%s%s = ", indent, e.Name)
+			if val, ok := e.Value.(string); ok {
+				fmt.Fprintf(w, "%q\n", val)
+			} else {
+				fmt.Fprintf(w, "%v\n", e.Value)
+			}
+		}
+	default:
+		return errors.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
+	}
+
+	return nil
+}
+
 func visitObjectTypesFromProperties(properties []*schema.Property, seen codegen.Set, visitor func(objectOrResource interface{})) {
 	for _, p := range properties {
 		visitObjectTypes(p.Type, seen, visitor)
@@ -1177,6 +1411,8 @@ func visitObjectTypes(t schema.Type, seen codegen.Set, visitor func(objectOrReso
 	}
 	seen.Add(t)
 	switch t := t.(type) {
+	case *schema.EnumType:
+		visitor(t)
 	case *schema.ArrayType:
 		visitObjectTypes(t.ElementType, seen, visitor)
 	case *schema.MapType:
@@ -1215,8 +1451,20 @@ func sanitizePackageDescription(description string) string {
 	return ""
 }
 
+func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
+	plugin := &plugin.PulumiPluginJSON{
+		Resource: true,
+		Name:     pkg.Name,
+		Version:  "${PLUGIN_VERSION}",
+		Server:   pkg.PluginDownloadURL,
+	}
+	return plugin.JSON()
+}
+
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]string) (string, error) {
+func genPackageMetadata(
+	tool string, pkg *schema.Package, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
+
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
 
@@ -1294,7 +1542,11 @@ func genPackageMetadata(tool string, pkg *schema.Package, requires map[string]st
 	// Publish type metadata: PEP 561
 	fmt.Fprintf(w, "      package_data={\n")
 	fmt.Fprintf(w, "          '%s': [\n", pyPack(pkg.Name))
-	fmt.Fprintf(w, "              'py.typed'\n")
+	fmt.Fprintf(w, "              'py.typed',\n")
+	if emitPulumiPluginFile {
+		fmt.Fprintf(w, "              'pulumiplugin.json',\n")
+	}
+
 	fmt.Fprintf(w, "          ]\n")
 	fmt.Fprintf(w, "      },\n")
 
@@ -1564,6 +1816,8 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acceptMapping bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		typ = mod.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.MapType:
@@ -1583,6 +1837,13 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 		typ = "Any"
 	case *schema.UnionType:
 		if !input {
+			for _, e := range t.ElementTypes {
+				// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
+				// Eg. Output[str] rather than Output[Any]
+				if typ, ok := e.(*schema.EnumType); ok {
+					return mod.typeString(typ.ElementType, input, wrapInput, optional, acceptMapping)
+				}
+			}
 			if t.DefaultType != nil {
 				return mod.typeString(t.DefaultType, input, wrapInput, optional, acceptMapping)
 			}
@@ -1648,6 +1909,8 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 // check is not exhaustive, but it should be good enough to catch 80% of the cases early on.
 func (mod *modContext) pyType(typ schema.Type) string {
 	switch typ := typ.(type) {
+	case *schema.EnumType:
+		return mod.pyType(typ.ElementType)
 	case *schema.ArrayType:
 		return "list"
 	case *schema.MapType, *schema.ObjectType, *schema.UnionType:
@@ -2017,12 +2280,18 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Find nested types.
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*schema.ObjectType); ok {
-			mod := getModFromToken(obj.Token)
-			d := mod.details(obj)
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			mod := getModFromToken(typ.Token)
+			d := mod.details(typ)
 			if d.inputType || d.outputType {
-				mod.types = append(mod.types, obj)
+				mod.types = append(mod.types, typ)
 			}
+		case *schema.EnumType:
+			mod := getModFromToken(typ.Token)
+			mod.enums = append(mod.enums, typ)
+		default:
+			continue
 		}
 	}
 
@@ -2111,8 +2380,17 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	// Emit casing tables.
 	files.add(filepath.Join(pyPack(pkg.Name), "_tables.py"), []byte(modules[""].genPropertyConversionTables()))
 
+	// Generate pulumiplugin.json, if requested.
+	if info.EmitPulumiPluginFile {
+		plugin, err := genPulumiPluginFile(pkg)
+		if err != nil {
+			return nil, err
+		}
+		files.add("pulumiplugin.json", plugin)
+	}
+
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, info.Requires)
+	setup, err := genPackageMetadata(tool, pkg, info.EmitPulumiPluginFile, info.Requires)
 	if err != nil {
 		return nil, err
 	}
@@ -2169,7 +2447,7 @@ def get_env_float(*args):
     return None
 
 
-def get_version():
+def get_semver_version():
     # __name__ is set to the fully-qualified name of the current module, In our case, it will be
     # <some module>._utilities. <some module> is the module we want to query the version for.
     root_package, *rest = __name__.split('.')
@@ -2198,6 +2476,8 @@ def get_version():
     # for dev builds, while semver encodes them as "prerelease" versions. In order to bridge between the two, we convert
     # our dev build version into a prerelease tag. This matches what all of our other packages do when constructing
     # their own semver string.
-    semver_version = SemverVersion(major=major, minor=minor, patch=patch, prerelease=prerelease)
-    return str(semver_version)
+    return SemverVersion(major=major, minor=minor, patch=patch, prerelease=prerelease)
+
+def get_version():
+	return str(get_semver_version())
 `

@@ -29,7 +29,7 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 
 	defer func() { ctx.Events <- cancelEvent() }()
 
-	info, err := newPlanContext(u, "destroy", ctx.ParentSpan)
+	info, err := newDeploymentContext(u, "destroy", ctx.ParentSpan)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -41,7 +41,7 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	}
 	defer emitter.Close()
 
-	return update(ctx, info, planOptions{
+	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newDestroySource,
 		Events:        emitter,
@@ -51,7 +51,7 @@ func Destroy(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 }
 
 func newDestroySource(
-	client deploy.BackendClient, opts planOptions, proj *workspace.Project, pwd, main string,
+	client deploy.BackendClient, opts deploymentOptions, proj *workspace.Project, pwd, main string,
 	target *deploy.Target, plugctx *plugin.Context, dryRun bool) (deploy.Source, error) {
 
 	// Like Update, we need to gather the set of plugins necessary to delete everything in the snapshot.

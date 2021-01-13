@@ -9,6 +9,7 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
+    [ExampleResourceType("example::OtherResource")]
     public partial class OtherResource : Pulumi.ComponentResource
     {
         [Output("foo")]
