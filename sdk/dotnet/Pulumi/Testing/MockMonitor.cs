@@ -65,7 +65,10 @@ namespace Pulumi.Testing
             {
                 var builder = ImmutableDictionary.CreateBuilder<string, object>();
                 builder.Add("urn", urn);
-                builder.Add("id", id);
+                if (id != null)
+                {
+                    builder.Add("id", id);
+                }
                 builder.Add("state", serializedState);
                 _registeredResources[urn] = builder.ToImmutable();
             }

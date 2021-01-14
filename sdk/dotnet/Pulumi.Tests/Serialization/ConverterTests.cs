@@ -28,11 +28,17 @@ namespace Pulumi.Tests.Serialization
             => new Output<T>(Task.FromResult(new OutputData<T>(
                 ImmutableHashSet<Resource>.Empty, value, isKnown: false, isSecret: false)));
 
-        protected async Task<Value> SerializeToValueAsync(object? value)
+        protected async Task<Value> SerializeToValueAsync(object? value, bool keepResources = true)
         {
             var serializer = new Serializer(excessiveDebugOutput: false);
             return Serializer.CreateValue(
-                await serializer.SerializeAsync(ctx: "", value, true).ConfigureAwait(false));
+                await serializer.SerializeAsync(ctx: "", value, keepResources).ConfigureAwait(false));
+        }
+
+        protected static T DeserializeValue<T>(Value value)
+        {
+            var v = Deserializer.Deserialize(value).Value;
+            return v == null ? default! : (T)v;
         }
     }
 }
