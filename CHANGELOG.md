@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.17.2 (2021-01-14)
 
 - .NET: Allow `IMock.NewResourceAsync` to return a null ID for component resources.
   Note that this may require mocks written in C# to be updated to account for the
