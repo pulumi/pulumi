@@ -15,7 +15,7 @@
 // tslint:disable
 
 import * as assert from "assert";
-import { Output, all, concat, interpolate, output, unknown } from "../output";
+import { Output, all, concat, interpolate, output, unknown, secret, unsecret, isSecret } from "../output";
 import { Resource } from "../resource";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
@@ -858,6 +858,21 @@ describe("output", () => {
             const result = interpolate `http://${output("a")}:${80}/`;
             assert.strictEqual(await result.promise(), "http://a:80/");
         }));
+    });
+
+    describe("secret operations", () => {
+       it("ensure secret", asyncTest(async () => {
+           const sec = secret("foo");
+           assert.strictEqual(await sec.isSecret, true)
+       }));
+       it("ensure that a secret can be unwrapped", asyncTest(async () => {
+           const sec = secret("foo");
+           assert.strictEqual(await isSecret(sec), true)
+
+           const unsec = unsecret(sec);
+           assert.strictEqual(await isSecret(unsec), false)
+           assert.strictEqual(await unsec.promise(), "foo")
+       }));
     });
 
     describe("lifted operations", () => {

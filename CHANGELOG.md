@@ -17,6 +17,12 @@ CHANGELOG
 - [sdk/python] Fix python 3.6 support by removing annotations import.
   [#6109](https://github.com/pulumi/pulumi/pull/6109)
 
+- [sdk/nodejs] Added `pulumi.unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value. Also adds,
+  `pulumi.isSecret` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6086](https://github.com/pulumi/pulumi/pull/6086)
+
 ## 2.17.1 (2021-01-13)
 
 - Fix an issue with go sdk generation where optional strict enum values
@@ -38,7 +44,7 @@ CHANGELOG
 - [sdk/dotnet] Moved urn value retrieval into if statement
   for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
-
+  
 - [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will
   take an existing secret output and
   create a non-secret variant with an unwrapped secret value.
