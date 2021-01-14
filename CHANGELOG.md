@@ -3,6 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- .NET: Allow `IMock.NewResourceAsync` to return a null ID for component resources.
+  Note that this may require mocks written in C# to be updated to account for the
+  change in nullability.
+  [#6104](https://github.com/pulumi/pulumi/pull/6104)
+
 - [automation/go] Add debug logging settings for common automation API operations
   [#6095](https://github.com/pulumi/pulumi/pull/6095)
   
