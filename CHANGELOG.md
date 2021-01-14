@@ -13,6 +13,9 @@ CHANGELOG
   
 - [automation/go] Set DryRun on previews so unknowns are identified correctly.
   [#6099](https://github.com/pulumi/pulumi/pull/6099)
+  
+- [sdk/python] Fix python 3.6 support by removing annotations import.
+  [#6109](https://github.com/pulumi/pulumi/pull/6109)
 
 ## 2.17.1 (2021-01-13)
 
