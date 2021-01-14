@@ -49,7 +49,7 @@ func (i PetArgs) ToPetPtrOutput() PetPtrOutput {
 }
 
 func (i PetArgs) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PetOutput).ToPetPtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(PetOutput).ToPetPtrOutputWithContext(ctx)
 }
 
 // PetPtrInput is an input type that accepts PetArgs, PetPtr and PetPtrOutput values.
