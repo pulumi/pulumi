@@ -639,6 +639,8 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 	assert.Nil(t, err)
 
 	if assert.Nil(t, err) {
+		// The value we marshaled above omits the 10 Resource-typed fields, so we don't expect those fields to appear
+		// in the unmarshaled value.
 		const resourceFields = 10
 		assert.Equal(t, reflect.TypeOf(inputs).NumField()-resourceFields, len(resolved))
 		assert.Equal(t, 0, len(deps))
