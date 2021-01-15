@@ -1547,8 +1547,8 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	}
 
 	imports := map[string]string{
-		"github.com/blang/semver",
-		"github.com/pulumi/pulumi/sdk/v2/go/pulumi",
+		"github.com/blang/semver":                   "",
+		"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
 	}
 	topLevelModule := pkg.mod == ""
 	if !topLevelModule {
