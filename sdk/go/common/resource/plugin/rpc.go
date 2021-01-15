@@ -168,6 +168,9 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			val := string(ref.URN)
 			if ref.HasID {
 				val = string(ref.ID)
+				if val == "" {
+					return MarshalPropertyValue(resource.MakeComputed(resource.NewStringProperty("")), opts)
+				}
 			}
 			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
 			return MarshalString(val, opts), nil
@@ -398,7 +401,13 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 
 			if !opts.KeepResources {
 				value := urn.StringValue()
-				if id != "" {
+				if hasID {
+					if id == "" && opts.KeepUnknowns {
+						v := structpb.Value{
+							Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+						}
+						return UnmarshalPropertyValue(&v, opts)
+					}
 					value = id
 				}
 				r := resource.NewStringProperty(value)
