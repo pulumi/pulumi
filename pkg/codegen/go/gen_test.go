@@ -63,8 +63,10 @@ func TestGeneratePackage(t *testing.T) {
 			"simple-resource-schema",
 			[]string{
 				"example/argFunction.go",
+				"example/init.go",
 				"example/otherResource.go",
 				"example/provider.go",
+				"example/pulumiUtilities.go",
 				"example/resource.go",
 			},
 		},
@@ -73,8 +75,10 @@ func TestGeneratePackage(t *testing.T) {
 			"simple-enum-schema",
 			[]string{
 				filepath.Join("plant", "provider.go"),
-				filepath.Join("plant", "pulumiTypes.go"),
 				filepath.Join("plant", "pulumiEnums.go"),
+				filepath.Join("plant", "pulumiTypes.go"),
+				filepath.Join("plant", "pulumiUtilities.go"),
+				filepath.Join("plant", "tree", "v1", "init.go"),
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
 				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
 			},
