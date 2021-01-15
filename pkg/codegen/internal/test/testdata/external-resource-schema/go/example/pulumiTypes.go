@@ -82,7 +82,7 @@ func (i *petPtrType) ToPetPtrOutput() PetPtrOutput {
 }
 
 func (i *petPtrType) ToPetPtrOutputWithContext(ctx context.Context) PetPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PetOutput).ToPetPtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(PetPtrOutput)
 }
 
 type PetOutput struct{ *pulumi.OutputState }

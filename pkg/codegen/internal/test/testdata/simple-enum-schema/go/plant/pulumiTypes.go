@@ -85,7 +85,7 @@ func (i *containerPtrType) ToContainerPtrOutput() ContainerPtrOutput {
 }
 
 func (i *containerPtrType) ToContainerPtrOutputWithContext(ctx context.Context) ContainerPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ContainerOutput).ToContainerPtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(ContainerPtrOutput)
 }
 
 type ContainerOutput struct{ *pulumi.OutputState }

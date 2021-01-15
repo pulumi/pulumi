@@ -124,7 +124,7 @@ func (i *componentPtrType) ToComponentPtrOutput() ComponentPtrOutput {
 }
 
 func (i *componentPtrType) ToComponentPtrOutputWithContext(ctx context.Context) ComponentPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ComponentOutput).ToComponentPtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(ComponentPtrOutput)
 }
 
 // ComponentArrayInput is an input type that accepts ComponentArray and ComponentArrayOutput values.
@@ -141,7 +141,7 @@ type ComponentArrayInput interface {
 type ComponentArray []ComponentInput
 
 func (ComponentArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Component)(nil))
+	return reflect.TypeOf(([]*Component)(nil))
 }
 
 func (i ComponentArray) ToComponentArrayOutput() ComponentArrayOutput {
@@ -166,7 +166,7 @@ type ComponentMapInput interface {
 type ComponentMap map[string]ComponentInput
 
 func (ComponentMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Component)(nil))
+	return reflect.TypeOf((map[string]*Component)(nil))
 }
 
 func (i ComponentMap) ToComponentMapOutput() ComponentMapOutput {

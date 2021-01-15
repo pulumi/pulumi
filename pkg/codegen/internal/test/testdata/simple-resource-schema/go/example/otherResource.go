@@ -89,7 +89,7 @@ func (i *otherResourcePtrType) ToOtherResourcePtrOutput() OtherResourcePtrOutput
 }
 
 func (i *otherResourcePtrType) ToOtherResourcePtrOutputWithContext(ctx context.Context) OtherResourcePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutput).ToOtherResourcePtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(OtherResourcePtrOutput)
 }
 
 // OtherResourceArrayInput is an input type that accepts OtherResourceArray and OtherResourceArrayOutput values.
@@ -106,7 +106,7 @@ type OtherResourceArrayInput interface {
 type OtherResourceArray []OtherResourceInput
 
 func (OtherResourceArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]OtherResource)(nil))
+	return reflect.TypeOf(([]*OtherResource)(nil))
 }
 
 func (i OtherResourceArray) ToOtherResourceArrayOutput() OtherResourceArrayOutput {
@@ -131,7 +131,7 @@ type OtherResourceMapInput interface {
 type OtherResourceMap map[string]OtherResourceInput
 
 func (OtherResourceMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]OtherResource)(nil))
+	return reflect.TypeOf((map[string]*OtherResource)(nil))
 }
 
 func (i OtherResourceMap) ToOtherResourceMapOutput() OtherResourceMapOutput {

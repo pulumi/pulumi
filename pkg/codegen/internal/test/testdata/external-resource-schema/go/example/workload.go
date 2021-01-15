@@ -113,7 +113,7 @@ func (i *workloadPtrType) ToWorkloadPtrOutput() WorkloadPtrOutput {
 }
 
 func (i *workloadPtrType) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(WorkloadOutput).ToWorkloadPtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(WorkloadPtrOutput)
 }
 
 // WorkloadArrayInput is an input type that accepts WorkloadArray and WorkloadArrayOutput values.
@@ -130,7 +130,7 @@ type WorkloadArrayInput interface {
 type WorkloadArray []WorkloadInput
 
 func (WorkloadArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Workload)(nil))
+	return reflect.TypeOf(([]*Workload)(nil))
 }
 
 func (i WorkloadArray) ToWorkloadArrayOutput() WorkloadArrayOutput {
@@ -155,7 +155,7 @@ type WorkloadMapInput interface {
 type WorkloadMap map[string]WorkloadInput
 
 func (WorkloadMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Workload)(nil))
+	return reflect.TypeOf((map[string]*Workload)(nil))
 }
 
 func (i WorkloadMap) ToWorkloadMapOutput() WorkloadMapOutput {

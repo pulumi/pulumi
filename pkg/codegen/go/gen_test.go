@@ -66,6 +66,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("example", "otherResource.go"),
 				filepath.Join("example", "argFunction.go"),
 				filepath.Join("example", "pulumiTypes.go"),
+				filepath.Join("example", "pulumiUtilities.go"),
 				filepath.Join("example", "doc.go"),
 				filepath.Join("example", "provider.go"),
 			},
@@ -77,6 +78,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("plant", "doc.go"),
 				filepath.Join("plant", "provider.go"),
 				filepath.Join("plant", "pulumiTypes.go"),
+				filepath.Join("plant", "pulumiUtilities.go"),
 				filepath.Join("plant", "pulumiEnums.go"),
 				filepath.Join("plant", "provider.go"),
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
@@ -89,6 +91,7 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				filepath.Join("example", "component.go"),
 				filepath.Join("example", "pulumiTypes.go"),
+				filepath.Join("example", "pulumiUtilities.go"),
 				filepath.Join("example", "argFunction.go"),
 				filepath.Join("example", "cat.go"),
 				filepath.Join("example", "doc.go"),

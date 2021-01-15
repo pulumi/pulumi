@@ -129,7 +129,7 @@ func (i *rubberTreePtrType) ToRubberTreePtrOutput() RubberTreePtrOutput {
 }
 
 func (i *rubberTreePtrType) ToRubberTreePtrOutputWithContext(ctx context.Context) RubberTreePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeOutput).ToRubberTreePtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(RubberTreePtrOutput)
 }
 
 // RubberTreeArrayInput is an input type that accepts RubberTreeArray and RubberTreeArrayOutput values.
@@ -146,7 +146,7 @@ type RubberTreeArrayInput interface {
 type RubberTreeArray []RubberTreeInput
 
 func (RubberTreeArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]RubberTree)(nil))
+	return reflect.TypeOf(([]*RubberTree)(nil))
 }
 
 func (i RubberTreeArray) ToRubberTreeArrayOutput() RubberTreeArrayOutput {
@@ -171,7 +171,7 @@ type RubberTreeMapInput interface {
 type RubberTreeMap map[string]RubberTreeInput
 
 func (RubberTreeMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]RubberTree)(nil))
+	return reflect.TypeOf((map[string]*RubberTree)(nil))
 }
 
 func (i RubberTreeMap) ToRubberTreeMapOutput() RubberTreeMapOutput {

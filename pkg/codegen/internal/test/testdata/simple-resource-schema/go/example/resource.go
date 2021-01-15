@@ -114,7 +114,7 @@ func (i *resourcePtrType) ToResourcePtrOutput() ResourcePtrOutput {
 }
 
 func (i *resourcePtrType) ToResourcePtrOutputWithContext(ctx context.Context) ResourcePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ResourceOutput).ToResourcePtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(ResourcePtrOutput)
 }
 
 // ResourceArrayInput is an input type that accepts ResourceArray and ResourceArrayOutput values.
@@ -131,7 +131,7 @@ type ResourceArrayInput interface {
 type ResourceArray []ResourceInput
 
 func (ResourceArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]Resource)(nil))
+	return reflect.TypeOf(([]*Resource)(nil))
 }
 
 func (i ResourceArray) ToResourceArrayOutput() ResourceArrayOutput {
@@ -156,7 +156,7 @@ type ResourceMapInput interface {
 type ResourceMap map[string]ResourceInput
 
 func (ResourceMap) ElementType() reflect.Type {
-	return reflect.TypeOf((*map[string]Resource)(nil))
+	return reflect.TypeOf((map[string]*Resource)(nil))
 }
 
 func (i ResourceMap) ToResourceMapOutput() ResourceMapOutput {

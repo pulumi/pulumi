@@ -85,7 +85,7 @@ func (i *providerPtrType) ToProviderPtrOutput() ProviderPtrOutput {
 }
 
 func (i *providerPtrType) ToProviderPtrOutputWithContext(ctx context.Context) ProviderPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ProviderOutput).ToProviderPtrOutput()
+	return pulumi.ToOutputWithContext(ctx, i).(ProviderPtrOutput)
 }
 
 type ProviderOutput struct {
