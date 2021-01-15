@@ -718,6 +718,10 @@ func (b *localBackend) Logout() error {
 	return workspace.DeleteAccount(b.originalURL)
 }
 
+func (b *localBackend) LogoutAll() error {
+	return workspace.DeleteAllAccounts()
+}
+
 func (b *localBackend) CurrentUser() (string, error) {
 	user, err := user.Current()
 	if err != nil {
