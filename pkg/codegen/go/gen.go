@@ -211,8 +211,24 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
 		return "[]" + pkg.plainType(t.ElementType, false)
+		//if schema.IsPrimitiveType(t.ElementType) {
+		//	return "[]" + pkg.plainType(t.ElementType, false)
+		//}
+		//elementType := pkg.plainType(t.ElementType, false)
+		//if strings.HasPrefix(elementType, "*") {
+		//	return "[]" + elementType
+		//}
+		//return "[]*" + elementType
 	case *schema.MapType:
 		return "map[string]" + pkg.plainType(t.ElementType, false)
+		//if schema.IsPrimitiveType(t.ElementType) {
+		//	return "map[string]" + pkg.plainType(t.ElementType, false)
+		//}
+		//elementType := pkg.plainType(t.ElementType, false)
+		//if strings.HasPrefix(elementType, "*") {
+		//	return "map[string]" + elementType
+		//}
+		//return "map[string]*" + elementType
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
@@ -526,6 +542,27 @@ func getInputUsage(name string) string {
 	}, "\n")
 }
 
+// genResourceContainerInput handles generating container (slice/map) wrappers around
+// resources to facilitate external references.
+func genResourceContainerInput(w io.Writer, name, receiverType, elementType string) {
+	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
+	fmt.Fprintf(w, "\treturn reflect.TypeOf((%s)(nil))\n", elementType)
+	fmt.Fprintf(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
+	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
+	fmt.Fprintf(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
+	if strings.HasSuffix(name, "Ptr") {
+		base := name[:len(name)-3]
+		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput).To%sOutput()\n", base, Title(name))
+	} else {
+		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
 	if resourceType {
@@ -540,12 +577,7 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 	fmt.Fprintf(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
-	if strings.HasSuffix(name, "Ptr") && !ptrMethods {
-		base := name[:len(name)-3]
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput).To%sOutput()\n", base, Title(name))
-	} else {
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
-	}
+	fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
 	fmt.Fprintf(w, "}\n\n")
 
 	if ptrMethods {
@@ -1111,12 +1143,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 		// Generate the resource array input.
 		genInputInterface(w, name+"Array")
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
-		genInputMethods(w, name+"Array", name+"Array", "[]"+name, false, true)
+		genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
 
 		// Generate the resource map input.
 		genInputInterface(w, name+"Map")
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
-		genInputMethods(w, name+"Map", name+"Map", "map[string]"+name, false, true)
+		genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
 	}
 
 	// Emit the resource output type.
@@ -1826,7 +1858,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				"github.com/blang/semver":                   "",
 				"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
 			}
-			pkg.genHeader(buffer, []string{"os", "reflect", "strconv", "strings"}, importsAndAliases)
+			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
 			_, err := fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
 			if err != nil {
