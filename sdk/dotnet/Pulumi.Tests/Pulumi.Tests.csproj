@@ -26,11 +26,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- Unfortunately, we depend on static state. So we configure xUnit's runner to disable parallelization. -->
-    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="X\Automation\Data\json\Pulumi.dev.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
