@@ -1823,12 +1823,15 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		if pkg.needsUtils || len(mod) == 0 {
 			buffer := &bytes.Buffer{}
 			importsAndAliases := map[string]string{
-				"github.com/blang/semver": "",
+				"github.com/blang/semver":                   "",
 				"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
 			}
 			pkg.genHeader(buffer, []string{"os", "reflect", "strconv", "strings"}, importsAndAliases)
 
-			fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
+			_, err := fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
+			if err != nil {
+				return nil, err
+			}
 
 			setFile(path.Join(mod, "pulumiUtilities.go"), buffer.String())
 		}
