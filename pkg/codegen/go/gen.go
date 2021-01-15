@@ -1637,12 +1637,15 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Utilities
-		if pkg.needsUtils {
+		if pkg.needsUtils || len(mod) == 0 {
 			buffer := &bytes.Buffer{}
-			imports := codegen.NewStringSet("github.com/pulumi/pulumi/sdk/v2/go/pulumi")
-			pkg.genHeader(buffer, []string{"os", "strconv", "strings"}, imports)
+			imports := codegen.NewStringSet(
+				"github.com/blang/semver",
+				"github.com/pulumi/pulumi/sdk/v2/go/pulumi",
+			)
+			pkg.genHeader(buffer, []string{"os", "reflect", "strconv", "strings"}, imports)
 
-			fmt.Fprintf(buffer, "%s", utilitiesFile)
+			fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
 
 			setFile(path.Join(mod, "pulumiUtilities.go"), buffer.String())
 		}
@@ -1701,5 +1704,20 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 		}
 	}
 	return def
+}
+
+// PkgVersion uses reflection to determine the version of the current package.
+func PkgVersion() (semver.Version, error) {
+	type sentinal struct{}
+	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
+	re := regexp.MustCompile("^.*/pulumi-%s/sdk/v(\\d+)*")
+	if match := re.FindStringSubmatch(pkgPath); match != nil {
+		vStr := match[1]
+		if len(vStr) == 0 {
+			return semver.Version{Major: 1}, nil
+		}
+		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr)), nil
+	}
+	return semver.Version{}, fmt.Errorf("not found")
 }
 `
