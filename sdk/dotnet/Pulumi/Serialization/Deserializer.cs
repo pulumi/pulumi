@@ -233,7 +233,11 @@ namespace Pulumi.Serialization
             var qualifiedTypeParts = qualifiedType.Split('$');
             var type = qualifiedTypeParts[^1];
 
-            resource = Deployment.ResourcePackages.Construct(type, version, urn);
+            if (Deployment.ResourcePackages.TryConstruct(type, version, urn, out resource)) {
+                return true;
+            }
+
+            resource = new DependencyResource(urn);
             return true;
         }
 

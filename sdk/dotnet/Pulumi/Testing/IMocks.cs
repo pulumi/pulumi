@@ -19,8 +19,8 @@ namespace Pulumi.Testing
         /// <param name="provider">Provider.</param>
         /// <param name="id">Resource identifier.</param>
         /// <returns>A tuple of a resource identifier and resource state. State can be either a POCO
-        /// or a dictionary bag.</returns>
-        Task<(string id, object state)> NewResourceAsync(string type, string name,
+        /// or a dictionary bag. The returned ID may be null for component resources.</returns>
+        Task<(string? id, object state)> NewResourceAsync(string type, string name,
             ImmutableDictionary<string, object> inputs, string? provider, string? id);
 
         /// <summary>

@@ -1,0 +1,6 @@
+﻿using Xunit;
+
+// we should not longer be using static global state so the dotnet
+// code should not limit us here, but I was getting inconsistent
+// issues with pulumi CLI trying to access my credentials.json concurrently (file lock errors)
+[assembly: CollectionBehavior(DisableTestParallelization = true)]

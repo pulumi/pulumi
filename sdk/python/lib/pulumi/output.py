@@ -116,10 +116,10 @@ class Output(Generic[T]):
 
     def is_known(self) -> Awaitable[bool]:
         return self._is_known
+    # End private implementation details.
 
     def is_secret(self) -> Awaitable[bool]:
         return self._is_secret
-    # End private implementation details.
 
     def apply(self, func: Callable[[T], Input[U]], run_with_unknowns: Optional[bool] = None) -> 'Output[U]':
         """
@@ -279,6 +279,19 @@ class Output(Generic[T]):
         value_fut: asyncio.Future[Any] = asyncio.Future()
         value_fut.set_result(val)
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
+
+    @staticmethod
+    def unsecret(val: 'Output[T]') -> 'Output[T]':
+        """
+        Takes an existing Output, deeply unwraps the nested values and returns a new Output without any secrets included
+
+        :param Output[T] val: An Output to be converted to a non-Secret Output.
+        :return: A deeply-unwrapped Output that is guaranteed to not contain any secret values.
+        :rtype: Output[T]
+        """
+        is_secret: asyncio.Future[bool] = asyncio.Future()
+        is_secret.set_result(False)
+        return Output(val._resources, val._future, val._is_known, is_secret)
 
     @staticmethod
     def secret(val: Input[T]) -> 'Output[T]':

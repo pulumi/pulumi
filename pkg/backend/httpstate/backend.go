@@ -647,6 +647,11 @@ func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccount(b.CloudURL())
 }
 
+// LogoutAll logs out of all accounts
+func (b *cloudBackend) LogoutAll() error {
+	return workspace.DeleteAllAccounts()
+}
+
 // DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
 func (b *cloudBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
 	owner, err := b.currentUser(ctx)

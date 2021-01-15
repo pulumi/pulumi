@@ -112,6 +112,7 @@ namespace Pulumi.Tests.Serialization
         {
             var path = GetExternalAssemblyPath();
             var externalAssembly = Assembly.LoadFrom(path);
+            Assert.False(externalAssembly.IsDynamic);
             var resourcePackages = new ResourcePackages(new[] { externalAssembly });
             if (!resourcePackages.TryGetResourceType("test:index/ExternalResource", "1.0.0", out _))
             {

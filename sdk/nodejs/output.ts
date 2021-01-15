@@ -388,9 +388,10 @@ async function applyHelperAsync<T, U>(
 // Returns an promise denoting if the output is a secret or not. This is not the same as just calling `.isSecret`
 // because in cases where the output does not have a `isSecret` property and it is a Proxy, we need to ignore
 // the isSecret member that the proxy reports back.
+// This calls the public implementation so that we only make any calculations in a single place.
 /** @internal */
 export function isSecretOutput<T>(o: Output<T>): Promise<boolean> {
-    return Output.isInstance(o.isSecret) ? Promise.resolve(false) : o.isSecret;
+    return isSecret(o);
 }
 
 // Helper function for `output`.  This function trivially recurses through an object, copying it,
@@ -521,7 +522,7 @@ export function output<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
 }
 
 /**
- * [secret] behaves the same as [output] except the returned output is marked as contating sensitive data.
+ * [secret] behaves the same as [output] except the returned output is marked as containing sensitive data.
  */
 export function secret<T>(val: Input<T>): Output<Unwrap<T>>;
 export function secret<T>(val: Input<T> | undefined): Output<Unwrap<T | undefined>>;
@@ -532,6 +533,19 @@ export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
     return new Output(
         o.resources(), o.promise(/*withUnknowns*/ true),
         o.isKnown, Promise.resolve(true), o.allResources!());
+}
+
+/**
+ * [unsecret] behaves the same as [output] except the returned output takes the existing output and unwraps the secret
+ */
+export function unsecret<T>(val: Output<T>): Output<T> {
+   return new Output(
+        val.resources(), val.promise(/*withUnknowns*/ true),
+        val.isKnown, Promise.resolve(false), val.allResources!());
+}
+
+export function isSecret<T>(val: Output<T>): Promise<boolean> {
+    return Output.isInstance(val.isSecret) ? Promise.resolve(false) : val.isSecret;
 }
 
 function createSimpleOutput(val: any) {
@@ -779,7 +793,6 @@ export type UnwrappedObject<T> = {
  */
 export interface OutputInstance<T> {
     /** @internal */ allResources?: () => Promise<Set<Resource>>;
-
     /** @internal */ readonly isKnown: Promise<boolean>;
     /** @internal */ readonly isSecret: Promise<boolean>;
     /** @internal */ promise(withUnknowns?: boolean): Promise<T>;

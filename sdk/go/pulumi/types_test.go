@@ -396,11 +396,53 @@ func TestToOutputInputAny(t *testing.T) {
 	}, v)
 }
 
+// Test that Unsecret will return an Output that has an unwrapped secret
+func TestUnsecret(t *testing.T) {
+	s := ToSecret(String("foo"))
+	// assert that secret is immediately secret
+	assert.True(t, s.IsSecret())
+
+	unS := Unsecret(s)
+	// assert that we do not have a secret
+	assert.False(t, unS.IsSecret())
+
+	errChan := make(chan error)
+	resultChan := make(chan string)
+	secretChan := make(chan bool)
+
+	unS.ApplyT(func(v interface{}) (string, error) {
+		// assert secretness after the output resolves
+		secretChan <- unS.IsSecret()
+		val := v.(string)
+		if val == "foo" {
+			// validate the value
+			resultChan <- val
+		} else {
+			errChan <- fmt.Errorf("Invalid result: %v", val)
+		}
+		return val, nil
+	})
+
+	for i := 0; i < 2; i++ {
+		select {
+		case err := <-errChan:
+			assert.Nil(t, err)
+			break
+		case r := <-resultChan:
+			assert.Equal(t, "foo", r)
+			break
+		case isSecret := <-secretChan:
+			assert.False(t, isSecret)
+			break
+		}
+	}
+}
+
 // Test that SecretT sets appropriate internal state and that IsSecret appropriately reads it.
 func TestSecrets(t *testing.T) {
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s.isSecret())
+	assert.True(t, s.IsSecret())
 
 	errChan := make(chan error)
 	resultChan := make(chan string)
@@ -408,7 +450,7 @@ func TestSecrets(t *testing.T) {
 
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.isSecret()
+		secretChan <- s.IsSecret()
 		val := v.(string)
 		if val == "foo" {
 			// validate the value
@@ -439,7 +481,7 @@ func TestSecrets(t *testing.T) {
 func TestSecretApply(t *testing.T) {
 	s1 := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s1.isSecret())
+	assert.True(t, s1.IsSecret())
 	s2 := StringInput(String("bar"))
 
 	errChan := make(chan error)
@@ -452,7 +494,7 @@ func TestSecretApply(t *testing.T) {
 	})
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.isSecret()
+		secretChan <- s.IsSecret()
 		val := v.(string)
 		if val == "foobar" {
 			// validate the value

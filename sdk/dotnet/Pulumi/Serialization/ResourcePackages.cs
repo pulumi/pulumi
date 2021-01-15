@@ -36,17 +36,24 @@ namespace Pulumi
                 });
         }
         
-        public Resource Construct(string type, string version, string urn)
+        public bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
         {
             if (!this.TryGetResourceType(type, version, out var resourceType))
             {
-                throw new InvalidOperationException($"Unable to deserialize resource {urn}.");
+                resource = null;
+                return false;
             }
 
             var urnParts = urn.Split("::");
             var urnName = urnParts[3];
             var constructorInfo = resourceType.GetConstructors().Single(c => c.GetParameters().Length == 3);
-            return (Resource)constructorInfo.Invoke(new[] {urnName, (object?)null, new CustomResourceOptions {Urn = urn}});
+
+            var resourceOptions = typeof(CustomResource).IsAssignableFrom(resourceType) ?
+                (ResourceOptions)new CustomResourceOptions {Urn = urn} :
+                (ResourceOptions)new ComponentResourceOptions {Urn = urn};
+
+            resource = (Resource)constructorInfo.Invoke(new[] {urnName, (object?)null, resourceOptions});
+            return true;
         }
 
         public bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
@@ -76,12 +83,12 @@ namespace Pulumi
             var pairs =
                 from a in assemblies
                 from t in a.GetTypes()
-                where typeof(CustomResource).IsAssignableFrom(t)
+                where typeof(Resource).IsAssignableFrom(t)
                 let attr = t.GetCustomAttribute<ResourceTypeAttribute>()
                 where attr != null
                 let versionType = (attr.Version, t)
                 group versionType by attr.Type into g
-                select new { g.Key, Items = g};
+                select new { g.Key, Items = g };
             return pairs.ToImmutableDictionary(v => v.Key, v => v.Items.ToImmutableList());
         }
         

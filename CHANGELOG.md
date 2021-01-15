@@ -3,8 +3,45 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- C# Automation API.
+- [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
+
+- [CLI] Add the ability to log out of all Pulumi backends at once.
+  [#6101](https://github.com/pulumi/pulumi/pull/6101)
+
+- [sdk/go] Added `pulumi.Unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value. Also adds,
+  `pulumi.IsSecret` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6085](https://github.com/pulumi/pulumi/pull/6085)
+
+## 2.17.2 (2021-01-14)
+
+- .NET: Allow `IMock.NewResourceAsync` to return a null ID for component resources.
+  Note that this may require mocks written in C# to be updated to account for the
+  change in nullability.
+  [#6104](https://github.com/pulumi/pulumi/pull/6104)
+
+- [automation/go] Add debug logging settings for common automation API operations
+  [#6095](https://github.com/pulumi/pulumi/pull/6095)
+
+- [automation/go] Set DryRun on previews so unknowns are identified correctly.
+  [#6099](https://github.com/pulumi/pulumi/pull/6099)
+
+- [sdk/python] Fix python 3.6 support by removing annotations import.
+  [#6109](https://github.com/pulumi/pulumi/pull/6109)
+
+- [sdk/nodejs] Added `pulumi.unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value. Also adds,
+  `pulumi.isSecret` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6086](https://github.com/pulumi/pulumi/pull/6086)
+
+- [sdk/python] Added `pulumi.unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value. Also adds,
+  `pulumi.is_secret` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6111](https://github.com/pulumi/pulumi/pull/6111)
 
 ## 2.17.1 (2021-01-13)
 
@@ -27,7 +64,7 @@ CHANGELOG
 - [sdk/dotnet] Moved urn value retrieval into if statement
   for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
-
+  
 - [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will
   take an existing secret output and
   create a non-secret variant with an unwrapped secret value.
@@ -609,35 +646,35 @@ CHANGELOG
 
 ## 2.4.0 (2020-06-10)
 - Turn program generation NYIs into diagnostic errors
- [#4794](https://github.com/pulumi/pulumi/pull/4794)
+  [#4794](https://github.com/pulumi/pulumi/pull/4794)
 
 - Improve dev version detection logic
- [#4732](https://github.com/pulumi/pulumi/pull/4732)
+  [#4732](https://github.com/pulumi/pulumi/pull/4732)
 
 - Export `CustomTimeouts` in the Python SDK
- [#4747](https://github.com/pulumi/pulumi/pull/4747)
+  [#4747](https://github.com/pulumi/pulumi/pull/4747)
 
 - Add GitHub Actions CI detection
- [#4758](https://github.com/pulumi/pulumi/pull/4758)
+  [#4758](https://github.com/pulumi/pulumi/pull/4758)
 
 - Allow users to specify base64 encoded strings as GOOGLE_CREDENTIALS
- [#4773](https://github.com/pulumi/pulumi/pull/4773)
+  [#4773](https://github.com/pulumi/pulumi/pull/4773)
 
 - Install and use dependencies automatically for new Python projects.
   [#4775](https://github.com/pulumi/pulumi/pull/4775)
 
 ## 2.3.0 (2020-05-27)
 - Add F# operators for InputUnion.
- [#4699](https://github.com/pulumi/pulumi/pull/4699)
+  [#4699](https://github.com/pulumi/pulumi/pull/4699)
 
 - Add support for untagged outputs in Go SDK.
- [#4640](https://github.com/pulumi/pulumi/pull/4640)
+  [#4640](https://github.com/pulumi/pulumi/pull/4640)
 
 - Update go-cloud to support all Azure regions
- [#4643](https://github.com/pulumi/pulumi/pull/4643)
+  [#4643](https://github.com/pulumi/pulumi/pull/4643)
 
 - Fix a Regression in .NET unit testing.
- [#4656](https://github.com/pulumi/pulumi/pull/4656)
+  [#4656](https://github.com/pulumi/pulumi/pull/4656)
 
 - Allow `pulumi.export` calls from Python unit tests.
   [#4670](https://github.com/pulumi/pulumi/pull/4670)
@@ -650,12 +687,12 @@ CHANGELOG
 
 ## 2.2.1 (2020-05-13)
 - Add new brew target to fix homebrew builds
- [#4633](https://github.com/pulumi/pulumi/pull/4633)
+  [#4633](https://github.com/pulumi/pulumi/pull/4633)
 
 ## 2.2.0 (2020-05-13)
 
 - Fixed ResourceOptions issue with stack references in Python SDK
- [#4553](https://github.com/pulumi/pulumi/pull/4553)
+  [#4553](https://github.com/pulumi/pulumi/pull/4553)
 
 - Add runTask to F# Deployment module
   [#3858](https://github.com/pulumi/pulumi/pull/3858)
@@ -723,10 +760,10 @@ CHANGELOG
 - CLI behavior change.  Commands in non-interactive mode (i.e. when `pulumi` has its output piped to
   another process or running on CI) will not default to assuming that `--yes` was passed in.  `--yes` is now
   explicitly required to proceed in non-interactive scenarios. This affects:
-   * `pulumi destroy`
-   * `pulumi new`
-   * `pulumi refresh`
-   * `pulumi up`
+  * `pulumi destroy`
+  * `pulumi new`
+  * `pulumi refresh`
+  * `pulumi up`
 
 - Fixed [crashes and hangs](https://github.com/pulumi/pulumi/issues/3528) introduced by usage of
   another library.
@@ -1451,7 +1488,7 @@ CHANGELOG
 
 ## 0.17.23 (2019-07-16)
 - `pulumi new` allows specifying a local path to templates (resolves
-   [#2672](https://github.com/pulumi/pulumi/issues/2672))
+  [#2672](https://github.com/pulumi/pulumi/issues/2672))
 
 - Fix an issue where a file archive created on Windows would contain back-slashes
   [#2784](https://github.com/pulumi/pulumi/issues/2784)
@@ -1717,7 +1754,7 @@ Fixes #397
 ### Improvements
 - Correctly handle the case where we would fail to detect an archive type if the filename included a dot in it. (fixes [pulumi/pulumi#2589](https://github.com/pulumi/pulumi/issues/2589))
 - Make `Config`'s constructor's `name` argument optional in Python, for consistency with our Node.js SDK. If it isn't
-    supplied, the current project name is used as the default.
+  supplied, the current project name is used as the default.
 - `pulumi logs` will now display log messages from Google Cloud Functions.
 
 ## 0.17.4 (2019-03-26)
@@ -1774,7 +1811,7 @@ are compatible.  i.e. keep everything on 0.16.x until you are ready to move ever
 ### Improvements
 
 - `Output<T>` now 'lifts' property members from the value it wraps, simplifying common coding patterns.
-For example:
+  For example:
 
 ```ts
 interface Widget { text: string, x: number, y: number };
@@ -1830,7 +1867,7 @@ Similarly, this only happens for properties.  Functions are not lifted.
 ### Improvements
 
 - Rolling back the change:
-    "Depending on a Resource will now depend on all other Resource's parented by that Resource."
+  "Depending on a Resource will now depend on all other Resource's parented by that Resource."
 
   Unforeseen problems cropped up that caused deadlocks.  Removing this change until we can
   have a high quality solution without these issues.
@@ -2063,7 +2100,7 @@ We appologize for the regression.  (fixes [pulumi/pulumi#2414](https://github.co
 
 ### Improvements
 
- - A new top-level CLI command “pulumi state” was added to assist in making targeted edits to the state of a stack. Two subcommands, “pulumi state delete” and “pulumi state unprotect”, can be used to delete or unprotect individual resources respectively within a Pulumi stack. [pulumi/pulumi#2024](https://github.com/pulumi/pulumi/pull/2024)
+- A new top-level CLI command “pulumi state” was added to assist in making targeted edits to the state of a stack. Two subcommands, “pulumi state delete” and “pulumi state unprotect”, can be used to delete or unprotect individual resources respectively within a Pulumi stack. [pulumi/pulumi#2024](https://github.com/pulumi/pulumi/pull/2024)
 - Default to allowing as many parallel operations as possible [pulumi/pulumi#2065](https://github.com/pulumi/pulumi/pull/2065)
 - Fixed an issue with the generated type for an Unwrap expression when using TypeScript [pulumi/pulumi#2061](https://github.com/pulumi/pulumi/pull/2061)
 - Improve error messages when resource plugins can't be loaded or when a checkpoint is invalid [pulumi/pulumi#2078](https://github.com/pulumi/pulumi/pull/2078)
@@ -2411,12 +2448,12 @@ GitHub application and configure it with your CI system, please [visit our docum
 ### Added
 
 - Added the ability to import or export a stack's deployment in the Pulumi CLI. This command can be used for either local or managed stacks. There are two new verbs under the command `stack`:
-   - `export` writes the current stack's latest deployment to stdout in JSON format.
-   - `import` reads a new JSON deployment from stdin and applies it to the current stack.
+  - `export` writes the current stack's latest deployment to stdout in JSON format.
+  - `import` reads a new JSON deployment from stdin and applies it to the current stack.
 
 - A basic progress spinner is displayed during deployment operations.
-   - When the Pulumi CLI is run in interactive mode, it displays an animated ASCII spinner
-   - When run in non-interactive mode, CLI prints a message that it is still working. For CI systems that kill jobs when there is no CLI output (such as TravisCI), this eliminates the need to create shell scripts that periodically print output.
+  - When the Pulumi CLI is run in interactive mode, it displays an animated ASCII spinner
+  - When run in non-interactive mode, CLI prints a message that it is still working. For CI systems that kill jobs when there is no CLI output (such as TravisCI), this eliminates the need to create shell scripts that periodically print output.
 
 ### Changed
 
@@ -2468,9 +2505,9 @@ Resource naming is now more consistent, but there is a new file format for check
 #### Logging
 
 - [**experimental**] Support for the `pulumi logs` command ([pulumi #527](https://github.com/pulumi/pulumi/issues/527)). These features now work:
-   - To see new logs as they arrive, use `--follow`
-   - Use `--since` to limit to recent logs, such as `pulumi logs --since=1h`
-   - Filter to specific resources with `--resource`. This filters to a particular component and its child resources (if any), such as `pulumi logs --resource examples-todoc57917fa --since 1h`
+  - To see new logs as they arrive, use `--follow`
+  - Use `--since` to limit to recent logs, such as `pulumi logs --since=1h`
+  - Filter to specific resources with `--resource`. This filters to a particular component and its child resources (if any), such as `pulumi logs --resource examples-todoc57917fa --since 1h`
 
 #### Other features
 
