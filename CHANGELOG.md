@@ -6,6 +6,12 @@ CHANGELOG
 - [CLI] Add the ability to log out of all Pulumi backends at once.
   [#6101](https://github.com/pulumi/pulumi/pull/6101)
 
+- [sdk/go] Added `pulumi.Unsecret` which will take an existing secret output and
+  create a non-secret variant with an unwrapped secret value. Also adds,
+  `pulumi.IsSecret` which will take an existing output and
+  determine if an output has a secret within the output.
+  [#6085](https://github.com/pulumi/pulumi/pull/6085)
+
 ## 2.17.2 (2021-01-14)
 
 - .NET: Allow `IMock.NewResourceAsync` to return a null ID for component resources.
@@ -55,7 +61,7 @@ CHANGELOG
 - [sdk/dotnet] Moved urn value retrieval into if statement
   for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
-
+  
 - [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will
   take an existing secret output and
   create a non-secret variant with an unwrapped secret value.
