@@ -4,7 +4,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -18,30 +17,6 @@ type testProv struct {
 	ProviderResourceState
 	// equality identifier used for testing
 	foo string
-}
-
-type testResourcePackage struct {
-	version semver.Version
-}
-
-func (rp *testResourcePackage) ConstructProvider(ctx *Context, name, typ, urn string) (ProviderResource, error) {
-	return &testProv{}, nil
-}
-
-func (rp *testResourcePackage) Version() semver.Version {
-	return rp.version
-}
-
-type testResourceModule struct {
-	version semver.Version
-}
-
-func (rm *testResourceModule) Construct(ctx *Context, name, typ, urn string) (Resource, error) {
-	return &testRes{}, nil
-}
-
-func (rm *testResourceModule) Version() semver.Version {
-	return rm.version
 }
 
 func TestResourceOptionMergingParent(t *testing.T) {
