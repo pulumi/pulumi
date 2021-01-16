@@ -97,15 +97,30 @@ type Secret struct {
 }
 
 // ResourceReference is a property value that represents a reference to a Resource. The reference captures the
-// resource's URN, ID, and the version of its containing package. Note that the resource ID may be unknown, in which
-// case HasID will be true and ID will be the empty string.
+// resource's URN, ID, and the version of its containing package. Note that there are several cases to consider with
+// respect to the ID:
+//
+// - The reference may not contain an ID if the referenced resource is a component resource. In this case, the ID will
+//   be null.
+// - The ID may be unknown (in which case it will be the unknown property value)
+// - Otherwise, the ID must be a string.
 //
 //nolint: golint
 type ResourceReference struct {
 	URN            URN
-	ID             ID
-	HasID          bool
+	ID             PropertyValue
 	PackageVersion string
+}
+
+func (ref ResourceReference) IDString() (value string, hasID bool) {
+	switch {
+	case ref.ID.IsComputed():
+		return "", true
+	case ref.ID.IsString():
+		return ref.ID.StringValue(), true
+	default:
+		return "", false
+	}
 }
 
 type ReqError struct {
@@ -215,11 +230,25 @@ func MakeSecret(v PropertyValue) PropertyValue {
 	return NewSecretProperty(&Secret{Element: v})
 }
 
-func MakeResourceReference(urn URN, id ID, hasID bool, packageVersion string) PropertyValue {
+// MakeComponentResourceReference creates a reference to a component resource.
+func MakeComponentResourceReference(urn URN, packageVersion string) PropertyValue {
 	return NewResourceReferenceProperty(ResourceReference{
 		URN:            urn,
-		ID:             id,
-		HasID:          hasID,
+		PackageVersion: packageVersion,
+	})
+}
+
+// MakeCustomResourceReference creates a reference to a custom resource. If the resource's ID is the empty string, it
+// will be treated as unknown.
+func MakeCustomResourceReference(urn URN, id ID, packageVersion string) PropertyValue {
+	idProp := NewStringProperty(string(id))
+	if id == "" {
+		idProp = MakeComputed(NewStringProperty(""))
+	}
+
+	return NewResourceReferenceProperty(ResourceReference{
+		ID:             idProp,
+		URN:            urn,
 		PackageVersion: packageVersion,
 	})
 }

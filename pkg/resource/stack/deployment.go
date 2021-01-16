@@ -555,21 +555,6 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 					}
 					return prop, nil
 				case resource.ResourceReferenceSig:
-					urnStr, ok := objmap["urn"].(string)
-					if !ok {
-						return resource.PropertyValue{}, errors.New("malformed resource value: missing urn")
-					}
-					urn := resource.URN(urnStr)
-
-					id, hasID := resource.ID(""), false
-					if idV, ok := objmap["id"]; ok {
-						idStr, ok := idV.(string)
-						if !ok {
-							return resource.PropertyValue{}, errors.New("malformed resource value: id must be a string")
-						}
-						id, hasID = resource.ID(idStr), true
-					}
-
 					var packageVersion string
 					if packageVersionV, ok := objmap["packageVersion"]; ok {
 						packageVersion, ok = packageVersionV.(string)
@@ -579,7 +564,21 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						}
 					}
 
-					return resource.MakeResourceReference(urn, id, hasID, packageVersion), nil
+					urnStr, ok := objmap["urn"].(string)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed resource value: missing urn")
+					}
+					urn := resource.URN(urnStr)
+
+					if idV, ok := objmap["id"]; ok {
+						id, ok := idV.(string)
+						if !ok {
+							return resource.PropertyValue{}, errors.New("malformed resource value: id must be a string")
+						}
+						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
+					}
+
+					return resource.MakeComponentResourceReference(urn, packageVersion), nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}
