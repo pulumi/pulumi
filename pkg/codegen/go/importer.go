@@ -42,7 +42,13 @@ type GoPackageInfo struct {
 	// Generate container types (arrays, maps, pointer output types etc.) for each resource.
 	// These are typically used to support external references.
 	GenerateResourceContainerTypes bool `json:"generateResourceContainerTypes,omitempty"`
+
+	// An optional mapping keyed by package name, storing a nested map keyed by schema types
+	// and the corresponding renamed version.
+	PackageToTypeRenameMapping map[string]TypeRenameMapping `json:"packageToTypeRenameMapping,omitempty"`
 }
+
+type TypeRenameMapping map[string]string
 
 // Importer implements schema.Language for Go.
 var Importer schema.Language = importer(0)

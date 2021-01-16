@@ -65,6 +65,56 @@ func (o ObjectOutput) Foo() ResourceOutput {
 	return o.ApplyT(func(v Object) *Resource { return v.Foo }).(ResourceOutput)
 }
 
+type RenamedResourceOutput struct {
+	Foo *string `pulumi:"foo"`
+}
+
+// RenamedResourceOutputInput is an input type that accepts RenamedResourceOutputArgs and RenamedResourceOutputOutput values.
+// You can construct a concrete instance of `RenamedResourceOutputInput` via:
+//
+//          RenamedResourceOutputArgs{...}
+type RenamedResourceOutputInput interface {
+	pulumi.Input
+
+	ToRenamedResourceOutputOutput() RenamedResourceOutputOutput
+	ToRenamedResourceOutputOutputWithContext(context.Context) RenamedResourceOutputOutput
+}
+
+type RenamedResourceOutputArgs struct {
+	Foo pulumi.StringPtrInput `pulumi:"foo"`
+}
+
+func (RenamedResourceOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*RenamedResourceOutput)(nil)).Elem()
+}
+
+func (i RenamedResourceOutputArgs) ToRenamedResourceOutputOutput() RenamedResourceOutputOutput {
+	return i.ToRenamedResourceOutputOutputWithContext(context.Background())
+}
+
+func (i RenamedResourceOutputArgs) ToRenamedResourceOutputOutputWithContext(ctx context.Context) RenamedResourceOutputOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RenamedResourceOutputOutput)
+}
+
+type RenamedResourceOutputOutput struct{ *pulumi.OutputState }
+
+func (RenamedResourceOutputOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*RenamedResourceOutput)(nil)).Elem()
+}
+
+func (o RenamedResourceOutputOutput) ToRenamedResourceOutputOutput() RenamedResourceOutputOutput {
+	return o
+}
+
+func (o RenamedResourceOutputOutput) ToRenamedResourceOutputOutputWithContext(ctx context.Context) RenamedResourceOutputOutput {
+	return o
+}
+
+func (o RenamedResourceOutputOutput) Foo() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v RenamedResourceOutput) *string { return v.Foo }).(pulumi.StringPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(ObjectOutput{})
+	pulumi.RegisterOutputType(RenamedResourceOutputOutput{})
 }

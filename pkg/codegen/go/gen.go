@@ -98,8 +98,9 @@ type pkgContext struct {
 	packages       map[string]*pkgContext
 
 	// Name overrides set in GoPackageInfo
-	modToPkg         map[string]string // Module name -> package name
-	pkgImportAliases map[string]string // Package name -> import alias
+	modToPkg           map[string]string            // Module name -> package name
+	pkgImportAliases   map[string]string            // Package name -> import alias
+	typeRenameMappings map[string]TypeRenameMapping // package name -> map[type name] -> renamed name
 }
 
 func (pkg *pkgContext) detailsForType(t *schema.ObjectType) *typeDetails {
@@ -139,13 +140,22 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
-	// If the package containing the type's token already has a resource with the
-	// same name, add a `Type` suffix.
 	modPkg, ok := pkg.packages[mod]
-
 	name = Title(name)
+
 	if ok {
-		if modPkg.names.Has(name) {
+		renamed := false
+		// First determine if there is an existing rename required for the pkg+type
+		if renames, ok := modPkg.typeRenameMappings[pkg.pkg.Name]; ok {
+			if newName, ok := renames[name]; ok {
+				name = newName
+				renamed = true
+			}
+		}
+
+		// If the package containing the type's token already has a resource with the
+		// same name, add a `Type` suffix.
+		if !renamed && modPkg.names.Has(name) {
 			name += "Type"
 		}
 	}
@@ -1648,17 +1658,18 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pack, ok := packages[mod]
 		if !ok {
 			pack = &pkgContext{
-				pkg:              pkg,
-				mod:              mod,
-				importBasePath:   goInfo.ImportBasePath,
-				typeDetails:      map[*schema.ObjectType]*typeDetails{},
-				enumDetails:      map[*schema.EnumType]*typeDetails{},
-				names:            codegen.NewStringSet(),
-				functionNames:    map[*schema.Function]string{},
-				tool:             tool,
-				modToPkg:         goInfo.ModuleToPackage,
-				pkgImportAliases: goInfo.PackageImportAliases,
-				packages:         packages,
+				pkg:                pkg,
+				mod:                mod,
+				importBasePath:     goInfo.ImportBasePath,
+				typeDetails:        map[*schema.ObjectType]*typeDetails{},
+				enumDetails:        map[*schema.EnumType]*typeDetails{},
+				names:              codegen.NewStringSet(),
+				functionNames:      map[*schema.Function]string{},
+				tool:               tool,
+				modToPkg:           goInfo.ModuleToPackage,
+				pkgImportAliases:   goInfo.PackageImportAliases,
+				packages:           packages,
+				typeRenameMappings: goInfo.PackageToTypeRenameMapping,
 			}
 			packages[mod] = pack
 		}

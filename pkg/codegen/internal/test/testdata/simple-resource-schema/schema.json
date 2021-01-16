@@ -12,6 +12,14 @@
         }
       },
       "type": "object"
+    },
+    "example::OtherResourceOutput": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
     }
   },
   "resources": {
@@ -64,7 +72,12 @@
   "language": {
     "csharp": {},
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-resource-schema/go/example"
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-resource-schema/go/example",
+      "packageToTypeRenameMapping": {
+        "example": {
+          "OtherResourceOutput": "RenamedResourceOutput"
+        }
+      }
     },
     "nodejs": {},
     "python": {}
