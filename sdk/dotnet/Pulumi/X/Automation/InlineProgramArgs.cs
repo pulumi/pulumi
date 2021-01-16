@@ -2,8 +2,6 @@
 {
     public class InlineProgramArgs : LocalWorkspaceOptions
     {
-        public string ProjectName { get; }
-
         public string StackName { get; }
 
         public InlineProgramArgs(
@@ -11,7 +9,7 @@
             string stackName,
             PulumiFn program)
         {
-            this.ProjectName = projectName;
+            this.ProjectSettings = ProjectSettings.Default(projectName);
             this.StackName = stackName;
             this.Program = program;
         }
