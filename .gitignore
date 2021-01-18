@@ -19,8 +19,9 @@ coverage.cov
 # it up when they pass.)
 **/command-output/
 
-# By default, we don't check in yarn.lock files
+# By default, we don't check in yarn.lock or Pipfile.lock files
 **/yarn.lock
+**/Pipile.lock
 
 # Turning on MyPy in VSCode creates this workspace local folder
 .mypy_cache
