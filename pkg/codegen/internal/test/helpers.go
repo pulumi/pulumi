@@ -71,3 +71,22 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
 		assert.Equal(t, string(file), string(actual[name]), name)
 	}
 }
+
+// CheckAllFilesGenerated ensures that the set of expected and actual files generated
+// are exactly equivalent.
+func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
+	seen := map[string]bool{}
+	for x := range expected {
+		seen[x] = true
+	}
+	for a := range actual {
+		assert.Contains(t, seen, a, "Unexpected file generated: %s", a)
+		if seen[a] {
+			delete(seen, a)
+		}
+	}
+
+	for s := range seen {
+		assert.Fail(t, "No content generated for expected file %s", s)
+	}
+}

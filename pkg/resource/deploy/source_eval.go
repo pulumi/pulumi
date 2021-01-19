@@ -525,7 +525,7 @@ func parseProviderRequest(pkg tokens.Package, version string) (providers.Provide
 func (rm *resmon) SupportsFeature(ctx context.Context,
 	req *pulumirpc.SupportsFeatureRequest) (*pulumirpc.SupportsFeatureResponse, error) {
 
-	hasSupport := false
+	hasSupport := true
 
 	switch req.Id {
 	case "secrets":

@@ -43,6 +43,20 @@
       "properties": {
         "provider": {
           "$ref": "/kubernetes/v2.6.3/schema.json#/provider"
+        },
+        "securityGroup": {
+          "$ref": "/aws/v3.14.0/schema.json#/resources/aws:ec2%2FsecurityGroup:SecurityGroup"
+        },
+        "storageClasses": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "/kubernetes/v2.7.3/schema.json#/resources/kubernetes:storage.k8s.io%2Fv1:StorageClass"
+          }
+        }
+      },
+      "inputProperties": {
+        "metadata": {
+          "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
         }
       }
     }

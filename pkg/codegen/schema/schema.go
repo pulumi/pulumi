@@ -1104,7 +1104,7 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 		return nil, err
 	}
 
-	// If this is a reference to an external sch
+	// If this is a reference to an external schema
 	referencesExternalSchema := ref.Package != t.pkg.Name || !versionEquals(ref.Version, t.pkg.Version)
 	if referencesExternalSchema {
 		pkg, err := t.loader.LoadPackage(ref.Package, ref.Version)
