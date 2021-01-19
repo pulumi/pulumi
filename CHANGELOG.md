@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [dotnet/sdk] Thread-safe concurrency-friendly global state
+  [#6139](https://github.com/pulumi/pulumi/pull/6139)
+
 - [CLI] Add the ability to log out of all Pulumi backends at once.
   [#6101](https://github.com/pulumi/pulumi/pull/6101)
 
