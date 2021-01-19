@@ -31,7 +31,7 @@ func NewRubberTree(ctx *pulumi.Context,
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
 	var resource RubberTree
-	err := ctx.RegisterResource("plant-provider:tree/v1:RubberTree", name, args, &resource, opts...)
+	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +43,7 @@ func NewRubberTree(ctx *pulumi.Context,
 func GetRubberTree(ctx *pulumi.Context,
 	name string, id pulumi.IDInput, state *RubberTreeState, opts ...pulumi.ResourceOption) (*RubberTree, error) {
 	var resource RubberTree
-	err := ctx.ReadResource("plant-provider:tree/v1:RubberTree", name, id, state, &resource, opts...)
+	err := ctx.ReadResource("plant:tree/v1:RubberTree", name, id, state, &resource, opts...)
 	if err != nil {
 		return nil, err
 	}

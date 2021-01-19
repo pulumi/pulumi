@@ -55,7 +55,7 @@ class RubberTree(pulumi.CustomResource):
                 raise TypeError("Missing required property 'type'")
             __props__['type'] = type
         super(RubberTree, __self__).__init__(
-            'plant-provider:tree/v1:RubberTree',
+            'plant:tree/v1:RubberTree',
             resource_name,
             __props__,
             opts)

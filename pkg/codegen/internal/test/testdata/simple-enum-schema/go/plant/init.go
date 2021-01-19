@@ -19,7 +19,7 @@ func (p *pkg) Version() semver.Version {
 }
 
 func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pulumi.ProviderResource, error) {
-	if typ != "pulumi:providers:plant-provider" {
+	if typ != "pulumi:providers:plant" {
 		return nil, fmt.Errorf("unknown provider type: %s", typ)
 	}
 
@@ -32,7 +32,7 @@ func init() {
 		fmt.Println("failed to determine package version. defaulting to v1: %v", err)
 	}
 	pulumi.RegisterResourcePackage(
-		"plant-provider",
+		"plant",
 		&pkg{version},
 	)
 }
