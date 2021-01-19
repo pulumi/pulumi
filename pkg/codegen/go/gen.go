@@ -337,27 +337,27 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
-	if t.Resource != nil && pkg.pkg != nil && t.Resource.Package != pkg.pkg {
-		extPkg := t.Resource.Package
-		var goInfo GoPackageInfo
-
-		contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
-		if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
-			goInfo = info
-		}
-		extPkgCtx := &pkgContext{
-			pkg:              extPkg,
-			importBasePath:   goInfo.ImportBasePath,
-			pkgImportAliases: goInfo.PackageImportAliases,
-			modToPkg:         goInfo.ModuleToPackage,
-		}
-		resType := extPkgCtx.tokenToResource(t.Token)
-		if !strings.Contains(resType, ".") {
-			resType = fmt.Sprintf("%s.%s", extPkg.Name, resType)
-		}
-		return resType
+	if t.Resource == nil || pkg.pkg == nil || t.Resource.Package == pkg.pkg {
+		return pkg.tokenToResource(t.Token)
 	}
-	return pkg.tokenToResource(t.Token)
+	extPkg := t.Resource.Package
+	var goInfo GoPackageInfo
+
+	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+		goInfo = info
+	}
+	extPkgCtx := &pkgContext{
+		pkg:              extPkg,
+		importBasePath:   goInfo.ImportBasePath,
+		pkgImportAliases: goInfo.PackageImportAliases,
+		modToPkg:         goInfo.ModuleToPackage,
+	}
+	resType := extPkgCtx.tokenToResource(t.Token)
+	if !strings.Contains(resType, ".") {
+		resType = fmt.Sprintf("%s.%s", extPkg.Name, resType)
+	}
+	return resType
 }
 
 // resolveObjectType resolves resource references in properties while
@@ -365,23 +365,23 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
-	if t.Package != nil && pkg.pkg != nil && t.Package != pkg.pkg {
-		extPkg := t.Package
-		var goInfo GoPackageInfo
-
-		contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
-		if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
-			goInfo = info
-		}
-		extPkgCtx := &pkgContext{
-			pkg:              extPkg,
-			importBasePath:   goInfo.ImportBasePath,
-			pkgImportAliases: goInfo.PackageImportAliases,
-			modToPkg:         goInfo.ModuleToPackage,
-		}
-		return extPkgCtx.plainType(t, false)
+	if t.Package == nil || pkg.pkg == nil || t.Package == pkg.pkg {
+		return pkg.tokenToType(t.Token)
 	}
-	return pkg.tokenToType(t.Token)
+	extPkg := t.Package
+	var goInfo GoPackageInfo
+
+	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+		goInfo = info
+	}
+	extPkgCtx := &pkgContext{
+		pkg:              extPkg,
+		importBasePath:   goInfo.ImportBasePath,
+		pkgImportAliases: goInfo.PackageImportAliases,
+		modToPkg:         goInfo.ModuleToPackage,
+	}
+	return extPkgCtx.plainType(t, false)
 }
 
 func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
@@ -600,7 +600,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	elementType := pkg.enumElementType(enumType.ElementType, false)
 	fmt.Fprintf(w, "type %s %s\n\n", name, elementType)
 
-	_, _ = fmt.Fprintln(w, "const (")
+	fmt.Fprintln(w, "const (")
 	for _, e := range enumType.Elements {
 		printCommentWithDeprecationMessage(w, e.Comment, e.DeprecationMessage, true)
 
