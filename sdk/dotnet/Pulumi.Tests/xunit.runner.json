@@ -1,7 +1,4 @@
 {
-	"$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
-	// we should not longer be using static global state so the dotnet
-	// code should not limit us here, but I was getting inconsistent
-	// issues with pulumi CLI trying to access my credentials.json concurrently (file lock errors)
-	"parallelizeTestCollections": false
+    "$schema": "https://xunit.net/schema/current/xunit.runner.schema.json",
+    "parallelizeTestCollections": false
 }

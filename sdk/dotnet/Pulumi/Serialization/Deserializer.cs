@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Google.Protobuf.Collections;
@@ -233,7 +234,7 @@ namespace Pulumi.Serialization
             var qualifiedTypeParts = qualifiedType.Split('$');
             var type = qualifiedTypeParts[^1];
 
-            if (Deployment.ResourcePackages.TryConstruct(type, version, urn, out resource)) {
+            if (ResourcePackages.TryConstruct(type, version, urn, out resource)) {
                 return true;
             }
 

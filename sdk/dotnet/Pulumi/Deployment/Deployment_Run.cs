@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
 using Pulumi.Testing;
 
@@ -73,7 +72,7 @@ namespace Pulumi
         /// <param name="func">Callback that creates stack resources.</param>
         /// <param name="options">Stack options.</param>
         public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options = null)
-            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync(func, options));
+            => CreateRunner(() => new Deployment()).RunAsync(func, options);
 
         /// <summary>
         /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
@@ -102,7 +101,7 @@ namespace Pulumi
         /// </para>
         /// </summary>
         public static Task<int> RunAsync<TStack>() where TStack : Stack, new()
-            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync<TStack>());
+            => CreateRunner(() => new Deployment()).RunAsync<TStack>();
 
         /// <summary>
         /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
@@ -132,7 +131,7 @@ namespace Pulumi
         /// </para>
         /// </summary>
         public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
-            => CreateRunnerAndRunAsync(() => new Deployment(), runner => runner.RunAsync<TStack>(serviceProvider));
+            => CreateRunner(() => new Deployment()).RunAsync<TStack>(serviceProvider);
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
@@ -150,7 +149,9 @@ namespace Pulumi
         /// <returns>Test result containing created resources and errors, if any.</returns>
         public static Task<ImmutableArray<Resource>> TestWithServiceProviderAsync<TStack>(IMocks mocks, IServiceProvider serviceProvider, TestOptions? options = null)
             where TStack : Stack
-            => TestAsync(mocks, runner => runner.RunAsync<TStack>(serviceProvider), options);
+        {
+            return TestAsync(mocks, (deployment) => deployment._runner.RunAsync<TStack>(serviceProvider), options);
+        }
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
@@ -165,38 +166,58 @@ namespace Pulumi
         /// <returns>Test result containing created resources and errors, if any.</returns>
         public static Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, TestOptions? options = null)
             where TStack : Stack, new()
-            => TestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
+        {
+            return TestAsync(mocks, (deployment)=> deployment._runner.RunAsync<TStack>(), options);
+        }
 
-        private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
+        private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<Deployment, Task<int>> runAsync, TestOptions? options = null)
         {
             var engine = new MockEngine();
             var monitor = new MockMonitor(mocks);
-            await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, options), runAsync).ConfigureAwait(false);
-            return engine.Errors.Count switch
+            Deployment deployment;
+            lock (_instanceLock)
             {
-                1 => throw new RunException(engine.Errors.Single()),
-                int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
-                _ => monitor.Resources.ToImmutableArray()
-            };
+                if (_instance != null)
+                    throw new NotSupportedException($"Multiple executions of {nameof(TestAsync)} must run serially. Please configure your unit test suite to run tests one-by-one.");
+
+                deployment = new Deployment(engine, monitor, options);
+                Instance = new DeploymentInstance(deployment);
+            }
+
+            try
+            {
+                await runAsync(deployment);
+                return engine.Errors.Count switch
+                {
+                    1 => throw new RunException(engine.Errors.Single()),
+                    int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                    _ => monitor.Resources.ToImmutableArray()
+                };
+            }
+            finally
+            {
+                lock (_instanceLock)
+                {
+                    _instance = null;
+                }
+            }
         }
 
-        // this method *must* remain marked async
-        // in order to protect the scope of the AsyncLocal Deployment.Instance we cannot elide the task (return it early)
-        // if the task is returned early and not awaited, than it is possible for any code that runs before the eventual await
-        // to be executed synchronously and thus have multiple calls to one of the Run methods affecting eachothers Deployment.Instance
-        internal static async Task<int> CreateRunnerAndRunAsync(
-            Func<Deployment> deploymentFactory,
-            Func<IRunner, Task<int>> runAsync,
-            IEnumerable<Assembly>? resourcePackageAssemblies = null)
+        private static IRunner CreateRunner(Func<Deployment> deploymentFactory)
         {
             // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 
             Serilog.Log.Debug("Deployment.Run called.");
-            Serilog.Log.Debug("Creating new Deployment.");
-            var deployment = deploymentFactory();
-            Instance = new DeploymentInstance(deployment);
-            ResourcePackages = new ResourcePackages(resourcePackageAssemblies);
-            return await runAsync(deployment._runner).ConfigureAwait(false);
+            lock (_instanceLock)
+            {
+                if (_instance != null)
+                    throw new NotSupportedException("Deployment.Run can only be called a single time.");
+
+                Serilog.Log.Debug("Creating new Deployment.");
+                var deployment = deploymentFactory();
+                Instance = new DeploymentInstance(deployment);
+                return deployment._runner;
+            }
         }
     }
 }
