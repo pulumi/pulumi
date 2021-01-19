@@ -16,6 +16,8 @@ package pulumi
 
 import (
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 )
 
 type (
@@ -72,6 +74,13 @@ func (s *ResourceState) addTransformation(t ResourceTransformation) {
 
 func (ResourceState) isResource() {}
 
+func newDependencyResource(urn URN) Resource {
+	var res ResourceState
+	res.urn.OutputState = newOutputState(res.urn.ElementType(), &res)
+	res.urn.resolve(urn, true, false, nil)
+	return &res
+}
+
 type CustomResourceState struct {
 	ResourceState
 
@@ -84,6 +93,15 @@ func (s CustomResourceState) ID() IDOutput {
 
 func (CustomResourceState) isCustomResource() {}
 
+func newDependencyCustomResource(urn URN, id ID) CustomResource {
+	var res CustomResourceState
+	res.urn.OutputState = newOutputState(res.urn.ElementType(), &res)
+	res.urn.resolve(urn, true, false, nil)
+	res.id.OutputState = newOutputState(res.id.ElementType(), &res)
+	res.id.resolve(id, id != "", false, nil)
+	return &res
+}
+
 type ProviderResourceState struct {
 	CustomResourceState
 
@@ -92,6 +110,16 @@ type ProviderResourceState struct {
 
 func (s ProviderResourceState) getPackage() string {
 	return s.pkg
+}
+
+func newDependencyProviderResource(urn URN, id ID) ProviderResource {
+	var res ProviderResourceState
+	res.urn.OutputState = newOutputState(res.urn.ElementType(), &res)
+	res.id.OutputState = newOutputState(res.id.ElementType(), &res)
+	res.urn.resolve(urn, true, false, nil)
+	res.id.resolve(id, id != "", false, nil)
+	res.pkg = string(resource.URN(urn).Type().Name())
+	return &res
 }
 
 // Resource represents a cloud resource managed by Pulumi.
