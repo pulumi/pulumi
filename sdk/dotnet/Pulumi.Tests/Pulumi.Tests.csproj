@@ -4,7 +4,15 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+
+    <!-- necessary to set $(OutputPath) for the MSBuild steps -->
+    <BaseOutputPath>$(MSBuildThisFileDirectory)\bin\</BaseOutputPath>
   </PropertyGroup>
+
+  <!-- We need to build the external resource lib with this project but we should *not* reference it. -->
+  <Target Name="BuildExternalResource" AfterTargets="Build">
+    <MSBuild Projects="..\Pulumi.Test.ExternalResource\Pulumi.Test.ExternalResource.csproj" Targets="Publish" Properties="Configuration=$(Configuration);PublishDir=$(OutputPath)/Pulumi.Test.ExternalResource" />
+  </Target>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.3.0" />

@@ -1,5 +1,7 @@
 // Copyright 2016-2020, Pulumi Corporation
 
+using System.IO;
+using System.Reflection;
 using Xunit;
 
 namespace Pulumi.Tests.Serialization
@@ -9,19 +11,20 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void UnknownNotFound()
         {
-            if (ResourcePackages.TryGetResourceType("test:index/UnknownResource", null, out _))
+            var resourcePackages = new ResourcePackages(null);
+            if (resourcePackages.TryGetResourceType("test:index/UnknownResource", null, out _))
             {
                 Assert.True(false, "Unknown resource found");
             }
-            if (ResourcePackages.TryGetResourceType("test:index/UnknownResource", "", out _))
+            if (resourcePackages.TryGetResourceType("test:index/UnknownResource", "", out _))
             {
                 Assert.True(false, "Unknown resource found");
             }
-            if (ResourcePackages.TryGetResourceType("unknown:index/TestResource", "0.0.1", out _))
+            if (resourcePackages.TryGetResourceType("unknown:index/TestResource", "0.0.1", out _))
             {
                 Assert.True(false, "Unknown resource found");
             }
-            if (ResourcePackages.TryGetResourceType("unknown:index/AnotherResource", "1.0.0", out _))
+            if (resourcePackages.TryGetResourceType("unknown:index/AnotherResource", "1.0.0", out _))
             {
                 Assert.True(false, "Resource with non-matching assembly version found");
             }
@@ -30,7 +33,8 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void NullReturnsHighestVersion()
         {
-            if (ResourcePackages.TryGetResourceType("test:index/TestResource", null, out var type))
+            var resourcePackages = new ResourcePackages(null);
+            if (resourcePackages.TryGetResourceType("test:index/TestResource", null, out var type))
             {
                 Assert.Equal(typeof(Version202TestResource), type);
             }
@@ -43,7 +47,8 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void BlankReturnsHighestVersion()
         {
-            if (ResourcePackages.TryGetResourceType("test:index/TestResource", "", out var type))
+            var resourcePackages = new ResourcePackages(null);
+            if (resourcePackages.TryGetResourceType("test:index/TestResource", "", out var type))
             {
                 Assert.Equal(typeof(Version202TestResource), type);
             }
@@ -56,7 +61,8 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void MajorVersionRespected()
         {
-            if (ResourcePackages.TryGetResourceType("test:index/TestResource", "1.0.0", out var type))
+            var resourcePackages = new ResourcePackages(null);
+            if (resourcePackages.TryGetResourceType("test:index/TestResource", "1.0.0", out var type))
             {
                 Assert.Equal(typeof(Version102TestResource), type);
             }
@@ -69,13 +75,54 @@ namespace Pulumi.Tests.Serialization
         [Fact]
         public void WildcardSelectedIfOthersDontMatch()
         {
-            if (ResourcePackages.TryGetResourceType("test:index/TestResource", "3.0.0", out var type))
+            var resourcePackages = new ResourcePackages(null);
+            if (resourcePackages.TryGetResourceType("test:index/TestResource", "3.0.0", out var type))
             {
                 Assert.Equal(typeof(WildcardTestResource), type);
             }
             else
             {
                 Assert.True(false, "Test resource not found");
+            }
+        }
+
+        // External resource tests
+
+        private static string GetExternalAssemblyPath()
+            => Path.Combine(
+                new FileInfo(Assembly.GetExecutingAssembly().Location).Directory.FullName,
+                "Pulumi.Test.ExternalResource",
+                "Pulumi.Test.ExternalResource.dll");
+
+        [Fact]
+        public void ExternalNotFoundFromCurrentDomain()
+        {
+            // by passing null we ensure it uses AppDomain.CurrentDomain
+            // to find referenced assemblies and then resource types,
+            // which doesn't include the external resource
+            var resourcePackages = new ResourcePackages(null);
+            if (resourcePackages.TryGetResourceType("test:index/ExternalResource", "1.0.0", out _))
+            {
+                Assert.True(false, "External resource found");
+            }
+        }
+
+        [Fact]
+        public void ExternalFoundFromLoadedAssembly()
+        {
+            var path = GetExternalAssemblyPath();
+            var externalAssembly = Assembly.LoadFrom(path);
+            Assert.False(externalAssembly.IsDynamic);
+            var resourcePackages = new ResourcePackages(new[] { externalAssembly });
+            if (!resourcePackages.TryGetResourceType("test:index/ExternalResource", "1.0.0", out _))
+            {
+                Assert.True(false, "External resource not found");
+            }
+
+            // verify we're not still finding resources from AppDomain.CurrentDomain
+            if (resourcePackages.TryGetResourceType("test:index/TestResource", null, out _))
+            {
+                Assert.True(false, "Resource from AppDomain.CurrentDomain found");
             }
         }
 
