@@ -5,7 +5,7 @@ using System;
 using System.ComponentModel;
 using Pulumi;
 
-namespace Pulumi.PlantProvider.Tree.V1
+namespace Pulumi.Plant.Tree.V1
 {
     [EnumType]
     public readonly struct Farm : IEquatable<Farm>

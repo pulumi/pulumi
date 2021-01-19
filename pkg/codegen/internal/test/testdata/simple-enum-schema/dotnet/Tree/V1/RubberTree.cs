@@ -7,19 +7,19 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.PlantProvider.Tree.V1
+namespace Pulumi.Plant.Tree.V1
 {
-    [PlantProviderResourceType("plant-provider:tree/v1:RubberTree")]
+    [PlantResourceType("plant:tree/v1:RubberTree")]
     public partial class RubberTree : Pulumi.CustomResource
     {
         [Output("container")]
-        public Output<Pulumi.PlantProvider.Outputs.Container?> Container { get; private set; } = null!;
+        public Output<Pulumi.Plant.Outputs.Container?> Container { get; private set; } = null!;
 
         [Output("farm")]
         public Output<string?> Farm { get; private set; } = null!;
 
         [Output("type")]
-        public Output<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety> Type { get; private set; } = null!;
+        public Output<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; private set; } = null!;
 
 
         /// <summary>
@@ -30,12 +30,12 @@ namespace Pulumi.PlantProvider.Tree.V1
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
         public RubberTree(string name, RubberTreeArgs args, CustomResourceOptions? options = null)
-            : base("plant-provider:tree/v1:RubberTree", name, args ?? new RubberTreeArgs(), MakeResourceOptions(options, ""))
+            : base("plant:tree/v1:RubberTree", name, args ?? new RubberTreeArgs(), MakeResourceOptions(options, ""))
         {
         }
 
         private RubberTree(string name, Input<string> id, CustomResourceOptions? options = null)
-            : base("plant-provider:tree/v1:RubberTree", name, null, MakeResourceOptions(options, id))
+            : base("plant:tree/v1:RubberTree", name, null, MakeResourceOptions(options, id))
         {
         }
 
@@ -67,13 +67,13 @@ namespace Pulumi.PlantProvider.Tree.V1
     public sealed class RubberTreeArgs : Pulumi.ResourceArgs
     {
         [Input("container")]
-        public Input<Pulumi.PlantProvider.Inputs.ContainerArgs>? Container { get; set; }
+        public Input<Pulumi.Plant.Inputs.ContainerArgs>? Container { get; set; }
 
         [Input("farm")]
-        public InputUnion<Pulumi.PlantProvider.Tree.V1.Farm, string>? Farm { get; set; }
+        public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }
 
         [Input("type", required: true)]
-        public Input<Pulumi.PlantProvider.Tree.V1.RubberTreeVariety> Type { get; set; } = null!;
+        public Input<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; set; } = null!;
 
         public RubberTreeArgs()
         {

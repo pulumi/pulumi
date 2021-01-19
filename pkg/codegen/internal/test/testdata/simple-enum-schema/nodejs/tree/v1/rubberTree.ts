@@ -19,7 +19,7 @@ export class RubberTree extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'plant-provider:tree/v1:RubberTree';
+    public static readonly __pulumiType = 'plant:tree/v1:RubberTree';
 
     /**
      * Returns true if the given object is an instance of RubberTree.  This is designed to work even
