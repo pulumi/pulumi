@@ -1,6 +1,10 @@
 package pulumi
 
-import "reflect"
+import (
+	"reflect"
+
+	"golang.org/x/net/context"
+)
 
 // StackReference manages a reference to a Pulumi stack.
 type StackReference struct {
@@ -23,7 +27,7 @@ func (s *StackReference) GetOutput(name StringInput) AnyOutput {
 
 // GetStringOutput returns a stack output keyed by the given name as an StringOutput
 func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
-	return s.GetOutput(name).ApplyString(func(out interface{}) string {
+	return s.GetOutput(name).ApplyStringWithContext(context.Background(), func(out interface{}) string {
 		var res string
 		if out != nil {
 			res = out.(string)
@@ -34,7 +38,7 @@ func (s *StackReference) GetStringOutput(name StringInput) StringOutput {
 
 // GetIDOutput returns a stack output keyed by the given name as an IDOutput
 func (s *StackReference) GetIDOutput(name StringInput) IDOutput {
-	return s.GetStringOutput(name).ApplyID(func(out string) ID {
+	return s.GetStringOutput(name).ApplyIDWithContext(context.Background(), func(out string) ID {
 		return ID(out)
 	})
 }
@@ -64,7 +68,7 @@ func NewStackReference(ctx *Context, name string, args *StackReferenceArgs,
 		args.Name = StringInput(String(name))
 	}
 
-	id := args.Name.ToStringOutput().ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
+	id := args.Name.ToStringOutputWithContext(ctx.ctx).ApplyT(func(s string) ID { return ID(s) }).(IDOutput)
 
 	var ref StackReference
 	if err := ctx.ReadResource("pulumi:pulumi:StackReference", name, id, args, &ref, opts...); err != nil {

@@ -32,7 +32,6 @@ type Asset interface {
 	AssetOrArchive
 	AssetInput
 
-	ToAssetOrArchiveOutput() AssetOrArchiveOutput
 	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Path returns the filesystem path, for file-based assets.
@@ -84,7 +83,6 @@ type Archive interface {
 	AssetOrArchive
 	ArchiveInput
 
-	ToAssetOrArchiveOutput() AssetOrArchiveOutput
 	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 
 	// Assets returns a map of named assets or archives, for collections.

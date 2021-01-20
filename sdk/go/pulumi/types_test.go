@@ -258,8 +258,8 @@ func TestToOutputAny(t *testing.T) {
 
 	out := ToOutput(&args{
 		S: ID("hello"),
-		I: Int(42).ToIntOutput(),
-		A: Map{"world": Bool(true).ToBoolOutput()},
+		I: Int(42).ToIntOutputWithContext(context.Background()),
+		A: Map{"world": Bool(true).ToBoolOutputWithContext(context.Background())},
 	})
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
@@ -378,7 +378,7 @@ func TestToOutputInputAny(t *testing.T) {
 	out := ToOutput(&argsInputs{
 		S: ID("hello"),
 		I: Int(42),
-		A: Map{"world": Bool(true).ToBoolOutput()},
+		A: Map{"world": Bool(true).ToBoolOutputWithContext(context.Background())},
 	})
 	_, ok := out.(AnyOutput)
 	assert.True(t, ok)
@@ -556,7 +556,7 @@ func TestNil(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
-	bo := ao.ApplyBool(func(x interface{}) bool {
+	bo := ao.ApplyBoolWithContext(context.Background(), func(x interface{}) bool {
 		return x == nil
 	})
 	v, known, secret, deps, err = await(bo)

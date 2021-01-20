@@ -133,13 +133,9 @@ func TestOutputApply(t *testing.T) {
 
 {{range .Builtins}}
 		t.Run("Apply{{.Name}}", func(t *testing.T) {
-			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
 
-			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, _, err = await(o2)
+			o2 := out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
@@ -292,13 +288,13 @@ func TestToOutput{{.Name}}(t *testing.T) {
 func TestTo{{.Name}}Output(t *testing.T) {
 	in := {{.Name}}Input({{.Example}})
 
-	out := in.To{{.Name}}Output()
+	out := in.To{{.Name}}OutputWithContext(context.Background())
 
 	_, known, _, _, err := await(out)
 	assert.True(t, known)
 	assert.NoError(t, err)
 
-	out = out.To{{.Name}}Output()
+	out = out.To{{.Name}}OutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -321,56 +317,56 @@ func TestTo{{.Name}}Output(t *testing.T) {
 // Test type-specific ToOutput methods for builtins that implement other builtin input types.
 func TestBuiltinConversions(t *testing.T) {
 	archiveIn := NewFileArchive("foo.zip")
-	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutput()
+	assetOrArchiveOut := archiveIn.ToAssetOrArchiveOutputWithContext(context.Background())
 	archiveV, known, _, _, err := await(assetOrArchiveOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, archiveIn, archiveV)
 
-	archiveOut := archiveIn.ToArchiveOutput()
-	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutput()
+	archiveOut := archiveIn.ToArchiveOutputWithContext(context.Background())
+	assetOrArchiveOut = archiveOut.ToAssetOrArchiveOutputWithContext(context.Background())
 	archiveV, known, _, _, err = await(assetOrArchiveOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, archiveIn, archiveV)
 
 	assetIn := NewFileAsset("foo.zip")
-	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutput()
+	assetOrArchiveOut = assetIn.ToAssetOrArchiveOutputWithContext(context.Background())
 	assetV, known, _, _, err := await(assetOrArchiveOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, assetIn, assetV)
 
-	assetOut := assetIn.ToAssetOutput()
-	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutput()
+	assetOut := assetIn.ToAssetOutputWithContext(context.Background())
+	assetOrArchiveOut = assetOut.ToAssetOrArchiveOutputWithContext(context.Background())
 	assetV, known, _, _, err = await(assetOrArchiveOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, assetIn, assetV)
 
 	idIn := ID("foo")
-	stringOut := idIn.ToStringOutput()
+	stringOut := idIn.ToStringOutputWithContext(context.Background())
 	stringV, known, _, _, err := await(stringOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, string(idIn), stringV)
 
-	idOut := idIn.ToIDOutput()
-	stringOut = idOut.ToStringOutput()
+	idOut := idIn.ToIDOutputWithContext(context.Background())
+	stringOut = idOut.ToStringOutputWithContext(context.Background())
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, string(idIn), stringV)
 
 	urnIn := URN("foo")
-	stringOut = urnIn.ToStringOutput()
+	stringOut = urnIn.ToStringOutputWithContext(context.Background())
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
 	assert.Equal(t, string(urnIn), stringV)
 
-	urnOut := urnIn.ToURNOutput()
-	stringOut = urnOut.ToStringOutput()
+	urnOut := urnIn.ToURNOutputWithContext(context.Background())
+	stringOut = urnOut.ToStringOutputWithContext(context.Background())
 	stringV, known, _, _, err = await(stringOut)
 	assert.True(t, known)
 	assert.NoError(t, err)
@@ -381,7 +377,7 @@ func TestBuiltinConversions(t *testing.T) {
 {{range .Builtins}}
 {{if .DefineElem}}
 func Test{{.Name}}Elem(t *testing.T) {
-	out := ({{.Example}}).To{{.Name}}Output()
+	out := ({{.Example}}).To{{.Name}}OutputWithContext(context.Background())
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -401,7 +397,7 @@ func Test{{.Name}}Elem(t *testing.T) {
 {{range .Builtins}}
 {{if .DefineIndex}}
 func Test{{.Name}}Index(t *testing.T) {
-	out := ({{.Example}}).To{{.Name}}Output()
+	out := ({{.Example}}).To{{.Name}}OutputWithContext(context.Background())
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -420,7 +416,7 @@ func Test{{.Name}}Index(t *testing.T) {
 {{range .Builtins}}
 {{if .DefineMapIndex}}
 func Test{{.Name}}Index(t *testing.T) {
-	out := ({{.Example}}).To{{.Name}}Output()
+	out := ({{.Example}}).To{{.Name}}OutputWithContext(context.Background())
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)

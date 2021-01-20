@@ -354,7 +354,7 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		idToRead, known, _, err := id.ToIDOutputWithContext(context.Background()).awaitID(context.TODO())
 		if !known || err != nil {
 			return
 		}
@@ -583,7 +583,7 @@ func (ctx *Context) registerResource(
 			for key, propertyDependencies := range resp.GetPropertyDependencies() {
 				var resources []Resource
 				for _, urn := range propertyDependencies.GetUrns() {
-					resources = append(resources, &ResourceState{urn: URNInput(URN(urn)).ToURNOutput()})
+					resources = append(resources, &ResourceState{urn: URNInput(URN(urn)).ToURNOutputWithContext(context.Background())})
 				}
 				deps[key] = resources
 			}
@@ -994,7 +994,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 
 	var importID ID
 	if opts.Import != nil {
-		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
+		id, _, _, err := opts.Import.ToIDOutputWithContext(context.Background()).awaitID(context.TODO())
 		if err != nil {
 			return "", nil, false, "", false, "", nil, nil, "", err
 		}

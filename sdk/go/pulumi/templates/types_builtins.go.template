@@ -21,10 +21,7 @@ import (
 )
 
 {{range .Builtins}}
-// Apply{{.Name}} is like ApplyT, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}(applier interface{}) {{.Name}}Output {
-	return o.ApplyT(applier).({{.Name}}Output)
-}
+
 
 // Apply{{.Name}}WithContext is like ApplyTWithContext, but returns a {{.Name}}Output.
 func (o *OutputState) Apply{{.Name}}WithContext(ctx context.Context, applier interface{}) {{.Name}}Output {
@@ -41,10 +38,8 @@ var {{.Name | Unexported}}Type = reflect.TypeOf((*{{.ElementType}})(nil)).Elem()
 type {{.Name}}Input interface {
 	Input
 
-	To{{.Name}}Output() {{.Name}}Output
 	To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output
 	{{if .ImplementsPtrType}}
-	To{{.Name}}PtrOutput() {{.Name}}PtrOutput
 	To{{.Name}}PtrOutputWithContext(ctx context.Context) {{.Name}}PtrOutput
 	{{end}}
 }
@@ -65,9 +60,6 @@ func ({{.InputType}}) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
 }
 
-func (in {{.InputType}}) To{{.Name}}Output() {{.Name}}Output {
-	return ToOutput(in).({{.Name}}Output)
-}
 
 func (in {{.InputType}}) To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output {
 	return ToOutputWithContext(ctx, in).({{.Name}}Output)
@@ -75,9 +67,6 @@ func (in {{.InputType}}) To{{.Name}}OutputWithContext(ctx context.Context) {{.Na
 
 {{with $builtin := .}}
 {{range $t := .Implements}}
-func (in {{$builtin.InputType}}) To{{$t.Name}}Output() {{$t.Name}}Output {
-	return in.To{{$t.Name}}OutputWithContext(context.Background())
-}
 
 func (in {{$builtin.InputType}}) To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output {
 	return in.To{{$builtin.Name}}OutputWithContext(ctx).To{{$t.Name}}OutputWithContext(ctx)
@@ -102,18 +91,11 @@ func ({{.Name}}Output) ElementType() reflect.Type {
 	return {{.Name | Unexported}}Type
 }
 
-func (o {{.Name}}Output) To{{.Name}}Output() {{.Name}}Output {
-	return o
-}
-
 func (o {{.Name}}Output) To{{.Name}}OutputWithContext(ctx context.Context) {{.Name}}Output {
 	return o
 }
 {{with $builtin := .}}
 {{range $t := .Implements}}
-func (o {{$builtin.Name}}Output) To{{$t.Name}}Output() {{$t.Name}}Output {
-	return o.To{{$t.Name}}OutputWithContext(context.Background())
-}
 
 func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Context) {{$t.Name}}Output {
 	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{$builtin.ElementType}}) {{$t.ElementType}} {
@@ -122,9 +104,6 @@ func (o {{$builtin.Name}}Output) To{{$t.Name}}OutputWithContext(ctx context.Cont
 }
 {{end}}
 {{if .ImplementsPtrType}}
-func (o {{.Name}}Output) To{{.Name}}PtrOutput() {{.Name}}PtrOutput {
-	return o.To{{.Name}}PtrOutputWithContext(context.Background())
-}
 
 func (o {{.Name}}Output) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{.Name}}PtrOutput {
 	return o.ApplyTWithContext(ctx,	func(_ context.Context, v {{.ElementType}}) *{{.ElementType}} {

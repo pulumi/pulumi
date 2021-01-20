@@ -17,6 +17,8 @@ package pulumi
 import (
 	"errors"
 	"strings"
+
+	"golang.org/x/net/context"
 )
 
 // Alias is a partial description of prior named used for a resource. It can be processed in the
@@ -43,7 +45,7 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 	defaultProject, defaultStack string) (URNOutput, error) {
 
 	if a.URN != nil {
-		return a.URN.ToURNOutput(), nil
+		return a.URN.ToURNOutputWithContext(context.Background()), nil
 	}
 
 	n := a.Name
@@ -63,7 +65,7 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 		parent = a.Parent.URN()
 	}
 	if a.ParentURN != nil {
-		parent = a.ParentURN.ToURNOutput()
+		parent = a.ParentURN.ToURNOutputWithContext(context.Background())
 	}
 
 	project := a.Project
@@ -82,17 +84,17 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	if parent != nil {
-		parentPrefix = parent.ToStringOutput().ApplyString(func(p string) string {
+		parentPrefix = parent.ToStringOutputWithContext(context.Background()).ApplyStringWithContext(context.Background(), func(p string) string {
 			return p[0:strings.LastIndex(p, "::")] + "$"
 		})
 	} else {
-		parentPrefix = All(stack, project).ApplyString(func(a []interface{}) string {
+		parentPrefix = All(stack, project).ApplyStringWithContext(context.Background(), func(a []interface{}) string {
 			return "urn:pulumi:" + a[0].(string) + "::" + a[1].(string) + "::"
 		})
 
 	}
 
-	return All(parentPrefix, t, name).ApplyURN(func(a []interface{}) URN {
+	return All(parentPrefix, t, name).ApplyURNWithContext(context.Background(), func(a []interface{}) URN {
 		return URN(a[0].(string) + a[1].(string) + "::" + a[2].(string))
 	})
 }
@@ -103,7 +105,7 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN URNOutput) URNOutput {
 	aliasName := StringInput(String(childName))
 	if strings.HasPrefix(childName, parentName) {
-		aliasName = parentURN.ApplyString(func(urn URN) string {
+		aliasName = parentURN.ApplyStringWithContext(context.Background(), func(urn URN) string {
 			parentPrefix := urn[strings.LastIndex(string(urn), "::")+2:]
 			return string(parentPrefix) + childName[len(parentName):]
 		})

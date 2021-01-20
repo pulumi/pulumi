@@ -20,19 +20,9 @@ import (
 	"reflect"
 )
 
-// ApplyArchive is like ApplyT, but returns a ArchiveOutput.
-func (o *OutputState) ApplyArchive(applier interface{}) ArchiveOutput {
-	return o.ApplyT(applier).(ArchiveOutput)
-}
-
 // ApplyArchiveWithContext is like ApplyTWithContext, but returns a ArchiveOutput.
 func (o *OutputState) ApplyArchiveWithContext(ctx context.Context, applier interface{}) ArchiveOutput {
 	return o.ApplyTWithContext(ctx, applier).(ArchiveOutput)
-}
-
-// ApplyArchiveArray is like ApplyT, but returns a ArchiveArrayOutput.
-func (o *OutputState) ApplyArchiveArray(applier interface{}) ArchiveArrayOutput {
-	return o.ApplyT(applier).(ArchiveArrayOutput)
 }
 
 // ApplyArchiveArrayWithContext is like ApplyTWithContext, but returns a ArchiveArrayOutput.
@@ -40,19 +30,9 @@ func (o *OutputState) ApplyArchiveArrayWithContext(ctx context.Context, applier 
 	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayOutput)
 }
 
-// ApplyArchiveMap is like ApplyT, but returns a ArchiveMapOutput.
-func (o *OutputState) ApplyArchiveMap(applier interface{}) ArchiveMapOutput {
-	return o.ApplyT(applier).(ArchiveMapOutput)
-}
-
 // ApplyArchiveMapWithContext is like ApplyTWithContext, but returns a ArchiveMapOutput.
 func (o *OutputState) ApplyArchiveMapWithContext(ctx context.Context, applier interface{}) ArchiveMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(ArchiveMapOutput)
-}
-
-// ApplyArchiveArrayMap is like ApplyT, but returns a ArchiveArrayMapOutput.
-func (o *OutputState) ApplyArchiveArrayMap(applier interface{}) ArchiveArrayMapOutput {
-	return o.ApplyT(applier).(ArchiveArrayMapOutput)
 }
 
 // ApplyArchiveArrayMapWithContext is like ApplyTWithContext, but returns a ArchiveArrayMapOutput.
@@ -60,19 +40,9 @@ func (o *OutputState) ApplyArchiveArrayMapWithContext(ctx context.Context, appli
 	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayMapOutput)
 }
 
-// ApplyArchiveMapArray is like ApplyT, but returns a ArchiveMapArrayOutput.
-func (o *OutputState) ApplyArchiveMapArray(applier interface{}) ArchiveMapArrayOutput {
-	return o.ApplyT(applier).(ArchiveMapArrayOutput)
-}
-
 // ApplyArchiveMapArrayWithContext is like ApplyTWithContext, but returns a ArchiveMapArrayOutput.
 func (o *OutputState) ApplyArchiveMapArrayWithContext(ctx context.Context, applier interface{}) ArchiveMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(ArchiveMapArrayOutput)
-}
-
-// ApplyArchiveMapMap is like ApplyT, but returns a ArchiveMapMapOutput.
-func (o *OutputState) ApplyArchiveMapMap(applier interface{}) ArchiveMapMapOutput {
-	return o.ApplyT(applier).(ArchiveMapMapOutput)
 }
 
 // ApplyArchiveMapMapWithContext is like ApplyTWithContext, but returns a ArchiveMapMapOutput.
@@ -80,19 +50,9 @@ func (o *OutputState) ApplyArchiveMapMapWithContext(ctx context.Context, applier
 	return o.ApplyTWithContext(ctx, applier).(ArchiveMapMapOutput)
 }
 
-// ApplyArchiveArrayArray is like ApplyT, but returns a ArchiveArrayArrayOutput.
-func (o *OutputState) ApplyArchiveArrayArray(applier interface{}) ArchiveArrayArrayOutput {
-	return o.ApplyT(applier).(ArchiveArrayArrayOutput)
-}
-
 // ApplyArchiveArrayArrayWithContext is like ApplyTWithContext, but returns a ArchiveArrayArrayOutput.
 func (o *OutputState) ApplyArchiveArrayArrayWithContext(ctx context.Context, applier interface{}) ArchiveArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(ArchiveArrayArrayOutput)
-}
-
-// ApplyAsset is like ApplyT, but returns a AssetOutput.
-func (o *OutputState) ApplyAsset(applier interface{}) AssetOutput {
-	return o.ApplyT(applier).(AssetOutput)
 }
 
 // ApplyAssetWithContext is like ApplyTWithContext, but returns a AssetOutput.
@@ -100,19 +60,9 @@ func (o *OutputState) ApplyAssetWithContext(ctx context.Context, applier interfa
 	return o.ApplyTWithContext(ctx, applier).(AssetOutput)
 }
 
-// ApplyAssetArray is like ApplyT, but returns a AssetArrayOutput.
-func (o *OutputState) ApplyAssetArray(applier interface{}) AssetArrayOutput {
-	return o.ApplyT(applier).(AssetArrayOutput)
-}
-
 // ApplyAssetArrayWithContext is like ApplyTWithContext, but returns a AssetArrayOutput.
 func (o *OutputState) ApplyAssetArrayWithContext(ctx context.Context, applier interface{}) AssetArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetArrayOutput)
-}
-
-// ApplyAssetMap is like ApplyT, but returns a AssetMapOutput.
-func (o *OutputState) ApplyAssetMap(applier interface{}) AssetMapOutput {
-	return o.ApplyT(applier).(AssetMapOutput)
 }
 
 // ApplyAssetMapWithContext is like ApplyTWithContext, but returns a AssetMapOutput.
@@ -120,19 +70,9 @@ func (o *OutputState) ApplyAssetMapWithContext(ctx context.Context, applier inte
 	return o.ApplyTWithContext(ctx, applier).(AssetMapOutput)
 }
 
-// ApplyAssetArrayMap is like ApplyT, but returns a AssetArrayMapOutput.
-func (o *OutputState) ApplyAssetArrayMap(applier interface{}) AssetArrayMapOutput {
-	return o.ApplyT(applier).(AssetArrayMapOutput)
-}
-
 // ApplyAssetArrayMapWithContext is like ApplyTWithContext, but returns a AssetArrayMapOutput.
 func (o *OutputState) ApplyAssetArrayMapWithContext(ctx context.Context, applier interface{}) AssetArrayMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetArrayMapOutput)
-}
-
-// ApplyAssetMapArray is like ApplyT, but returns a AssetMapArrayOutput.
-func (o *OutputState) ApplyAssetMapArray(applier interface{}) AssetMapArrayOutput {
-	return o.ApplyT(applier).(AssetMapArrayOutput)
 }
 
 // ApplyAssetMapArrayWithContext is like ApplyTWithContext, but returns a AssetMapArrayOutput.
@@ -140,19 +80,9 @@ func (o *OutputState) ApplyAssetMapArrayWithContext(ctx context.Context, applier
 	return o.ApplyTWithContext(ctx, applier).(AssetMapArrayOutput)
 }
 
-// ApplyAssetMapMap is like ApplyT, but returns a AssetMapMapOutput.
-func (o *OutputState) ApplyAssetMapMap(applier interface{}) AssetMapMapOutput {
-	return o.ApplyT(applier).(AssetMapMapOutput)
-}
-
 // ApplyAssetMapMapWithContext is like ApplyTWithContext, but returns a AssetMapMapOutput.
 func (o *OutputState) ApplyAssetMapMapWithContext(ctx context.Context, applier interface{}) AssetMapMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetMapMapOutput)
-}
-
-// ApplyAssetArrayArray is like ApplyT, but returns a AssetArrayArrayOutput.
-func (o *OutputState) ApplyAssetArrayArray(applier interface{}) AssetArrayArrayOutput {
-	return o.ApplyT(applier).(AssetArrayArrayOutput)
 }
 
 // ApplyAssetArrayArrayWithContext is like ApplyTWithContext, but returns a AssetArrayArrayOutput.
@@ -160,19 +90,9 @@ func (o *OutputState) ApplyAssetArrayArrayWithContext(ctx context.Context, appli
 	return o.ApplyTWithContext(ctx, applier).(AssetArrayArrayOutput)
 }
 
-// ApplyAssetOrArchive is like ApplyT, but returns a AssetOrArchiveOutput.
-func (o *OutputState) ApplyAssetOrArchive(applier interface{}) AssetOrArchiveOutput {
-	return o.ApplyT(applier).(AssetOrArchiveOutput)
-}
-
 // ApplyAssetOrArchiveWithContext is like ApplyTWithContext, but returns a AssetOrArchiveOutput.
 func (o *OutputState) ApplyAssetOrArchiveWithContext(ctx context.Context, applier interface{}) AssetOrArchiveOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveOutput)
-}
-
-// ApplyAssetOrArchiveArray is like ApplyT, but returns a AssetOrArchiveArrayOutput.
-func (o *OutputState) ApplyAssetOrArchiveArray(applier interface{}) AssetOrArchiveArrayOutput {
-	return o.ApplyT(applier).(AssetOrArchiveArrayOutput)
 }
 
 // ApplyAssetOrArchiveArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayOutput.
@@ -180,19 +100,9 @@ func (o *OutputState) ApplyAssetOrArchiveArrayWithContext(ctx context.Context, a
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayOutput)
 }
 
-// ApplyAssetOrArchiveMap is like ApplyT, but returns a AssetOrArchiveMapOutput.
-func (o *OutputState) ApplyAssetOrArchiveMap(applier interface{}) AssetOrArchiveMapOutput {
-	return o.ApplyT(applier).(AssetOrArchiveMapOutput)
-}
-
 // ApplyAssetOrArchiveMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapOutput.
 func (o *OutputState) ApplyAssetOrArchiveMapWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapOutput)
-}
-
-// ApplyAssetOrArchiveArrayMap is like ApplyT, but returns a AssetOrArchiveArrayMapOutput.
-func (o *OutputState) ApplyAssetOrArchiveArrayMap(applier interface{}) AssetOrArchiveArrayMapOutput {
-	return o.ApplyT(applier).(AssetOrArchiveArrayMapOutput)
 }
 
 // ApplyAssetOrArchiveArrayMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayMapOutput.
@@ -200,19 +110,9 @@ func (o *OutputState) ApplyAssetOrArchiveArrayMapWithContext(ctx context.Context
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayMapOutput)
 }
 
-// ApplyAssetOrArchiveMapArray is like ApplyT, but returns a AssetOrArchiveMapArrayOutput.
-func (o *OutputState) ApplyAssetOrArchiveMapArray(applier interface{}) AssetOrArchiveMapArrayOutput {
-	return o.ApplyT(applier).(AssetOrArchiveMapArrayOutput)
-}
-
 // ApplyAssetOrArchiveMapArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapArrayOutput.
 func (o *OutputState) ApplyAssetOrArchiveMapArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapArrayOutput)
-}
-
-// ApplyAssetOrArchiveMapMap is like ApplyT, but returns a AssetOrArchiveMapMapOutput.
-func (o *OutputState) ApplyAssetOrArchiveMapMap(applier interface{}) AssetOrArchiveMapMapOutput {
-	return o.ApplyT(applier).(AssetOrArchiveMapMapOutput)
 }
 
 // ApplyAssetOrArchiveMapMapWithContext is like ApplyTWithContext, but returns a AssetOrArchiveMapMapOutput.
@@ -220,19 +120,9 @@ func (o *OutputState) ApplyAssetOrArchiveMapMapWithContext(ctx context.Context, 
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveMapMapOutput)
 }
 
-// ApplyAssetOrArchiveArrayArray is like ApplyT, but returns a AssetOrArchiveArrayArrayOutput.
-func (o *OutputState) ApplyAssetOrArchiveArrayArray(applier interface{}) AssetOrArchiveArrayArrayOutput {
-	return o.ApplyT(applier).(AssetOrArchiveArrayArrayOutput)
-}
-
 // ApplyAssetOrArchiveArrayArrayWithContext is like ApplyTWithContext, but returns a AssetOrArchiveArrayArrayOutput.
 func (o *OutputState) ApplyAssetOrArchiveArrayArrayWithContext(ctx context.Context, applier interface{}) AssetOrArchiveArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(AssetOrArchiveArrayArrayOutput)
-}
-
-// ApplyBool is like ApplyT, but returns a BoolOutput.
-func (o *OutputState) ApplyBool(applier interface{}) BoolOutput {
-	return o.ApplyT(applier).(BoolOutput)
 }
 
 // ApplyBoolWithContext is like ApplyTWithContext, but returns a BoolOutput.
@@ -240,19 +130,9 @@ func (o *OutputState) ApplyBoolWithContext(ctx context.Context, applier interfac
 	return o.ApplyTWithContext(ctx, applier).(BoolOutput)
 }
 
-// ApplyBoolPtr is like ApplyT, but returns a BoolPtrOutput.
-func (o *OutputState) ApplyBoolPtr(applier interface{}) BoolPtrOutput {
-	return o.ApplyT(applier).(BoolPtrOutput)
-}
-
 // ApplyBoolPtrWithContext is like ApplyTWithContext, but returns a BoolPtrOutput.
 func (o *OutputState) ApplyBoolPtrWithContext(ctx context.Context, applier interface{}) BoolPtrOutput {
 	return o.ApplyTWithContext(ctx, applier).(BoolPtrOutput)
-}
-
-// ApplyBoolArray is like ApplyT, but returns a BoolArrayOutput.
-func (o *OutputState) ApplyBoolArray(applier interface{}) BoolArrayOutput {
-	return o.ApplyT(applier).(BoolArrayOutput)
 }
 
 // ApplyBoolArrayWithContext is like ApplyTWithContext, but returns a BoolArrayOutput.
@@ -260,19 +140,9 @@ func (o *OutputState) ApplyBoolArrayWithContext(ctx context.Context, applier int
 	return o.ApplyTWithContext(ctx, applier).(BoolArrayOutput)
 }
 
-// ApplyBoolMap is like ApplyT, but returns a BoolMapOutput.
-func (o *OutputState) ApplyBoolMap(applier interface{}) BoolMapOutput {
-	return o.ApplyT(applier).(BoolMapOutput)
-}
-
 // ApplyBoolMapWithContext is like ApplyTWithContext, but returns a BoolMapOutput.
 func (o *OutputState) ApplyBoolMapWithContext(ctx context.Context, applier interface{}) BoolMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(BoolMapOutput)
-}
-
-// ApplyBoolArrayMap is like ApplyT, but returns a BoolArrayMapOutput.
-func (o *OutputState) ApplyBoolArrayMap(applier interface{}) BoolArrayMapOutput {
-	return o.ApplyT(applier).(BoolArrayMapOutput)
 }
 
 // ApplyBoolArrayMapWithContext is like ApplyTWithContext, but returns a BoolArrayMapOutput.
@@ -280,19 +150,9 @@ func (o *OutputState) ApplyBoolArrayMapWithContext(ctx context.Context, applier 
 	return o.ApplyTWithContext(ctx, applier).(BoolArrayMapOutput)
 }
 
-// ApplyBoolMapArray is like ApplyT, but returns a BoolMapArrayOutput.
-func (o *OutputState) ApplyBoolMapArray(applier interface{}) BoolMapArrayOutput {
-	return o.ApplyT(applier).(BoolMapArrayOutput)
-}
-
 // ApplyBoolMapArrayWithContext is like ApplyTWithContext, but returns a BoolMapArrayOutput.
 func (o *OutputState) ApplyBoolMapArrayWithContext(ctx context.Context, applier interface{}) BoolMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(BoolMapArrayOutput)
-}
-
-// ApplyBoolMapMap is like ApplyT, but returns a BoolMapMapOutput.
-func (o *OutputState) ApplyBoolMapMap(applier interface{}) BoolMapMapOutput {
-	return o.ApplyT(applier).(BoolMapMapOutput)
 }
 
 // ApplyBoolMapMapWithContext is like ApplyTWithContext, but returns a BoolMapMapOutput.
@@ -300,19 +160,9 @@ func (o *OutputState) ApplyBoolMapMapWithContext(ctx context.Context, applier in
 	return o.ApplyTWithContext(ctx, applier).(BoolMapMapOutput)
 }
 
-// ApplyBoolArrayArray is like ApplyT, but returns a BoolArrayArrayOutput.
-func (o *OutputState) ApplyBoolArrayArray(applier interface{}) BoolArrayArrayOutput {
-	return o.ApplyT(applier).(BoolArrayArrayOutput)
-}
-
 // ApplyBoolArrayArrayWithContext is like ApplyTWithContext, but returns a BoolArrayArrayOutput.
 func (o *OutputState) ApplyBoolArrayArrayWithContext(ctx context.Context, applier interface{}) BoolArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(BoolArrayArrayOutput)
-}
-
-// ApplyFloat64 is like ApplyT, but returns a Float64Output.
-func (o *OutputState) ApplyFloat64(applier interface{}) Float64Output {
-	return o.ApplyT(applier).(Float64Output)
 }
 
 // ApplyFloat64WithContext is like ApplyTWithContext, but returns a Float64Output.
@@ -320,19 +170,9 @@ func (o *OutputState) ApplyFloat64WithContext(ctx context.Context, applier inter
 	return o.ApplyTWithContext(ctx, applier).(Float64Output)
 }
 
-// ApplyFloat64Ptr is like ApplyT, but returns a Float64PtrOutput.
-func (o *OutputState) ApplyFloat64Ptr(applier interface{}) Float64PtrOutput {
-	return o.ApplyT(applier).(Float64PtrOutput)
-}
-
 // ApplyFloat64PtrWithContext is like ApplyTWithContext, but returns a Float64PtrOutput.
 func (o *OutputState) ApplyFloat64PtrWithContext(ctx context.Context, applier interface{}) Float64PtrOutput {
 	return o.ApplyTWithContext(ctx, applier).(Float64PtrOutput)
-}
-
-// ApplyFloat64Array is like ApplyT, but returns a Float64ArrayOutput.
-func (o *OutputState) ApplyFloat64Array(applier interface{}) Float64ArrayOutput {
-	return o.ApplyT(applier).(Float64ArrayOutput)
 }
 
 // ApplyFloat64ArrayWithContext is like ApplyTWithContext, but returns a Float64ArrayOutput.
@@ -340,19 +180,9 @@ func (o *OutputState) ApplyFloat64ArrayWithContext(ctx context.Context, applier 
 	return o.ApplyTWithContext(ctx, applier).(Float64ArrayOutput)
 }
 
-// ApplyFloat64Map is like ApplyT, but returns a Float64MapOutput.
-func (o *OutputState) ApplyFloat64Map(applier interface{}) Float64MapOutput {
-	return o.ApplyT(applier).(Float64MapOutput)
-}
-
 // ApplyFloat64MapWithContext is like ApplyTWithContext, but returns a Float64MapOutput.
 func (o *OutputState) ApplyFloat64MapWithContext(ctx context.Context, applier interface{}) Float64MapOutput {
 	return o.ApplyTWithContext(ctx, applier).(Float64MapOutput)
-}
-
-// ApplyFloat64ArrayMap is like ApplyT, but returns a Float64ArrayMapOutput.
-func (o *OutputState) ApplyFloat64ArrayMap(applier interface{}) Float64ArrayMapOutput {
-	return o.ApplyT(applier).(Float64ArrayMapOutput)
 }
 
 // ApplyFloat64ArrayMapWithContext is like ApplyTWithContext, but returns a Float64ArrayMapOutput.
@@ -360,19 +190,9 @@ func (o *OutputState) ApplyFloat64ArrayMapWithContext(ctx context.Context, appli
 	return o.ApplyTWithContext(ctx, applier).(Float64ArrayMapOutput)
 }
 
-// ApplyFloat64MapArray is like ApplyT, but returns a Float64MapArrayOutput.
-func (o *OutputState) ApplyFloat64MapArray(applier interface{}) Float64MapArrayOutput {
-	return o.ApplyT(applier).(Float64MapArrayOutput)
-}
-
 // ApplyFloat64MapArrayWithContext is like ApplyTWithContext, but returns a Float64MapArrayOutput.
 func (o *OutputState) ApplyFloat64MapArrayWithContext(ctx context.Context, applier interface{}) Float64MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Float64MapArrayOutput)
-}
-
-// ApplyFloat64MapMap is like ApplyT, but returns a Float64MapMapOutput.
-func (o *OutputState) ApplyFloat64MapMap(applier interface{}) Float64MapMapOutput {
-	return o.ApplyT(applier).(Float64MapMapOutput)
 }
 
 // ApplyFloat64MapMapWithContext is like ApplyTWithContext, but returns a Float64MapMapOutput.
@@ -380,19 +200,9 @@ func (o *OutputState) ApplyFloat64MapMapWithContext(ctx context.Context, applier
 	return o.ApplyTWithContext(ctx, applier).(Float64MapMapOutput)
 }
 
-// ApplyFloat64ArrayArray is like ApplyT, but returns a Float64ArrayArrayOutput.
-func (o *OutputState) ApplyFloat64ArrayArray(applier interface{}) Float64ArrayArrayOutput {
-	return o.ApplyT(applier).(Float64ArrayArrayOutput)
-}
-
 // ApplyFloat64ArrayArrayWithContext is like ApplyTWithContext, but returns a Float64ArrayArrayOutput.
 func (o *OutputState) ApplyFloat64ArrayArrayWithContext(ctx context.Context, applier interface{}) Float64ArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(Float64ArrayArrayOutput)
-}
-
-// ApplyID is like ApplyT, but returns a IDOutput.
-func (o *OutputState) ApplyID(applier interface{}) IDOutput {
-	return o.ApplyT(applier).(IDOutput)
 }
 
 // ApplyIDWithContext is like ApplyTWithContext, but returns a IDOutput.
@@ -400,19 +210,9 @@ func (o *OutputState) ApplyIDWithContext(ctx context.Context, applier interface{
 	return o.ApplyTWithContext(ctx, applier).(IDOutput)
 }
 
-// ApplyIDPtr is like ApplyT, but returns a IDPtrOutput.
-func (o *OutputState) ApplyIDPtr(applier interface{}) IDPtrOutput {
-	return o.ApplyT(applier).(IDPtrOutput)
-}
-
 // ApplyIDPtrWithContext is like ApplyTWithContext, but returns a IDPtrOutput.
 func (o *OutputState) ApplyIDPtrWithContext(ctx context.Context, applier interface{}) IDPtrOutput {
 	return o.ApplyTWithContext(ctx, applier).(IDPtrOutput)
-}
-
-// ApplyIDArray is like ApplyT, but returns a IDArrayOutput.
-func (o *OutputState) ApplyIDArray(applier interface{}) IDArrayOutput {
-	return o.ApplyT(applier).(IDArrayOutput)
 }
 
 // ApplyIDArrayWithContext is like ApplyTWithContext, but returns a IDArrayOutput.
@@ -420,19 +220,9 @@ func (o *OutputState) ApplyIDArrayWithContext(ctx context.Context, applier inter
 	return o.ApplyTWithContext(ctx, applier).(IDArrayOutput)
 }
 
-// ApplyIDMap is like ApplyT, but returns a IDMapOutput.
-func (o *OutputState) ApplyIDMap(applier interface{}) IDMapOutput {
-	return o.ApplyT(applier).(IDMapOutput)
-}
-
 // ApplyIDMapWithContext is like ApplyTWithContext, but returns a IDMapOutput.
 func (o *OutputState) ApplyIDMapWithContext(ctx context.Context, applier interface{}) IDMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(IDMapOutput)
-}
-
-// ApplyIDArrayMap is like ApplyT, but returns a IDArrayMapOutput.
-func (o *OutputState) ApplyIDArrayMap(applier interface{}) IDArrayMapOutput {
-	return o.ApplyT(applier).(IDArrayMapOutput)
 }
 
 // ApplyIDArrayMapWithContext is like ApplyTWithContext, but returns a IDArrayMapOutput.
@@ -440,19 +230,9 @@ func (o *OutputState) ApplyIDArrayMapWithContext(ctx context.Context, applier in
 	return o.ApplyTWithContext(ctx, applier).(IDArrayMapOutput)
 }
 
-// ApplyIDMapArray is like ApplyT, but returns a IDMapArrayOutput.
-func (o *OutputState) ApplyIDMapArray(applier interface{}) IDMapArrayOutput {
-	return o.ApplyT(applier).(IDMapArrayOutput)
-}
-
 // ApplyIDMapArrayWithContext is like ApplyTWithContext, but returns a IDMapArrayOutput.
 func (o *OutputState) ApplyIDMapArrayWithContext(ctx context.Context, applier interface{}) IDMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(IDMapArrayOutput)
-}
-
-// ApplyIDMapMap is like ApplyT, but returns a IDMapMapOutput.
-func (o *OutputState) ApplyIDMapMap(applier interface{}) IDMapMapOutput {
-	return o.ApplyT(applier).(IDMapMapOutput)
 }
 
 // ApplyIDMapMapWithContext is like ApplyTWithContext, but returns a IDMapMapOutput.
@@ -460,19 +240,9 @@ func (o *OutputState) ApplyIDMapMapWithContext(ctx context.Context, applier inte
 	return o.ApplyTWithContext(ctx, applier).(IDMapMapOutput)
 }
 
-// ApplyIDArrayArray is like ApplyT, but returns a IDArrayArrayOutput.
-func (o *OutputState) ApplyIDArrayArray(applier interface{}) IDArrayArrayOutput {
-	return o.ApplyT(applier).(IDArrayArrayOutput)
-}
-
 // ApplyIDArrayArrayWithContext is like ApplyTWithContext, but returns a IDArrayArrayOutput.
 func (o *OutputState) ApplyIDArrayArrayWithContext(ctx context.Context, applier interface{}) IDArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(IDArrayArrayOutput)
-}
-
-// ApplyArray is like ApplyT, but returns a ArrayOutput.
-func (o *OutputState) ApplyArray(applier interface{}) ArrayOutput {
-	return o.ApplyT(applier).(ArrayOutput)
 }
 
 // ApplyArrayWithContext is like ApplyTWithContext, but returns a ArrayOutput.
@@ -480,19 +250,9 @@ func (o *OutputState) ApplyArrayWithContext(ctx context.Context, applier interfa
 	return o.ApplyTWithContext(ctx, applier).(ArrayOutput)
 }
 
-// ApplyMap is like ApplyT, but returns a MapOutput.
-func (o *OutputState) ApplyMap(applier interface{}) MapOutput {
-	return o.ApplyT(applier).(MapOutput)
-}
-
 // ApplyMapWithContext is like ApplyTWithContext, but returns a MapOutput.
 func (o *OutputState) ApplyMapWithContext(ctx context.Context, applier interface{}) MapOutput {
 	return o.ApplyTWithContext(ctx, applier).(MapOutput)
-}
-
-// ApplyArrayMap is like ApplyT, but returns a ArrayMapOutput.
-func (o *OutputState) ApplyArrayMap(applier interface{}) ArrayMapOutput {
-	return o.ApplyT(applier).(ArrayMapOutput)
 }
 
 // ApplyArrayMapWithContext is like ApplyTWithContext, but returns a ArrayMapOutput.
@@ -500,19 +260,9 @@ func (o *OutputState) ApplyArrayMapWithContext(ctx context.Context, applier inte
 	return o.ApplyTWithContext(ctx, applier).(ArrayMapOutput)
 }
 
-// ApplyMapArray is like ApplyT, but returns a MapArrayOutput.
-func (o *OutputState) ApplyMapArray(applier interface{}) MapArrayOutput {
-	return o.ApplyT(applier).(MapArrayOutput)
-}
-
 // ApplyMapArrayWithContext is like ApplyTWithContext, but returns a MapArrayOutput.
 func (o *OutputState) ApplyMapArrayWithContext(ctx context.Context, applier interface{}) MapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(MapArrayOutput)
-}
-
-// ApplyMapMap is like ApplyT, but returns a MapMapOutput.
-func (o *OutputState) ApplyMapMap(applier interface{}) MapMapOutput {
-	return o.ApplyT(applier).(MapMapOutput)
 }
 
 // ApplyMapMapWithContext is like ApplyTWithContext, but returns a MapMapOutput.
@@ -520,19 +270,9 @@ func (o *OutputState) ApplyMapMapWithContext(ctx context.Context, applier interf
 	return o.ApplyTWithContext(ctx, applier).(MapMapOutput)
 }
 
-// ApplyArrayArray is like ApplyT, but returns a ArrayArrayOutput.
-func (o *OutputState) ApplyArrayArray(applier interface{}) ArrayArrayOutput {
-	return o.ApplyT(applier).(ArrayArrayOutput)
-}
-
 // ApplyArrayArrayWithContext is like ApplyTWithContext, but returns a ArrayArrayOutput.
 func (o *OutputState) ApplyArrayArrayWithContext(ctx context.Context, applier interface{}) ArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(ArrayArrayOutput)
-}
-
-// ApplyInt is like ApplyT, but returns a IntOutput.
-func (o *OutputState) ApplyInt(applier interface{}) IntOutput {
-	return o.ApplyT(applier).(IntOutput)
 }
 
 // ApplyIntWithContext is like ApplyTWithContext, but returns a IntOutput.
@@ -540,19 +280,9 @@ func (o *OutputState) ApplyIntWithContext(ctx context.Context, applier interface
 	return o.ApplyTWithContext(ctx, applier).(IntOutput)
 }
 
-// ApplyIntPtr is like ApplyT, but returns a IntPtrOutput.
-func (o *OutputState) ApplyIntPtr(applier interface{}) IntPtrOutput {
-	return o.ApplyT(applier).(IntPtrOutput)
-}
-
 // ApplyIntPtrWithContext is like ApplyTWithContext, but returns a IntPtrOutput.
 func (o *OutputState) ApplyIntPtrWithContext(ctx context.Context, applier interface{}) IntPtrOutput {
 	return o.ApplyTWithContext(ctx, applier).(IntPtrOutput)
-}
-
-// ApplyIntArray is like ApplyT, but returns a IntArrayOutput.
-func (o *OutputState) ApplyIntArray(applier interface{}) IntArrayOutput {
-	return o.ApplyT(applier).(IntArrayOutput)
 }
 
 // ApplyIntArrayWithContext is like ApplyTWithContext, but returns a IntArrayOutput.
@@ -560,19 +290,9 @@ func (o *OutputState) ApplyIntArrayWithContext(ctx context.Context, applier inte
 	return o.ApplyTWithContext(ctx, applier).(IntArrayOutput)
 }
 
-// ApplyIntMap is like ApplyT, but returns a IntMapOutput.
-func (o *OutputState) ApplyIntMap(applier interface{}) IntMapOutput {
-	return o.ApplyT(applier).(IntMapOutput)
-}
-
 // ApplyIntMapWithContext is like ApplyTWithContext, but returns a IntMapOutput.
 func (o *OutputState) ApplyIntMapWithContext(ctx context.Context, applier interface{}) IntMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(IntMapOutput)
-}
-
-// ApplyIntArrayMap is like ApplyT, but returns a IntArrayMapOutput.
-func (o *OutputState) ApplyIntArrayMap(applier interface{}) IntArrayMapOutput {
-	return o.ApplyT(applier).(IntArrayMapOutput)
 }
 
 // ApplyIntArrayMapWithContext is like ApplyTWithContext, but returns a IntArrayMapOutput.
@@ -580,19 +300,9 @@ func (o *OutputState) ApplyIntArrayMapWithContext(ctx context.Context, applier i
 	return o.ApplyTWithContext(ctx, applier).(IntArrayMapOutput)
 }
 
-// ApplyIntMapArray is like ApplyT, but returns a IntMapArrayOutput.
-func (o *OutputState) ApplyIntMapArray(applier interface{}) IntMapArrayOutput {
-	return o.ApplyT(applier).(IntMapArrayOutput)
-}
-
 // ApplyIntMapArrayWithContext is like ApplyTWithContext, but returns a IntMapArrayOutput.
 func (o *OutputState) ApplyIntMapArrayWithContext(ctx context.Context, applier interface{}) IntMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(IntMapArrayOutput)
-}
-
-// ApplyIntMapMap is like ApplyT, but returns a IntMapMapOutput.
-func (o *OutputState) ApplyIntMapMap(applier interface{}) IntMapMapOutput {
-	return o.ApplyT(applier).(IntMapMapOutput)
 }
 
 // ApplyIntMapMapWithContext is like ApplyTWithContext, but returns a IntMapMapOutput.
@@ -600,19 +310,9 @@ func (o *OutputState) ApplyIntMapMapWithContext(ctx context.Context, applier int
 	return o.ApplyTWithContext(ctx, applier).(IntMapMapOutput)
 }
 
-// ApplyIntArrayArray is like ApplyT, but returns a IntArrayArrayOutput.
-func (o *OutputState) ApplyIntArrayArray(applier interface{}) IntArrayArrayOutput {
-	return o.ApplyT(applier).(IntArrayArrayOutput)
-}
-
 // ApplyIntArrayArrayWithContext is like ApplyTWithContext, but returns a IntArrayArrayOutput.
 func (o *OutputState) ApplyIntArrayArrayWithContext(ctx context.Context, applier interface{}) IntArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(IntArrayArrayOutput)
-}
-
-// ApplyString is like ApplyT, but returns a StringOutput.
-func (o *OutputState) ApplyString(applier interface{}) StringOutput {
-	return o.ApplyT(applier).(StringOutput)
 }
 
 // ApplyStringWithContext is like ApplyTWithContext, but returns a StringOutput.
@@ -620,19 +320,9 @@ func (o *OutputState) ApplyStringWithContext(ctx context.Context, applier interf
 	return o.ApplyTWithContext(ctx, applier).(StringOutput)
 }
 
-// ApplyStringPtr is like ApplyT, but returns a StringPtrOutput.
-func (o *OutputState) ApplyStringPtr(applier interface{}) StringPtrOutput {
-	return o.ApplyT(applier).(StringPtrOutput)
-}
-
 // ApplyStringPtrWithContext is like ApplyTWithContext, but returns a StringPtrOutput.
 func (o *OutputState) ApplyStringPtrWithContext(ctx context.Context, applier interface{}) StringPtrOutput {
 	return o.ApplyTWithContext(ctx, applier).(StringPtrOutput)
-}
-
-// ApplyStringArray is like ApplyT, but returns a StringArrayOutput.
-func (o *OutputState) ApplyStringArray(applier interface{}) StringArrayOutput {
-	return o.ApplyT(applier).(StringArrayOutput)
 }
 
 // ApplyStringArrayWithContext is like ApplyTWithContext, but returns a StringArrayOutput.
@@ -640,19 +330,9 @@ func (o *OutputState) ApplyStringArrayWithContext(ctx context.Context, applier i
 	return o.ApplyTWithContext(ctx, applier).(StringArrayOutput)
 }
 
-// ApplyStringMap is like ApplyT, but returns a StringMapOutput.
-func (o *OutputState) ApplyStringMap(applier interface{}) StringMapOutput {
-	return o.ApplyT(applier).(StringMapOutput)
-}
-
 // ApplyStringMapWithContext is like ApplyTWithContext, but returns a StringMapOutput.
 func (o *OutputState) ApplyStringMapWithContext(ctx context.Context, applier interface{}) StringMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(StringMapOutput)
-}
-
-// ApplyStringArrayMap is like ApplyT, but returns a StringArrayMapOutput.
-func (o *OutputState) ApplyStringArrayMap(applier interface{}) StringArrayMapOutput {
-	return o.ApplyT(applier).(StringArrayMapOutput)
 }
 
 // ApplyStringArrayMapWithContext is like ApplyTWithContext, but returns a StringArrayMapOutput.
@@ -660,19 +340,9 @@ func (o *OutputState) ApplyStringArrayMapWithContext(ctx context.Context, applie
 	return o.ApplyTWithContext(ctx, applier).(StringArrayMapOutput)
 }
 
-// ApplyStringMapArray is like ApplyT, but returns a StringMapArrayOutput.
-func (o *OutputState) ApplyStringMapArray(applier interface{}) StringMapArrayOutput {
-	return o.ApplyT(applier).(StringMapArrayOutput)
-}
-
 // ApplyStringMapArrayWithContext is like ApplyTWithContext, but returns a StringMapArrayOutput.
 func (o *OutputState) ApplyStringMapArrayWithContext(ctx context.Context, applier interface{}) StringMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(StringMapArrayOutput)
-}
-
-// ApplyStringMapMap is like ApplyT, but returns a StringMapMapOutput.
-func (o *OutputState) ApplyStringMapMap(applier interface{}) StringMapMapOutput {
-	return o.ApplyT(applier).(StringMapMapOutput)
 }
 
 // ApplyStringMapMapWithContext is like ApplyTWithContext, but returns a StringMapMapOutput.
@@ -680,19 +350,9 @@ func (o *OutputState) ApplyStringMapMapWithContext(ctx context.Context, applier 
 	return o.ApplyTWithContext(ctx, applier).(StringMapMapOutput)
 }
 
-// ApplyStringArrayArray is like ApplyT, but returns a StringArrayArrayOutput.
-func (o *OutputState) ApplyStringArrayArray(applier interface{}) StringArrayArrayOutput {
-	return o.ApplyT(applier).(StringArrayArrayOutput)
-}
-
 // ApplyStringArrayArrayWithContext is like ApplyTWithContext, but returns a StringArrayArrayOutput.
 func (o *OutputState) ApplyStringArrayArrayWithContext(ctx context.Context, applier interface{}) StringArrayArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(StringArrayArrayOutput)
-}
-
-// ApplyURN is like ApplyT, but returns a URNOutput.
-func (o *OutputState) ApplyURN(applier interface{}) URNOutput {
-	return o.ApplyT(applier).(URNOutput)
 }
 
 // ApplyURNWithContext is like ApplyTWithContext, but returns a URNOutput.
@@ -700,19 +360,9 @@ func (o *OutputState) ApplyURNWithContext(ctx context.Context, applier interface
 	return o.ApplyTWithContext(ctx, applier).(URNOutput)
 }
 
-// ApplyURNPtr is like ApplyT, but returns a URNPtrOutput.
-func (o *OutputState) ApplyURNPtr(applier interface{}) URNPtrOutput {
-	return o.ApplyT(applier).(URNPtrOutput)
-}
-
 // ApplyURNPtrWithContext is like ApplyTWithContext, but returns a URNPtrOutput.
 func (o *OutputState) ApplyURNPtrWithContext(ctx context.Context, applier interface{}) URNPtrOutput {
 	return o.ApplyTWithContext(ctx, applier).(URNPtrOutput)
-}
-
-// ApplyURNArray is like ApplyT, but returns a URNArrayOutput.
-func (o *OutputState) ApplyURNArray(applier interface{}) URNArrayOutput {
-	return o.ApplyT(applier).(URNArrayOutput)
 }
 
 // ApplyURNArrayWithContext is like ApplyTWithContext, but returns a URNArrayOutput.
@@ -720,19 +370,9 @@ func (o *OutputState) ApplyURNArrayWithContext(ctx context.Context, applier inte
 	return o.ApplyTWithContext(ctx, applier).(URNArrayOutput)
 }
 
-// ApplyURNMap is like ApplyT, but returns a URNMapOutput.
-func (o *OutputState) ApplyURNMap(applier interface{}) URNMapOutput {
-	return o.ApplyT(applier).(URNMapOutput)
-}
-
 // ApplyURNMapWithContext is like ApplyTWithContext, but returns a URNMapOutput.
 func (o *OutputState) ApplyURNMapWithContext(ctx context.Context, applier interface{}) URNMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(URNMapOutput)
-}
-
-// ApplyURNArrayMap is like ApplyT, but returns a URNArrayMapOutput.
-func (o *OutputState) ApplyURNArrayMap(applier interface{}) URNArrayMapOutput {
-	return o.ApplyT(applier).(URNArrayMapOutput)
 }
 
 // ApplyURNArrayMapWithContext is like ApplyTWithContext, but returns a URNArrayMapOutput.
@@ -740,29 +380,14 @@ func (o *OutputState) ApplyURNArrayMapWithContext(ctx context.Context, applier i
 	return o.ApplyTWithContext(ctx, applier).(URNArrayMapOutput)
 }
 
-// ApplyURNMapArray is like ApplyT, but returns a URNMapArrayOutput.
-func (o *OutputState) ApplyURNMapArray(applier interface{}) URNMapArrayOutput {
-	return o.ApplyT(applier).(URNMapArrayOutput)
-}
-
 // ApplyURNMapArrayWithContext is like ApplyTWithContext, but returns a URNMapArrayOutput.
 func (o *OutputState) ApplyURNMapArrayWithContext(ctx context.Context, applier interface{}) URNMapArrayOutput {
 	return o.ApplyTWithContext(ctx, applier).(URNMapArrayOutput)
 }
 
-// ApplyURNMapMap is like ApplyT, but returns a URNMapMapOutput.
-func (o *OutputState) ApplyURNMapMap(applier interface{}) URNMapMapOutput {
-	return o.ApplyT(applier).(URNMapMapOutput)
-}
-
 // ApplyURNMapMapWithContext is like ApplyTWithContext, but returns a URNMapMapOutput.
 func (o *OutputState) ApplyURNMapMapWithContext(ctx context.Context, applier interface{}) URNMapMapOutput {
 	return o.ApplyTWithContext(ctx, applier).(URNMapMapOutput)
-}
-
-// ApplyURNArrayArray is like ApplyT, but returns a URNArrayArrayOutput.
-func (o *OutputState) ApplyURNArrayArray(applier interface{}) URNArrayArrayOutput {
-	return o.ApplyT(applier).(URNArrayArrayOutput)
 }
 
 // ApplyURNArrayArrayWithContext is like ApplyTWithContext, but returns a URNArrayArrayOutput.
@@ -776,7 +401,6 @@ var archiveType = reflect.TypeOf((*Archive)(nil)).Elem()
 type ArchiveInput interface {
 	Input
 
-	ToArchiveOutput() ArchiveOutput
 	ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput
 }
 
@@ -785,16 +409,8 @@ func (*archive) ElementType() reflect.Type {
 	return archiveType
 }
 
-func (in *archive) ToArchiveOutput() ArchiveOutput {
-	return ToOutput(in).(ArchiveOutput)
-}
-
 func (in *archive) ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput {
 	return ToOutputWithContext(ctx, in).(ArchiveOutput)
-}
-
-func (in *archive) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return in.ToAssetOrArchiveOutputWithContext(context.Background())
 }
 
 func (in *archive) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
@@ -809,16 +425,8 @@ func (ArchiveOutput) ElementType() reflect.Type {
 	return archiveType
 }
 
-func (o ArchiveOutput) ToArchiveOutput() ArchiveOutput {
-	return o
-}
-
 func (o ArchiveOutput) ToArchiveOutputWithContext(ctx context.Context) ArchiveOutput {
 	return o
-}
-
-func (o ArchiveOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return o.ToAssetOrArchiveOutputWithContext(context.Background())
 }
 
 func (o ArchiveOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
@@ -833,7 +441,6 @@ var archiveArrayType = reflect.TypeOf((*[]Archive)(nil)).Elem()
 type ArchiveArrayInput interface {
 	Input
 
-	ToArchiveArrayOutput() ArchiveArrayOutput
 	ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput
 }
 
@@ -843,10 +450,6 @@ type ArchiveArray []ArchiveInput
 // ElementType returns the element type of this Input ([]Archive).
 func (ArchiveArray) ElementType() reflect.Type {
 	return archiveArrayType
-}
-
-func (in ArchiveArray) ToArchiveArrayOutput() ArchiveArrayOutput {
-	return ToOutput(in).(ArchiveArrayOutput)
 }
 
 func (in ArchiveArray) ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput {
@@ -859,10 +462,6 @@ type ArchiveArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]Archive).
 func (ArchiveArrayOutput) ElementType() reflect.Type {
 	return archiveArrayType
-}
-
-func (o ArchiveArrayOutput) ToArchiveArrayOutput() ArchiveArrayOutput {
-	return o
 }
 
 func (o ArchiveArrayOutput) ToArchiveArrayOutputWithContext(ctx context.Context) ArchiveArrayOutput {
@@ -881,7 +480,6 @@ var archiveMapType = reflect.TypeOf((*map[string]Archive)(nil)).Elem()
 type ArchiveMapInput interface {
 	Input
 
-	ToArchiveMapOutput() ArchiveMapOutput
 	ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput
 }
 
@@ -891,10 +489,6 @@ type ArchiveMap map[string]ArchiveInput
 // ElementType returns the element type of this Input (map[string]Archive).
 func (ArchiveMap) ElementType() reflect.Type {
 	return archiveMapType
-}
-
-func (in ArchiveMap) ToArchiveMapOutput() ArchiveMapOutput {
-	return ToOutput(in).(ArchiveMapOutput)
 }
 
 func (in ArchiveMap) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput {
@@ -907,10 +501,6 @@ type ArchiveMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]Archive).
 func (ArchiveMapOutput) ElementType() reflect.Type {
 	return archiveMapType
-}
-
-func (o ArchiveMapOutput) ToArchiveMapOutput() ArchiveMapOutput {
-	return o
 }
 
 func (o ArchiveMapOutput) ToArchiveMapOutputWithContext(ctx context.Context) ArchiveMapOutput {
@@ -929,7 +519,6 @@ var archiveArrayMapType = reflect.TypeOf((*map[string][]Archive)(nil)).Elem()
 type ArchiveArrayMapInput interface {
 	Input
 
-	ToArchiveArrayMapOutput() ArchiveArrayMapOutput
 	ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput
 }
 
@@ -939,10 +528,6 @@ type ArchiveArrayMap map[string]ArchiveArrayInput
 // ElementType returns the element type of this Input (map[string][]Archive).
 func (ArchiveArrayMap) ElementType() reflect.Type {
 	return archiveArrayMapType
-}
-
-func (in ArchiveArrayMap) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
-	return ToOutput(in).(ArchiveArrayMapOutput)
 }
 
 func (in ArchiveArrayMap) ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput {
@@ -955,10 +540,6 @@ type ArchiveArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]Archive).
 func (ArchiveArrayMapOutput) ElementType() reflect.Type {
 	return archiveArrayMapType
-}
-
-func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutput() ArchiveArrayMapOutput {
-	return o
 }
 
 func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutputWithContext(ctx context.Context) ArchiveArrayMapOutput {
@@ -977,7 +558,6 @@ var archiveMapArrayType = reflect.TypeOf((*[]map[string]Archive)(nil)).Elem()
 type ArchiveMapArrayInput interface {
 	Input
 
-	ToArchiveMapArrayOutput() ArchiveMapArrayOutput
 	ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput
 }
 
@@ -987,10 +567,6 @@ type ArchiveMapArray []ArchiveMapInput
 // ElementType returns the element type of this Input ([]map[string]Archive).
 func (ArchiveMapArray) ElementType() reflect.Type {
 	return archiveMapArrayType
-}
-
-func (in ArchiveMapArray) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
-	return ToOutput(in).(ArchiveMapArrayOutput)
 }
 
 func (in ArchiveMapArray) ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput {
@@ -1003,10 +579,6 @@ type ArchiveMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]Archive).
 func (ArchiveMapArrayOutput) ElementType() reflect.Type {
 	return archiveMapArrayType
-}
-
-func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutput() ArchiveMapArrayOutput {
-	return o
 }
 
 func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutputWithContext(ctx context.Context) ArchiveMapArrayOutput {
@@ -1025,7 +597,6 @@ var archiveMapMapType = reflect.TypeOf((*map[string]map[string]Archive)(nil)).El
 type ArchiveMapMapInput interface {
 	Input
 
-	ToArchiveMapMapOutput() ArchiveMapMapOutput
 	ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput
 }
 
@@ -1035,10 +606,6 @@ type ArchiveMapMap map[string]ArchiveMapInput
 // ElementType returns the element type of this Input (map[string]map[string]Archive).
 func (ArchiveMapMap) ElementType() reflect.Type {
 	return archiveMapMapType
-}
-
-func (in ArchiveMapMap) ToArchiveMapMapOutput() ArchiveMapMapOutput {
-	return ToOutput(in).(ArchiveMapMapOutput)
 }
 
 func (in ArchiveMapMap) ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput {
@@ -1051,10 +618,6 @@ type ArchiveMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]Archive).
 func (ArchiveMapMapOutput) ElementType() reflect.Type {
 	return archiveMapMapType
-}
-
-func (o ArchiveMapMapOutput) ToArchiveMapMapOutput() ArchiveMapMapOutput {
-	return o
 }
 
 func (o ArchiveMapMapOutput) ToArchiveMapMapOutputWithContext(ctx context.Context) ArchiveMapMapOutput {
@@ -1073,7 +636,6 @@ var archiveArrayArrayType = reflect.TypeOf((*[][]Archive)(nil)).Elem()
 type ArchiveArrayArrayInput interface {
 	Input
 
-	ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput
 	ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput
 }
 
@@ -1083,10 +645,6 @@ type ArchiveArrayArray []ArchiveArrayInput
 // ElementType returns the element type of this Input ([][]Archive).
 func (ArchiveArrayArray) ElementType() reflect.Type {
 	return archiveArrayArrayType
-}
-
-func (in ArchiveArrayArray) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
-	return ToOutput(in).(ArchiveArrayArrayOutput)
 }
 
 func (in ArchiveArrayArray) ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput {
@@ -1099,10 +657,6 @@ type ArchiveArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]Archive).
 func (ArchiveArrayArrayOutput) ElementType() reflect.Type {
 	return archiveArrayArrayType
-}
-
-func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutput() ArchiveArrayArrayOutput {
-	return o
 }
 
 func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutputWithContext(ctx context.Context) ArchiveArrayArrayOutput {
@@ -1121,7 +675,6 @@ var assetType = reflect.TypeOf((*Asset)(nil)).Elem()
 type AssetInput interface {
 	Input
 
-	ToAssetOutput() AssetOutput
 	ToAssetOutputWithContext(ctx context.Context) AssetOutput
 }
 
@@ -1130,16 +683,8 @@ func (*asset) ElementType() reflect.Type {
 	return assetType
 }
 
-func (in *asset) ToAssetOutput() AssetOutput {
-	return ToOutput(in).(AssetOutput)
-}
-
 func (in *asset) ToAssetOutputWithContext(ctx context.Context) AssetOutput {
 	return ToOutputWithContext(ctx, in).(AssetOutput)
-}
-
-func (in *asset) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return in.ToAssetOrArchiveOutputWithContext(context.Background())
 }
 
 func (in *asset) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
@@ -1154,16 +699,8 @@ func (AssetOutput) ElementType() reflect.Type {
 	return assetType
 }
 
-func (o AssetOutput) ToAssetOutput() AssetOutput {
-	return o
-}
-
 func (o AssetOutput) ToAssetOutputWithContext(ctx context.Context) AssetOutput {
 	return o
-}
-
-func (o AssetOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return o.ToAssetOrArchiveOutputWithContext(context.Background())
 }
 
 func (o AssetOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
@@ -1178,7 +715,6 @@ var assetArrayType = reflect.TypeOf((*[]Asset)(nil)).Elem()
 type AssetArrayInput interface {
 	Input
 
-	ToAssetArrayOutput() AssetArrayOutput
 	ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput
 }
 
@@ -1188,10 +724,6 @@ type AssetArray []AssetInput
 // ElementType returns the element type of this Input ([]Asset).
 func (AssetArray) ElementType() reflect.Type {
 	return assetArrayType
-}
-
-func (in AssetArray) ToAssetArrayOutput() AssetArrayOutput {
-	return ToOutput(in).(AssetArrayOutput)
 }
 
 func (in AssetArray) ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput {
@@ -1204,10 +736,6 @@ type AssetArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]Asset).
 func (AssetArrayOutput) ElementType() reflect.Type {
 	return assetArrayType
-}
-
-func (o AssetArrayOutput) ToAssetArrayOutput() AssetArrayOutput {
-	return o
 }
 
 func (o AssetArrayOutput) ToAssetArrayOutputWithContext(ctx context.Context) AssetArrayOutput {
@@ -1226,7 +754,6 @@ var assetMapType = reflect.TypeOf((*map[string]Asset)(nil)).Elem()
 type AssetMapInput interface {
 	Input
 
-	ToAssetMapOutput() AssetMapOutput
 	ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput
 }
 
@@ -1236,10 +763,6 @@ type AssetMap map[string]AssetInput
 // ElementType returns the element type of this Input (map[string]Asset).
 func (AssetMap) ElementType() reflect.Type {
 	return assetMapType
-}
-
-func (in AssetMap) ToAssetMapOutput() AssetMapOutput {
-	return ToOutput(in).(AssetMapOutput)
 }
 
 func (in AssetMap) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput {
@@ -1252,10 +775,6 @@ type AssetMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]Asset).
 func (AssetMapOutput) ElementType() reflect.Type {
 	return assetMapType
-}
-
-func (o AssetMapOutput) ToAssetMapOutput() AssetMapOutput {
-	return o
 }
 
 func (o AssetMapOutput) ToAssetMapOutputWithContext(ctx context.Context) AssetMapOutput {
@@ -1274,7 +793,6 @@ var assetArrayMapType = reflect.TypeOf((*map[string][]Asset)(nil)).Elem()
 type AssetArrayMapInput interface {
 	Input
 
-	ToAssetArrayMapOutput() AssetArrayMapOutput
 	ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput
 }
 
@@ -1284,10 +802,6 @@ type AssetArrayMap map[string]AssetArrayInput
 // ElementType returns the element type of this Input (map[string][]Asset).
 func (AssetArrayMap) ElementType() reflect.Type {
 	return assetArrayMapType
-}
-
-func (in AssetArrayMap) ToAssetArrayMapOutput() AssetArrayMapOutput {
-	return ToOutput(in).(AssetArrayMapOutput)
 }
 
 func (in AssetArrayMap) ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput {
@@ -1300,10 +814,6 @@ type AssetArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]Asset).
 func (AssetArrayMapOutput) ElementType() reflect.Type {
 	return assetArrayMapType
-}
-
-func (o AssetArrayMapOutput) ToAssetArrayMapOutput() AssetArrayMapOutput {
-	return o
 }
 
 func (o AssetArrayMapOutput) ToAssetArrayMapOutputWithContext(ctx context.Context) AssetArrayMapOutput {
@@ -1322,7 +832,6 @@ var assetMapArrayType = reflect.TypeOf((*[]map[string]Asset)(nil)).Elem()
 type AssetMapArrayInput interface {
 	Input
 
-	ToAssetMapArrayOutput() AssetMapArrayOutput
 	ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput
 }
 
@@ -1332,10 +841,6 @@ type AssetMapArray []AssetMapInput
 // ElementType returns the element type of this Input ([]map[string]Asset).
 func (AssetMapArray) ElementType() reflect.Type {
 	return assetMapArrayType
-}
-
-func (in AssetMapArray) ToAssetMapArrayOutput() AssetMapArrayOutput {
-	return ToOutput(in).(AssetMapArrayOutput)
 }
 
 func (in AssetMapArray) ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput {
@@ -1348,10 +853,6 @@ type AssetMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]Asset).
 func (AssetMapArrayOutput) ElementType() reflect.Type {
 	return assetMapArrayType
-}
-
-func (o AssetMapArrayOutput) ToAssetMapArrayOutput() AssetMapArrayOutput {
-	return o
 }
 
 func (o AssetMapArrayOutput) ToAssetMapArrayOutputWithContext(ctx context.Context) AssetMapArrayOutput {
@@ -1370,7 +871,6 @@ var assetMapMapType = reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem()
 type AssetMapMapInput interface {
 	Input
 
-	ToAssetMapMapOutput() AssetMapMapOutput
 	ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput
 }
 
@@ -1380,10 +880,6 @@ type AssetMapMap map[string]AssetMapInput
 // ElementType returns the element type of this Input (map[string]map[string]Asset).
 func (AssetMapMap) ElementType() reflect.Type {
 	return assetMapMapType
-}
-
-func (in AssetMapMap) ToAssetMapMapOutput() AssetMapMapOutput {
-	return ToOutput(in).(AssetMapMapOutput)
 }
 
 func (in AssetMapMap) ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput {
@@ -1396,10 +892,6 @@ type AssetMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]Asset).
 func (AssetMapMapOutput) ElementType() reflect.Type {
 	return assetMapMapType
-}
-
-func (o AssetMapMapOutput) ToAssetMapMapOutput() AssetMapMapOutput {
-	return o
 }
 
 func (o AssetMapMapOutput) ToAssetMapMapOutputWithContext(ctx context.Context) AssetMapMapOutput {
@@ -1418,7 +910,6 @@ var assetArrayArrayType = reflect.TypeOf((*[][]Asset)(nil)).Elem()
 type AssetArrayArrayInput interface {
 	Input
 
-	ToAssetArrayArrayOutput() AssetArrayArrayOutput
 	ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput
 }
 
@@ -1428,10 +919,6 @@ type AssetArrayArray []AssetArrayInput
 // ElementType returns the element type of this Input ([][]Asset).
 func (AssetArrayArray) ElementType() reflect.Type {
 	return assetArrayArrayType
-}
-
-func (in AssetArrayArray) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
-	return ToOutput(in).(AssetArrayArrayOutput)
 }
 
 func (in AssetArrayArray) ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput {
@@ -1444,10 +931,6 @@ type AssetArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]Asset).
 func (AssetArrayArrayOutput) ElementType() reflect.Type {
 	return assetArrayArrayType
-}
-
-func (o AssetArrayArrayOutput) ToAssetArrayArrayOutput() AssetArrayArrayOutput {
-	return o
 }
 
 func (o AssetArrayArrayOutput) ToAssetArrayArrayOutputWithContext(ctx context.Context) AssetArrayArrayOutput {
@@ -1466,7 +949,6 @@ var assetOrArchiveType = reflect.TypeOf((*AssetOrArchive)(nil)).Elem()
 type AssetOrArchiveInput interface {
 	Input
 
-	ToAssetOrArchiveOutput() AssetOrArchiveOutput
 	ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput
 }
 
@@ -1476,10 +958,6 @@ type AssetOrArchiveOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (AssetOrArchive).
 func (AssetOrArchiveOutput) ElementType() reflect.Type {
 	return assetOrArchiveType
-}
-
-func (o AssetOrArchiveOutput) ToAssetOrArchiveOutput() AssetOrArchiveOutput {
-	return o
 }
 
 func (o AssetOrArchiveOutput) ToAssetOrArchiveOutputWithContext(ctx context.Context) AssetOrArchiveOutput {
@@ -1492,7 +970,6 @@ var assetOrArchiveArrayType = reflect.TypeOf((*[]AssetOrArchive)(nil)).Elem()
 type AssetOrArchiveArrayInput interface {
 	Input
 
-	ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput
 	ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput
 }
 
@@ -1502,10 +979,6 @@ type AssetOrArchiveArray []AssetOrArchiveInput
 // ElementType returns the element type of this Input ([]AssetOrArchive).
 func (AssetOrArchiveArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayType
-}
-
-func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
-	return ToOutput(in).(AssetOrArchiveArrayOutput)
 }
 
 func (in AssetOrArchiveArray) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
@@ -1518,10 +991,6 @@ type AssetOrArchiveArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]AssetOrArchive).
 func (AssetOrArchiveArrayOutput) ElementType() reflect.Type {
 	return assetOrArchiveArrayType
-}
-
-func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutput() AssetOrArchiveArrayOutput {
-	return o
 }
 
 func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayOutput {
@@ -1540,7 +1009,6 @@ var assetOrArchiveMapType = reflect.TypeOf((*map[string]AssetOrArchive)(nil)).El
 type AssetOrArchiveMapInput interface {
 	Input
 
-	ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput
 	ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput
 }
 
@@ -1550,10 +1018,6 @@ type AssetOrArchiveMap map[string]AssetOrArchiveInput
 // ElementType returns the element type of this Input (map[string]AssetOrArchive).
 func (AssetOrArchiveMap) ElementType() reflect.Type {
 	return assetOrArchiveMapType
-}
-
-func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
-	return ToOutput(in).(AssetOrArchiveMapOutput)
 }
 
 func (in AssetOrArchiveMap) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
@@ -1566,10 +1030,6 @@ type AssetOrArchiveMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]AssetOrArchive).
 func (AssetOrArchiveMapOutput) ElementType() reflect.Type {
 	return assetOrArchiveMapType
-}
-
-func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutput() AssetOrArchiveMapOutput {
-	return o
 }
 
 func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx context.Context) AssetOrArchiveMapOutput {
@@ -1588,7 +1048,6 @@ var assetOrArchiveArrayMapType = reflect.TypeOf((*map[string][]AssetOrArchive)(n
 type AssetOrArchiveArrayMapInput interface {
 	Input
 
-	ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput
 	ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput
 }
 
@@ -1598,10 +1057,6 @@ type AssetOrArchiveArrayMap map[string]AssetOrArchiveArrayInput
 // ElementType returns the element type of this Input (map[string][]AssetOrArchive).
 func (AssetOrArchiveArrayMap) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
-}
-
-func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
-	return ToOutput(in).(AssetOrArchiveArrayMapOutput)
 }
 
 func (in AssetOrArchiveArrayMap) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
@@ -1614,10 +1069,6 @@ type AssetOrArchiveArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]AssetOrArchive).
 func (AssetOrArchiveArrayMapOutput) ElementType() reflect.Type {
 	return assetOrArchiveArrayMapType
-}
-
-func (o AssetOrArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutput() AssetOrArchiveArrayMapOutput {
-	return o
 }
 
 func (o AssetOrArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutputWithContext(ctx context.Context) AssetOrArchiveArrayMapOutput {
@@ -1636,7 +1087,6 @@ var assetOrArchiveMapArrayType = reflect.TypeOf((*[]map[string]AssetOrArchive)(n
 type AssetOrArchiveMapArrayInput interface {
 	Input
 
-	ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput
 	ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput
 }
 
@@ -1646,10 +1096,6 @@ type AssetOrArchiveMapArray []AssetOrArchiveMapInput
 // ElementType returns the element type of this Input ([]map[string]AssetOrArchive).
 func (AssetOrArchiveMapArray) ElementType() reflect.Type {
 	return assetOrArchiveMapArrayType
-}
-
-func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
-	return ToOutput(in).(AssetOrArchiveMapArrayOutput)
 }
 
 func (in AssetOrArchiveMapArray) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
@@ -1662,10 +1108,6 @@ type AssetOrArchiveMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]AssetOrArchive).
 func (AssetOrArchiveMapArrayOutput) ElementType() reflect.Type {
 	return assetOrArchiveMapArrayType
-}
-
-func (o AssetOrArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutput() AssetOrArchiveMapArrayOutput {
-	return o
 }
 
 func (o AssetOrArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutputWithContext(ctx context.Context) AssetOrArchiveMapArrayOutput {
@@ -1684,7 +1126,6 @@ var assetOrArchiveMapMapType = reflect.TypeOf((*map[string]map[string]AssetOrArc
 type AssetOrArchiveMapMapInput interface {
 	Input
 
-	ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput
 	ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput
 }
 
@@ -1694,10 +1135,6 @@ type AssetOrArchiveMapMap map[string]AssetOrArchiveMapInput
 // ElementType returns the element type of this Input (map[string]map[string]AssetOrArchive).
 func (AssetOrArchiveMapMap) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
-}
-
-func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
-	return ToOutput(in).(AssetOrArchiveMapMapOutput)
 }
 
 func (in AssetOrArchiveMapMap) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
@@ -1710,10 +1147,6 @@ type AssetOrArchiveMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]AssetOrArchive).
 func (AssetOrArchiveMapMapOutput) ElementType() reflect.Type {
 	return assetOrArchiveMapMapType
-}
-
-func (o AssetOrArchiveMapMapOutput) ToAssetOrArchiveMapMapOutput() AssetOrArchiveMapMapOutput {
-	return o
 }
 
 func (o AssetOrArchiveMapMapOutput) ToAssetOrArchiveMapMapOutputWithContext(ctx context.Context) AssetOrArchiveMapMapOutput {
@@ -1732,7 +1165,6 @@ var assetOrArchiveArrayArrayType = reflect.TypeOf((*[][]AssetOrArchive)(nil)).El
 type AssetOrArchiveArrayArrayInput interface {
 	Input
 
-	ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput
 	ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput
 }
 
@@ -1742,10 +1174,6 @@ type AssetOrArchiveArrayArray []AssetOrArchiveArrayInput
 // ElementType returns the element type of this Input ([][]AssetOrArchive).
 func (AssetOrArchiveArrayArray) ElementType() reflect.Type {
 	return assetOrArchiveArrayArrayType
-}
-
-func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
-	return ToOutput(in).(AssetOrArchiveArrayArrayOutput)
 }
 
 func (in AssetOrArchiveArrayArray) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
@@ -1758,10 +1186,6 @@ type AssetOrArchiveArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]AssetOrArchive).
 func (AssetOrArchiveArrayArrayOutput) ElementType() reflect.Type {
 	return assetOrArchiveArrayArrayType
-}
-
-func (o AssetOrArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutput() AssetOrArchiveArrayArrayOutput {
-	return o
 }
 
 func (o AssetOrArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutputWithContext(ctx context.Context) AssetOrArchiveArrayArrayOutput {
@@ -1780,10 +1204,8 @@ var boolType = reflect.TypeOf((*bool)(nil)).Elem()
 type BoolInput interface {
 	Input
 
-	ToBoolOutput() BoolOutput
 	ToBoolOutputWithContext(ctx context.Context) BoolOutput
 
-	ToBoolPtrOutput() BoolPtrOutput
 	ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 }
 
@@ -1793,10 +1215,6 @@ type Bool bool
 // ElementType returns the element type of this Input (bool).
 func (Bool) ElementType() reflect.Type {
 	return boolType
-}
-
-func (in Bool) ToBoolOutput() BoolOutput {
-	return ToOutput(in).(BoolOutput)
 }
 
 func (in Bool) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
@@ -1819,16 +1237,8 @@ func (BoolOutput) ElementType() reflect.Type {
 	return boolType
 }
 
-func (o BoolOutput) ToBoolOutput() BoolOutput {
-	return o
-}
-
 func (o BoolOutput) ToBoolOutputWithContext(ctx context.Context) BoolOutput {
 	return o
-}
-
-func (o BoolOutput) ToBoolPtrOutput() BoolPtrOutput {
-	return o.ToBoolPtrOutputWithContext(context.Background())
 }
 
 func (o BoolOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
@@ -1843,7 +1253,6 @@ var boolPtrType = reflect.TypeOf((**bool)(nil)).Elem()
 type BoolPtrInput interface {
 	Input
 
-	ToBoolPtrOutput() BoolPtrOutput
 	ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput
 }
 
@@ -1859,10 +1268,6 @@ func (*boolPtr) ElementType() reflect.Type {
 	return boolPtrType
 }
 
-func (in *boolPtr) ToBoolPtrOutput() BoolPtrOutput {
-	return ToOutput(in).(BoolPtrOutput)
-}
-
 func (in *boolPtr) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
 	return ToOutputWithContext(ctx, in).(BoolPtrOutput)
 }
@@ -1873,10 +1278,6 @@ type BoolPtrOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (*bool).
 func (BoolPtrOutput) ElementType() reflect.Type {
 	return boolPtrType
-}
-
-func (o BoolPtrOutput) ToBoolPtrOutput() BoolPtrOutput {
-	return o
 }
 
 func (o BoolPtrOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOutput {
@@ -1895,7 +1296,6 @@ var boolArrayType = reflect.TypeOf((*[]bool)(nil)).Elem()
 type BoolArrayInput interface {
 	Input
 
-	ToBoolArrayOutput() BoolArrayOutput
 	ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayOutput
 }
 
@@ -1905,10 +1305,6 @@ type BoolArray []BoolInput
 // ElementType returns the element type of this Input ([]bool).
 func (BoolArray) ElementType() reflect.Type {
 	return boolArrayType
-}
-
-func (in BoolArray) ToBoolArrayOutput() BoolArrayOutput {
-	return ToOutput(in).(BoolArrayOutput)
 }
 
 func (in BoolArray) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayOutput {
@@ -1921,10 +1317,6 @@ type BoolArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]bool).
 func (BoolArrayOutput) ElementType() reflect.Type {
 	return boolArrayType
-}
-
-func (o BoolArrayOutput) ToBoolArrayOutput() BoolArrayOutput {
-	return o
 }
 
 func (o BoolArrayOutput) ToBoolArrayOutputWithContext(ctx context.Context) BoolArrayOutput {
@@ -1943,7 +1335,6 @@ var boolMapType = reflect.TypeOf((*map[string]bool)(nil)).Elem()
 type BoolMapInput interface {
 	Input
 
-	ToBoolMapOutput() BoolMapOutput
 	ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput
 }
 
@@ -1953,10 +1344,6 @@ type BoolMap map[string]BoolInput
 // ElementType returns the element type of this Input (map[string]bool).
 func (BoolMap) ElementType() reflect.Type {
 	return boolMapType
-}
-
-func (in BoolMap) ToBoolMapOutput() BoolMapOutput {
-	return ToOutput(in).(BoolMapOutput)
 }
 
 func (in BoolMap) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput {
@@ -1969,10 +1356,6 @@ type BoolMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]bool).
 func (BoolMapOutput) ElementType() reflect.Type {
 	return boolMapType
-}
-
-func (o BoolMapOutput) ToBoolMapOutput() BoolMapOutput {
-	return o
 }
 
 func (o BoolMapOutput) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOutput {
@@ -1991,7 +1374,6 @@ var boolArrayMapType = reflect.TypeOf((*map[string][]bool)(nil)).Elem()
 type BoolArrayMapInput interface {
 	Input
 
-	ToBoolArrayMapOutput() BoolArrayMapOutput
 	ToBoolArrayMapOutputWithContext(ctx context.Context) BoolArrayMapOutput
 }
 
@@ -2001,10 +1383,6 @@ type BoolArrayMap map[string]BoolArrayInput
 // ElementType returns the element type of this Input (map[string][]bool).
 func (BoolArrayMap) ElementType() reflect.Type {
 	return boolArrayMapType
-}
-
-func (in BoolArrayMap) ToBoolArrayMapOutput() BoolArrayMapOutput {
-	return ToOutput(in).(BoolArrayMapOutput)
 }
 
 func (in BoolArrayMap) ToBoolArrayMapOutputWithContext(ctx context.Context) BoolArrayMapOutput {
@@ -2017,10 +1395,6 @@ type BoolArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]bool).
 func (BoolArrayMapOutput) ElementType() reflect.Type {
 	return boolArrayMapType
-}
-
-func (o BoolArrayMapOutput) ToBoolArrayMapOutput() BoolArrayMapOutput {
-	return o
 }
 
 func (o BoolArrayMapOutput) ToBoolArrayMapOutputWithContext(ctx context.Context) BoolArrayMapOutput {
@@ -2039,7 +1413,6 @@ var boolMapArrayType = reflect.TypeOf((*[]map[string]bool)(nil)).Elem()
 type BoolMapArrayInput interface {
 	Input
 
-	ToBoolMapArrayOutput() BoolMapArrayOutput
 	ToBoolMapArrayOutputWithContext(ctx context.Context) BoolMapArrayOutput
 }
 
@@ -2049,10 +1422,6 @@ type BoolMapArray []BoolMapInput
 // ElementType returns the element type of this Input ([]map[string]bool).
 func (BoolMapArray) ElementType() reflect.Type {
 	return boolMapArrayType
-}
-
-func (in BoolMapArray) ToBoolMapArrayOutput() BoolMapArrayOutput {
-	return ToOutput(in).(BoolMapArrayOutput)
 }
 
 func (in BoolMapArray) ToBoolMapArrayOutputWithContext(ctx context.Context) BoolMapArrayOutput {
@@ -2065,10 +1434,6 @@ type BoolMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]bool).
 func (BoolMapArrayOutput) ElementType() reflect.Type {
 	return boolMapArrayType
-}
-
-func (o BoolMapArrayOutput) ToBoolMapArrayOutput() BoolMapArrayOutput {
-	return o
 }
 
 func (o BoolMapArrayOutput) ToBoolMapArrayOutputWithContext(ctx context.Context) BoolMapArrayOutput {
@@ -2087,7 +1452,6 @@ var boolMapMapType = reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem()
 type BoolMapMapInput interface {
 	Input
 
-	ToBoolMapMapOutput() BoolMapMapOutput
 	ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapMapOutput
 }
 
@@ -2097,10 +1461,6 @@ type BoolMapMap map[string]BoolMapInput
 // ElementType returns the element type of this Input (map[string]map[string]bool).
 func (BoolMapMap) ElementType() reflect.Type {
 	return boolMapMapType
-}
-
-func (in BoolMapMap) ToBoolMapMapOutput() BoolMapMapOutput {
-	return ToOutput(in).(BoolMapMapOutput)
 }
 
 func (in BoolMapMap) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapMapOutput {
@@ -2113,10 +1473,6 @@ type BoolMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]bool).
 func (BoolMapMapOutput) ElementType() reflect.Type {
 	return boolMapMapType
-}
-
-func (o BoolMapMapOutput) ToBoolMapMapOutput() BoolMapMapOutput {
-	return o
 }
 
 func (o BoolMapMapOutput) ToBoolMapMapOutputWithContext(ctx context.Context) BoolMapMapOutput {
@@ -2135,7 +1491,6 @@ var boolArrayArrayType = reflect.TypeOf((*[][]bool)(nil)).Elem()
 type BoolArrayArrayInput interface {
 	Input
 
-	ToBoolArrayArrayOutput() BoolArrayArrayOutput
 	ToBoolArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayOutput
 }
 
@@ -2145,10 +1500,6 @@ type BoolArrayArray []BoolArrayInput
 // ElementType returns the element type of this Input ([][]bool).
 func (BoolArrayArray) ElementType() reflect.Type {
 	return boolArrayArrayType
-}
-
-func (in BoolArrayArray) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
-	return ToOutput(in).(BoolArrayArrayOutput)
 }
 
 func (in BoolArrayArray) ToBoolArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayOutput {
@@ -2161,10 +1512,6 @@ type BoolArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]bool).
 func (BoolArrayArrayOutput) ElementType() reflect.Type {
 	return boolArrayArrayType
-}
-
-func (o BoolArrayArrayOutput) ToBoolArrayArrayOutput() BoolArrayArrayOutput {
-	return o
 }
 
 func (o BoolArrayArrayOutput) ToBoolArrayArrayOutputWithContext(ctx context.Context) BoolArrayArrayOutput {
@@ -2183,10 +1530,8 @@ var float64Type = reflect.TypeOf((*float64)(nil)).Elem()
 type Float64Input interface {
 	Input
 
-	ToFloat64Output() Float64Output
 	ToFloat64OutputWithContext(ctx context.Context) Float64Output
 
-	ToFloat64PtrOutput() Float64PtrOutput
 	ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput
 }
 
@@ -2196,10 +1541,6 @@ type Float64 float64
 // ElementType returns the element type of this Input (float64).
 func (Float64) ElementType() reflect.Type {
 	return float64Type
-}
-
-func (in Float64) ToFloat64Output() Float64Output {
-	return ToOutput(in).(Float64Output)
 }
 
 func (in Float64) ToFloat64OutputWithContext(ctx context.Context) Float64Output {
@@ -2222,16 +1563,8 @@ func (Float64Output) ElementType() reflect.Type {
 	return float64Type
 }
 
-func (o Float64Output) ToFloat64Output() Float64Output {
-	return o
-}
-
 func (o Float64Output) ToFloat64OutputWithContext(ctx context.Context) Float64Output {
 	return o
-}
-
-func (o Float64Output) ToFloat64PtrOutput() Float64PtrOutput {
-	return o.ToFloat64PtrOutputWithContext(context.Background())
 }
 
 func (o Float64Output) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
@@ -2246,7 +1579,6 @@ var float64PtrType = reflect.TypeOf((**float64)(nil)).Elem()
 type Float64PtrInput interface {
 	Input
 
-	ToFloat64PtrOutput() Float64PtrOutput
 	ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput
 }
 
@@ -2262,10 +1594,6 @@ func (*float64Ptr) ElementType() reflect.Type {
 	return float64PtrType
 }
 
-func (in *float64Ptr) ToFloat64PtrOutput() Float64PtrOutput {
-	return ToOutput(in).(Float64PtrOutput)
-}
-
 func (in *float64Ptr) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
 	return ToOutputWithContext(ctx, in).(Float64PtrOutput)
 }
@@ -2276,10 +1604,6 @@ type Float64PtrOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (*float64).
 func (Float64PtrOutput) ElementType() reflect.Type {
 	return float64PtrType
-}
-
-func (o Float64PtrOutput) ToFloat64PtrOutput() Float64PtrOutput {
-	return o
 }
 
 func (o Float64PtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) Float64PtrOutput {
@@ -2298,7 +1622,6 @@ var float64ArrayType = reflect.TypeOf((*[]float64)(nil)).Elem()
 type Float64ArrayInput interface {
 	Input
 
-	ToFloat64ArrayOutput() Float64ArrayOutput
 	ToFloat64ArrayOutputWithContext(ctx context.Context) Float64ArrayOutput
 }
 
@@ -2308,10 +1631,6 @@ type Float64Array []Float64Input
 // ElementType returns the element type of this Input ([]float64).
 func (Float64Array) ElementType() reflect.Type {
 	return float64ArrayType
-}
-
-func (in Float64Array) ToFloat64ArrayOutput() Float64ArrayOutput {
-	return ToOutput(in).(Float64ArrayOutput)
 }
 
 func (in Float64Array) ToFloat64ArrayOutputWithContext(ctx context.Context) Float64ArrayOutput {
@@ -2324,10 +1643,6 @@ type Float64ArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]float64).
 func (Float64ArrayOutput) ElementType() reflect.Type {
 	return float64ArrayType
-}
-
-func (o Float64ArrayOutput) ToFloat64ArrayOutput() Float64ArrayOutput {
-	return o
 }
 
 func (o Float64ArrayOutput) ToFloat64ArrayOutputWithContext(ctx context.Context) Float64ArrayOutput {
@@ -2346,7 +1661,6 @@ var float64MapType = reflect.TypeOf((*map[string]float64)(nil)).Elem()
 type Float64MapInput interface {
 	Input
 
-	ToFloat64MapOutput() Float64MapOutput
 	ToFloat64MapOutputWithContext(ctx context.Context) Float64MapOutput
 }
 
@@ -2356,10 +1670,6 @@ type Float64Map map[string]Float64Input
 // ElementType returns the element type of this Input (map[string]float64).
 func (Float64Map) ElementType() reflect.Type {
 	return float64MapType
-}
-
-func (in Float64Map) ToFloat64MapOutput() Float64MapOutput {
-	return ToOutput(in).(Float64MapOutput)
 }
 
 func (in Float64Map) ToFloat64MapOutputWithContext(ctx context.Context) Float64MapOutput {
@@ -2372,10 +1682,6 @@ type Float64MapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]float64).
 func (Float64MapOutput) ElementType() reflect.Type {
 	return float64MapType
-}
-
-func (o Float64MapOutput) ToFloat64MapOutput() Float64MapOutput {
-	return o
 }
 
 func (o Float64MapOutput) ToFloat64MapOutputWithContext(ctx context.Context) Float64MapOutput {
@@ -2394,7 +1700,6 @@ var float64ArrayMapType = reflect.TypeOf((*map[string][]float64)(nil)).Elem()
 type Float64ArrayMapInput interface {
 	Input
 
-	ToFloat64ArrayMapOutput() Float64ArrayMapOutput
 	ToFloat64ArrayMapOutputWithContext(ctx context.Context) Float64ArrayMapOutput
 }
 
@@ -2404,10 +1709,6 @@ type Float64ArrayMap map[string]Float64ArrayInput
 // ElementType returns the element type of this Input (map[string][]float64).
 func (Float64ArrayMap) ElementType() reflect.Type {
 	return float64ArrayMapType
-}
-
-func (in Float64ArrayMap) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
-	return ToOutput(in).(Float64ArrayMapOutput)
 }
 
 func (in Float64ArrayMap) ToFloat64ArrayMapOutputWithContext(ctx context.Context) Float64ArrayMapOutput {
@@ -2420,10 +1721,6 @@ type Float64ArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]float64).
 func (Float64ArrayMapOutput) ElementType() reflect.Type {
 	return float64ArrayMapType
-}
-
-func (o Float64ArrayMapOutput) ToFloat64ArrayMapOutput() Float64ArrayMapOutput {
-	return o
 }
 
 func (o Float64ArrayMapOutput) ToFloat64ArrayMapOutputWithContext(ctx context.Context) Float64ArrayMapOutput {
@@ -2442,7 +1739,6 @@ var float64MapArrayType = reflect.TypeOf((*[]map[string]float64)(nil)).Elem()
 type Float64MapArrayInput interface {
 	Input
 
-	ToFloat64MapArrayOutput() Float64MapArrayOutput
 	ToFloat64MapArrayOutputWithContext(ctx context.Context) Float64MapArrayOutput
 }
 
@@ -2452,10 +1748,6 @@ type Float64MapArray []Float64MapInput
 // ElementType returns the element type of this Input ([]map[string]float64).
 func (Float64MapArray) ElementType() reflect.Type {
 	return float64MapArrayType
-}
-
-func (in Float64MapArray) ToFloat64MapArrayOutput() Float64MapArrayOutput {
-	return ToOutput(in).(Float64MapArrayOutput)
 }
 
 func (in Float64MapArray) ToFloat64MapArrayOutputWithContext(ctx context.Context) Float64MapArrayOutput {
@@ -2468,10 +1760,6 @@ type Float64MapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]float64).
 func (Float64MapArrayOutput) ElementType() reflect.Type {
 	return float64MapArrayType
-}
-
-func (o Float64MapArrayOutput) ToFloat64MapArrayOutput() Float64MapArrayOutput {
-	return o
 }
 
 func (o Float64MapArrayOutput) ToFloat64MapArrayOutputWithContext(ctx context.Context) Float64MapArrayOutput {
@@ -2490,7 +1778,6 @@ var float64MapMapType = reflect.TypeOf((*map[string]map[string]float64)(nil)).El
 type Float64MapMapInput interface {
 	Input
 
-	ToFloat64MapMapOutput() Float64MapMapOutput
 	ToFloat64MapMapOutputWithContext(ctx context.Context) Float64MapMapOutput
 }
 
@@ -2500,10 +1787,6 @@ type Float64MapMap map[string]Float64MapInput
 // ElementType returns the element type of this Input (map[string]map[string]float64).
 func (Float64MapMap) ElementType() reflect.Type {
 	return float64MapMapType
-}
-
-func (in Float64MapMap) ToFloat64MapMapOutput() Float64MapMapOutput {
-	return ToOutput(in).(Float64MapMapOutput)
 }
 
 func (in Float64MapMap) ToFloat64MapMapOutputWithContext(ctx context.Context) Float64MapMapOutput {
@@ -2516,10 +1799,6 @@ type Float64MapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]float64).
 func (Float64MapMapOutput) ElementType() reflect.Type {
 	return float64MapMapType
-}
-
-func (o Float64MapMapOutput) ToFloat64MapMapOutput() Float64MapMapOutput {
-	return o
 }
 
 func (o Float64MapMapOutput) ToFloat64MapMapOutputWithContext(ctx context.Context) Float64MapMapOutput {
@@ -2538,7 +1817,6 @@ var float64ArrayArrayType = reflect.TypeOf((*[][]float64)(nil)).Elem()
 type Float64ArrayArrayInput interface {
 	Input
 
-	ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput
 	ToFloat64ArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayOutput
 }
 
@@ -2548,10 +1826,6 @@ type Float64ArrayArray []Float64ArrayInput
 // ElementType returns the element type of this Input ([][]float64).
 func (Float64ArrayArray) ElementType() reflect.Type {
 	return float64ArrayArrayType
-}
-
-func (in Float64ArrayArray) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
-	return ToOutput(in).(Float64ArrayArrayOutput)
 }
 
 func (in Float64ArrayArray) ToFloat64ArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayOutput {
@@ -2564,10 +1838,6 @@ type Float64ArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]float64).
 func (Float64ArrayArrayOutput) ElementType() reflect.Type {
 	return float64ArrayArrayType
-}
-
-func (o Float64ArrayArrayOutput) ToFloat64ArrayArrayOutput() Float64ArrayArrayOutput {
-	return o
 }
 
 func (o Float64ArrayArrayOutput) ToFloat64ArrayArrayOutputWithContext(ctx context.Context) Float64ArrayArrayOutput {
@@ -2586,10 +1856,8 @@ var idType = reflect.TypeOf((*ID)(nil)).Elem()
 type IDInput interface {
 	Input
 
-	ToIDOutput() IDOutput
 	ToIDOutputWithContext(ctx context.Context) IDOutput
 
-	ToIDPtrOutput() IDPtrOutput
 	ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput
 }
 
@@ -2598,16 +1866,8 @@ func (ID) ElementType() reflect.Type {
 	return idType
 }
 
-func (in ID) ToIDOutput() IDOutput {
-	return ToOutput(in).(IDOutput)
-}
-
 func (in ID) ToIDOutputWithContext(ctx context.Context) IDOutput {
 	return ToOutputWithContext(ctx, in).(IDOutput)
-}
-
-func (in ID) ToStringOutput() StringOutput {
-	return in.ToStringOutputWithContext(context.Background())
 }
 
 func (in ID) ToStringOutputWithContext(ctx context.Context) StringOutput {
@@ -2630,26 +1890,14 @@ func (IDOutput) ElementType() reflect.Type {
 	return idType
 }
 
-func (o IDOutput) ToIDOutput() IDOutput {
-	return o
-}
-
 func (o IDOutput) ToIDOutputWithContext(ctx context.Context) IDOutput {
 	return o
-}
-
-func (o IDOutput) ToStringOutput() StringOutput {
-	return o.ToStringOutputWithContext(context.Background())
 }
 
 func (o IDOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v ID) string {
 		return (string)(v)
 	}).(StringOutput)
-}
-
-func (o IDOutput) ToIDPtrOutput() IDPtrOutput {
-	return o.ToIDPtrOutputWithContext(context.Background())
 }
 
 func (o IDOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
@@ -2664,7 +1912,6 @@ var iDPtrType = reflect.TypeOf((**ID)(nil)).Elem()
 type IDPtrInput interface {
 	Input
 
-	ToIDPtrOutput() IDPtrOutput
 	ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput
 }
 
@@ -2680,10 +1927,6 @@ func (*idPtr) ElementType() reflect.Type {
 	return iDPtrType
 }
 
-func (in *idPtr) ToIDPtrOutput() IDPtrOutput {
-	return ToOutput(in).(IDPtrOutput)
-}
-
 func (in *idPtr) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 	return ToOutputWithContext(ctx, in).(IDPtrOutput)
 }
@@ -2694,10 +1937,6 @@ type IDPtrOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (*ID).
 func (IDPtrOutput) ElementType() reflect.Type {
 	return iDPtrType
-}
-
-func (o IDPtrOutput) ToIDPtrOutput() IDPtrOutput {
-	return o
 }
 
 func (o IDPtrOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
@@ -2716,7 +1955,6 @@ var iDArrayType = reflect.TypeOf((*[]ID)(nil)).Elem()
 type IDArrayInput interface {
 	Input
 
-	ToIDArrayOutput() IDArrayOutput
 	ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput
 }
 
@@ -2726,10 +1964,6 @@ type IDArray []IDInput
 // ElementType returns the element type of this Input ([]ID).
 func (IDArray) ElementType() reflect.Type {
 	return iDArrayType
-}
-
-func (in IDArray) ToIDArrayOutput() IDArrayOutput {
-	return ToOutput(in).(IDArrayOutput)
 }
 
 func (in IDArray) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput {
@@ -2742,10 +1976,6 @@ type IDArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]ID).
 func (IDArrayOutput) ElementType() reflect.Type {
 	return iDArrayType
-}
-
-func (o IDArrayOutput) ToIDArrayOutput() IDArrayOutput {
-	return o
 }
 
 func (o IDArrayOutput) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOutput {
@@ -2764,7 +1994,6 @@ var iDMapType = reflect.TypeOf((*map[string]ID)(nil)).Elem()
 type IDMapInput interface {
 	Input
 
-	ToIDMapOutput() IDMapOutput
 	ToIDMapOutputWithContext(ctx context.Context) IDMapOutput
 }
 
@@ -2774,10 +2003,6 @@ type IDMap map[string]IDInput
 // ElementType returns the element type of this Input (map[string]ID).
 func (IDMap) ElementType() reflect.Type {
 	return iDMapType
-}
-
-func (in IDMap) ToIDMapOutput() IDMapOutput {
-	return ToOutput(in).(IDMapOutput)
 }
 
 func (in IDMap) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
@@ -2790,10 +2015,6 @@ type IDMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]ID).
 func (IDMapOutput) ElementType() reflect.Type {
 	return iDMapType
-}
-
-func (o IDMapOutput) ToIDMapOutput() IDMapOutput {
-	return o
 }
 
 func (o IDMapOutput) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
@@ -2812,7 +2033,6 @@ var iDArrayMapType = reflect.TypeOf((*map[string][]ID)(nil)).Elem()
 type IDArrayMapInput interface {
 	Input
 
-	ToIDArrayMapOutput() IDArrayMapOutput
 	ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput
 }
 
@@ -2822,10 +2042,6 @@ type IDArrayMap map[string]IDArrayInput
 // ElementType returns the element type of this Input (map[string][]ID).
 func (IDArrayMap) ElementType() reflect.Type {
 	return iDArrayMapType
-}
-
-func (in IDArrayMap) ToIDArrayMapOutput() IDArrayMapOutput {
-	return ToOutput(in).(IDArrayMapOutput)
 }
 
 func (in IDArrayMap) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput {
@@ -2838,10 +2054,6 @@ type IDArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]ID).
 func (IDArrayMapOutput) ElementType() reflect.Type {
 	return iDArrayMapType
-}
-
-func (o IDArrayMapOutput) ToIDArrayMapOutput() IDArrayMapOutput {
-	return o
 }
 
 func (o IDArrayMapOutput) ToIDArrayMapOutputWithContext(ctx context.Context) IDArrayMapOutput {
@@ -2860,7 +2072,6 @@ var iDMapArrayType = reflect.TypeOf((*[]map[string]ID)(nil)).Elem()
 type IDMapArrayInput interface {
 	Input
 
-	ToIDMapArrayOutput() IDMapArrayOutput
 	ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput
 }
 
@@ -2870,10 +2081,6 @@ type IDMapArray []IDMapInput
 // ElementType returns the element type of this Input ([]map[string]ID).
 func (IDMapArray) ElementType() reflect.Type {
 	return iDMapArrayType
-}
-
-func (in IDMapArray) ToIDMapArrayOutput() IDMapArrayOutput {
-	return ToOutput(in).(IDMapArrayOutput)
 }
 
 func (in IDMapArray) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput {
@@ -2886,10 +2093,6 @@ type IDMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]ID).
 func (IDMapArrayOutput) ElementType() reflect.Type {
 	return iDMapArrayType
-}
-
-func (o IDMapArrayOutput) ToIDMapArrayOutput() IDMapArrayOutput {
-	return o
 }
 
 func (o IDMapArrayOutput) ToIDMapArrayOutputWithContext(ctx context.Context) IDMapArrayOutput {
@@ -2908,7 +2111,6 @@ var iDMapMapType = reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem()
 type IDMapMapInput interface {
 	Input
 
-	ToIDMapMapOutput() IDMapMapOutput
 	ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput
 }
 
@@ -2918,10 +2120,6 @@ type IDMapMap map[string]IDMapInput
 // ElementType returns the element type of this Input (map[string]map[string]ID).
 func (IDMapMap) ElementType() reflect.Type {
 	return iDMapMapType
-}
-
-func (in IDMapMap) ToIDMapMapOutput() IDMapMapOutput {
-	return ToOutput(in).(IDMapMapOutput)
 }
 
 func (in IDMapMap) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput {
@@ -2934,10 +2132,6 @@ type IDMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]ID).
 func (IDMapMapOutput) ElementType() reflect.Type {
 	return iDMapMapType
-}
-
-func (o IDMapMapOutput) ToIDMapMapOutput() IDMapMapOutput {
-	return o
 }
 
 func (o IDMapMapOutput) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMapOutput {
@@ -2956,7 +2150,6 @@ var iDArrayArrayType = reflect.TypeOf((*[][]ID)(nil)).Elem()
 type IDArrayArrayInput interface {
 	Input
 
-	ToIDArrayArrayOutput() IDArrayArrayOutput
 	ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput
 }
 
@@ -2966,10 +2159,6 @@ type IDArrayArray []IDArrayInput
 // ElementType returns the element type of this Input ([][]ID).
 func (IDArrayArray) ElementType() reflect.Type {
 	return iDArrayArrayType
-}
-
-func (in IDArrayArray) ToIDArrayArrayOutput() IDArrayArrayOutput {
-	return ToOutput(in).(IDArrayArrayOutput)
 }
 
 func (in IDArrayArray) ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput {
@@ -2982,10 +2171,6 @@ type IDArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]ID).
 func (IDArrayArrayOutput) ElementType() reflect.Type {
 	return iDArrayArrayType
-}
-
-func (o IDArrayArrayOutput) ToIDArrayArrayOutput() IDArrayArrayOutput {
-	return o
 }
 
 func (o IDArrayArrayOutput) ToIDArrayArrayOutputWithContext(ctx context.Context) IDArrayArrayOutput {
@@ -3004,7 +2189,6 @@ var arrayType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 type ArrayInput interface {
 	Input
 
-	ToArrayOutput() ArrayOutput
 	ToArrayOutputWithContext(ctx context.Context) ArrayOutput
 }
 
@@ -3014,10 +2198,6 @@ type Array []Input
 // ElementType returns the element type of this Input ([]interface{}).
 func (Array) ElementType() reflect.Type {
 	return arrayType
-}
-
-func (in Array) ToArrayOutput() ArrayOutput {
-	return ToOutput(in).(ArrayOutput)
 }
 
 func (in Array) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
@@ -3030,10 +2210,6 @@ type ArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]interface{}).
 func (ArrayOutput) ElementType() reflect.Type {
 	return arrayType
-}
-
-func (o ArrayOutput) ToArrayOutput() ArrayOutput {
-	return o
 }
 
 func (o ArrayOutput) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
@@ -3052,7 +2228,6 @@ var mapType = reflect.TypeOf((*map[string]interface{})(nil)).Elem()
 type MapInput interface {
 	Input
 
-	ToMapOutput() MapOutput
 	ToMapOutputWithContext(ctx context.Context) MapOutput
 }
 
@@ -3062,10 +2237,6 @@ type Map map[string]Input
 // ElementType returns the element type of this Input (map[string]interface{}).
 func (Map) ElementType() reflect.Type {
 	return mapType
-}
-
-func (in Map) ToMapOutput() MapOutput {
-	return ToOutput(in).(MapOutput)
 }
 
 func (in Map) ToMapOutputWithContext(ctx context.Context) MapOutput {
@@ -3078,10 +2249,6 @@ type MapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]interface{}).
 func (MapOutput) ElementType() reflect.Type {
 	return mapType
-}
-
-func (o MapOutput) ToMapOutput() MapOutput {
-	return o
 }
 
 func (o MapOutput) ToMapOutputWithContext(ctx context.Context) MapOutput {
@@ -3100,7 +2267,6 @@ var arrayMapType = reflect.TypeOf((*map[string][]interface{})(nil)).Elem()
 type ArrayMapInput interface {
 	Input
 
-	ToArrayMapOutput() ArrayMapOutput
 	ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutput
 }
 
@@ -3110,10 +2276,6 @@ type ArrayMap map[string]ArrayInput
 // ElementType returns the element type of this Input (map[string][]interface{}).
 func (ArrayMap) ElementType() reflect.Type {
 	return arrayMapType
-}
-
-func (in ArrayMap) ToArrayMapOutput() ArrayMapOutput {
-	return ToOutput(in).(ArrayMapOutput)
 }
 
 func (in ArrayMap) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutput {
@@ -3126,10 +2288,6 @@ type ArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]interface{}).
 func (ArrayMapOutput) ElementType() reflect.Type {
 	return arrayMapType
-}
-
-func (o ArrayMapOutput) ToArrayMapOutput() ArrayMapOutput {
-	return o
 }
 
 func (o ArrayMapOutput) ToArrayMapOutputWithContext(ctx context.Context) ArrayMapOutput {
@@ -3148,7 +2306,6 @@ var mapArrayType = reflect.TypeOf((*[]map[string]interface{})(nil)).Elem()
 type MapArrayInput interface {
 	Input
 
-	ToMapArrayOutput() MapArrayOutput
 	ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutput
 }
 
@@ -3158,10 +2315,6 @@ type MapArray []MapInput
 // ElementType returns the element type of this Input ([]map[string]interface{}).
 func (MapArray) ElementType() reflect.Type {
 	return mapArrayType
-}
-
-func (in MapArray) ToMapArrayOutput() MapArrayOutput {
-	return ToOutput(in).(MapArrayOutput)
 }
 
 func (in MapArray) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutput {
@@ -3174,10 +2327,6 @@ type MapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]interface{}).
 func (MapArrayOutput) ElementType() reflect.Type {
 	return mapArrayType
-}
-
-func (o MapArrayOutput) ToMapArrayOutput() MapArrayOutput {
-	return o
 }
 
 func (o MapArrayOutput) ToMapArrayOutputWithContext(ctx context.Context) MapArrayOutput {
@@ -3196,7 +2345,6 @@ var mapMapType = reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem(
 type MapMapInput interface {
 	Input
 
-	ToMapMapOutput() MapMapOutput
 	ToMapMapOutputWithContext(ctx context.Context) MapMapOutput
 }
 
@@ -3206,10 +2354,6 @@ type MapMap map[string]MapInput
 // ElementType returns the element type of this Input (map[string]map[string]interface{}).
 func (MapMap) ElementType() reflect.Type {
 	return mapMapType
-}
-
-func (in MapMap) ToMapMapOutput() MapMapOutput {
-	return ToOutput(in).(MapMapOutput)
 }
 
 func (in MapMap) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
@@ -3222,10 +2366,6 @@ type MapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]interface{}).
 func (MapMapOutput) ElementType() reflect.Type {
 	return mapMapType
-}
-
-func (o MapMapOutput) ToMapMapOutput() MapMapOutput {
-	return o
 }
 
 func (o MapMapOutput) ToMapMapOutputWithContext(ctx context.Context) MapMapOutput {
@@ -3244,7 +2384,6 @@ var arrayArrayType = reflect.TypeOf((*[][]interface{})(nil)).Elem()
 type ArrayArrayInput interface {
 	Input
 
-	ToArrayArrayOutput() ArrayArrayOutput
 	ToArrayArrayOutputWithContext(ctx context.Context) ArrayArrayOutput
 }
 
@@ -3254,10 +2393,6 @@ type ArrayArray []ArrayInput
 // ElementType returns the element type of this Input ([][]interface{}).
 func (ArrayArray) ElementType() reflect.Type {
 	return arrayArrayType
-}
-
-func (in ArrayArray) ToArrayArrayOutput() ArrayArrayOutput {
-	return ToOutput(in).(ArrayArrayOutput)
 }
 
 func (in ArrayArray) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArrayOutput {
@@ -3270,10 +2405,6 @@ type ArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]interface{}).
 func (ArrayArrayOutput) ElementType() reflect.Type {
 	return arrayArrayType
-}
-
-func (o ArrayArrayOutput) ToArrayArrayOutput() ArrayArrayOutput {
-	return o
 }
 
 func (o ArrayArrayOutput) ToArrayArrayOutputWithContext(ctx context.Context) ArrayArrayOutput {
@@ -3292,10 +2423,8 @@ var intType = reflect.TypeOf((*int)(nil)).Elem()
 type IntInput interface {
 	Input
 
-	ToIntOutput() IntOutput
 	ToIntOutputWithContext(ctx context.Context) IntOutput
 
-	ToIntPtrOutput() IntPtrOutput
 	ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput
 }
 
@@ -3305,10 +2434,6 @@ type Int int
 // ElementType returns the element type of this Input (int).
 func (Int) ElementType() reflect.Type {
 	return intType
-}
-
-func (in Int) ToIntOutput() IntOutput {
-	return ToOutput(in).(IntOutput)
 }
 
 func (in Int) ToIntOutputWithContext(ctx context.Context) IntOutput {
@@ -3331,16 +2456,8 @@ func (IntOutput) ElementType() reflect.Type {
 	return intType
 }
 
-func (o IntOutput) ToIntOutput() IntOutput {
-	return o
-}
-
 func (o IntOutput) ToIntOutputWithContext(ctx context.Context) IntOutput {
 	return o
-}
-
-func (o IntOutput) ToIntPtrOutput() IntPtrOutput {
-	return o.ToIntPtrOutputWithContext(context.Background())
 }
 
 func (o IntOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
@@ -3355,7 +2472,6 @@ var intPtrType = reflect.TypeOf((**int)(nil)).Elem()
 type IntPtrInput interface {
 	Input
 
-	ToIntPtrOutput() IntPtrOutput
 	ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput
 }
 
@@ -3371,10 +2487,6 @@ func (*intPtr) ElementType() reflect.Type {
 	return intPtrType
 }
 
-func (in *intPtr) ToIntPtrOutput() IntPtrOutput {
-	return ToOutput(in).(IntPtrOutput)
-}
-
 func (in *intPtr) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
 	return ToOutputWithContext(ctx, in).(IntPtrOutput)
 }
@@ -3385,10 +2497,6 @@ type IntPtrOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (*int).
 func (IntPtrOutput) ElementType() reflect.Type {
 	return intPtrType
-}
-
-func (o IntPtrOutput) ToIntPtrOutput() IntPtrOutput {
-	return o
 }
 
 func (o IntPtrOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutput {
@@ -3407,7 +2515,6 @@ var intArrayType = reflect.TypeOf((*[]int)(nil)).Elem()
 type IntArrayInput interface {
 	Input
 
-	ToIntArrayOutput() IntArrayOutput
 	ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutput
 }
 
@@ -3417,10 +2524,6 @@ type IntArray []IntInput
 // ElementType returns the element type of this Input ([]int).
 func (IntArray) ElementType() reflect.Type {
 	return intArrayType
-}
-
-func (in IntArray) ToIntArrayOutput() IntArrayOutput {
-	return ToOutput(in).(IntArrayOutput)
 }
 
 func (in IntArray) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutput {
@@ -3433,10 +2536,6 @@ type IntArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]int).
 func (IntArrayOutput) ElementType() reflect.Type {
 	return intArrayType
-}
-
-func (o IntArrayOutput) ToIntArrayOutput() IntArrayOutput {
-	return o
 }
 
 func (o IntArrayOutput) ToIntArrayOutputWithContext(ctx context.Context) IntArrayOutput {
@@ -3455,7 +2554,6 @@ var intMapType = reflect.TypeOf((*map[string]int)(nil)).Elem()
 type IntMapInput interface {
 	Input
 
-	ToIntMapOutput() IntMapOutput
 	ToIntMapOutputWithContext(ctx context.Context) IntMapOutput
 }
 
@@ -3465,10 +2563,6 @@ type IntMap map[string]IntInput
 // ElementType returns the element type of this Input (map[string]int).
 func (IntMap) ElementType() reflect.Type {
 	return intMapType
-}
-
-func (in IntMap) ToIntMapOutput() IntMapOutput {
-	return ToOutput(in).(IntMapOutput)
 }
 
 func (in IntMap) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
@@ -3481,10 +2575,6 @@ type IntMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]int).
 func (IntMapOutput) ElementType() reflect.Type {
 	return intMapType
-}
-
-func (o IntMapOutput) ToIntMapOutput() IntMapOutput {
-	return o
 }
 
 func (o IntMapOutput) ToIntMapOutputWithContext(ctx context.Context) IntMapOutput {
@@ -3503,7 +2593,6 @@ var intArrayMapType = reflect.TypeOf((*map[string][]int)(nil)).Elem()
 type IntArrayMapInput interface {
 	Input
 
-	ToIntArrayMapOutput() IntArrayMapOutput
 	ToIntArrayMapOutputWithContext(ctx context.Context) IntArrayMapOutput
 }
 
@@ -3513,10 +2602,6 @@ type IntArrayMap map[string]IntArrayInput
 // ElementType returns the element type of this Input (map[string][]int).
 func (IntArrayMap) ElementType() reflect.Type {
 	return intArrayMapType
-}
-
-func (in IntArrayMap) ToIntArrayMapOutput() IntArrayMapOutput {
-	return ToOutput(in).(IntArrayMapOutput)
 }
 
 func (in IntArrayMap) ToIntArrayMapOutputWithContext(ctx context.Context) IntArrayMapOutput {
@@ -3529,10 +2614,6 @@ type IntArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]int).
 func (IntArrayMapOutput) ElementType() reflect.Type {
 	return intArrayMapType
-}
-
-func (o IntArrayMapOutput) ToIntArrayMapOutput() IntArrayMapOutput {
-	return o
 }
 
 func (o IntArrayMapOutput) ToIntArrayMapOutputWithContext(ctx context.Context) IntArrayMapOutput {
@@ -3551,7 +2632,6 @@ var intMapArrayType = reflect.TypeOf((*[]map[string]int)(nil)).Elem()
 type IntMapArrayInput interface {
 	Input
 
-	ToIntMapArrayOutput() IntMapArrayOutput
 	ToIntMapArrayOutputWithContext(ctx context.Context) IntMapArrayOutput
 }
 
@@ -3561,10 +2641,6 @@ type IntMapArray []IntMapInput
 // ElementType returns the element type of this Input ([]map[string]int).
 func (IntMapArray) ElementType() reflect.Type {
 	return intMapArrayType
-}
-
-func (in IntMapArray) ToIntMapArrayOutput() IntMapArrayOutput {
-	return ToOutput(in).(IntMapArrayOutput)
 }
 
 func (in IntMapArray) ToIntMapArrayOutputWithContext(ctx context.Context) IntMapArrayOutput {
@@ -3577,10 +2653,6 @@ type IntMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]int).
 func (IntMapArrayOutput) ElementType() reflect.Type {
 	return intMapArrayType
-}
-
-func (o IntMapArrayOutput) ToIntMapArrayOutput() IntMapArrayOutput {
-	return o
 }
 
 func (o IntMapArrayOutput) ToIntMapArrayOutputWithContext(ctx context.Context) IntMapArrayOutput {
@@ -3599,7 +2671,6 @@ var intMapMapType = reflect.TypeOf((*map[string]map[string]int)(nil)).Elem()
 type IntMapMapInput interface {
 	Input
 
-	ToIntMapMapOutput() IntMapMapOutput
 	ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapOutput
 }
 
@@ -3609,10 +2680,6 @@ type IntMapMap map[string]IntMapInput
 // ElementType returns the element type of this Input (map[string]map[string]int).
 func (IntMapMap) ElementType() reflect.Type {
 	return intMapMapType
-}
-
-func (in IntMapMap) ToIntMapMapOutput() IntMapMapOutput {
-	return ToOutput(in).(IntMapMapOutput)
 }
 
 func (in IntMapMap) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapOutput {
@@ -3625,10 +2692,6 @@ type IntMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]int).
 func (IntMapMapOutput) ElementType() reflect.Type {
 	return intMapMapType
-}
-
-func (o IntMapMapOutput) ToIntMapMapOutput() IntMapMapOutput {
-	return o
 }
 
 func (o IntMapMapOutput) ToIntMapMapOutputWithContext(ctx context.Context) IntMapMapOutput {
@@ -3647,7 +2710,6 @@ var intArrayArrayType = reflect.TypeOf((*[][]int)(nil)).Elem()
 type IntArrayArrayInput interface {
 	Input
 
-	ToIntArrayArrayOutput() IntArrayArrayOutput
 	ToIntArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayOutput
 }
 
@@ -3657,10 +2719,6 @@ type IntArrayArray []IntArrayInput
 // ElementType returns the element type of this Input ([][]int).
 func (IntArrayArray) ElementType() reflect.Type {
 	return intArrayArrayType
-}
-
-func (in IntArrayArray) ToIntArrayArrayOutput() IntArrayArrayOutput {
-	return ToOutput(in).(IntArrayArrayOutput)
 }
 
 func (in IntArrayArray) ToIntArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayOutput {
@@ -3673,10 +2731,6 @@ type IntArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]int).
 func (IntArrayArrayOutput) ElementType() reflect.Type {
 	return intArrayArrayType
-}
-
-func (o IntArrayArrayOutput) ToIntArrayArrayOutput() IntArrayArrayOutput {
-	return o
 }
 
 func (o IntArrayArrayOutput) ToIntArrayArrayOutputWithContext(ctx context.Context) IntArrayArrayOutput {
@@ -3695,10 +2749,8 @@ var stringType = reflect.TypeOf((*string)(nil)).Elem()
 type StringInput interface {
 	Input
 
-	ToStringOutput() StringOutput
 	ToStringOutputWithContext(ctx context.Context) StringOutput
 
-	ToStringPtrOutput() StringPtrOutput
 	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
 }
 
@@ -3708,10 +2760,6 @@ type String string
 // ElementType returns the element type of this Input (string).
 func (String) ElementType() reflect.Type {
 	return stringType
-}
-
-func (in String) ToStringOutput() StringOutput {
-	return ToOutput(in).(StringOutput)
 }
 
 func (in String) ToStringOutputWithContext(ctx context.Context) StringOutput {
@@ -3734,16 +2782,8 @@ func (StringOutput) ElementType() reflect.Type {
 	return stringType
 }
 
-func (o StringOutput) ToStringOutput() StringOutput {
-	return o
-}
-
 func (o StringOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o
-}
-
-func (o StringOutput) ToStringPtrOutput() StringPtrOutput {
-	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
 func (o StringOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
@@ -3758,7 +2798,6 @@ var stringPtrType = reflect.TypeOf((**string)(nil)).Elem()
 type StringPtrInput interface {
 	Input
 
-	ToStringPtrOutput() StringPtrOutput
 	ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput
 }
 
@@ -3774,10 +2813,6 @@ func (*stringPtr) ElementType() reflect.Type {
 	return stringPtrType
 }
 
-func (in *stringPtr) ToStringPtrOutput() StringPtrOutput {
-	return ToOutput(in).(StringPtrOutput)
-}
-
 func (in *stringPtr) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
 	return ToOutputWithContext(ctx, in).(StringPtrOutput)
 }
@@ -3788,10 +2823,6 @@ type StringPtrOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (*string).
 func (StringPtrOutput) ElementType() reflect.Type {
 	return stringPtrType
-}
-
-func (o StringPtrOutput) ToStringPtrOutput() StringPtrOutput {
-	return o
 }
 
 func (o StringPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) StringPtrOutput {
@@ -3810,7 +2841,6 @@ var stringArrayType = reflect.TypeOf((*[]string)(nil)).Elem()
 type StringArrayInput interface {
 	Input
 
-	ToStringArrayOutput() StringArrayOutput
 	ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput
 }
 
@@ -3820,10 +2850,6 @@ type StringArray []StringInput
 // ElementType returns the element type of this Input ([]string).
 func (StringArray) ElementType() reflect.Type {
 	return stringArrayType
-}
-
-func (in StringArray) ToStringArrayOutput() StringArrayOutput {
-	return ToOutput(in).(StringArrayOutput)
 }
 
 func (in StringArray) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
@@ -3836,10 +2862,6 @@ type StringArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]string).
 func (StringArrayOutput) ElementType() reflect.Type {
 	return stringArrayType
-}
-
-func (o StringArrayOutput) ToStringArrayOutput() StringArrayOutput {
-	return o
 }
 
 func (o StringArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) StringArrayOutput {
@@ -3858,7 +2880,6 @@ var stringMapType = reflect.TypeOf((*map[string]string)(nil)).Elem()
 type StringMapInput interface {
 	Input
 
-	ToStringMapOutput() StringMapOutput
 	ToStringMapOutputWithContext(ctx context.Context) StringMapOutput
 }
 
@@ -3868,10 +2889,6 @@ type StringMap map[string]StringInput
 // ElementType returns the element type of this Input (map[string]string).
 func (StringMap) ElementType() reflect.Type {
 	return stringMapType
-}
-
-func (in StringMap) ToStringMapOutput() StringMapOutput {
-	return ToOutput(in).(StringMapOutput)
 }
 
 func (in StringMap) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
@@ -3884,10 +2901,6 @@ type StringMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]string).
 func (StringMapOutput) ElementType() reflect.Type {
 	return stringMapType
-}
-
-func (o StringMapOutput) ToStringMapOutput() StringMapOutput {
-	return o
 }
 
 func (o StringMapOutput) ToStringMapOutputWithContext(ctx context.Context) StringMapOutput {
@@ -3906,7 +2919,6 @@ var stringArrayMapType = reflect.TypeOf((*map[string][]string)(nil)).Elem()
 type StringArrayMapInput interface {
 	Input
 
-	ToStringArrayMapOutput() StringArrayMapOutput
 	ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput
 }
 
@@ -3916,10 +2928,6 @@ type StringArrayMap map[string]StringArrayInput
 // ElementType returns the element type of this Input (map[string][]string).
 func (StringArrayMap) ElementType() reflect.Type {
 	return stringArrayMapType
-}
-
-func (in StringArrayMap) ToStringArrayMapOutput() StringArrayMapOutput {
-	return ToOutput(in).(StringArrayMapOutput)
 }
 
 func (in StringArrayMap) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
@@ -3932,10 +2940,6 @@ type StringArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]string).
 func (StringArrayMapOutput) ElementType() reflect.Type {
 	return stringArrayMapType
-}
-
-func (o StringArrayMapOutput) ToStringArrayMapOutput() StringArrayMapOutput {
-	return o
 }
 
 func (o StringArrayMapOutput) ToStringArrayMapOutputWithContext(ctx context.Context) StringArrayMapOutput {
@@ -3954,7 +2958,6 @@ var stringMapArrayType = reflect.TypeOf((*[]map[string]string)(nil)).Elem()
 type StringMapArrayInput interface {
 	Input
 
-	ToStringMapArrayOutput() StringMapArrayOutput
 	ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput
 }
 
@@ -3964,10 +2967,6 @@ type StringMapArray []StringMapInput
 // ElementType returns the element type of this Input ([]map[string]string).
 func (StringMapArray) ElementType() reflect.Type {
 	return stringMapArrayType
-}
-
-func (in StringMapArray) ToStringMapArrayOutput() StringMapArrayOutput {
-	return ToOutput(in).(StringMapArrayOutput)
 }
 
 func (in StringMapArray) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
@@ -3980,10 +2979,6 @@ type StringMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]string).
 func (StringMapArrayOutput) ElementType() reflect.Type {
 	return stringMapArrayType
-}
-
-func (o StringMapArrayOutput) ToStringMapArrayOutput() StringMapArrayOutput {
-	return o
 }
 
 func (o StringMapArrayOutput) ToStringMapArrayOutputWithContext(ctx context.Context) StringMapArrayOutput {
@@ -4002,7 +2997,6 @@ var stringMapMapType = reflect.TypeOf((*map[string]map[string]string)(nil)).Elem
 type StringMapMapInput interface {
 	Input
 
-	ToStringMapMapOutput() StringMapMapOutput
 	ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput
 }
 
@@ -4012,10 +3006,6 @@ type StringMapMap map[string]StringMapInput
 // ElementType returns the element type of this Input (map[string]map[string]string).
 func (StringMapMap) ElementType() reflect.Type {
 	return stringMapMapType
-}
-
-func (in StringMapMap) ToStringMapMapOutput() StringMapMapOutput {
-	return ToOutput(in).(StringMapMapOutput)
 }
 
 func (in StringMapMap) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
@@ -4028,10 +3018,6 @@ type StringMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]string).
 func (StringMapMapOutput) ElementType() reflect.Type {
 	return stringMapMapType
-}
-
-func (o StringMapMapOutput) ToStringMapMapOutput() StringMapMapOutput {
-	return o
 }
 
 func (o StringMapMapOutput) ToStringMapMapOutputWithContext(ctx context.Context) StringMapMapOutput {
@@ -4050,7 +3036,6 @@ var stringArrayArrayType = reflect.TypeOf((*[][]string)(nil)).Elem()
 type StringArrayArrayInput interface {
 	Input
 
-	ToStringArrayArrayOutput() StringArrayArrayOutput
 	ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput
 }
 
@@ -4060,10 +3045,6 @@ type StringArrayArray []StringArrayInput
 // ElementType returns the element type of this Input ([][]string).
 func (StringArrayArray) ElementType() reflect.Type {
 	return stringArrayArrayType
-}
-
-func (in StringArrayArray) ToStringArrayArrayOutput() StringArrayArrayOutput {
-	return ToOutput(in).(StringArrayArrayOutput)
 }
 
 func (in StringArrayArray) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
@@ -4076,10 +3057,6 @@ type StringArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]string).
 func (StringArrayArrayOutput) ElementType() reflect.Type {
 	return stringArrayArrayType
-}
-
-func (o StringArrayArrayOutput) ToStringArrayArrayOutput() StringArrayArrayOutput {
-	return o
 }
 
 func (o StringArrayArrayOutput) ToStringArrayArrayOutputWithContext(ctx context.Context) StringArrayArrayOutput {
@@ -4098,10 +3075,8 @@ var urnType = reflect.TypeOf((*URN)(nil)).Elem()
 type URNInput interface {
 	Input
 
-	ToURNOutput() URNOutput
 	ToURNOutputWithContext(ctx context.Context) URNOutput
 
-	ToURNPtrOutput() URNPtrOutput
 	ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput
 }
 
@@ -4110,16 +3085,8 @@ func (URN) ElementType() reflect.Type {
 	return urnType
 }
 
-func (in URN) ToURNOutput() URNOutput {
-	return ToOutput(in).(URNOutput)
-}
-
 func (in URN) ToURNOutputWithContext(ctx context.Context) URNOutput {
 	return ToOutputWithContext(ctx, in).(URNOutput)
-}
-
-func (in URN) ToStringOutput() StringOutput {
-	return in.ToStringOutputWithContext(context.Background())
 }
 
 func (in URN) ToStringOutputWithContext(ctx context.Context) StringOutput {
@@ -4142,26 +3109,14 @@ func (URNOutput) ElementType() reflect.Type {
 	return urnType
 }
 
-func (o URNOutput) ToURNOutput() URNOutput {
-	return o
-}
-
 func (o URNOutput) ToURNOutputWithContext(ctx context.Context) URNOutput {
 	return o
-}
-
-func (o URNOutput) ToStringOutput() StringOutput {
-	return o.ToStringOutputWithContext(context.Background())
 }
 
 func (o URNOutput) ToStringOutputWithContext(ctx context.Context) StringOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, v URN) string {
 		return (string)(v)
 	}).(StringOutput)
-}
-
-func (o URNOutput) ToURNPtrOutput() URNPtrOutput {
-	return o.ToURNPtrOutputWithContext(context.Background())
 }
 
 func (o URNOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
@@ -4176,7 +3131,6 @@ var uRNPtrType = reflect.TypeOf((**URN)(nil)).Elem()
 type URNPtrInput interface {
 	Input
 
-	ToURNPtrOutput() URNPtrOutput
 	ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput
 }
 
@@ -4192,10 +3146,6 @@ func (*urnPtr) ElementType() reflect.Type {
 	return uRNPtrType
 }
 
-func (in *urnPtr) ToURNPtrOutput() URNPtrOutput {
-	return ToOutput(in).(URNPtrOutput)
-}
-
 func (in *urnPtr) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
 	return ToOutputWithContext(ctx, in).(URNPtrOutput)
 }
@@ -4206,10 +3156,6 @@ type URNPtrOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (*URN).
 func (URNPtrOutput) ElementType() reflect.Type {
 	return uRNPtrType
-}
-
-func (o URNPtrOutput) ToURNPtrOutput() URNPtrOutput {
-	return o
 }
 
 func (o URNPtrOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutput {
@@ -4228,7 +3174,6 @@ var uRNArrayType = reflect.TypeOf((*[]URN)(nil)).Elem()
 type URNArrayInput interface {
 	Input
 
-	ToURNArrayOutput() URNArrayOutput
 	ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput
 }
 
@@ -4238,10 +3183,6 @@ type URNArray []URNInput
 // ElementType returns the element type of this Input ([]URN).
 func (URNArray) ElementType() reflect.Type {
 	return uRNArrayType
-}
-
-func (in URNArray) ToURNArrayOutput() URNArrayOutput {
-	return ToOutput(in).(URNArrayOutput)
 }
 
 func (in URNArray) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput {
@@ -4254,10 +3195,6 @@ type URNArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]URN).
 func (URNArrayOutput) ElementType() reflect.Type {
 	return uRNArrayType
-}
-
-func (o URNArrayOutput) ToURNArrayOutput() URNArrayOutput {
-	return o
 }
 
 func (o URNArrayOutput) ToURNArrayOutputWithContext(ctx context.Context) URNArrayOutput {
@@ -4276,7 +3213,6 @@ var uRNMapType = reflect.TypeOf((*map[string]URN)(nil)).Elem()
 type URNMapInput interface {
 	Input
 
-	ToURNMapOutput() URNMapOutput
 	ToURNMapOutputWithContext(ctx context.Context) URNMapOutput
 }
 
@@ -4286,10 +3222,6 @@ type URNMap map[string]URNInput
 // ElementType returns the element type of this Input (map[string]URN).
 func (URNMap) ElementType() reflect.Type {
 	return uRNMapType
-}
-
-func (in URNMap) ToURNMapOutput() URNMapOutput {
-	return ToOutput(in).(URNMapOutput)
 }
 
 func (in URNMap) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
@@ -4302,10 +3234,6 @@ type URNMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]URN).
 func (URNMapOutput) ElementType() reflect.Type {
 	return uRNMapType
-}
-
-func (o URNMapOutput) ToURNMapOutput() URNMapOutput {
-	return o
 }
 
 func (o URNMapOutput) ToURNMapOutputWithContext(ctx context.Context) URNMapOutput {
@@ -4324,7 +3252,6 @@ var uRNArrayMapType = reflect.TypeOf((*map[string][]URN)(nil)).Elem()
 type URNArrayMapInput interface {
 	Input
 
-	ToURNArrayMapOutput() URNArrayMapOutput
 	ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput
 }
 
@@ -4334,10 +3261,6 @@ type URNArrayMap map[string]URNArrayInput
 // ElementType returns the element type of this Input (map[string][]URN).
 func (URNArrayMap) ElementType() reflect.Type {
 	return uRNArrayMapType
-}
-
-func (in URNArrayMap) ToURNArrayMapOutput() URNArrayMapOutput {
-	return ToOutput(in).(URNArrayMapOutput)
 }
 
 func (in URNArrayMap) ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput {
@@ -4350,10 +3273,6 @@ type URNArrayMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string][]URN).
 func (URNArrayMapOutput) ElementType() reflect.Type {
 	return uRNArrayMapType
-}
-
-func (o URNArrayMapOutput) ToURNArrayMapOutput() URNArrayMapOutput {
-	return o
 }
 
 func (o URNArrayMapOutput) ToURNArrayMapOutputWithContext(ctx context.Context) URNArrayMapOutput {
@@ -4372,7 +3291,6 @@ var uRNMapArrayType = reflect.TypeOf((*[]map[string]URN)(nil)).Elem()
 type URNMapArrayInput interface {
 	Input
 
-	ToURNMapArrayOutput() URNMapArrayOutput
 	ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput
 }
 
@@ -4382,10 +3300,6 @@ type URNMapArray []URNMapInput
 // ElementType returns the element type of this Input ([]map[string]URN).
 func (URNMapArray) ElementType() reflect.Type {
 	return uRNMapArrayType
-}
-
-func (in URNMapArray) ToURNMapArrayOutput() URNMapArrayOutput {
-	return ToOutput(in).(URNMapArrayOutput)
 }
 
 func (in URNMapArray) ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput {
@@ -4398,10 +3312,6 @@ type URNMapArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([]map[string]URN).
 func (URNMapArrayOutput) ElementType() reflect.Type {
 	return uRNMapArrayType
-}
-
-func (o URNMapArrayOutput) ToURNMapArrayOutput() URNMapArrayOutput {
-	return o
 }
 
 func (o URNMapArrayOutput) ToURNMapArrayOutputWithContext(ctx context.Context) URNMapArrayOutput {
@@ -4420,7 +3330,6 @@ var uRNMapMapType = reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem()
 type URNMapMapInput interface {
 	Input
 
-	ToURNMapMapOutput() URNMapMapOutput
 	ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput
 }
 
@@ -4430,10 +3339,6 @@ type URNMapMap map[string]URNMapInput
 // ElementType returns the element type of this Input (map[string]map[string]URN).
 func (URNMapMap) ElementType() reflect.Type {
 	return uRNMapMapType
-}
-
-func (in URNMapMap) ToURNMapMapOutput() URNMapMapOutput {
-	return ToOutput(in).(URNMapMapOutput)
 }
 
 func (in URNMapMap) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput {
@@ -4446,10 +3351,6 @@ type URNMapMapOutput struct{ *OutputState }
 // ElementType returns the element type of this Output (map[string]map[string]URN).
 func (URNMapMapOutput) ElementType() reflect.Type {
 	return uRNMapMapType
-}
-
-func (o URNMapMapOutput) ToURNMapMapOutput() URNMapMapOutput {
-	return o
 }
 
 func (o URNMapMapOutput) ToURNMapMapOutputWithContext(ctx context.Context) URNMapMapOutput {
@@ -4468,7 +3369,6 @@ var uRNArrayArrayType = reflect.TypeOf((*[][]URN)(nil)).Elem()
 type URNArrayArrayInput interface {
 	Input
 
-	ToURNArrayArrayOutput() URNArrayArrayOutput
 	ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput
 }
 
@@ -4478,10 +3378,6 @@ type URNArrayArray []URNArrayInput
 // ElementType returns the element type of this Input ([][]URN).
 func (URNArrayArray) ElementType() reflect.Type {
 	return uRNArrayArrayType
-}
-
-func (in URNArrayArray) ToURNArrayArrayOutput() URNArrayArrayOutput {
-	return ToOutput(in).(URNArrayArrayOutput)
 }
 
 func (in URNArrayArray) ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput {
@@ -4494,10 +3390,6 @@ type URNArrayArrayOutput struct{ *OutputState }
 // ElementType returns the element type of this Output ([][]URN).
 func (URNArrayArrayOutput) ElementType() reflect.Type {
 	return uRNArrayArrayType
-}
-
-func (o URNArrayArrayOutput) ToURNArrayArrayOutput() URNArrayArrayOutput {
-	return o
 }
 
 func (o URNArrayArrayOutput) ToURNArrayArrayOutputWithContext(ctx context.Context) URNArrayArrayOutput {
