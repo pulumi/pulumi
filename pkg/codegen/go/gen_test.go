@@ -54,9 +54,10 @@ func TestGoPackageName(t *testing.T) {
 
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
+		name                      string
+		schemaDir                 string
+		expectedFiles             []string
+		genResourceContainerTypes bool
 	}{
 		{
 			"Simple schema with local resource properties",
@@ -71,6 +72,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("example", "pulumiUtilities.go"),
 				filepath.Join("example", "resource.go"),
 			},
+			false,
 		},
 		{
 			"Simple schema with enum types",
@@ -87,6 +89,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
 				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
 			},
+			false,
 		},
 		{
 			"External resource schema",
@@ -102,6 +105,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("example", "pulumiUtilities.go"),
 				filepath.Join("example", "workload.go"),
 			},
+			true,
 		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
@@ -110,7 +114,11 @@ func TestGeneratePackage(t *testing.T) {
 			files, err := test.GeneratePackageFilesFromSchema(
 				filepath.Join(testDir, tt.schemaDir, "schema.json"),
 				func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
-					return GeneratePackage(tool, pkg)
+					var genOpts []CodeGenerationOption
+					if tt.genResourceContainerTypes {
+						genOpts = append(genOpts, EnableContainerTypesGenerationForResources())
+					}
+					return GeneratePackage(tool, pkg, genOpts...)
 				})
 			assert.NoError(t, err)
 

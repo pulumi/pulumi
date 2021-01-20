@@ -923,7 +923,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
+func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, opts *codegenerationOptions) error {
 	name := resourceName(r)
 
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
@@ -1120,28 +1120,32 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "\tTo%[1]sOutput() %[1]sOutput\n", name)
 	fmt.Fprintf(w, "\tTo%[1]sOutputWithContext(ctx context.Context) %[1]sOutput\n", name)
 	fmt.Fprintf(w, "}\n\n")
-	genInputMethods(w, name, "*"+name, name, true, true)
 
-	// Emit the resource pointer input type.
-	fmt.Fprintf(w, "type %sPtrInput interface {\n", name)
-	fmt.Fprintf(w, "\tpulumi.Input\n\n")
-	fmt.Fprintf(w, "\tTo%[1]sPtrOutput() %[1]sPtrOutput\n", name)
-	fmt.Fprintf(w, "\tTo%[1]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput\n", name)
-	fmt.Fprintf(w, "}\n\n")
-	ptrTypeName := camel(name) + "PtrType"
-	fmt.Fprintf(w, "type %s %sArgs\n\n", ptrTypeName, name)
-	genInputMethods(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, true)
+	generateContainerTypesForResources := opts != nil && opts.generateContainerTypesForResources
+	genInputMethods(w, name, "*"+name, name, generateContainerTypesForResources, true)
 
-	if !r.IsProvider {
-		// Generate the resource array input.
-		genInputInterface(w, name+"Array")
-		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
-		genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
+	if generateContainerTypesForResources {
+		// Emit the resource pointer input type.
+		fmt.Fprintf(w, "type %sPtrInput interface {\n", name)
+		fmt.Fprintf(w, "\tpulumi.Input\n\n")
+		fmt.Fprintf(w, "\tTo%[1]sPtrOutput() %[1]sPtrOutput\n", name)
+		fmt.Fprintf(w, "\tTo%[1]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput\n", name)
+		fmt.Fprintf(w, "}\n\n")
+		ptrTypeName := camel(name) + "PtrType"
+		fmt.Fprintf(w, "type %s %sArgs\n\n", ptrTypeName, name)
+		genInputMethods(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, true)
 
-		// Generate the resource map input.
-		genInputInterface(w, name+"Map")
-		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
-		genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
+		if !r.IsProvider {
+			// Generate the resource array input.
+			genInputInterface(w, name+"Array")
+			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
+			genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
+
+			// Generate the resource map input.
+			genInputInterface(w, name+"Map")
+			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
+			genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
+		}
 	}
 
 	// Emit the resource output type.
@@ -1150,49 +1154,53 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "}\n\n")
 	genOutputMethods(w, name, name, true)
 	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
-	fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", Title(name))
-	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name, Title(name))
-	fmt.Fprintf(w, "\treturn o.ApplyT(func(v %[1]s) *%[1]s {\n", name)
-	fmt.Fprintf(w, "\t\treturn &v\n")
-	fmt.Fprintf(w, "\t}).(%sPtrOutput)\n", name)
-	fmt.Fprintf(w, "}\n")
-	fmt.Fprintf(w, "\n")
-
-	// Emit the resource pointer output type.
-	fmt.Fprintf(w, "type %sOutput struct {\n", name+"Ptr")
-	fmt.Fprintf(w, "\t*pulumi.OutputState\n")
-	fmt.Fprintf(w, "}\n\n")
-	genOutputMethods(w, name+"Ptr", "*"+name, true)
-
-	if !r.IsProvider {
-		// Emit the array output type
-		fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState }\n\n", name)
-		genOutputMethods(w, name+"Array", "[]"+name, true)
-		fmt.Fprintf(w, "func (o %[1]sArrayOutput) Index(i pulumi.IntInput) %[1]sOutput {\n", name)
-		fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %s {\n", name)
-		fmt.Fprintf(w, "\t\treturn vs[0].([]%s)[vs[1].(int)]\n", name)
-		fmt.Fprintf(w, "\t}).(%sOutput)\n", name)
+	if generateContainerTypesForResources {
+		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
+		fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", Title(name))
 		fmt.Fprintf(w, "}\n\n")
-		// Emit the map output type
-		fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState }\n\n", name)
-		genOutputMethods(w, name+"Map", "map[string]"+name, true)
-		fmt.Fprintf(w, "func (o %[1]sMapOutput) MapIndex(k pulumi.StringInput) %[1]sOutput {\n", name)
-		fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %s {\n", name)
-		fmt.Fprintf(w, "\t\treturn vs[0].(map[string]%s)[vs[1].(string)]\n", name)
-		fmt.Fprintf(w, "\t}).(%sOutput)\n", name)
+
+		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name, Title(name))
+		fmt.Fprintf(w, "\treturn o.ApplyT(func(v %[1]s) *%[1]s {\n", name)
+		fmt.Fprintf(w, "\t\treturn &v\n")
+		fmt.Fprintf(w, "\t}).(%sPtrOutput)\n", name)
+		fmt.Fprintf(w, "}\n")
+		fmt.Fprintf(w, "\n")
+
+		// Emit the resource pointer output type.
+		fmt.Fprintf(w, "type %sOutput struct {\n", name+"Ptr")
+		fmt.Fprintf(w, "\t*pulumi.OutputState\n")
 		fmt.Fprintf(w, "}\n\n")
+		genOutputMethods(w, name+"Ptr", "*"+name, true)
+
+		if !r.IsProvider {
+			// Emit the array output type
+			fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState }\n\n", name)
+			genOutputMethods(w, name+"Array", "[]"+name, true)
+			fmt.Fprintf(w, "func (o %[1]sArrayOutput) Index(i pulumi.IntInput) %[1]sOutput {\n", name)
+			fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %s {\n", name)
+			fmt.Fprintf(w, "\t\treturn vs[0].([]%s)[vs[1].(int)]\n", name)
+			fmt.Fprintf(w, "\t}).(%sOutput)\n", name)
+			fmt.Fprintf(w, "}\n\n")
+			// Emit the map output type
+			fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState }\n\n", name)
+			genOutputMethods(w, name+"Map", "map[string]"+name, true)
+			fmt.Fprintf(w, "func (o %[1]sMapOutput) MapIndex(k pulumi.StringInput) %[1]sOutput {\n", name)
+			fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %s {\n", name)
+			fmt.Fprintf(w, "\t\treturn vs[0].(map[string]%s)[vs[1].(string)]\n", name)
+			fmt.Fprintf(w, "\t}).(%sOutput)\n", name)
+			fmt.Fprintf(w, "}\n\n")
+		}
 	}
-
 	// Register all output types
 	fmt.Fprintf(w, "func init() {\n")
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
-	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
-	if !r.IsProvider {
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
-		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+
+	if opts != nil && opts.generateContainerTypesForResources {
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if !r.IsProvider {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+		}
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -1817,7 +1825,34 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
+type CodeGenerationOption interface {
+	apply(options *codegenerationOptions)
+}
+
+type codegenerationFunc func(*codegenerationOptions)
+
+func (c codegenerationFunc) apply(options *codegenerationOptions) {
+	c(options)
+}
+
+// EnableContainerTypesGenerationForResources enables generating
+// container variant types for resources - as used for external
+// resource references.
+func EnableContainerTypesGenerationForResources() CodeGenerationOption {
+	return codegenerationFunc(func(options *codegenerationOptions) {
+		options.generateContainerTypesForResources = true
+	})
+}
+
+type codegenerationOptions struct {
+	generateContainerTypesForResources bool
+}
+
+func GeneratePackage(tool string, pkg *schema.Package, options ...CodeGenerationOption) (map[string][]byte, error) {
+	codegenOpts := codegenerationOptions{}
+	for _, o := range options {
+		o.apply(&codegenOpts)
+	}
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
 	}
@@ -1890,7 +1925,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			buffer := &bytes.Buffer{}
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
-			if err := pkg.genResource(buffer, r); err != nil {
+			if err := pkg.genResource(buffer, r, &codegenOpts); err != nil {
 				return nil, err
 			}
 
