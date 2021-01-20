@@ -81,7 +81,9 @@
   },
   "language": {
     "csharp": {},
-    "go": {},
+    "go": {
+      "generateResourceContainerTypes": true
+    },
     "nodejs": {},
     "python": {}
   }

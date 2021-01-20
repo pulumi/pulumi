@@ -114,11 +114,7 @@ func TestGeneratePackage(t *testing.T) {
 			files, err := test.GeneratePackageFilesFromSchema(
 				filepath.Join(testDir, tt.schemaDir, "schema.json"),
 				func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
-					var genOpts []CodeGenerationOption
-					if tt.genResourceContainerTypes {
-						genOpts = append(genOpts, EnableContainerTypesGenerationForResources())
-					}
-					return GeneratePackage(tool, pkg, genOpts...)
+					return GeneratePackage(tool, pkg)
 				})
 			assert.NoError(t, err)
 

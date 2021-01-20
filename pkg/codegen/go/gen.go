@@ -923,7 +923,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, opts *codegenerationOptions) error {
+func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) error {
 	name := resourceName(r)
 
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
@@ -1121,10 +1121,9 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, opts *codege
 	fmt.Fprintf(w, "\tTo%[1]sOutputWithContext(ctx context.Context) %[1]sOutput\n", name)
 	fmt.Fprintf(w, "}\n\n")
 
-	generateContainerTypesForResources := opts != nil && opts.generateContainerTypesForResources
-	genInputMethods(w, name, "*"+name, name, generateContainerTypesForResources, true)
+	genInputMethods(w, name, "*"+name, name, generateResourceContainerTypes, true)
 
-	if generateContainerTypesForResources {
+	if generateResourceContainerTypes {
 		// Emit the resource pointer input type.
 		fmt.Fprintf(w, "type %sPtrInput interface {\n", name)
 		fmt.Fprintf(w, "\tpulumi.Input\n\n")
@@ -1154,7 +1153,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, opts *codege
 	fmt.Fprintf(w, "}\n\n")
 	genOutputMethods(w, name, name, true)
 	fmt.Fprintf(w, "\n")
-	if generateContainerTypesForResources {
+	if generateResourceContainerTypes {
 		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
 		fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", Title(name))
 		fmt.Fprintf(w, "}\n\n")
@@ -1195,7 +1194,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, opts *codege
 	fmt.Fprintf(w, "func init() {\n")
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 
-	if opts != nil && opts.generateContainerTypesForResources {
+	if generateResourceContainerTypes {
 		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
 		if !r.IsProvider {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
@@ -1825,34 +1824,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 	return resources, nil
 }
 
-type CodeGenerationOption interface {
-	apply(options *codegenerationOptions)
-}
-
-type codegenerationFunc func(*codegenerationOptions)
-
-func (c codegenerationFunc) apply(options *codegenerationOptions) {
-	c(options)
-}
-
-// EnableContainerTypesGenerationForResources enables generating
-// container variant types for resources - as used for external
-// resource references.
-func EnableContainerTypesGenerationForResources() CodeGenerationOption {
-	return codegenerationFunc(func(options *codegenerationOptions) {
-		options.generateContainerTypesForResources = true
-	})
-}
-
-type codegenerationOptions struct {
-	generateContainerTypesForResources bool
-}
-
-func GeneratePackage(tool string, pkg *schema.Package, options ...CodeGenerationOption) (map[string][]byte, error) {
-	codegenOpts := codegenerationOptions{}
-	for _, o := range options {
-		o.apply(&codegenOpts)
-	}
+func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil, err
 	}
@@ -1925,7 +1897,7 @@ func GeneratePackage(tool string, pkg *schema.Package, options ...CodeGeneration
 			buffer := &bytes.Buffer{}
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
-			if err := pkg.genResource(buffer, r, &codegenOpts); err != nil {
+			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
 				return nil, err
 			}
 
