@@ -1,3 +1,3 @@
-// Package plant-provider exports types, functions, subpackages for provisioning plant-provider resources.
+// Package plant exports types, functions, subpackages for provisioning plant resources.
 //
 package plant

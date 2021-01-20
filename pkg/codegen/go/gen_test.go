@@ -77,6 +77,7 @@ func TestGeneratePackage(t *testing.T) {
 			"simple-enum-schema",
 			[]string{
 				filepath.Join("plant", "doc.go"),
+				filepath.Join("plant", "init.go"),
 				filepath.Join("plant", "provider.go"),
 				filepath.Join("plant", "pulumiTypes.go"),
 				filepath.Join("plant", "pulumiUtilities.go"),
