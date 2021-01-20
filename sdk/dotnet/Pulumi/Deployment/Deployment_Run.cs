@@ -186,8 +186,7 @@ namespace Pulumi
         // to be executed synchronously and thus have multiple calls to one of the Run methods affecting eachothers Deployment.Instance
         internal static async Task<int> CreateRunnerAndRunAsync(
             Func<Deployment> deploymentFactory,
-            Func<IRunner, Task<int>> runAsync,
-            IEnumerable<Assembly>? resourcePackageAssemblies = null)
+            Func<IRunner, Task<int>> runAsync)
         {
             // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 
@@ -195,7 +194,6 @@ namespace Pulumi
             Serilog.Log.Debug("Creating new Deployment.");
             var deployment = deploymentFactory();
             Instance = new DeploymentInstance(deployment);
-            ResourcePackages = new ResourcePackages(resourcePackageAssemblies);
             return await runAsync(deployment._runner).ConfigureAwait(false);
         }
     }

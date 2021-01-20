@@ -10,35 +10,15 @@ using Semver;
 
 namespace Pulumi
 {
-    internal class ResourcePackages
+    internal static class ResourcePackages
     {
-        private static Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> CurrentDomainResourceTypes
+        private static Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> ResourceTypes
             = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(
-                () => DiscoverResourceTypes(LoadCurrentDomainReferencedAssemblies()));
+                () => DiscoverResourceTypes());
 
-        private readonly ImmutableList<Assembly>? _assemblies;
-        private readonly Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> _resourceTypes;
-
-        /// <param name="assemblies">
-        /// Assemblies that should be used to discover resource types. If <c>null</c>, than <see cref="AppDomain.CurrentDomain"/>
-        /// will be used to find referenced assemblies and discover resource types.
-        /// </param>
-        public ResourcePackages(IEnumerable<Assembly>? assemblies)
+        internal static bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
         {
-            this._assemblies = assemblies?.ToImmutableList();
-            this._resourceTypes = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(
-                () =>
-                {
-                    if (this._assemblies is null)
-                        return CurrentDomainResourceTypes.Value;
-
-                    return DiscoverResourceTypes(this._assemblies);
-                });
-        }
-
-        public bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
-        {
-            if (!this.TryGetResourceType(type, version, out var resourceType))
+            if (!TryGetResourceType(type, version, out var resourceType))
             {
                 resource = null;
                 return false;
@@ -56,10 +36,10 @@ namespace Pulumi
             return true;
         }
 
-        public bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
+        internal static bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
         {
             var minimalVersion = !string.IsNullOrEmpty(version) ? SemVersion.Parse(version) : new SemVersion(0);
-            var yes = this._resourceTypes.Value.TryGetValue(name, out var types);
+            var yes = ResourceTypes.Value.TryGetValue(name, out var types);
             if (!yes)
             {
                 type = null;
@@ -78,10 +58,10 @@ namespace Pulumi
             return type != null;
         }
 
-        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>> DiscoverResourceTypes(IEnumerable<Assembly> assemblies)
+        private static ImmutableDictionary<string, ImmutableList<(string?, Type)>> DiscoverResourceTypes()
         {
             var pairs =
-                from a in assemblies
+                from a in LoadReferencedAssemblies()
                 from t in a.GetTypes()
                 where typeof(Resource).IsAssignableFrom(t)
                 let attr = t.GetCustomAttribute<ResourceTypeAttribute>()
@@ -97,7 +77,7 @@ namespace Pulumi
         // recursively.
         // Note: If an assembly is referenced but its types are never used anywhere in the program, that reference
         // will be optimized out and won't appear in the result of the enumeration.
-        private static IEnumerable<Assembly> LoadCurrentDomainReferencedAssemblies()
+        private static IEnumerable<Assembly> LoadReferencedAssemblies()
         {
             var yieldedAssemblies = new HashSet<string>();
             var assembliesToCheck = new Queue<Assembly>();
