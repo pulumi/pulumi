@@ -2528,3 +2528,9 @@ Resource naming is now more consistent, but there is a new file format for check
 - Support --since and --resource on `pulumi logs` when targeting the service
 - [Pulumi unable to serialize non-integers #694](https://github.com/pulumi/pulumi/issues/694)
 - [Stop buffering CLI output #660](https://github.com/pulumi/pulumi/issues/660)
+
+
+- Switch .NET projects to .NET Core 5.0
+  (https://github.com/pulumi/pulumi/pull/6165)
+
+
