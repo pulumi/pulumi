@@ -392,41 +392,6 @@ func marshalInputAndDetermineSecret(v interface{},
 	}
 }
 
-func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (Resource, error) {
-	version := nullVersion
-	if len(ref.PackageVersion) > 0 {
-		var err error
-		version, err = semver.ParseTolerant(ref.PackageVersion)
-		if err != nil {
-			return nil, fmt.Errorf("failed to parse provider version: %s", ref.PackageVersion)
-		}
-	}
-
-	resName := ref.URN.Name().String()
-	resType := ref.URN.Type()
-
-	isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"
-	if isProvider {
-		pkgName := resType.Name().String()
-		if resourcePackageV, ok := resourcePackages.Load(pkgName, version); ok {
-			resourcePackage := resourcePackageV.(ResourcePackage)
-			return resourcePackage.ConstructProvider(ctx, resName, string(resType), string(ref.URN))
-		}
-		id, _ := ref.IDString()
-		return newDependencyProviderResource(URN(ref.URN), ID(id)), nil
-	}
-
-	modName := resType.Module().String()
-	if resourceModuleV, ok := resourceModules.Load(modName, version); ok {
-		resourceModule := resourceModuleV.(ResourceModule)
-		return resourceModule.Construct(ctx, resName, string(resType), string(ref.URN))
-	}
-	if id, hasID := ref.IDString(); hasID {
-		return newDependencyCustomResource(URN(ref.URN), ID(id)), nil
-	}
-	return newDependencyResource(URN(ref.URN)), nil
-}
-
 func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {
 	switch {
 	case v.IsComputed() || v.IsOutput():
@@ -495,7 +460,45 @@ func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}
 		}
 		return nil, false, errors.New("expected asset to be one of File, String, or Remote; got none")
 	case v.IsResourceReference():
-		resource, err := unmarshalResourceReference(ctx, v.ResourceReferenceValue())
+		ref := v.ResourceReferenceValue()
+
+		version := nullVersion
+		if len(ref.PackageVersion) > 0 {
+			var err error
+			version, err = semver.ParseTolerant(ref.PackageVersion)
+			if err != nil {
+				return nil, false, fmt.Errorf("failed to parse provider version: %s", ref.PackageVersion)
+			}
+		}
+
+		resName := ref.URN.Name().String()
+		resType := ref.URN.Type()
+
+		var resource Resource
+		var err error
+
+		isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"
+		if isProvider {
+			pkgName := resType.Name().String()
+			resourcePackageV, ok := resourcePackages.Load(pkgName, version)
+			if !ok {
+				err := fmt.Errorf("unable to deserialize provider %v, no resource package is registered for %v",
+					ref.URN, pkgName)
+				return nil, false, err
+			}
+			resourcePackage := resourcePackageV.(ResourcePackage)
+			resource, err = resourcePackage.ConstructProvider(ctx, resName, string(resType), string(ref.URN))
+		} else {
+			pkgName := resType.Package().String()
+			modName := resType.Module().String()
+			resourceModuleV, ok := resourceModules.Load(moduleKey(pkgName, modName), version)
+			if !ok {
+				err := fmt.Errorf("unable to deserialize resource %v, no module is registered for %v", ref.URN, modName)
+				return nil, false, err
+			}
+			resourceModule := resourceModuleV.(ResourceModule)
+			resource, err = resourceModule.Construct(ctx, resName, string(resType), string(ref.URN))
+		}
 		if err != nil {
 			return nil, false, err
 		}
@@ -591,19 +594,10 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.SetFloat(v.NumberValue())
 		return false, nil
 	case reflect.String:
-		switch {
-		case v.IsString():
-			dest.SetString(v.StringValue())
-		case v.IsResourceReference():
-			ref := v.ResourceReferenceValue()
-			if id, hasID := ref.IDString(); hasID {
-				dest.SetString(id)
-			} else {
-				dest.SetString(string(ref.URN))
-			}
-		default:
+		if !v.IsString() {
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
+		dest.SetString(v.StringValue())
 		return false, nil
 	case reflect.Slice:
 		if !v.IsArray() {
