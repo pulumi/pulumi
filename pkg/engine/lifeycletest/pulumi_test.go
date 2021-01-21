@@ -1927,7 +1927,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 					URN: urn,
 					Outputs: resource.PropertyMap{
 						"foo": resource.NewStringProperty("bar"),
-						"res": resource.MakeCustomResourceReference(urnB, idB, ""),
+						"res": resource.MakeResourceReference(urnB, idB, true, ""),
 					},
 				}, nil
 			}
@@ -1953,7 +1953,7 @@ func TestSingleComponentGetResourceDefaultProviderLifecycle(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, resource.PropertyMap{
 			"foo": resource.NewStringProperty("bar"),
-			"res": resource.MakeCustomResourceReference(urnB, idB, ""),
+			"res": resource.MakeResourceReference(urnB, idB, true, ""),
 		}, state)
 
 		result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
