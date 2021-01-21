@@ -373,12 +373,15 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 	// We serialize resource references using a map-based representation similar to assets, archives, and secrets.
 	if prop.IsResourceReference() {
 		ref := prop.ResourceReferenceValue()
-		return map[string]interface{}{
+		serialized := map[string]interface{}{
 			resource.SigKey:  resource.ResourceReferenceSig,
-			"urn":            ref.URN,
-			"id":             ref.ID,
+			"urn":            string(ref.URN),
 			"packageVersion": ref.PackageVersion,
-		}, nil
+		}
+		if id, hasID := ref.IDString(); hasID {
+			serialized["id"] = id
+		}
+		return serialized, nil
 	}
 
 	if prop.IsSecret() {
@@ -560,24 +563,52 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						packageVersion, ok = packageVersionV.(string)
 						if !ok {
 							return resource.PropertyValue{},
-								errors.New("malformed resource value: packageVersion must be a string")
+								errors.New("malformed resource reference: packageVersion must be a string")
 						}
 					}
 
 					urnStr, ok := objmap["urn"].(string)
 					if !ok {
-						return resource.PropertyValue{}, errors.New("malformed resource value: missing urn")
+						return resource.PropertyValue{}, errors.New("malformed resource reference: missing urn")
 					}
 					urn := resource.URN(urnStr)
 
-					if idV, ok := objmap["id"]; ok {
-						id, ok := idV.(string)
+					// deserializeID handles two cases, one of which arose from a bug in a refactoring of resource.ResourceReference.
+					// This bug caused the raw ID PropertyValue to be serialized as a map[string]interface{}. In the normal case, the
+					// ID is serialized as a string.
+					deserializeID := func() (string, bool, error) {
+						idV, ok := objmap["id"]
 						if !ok {
-							return resource.PropertyValue{}, errors.New("malformed resource value: id must be a string")
+							return "", false, nil
 						}
-						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
+
+						switch idV := idV.(type) {
+						case string:
+							return idV, true, nil
+						case map[string]interface{}:
+							switch v := idV["V"].(type) {
+							case nil:
+								// This happens for component resource references, which do not have an associated ID.
+								return "", false, nil
+							case string:
+								// This happens for custom resource references, which do have an associated ID.
+								return v, true, nil
+							case map[string]interface{}:
+								// This happens for custom resource references with an unknown ID. In this case, the ID should be
+								// deserialized as the empty string.
+								return "", true, nil
+							}
+						}
+						return "", false, errors.New("malformed resource reference: id must be a string")
 					}
 
+					id, hasID, err := deserializeID()
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+					if hasID {
+						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
+					}
 					return resource.MakeComponentResourceReference(urn, packageVersion), nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
