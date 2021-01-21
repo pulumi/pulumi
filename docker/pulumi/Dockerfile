@@ -66,7 +66,7 @@ RUN wget -q https://packages.microsoft.com/config/ubuntu/19.04/packages-microsof
   apt-get update -y && \
   apt-get install -y \
     apt-transport-https \
-    dotnet-sdk-3.1
+    dotnet-sdk-5.0
 
 # Install Helm
 # Explicitly set env variables that helm reads to their defaults, so that subsequent calls to

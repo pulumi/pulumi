@@ -133,7 +133,7 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <RepositoryUrl>{{.Package.Repository}}</RepositoryUrl>
     <PackageIcon>logo.png</PackageIcon>
 
-    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <TargetFramework>netcoreapp5.0</TargetFramework>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

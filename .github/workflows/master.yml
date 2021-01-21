@@ -26,7 +26,7 @@ jobs:
       matrix:
         go-version: [ 1.15.x ]
         python-version: [ 3.9.x ]
-        dotnet-version: [ 3.1.x ]
+        dotnet-version: [ 5.0.x ]
         node-version: [ 14.x ]
         language: [ "nodejs", "python", "dotnet" ]
     steps:
@@ -130,7 +130,7 @@ jobs:
         platform: [ ubuntu-latest, macos-latest ]
         go-version: [1.15.x]
         python-version: [ 3.9.x ]
-        dotnet-version: [ 3.1.x ]
+        dotnet-version: [ 5.0.x ]
         node-version: [ 14.x ]
     runs-on: ${{ matrix.platform }}
     steps:
@@ -198,7 +198,7 @@ jobs:
         go-version: [1.15.x]
         node-version: [14.x]
         python-version: [3.9.x]
-        dotnet: [3.1.x]
+        dotnet: [5.0.x]
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
@@ -284,7 +284,7 @@ jobs:
       matrix:
         go-version: [1.15.x]
         python-version: [ 3.9.x ]
-        dotnet-version: [ 3.1.x ]
+        dotnet-version: [ 5.0.x ]
         node-version: [ 14.x ]
     runs-on: ubuntu-latest
     steps:
