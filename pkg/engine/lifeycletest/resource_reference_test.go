@@ -33,8 +33,8 @@ func TestResourceReferences(t *testing.T) {
 
 					if urn.Name() == "resC" {
 						assert.True(t, news.DeepEquals(resource.PropertyMap{
-							"resA": resource.MakeResourceReference(urnA, "", false, ""),
-							"resB": resource.MakeResourceReference(urnB, idB, true, ""),
+							"resA": resource.MakeComponentResourceReference(urnA, ""),
+							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 						}))
 					}
 
@@ -62,15 +62,15 @@ func TestResourceReferences(t *testing.T) {
 
 		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"resA": resource.MakeResourceReference(urnA, "", false, ""),
-				"resB": resource.MakeResourceReference(urnB, idB, true, ""),
+				"resA": resource.MakeComponentResourceReference(urnA, ""),
+				"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 			},
 		})
 		assert.NoError(t, err)
 
 		assert.True(t, props.DeepEquals(resource.PropertyMap{
-			"resA": resource.MakeResourceReference(urnA, "", false, ""),
-			"resB": resource.MakeResourceReference(urnB, idB, true, ""),
+			"resA": resource.MakeComponentResourceReference(urnA, ""),
+			"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 		}))
 		return nil
 	})
@@ -104,8 +104,8 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 					state := resource.PropertyMap{}
 					if urn.Name() == "resC" {
 						state = resource.PropertyMap{
-							"resA": resource.MakeResourceReference(urnA, "", false, ""),
-							"resB": resource.MakeResourceReference(urnB, idB, true, ""),
+							"resA": resource.MakeComponentResourceReference(urnA, ""),
+							"resB": resource.MakeCustomResourceReference(urnB, idB, ""),
 						}
 					}
 
@@ -135,10 +135,12 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, opts)
 		assert.NoError(t, err)
 
-		assert.True(t, props.DeepEquals(resource.PropertyMap{
-			"resA": resource.NewStringProperty(string(urnA)),
-			"resB": resource.NewStringProperty(string(idB)),
-		}))
+		assert.Equal(t, resource.NewStringProperty(string(urnA)), props["resA"])
+		if idB != "" {
+			assert.Equal(t, resource.NewStringProperty(string(idB)), props["resB"])
+		} else {
+			assert.True(t, props["resB"].IsComputed())
+		}
 		return nil
 	})
 	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
@@ -154,8 +156,7 @@ func TestResourceReferences_DownlevelSDK(t *testing.T) {
 // that does not.
 func TestResourceReferences_DownlevelEngine(t *testing.T) {
 	var urnA resource.URN
-	var urnB resource.URN
-	var idB resource.ID
+	var refB resource.PropertyValue
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -171,7 +172,7 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 					// If we have resource references here, the engine has not properly disabled them.
 					if urn.Name() == "resC" {
 						assert.Equal(t, resource.NewStringProperty(string(urnA)), news["resA"])
-						assert.Equal(t, resource.NewStringProperty(string(idB)), news["resB"])
+						assert.Equal(t, refB.ResourceReferenceValue().ID, news["resB"])
 					}
 
 					return resource.ID(id), news, resource.StatusOK, nil
@@ -193,21 +194,24 @@ func TestResourceReferences_DownlevelEngine(t *testing.T) {
 		err = monitor.RegisterResourceOutputs(urnA, resource.PropertyMap{})
 		assert.NoError(t, err)
 
-		urnB, idB, _, err = monitor.RegisterResource("pkgA:m:typA", "resB", true)
+		urnB, idB, _, err := monitor.RegisterResource("pkgA:m:typA", "resB", true)
 		assert.NoError(t, err)
 
+		refB = resource.MakeCustomResourceReference(urnB, idB, "")
 		_, _, props, err := monitor.RegisterResource("pkgA:m:typA", "resC", true, deploytest.ResourceOptions{
 			Inputs: resource.PropertyMap{
-				"resA": resource.MakeResourceReference(urnA, "", false, ""),
-				"resB": resource.MakeResourceReference(urnB, idB, true, ""),
+				"resA": resource.MakeComponentResourceReference(urnA, ""),
+				"resB": refB,
 			},
 		})
 		assert.NoError(t, err)
 
-		assert.True(t, props.DeepEquals(resource.PropertyMap{
-			"resA": resource.NewStringProperty(string(urnA)),
-			"resB": resource.NewStringProperty(string(idB)),
-		}))
+		assert.Equal(t, resource.NewStringProperty(string(urnA)), props["resA"])
+		if refB.ResourceReferenceValue().ID.IsComputed() {
+			assert.True(t, props["resB"].IsComputed())
+		} else {
+			assert.True(t, refB.ResourceReferenceValue().ID.DeepEquals(props["resB"]))
+		}
 		return nil
 	})
 
