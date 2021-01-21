@@ -10,6 +10,9 @@ CHANGELOG
   only when the monitor reports that resource references are supported.
   [#6172](https://github.com/pulumi/pulumi/pull/6172)
 
+- [CLI] Avoid panic for diffs with invalid property paths.
+  [#6159](https://github.com/pulumi/pulumi/pull/6159)
+
 ## 2.18.1 (2021-01-21)
 
 - Revert [#6125](https://github.com/pulumi/pulumi/pull/6125) as it caused a which introduced a bug with serializing resource IDs
