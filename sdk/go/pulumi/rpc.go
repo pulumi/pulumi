@@ -272,17 +272,18 @@ func marshalInputAndDetermineSecret(v interface{},
 			contract.Assert(known)
 			contract.Assert(!secretURN)
 
+			id, hasID := ID(""), false
 			if custom, ok := v.(CustomResource); ok {
-				id, _, secretID, err := custom.ID().awaitID(context.Background())
+				resID, _, secretID, err := custom.ID().awaitID(context.Background())
 				if err != nil {
 					return resource.PropertyValue{}, nil, false, err
 				}
 				contract.Assert(!secretID)
 
-				return resource.MakeCustomResourceReference(resource.URN(urn), resource.ID(id), ""), deps, secret, nil
+				id, hasID = resID, true
 			}
 
-			return resource.MakeComponentResourceReference(resource.URN(urn), ""), deps, secret, nil
+			return resource.MakeResourceReference(resource.URN(urn), resource.ID(id), hasID, ""), deps, secret, nil
 		}
 
 		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
