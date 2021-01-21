@@ -4,6 +4,10 @@ CHANGELOG
 ## HEAD (Unreleased)
 _(none)_
 
+## 2.18.1 (2021-01-21)
+
+- Revert [#6125](https://github.com/pulumi/pulumi/pull/6125) as it caused a which introduced a bug with serializing resource IDs
+
 ## 2.18.0 (2021-01-20)
 
 - [CLI] Add the ability to log out of all Pulumi backends at once.
