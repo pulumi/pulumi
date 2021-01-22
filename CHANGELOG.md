@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.18.2 (2021-01-22)
 
 - [CLI] Fix malformed resource value bug.
   [#6164](https://github.com/pulumi/pulumi/pull/6164)
