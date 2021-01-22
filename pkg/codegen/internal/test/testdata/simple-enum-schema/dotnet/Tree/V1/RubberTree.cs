@@ -15,8 +15,14 @@ namespace Pulumi.Plant.Tree.V1
         [Output("container")]
         public Output<Pulumi.Plant.Outputs.Container?> Container { get; private set; } = null!;
 
+        [Output("diameter")]
+        public Output<Pulumi.Plant.Tree.V1.Diameter> Diameter { get; private set; } = null!;
+
         [Output("farm")]
         public Output<string?> Farm { get; private set; } = null!;
+
+        [Output("size")]
+        public Output<Pulumi.Plant.Tree.V1.TreeSize?> Size { get; private set; } = null!;
 
         [Output("type")]
         public Output<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; private set; } = null!;
@@ -69,15 +75,24 @@ namespace Pulumi.Plant.Tree.V1
         [Input("container")]
         public Input<Pulumi.Plant.Inputs.ContainerArgs>? Container { get; set; }
 
+        [Input("diameter", required: true)]
+        public Input<Pulumi.Plant.Tree.V1.Diameter> Diameter { get; set; } = null!;
+
         [Input("farm")]
         public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }
+
+        [Input("size")]
+        public Input<Pulumi.Plant.Tree.V1.TreeSize>? Size { get; set; }
 
         [Input("type", required: true)]
         public Input<Pulumi.Plant.Tree.V1.RubberTreeVariety> Type { get; set; } = null!;
 
         public RubberTreeArgs()
         {
+            Diameter = Pulumi.Plant.Tree.V1.Diameter.Sixinch;
             Farm = "(unknown)";
+            Size = Pulumi.Plant.Tree.V1.TreeSize.Medium;
+            Type = Pulumi.Plant.Tree.V1.RubberTreeVariety.Burgundy;
         }
     }
 }
