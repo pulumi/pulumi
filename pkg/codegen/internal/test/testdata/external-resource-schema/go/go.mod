@@ -2,7 +2,6 @@ module github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/external-r
 
 go 1.14
 
-// TODO need to bump these to latest after XX merges
 require (
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-aws/sdk/v3 v3.19.2
