@@ -62,9 +62,9 @@ class LocalWorkspace(Workspace):
     and multiple stacks. Workspaces are used to manage the execution environment,
     providing various utilities such as plugin installation, environment configuration
     ($PULUMI_HOME), and creation, deletion, and listing of Stacks.
-    LocalWorkspace relies on Pulumi.yaml and Pulumi.<stack>.yaml as the intermediate format
+    LocalWorkspace relies on Pulumi.yaml and Pulumi.[stack].yaml as the intermediate format
     for Project and Stack settings. Modifying ProjectSettings will
-    alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.<stack>.yaml file.
+    alter the Workspace Pulumi.yaml file, and setting config on a Stack will modify the Pulumi.[stack].yaml file.
     This is identical to the behavior of Pulumi CLI driven workspaces.
     """
     def __init__(self,
@@ -306,7 +306,7 @@ def create_stack(stack_name: str,
 
     For local programs, the work_dir keyword argument must be provided.
     This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
-    available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+    available Settings files (Pulumi.yaml, Pulumi.[stack].yaml).
 
     :param stack_name: The name of the stack.
     :param project_name: The name of the project - required for inline programs.
@@ -345,7 +345,7 @@ def select_stack(stack_name: str,
 
     For local programs, the work_dir keyword argument must be provided.
     This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
-    available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+    available Settings files (Pulumi.yaml, Pulumi.[stack].yaml).
 
     :param stack_name: The name of the stack.
     :param project_name: The name of the project - required for inline programs.
@@ -383,7 +383,7 @@ def create_or_select_stack(stack_name: str,
 
     For local programs, the work_dir keyword argument must be provided.
     This is a way to create drivers on top of pre-existing Pulumi programs. This Workspace will pick up any
-    available Settings files (Pulumi.yaml, Pulumi.<stack>.yaml).
+    available Settings files (Pulumi.yaml, Pulumi.[stack].yaml).
 
     :param stack_name: The name of the stack.
     :param project_name: The name of the project - required for inline programs.
