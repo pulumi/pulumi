@@ -1010,9 +1010,36 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				t = "pulumi.Any"
 			}
 
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-			fmt.Fprintf(w, "\t}\n")
+			switch typ := p.Type.(type) {
+			case *schema.EnumType:
+				if p.IsRequired {
+					switch typ.ElementType {
+					// Only string and numeric types are supported for enums
+					case schema.StringType:
+						fmt.Fprintf(w, "\tif args.%s == \"\" {\n", Title(p.Name))
+					case schema.IntType, schema.NumberType:
+						fmt.Fprintf(w, "\tif args.%s == 0 {\n", Title(p.Name))
+					default:
+						contract.Assertf(false, "unxpected type %T for enum: %s", typ, typ.Token)
+					}
+					fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+					fmt.Fprintf(w, "\t}\n")
+				} else {
+					fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+
+					// Enum types are themselves inputs so pkg.InputType() returns *<EnumType>
+					// when the type is optional. We want the generated code to look like this:
+					// e:= <EnumType>(<Default>)
+					// args.<Name> = &e
+					fmt.Fprintf(w, "\te := %s(%s)\n", pkg.inputType(p.Type, false), v)
+					fmt.Fprintf(w, "\t\targs.%s = &e\n", Title(p.Name))
+					fmt.Fprintf(w, "\t}\n")
+				}
+			default:
+				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+				fmt.Fprintf(w, "\t}\n")
+			}
 		}
 	}
 

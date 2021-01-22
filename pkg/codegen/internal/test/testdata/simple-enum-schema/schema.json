@@ -8,7 +8,8 @@
           "$ref": "#/types/plant::Container"
         },
         "type": {
-          "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
+          "$ref": "#/types/plant:tree/v1:RubberTreeVariety",
+          "default": "Burgundy"
         },
         "farm": {
           "oneOf": [
@@ -16,6 +17,14 @@
             {"type": "string"}
           ],
           "default": "(unknown)"
+        },
+        "size": {
+          "$ref": "#/types/plant:tree/v1:TreeSize",
+          "default": "medium"
+        },
+        "diameter": {
+          "$ref": "#/types/plant:tree/v1:Diameter",
+          "default": 6
         }
       },
       "properties": {
@@ -30,10 +39,18 @@
             {"$ref": "#/types/plant:tree/v1:Farm"},
             {"type": "string"}
           ]
+        },
+        "size": {
+          "$ref": "#/types/plant:tree/v1:TreeSize",
+          "default": "medium"
+        },
+        "diameter": {
+          "$ref": "#/types/plant:tree/v1:Diameter",
+          "default": 6
         }
       },
-      "required": ["type"],
-      "requiredInputs": ["type"]
+      "required": ["type", "diameter"],
+      "requiredInputs": ["type", "diameter"]
     }
   },
   "types": {
@@ -132,6 +149,33 @@
         },
         {
           "value": "Plants'R'Us"
+        }
+      ]
+    },
+    "plant:tree/v1:TreeSize": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "small"
+        },
+        {
+          "value": "medium"
+        },
+        {
+          "value": "large"
+        }
+      ]
+    },
+    "plant:tree/v1:Diameter": {
+      "type": "number",
+      "enum": [
+        {
+          "name": "sixinch",
+          "value": 6
+        },
+        {
+          "name": "twelveinch",
+          "value": 12
         }
       ]
     }

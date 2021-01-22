@@ -16,7 +16,9 @@ type RubberTree struct {
 	pulumi.CustomResourceState
 
 	Container plant.ContainerPtrOutput `pulumi:"container"`
+	Diameter  pulumi.Float64Output     `pulumi:"diameter"`
 	Farm      pulumi.StringPtrOutput   `pulumi:"farm"`
+	Size      pulumi.StringPtrOutput   `pulumi:"size"`
 	Type      pulumi.StringOutput      `pulumi:"type"`
 }
 
@@ -27,8 +29,18 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.Diameter == 0 {
+		args.Diameter = Diameter(6)
+	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")
+	}
+	if args.Size == nil {
+		e := TreeSize("medium")
+		args.Size = &e
+	}
+	if args.Type == "" {
+		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
 	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
@@ -53,13 +65,17 @@ func GetRubberTree(ctx *pulumi.Context,
 // Input properties used for looking up and filtering RubberTree resources.
 type rubberTreeState struct {
 	Container *plant.Container `pulumi:"container"`
+	Diameter  *float64         `pulumi:"diameter"`
 	Farm      *string          `pulumi:"farm"`
+	Size      *string          `pulumi:"size"`
 	Type      *string          `pulumi:"type"`
 }
 
 type RubberTreeState struct {
 	Container plant.ContainerPtrInput
+	Diameter  *Diameter
 	Farm      pulumi.StringPtrInput
+	Size      *TreeSize
 	Type      *RubberTreeVariety
 }
 
@@ -69,14 +85,18 @@ func (RubberTreeState) ElementType() reflect.Type {
 
 type rubberTreeArgs struct {
 	Container *plant.Container `pulumi:"container"`
+	Diameter  float64          `pulumi:"diameter"`
 	Farm      *string          `pulumi:"farm"`
+	Size      *string          `pulumi:"size"`
 	Type      string           `pulumi:"type"`
 }
 
 // The set of arguments for constructing a RubberTree resource.
 type RubberTreeArgs struct {
 	Container plant.ContainerPtrInput
+	Diameter  Diameter
 	Farm      pulumi.StringPtrInput
+	Size      *TreeSize
 	Type      RubberTreeVariety
 }
 
