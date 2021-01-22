@@ -4,15 +4,11 @@ go 1.14
 
 // TODO need to bump these to latest after XX merges
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/pulumi/pulumi-aws/sdk/v3 v3.19.2
-	github.com/pulumi/pulumi-kubernetes/sdk/v2 v2.7.2
-	github.com/pulumi/pulumi-random/sdk/v2 v2.4.1
-	github.com/pulumi/pulumi/sdk/v2 v2.17.3-0.20210119235951-2dfec71a5c71
+	github.com/pulumi/pulumi-kubernetes/sdk/v2 v2.7.7
+	github.com/pulumi/pulumi-random/sdk/v2 v2.5.0
+	github.com/pulumi/pulumi/sdk/v2 v2.18.1
+	github.com/satori/go.uuid v1.2.0 // indirect
 	github.com/stretchr/testify v1.6.1
-)
-
-replace (
-	github.com/pulumi/pulumi-aws/sdk/v3 => /Users/vivekl/code/pulumi-aws/sdk
-	github.com/pulumi/pulumi-kubernetes/sdk/v2 => /users/vivekl/code/pulumi-kubernetes/sdk
-	github.com/pulumi/pulumi-random/sdk/v2 => /Users/vivekl/code/pulumi-random/sdk
 )
