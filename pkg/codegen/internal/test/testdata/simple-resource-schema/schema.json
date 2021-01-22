@@ -73,8 +73,8 @@
     "csharp": {},
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-resource-schema/go/example",
-      "packageToTypeRenameMapping": {
-        "example": {
+      "moduleToTypeRenameMapping": {
+        "": {
           "OtherResourceOutput": "RenamedResourceOutput"
         }
       }

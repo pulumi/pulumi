@@ -145,8 +145,8 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	if ok {
 		renamed := false
-		// First determine if there is an existing rename required for the pkg+type
-		if renames, ok := modPkg.typeRenameMappings[pkg.pkg.Name]; ok {
+		// First determine if there is an existing rename required for the module+type
+		if renames, ok := modPkg.typeRenameMappings[mod]; ok {
 			if newName, ok := renames[name]; ok {
 				name = newName
 				renamed = true
@@ -1669,7 +1669,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				modToPkg:           goInfo.ModuleToPackage,
 				pkgImportAliases:   goInfo.PackageImportAliases,
 				packages:           packages,
-				typeRenameMappings: goInfo.PackageToTypeRenameMapping,
+				typeRenameMappings: goInfo.ModuleToTypeRenameMapping,
 			}
 			packages[mod] = pack
 		}
