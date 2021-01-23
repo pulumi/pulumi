@@ -1750,7 +1750,8 @@ func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCase
 func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
 	mapCase := true
 	if python, ok := prop.Language["python"]; ok {
-		mapCase = python.(PropertyInfo).MapCase
+		v, ok := python.(PropertyInfo)
+		mapCase = ok && v.MapCase
 	}
 	if mapCase {
 		snakeCaseName := PyNameLegacy(prop.Name)
