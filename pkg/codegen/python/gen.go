@@ -706,8 +706,18 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
 
+	name := PyName(tokenToName(r.Token))
+	if mod.compatibility == kubernetes20 {
+		// To maintain backward compatibility for kubernetes, the file names
+		// need to be CamelCase instead of the standard snake_case.
+		name = tokenToName(r.Token)
+	}
+	if r.Resource != nil && r.Resource.IsProvider {
+		name = "provider"
+	}
+
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s import %s", importPath, components[0])
+	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
 }
 
 // emitConfigVariables emits all config variables in the given module, returning the resulting file.
