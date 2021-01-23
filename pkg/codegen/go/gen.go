@@ -1618,7 +1618,9 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	if topLevelModule {
 		fmt.Fprintf(w, "\tversion, err := PkgVersion()\n")
 	} else {
-		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkg.pkg.Name)
+		// Some package names contain '-' characters, so grab the name from the base path.
+		pkgName := basePath[strings.LastIndex(basePath, "/")+1:]
+		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
 	fmt.Fprintf(w, "\t\tfmt.Println(\"failed to determine package version. defaulting to v1: %%v\", err)\n")
