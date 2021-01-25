@@ -151,8 +151,10 @@ def massage(attr: Any, seen: List[Any]):
         for key, value in attr.items():
             # ignore private keys
             if not key.startswith("_"):
-                result[key] = massage(value, seen)
-
+                try:
+                    result[key] = massage(value, seen)
+                except Exception as ex:
+                    log.error(ex)
         return result
 
     if isinstance(attr, Output):
