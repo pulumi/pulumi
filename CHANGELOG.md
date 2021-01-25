@@ -2,7 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+- [sdk/python] Fix python export output crash issue.
+  [#6196](https://github.com/pulumi/pulumi/pull/6196)
 
 ## 2.18.2 (2021-01-22)
 
