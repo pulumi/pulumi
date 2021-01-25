@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [sdk/nodejs] Always read and write NodeJS runtime options from the environment.
+  [#6076](https://github.com/pulumi/pulumi/pull/6076)
 
 ## 2.18.2 (2021-01-22)
 
@@ -65,9 +67,6 @@ _(none)_
   could not be omitted. Note - this is a breaking change to go sdk's enum
   values. However we currently only support strict enums in the azure-nextgen provider's schema.
   [#6069](https://github.com/pulumi/pulumi/pull/6069)
-
-- [sdk/nodejs] Always read and write NodeJS runtime options from the environment.
-  [#6076](https://github.com/pulumi/pulumi/pull/6076)
 
 - Fix an issue where python debug messages print unexpectedly.
   [#6967](https://github.com/pulumi/pulumi/pull/6067)
