@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -1532,10 +1533,13 @@ func (mod *modContext) gen(fs fs) error {
 		mod.getImports(r, imports)
 
 		buffer := &bytes.Buffer{}
-		importStrings := pulumiImports
+		var additionalImports []string
 		for _, i := range imports {
-			importStrings = append(importStrings, i.SortedValues()...)
+			additionalImports = append(additionalImports, i.SortedValues()...)
 		}
+		sort.Strings(additionalImports)
+		importStrings := pulumiImports
+		importStrings = append(importStrings, additionalImports...)
 		mod.genHeader(buffer, importStrings)
 
 		if err := mod.genResource(buffer, r); err != nil {

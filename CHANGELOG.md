@@ -2,6 +2,25 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.18.2 (2021-01-22)
+
+- [CLI] Fix malformed resource value bug.
+  [#6164](https://github.com/pulumi/pulumi/pull/6164)
+
+- [sdk/dotnet] Fix `RegisterResourceOutputs` to serialize resources as resource references
+  only when the monitor reports that resource references are supported.
+  [#6172](https://github.com/pulumi/pulumi/pull/6172)
+
+- [CLI] Avoid panic for diffs with invalid property paths.
+  [#6159](https://github.com/pulumi/pulumi/pull/6159)
+
+## 2.18.1 (2021-01-21)
+
+- Revert [#6125](https://github.com/pulumi/pulumi/pull/6125) as it caused a which introduced a bug with serializing resource IDs
+
+## 2.18.0 (2021-01-20)
 
 - [CLI] Add the ability to log out of all Pulumi backends at once.
   [#6101](https://github.com/pulumi/pulumi/pull/6101)
@@ -61,7 +80,7 @@ CHANGELOG
 - [sdk/dotnet] Moved urn value retrieval into if statement
   for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
-  
+
 - [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will
   take an existing secret output and
   create a non-secret variant with an unwrapped secret value.

@@ -6,6 +6,12 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+# Allow version to be set manually when building outside of git repo
+if [ -n "${PULUMI_VERSION+x}" ]; then
+    echo "${PULUMI_VERSION}"
+    exit 0
+fi
+
 COMMITISH=$1
 DIRTY_TAG=""
 EXACT=0
