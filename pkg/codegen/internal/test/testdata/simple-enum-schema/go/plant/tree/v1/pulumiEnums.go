@@ -10,6 +10,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 )
 
+type Diameter pulumi.Float64
+
+const (
+	DiameterSixinch    = Diameter(6)
+	DiameterTwelveinch = Diameter(12)
+)
+
+func (Diameter) ElementType() reflect.Type {
+	return reflect.TypeOf((*pulumi.Float64)(nil)).Elem()
+}
+
+func (e Diameter) ToFloat64Output() pulumi.Float64Output {
+	return pulumi.ToOutput(pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e Diameter) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
+	return pulumi.ToOutputWithContext(ctx, pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e Diameter) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (e Diameter) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+}
+
 type Farm pulumi.String
 
 const (
@@ -66,5 +93,33 @@ func (e RubberTreeVariety) ToStringPtrOutput() pulumi.StringPtrOutput {
 }
 
 func (e RubberTreeVariety) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+type TreeSize pulumi.String
+
+const (
+	TreeSizeSmall  = TreeSize("small")
+	TreeSizeMedium = TreeSize("medium")
+	TreeSizeLarge  = TreeSize("large")
+)
+
+func (TreeSize) ElementType() reflect.Type {
+	return reflect.TypeOf((*pulumi.String)(nil)).Elem()
+}
+
+func (e TreeSize) ToStringOutput() pulumi.StringOutput {
+	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e TreeSize) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+}
+
+func (e TreeSize) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }

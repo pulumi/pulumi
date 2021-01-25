@@ -33,10 +33,10 @@ namespace Pulumi.Testing
         public async Task<InvokeResponse> InvokeAsync(InvokeRequest request)
         {
             var args = ToDictionary(request.Args);
-            var urn = (string)args["urn"];
 
             if (request.Tok == "pulumi:pulumi:getResource")
             {
+                var urn = (string)args["urn"];
                 object? registeredResource;
                 lock (_registeredResources)
                 {
@@ -65,7 +65,10 @@ namespace Pulumi.Testing
             {
                 var builder = ImmutableDictionary.CreateBuilder<string, object>();
                 builder.Add("urn", urn);
-                builder.Add("id", id);
+                if (id != null)
+                {
+                    builder.Add("id", id);
+                }
                 builder.Add("state", serializedState);
                 _registeredResources[urn] = builder.ToImmutable();
             }

@@ -449,7 +449,7 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 
 	f, err := ioutil.TempFile(os.TempDir(), "")
 	if err != nil {
-		return errors.Wrap(err, "could not import stack. failed to get allocate temp file.")
+		return errors.Wrap(err, "could not import stack. failed to allocate temp file.")
 	}
 	defer func() { contract.IgnoreError(os.Remove(f.Name())) }()
 

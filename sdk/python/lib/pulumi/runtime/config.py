@@ -31,6 +31,17 @@ def set_config(k: str, v: Any):
     CONFIG[k] = v
 
 
+def set_all_config(config: Dict[str, str]) -> None:
+    """
+    Overwrites the config map.
+    """
+    new_config = {}
+    for key, value in config.items():
+        new_config[key] = value
+    global CONFIG
+    CONFIG = new_config
+
+
 def get_config_env() -> Dict[str, Any]:
     """
     Returns the environment map that will be used for config checking when variables aren't set.
@@ -44,7 +55,7 @@ def get_config_env() -> Dict[str, Any]:
 def get_config_env_key(k: str) -> str:
     """
     Returns a scrubbed environment variable key, PULUMI_CONFIG_<k>, that can be used for
-    setting explicit varaibles.  This is unlike PULUMI_CONFIG which is just a JSON-serialized bag.
+    setting explicit variables.  This is unlike PULUMI_CONFIG which is just a JSON-serialized bag.
     """
     env_key = ''
     for c in k:

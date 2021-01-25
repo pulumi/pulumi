@@ -44,8 +44,13 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "[PREVIEW] Show aggregated logs for a stack",
-		Args:  cmdutil.NoArgs,
+		Short: "[PREVIEW] Show aggregated resource logs for a stack",
+		Long: "[PREVIEW] Show aggregated resource logs for a stack\n" +
+			"\n" +
+			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
+			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
+			"CloudWatch Logs for log data relevant to resources in a stack.\n",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),

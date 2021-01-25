@@ -1,65 +1,82 @@
 {
   "version": "0.0.1",
-  "name": "plant-provider",
+  "name": "plant",
   "resources": {
-    "plant-provider:tree/v1:RubberTree": {
+    "plant:tree/v1:RubberTree": {
       "inputProperties": {
         "container": {
-          "$ref": "#/types/plant-provider::Container"
+          "$ref": "#/types/plant::Container"
         },
         "type": {
-          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+          "$ref": "#/types/plant:tree/v1:RubberTreeVariety",
+          "default": "Burgundy"
         },
         "farm": {
           "oneOf": [
-            {"$ref": "#/types/plant-provider:tree/v1:Farm"},
+            {"$ref": "#/types/plant:tree/v1:Farm"},
             {"type": "string"}
           ],
           "default": "(unknown)"
+        },
+        "size": {
+          "$ref": "#/types/plant:tree/v1:TreeSize",
+          "default": "medium"
+        },
+        "diameter": {
+          "$ref": "#/types/plant:tree/v1:Diameter",
+          "default": 6
         }
       },
       "properties": {
         "container": {
-          "$ref": "#/types/plant-provider::Container"
+          "$ref": "#/types/plant::Container"
         },
         "type": {
-          "$ref": "#/types/plant-provider:tree/v1:RubberTreeVariety"
+          "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
         },
         "farm": {
           "oneOf": [
-            {"$ref": "#/types/plant-provider:tree/v1:Farm"},
+            {"$ref": "#/types/plant:tree/v1:Farm"},
             {"type": "string"}
           ]
+        },
+        "size": {
+          "$ref": "#/types/plant:tree/v1:TreeSize",
+          "default": "medium"
+        },
+        "diameter": {
+          "$ref": "#/types/plant:tree/v1:Diameter",
+          "default": 6
         }
       },
-      "required": ["type"],
-      "requiredInputs": ["type"]
+      "required": ["type", "diameter"],
+      "requiredInputs": ["type", "diameter"]
     }
   },
   "types": {
-    "plant-provider::Container": {
+    "plant::Container": {
       "type": "object",
       "properties": {
         "size": {
-          "$ref": "#/types/plant-provider::ContainerSize"
+          "$ref": "#/types/plant::ContainerSize"
         },
         "material": {
           "type": "string"
         },
         "color": {
           "oneOf": [
-            {"$ref": "#/types/plant-provider::ContainerColor"},
+            {"$ref": "#/types/plant::ContainerColor"},
             {"type": "string"}
           ]
         },
         "brightness": {
-          "$ref": "#/types/plant-provider::ContainerBrightness",
+          "$ref": "#/types/plant::ContainerBrightness",
           "default": 1.0
         }
       },
       "required": ["size"]
     },
-    "plant-provider::ContainerSize": {
+    "plant::ContainerSize": {
       "type": "integer",
       "description": "plant container sizes",
       "enum": [
@@ -78,7 +95,7 @@
         }
       ]
     },
-    "plant-provider::ContainerColor": {
+    "plant::ContainerColor": {
       "type": "string",
       "description": "plant container colors",
       "enum": [
@@ -93,7 +110,7 @@
         }
       ]
     },
-    "plant-provider::ContainerBrightness": {
+    "plant::ContainerBrightness": {
       "type": "number",
       "enum": [
         {
@@ -106,7 +123,7 @@
         }
       ]
     },
-    "plant-provider:tree/v1:RubberTreeVariety": {
+    "plant:tree/v1:RubberTreeVariety": {
       "type": "string",
       "description": "types of rubber trees",
       "enum": [
@@ -124,7 +141,7 @@
         }
       ]
     },
-    "plant-provider:tree/v1:Farm": {
+    "plant:tree/v1:Farm": {
       "type": "string",
       "enum": [
         {
@@ -134,12 +151,39 @@
           "value": "Plants'R'Us"
         }
       ]
+    },
+    "plant:tree/v1:TreeSize": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "small"
+        },
+        {
+          "value": "medium"
+        },
+        {
+          "value": "large"
+        }
+      ]
+    },
+    "plant:tree/v1:Diameter": {
+      "type": "number",
+      "enum": [
+        {
+          "name": "sixinch",
+          "value": 6
+        },
+        {
+          "name": "twelveinch",
+          "value": 12
+        }
+      ]
     }
   },
   "language": {
     "csharp": {
       "namespaces": {
-        "plant-provider": "PlantProvider",
+        "plant": "Plant",
         "tree/v1": "Tree.V1"
       }
     },

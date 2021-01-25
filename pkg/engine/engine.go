@@ -22,7 +22,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-// UpdateInfo abstracts away information about an apply, preview, or destroy.
+// UpdateInfo handles information common to resource operations (update, preview, destroy, import, refresh).
 type UpdateInfo interface {
 	// GetRoot returns the root directory for this update. This defines the scope for any filesystem resources
 	// accessed by this update.
@@ -35,7 +35,7 @@ type UpdateInfo interface {
 	GetTarget() *deploy.Target
 }
 
-// QueryInfo abstracts away information about a query operation.
+// QueryInfo handles information common to query operations (list, watch).
 type QueryInfo interface {
 	// GetRoot returns the root directory for this update. This defines the scope for any filesystem resources
 	// accessed by this update.

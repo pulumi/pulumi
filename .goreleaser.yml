@@ -21,6 +21,7 @@ builds:
   dir: pkg
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -32,6 +33,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -43,6 +45,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -54,6 +57,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -65,6 +69,7 @@ builds:
   dir: sdk
   goarch:
     - amd64
+    - arm64
   goos:
     - linux
     - darwin
@@ -84,6 +89,7 @@ archives:
     - pulumi-unix
   replacements:
     amd64: x64
+    arm64: arm
   files:
     - pulumi-resource-pulumi-nodejs
     - pulumi-resource-pulumi-python

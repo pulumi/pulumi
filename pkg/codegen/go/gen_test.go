@@ -54,30 +54,58 @@ func TestGoPackageName(t *testing.T) {
 
 func TestGeneratePackage(t *testing.T) {
 	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
+		name                      string
+		schemaDir                 string
+		expectedFiles             []string
+		genResourceContainerTypes bool
 	}{
 		{
 			"Simple schema with local resource properties",
 			"simple-resource-schema",
 			[]string{
-				"example/argFunction.go",
-				"example/otherResource.go",
-				"example/provider.go",
-				"example/resource.go",
+				filepath.Join("example", "argFunction.go"),
+				filepath.Join("example", "doc.go"),
+				filepath.Join("example", "init.go"),
+				filepath.Join("example", "otherResource.go"),
+				filepath.Join("example", "provider.go"),
+				filepath.Join("example", "pulumiTypes.go"),
+				filepath.Join("example", "pulumiUtilities.go"),
+				filepath.Join("example", "resource.go"),
 			},
+			false,
 		},
 		{
 			"Simple schema with enum types",
 			"simple-enum-schema",
 			[]string{
+				filepath.Join("plant", "doc.go"),
+				filepath.Join("plant", "init.go"),
 				filepath.Join("plant", "provider.go"),
 				filepath.Join("plant", "pulumiTypes.go"),
+				filepath.Join("plant", "pulumiUtilities.go"),
 				filepath.Join("plant", "pulumiEnums.go"),
+				filepath.Join("plant", "provider.go"),
+				filepath.Join("plant", "tree", "v1", "init.go"),
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
 				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
 			},
+			false,
+		},
+		{
+			"External resource schema",
+			"external-resource-schema",
+			[]string{
+				filepath.Join("example", "init.go"),
+				filepath.Join("example", "argFunction.go"),
+				filepath.Join("example", "cat.go"),
+				filepath.Join("example", "component.go"),
+				filepath.Join("example", "doc.go"),
+				filepath.Join("example", "provider.go"),
+				filepath.Join("example", "pulumiTypes.go"),
+				filepath.Join("example", "pulumiUtilities.go"),
+				filepath.Join("example", "workload.go"),
+			},
+			true,
 		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
@@ -93,6 +121,7 @@ func TestGeneratePackage(t *testing.T) {
 			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)
 			assert.NoError(t, err)
 			test.ValidateFileEquality(t, files, expectedFiles)
+			test.CheckAllFilesGenerated(t, files, expectedFiles)
 		})
 	}
 }
@@ -117,7 +146,7 @@ func TestEnumUsage(t *testing.T) {
 	t.Run("Success", func(t *testing.T) {
 		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
 			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
-				Container: plant.ContainerArgs{
+				Container: &plant.ContainerArgs{
 					Color:    plant.ContainerColorRed,
 					Material: pulumi.String("ceramic"),
 					Size:     plant.ContainerSizeFourInch,
@@ -130,16 +159,23 @@ func TestEnumUsage(t *testing.T) {
 			var wg sync.WaitGroup
 			wg.Add(1)
 			pulumi.All(
-				tree.URN(), tree.Container.Material(), tree.Container.Color(), tree.Container.Size(), tree.Type,
+				tree.URN(),
+				tree.Container.Material(),
+				tree.Container.Color(),
+				tree.Container.Size(),
+				tree.Container.Brightness(),
+				tree.Type,
 			).ApplyT(func(all []interface{}) error {
 				urn := all[0].(pulumi.URN)
 				material := all[1].(*string)
 				color := all[2].(*string)
 				size := all[3].(*int)
-				typ := all[4].(string)
+				brightness := all[4].(*float64)
+				typ := all[5].(string)
 				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
 				assert.Equal(t, *color, "red", "unexpected color on resource: %v", urn)
 				assert.Equal(t, *size, 4, "unexpected size on resource: %v", urn)
+				assert.Nil(t, brightness)
 				assert.Equal(t, typ, "Ruby", "unexpected type on resource: %v", urn)
 				wg.Done()
 				return nil

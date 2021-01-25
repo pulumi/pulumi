@@ -45,7 +45,7 @@ type Output interface {
 	resolve(value interface{}, known, secret bool, deps []Resource)
 	reject(err error)
 	await(ctx context.Context) (interface{}, bool, bool, []Resource, error)
-	isSecret() bool
+	IsSecret() bool
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -419,9 +419,23 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	return result
 }
 
-// isSecret returns a bool representing the secretness of the Output
-func (o *OutputState) isSecret() bool {
+// IsSecret returns a bool representing the secretness of the Output
+func (o *OutputState) IsSecret() bool {
 	return o.getState().secret
+}
+
+// Unsecret will unwrap a secret output as a new output with a resolved value and no secretness
+func Unsecret(input Output) Output {
+	return UnsecretWithContext(context.Background(), input)
+}
+
+// UnsecretWithContext will unwrap a secret output as a new output with a resolved value and no secretness
+func UnsecretWithContext(ctx context.Context, input Output) Output {
+	var x bool
+	o := toOutputWithContext(ctx, input, &x)
+	// set immediate secretness ahead of resolution/fulfillment
+	o.getState().secret = false
+	return o
 }
 
 // ToSecret wraps the input in an Output marked as secret
@@ -433,7 +447,8 @@ func ToSecret(input interface{}) Output {
 // ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
-	o := toOutputWithContext(ctx, input, true)
+	x := true
+	o := toOutputWithContext(ctx, input, &x)
 	// set immediate secretness ahead of resolution/fufillment
 	o.getState().secret = true
 	return o
@@ -559,8 +574,12 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	// await it.
 	valueType, isInput := v.Type(), false
 	if v.CanInterface() && valueType.Implements(inputType) {
-		input, isNonNil := v.Interface().(Input)
-		if !isNonNil {
+		input, ok := v.Interface().(Input)
+		if !ok {
+			// A non-input type is already fully-resolved.
+			return true, false, nil, nil
+		}
+		if val := reflect.ValueOf(input); val.Kind() == reflect.Ptr && val.IsNil() {
 			// A nil input is already fully-resolved.
 			return true, false, nil, nil
 		}
@@ -734,10 +753,10 @@ func ToOutput(v interface{}) Output {
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
 func ToOutputWithContext(ctx context.Context, v interface{}) Output {
-	return toOutputWithContext(ctx, v, false)
+	return toOutputWithContext(ctx, v, nil)
 }
 
-func toOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) Output {
+func toOutputWithContext(ctx context.Context, v interface{}, forceSecretVal *bool) Output {
 	resolvedType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
 		resolvedType = input.ElementType()
@@ -758,7 +777,9 @@ func toOutputWithContext(ctx context.Context, v interface{}, forceSecret bool) O
 		element := reflect.New(resolvedType).Elem()
 
 		known, secret, deps, err := awaitInputs(ctx, reflect.ValueOf(v), element)
-		secret = secret || forceSecret
+		if forceSecretVal != nil {
+			secret = *forceSecretVal
+		}
 		if err != nil || !known {
 			result.fulfill(nil, known, secret, deps, err)
 			return

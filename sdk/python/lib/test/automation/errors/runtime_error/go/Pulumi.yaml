@@ -1,0 +1,3 @@
+name: runtime_error
+runtime: go
+description: A minimal Go Pulumi program

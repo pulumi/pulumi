@@ -91,6 +91,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
 	"regexp"
 	"runtime"
@@ -216,6 +217,8 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 
 	var sharedArgs []string
+
+	sharedArgs = debug.AddArgs(&preOpts.DebugLogOpts, sharedArgs)
 	if preOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", preOpts.Message))
 	}
@@ -276,6 +279,8 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	var sharedArgs []string
+
+	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
 	if upOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", upOpts.Message))
 	}
@@ -351,7 +356,10 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		o.ApplyOption(refreshOpts)
 	}
 
-	args := []string{"refresh", "--yes", "--skip-preview"}
+	var args []string
+
+	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
+	args = append(args, "refresh", "--yes", "--skip-preview")
 	if refreshOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
 	}
@@ -408,7 +416,10 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		o.ApplyOption(destroyOpts)
 	}
 
-	args := []string{"destroy", "--yes", "--skip-preview"}
+	var args []string
+
+	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
+	args = append(args, "destroy", "--yes", "--skip-preview")
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
@@ -644,9 +655,9 @@ func (ur *UpResult) GetPermalink() (string, error) {
 // GetPermalink returns the permalink URL in the Pulumi Console for the update
 // or refresh operation. This will error for alternate, local backends.
 func GetPermalink(stdout string) (string, error) {
-	const permalinkSearchStr = "View Live: "
-	var startRegex = regexp.MustCompile(permalinkSearchStr)
-	var endRegex = regexp.MustCompile("\n")
+	const permalinkSearchStr = "View Live: |Permalink: "
+	startRegex := regexp.MustCompile(permalinkSearchStr)
+	endRegex := regexp.MustCompile("\n")
 
 	// Find the start of the permalink in the output.
 	start := startRegex.FindStringIndex(stdout)
@@ -867,6 +878,7 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		Project:     req.GetProject(),
 		Stack:       req.GetStack(),
 		Parallel:    int(req.GetParallel()),
+		DryRun:      req.GetDryRun(),
 	}
 
 	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)

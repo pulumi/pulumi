@@ -5,7 +5,7 @@ using System;
 using System.ComponentModel;
 using Pulumi;
 
-namespace Pulumi.PlantProvider
+namespace Pulumi.Plant
 {
     [EnumType]
     public readonly struct ContainerBrightness : IEquatable<ContainerBrightness>

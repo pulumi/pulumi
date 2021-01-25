@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package b64 implements a base64 secrets manager for testing purposes.
 package b64
 
 import (

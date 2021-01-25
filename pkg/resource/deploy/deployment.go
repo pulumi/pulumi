@@ -34,7 +34,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
 )
 
-// BackendClient provides an interface for retrieving information about other stacks.
+// BackendClient is used to retrieve information about stacks from a backend.
 type BackendClient interface {
 	// GetStackOutputs returns the outputs (if any) for the named stack or an error if the stack cannot be found.
 	GetStackOutputs(ctx context.Context, name string) (resource.PropertyMap, error)
@@ -84,7 +84,7 @@ type StepExecutorEvents interface {
 	OnResourceOutputs(step Step) error
 }
 
-// PolicyEvents is an interface that can be used to hook policy violation events.
+// PolicyEvents is an interface that can be used to hook policy events.
 type PolicyEvents interface {
 	OnPolicyViolation(resource.URN, plugin.AnalyzeDiagnostic)
 }

@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"go/format"
 	"io"
+	"os"
 	"path"
 	"reflect"
 	"sort"
@@ -35,25 +36,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
-
-type stringSet map[string]struct{}
-
-func newStringSet(s ...string) stringSet {
-	ss := stringSet{}
-	for _, s := range s {
-		ss.add(s)
-	}
-	return ss
-}
-
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
-}
-
-func (ss stringSet) has(s string) bool {
-	_, ok := ss[s]
-	return ok
-}
 
 type typeDetails struct {
 	ptrElement   bool
@@ -109,7 +91,7 @@ type pkgContext struct {
 	types          []*schema.ObjectType
 	resources      []*schema.Resource
 	functions      []*schema.Function
-	names          stringSet
+	names          codegen.StringSet
 	functionNames  map[*schema.Function]string
 	needsUtils     bool
 	tool           string
@@ -160,11 +142,12 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	// If the package containing the type's token already has a resource with the
 	// same name, add a `Type` suffix.
 	modPkg, ok := pkg.packages[mod]
-	contract.Assert(ok)
 
 	name = Title(name)
-	if modPkg.names.has(name) {
-		name += "Type"
+	if ok {
+		if modPkg.names.Has(name) {
+			name += "Type"
+		}
 	}
 
 	if mod == pkg.mod {
@@ -190,6 +173,11 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 		panic(fmt.Errorf("pkg.pkg is nil. token %s", tok))
 	}
 
+	// Is it a provider resource?
+	if components[0] == "pulumi" && components[1] == "providers" {
+		return fmt.Sprintf("%s.Provider", components[2])
+	}
+
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
 	name = Title(name)
@@ -201,6 +189,15 @@ func (pkg *pkgContext) tokenToResource(tok string) string {
 		mod = components[0]
 	}
 	return strings.Replace(mod, "/", "", -1) + "." + name
+}
+
+func tokenToModule(tok string) string {
+	// token := pkg : module : member
+	// module := path/to/module
+
+	components := strings.Split(tok, ":")
+	contract.Assert(len(components) == 3)
+	return components[1]
 }
 
 func tokenToName(tok string) string {
@@ -226,9 +223,9 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 	case *schema.MapType:
 		return "map[string]" + pkg.plainType(t.ElementType, false)
 	case *schema.ObjectType:
-		typ = pkg.tokenToType(t.Token)
+		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
-		typ = pkg.tokenToResource(t.Token)
+		typ = pkg.resolveResourceType(t)
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -276,8 +273,12 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
+		var prefix string
+		if optional {
+			prefix = "*"
+		}
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token)
+		return prefix + pkg.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		en := pkg.inputType(t.ElementType, false)
 		return strings.TrimSuffix(en, "Input") + "ArrayInput"
@@ -285,10 +286,9 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 		en := pkg.inputType(t.ElementType, false)
 		return strings.TrimSuffix(en, "Input") + "MapInput"
 	case *schema.ObjectType:
-		typ = pkg.tokenToType(t.Token)
+		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
-		typ = pkg.tokenToResource(t.Token)
-		return typ + "Input"
+		return pkg.resolveResourceType(t) + "Input"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -332,6 +332,58 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 	return typ + "Input"
 }
 
+// resolveResourceType resolves resource references in properties while
+// taking into account potential external resources. Returned type is
+// always marked as required. Caller should check if the property is
+// optional and convert the type to a pointer if necessary.
+func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
+	if t.Resource == nil || pkg.pkg == nil || t.Resource.Package == pkg.pkg {
+		return pkg.tokenToResource(t.Token)
+	}
+	extPkg := t.Resource.Package
+	var goInfo GoPackageInfo
+
+	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+		goInfo = info
+	}
+	extPkgCtx := &pkgContext{
+		pkg:              extPkg,
+		importBasePath:   goInfo.ImportBasePath,
+		pkgImportAliases: goInfo.PackageImportAliases,
+		modToPkg:         goInfo.ModuleToPackage,
+	}
+	resType := extPkgCtx.tokenToResource(t.Token)
+	if !strings.Contains(resType, ".") {
+		resType = fmt.Sprintf("%s.%s", extPkg.Name, resType)
+	}
+	return resType
+}
+
+// resolveObjectType resolves resource references in properties while
+// taking into account potential external resources. Returned type is
+// always marked as required. Caller should check if the property is
+// optional and convert the type to a pointer if necessary.
+func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
+	if t.Package == nil || pkg.pkg == nil || t.Package == pkg.pkg {
+		return pkg.tokenToType(t.Token)
+	}
+	extPkg := t.Package
+	var goInfo GoPackageInfo
+
+	contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+	if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+		goInfo = info
+	}
+	extPkgCtx := &pkgContext{
+		pkg:              extPkg,
+		importBasePath:   goInfo.ImportBasePath,
+		pkgImportAliases: goInfo.PackageImportAliases,
+		modToPkg:         goInfo.ModuleToPackage,
+	}
+	return extPkgCtx.plainType(t, false)
+}
+
 func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 	var typ string
 	switch t := t.(type) {
@@ -350,10 +402,9 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 		}
 		return en + "MapOutput"
 	case *schema.ObjectType:
-		typ = pkg.tokenToType(t.Token)
+		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
-		typ = pkg.tokenToResource(t.Token)
-		return typ + "Output"
+		return pkg.resolveResourceType(t) + "Output"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -484,6 +535,27 @@ func getInputUsage(name string) string {
 	}, "\n")
 }
 
+// genResourceContainerInput handles generating container (slice/map) wrappers around
+// resources to facilitate external references.
+func genResourceContainerInput(w io.Writer, name, receiverType, elementType string) {
+	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
+	fmt.Fprintf(w, "\treturn reflect.TypeOf((%s)(nil))\n", elementType)
+	fmt.Fprintf(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
+	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
+	fmt.Fprintf(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
+	if strings.HasSuffix(name, "Ptr") {
+		base := name[:len(name)-3]
+		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput).To%sOutput()\n", base, Title(name))
+	} else {
+		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
 	if resourceType {
@@ -507,7 +579,11 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 		fmt.Fprintf(w, "}\n\n")
 
 		fmt.Fprintf(w, "func (i %s) To%sPtrOutputWithContext(ctx context.Context) %sPtrOutput {\n", receiverType, Title(name), name)
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%[1]sOutput).To%[1]sPtrOutputWithContext(ctx)\n", name)
+		if strings.HasSuffix(receiverType, "Args") {
+			fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%[1]sOutput).To%[1]sPtrOutputWithContext(ctx)\n", name)
+		} else {
+			fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sPtrOutput)\n", name)
+		}
 		fmt.Fprintf(w, "}\n\n")
 	}
 }
@@ -537,7 +613,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 			return err
 		}
 		e.Name = enumName
-		contract.Assertf(!modPkg.names.has(e.Name), "Name collision for enum constant: %s for %s",
+		contract.Assertf(!modPkg.names.Has(e.Name), "Name collision for enum constant: %s for %s",
 			e.Name, enumType.Token)
 
 		switch reflect.TypeOf(e.Value).Kind() {
@@ -847,7 +923,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 	return val, nil
 }
 
-func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
+func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) error {
 	name := resourceName(r)
 
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
@@ -934,9 +1010,36 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 				t = "pulumi.Any"
 			}
 
-			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-			fmt.Fprintf(w, "\t}\n")
+			switch typ := p.Type.(type) {
+			case *schema.EnumType:
+				if p.IsRequired {
+					switch typ.ElementType {
+					// Only string and numeric types are supported for enums
+					case schema.StringType:
+						fmt.Fprintf(w, "\tif args.%s == \"\" {\n", Title(p.Name))
+					case schema.IntType, schema.NumberType:
+						fmt.Fprintf(w, "\tif args.%s == 0 {\n", Title(p.Name))
+					default:
+						contract.Assertf(false, "unxpected type %T for enum: %s", typ, typ.Token)
+					}
+					fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+					fmt.Fprintf(w, "\t}\n")
+				} else {
+					fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+
+					// Enum types are themselves inputs so pkg.InputType() returns *<EnumType>
+					// when the type is optional. We want the generated code to look like this:
+					// e:= <EnumType>(<Default>)
+					// args.<Name> = &e
+					fmt.Fprintf(w, "\te := %s(%s)\n", pkg.inputType(p.Type, false), v)
+					fmt.Fprintf(w, "\t\targs.%s = &e\n", Title(p.Name))
+					fmt.Fprintf(w, "\t}\n")
+				}
+			default:
+				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+				fmt.Fprintf(w, "\t}\n")
+			}
 		}
 	}
 
@@ -1044,7 +1147,32 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "\tTo%[1]sOutput() %[1]sOutput\n", name)
 	fmt.Fprintf(w, "\tTo%[1]sOutputWithContext(ctx context.Context) %[1]sOutput\n", name)
 	fmt.Fprintf(w, "}\n\n")
-	genInputMethods(w, name, "*"+name, name, false, true)
+
+	genInputMethods(w, name, "*"+name, name, generateResourceContainerTypes, true)
+
+	if generateResourceContainerTypes {
+		// Emit the resource pointer input type.
+		fmt.Fprintf(w, "type %sPtrInput interface {\n", name)
+		fmt.Fprintf(w, "\tpulumi.Input\n\n")
+		fmt.Fprintf(w, "\tTo%[1]sPtrOutput() %[1]sPtrOutput\n", name)
+		fmt.Fprintf(w, "\tTo%[1]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput\n", name)
+		fmt.Fprintf(w, "}\n\n")
+		ptrTypeName := camel(name) + "PtrType"
+		fmt.Fprintf(w, "type %s %sArgs\n\n", ptrTypeName, name)
+		genInputMethods(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, true)
+
+		if !r.IsProvider {
+			// Generate the resource array input.
+			genInputInterface(w, name+"Array")
+			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
+			genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
+
+			// Generate the resource map input.
+			genInputInterface(w, name+"Map")
+			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
+			genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
+		}
+	}
 
 	// Emit the resource output type.
 	fmt.Fprintf(w, "type %sOutput struct {\n", name)
@@ -1052,8 +1180,54 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "}\n\n")
 	genOutputMethods(w, name, name, true)
 	fmt.Fprintf(w, "\n")
+	if generateResourceContainerTypes {
+		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
+		fmt.Fprintf(w, "\treturn o.To%sPtrOutputWithContext(context.Background())\n", Title(name))
+		fmt.Fprintf(w, "}\n\n")
+
+		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name, Title(name))
+		fmt.Fprintf(w, "\treturn o.ApplyT(func(v %[1]s) *%[1]s {\n", name)
+		fmt.Fprintf(w, "\t\treturn &v\n")
+		fmt.Fprintf(w, "\t}).(%sPtrOutput)\n", name)
+		fmt.Fprintf(w, "}\n")
+		fmt.Fprintf(w, "\n")
+
+		// Emit the resource pointer output type.
+		fmt.Fprintf(w, "type %sOutput struct {\n", name+"Ptr")
+		fmt.Fprintf(w, "\t*pulumi.OutputState\n")
+		fmt.Fprintf(w, "}\n\n")
+		genOutputMethods(w, name+"Ptr", "*"+name, true)
+
+		if !r.IsProvider {
+			// Emit the array output type
+			fmt.Fprintf(w, "type %sArrayOutput struct { *pulumi.OutputState }\n\n", name)
+			genOutputMethods(w, name+"Array", "[]"+name, true)
+			fmt.Fprintf(w, "func (o %[1]sArrayOutput) Index(i pulumi.IntInput) %[1]sOutput {\n", name)
+			fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %s {\n", name)
+			fmt.Fprintf(w, "\t\treturn vs[0].([]%s)[vs[1].(int)]\n", name)
+			fmt.Fprintf(w, "\t}).(%sOutput)\n", name)
+			fmt.Fprintf(w, "}\n\n")
+			// Emit the map output type
+			fmt.Fprintf(w, "type %sMapOutput struct { *pulumi.OutputState }\n\n", name)
+			genOutputMethods(w, name+"Map", "map[string]"+name, true)
+			fmt.Fprintf(w, "func (o %[1]sMapOutput) MapIndex(k pulumi.StringInput) %[1]sOutput {\n", name)
+			fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %s {\n", name)
+			fmt.Fprintf(w, "\t\treturn vs[0].(map[string]%s)[vs[1].(string)]\n", name)
+			fmt.Fprintf(w, "\t}).(%sOutput)\n", name)
+			fmt.Fprintf(w, "}\n\n")
+		}
+	}
+	// Register all output types
 	fmt.Fprintf(w, "func init() {\n")
 	fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+
+	if generateResourceContainerTypes {
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+		if !r.IsProvider {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+		}
+	}
 	fmt.Fprintf(w, "}\n\n")
 
 	return nil
@@ -1170,77 +1344,132 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectT
 	fmt.Fprintf(w, "}\n")
 }
 
-func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, imports stringSet, seen map[schema.Type]struct{}) {
+func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAliases map[string]string, seen map[schema.Type]struct{}) {
 	if _, ok := seen[t]; ok {
 		return
 	}
 	seen[t] = struct{}{}
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
+		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.MapType:
-		pkg.getTypeImports(t.ElementType, recurse, imports, seen)
+		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.ObjectType:
+		if t.Package != nil && pkg.pkg != nil && t.Package != pkg.pkg {
+			extPkg := t.Package
+			var goInfo GoPackageInfo
+
+			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+			if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+				goInfo = info
+			} else {
+				// tests don't include ImportBasePath
+				goInfo.ImportBasePath = extractImportBasePath(extPkg)
+			}
+			extPkgCtx := &pkgContext{
+				pkg:              extPkg,
+				importBasePath:   goInfo.ImportBasePath,
+				pkgImportAliases: goInfo.PackageImportAliases,
+				modToPkg:         goInfo.ModuleToPackage,
+			}
+			mod := extPkgCtx.tokenToPackage(t.Token)
+			imp := path.Join(goInfo.ImportBasePath, mod)
+			importsAndAliases[imp] = goInfo.PackageImportAliases[imp]
+			break
+		}
 		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
-			imports.add(path.Join(pkg.importBasePath, mod))
+			p := path.Join(pkg.importBasePath, mod)
+			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]
 		}
 
-		for _, p := range t.Properties {
-			if recurse {
-				pkg.getTypeImports(p.Type, recurse, imports, seen)
+		if recurse {
+			for _, p := range t.Properties {
+				pkg.getTypeImports(p.Type, recurse, importsAndAliases, seen)
 			}
 		}
 	case *schema.ResourceType:
+		if t.Resource != nil && pkg.pkg != nil && t.Resource.Package != pkg.pkg {
+			extPkg := t.Resource.Package
+			var goInfo GoPackageInfo
+
+			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"go": Importer}))
+			if info, ok := extPkg.Language["go"].(GoPackageInfo); ok {
+				goInfo = info
+			} else {
+				// tests don't include ImportBasePath
+				goInfo.ImportBasePath = extractImportBasePath(extPkg)
+			}
+			extPkgCtx := &pkgContext{
+				pkg:              extPkg,
+				importBasePath:   goInfo.ImportBasePath,
+				pkgImportAliases: goInfo.PackageImportAliases,
+				modToPkg:         goInfo.ModuleToPackage,
+			}
+			mod := extPkgCtx.tokenToPackage(t.Token)
+			imp := path.Join(goInfo.ImportBasePath, mod)
+			importsAndAliases[imp] = goInfo.PackageImportAliases[imp]
+			break
+		}
 		mod := pkg.tokenToPackage(t.Token)
 		if mod != pkg.mod {
-			imports.add(path.Join(pkg.importBasePath, mod))
+			p := path.Join(pkg.importBasePath, mod)
+			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]
 		}
 	case *schema.UnionType:
 		for _, e := range t.ElementTypes {
-			pkg.getTypeImports(e, recurse, imports, seen)
+			pkg.getTypeImports(e, recurse, importsAndAliases, seen)
 		}
 	}
 }
 
-func (pkg *pkgContext) getImports(member interface{}, imports stringSet) {
+func extractImportBasePath(extPkg *schema.Package) string {
+	version := extPkg.Version.Major
+	var vPath string
+	if version > 1 {
+		vPath = fmt.Sprintf("/v%d", version)
+	}
+	return fmt.Sprintf("github.com/pulumi/pulumi-%s/sdk%s/go/%s", extPkg.Name, vPath, extPkg.Name)
+}
+
+func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[string]string) {
 	seen := map[schema.Type]struct{}{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
-		pkg.getTypeImports(member, true, imports, seen)
+		pkg.getTypeImports(member, true, importsAndAliases, seen)
 	case *schema.ResourceType:
-		pkg.getTypeImports(member, true, imports, seen)
+		pkg.getTypeImports(member, true, importsAndAliases, seen)
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			pkg.getTypeImports(p.Type, false, imports, seen)
+			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 		}
 		for _, p := range member.InputProperties {
-			pkg.getTypeImports(p.Type, false, imports, seen)
+			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 
 			if p.IsRequired {
-				imports.add("github.com/pkg/errors")
+				importsAndAliases["github.com/pkg/errors"] = ""
 			}
 		}
 	case *schema.Function:
 		if member.Inputs != nil {
-			pkg.getTypeImports(member.Inputs, false, imports, seen)
+			pkg.getTypeImports(member.Inputs, true, importsAndAliases, seen)
 		}
 		if member.Outputs != nil {
-			pkg.getTypeImports(member.Outputs, false, imports, seen)
+			pkg.getTypeImports(member.Outputs, true, importsAndAliases, seen)
 		}
 	case []*schema.Property:
 		for _, p := range member {
-			pkg.getTypeImports(p.Type, false, imports, seen)
+			pkg.getTypeImports(p.Type, false, importsAndAliases, seen)
 		}
 	case *schema.EnumType: // Just need pulumi sdk, see below
 	default:
 		return
 	}
 
-	imports.add("github.com/pulumi/pulumi/sdk/v2/go/pulumi")
+	importsAndAliases["github.com/pulumi/pulumi/sdk/v2/go/pulumi"] = ""
 }
 
-func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackages stringSet) {
+func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAliases map[string]string) {
 	fmt.Fprintf(w, "// *** WARNING: this file was generated by %v. ***\n", pkg.tool)
 	fmt.Fprintf(w, "// *** Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
 
@@ -1254,14 +1483,14 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 	fmt.Fprintf(w, "package %s\n\n", pkgName)
 
 	var imports []string
-	if len(importedPackages) > 0 {
-		for k := range importedPackages {
+	if len(importsAndAliases) > 0 {
+		for k := range importsAndAliases {
 			imports = append(imports, k)
 		}
 		sort.Strings(imports)
 
 		for i, k := range imports {
-			if alias, ok := pkg.pkgImportAliases[k]; ok {
+			if alias := importsAndAliases[k]; alias != "" {
 				imports[i] = fmt.Sprintf(`%s "%s"`, alias, k)
 			}
 		}
@@ -1291,10 +1520,10 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importedPackag
 }
 
 func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	imports := newStringSet("github.com/pulumi/pulumi/sdk/v2/go/pulumi/config")
-	pkg.getImports(variables, imports)
+	importsAndAliases := map[string]string{"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config": ""}
+	pkg.getImports(variables, importsAndAliases)
 
-	pkg.genHeader(w, nil, imports)
+	pkg.genHeader(w, nil, importsAndAliases)
 
 	for _, p := range variables {
 		getfunc := "Get"
@@ -1336,6 +1565,111 @@ func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) erro
 	return nil
 }
 
+// genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
+// Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
+// hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
+// definition and its registration to support rehydrating providers.
+func (pkg *pkgContext) genResourceModule(w io.Writer) {
+	contract.Assert(len(pkg.resources) != 0)
+
+	basePath := pkg.importBasePath
+
+	// TODO: importBasePath isn't currently set for schemas generated by pulumi-terraform-bridge.
+	//		 Remove this once the linked issue is fixed. https://github.com/pulumi/pulumi-terraform-bridge/issues/320
+	if len(basePath) == 0 {
+		basePath = fmt.Sprintf("github.com/pulumi/pulumi-%[1]s/sdk/v2/go/%[1]s", pkg.pkg.Name)
+	}
+
+	imports := map[string]string{
+		"github.com/blang/semver":                   "",
+		"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
+	}
+	topLevelModule := pkg.mod == ""
+	if !topLevelModule {
+		imports[basePath] = ""
+	}
+
+	pkg.genHeader(w, []string{"fmt"}, imports)
+
+	var provider *schema.Resource
+	registrations := codegen.StringSet{}
+	if providerOnly := len(pkg.resources) == 1 && pkg.resources[0].IsProvider; providerOnly {
+		provider = pkg.resources[0]
+	} else {
+		fmt.Fprintf(w, "type module struct {\n")
+		fmt.Fprintf(w, "\tversion semver.Version\n")
+		fmt.Fprintf(w, "}\n\n")
+
+		fmt.Fprintf(w, "func (m *module) Version() semver.Version {\n")
+		fmt.Fprintf(w, "\treturn m.version\n")
+		fmt.Fprintf(w, "}\n\n")
+
+		fmt.Fprintf(w, "func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {\n")
+		fmt.Fprintf(w, "\tswitch typ {\n")
+		for _, r := range pkg.resources {
+			if r.IsProvider {
+				contract.Assert(provider == nil)
+				provider = r
+				continue
+			}
+
+			registrations.Add(tokenToModule(r.Token))
+			fmt.Fprintf(w, "\tcase %q:\n", r.Token)
+			fmt.Fprintf(w, "\t\tr, err = New%s(ctx, name, nil, pulumi.URN_(urn))\n", resourceName(r))
+		}
+		fmt.Fprintf(w, "\tdefault:\n")
+		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown resource type: %%s\", typ)\n")
+		fmt.Fprintf(w, "\t}\n\n")
+		fmt.Fprintf(w, "\treturn\n")
+		fmt.Fprintf(w, "}\n\n")
+	}
+
+	if provider != nil {
+		fmt.Fprintf(w, "type pkg struct {\n")
+		fmt.Fprintf(w, "\tversion semver.Version\n")
+		fmt.Fprintf(w, "}\n\n")
+
+		fmt.Fprintf(w, "func (p *pkg) Version() semver.Version {\n")
+		fmt.Fprintf(w, "\treturn p.version\n")
+		fmt.Fprintf(w, "}\n\n")
+
+		fmt.Fprintf(w, "func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pulumi.ProviderResource, error) {\n")
+		fmt.Fprintf(w, "\tif typ != \"pulumi:providers:%s\" {\n", pkg.pkg.Name)
+		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown provider type: %%s\", typ)\n")
+		fmt.Fprintf(w, "\t}\n\n")
+		fmt.Fprintf(w, "\treturn NewProvider(ctx, name, nil, pulumi.URN_(urn))\n")
+		fmt.Fprintf(w, "}\n\n")
+	}
+
+	fmt.Fprintf(w, "func init() {\n")
+	if topLevelModule {
+		fmt.Fprintf(w, "\tversion, err := PkgVersion()\n")
+	} else {
+		// Some package names contain '-' characters, so grab the name from the base path.
+		pkgName := basePath[strings.LastIndex(basePath, "/")+1:]
+		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
+	}
+	fmt.Fprintf(w, "\tif err != nil {\n")
+	fmt.Fprintf(w, "\t\tfmt.Println(\"failed to determine package version. defaulting to v1: %%v\", err)\n")
+	fmt.Fprintf(w, "\t}\n")
+	if len(registrations) > 0 {
+		for _, mod := range registrations.SortedValues() {
+			fmt.Fprintf(w, "\tpulumi.RegisterResourceModule(\n")
+			fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name)
+			fmt.Fprintf(w, "\t\t%q,\n", mod)
+			fmt.Fprintf(w, "\t\t&module{version},\n")
+			fmt.Fprintf(w, "\t)\n")
+		}
+	}
+	if provider != nil {
+		fmt.Fprintf(w, "\tpulumi.RegisterResourcePackage(\n")
+		fmt.Fprintf(w, "\t\t%q,\n", pkg.pkg.Name)
+		fmt.Fprintf(w, "\t\t&pkg{version},\n")
+		fmt.Fprintf(w, "\t)\n")
+	}
+	fmt.Fprintf(w, "}\n")
+}
+
 // generatePackageContextMap groups resources, types, and functions into Go packages.
 func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackageInfo) map[string]*pkgContext {
 	packages := map[string]*pkgContext{}
@@ -1348,7 +1682,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				importBasePath:   goInfo.ImportBasePath,
 				typeDetails:      map[*schema.ObjectType]*typeDetails{},
 				enumDetails:      map[*schema.EnumType]*typeDetails{},
-				names:            stringSet{},
+				names:            codegen.NewStringSet(),
 				functionNames:    map[*schema.Function]string{},
 				tool:             tool,
 				modToPkg:         goInfo.ModuleToPackage,
@@ -1372,23 +1706,23 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// In addition, if the optional property's type is itself an object type, we also need to generate pointer
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
-	var markOptionalPropertyTypesAsRequiringPtr func(seen stringSet, props []*schema.Property, parentOptional bool)
-	markOptionalPropertyTypesAsRequiringPtr = func(seen stringSet, props []*schema.Property, parentOptional bool) {
+	var markOptionalPropertyTypesAsRequiringPtr func(seen codegen.StringSet, props []*schema.Property, parentOptional bool)
+	markOptionalPropertyTypesAsRequiringPtr = func(seen codegen.StringSet, props []*schema.Property, parentOptional bool) {
 		for _, p := range props {
 			if obj, ok := p.Type.(*schema.ObjectType); ok && (!p.IsRequired || parentOptional) {
-				if seen.has(obj.Token) {
+				if seen.Has(obj.Token) {
 					continue
 				}
 
-				seen.add(obj.Token)
+				seen.Add(obj.Token)
 				getPkgFromToken(obj.Token).detailsForType(obj).ptrElement = true
 				markOptionalPropertyTypesAsRequiringPtr(seen, obj.Properties, true)
 			}
 			if enum, ok := p.Type.(*schema.EnumType); ok && (!p.IsRequired || parentOptional) {
-				if seen.has(enum.Token) {
+				if seen.Has(enum.Token) {
 					continue
 				}
-				seen.add(enum.Token)
+				seen.Add(enum.Token)
 				getPkgFromToken(enum.Token).detailsForEnum(enum).ptrElement = true
 			}
 		}
@@ -1397,7 +1731,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// Use a string set to track object types that have already been processed.
 	// This avoids recursively processing the same type. For example, in the
 	// Kubernetes package, JSONSchemaProps have properties whose type is itself.
-	seenMap := stringSet{}
+	seenMap := codegen.NewStringSet()
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ArrayType:
@@ -1422,14 +1756,14 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
 
-		pkg.names.add(resourceName(r))
-		pkg.names.add(resourceName(r) + "Args")
-		pkg.names.add(camel(resourceName(r)) + "Args")
-		pkg.names.add("New" + resourceName(r))
+		pkg.names.Add(resourceName(r))
+		pkg.names.Add(resourceName(r) + "Args")
+		pkg.names.Add(camel(resourceName(r)) + "Args")
+		pkg.names.Add("New" + resourceName(r))
 		if !r.IsProvider && !r.IsComponent {
-			pkg.names.add(resourceName(r) + "State")
-			pkg.names.add(camel(resourceName(r)) + "State")
-			pkg.names.add("Get" + resourceName(r))
+			pkg.names.Add(resourceName(r) + "State")
+			pkg.names.Add(camel(resourceName(r)) + "State")
+			pkg.names.Add("Get" + resourceName(r))
 		}
 
 		markOptionalPropertyTypesAsRequiringPtr(seenMap, r.InputProperties, !r.IsProvider)
@@ -1446,7 +1780,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pkg.functions = append(pkg.functions, f)
 
 		name := tokenToName(f.Token)
-		if pkg.names.has(name) {
+		if pkg.names.Has(name) {
 			switch {
 			case strings.HasPrefix(name, "New"):
 				name = "Create" + name[3:]
@@ -1454,14 +1788,14 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				name = "Lookup" + name[3:]
 			}
 		}
-		pkg.names.add(name)
+		pkg.names.Add(name)
 		pkg.functionNames[f] = name
 
 		if f.Inputs != nil {
-			pkg.names.add(name + "Args")
+			pkg.names.Add(name + "Args")
 		}
 		if f.Outputs != nil {
-			pkg.names.add(name + "Result")
+			pkg.names.Add(name + "Result")
 		}
 	}
 
@@ -1547,7 +1881,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		// Run Go formatter on the code before saving to disk
 		formattedSource, err := format.Source([]byte(contents))
 		if err != nil {
-			panic(errors.Wrapf(err, "invalid Go source code:\n\n%s: %s", relPath, contents))
+			fmt.Fprintf(os.Stderr, "Invalid content:\n%s\n%s\n", relPath, contents)
+			panic(errors.Wrapf(err, "invalid Go source code:\n\n%s\n", relPath))
 		}
 
 		files[relPath] = formattedSource
@@ -1585,13 +1920,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Resources
 		for _, r := range pkg.resources {
-			imports := stringSet{}
-			pkg.getImports(r, imports)
+			importsAndAliases := map[string]string{}
+			pkg.getImports(r, importsAndAliases)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
-			if err := pkg.genResource(buffer, r); err != nil {
+			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
 				return nil, err
 			}
 
@@ -1600,11 +1935,11 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Functions
 		for _, f := range pkg.functions {
-			imports := stringSet{}
-			pkg.getImports(f, imports)
+			importsAndAliases := map[string]string{}
+			pkg.getImports(f, importsAndAliases)
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, nil, imports)
+			pkg.genHeader(buffer, nil, importsAndAliases)
 
 			pkg.genFunction(buffer, f)
 
@@ -1613,13 +1948,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Types
 		if len(pkg.types) > 0 {
-			imports := stringSet{}
+			importsAndAliases := map[string]string{}
 			for _, t := range pkg.types {
-				pkg.getImports(t, imports)
+				pkg.getImports(t, importsAndAliases)
 			}
 
 			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, imports)
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
 			for _, t := range pkg.types {
 				pkg.genType(buffer, t)
@@ -1632,7 +1967,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Enums
 		if len(pkg.enums) > 0 {
-			imports := stringSet{}
+			imports := map[string]string{}
 			for _, e := range pkg.enums {
 				pkg.getImports(e, imports)
 			}
@@ -1649,14 +1984,28 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		}
 
 		// Utilities
-		if pkg.needsUtils {
+		if pkg.needsUtils || len(mod) == 0 {
 			buffer := &bytes.Buffer{}
-			imports := newStringSet("github.com/pulumi/pulumi/sdk/v2/go/pulumi")
-			pkg.genHeader(buffer, []string{"os", "strconv", "strings"}, imports)
+			importsAndAliases := map[string]string{
+				"github.com/blang/semver":                   "",
+				"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
+			}
+			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
-			fmt.Fprintf(buffer, "%s", utilitiesFile)
+			_, err := fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
+			if err != nil {
+				return nil, err
+			}
 
 			setFile(path.Join(mod, "pulumiUtilities.go"), buffer.String())
+		}
+
+		// If there are resources in this module, register the module with the runtime.
+		if len(pkg.resources) != 0 {
+			buffer := &bytes.Buffer{}
+			pkg.genResourceModule(buffer)
+
+			setFile(path.Join(mod, "init.go"), buffer.String())
 		}
 	}
 
@@ -1713,5 +2062,20 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 		}
 	}
 	return def
+}
+
+// PkgVersion uses reflection to determine the version of the current package.
+func PkgVersion() (semver.Version, error) {
+	type sentinal struct{}
+	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
+	re := regexp.MustCompile("^.*/pulumi-%s/sdk(/v\\d+)?")
+	if match := re.FindStringSubmatch(pkgPath); match != nil {
+		vStr := match[1]
+		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
+			return semver.Version{Major: 1}, nil
+		}
+		return semver.MustParse(fmt.Sprintf("%%s.0.0", vStr[2:])), nil
+	}
+	return semver.Version{}, fmt.Errorf("failed to determine the package version from %%s", pkgPath)
 }
 `

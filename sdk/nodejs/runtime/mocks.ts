@@ -140,7 +140,7 @@ export class MockMonitor {
             if (!registeredResource) {
                 throw new Error(`unknown resource ${req.getUrn()}`);
             }
-            registeredResource.state = req.getOuptuts();
+            registeredResource.state = req.getOutputs();
 
             callback(null, {});
         } catch (err) {
