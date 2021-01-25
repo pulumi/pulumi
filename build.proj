@@ -306,6 +306,7 @@
   <!-- Tests -->
   <Target Name="Tests"
 	      DependsOnTargets="BuildTests">
+	<Exec Command="pulumi version" />
     <Exec Command="go test -timeout 5m -parallel $(TestParallelism) .\backend\..."
           IgnoreExitCode="true"
           WorkingDirectory="$(PkgDirectory)">
