@@ -75,7 +75,7 @@ jobs:
   publish-binaries:
     name: Publish Binaries
     runs-on: macos-latest
-    needs: [build-and-test, windows-build]
+    needs: [build-and-test, windows-test]
     strategy:
       matrix:
         go-version: [ 1.15.x ]
@@ -192,7 +192,7 @@ jobs:
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
   windows-build:
-    name: Windows Build + Test + Publish
+    name: Windows Build
     strategy:
       matrix:
         go-version: [1.15.x]
@@ -203,8 +203,6 @@ jobs:
     env:
       GOPATH: ${{ github.workspace }}
       PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
       - name: Install DotNet ${{ matrix.dotnet }}
@@ -223,23 +221,10 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Clean
-        run: dotnet nuget locals all --clear
       - name: Install Python Deps
         run: |
           pip3 install pyenv-win
           pip3 install pipenv
-      - name: Set Build Env Vars
-        shell: bash
-        run: |
-          echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
-      - name: Install AWS CLI Tools
-        uses: chrislennon/action-aws-cli@v1.1
-      - name: Check out scripts repo into the Go module directory
-        uses: actions/checkout@v2
-        with:
-          repository: pulumi/scripts
-          path: ./src/github.com/pulumi/scripts
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
         with:
@@ -247,9 +232,12 @@ jobs:
       - name: Fetch Tags
         run: |
           cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      - name: Clean
+        run: dotnet nuget locals all --clear
       - name: Get dependencies
         run: |
           cd src\github.com\${{ github.repository }}
+          set GO111MODULE=on
           pushd .
           cd sdk
           go mod tidy
@@ -269,14 +257,256 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+      - name: Tar CLI Binaries
+        run: tar -zcf ${{ github.workspace }}/cli.tar.gz -C D:\Pulumi\bin .
+      - name: Tar SDK binaries
+        run: |
+          cd src\github.com\${{ github.repository }}
+          tar -zcf ./nodejs-sdk.tar.gz -C sdk\nodejs .
+          tar -zcf ./python-sdk.tar.gz -C sdk\python .
+      - name: Upload CLI artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: pulumi-windows-cli.tar.gz
+          path: ${{ github.workspace }}/cli.tar.gz
+      - name: Upload NodeJS artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: pulumi-windows-nodejs-sdk.tar.gz
+          path: ${{ github.workspace }}\src\github.com\${{ github.repository }}\nodejs-sdk.tar.gz
+      - name: Upload Python artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: pulumi-windows-python-sdk.tar.gz
+          path: ${{ github.workspace }}\src\github.com\${{ github.repository }}\python-sdk.tar.gz
+      - name: Tar Nuget Packages
+        run: tar -zcf ${{ github.workspace }}/nuget.tar.gz -C D:\Pulumi\nuget .
+      - name: Upload Nuget artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: pulumi-nuget.tar.gz
+          path: ${{ github.workspace }}/nuget.tar.gz
+  windows-test:
+    name: Windows Acceptance Test
+    strategy:
+      matrix:
+        go-version: [1.15.x]
+        node-version: [14.x]
+        python-version: [3.9.x]
+        dotnet: [3.1.x]
+    runs-on: windows-latest
+    needs: windows-build
+    env:
+      GOPATH: ${{ github.workspace }}
+      PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+    steps:
+      - name: Install DotNet ${{ matrix.dotnet }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python Deps
+        run: |
+          pip3 install pyenv-win
+          pip3 install pipenv
+      - name: Ensure Pulumi Bin exists
+        run: mkdir D:\Pulumi\bin
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          path: ./src/github.com/${{ github.repository }}
+      - name: Fetch Tags
+        run: |
+          cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      - name: Ensure Local Nuget Exists
+        run: mkdir D:/pulumi/nuget
+      - name: Download Nuget Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-nuget.tar.gz
+          path: ${{ github.workspace}}
+      - name: Uncompress Nuget folder
+        run: tar -zxf ${{ github.workspace}}/nuget.tar.gz -C D:\Pulumi\nuget
+      - name: Download Pulumi CLI Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-cli.tar.gz
+          path: ${{ github.workspace}}
+      - name: Uncompress CLI folder
+        run: |
+          tar -zxf ${{ github.workspace}}/cli.tar.gz -C D:\Pulumi\bin
+      - run: dir D:\Pulumi\bin
+      - name: Set Build Env Vars
+        shell: bash
+        run: |
+          echo "D:\Pulumi\bin" >> $GITHUB_PATH
+      - name: Download Pulumi NodeJS Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-nodejs-sdk.tar.gz
+          path: ${{ github.workspace}}\src\github.com\${{ github.repository }}
+      - name: Download Pulumi Python Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-python-sdk.tar.gz
+          path: ${{ github.workspace}}\src\github.com\${{ github.repository }}
+      - name: Uncompress SDK folder
+        run: |
+          cd src\github.com\${{ github.repository }}
+          tar -zxf ./nodejs-sdk.tar.gz -C sdk\nodejs
+          tar -zxf ./python-sdk.tar.gz -C sdk\python
+      - name: Uninstall Choco Pulumi
+        run: choco uninstall pulumi -y
+      - name: Specify test dependencies
+        run: |
+          which pulumi
+          echo "Currently Pulumi $(pulumi version) is installed"
+          echo "Currently Go $(go version) is installed"
+          echo "Currently Python $(python --version) is installed"
+          echo "Currently DotNet $(dotnet --version) is installed"
+          echo "Currently NodeJS $(node --version) is installed"
+      - name: Get dependencies
+        run: |
+          cd src\github.com\${{ github.repository }}
+          set GO111MODULE=on
+          pushd .
+          cd sdk
+          go mod tidy
+          go mod download
+          popd
+          pushd .
+          cd pkg
+          go mod tidy
+          go mod download
+          popd
+          pushd .
+          cd tests
+          go mod tidy
+          go mod download
+          popd
       - name: Run Pulumi Tests
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\Pulumi"
+  windows-publish:
+    name: Publish Windows Binary
+    strategy:
+      matrix:
+        go-version: [ 1.15.x ]
+        node-version: [ 14.x ]
+        python-version: [ 3.9.x ]
+        dotnet: [ 3.1.x ]
+    runs-on: windows-latest
+    needs: [build-and-test, windows-test]
+    env:
+      GOPATH: ${{ github.workspace }}
+      PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
+      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID_LEGACY }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
+    steps:
+      - name: Install DotNet ${{ matrix.dotnet }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet }}
+      - name: Use Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python Deps
+        run: |
+          pip3 install pyenv-win
+          pip3 install pipenv
+      - name: Ensure Pulumi Bin exists
+        run: mkdir D:\Pulumi\bin
+      - name: Set Build Env Vars
+        shell: bash
+        run: |
+          echo "D:\Pulumi\bin" >> $GITHUB_PATH
+      - name: Check out code into the Go module directory
+        uses: actions/checkout@v2
+        with:
+          path: ./src/github.com/${{ github.repository }}
+      - name: Fetch Tags
+        run: |
+          cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
+      - name: Ensure Local Nuget Exists
+        run: mkdir D:/pulumi/nuget
+      - name: Download Nuget Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-nuget.tar.gz
+          path: ${{ github.workspace}}
+      - name: Uncompress Nuget folder
+        run: tar -zxf ${{ github.workspace}}/nuget.tar.gz -C D:\Pulumi\nuget
+      - name: Download Pulumi CLI Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-cli.tar.gz
+          path: ${{ github.workspace}}
+      - name: Uncompress CLI folder
+        run: |
+          tar -zxf ${{ github.workspace}}/cli.tar.gz -C D:\Pulumi\bin
+      - run: dir D:\Pulumi\bin
+      - run: pulumi version
+      - name: Download Pulumi NodeJS Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-nodejs-sdk.tar.gz
+          path: ${{ github.workspace}}\src\github.com\${{ github.repository }}
+      - name: Download Pulumi Python Archive
+        uses: actions/download-artifact@v2
+        with:
+          name: pulumi-windows-python-sdk.tar.gz
+          path: ${{ github.workspace}}\src\github.com\${{ github.repository }}
+      - name: Uncompress SDK folder
+        run: |
+          cd src\github.com\${{ github.repository }}
+          tar -zxf ./nodejs-sdk.tar.gz -C sdk\nodejs
+          tar -zxf ./python-sdk.tar.gz -C sdk\python
+      - name: Get dependencies
+        run: |
+          cd src\github.com\${{ github.repository }}
+          set GO111MODULE=on
+          pushd .
+          cd sdk
+          go mod tidy
+          go mod download
+          popd
+          pushd .
+          cd pkg
+          go mod tidy
+          go mod download
+          popd
+          pushd .
+          cd tests
+          go mod tidy
+          go mod download
+          popd
       - name: Publish Binary
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+          dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\Pulumi"
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
