@@ -19,11 +19,13 @@ import * as runtime from "../../runtime";
 describe("settings", () => {
     beforeEach(() => {
         runtime._reset();
+        runtime.setAllConfig({});
     });
     after(()=> {
         runtime._reset();
+        runtime.setAllConfig({});
     })
-    it("can manipulate runtime options", () => {
+    it("runtime options and config are read from and updated via the environment", () => {
         runtime._setTestModeEnabled(false);
 
         const testProject = "TestProject";
@@ -34,10 +36,20 @@ describe("settings", () => {
         runtime._setIsDryRun(isDryRun);
         const isQueryMode = true;
         runtime._setQueryMode(isQueryMode);
+        const key = "k";
+        const val = "v";
+        runtime.setConfig(key, val)
 
         assert.strictEqual(runtime.getProject(), testProject);
         assert.strictEqual(runtime.getStack(), testStack);
         assert.strictEqual(runtime.isDryRun(), isDryRun);
         assert.strictEqual(runtime.isQueryMode(), isQueryMode);
+        assert.strictEqual(runtime.getConfig(key), val);
+
+        assert.strictEqual(testProject, process.env["PULUMI_NODEJS_PROJECT"])
+        assert.strictEqual(testStack, process.env["PULUMI_NODEJS_STACK"])
+        assert.strictEqual("true", process.env["PULUMI_NODEJS_DRY_RUN"])
+        assert.strictEqual("true", process.env["PULUMI_NODEJS_QUERY_MODE"])
+        assert.strictEqual(JSON.stringify({[key]: val}), process.env["PULUMI_CONFIG"])
     });
 });
