@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [sdk/go] Take a breaking change to remove unidiomatic numerical types and drastically improve build performance (binary size and compilation time).
+  [#6143](https://github.com/pulumi/pulumi/pull/6143)
 
 ## 2.18.2 (2021-01-22)
 
