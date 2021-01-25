@@ -24,15 +24,19 @@ In addition to fine-grained building blocks, Automation API provides two out of 
 
 1. Programs locally available on-disk and addressed via a filepath (local source)::
 
-    stack = create_stack("myOrg/myProj/myStack", work_dir=os.path.join("..", "path", "to", "project"))`
+    ```python
+    stack = create_stack("myOrg/myProj/myStack", work_dir=os.path.join("..", "path", "to", "project"))
+    ```
 
 2. Programs defined as a function alongside your Automation API code (inline source)::
 
+    ```python
     def pulumi_program():
         bucket = s3.Bucket("bucket")
         pulumi.export("bucket_name", bucket.Bucket)
 
     stack = create_stack("myOrg/myProj/myStack", program=pulumi_program)
+    ```
 
 Each of these creates a stack with access to the full range of Pulumi lifecycle methods
 (up/preview/refresh/destroy), as well as methods for managing config, stack, and project settings::
@@ -43,13 +47,14 @@ Each of these creates a stack with access to the full range of Pulumi lifecycle 
 The Automation API provides a natural way to orchestrate multiple stacks,
 feeding the output of one stack as an input to the next as shown in the package-level example below.
 The package can be used for a number of use cases:
-    - Driving pulumi deployments within CI/CD workflows
-    - Integration testing
-    - Multi-stage deployments such as blue-green deployment patterns
-    - Deployments involving application code like database migrations
-    - Building higher level tools, custom CLIs over pulumi, etc.
-    - Using pulumi behind a REST or GRPC API
-    - Debugging Pulumi programs (by using a single main entrypoint with "inline" programs)
+
+- Driving pulumi deployments within CI/CD workflows
+- Integration testing
+- Multi-stage deployments such as blue-green deployment patterns
+- Deployments involving application code like database migrations
+- Building higher level tools, custom CLIs over pulumi, etc.
+- Using pulumi behind a REST or GRPC API
+- Debugging Pulumi programs (by using a single main entrypoint with "inline" programs)
 
 To enable a broad range of runtime customization the API defines a `Workspace` interface.
 A Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -77,10 +82,11 @@ applied to updates as it does with the local version of the Workspace today.
 The Automation API also provides error handling utilities to detect common cases such as concurrent update
 conflicts::
 
-try:
-    up_response = stack.up()
-except ConcurrentUpdateError:
-    { /* retry logic here */ }
+    try:
+        up_response = stack.up()
+    except ConcurrentUpdateError:
+        { /* retry logic here */ }
+
 """
 
 from .config import (
