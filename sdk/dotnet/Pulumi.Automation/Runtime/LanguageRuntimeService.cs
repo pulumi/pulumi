@@ -1,6 +1,9 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
@@ -13,13 +16,11 @@ namespace Pulumi.Automation
         // MaxRpcMesageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
         public const int MaxRpcMesageSize = 1024 * 1024 * 400;
 
-        private readonly PulumiFn _program;
-        private readonly CancellationToken _cancelToken;
+        private readonly CallerContext _callerContext;
 
-        public LanguageRuntimeService(LanguageRuntimeServiceArgs args)
+        public LanguageRuntimeService(CallerContext callerContext)
         {
-            this._program = args.Program;
-            this._cancelToken = args.CancellationToken;
+            this._callerContext = callerContext;
         }
 
         public override Task<GetRequiredPluginsResponse> GetRequiredPlugins(GetRequiredPluginsRequest request, ServerCallContext context)
@@ -30,7 +31,7 @@ namespace Pulumi.Automation
 
         public override async Task<RunResponse> Run(RunRequest request, ServerCallContext context)
         {
-            if (this._cancelToken.IsCancellationRequested // if caller of UpAsync has cancelled
+            if (this._callerContext.CancellationToken.IsCancellationRequested // if caller of UpAsync has cancelled
                 || context.CancellationToken.IsCancellationRequested) // if CLI has cancelled
             {
                 return new RunResponse();
@@ -48,18 +49,34 @@ namespace Pulumi.Automation
                 request.Parallel,
                 request.DryRun);
 
-            await Deployment.RunInlineAsync(settings, () => Task.FromResult(this._program())).ConfigureAwait(false);
+            Func<Task<IDictionary<string, object?>>> program = () =>
+            {
+                try
+                {
+                    var result = this._callerContext.Program();
+                    return Task.FromResult(result);
+                }
+                catch (Exception ex)
+                {
+                    this._callerContext.ExceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
+                    throw;
+                }
+            };
+
+            await Deployment.RunInlineAsync(settings, program).ConfigureAwait(false);
             Deployment.Instance = null!;
             return new RunResponse();
         }
 
-        public class LanguageRuntimeServiceArgs
+        public class CallerContext
         {
             public PulumiFn Program { get; }
 
             public CancellationToken CancellationToken { get; }
 
-            public LanguageRuntimeServiceArgs(
+            public ExceptionDispatchInfo? ExceptionDispatchInfo { get; set; }
+
+            public CallerContext(
                 PulumiFn program,
                 CancellationToken cancellationToken)
             {

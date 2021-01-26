@@ -380,6 +380,26 @@ namespace Pulumi.Automation.Tests
             await stack.Workspace.RemoveStackAsync(stackName);
         }
 
+        [Fact]
+        public async Task InlineProgramExceptionPropagatesToCaller()
+        {
+            const string projectName = "exception_inline_node";
+            var stackName = $"int_test_{GetTestSuffix()}";
+            PulumiFn program = () => throw new FileNotFoundException();
+
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var upTask = stack.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTask);
+        }
+
         [Fact(Skip = "Parallel execution is not supported in this first version.")]
         public async Task InlineProgramAllowsParallelExecution()
         {

@@ -4,8 +4,10 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Net;
+using System.Runtime.ExceptionServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -271,9 +273,11 @@ namespace Pulumi.Automation
                 args.Add(execKind);
 
                 var upResult = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                    exceptionInfo.Throw();
+
                 var output = await this.GetOutputAsync(cancellationToken).ConfigureAwait(false);
                 var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
-
                 return new UpResult(
                     upResult.StandardOutput,
                     upResult.StandardError,
@@ -363,8 +367,10 @@ namespace Pulumi.Automation
                 args.Add(execKind);
 
                 var upResult = await this.RunCommandAsync(args, null, cancellationToken).ConfigureAwait(false);
-                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
+                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                    exceptionInfo.Throw();
 
+                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
                 return new UpdateResult(
                     upResult.StandardOutput,
                     upResult.StandardError,
@@ -577,8 +583,8 @@ namespace Pulumi.Automation
                                 services.AddLogging();
 
                                 // to be injected into LanguageRuntimeService
-                                var args = new LanguageRuntimeService.LanguageRuntimeServiceArgs(program, cancellationToken);
-                                services.AddSingleton(args);
+                                var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
+                                services.AddSingleton(callerContext);
 
                                 services.AddGrpc(grpcOptions =>
                                 {
@@ -620,6 +626,19 @@ namespace Pulumi.Automation
 
             public Task<int> GetPortAsync()
                 => this._portTcs.Task;
+
+            public bool TryGetExceptionInfo([NotNullWhen(true)] out ExceptionDispatchInfo? info)
+            {
+                var callerContext = this._host.Services.GetRequiredService<LanguageRuntimeService.CallerContext>();
+                if (callerContext.ExceptionDispatchInfo is null)
+                {
+                    info = null;
+                    return false;
+                }
+
+                info = callerContext.ExceptionDispatchInfo;
+                return true;
+            }
 
             public async ValueTask DisposeAsync()
             {
