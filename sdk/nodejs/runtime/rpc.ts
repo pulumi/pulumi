@@ -74,7 +74,7 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
                 `transferIsStable(${label}, ${k}, ${propString})`),
             debuggablePromise(
                 new Promise<boolean>(resolve => resolveIsSecret = resolve),
-                `transferIsSecret(${label}, ${k}, ${props[k]})`),
+                `transferIsSecret(${label}, ${k}, ${propString})`),
             debuggablePromise(
                 new Promise<Resource[]>(resolve => resolveDeps = resolve),
                 `transferDeps(${label}, ${k}, ${propString})`));
