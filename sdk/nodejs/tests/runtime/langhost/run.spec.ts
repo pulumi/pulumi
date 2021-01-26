@@ -66,6 +66,9 @@ function makeUrn(t: string, name: string): URN {
 }
 
 describe("rpc", () => {
+    beforeEach(() => {
+        runtime._reset();
+    });
     const base: string = path.join(path.dirname(__filename), "cases");
     const cases: { [key: string]: RunCase } = {
         // An empty program.

@@ -17,12 +17,11 @@
  */
 const configEnvKey = "PULUMI_CONFIG";
 
-let config: {[key: string]: string} = parseConfig();
-
 /**
  * allConfig returns a copy of the full config map.
  */
 export function allConfig(): {[key: string]: string} {
+    const config = parseConfig();
     return Object.assign({}, config);
 }
 
@@ -34,23 +33,31 @@ export function setAllConfig(c: {[key: string]: string}) {
     for (const k of Object.keys(c)) {
         obj[cleanKey(k)] = c[k];
     }
-    config = obj;
+    persistConfig(obj);
 }
 
 /**
  * setConfig sets a configuration variable.
  */
 export function setConfig(k: string, v: string): void {
+    const config = parseConfig();
     config[cleanKey(k)] = v;
+    persistConfig(config)
 }
 
 /**
  * getConfig returns a configuration variable's value or undefined if it is unset.
  */
 export function getConfig(k: string): string | undefined {
+    const config = parseConfig();
     return config[k];
 }
 
+/**
+ * parseConfig reads config from the source of truth, the environment.
+ * config must always be read this way because automation api introduces
+ * new program lifetime semantics where program lifetime != module lifetime.
+ */
 function parseConfig() {
     const parsedConfig: {[key: string]: string} = {};
     const envConfig = process.env[configEnvKey];
@@ -62,6 +69,16 @@ function parseConfig() {
     }
 
     return parsedConfig;
+}
+
+/**
+ * persistConfig writes config to the environment.
+ * config changes must always be persisted to the environment because automation api introduces
+ * new program lifetime semantics where program lifetime != module lifetime.
+ */
+function persistConfig(config: {[key: string]: string}) {
+    const serializedConfig = JSON.stringify(config);
+    process.env[configEnvKey] = serializedConfig;
 }
 
 /**
