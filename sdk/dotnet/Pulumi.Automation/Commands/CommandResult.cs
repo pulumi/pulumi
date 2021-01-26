@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+using System.Text;
 
 namespace Pulumi.Automation.Commands
 {

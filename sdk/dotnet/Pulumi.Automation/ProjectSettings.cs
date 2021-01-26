@@ -1,4 +1,6 @@
-﻿namespace Pulumi.Automation
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+namespace Pulumi.Automation
 {
     /// <summary>
     /// A Pulumi project manifest. It describes metadata applying to all sub-stacks created from the project.

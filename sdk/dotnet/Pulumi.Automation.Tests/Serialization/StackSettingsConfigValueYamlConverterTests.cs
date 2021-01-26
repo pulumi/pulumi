@@ -1,4 +1,6 @@
-﻿using Pulumi.Automation.Serialization;
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+using Pulumi.Automation.Serialization;
 using Xunit;
 using YamlDotNet.Core;
 

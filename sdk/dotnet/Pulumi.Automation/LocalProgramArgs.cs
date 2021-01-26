@@ -1,4 +1,6 @@
-﻿namespace Pulumi.Automation
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+namespace Pulumi.Automation
 {
     /// <summary>
     /// Description of a stack backed by pre-existing local Pulumi CLI program.

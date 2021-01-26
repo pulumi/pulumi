@@ -1,4 +1,6 @@
-﻿namespace Pulumi.Automation
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+namespace Pulumi.Automation
 {
     /// <summary>
     /// Various configuration options that apply to different language runtimes.

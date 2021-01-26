@@ -1,4 +1,6 @@
-﻿using System.Linq;
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;

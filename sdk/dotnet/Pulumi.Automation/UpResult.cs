@@ -1,4 +1,6 @@
-﻿using System.Collections.Immutable;
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+using System.Collections.Immutable;
 
 namespace Pulumi.Automation
 {

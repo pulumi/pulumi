@@ -1,4 +1,6 @@
-﻿using System;
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+using System;
 using Pulumi.Automation.Serialization.Json;
 
 namespace Pulumi.Automation.Serialization

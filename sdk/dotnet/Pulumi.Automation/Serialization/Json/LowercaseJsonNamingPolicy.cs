@@ -1,4 +1,6 @@
-﻿using System.Text.Json;
+﻿// Copyright 2016-2021, Pulumi Corporation
+
+using System.Text.Json;
 
 namespace Pulumi.Automation.Serialization.Json
 {
