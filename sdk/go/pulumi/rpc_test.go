@@ -206,7 +206,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 		FileArchive:   NewFileArchive("foo.zip"),
 		RemoteArchive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
 		E:             out,
-		Array:         Array{Int(0), Float32(1.3), String("x"), Bool(false)},
+		Array:         Array{Int(0), Float64(1.3), String("x"), Bool(false)},
 		Map: Map{
 			"x": String("y"),
 			"y": Float64(999.9),
@@ -259,7 +259,7 @@ func TestMarshalRoundtrip(t *testing.T) {
 				assert.Equal(t, 4, len(aa))
 				assert.Equal(t, 0.0, aa[0])
 				assert.Less(t, 1.3-aa[1].(float64), 0.00001)
-				assert.Greater(t, 1.3-aa[1].(float64), 0.0)
+				assert.Equal(t, 1.3-aa[1].(float64), 0.0)
 				assert.Equal(t, "x", aa[2])
 				assert.Equal(t, false, aa[3])
 				am := res["fMap"].(map[string]interface{})
@@ -364,20 +364,10 @@ type testResourceArgs struct {
 	Array   []interface{}          `pulumi:"array"`
 	Asset   Asset                  `pulumi:"asset"`
 	Bool    bool                   `pulumi:"bool"`
-	Float32 float32                `pulumi:"float32"`
 	Float64 float64                `pulumi:"float64"`
 	Int     int                    `pulumi:"int"`
-	Int8    int8                   `pulumi:"int8"`
-	Int16   int16                  `pulumi:"int16"`
-	Int32   int32                  `pulumi:"int32"`
-	Int64   int64                  `pulumi:"int64"`
 	Map     map[string]interface{} `pulumi:"map"`
 	String  string                 `pulumi:"string"`
-	Uint    uint                   `pulumi:"uint"`
-	Uint8   uint8                  `pulumi:"uint8"`
-	Uint16  uint16                 `pulumi:"uint16"`
-	Uint32  uint32                 `pulumi:"uint32"`
-	Uint64  uint64                 `pulumi:"uint64"`
 
 	Nested nestedType `pulumi:"nested"`
 }
@@ -391,20 +381,10 @@ type testResourceInputs struct {
 	Array   ArrayInput
 	Asset   AssetInput
 	Bool    BoolInput
-	Float32 Float32Input
 	Float64 Float64Input
 	Int     IntInput
-	Int8    Int8Input
-	Int16   Int16Input
-	Int32   Int32Input
-	Int64   Int64Input
 	Map     MapInput
 	String  StringInput
-	Uint    UintInput
-	Uint8   Uint8Input
-	Uint16  Uint16Input
-	Uint32  Uint32Input
-	Uint64  Uint64Input
 
 	Nested nestedTypeInput
 }
@@ -421,20 +401,10 @@ type testResource struct {
 	Array   ArrayOutput   `pulumi:"array"`
 	Asset   AssetOutput   `pulumi:"asset"`
 	Bool    BoolOutput    `pulumi:"bool"`
-	Float32 Float32Output `pulumi:"float32"`
 	Float64 Float64Output `pulumi:"float64"`
 	Int     IntOutput     `pulumi:"int"`
-	Int8    Int8Output    `pulumi:"int8"`
-	Int16   Int16Output   `pulumi:"int16"`
-	Int32   Int32Output   `pulumi:"int32"`
-	Int64   Int64Output   `pulumi:"int64"`
 	Map     MapOutput     `pulumi:"map"`
 	String  StringOutput  `pulumi:"string"`
-	Uint    UintOutput    `pulumi:"uint"`
-	Uint8   Uint8Output   `pulumi:"uint8"`
-	Uint16  Uint16Output  `pulumi:"uint16"`
-	Uint32  Uint32Output  `pulumi:"uint32"`
-	Uint64  Uint64Output  `pulumi:"uint64"`
 
 	Nested nestedTypeOutput `pulumi:"nested"`
 }
@@ -452,20 +422,10 @@ func TestResourceState(t *testing.T) {
 		Array:   Array{String("foo")},
 		Asset:   NewStringAsset("put a lime in the coconut"),
 		Bool:    Bool(true),
-		Float32: Float32(42.0),
 		Float64: Float64(3.14),
 		Int:     Int(-1),
-		Int8:    Int8(-2),
-		Int16:   Int16(-3),
-		Int32:   Int32(-4),
-		Int64:   Int64(-5),
 		Map:     Map{"foo": String("bar")},
 		String:  String("qux"),
-		Uint:    Uint(1),
-		Uint8:   Uint8(2),
-		Uint16:  Uint16(3),
-		Uint32:  Uint32(4),
-		Uint64:  Uint64(5),
 
 		Nested: nestedTypeInputs{
 			Foo: String("bar"),
@@ -486,20 +446,10 @@ func TestResourceState(t *testing.T) {
 		Array:   theResource.Array,
 		Asset:   theResource.Asset,
 		Bool:    theResource.Bool,
-		Float32: theResource.Float32,
 		Float64: theResource.Float64,
 		Int:     theResource.Int,
-		Int8:    theResource.Int8,
-		Int16:   theResource.Int16,
-		Int32:   theResource.Int32,
-		Int64:   theResource.Int64,
 		Map:     theResource.Map,
 		String:  theResource.String,
-		Uint:    theResource.Uint,
-		Uint8:   theResource.Uint8,
-		Uint16:  theResource.Uint16,
-		Uint32:  theResource.Uint32,
-		Uint64:  theResource.Uint64,
 		Nested:  theResource.Nested,
 	}
 	resolved, pdeps, deps, err := marshalInputs(input)
@@ -512,20 +462,10 @@ func TestResourceState(t *testing.T) {
 		"array":   {"foo"},
 		"asset":   {"foo"},
 		"bool":    {"foo"},
-		"float32": {"foo"},
 		"float64": {"foo"},
 		"int":     {"foo"},
-		"int8":    {"foo"},
-		"int16":   {"foo"},
-		"int32":   {"foo"},
-		"int64":   {"foo"},
 		"map":     {"foo"},
 		"string":  {"foo"},
-		"uint":    {"foo"},
-		"uint8":   {"foo"},
-		"uint16":  {"foo"},
-		"uint32":  {"foo"},
-		"uint64":  {"foo"},
 		"nested":  {"foo"},
 	}, pdeps)
 	assert.Equal(t, []URN{"foo"}, deps)
@@ -541,20 +481,10 @@ func TestResourceState(t *testing.T) {
 		"array":   []interface{}{"foo"},
 		"asset":   NewStringAsset("put a lime in the coconut"),
 		"bool":    true,
-		"float32": 42.0,
 		"float64": 3.14,
 		"int":     -1.0,
-		"int8":    -2.0,
-		"int16":   -3.0,
-		"int32":   -4.0,
-		"int64":   -5.0,
 		"map":     map[string]interface{}{"foo": "bar"},
 		"string":  "qux",
-		"uint":    1.0,
-		"uint8":   2.0,
-		"uint16":  3.0,
-		"uint32":  4.0,
-		"uint64":  5.0,
 		"nested": map[string]interface{}{
 			"foo": "bar",
 			"bar": 42.0,
@@ -623,7 +553,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 		FileArchive:   NewFileArchive("foo.zip"),
 		RemoteArchive: NewRemoteArchive("https://pulumi.com/fake/archive.zip"),
 		E:             out,
-		Array:         Array{Int(0), Float32(1.3), String("x"), Bool(false)},
+		Array:         Array{Int(0), Float64(1.3), String("x"), Bool(false)},
 		Map: Map{
 			"x": String("y"),
 			"y": Float64(999.9),
@@ -669,7 +599,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 				assert.Equal(t, 4, len(aa))
 				assert.Equal(t, 0.0, aa[0])
 				assert.Less(t, 1.3-aa[1].(float64), 0.00001)
-				assert.Greater(t, 1.3-aa[1].(float64), 0.0)
+				assert.Equal(t, 1.3-aa[1].(float64), 0.0)
 				assert.Equal(t, "x", aa[2])
 				assert.Equal(t, false, aa[3])
 				am := res["fMap"].(map[string]interface{})
