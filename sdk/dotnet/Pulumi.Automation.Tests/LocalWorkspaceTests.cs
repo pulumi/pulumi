@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -13,7 +14,7 @@ namespace Pulumi.Automation.Tests
 {
     public class LocalWorkspaceTests
     {
-        private static readonly string DataDirectory =
+        private static readonly string _dataDirectory =
             Path.Combine(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "Data");
 
         private static string GetTestSuffix()
@@ -38,7 +39,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("json")]
         public async Task GetProjectSettings(string extension)
         {
-            var workingDir = Path.Combine(DataDirectory, extension);
+            var workingDir = Path.Combine(_dataDirectory, extension);
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
@@ -57,7 +58,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("json")]
         public async Task GetStackSettings(string extension)
         {
-            var workingDir = Path.Combine(DataDirectory, extension);
+            var workingDir = Path.Combine(_dataDirectory, extension);
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
@@ -81,9 +82,23 @@ namespace Pulumi.Automation.Tests
         public async Task AddRemoveListPlugins()
         {
             using var workspace = await LocalWorkspace.CreateAsync();
+
+            var plugins = await workspace.ListPluginsAsync();
+            if (plugins.Any(p => p.Name == "aws" && p.Version == "3.0.0"))
+            {
+                await workspace.RemovePluginAsync("aws", "3.0.0");
+                plugins = await workspace.ListPluginsAsync();
+                Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
+            }
+
             await workspace.InstallPluginAsync("aws", "v3.0.0");
+            plugins = await workspace.ListPluginsAsync();
+            var aws = plugins.FirstOrDefault(p => p.Name == "aws" && p.Version == "3.0.0");
+            Assert.NotNull(aws);
+
             await workspace.RemovePluginAsync("aws", "3.0.0");
-            await workspace.ListPluginsAsync();
+            plugins = await workspace.ListPluginsAsync();
+            Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
         }
 
         [Fact]
@@ -100,9 +115,20 @@ namespace Pulumi.Automation.Tests
             });
 
             var stackName = $"int_test{GetTestSuffix()}";
+
+            var stacks = await workspace.ListStacksAsync();
+            Assert.Empty(stacks);
+
             await workspace.CreateStackAsync(stackName);
+            stacks = await workspace.ListStacksAsync();
+            var newStack = stacks.FirstOrDefault(s => s.Name == stackName);
+            Assert.NotNull(newStack);
+            Assert.True(newStack.IsCurrent);
+
             await workspace.SelectStackAsync(stackName);
             await workspace.RemoveStackAsync(stackName);
+            stacks = await workspace.ListStacksAsync();
+            Assert.Empty(stacks);
         }
 
         [Fact]
@@ -231,7 +257,7 @@ namespace Pulumi.Automation.Tests
         public async Task StackLifecycleLocalProgram()
         {
             var stackName = $"int_test{GetTestSuffix()}";
-            var workingDir = Path.Combine(DataDirectory, "testproj");
+            var workingDir = Path.Combine(_dataDirectory, "testproj");
             using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
                 EnvironmentVariables = new Dictionary<string, string>()

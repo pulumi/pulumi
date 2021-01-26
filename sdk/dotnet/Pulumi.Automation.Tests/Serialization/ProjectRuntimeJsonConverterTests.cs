@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class ProjectRuntimeJsonConverterTests
     {
-        private static LocalSerializer Serializer = new LocalSerializer();
+        private static LocalSerializer _serializer = new LocalSerializer();
 
         [Theory]
         [InlineData(ProjectRuntimeName.NodeJS)]
@@ -25,7 +25,7 @@ namespace Pulumi.Automation.Tests.Serialization
 }}
 ";
 
-            var settings = Serializer.DeserializeJson<ProjectSettings>(json);
+            var settings = _serializer.DeserializeJson<ProjectSettings>(json);
             Assert.NotNull(settings);
             Assert.IsType<ProjectSettings>(settings);
             Assert.Equal("test-project", settings.Name);
@@ -54,7 +54,7 @@ namespace Pulumi.Automation.Tests.Serialization
 }}
 ";
 
-            var settings = Serializer.DeserializeJson<ProjectSettings>(json);
+            var settings = _serializer.DeserializeJson<ProjectSettings>(json);
             Assert.NotNull(settings);
             Assert.IsType<ProjectSettings>(settings);
             Assert.Equal("test-project", settings.Name);
@@ -70,7 +70,7 @@ namespace Pulumi.Automation.Tests.Serialization
         {
             var runtime = new ProjectRuntime(ProjectRuntimeName.Dotnet);
 
-            var json = Serializer.SerializeJson(runtime);
+            var json = _serializer.SerializeJson(runtime);
             Console.WriteLine(json);
 
             using var document = JsonDocument.Parse(json);
@@ -90,7 +90,7 @@ namespace Pulumi.Automation.Tests.Serialization
                 },
             };
 
-            var json = Serializer.SerializeJson(runtime);
+            var json = _serializer.SerializeJson(runtime);
             Console.WriteLine(json);
 
             using var document = JsonDocument.Parse(json);

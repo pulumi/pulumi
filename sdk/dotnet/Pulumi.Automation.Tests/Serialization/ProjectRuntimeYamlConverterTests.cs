@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class ProjectRuntimeYamlConverterTests
     {
-        private static LocalSerializer Serializer = new LocalSerializer();
+        private static LocalSerializer _serializer = new LocalSerializer();
 
         [Theory]
         [InlineData(ProjectRuntimeName.NodeJS)]
@@ -23,7 +23,7 @@ name: test-project
 runtime: {runtimeName.ToString().ToLower()}
 ";
 
-            var model = Serializer.DeserializeYaml<ProjectSettingsModel>(yaml);
+            var model = _serializer.DeserializeYaml<ProjectSettingsModel>(yaml);
             var settings = model.Convert();
             Assert.NotNull(settings);
             Assert.IsType<ProjectSettings>(settings);
@@ -49,7 +49,7 @@ runtime:
     virtualenv: test-env
 ";
 
-            var model = Serializer.DeserializeYaml<ProjectSettingsModel>(yaml);
+            var model = _serializer.DeserializeYaml<ProjectSettingsModel>(yaml);
             var settings = model.Convert();
             Assert.NotNull(settings);
             Assert.IsType<ProjectSettings>(settings);
@@ -66,7 +66,7 @@ runtime:
         {
             var runtime = new ProjectRuntime(ProjectRuntimeName.Dotnet);
 
-            var yaml = Serializer.SerializeYaml(runtime);
+            var yaml = _serializer.SerializeYaml(runtime);
             Console.WriteLine(yaml);
 
             Assert.Equal("dotnet\r\n", yaml);
@@ -83,7 +83,7 @@ runtime:
                 },
             };
 
-            var yaml = Serializer.SerializeYaml(runtime);
+            var yaml = _serializer.SerializeYaml(runtime);
             Console.WriteLine(yaml);
 
             var expected = new StringBuilder();

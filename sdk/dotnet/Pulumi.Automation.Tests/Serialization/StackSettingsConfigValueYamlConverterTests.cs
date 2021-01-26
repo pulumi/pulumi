@@ -8,7 +8,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class StackSettingsConfigValueYamlConverterTests
     {
-        private static LocalSerializer Serializer = new LocalSerializer();
+        private static LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void CanDeserializePlainString()
@@ -18,7 +18,7 @@ config:
   test: plain
 ";
 
-            var settings = Serializer.DeserializeYaml<StackSettings>(yaml);
+            var settings = _serializer.DeserializeYaml<StackSettings>(yaml);
             Assert.NotNull(settings?.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
@@ -37,7 +37,7 @@ config:
     secure: secret
 ";
 
-            var settings = Serializer.DeserializeYaml<StackSettings>(yaml);
+            var settings = _serializer.DeserializeYaml<StackSettings>(yaml);
             Assert.NotNull(settings?.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
@@ -61,14 +61,14 @@ config:
 ";
 
             Assert.Throws<YamlException>(
-                () => Serializer.DeserializeYaml<StackSettings>(yaml));
+                () => _serializer.DeserializeYaml<StackSettings>(yaml));
         }
 
         [Fact]
         public void SerializesPlainStringAsString()
         {
             var value = new StackSettingsConfigValue("test", false);
-            var yaml = Serializer.SerializeYaml(value);
+            var yaml = _serializer.SerializeYaml(value);
             Assert.Equal("test\r\n", yaml);
         }
 
@@ -76,7 +76,7 @@ config:
         public void SerializesSecureStringAsObject()
         {
             var value = new StackSettingsConfigValue("secret", true);
-            var yaml = Serializer.SerializeYaml(value);
+            var yaml = _serializer.SerializeYaml(value);
             Assert.Equal("secure: secret\r\n", yaml);
         }
     }

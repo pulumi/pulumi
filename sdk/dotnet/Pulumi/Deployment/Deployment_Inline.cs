@@ -18,16 +18,12 @@ namespace Pulumi
             _isDryRun = settings.IsDryRun;
             SetAllConfig(settings.Config);
 
-            //var queryMode = Environment.GetEnvironmentVariable("PULUMI_QUERY_MODE");
-            //var parallel = Environment.GetEnvironmentVariable("PULUMI_PARALLEL");
-            //var tracing = Environment.GetEnvironmentVariable("PULUMI_TRACING");
-
             if (string.IsNullOrEmpty(settings.MonitorAddr)
                 || string.IsNullOrEmpty(settings.EngineAddr)
                 || string.IsNullOrEmpty(_projectName)
                 || string.IsNullOrEmpty(_stackName))
             {
-                throw new InvalidOperationException("Program run without the Pulumi engine available; re-run using the `pulumi` CLI");
+                throw new InvalidOperationException("Inline execution was not provided the necessary parameters to run the Pulumi engine.");
             }
 
             Serilog.Log.Debug("Creating Deployment Engine.");

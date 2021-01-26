@@ -1,6 +1,5 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
 using Pulumi.Automation.Serialization;
 using Xunit;
@@ -9,7 +8,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class DynamicObjectTests
     {
-        private static LocalSerializer Serializer = new LocalSerializer();
+        private static LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void Dynamic_With_YamlDotNet()
@@ -23,8 +22,10 @@ nested:
   testtwo: 123
 ";
 
-            var dict = Serializer.DeserializeYaml<Dictionary<string, object>>(yaml);
-            Console.WriteLine("ok");
+            var dict = _serializer.DeserializeYaml<Dictionary<string, object>>(yaml);
+            Assert.NotNull(dict);
+            Assert.NotEmpty(dict);
+            Assert.Equal(4, dict.Count);
         }
 
         [Fact]
@@ -42,8 +43,10 @@ nested:
 }
 ";
 
-            var dict = Serializer.DeserializeJson<Dictionary<string, object>>(json);
-            Console.WriteLine("ok");
+            var dict = _serializer.DeserializeJson<Dictionary<string, object>>(json);
+            Assert.NotNull(dict);
+            Assert.NotEmpty(dict);
+            Assert.Equal(4, dict.Count);
         }
     }
 }

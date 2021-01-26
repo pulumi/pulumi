@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class StackSettingsConfigValueJsonConverterTests
     {
-        private static LocalSerializer Serializer = new LocalSerializer();
+        private static LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void CanDeserializePlainString()
@@ -22,7 +22,7 @@ namespace Pulumi.Automation.Tests.Serialization
 }
 ";
 
-            var settings = Serializer.DeserializeJson<StackSettings>(json);
+            var settings = _serializer.DeserializeJson<StackSettings>(json);
             Assert.NotNull(settings?.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
@@ -45,7 +45,7 @@ namespace Pulumi.Automation.Tests.Serialization
 }
 ";
 
-            var settings = Serializer.DeserializeJson<StackSettings>(json);
+            var settings = _serializer.DeserializeJson<StackSettings>(json);
             Assert.NotNull(settings?.Config);
             Assert.True(settings!.Config!.ContainsKey("test"));
 
@@ -74,14 +74,14 @@ namespace Pulumi.Automation.Tests.Serialization
 ";
 
             Assert.Throws<NotSupportedException>(
-                () => Serializer.DeserializeJson<StackSettings>(json));
+                () => _serializer.DeserializeJson<StackSettings>(json));
         }
 
         [Fact]
         public void SerializesPlainStringAsString()
         {
             var value = new StackSettingsConfigValue("test", false);
-            var json = Serializer.SerializeJson(value);
+            var json = _serializer.SerializeJson(value);
 
             var element = JsonSerializer.Deserialize<JsonElement>(json);
             Assert.Equal(JsonValueKind.String, element.ValueKind);
@@ -92,7 +92,7 @@ namespace Pulumi.Automation.Tests.Serialization
         public void SerializesSecureStringAsObject()
         {
             var value = new StackSettingsConfigValue("secret", true);
-            var json = Serializer.SerializeJson(value);
+            var json = _serializer.SerializeJson(value);
 
             var element = JsonSerializer.Deserialize<JsonElement>(json);
             Assert.Equal(JsonValueKind.Object, element.ValueKind);

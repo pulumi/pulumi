@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- Unfortunately, we depend on static state. So we configure xUnit's runner to disable parallelization. -->
     <None Update="xunit.runner.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

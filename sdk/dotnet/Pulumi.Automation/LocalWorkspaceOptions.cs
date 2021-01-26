@@ -45,7 +45,7 @@ namespace Pulumi.Automation
         /// <para/>
         /// If provided when initializing <see cref="LocalWorkspace"/> a project settings
         /// file will be written to when the workspace is initialized via
-        /// <see cref="LocalWorkspace.SaveProjectSettingsAsync(ProjectSettings, System.Threading.CancellationToken)"/>.
+        /// <see cref="LocalWorkspace.SaveProjectSettingsAsync(Automation.ProjectSettings, System.Threading.CancellationToken)"/>.
         /// </summary>
         public ProjectSettings? ProjectSettings { get; set; }
 
