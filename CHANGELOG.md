@@ -9,6 +9,9 @@ CHANGELOG
 - [sdk/go] Take a breaking change to remove unidiomatic numerical types and drastically improve build performance (binary size and compilation time).
   [#6143](https://github.com/pulumi/pulumi/pull/6143)
 
+- [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key from hashivault to passphrase provider
+  [#6210](https://github.com/pulumi/pulumi/pull/6210)
+
 ## 2.18.2 (2021-01-22)
 
 - [CLI] Fix malformed resource value bug.
