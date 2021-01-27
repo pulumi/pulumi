@@ -24,6 +24,9 @@ CHANGELOG
 - [CLI] Avoid panic for diffs with invalid property paths.
   [#6159](https://github.com/pulumi/pulumi/pull/6159)
 
+- Enable resource reference feature by default.
+  [#6202](https://github.com/pulumi/pulumi/pull/6202)
+
 ## 2.18.1 (2021-01-21)
 
 - Revert [#6125](https://github.com/pulumi/pulumi/pull/6125) as it caused a which introduced a bug with serializing resource IDs
