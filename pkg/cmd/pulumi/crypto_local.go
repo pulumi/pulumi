@@ -78,9 +78,8 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
 		info.EncryptionSalt = ""
 	}
 
-	// We should check to see if any other secrets providers are actually set in this config
-	// if there are, then we should remove them as the passphrase provider deals only with
-	// encrytpionSalt not encryptionKey or secretsProvider
+	// If there are any other secrets providers set in the config, remove them, as the passphrase
+	// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
 	if info.EncryptedKey != "" || info.SecretsProvider != "" {
 		info.EncryptedKey = ""
 		info.SecretsProvider = ""
