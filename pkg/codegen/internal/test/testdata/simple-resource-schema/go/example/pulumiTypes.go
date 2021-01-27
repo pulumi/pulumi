@@ -65,6 +65,56 @@ func (o ObjectOutput) Foo() ResourceOutput {
 	return o.ApplyT(func(v Object) *Resource { return v.Foo }).(ResourceOutput)
 }
 
+type OtherResourceOutputType struct {
+	Foo *string `pulumi:"foo"`
+}
+
+// OtherResourceOutputTypeInput is an input type that accepts OtherResourceOutputTypeArgs and OtherResourceOutputTypeOutput values.
+// You can construct a concrete instance of `OtherResourceOutputTypeInput` via:
+//
+//          OtherResourceOutputTypeArgs{...}
+type OtherResourceOutputTypeInput interface {
+	pulumi.Input
+
+	ToOtherResourceOutputTypeOutput() OtherResourceOutputTypeOutput
+	ToOtherResourceOutputTypeOutputWithContext(context.Context) OtherResourceOutputTypeOutput
+}
+
+type OtherResourceOutputTypeArgs struct {
+	Foo pulumi.StringPtrInput `pulumi:"foo"`
+}
+
+func (OtherResourceOutputTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*OtherResourceOutputType)(nil)).Elem()
+}
+
+func (i OtherResourceOutputTypeArgs) ToOtherResourceOutputTypeOutput() OtherResourceOutputTypeOutput {
+	return i.ToOtherResourceOutputTypeOutputWithContext(context.Background())
+}
+
+func (i OtherResourceOutputTypeArgs) ToOtherResourceOutputTypeOutputWithContext(ctx context.Context) OtherResourceOutputTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutputTypeOutput)
+}
+
+type OtherResourceOutputTypeOutput struct{ *pulumi.OutputState }
+
+func (OtherResourceOutputTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*OtherResourceOutputType)(nil)).Elem()
+}
+
+func (o OtherResourceOutputTypeOutput) ToOtherResourceOutputTypeOutput() OtherResourceOutputTypeOutput {
+	return o
+}
+
+func (o OtherResourceOutputTypeOutput) ToOtherResourceOutputTypeOutputWithContext(ctx context.Context) OtherResourceOutputTypeOutput {
+	return o
+}
+
+func (o OtherResourceOutputTypeOutput) Foo() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v OtherResourceOutputType) *string { return v.Foo }).(pulumi.StringPtrOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(ObjectOutput{})
+	pulumi.RegisterOutputType(OtherResourceOutputTypeOutput{})
 }

@@ -12,6 +12,14 @@
         }
       },
       "type": "object"
+    },
+    "example::OtherResourceOutput": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
     }
   },
   "resources": {

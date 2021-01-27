@@ -92,6 +92,7 @@ type pkgContext struct {
 	resources      []*schema.Resource
 	functions      []*schema.Function
 	names          codegen.StringSet
+	renamed        map[string]string
 	functionNames  map[*schema.Function]string
 	needsUtils     bool
 	tool           string
@@ -139,14 +140,20 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
 
-	// If the package containing the type's token already has a resource with the
-	// same name, add a `Type` suffix.
 	modPkg, ok := pkg.packages[mod]
-
 	name = Title(name)
+
 	if ok {
-		if modPkg.names.Has(name) {
-			name += "Type"
+		newName, renamed := modPkg.renamed[name]
+		if renamed {
+			name = newName
+		} else if modPkg.names.Has(name) {
+			// If the package containing the type's token already has a resource with the
+			// same name, add a `Type` suffix.
+			newName = name + "Type"
+			modPkg.renamed[name] = newName
+			modPkg.names.Add(newName)
+			name = newName
 		}
 	}
 
@@ -784,7 +791,12 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, false)
 		outputType, applyType := pkg.outputType(p.Type, !p.IsRequired), pkg.plainType(p.Type, !p.IsRequired)
 
-		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, Title(p.Name), outputType)
+		propName := Title(p.Name)
+		switch strings.ToLower(p.Name) {
+		case "elementtype", "issecret":
+			propName = "Get" + propName
+		}
+		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, Title(p.Name), outputType)
 		fmt.Fprintf(w, "}\n\n")
 	}
@@ -1314,7 +1326,23 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	}
 
 	mod, name := pkg.tokenToPackage(tok), components[2]
+
+	modPkg, ok := pkg.packages[mod]
 	name = Title(name)
+
+	if ok {
+		newName, renamed := modPkg.renamed[name]
+		if renamed {
+			name = newName
+		} else if modPkg.names.Has(name) {
+			// If the package containing the enum's token already has a resource with the
+			// same name, add a `Enum` suffix.
+			newName := name + "Enum"
+			modPkg.renamed[name] = newName
+			modPkg.names.Add(newName)
+			name = newName
+		}
+	}
 
 	if mod == pkg.mod {
 		return name
@@ -1683,6 +1711,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				typeDetails:      map[*schema.ObjectType]*typeDetails{},
 				enumDetails:      map[*schema.EnumType]*typeDetails{},
 				names:            codegen.NewStringSet(),
+				renamed:          map[string]string{},
 				functionNames:    map[*schema.Function]string{},
 				tool:             tool,
 				modToPkg:         goInfo.ModuleToPackage,
@@ -1757,6 +1786,8 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		pkg.resources = append(pkg.resources, r)
 
 		pkg.names.Add(resourceName(r))
+		pkg.names.Add(resourceName(r) + "Input")
+		pkg.names.Add(resourceName(r) + "Output")
 		pkg.names.Add(resourceName(r) + "Args")
 		pkg.names.Add(camel(resourceName(r)) + "Args")
 		pkg.names.Add("New" + resourceName(r))
