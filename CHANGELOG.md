@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.19.0 (2021-01-27)
 
 - [sdk/nodejs] Always read and write NodeJS runtime options from the environment.
   [#6076](https://github.com/pulumi/pulumi/pull/6076)
