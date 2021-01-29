@@ -53,20 +53,11 @@ namespace Pulumi.Automation
                 this._callerContext.CancellationToken,
                 context.CancellationToken);
 
-            Func<Task<IDictionary<string, object?>>> program = async () =>
-            {
-                try
-                {
-                    return await this._callerContext.Program.InvokeAsync(cts.Token).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    this._callerContext.ExceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
-                    throw;
-                }
-            };
+            this._callerContext.ExceptionDispatchInfo = await Deployment.RunInlineAsync(
+                settings,
+                runner => this._callerContext.Program.InvokeAsync(runner, cts.Token))
+                .ConfigureAwait(false);
 
-            await Deployment.RunInlineAsync(settings, program).ConfigureAwait(false);
             Deployment.Instance = null!;
             return new RunResponse();
         }

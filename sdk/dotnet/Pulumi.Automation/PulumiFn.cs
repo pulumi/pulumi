@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -11,31 +12,27 @@ namespace Pulumi.Automation
     /// <summary>
     /// A Pulumi program as an inline function (in process).
     /// </summary>
-    public sealed class PulumiFn
+    public abstract class PulumiFn
     {
-        private readonly Func<CancellationToken, Task<IDictionary<string, object?>>> _program;
-
-        private PulumiFn(Func<CancellationToken, Task<IDictionary<string, object?>>> program)
+        internal PulumiFn()
         {
-            this._program = program;
         }
 
-        internal Task<IDictionary<string, object?>> InvokeAsync(CancellationToken cancellationToken)
-            => this._program(cancellationToken);
+        internal abstract Task<ExceptionDispatchInfo?> InvokeAsync(IRunner runner, CancellationToken cancellationToken);
 
         /// <summary>
         /// Creates an asynchronous inline (in process) pulumi program.
         /// </summary>
         /// <param name="program">An asynchronous pulumi program that takes in a <see cref="CancellationToken"/> and returns an output.</param>
         public static PulumiFn Create(Func<CancellationToken, Task<IDictionary<string, object?>>> program)
-            => new PulumiFn(program);
+            => new PulumiFnInline(program);
 
         /// <summary>
         /// Creates an asynchronous inline (in process) pulumi program.
         /// </summary>
         /// <param name="program">An asynchronous pulumi program that returns an output.</param>
         public static PulumiFn Create(Func<Task<IDictionary<string, object?>>> program)
-            => new PulumiFn(cancellationToken => program());
+            => new PulumiFnInline(cancellationToken => program());
 
         /// <summary>
         /// Creates an asynchronous inline (in process) pulumi program.
@@ -49,7 +46,7 @@ namespace Pulumi.Automation
                 return ImmutableDictionary<string, object?>.Empty;
             };
 
-            return new PulumiFn(wrapper);
+            return new PulumiFnInline(wrapper);
         }
 
         /// <summary>
@@ -64,7 +61,7 @@ namespace Pulumi.Automation
                 return ImmutableDictionary<string, object?>.Empty;
             };
 
-            return new PulumiFn(wrapper);
+            return new PulumiFnInline(wrapper);
         }
 
         /// <summary>
@@ -79,7 +76,7 @@ namespace Pulumi.Automation
                 return Task.FromResult(output);
             };
 
-            return new PulumiFn(wrapper);
+            return new PulumiFnInline(wrapper);
         }
 
         /// <summary>
@@ -95,6 +92,6 @@ namespace Pulumi.Automation
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
         public static PulumiFn Create<TStack>()
             where TStack : Pulumi.Stack, new()
-            => Create(() => new TStack());
+            => new PulumiFn<TStack>();
     }
 }

@@ -1,7 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
-using System.Collections.Generic;
+using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 
 namespace Pulumi
@@ -38,7 +38,7 @@ namespace Pulumi
             _logger = new Logger(this, Engine);
         }
 
-        internal static Task<int> RunInlineAsync(InlineDeploymentSettings settings, Func<Task<IDictionary<string, object?>>> func)
-            => CreateRunner(() => new Deployment(settings)).RunAsync(func, null);
+        internal static Task<ExceptionDispatchInfo?> RunInlineAsync(InlineDeploymentSettings settings, Func<IRunner, Task<ExceptionDispatchInfo?>> func)
+            => func(CreateRunner(() => new Deployment(settings)));
     }
 }
