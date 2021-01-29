@@ -226,9 +226,19 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 	case *schema.EnumType:
 		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
-		return "[]" + pkg.plainType(t.ElementType, false)
+		typ = "[]"
+		if pkg.isExternalReference(t.ElementType) {
+			typ += "*"
+		}
+		typ += pkg.plainType(t.ElementType, false)
+		return typ
 	case *schema.MapType:
-		return "map[string]" + pkg.plainType(t.ElementType, false)
+		typ = "map[string]"
+		if pkg.isExternalReference(t.ElementType) {
+			typ += "*"
+		}
+		typ += pkg.plainType(t.ElementType, false)
+		return typ
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
@@ -295,7 +305,8 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
-		return pkg.resolveResourceType(t) + "Input"
+		typ = pkg.resolveResourceType(t)
+		return typ + "Input"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -339,12 +350,22 @@ func (pkg *pkgContext) inputType(t schema.Type, optional bool) string {
 	return typ + "Input"
 }
 
+func (pkg *pkgContext) isExternalReference(t schema.Type) bool {
+	switch typ := t.(type) {
+	case *schema.ObjectType:
+		return typ.Package != nil && pkg.pkg != nil && typ.Package != pkg.pkg
+	case *schema.ResourceType:
+		return typ.Resource != nil && pkg.pkg != nil && typ.Resource.Package != pkg.pkg
+	}
+	return false
+}
+
 // resolveResourceType resolves resource references in properties while
 // taking into account potential external resources. Returned type is
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
-	if t.Resource == nil || pkg.pkg == nil || t.Resource.Package == pkg.pkg {
+	if !pkg.isExternalReference(t) {
 		return pkg.tokenToResource(t.Token)
 	}
 	extPkg := t.Resource.Package
@@ -372,7 +393,7 @@ func (pkg *pkgContext) resolveResourceType(t *schema.ResourceType) string {
 // always marked as required. Caller should check if the property is
 // optional and convert the type to a pointer if necessary.
 func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
-	if t.Package == nil || pkg.pkg == nil || t.Package == pkg.pkg {
+	if !pkg.isExternalReference(t) {
 		return pkg.tokenToType(t.Token)
 	}
 	extPkg := t.Package
@@ -411,7 +432,8 @@ func (pkg *pkgContext) outputType(t schema.Type, optional bool) string {
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
-		return pkg.resolveResourceType(t) + "Output"
+		typ = pkg.resolveResourceType(t)
+		return typ + "Output"
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
