@@ -401,12 +401,12 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
-        public async Task StackLifecycleInlineProgramWithValidStack()
+        public async Task StackLifecycleInlineProgramWithTStack()
         {
             var program = PulumiFn.Create<ValidStack>();
 
             var stackName = $"int_test{GetTestSuffix()}";
-            var projectName = "inline_node";
+            var projectName = "inline_tstack_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
@@ -466,6 +466,34 @@ namespace Pulumi.Automation.Tests
             const string projectName = "exception_inline_node";
             var stackName = $"int_test_{GetTestSuffix()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
+
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var upTask = stack.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTask);
+        }
+
+        private class FileNotFoundStack : Pulumi.Stack
+        {
+            public FileNotFoundStack()
+            {
+                throw new FileNotFoundException();
+            }
+        }
+
+        [Fact]
+        public async Task InlineProgramExceptionPropagatesToCallerWithTStack()
+        {
+            const string projectName = "exception_inline_tstack_node";
+            var stackName = $"int_test_{GetTestSuffix()}";
+            var program = PulumiFn.Create<FileNotFoundStack>();
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {

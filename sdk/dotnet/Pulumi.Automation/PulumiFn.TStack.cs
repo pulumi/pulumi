@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,6 +23,18 @@ namespace Pulumi.Automation
                 try
                 {
                     return new TStack();
+                }
+                // because we are newing a generic, reflection comes in to
+                // construct the instance. And if there is an exception in
+                // the constructor of the user-provided TStack, it will be wrapped
+                // in TargetInvocationException - which is not the exception
+                // we want to throw to the consumer.
+                catch (TargetInvocationException ex)
+                {
+                    info = ex.InnerException != null
+                        ? ExceptionDispatchInfo.Capture(ex.InnerException)
+                        : ExceptionDispatchInfo.Capture(ex);
+                    throw;
                 }
                 catch (Exception ex)
                 {
