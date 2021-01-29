@@ -8,10 +8,13 @@ using System.Threading.Tasks;
 
 namespace Pulumi.Automation
 {
-    internal class PulumiFn<TStack> : PulumiFn where TStack : Pulumi.Stack, new()
+    internal class PulumiFn<TStack> : PulumiFn where TStack : Pulumi.Stack
     {
-        public PulumiFn()
+        private readonly Func<TStack> _stackFactory;
+
+        public PulumiFn(Func<TStack> stackFactory)
         {
+            this._stackFactory = stackFactory;
         }
 
         internal override async Task<ExceptionDispatchInfo?> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
@@ -22,7 +25,7 @@ namespace Pulumi.Automation
             {
                 try
                 {
-                    return new TStack();
+                    return this._stackFactory();
                 }
                 // because we are newing a generic, reflection comes in to
                 // construct the instance. And if there is an exception in

@@ -313,6 +313,7 @@ static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Cancellati
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task> program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>() -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create<TStack>(System.IServiceProvider serviceProvider) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.XStack.CreateAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
 static Pulumi.Automation.XStack.CreateOrSelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
 static Pulumi.Automation.XStack.SelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
