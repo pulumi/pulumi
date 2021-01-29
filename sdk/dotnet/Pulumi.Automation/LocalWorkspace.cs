@@ -77,7 +77,7 @@ namespace Pulumi.Automation
         /// to a new temporary directory provided by the OS.
         /// </summary>
         /// <param name="args">
-        ///     A set of arguments to initialize a Stack with and inline <see cref="PulumiFn"/> program
+        ///     A set of arguments to initialize a Stack with an inline <see cref="PulumiFn"/> program
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
@@ -93,7 +93,7 @@ namespace Pulumi.Automation
         /// to a new temporary directory provided by the OS.
         /// </summary>
         /// <param name="args">
-        ///     A set of arguments to initialize a Stack with and inline <see cref="PulumiFn"/> program
+        ///     A set of arguments to initialize a Stack with an inline <see cref="PulumiFn"/> program
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
@@ -139,7 +139,7 @@ namespace Pulumi.Automation
         /// to a new temporary directory provided by the OS.
         /// </summary>
         /// <param name="args">
-        ///     A set of arguments to initialize a Stack with and inline <see cref="PulumiFn"/> program
+        ///     A set of arguments to initialize a Stack with an inline <see cref="PulumiFn"/> program
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
@@ -155,7 +155,7 @@ namespace Pulumi.Automation
         /// to a new temporary directory provided by the OS.
         /// </summary>
         /// <param name="args">
-        ///     A set of arguments to initialize a Stack with and inline <see cref="PulumiFn"/> program
+        ///     A set of arguments to initialize a Stack with an inline <see cref="PulumiFn"/> program
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
@@ -201,7 +201,7 @@ namespace Pulumi.Automation
         /// to a new temporary directory provided by the OS.
         /// </summary>
         /// <param name="args">
-        ///     A set of arguments to initialize a Stack with and inline <see cref="PulumiFn"/> program
+        ///     A set of arguments to initialize a Stack with an inline <see cref="PulumiFn"/> program
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
@@ -217,7 +217,7 @@ namespace Pulumi.Automation
         /// to a new temporary directory provided by the OS.
         /// </summary>
         /// <param name="args">
-        ///     A set of arguments to initialize a Stack with and inline <see cref="PulumiFn"/> program
+        ///     A set of arguments to initialize a Stack with an inline <see cref="PulumiFn"/> program
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>

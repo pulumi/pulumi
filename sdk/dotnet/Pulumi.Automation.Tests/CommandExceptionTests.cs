@@ -77,7 +77,7 @@ namespace Pulumi.Automation.Tests
 
                 var hitSemaphore = false;
                 using var semaphore = new SemaphoreSlim(0, 1);
-                PulumiFn program = () =>
+                var program = PulumiFn.Create(() =>
                 {
                     hitSemaphore = true;
                     semaphore.Wait();
@@ -85,7 +85,7 @@ namespace Pulumi.Automation.Tests
                     {
                         ["test"] = "doesnt matter",
                     };
-                };
+                });
 
                 var upTask = stack.UpAsync(new UpOptions
                 {

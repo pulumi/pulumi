@@ -49,12 +49,15 @@ namespace Pulumi.Automation
                 request.Parallel,
                 request.DryRun);
 
-            Func<Task<IDictionary<string, object?>>> program = () =>
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(
+                this._callerContext.CancellationToken,
+                context.CancellationToken);
+
+            Func<Task<IDictionary<string, object?>>> program = async () =>
             {
                 try
                 {
-                    var result = this._callerContext.Program();
-                    return Task.FromResult(result);
+                    return await this._callerContext.Program.InvokeAsync(cts.Token).ConfigureAwait(false);
                 }
                 catch (Exception ex)
                 {

@@ -314,7 +314,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task StackLifecycleInlineProgram()
         {
-            PulumiFn program = () =>
+            var program = PulumiFn.Create(() =>
             {
                 var config = new Pulumi.Config();
                 return new Dictionary<string, object?>
@@ -323,7 +323,7 @@ namespace Pulumi.Automation.Tests
                     ["exp_cfg"] = config.Get("bar"),
                     ["exp_secret"] = config.GetSecret("buzz"),
                 };
-            };
+            });
 
             var stackName = $"int_test{GetTestSuffix()}";
             var projectName = "inline_node";
@@ -385,7 +385,7 @@ namespace Pulumi.Automation.Tests
         {
             const string projectName = "exception_inline_node";
             var stackName = $"int_test_{GetTestSuffix()}";
-            PulumiFn program = () => throw new FileNotFoundException();
+            var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
@@ -411,7 +411,7 @@ namespace Pulumi.Automation.Tests
             var hasReachedSemaphoreOne = false;
             using var semaphoreOne = new SemaphoreSlim(0, 1);
 
-            PulumiFn programOne = () =>
+            var programOne = PulumiFn.Create(() =>
             {
                 // we want to assert before and after each interaction with
                 // the semaphore because we want to alternately stutter
@@ -430,12 +430,12 @@ namespace Pulumi.Automation.Tests
                     ["exp_cfg"] = config.Get("bar"),
                     ["exp_secret"] = config.GetSecret("buzz"),
                 };
-            };
+            });
 
             var hasReachedSemaphoreTwo = false;
             using var semaphoreTwo = new SemaphoreSlim(0, 1);
 
-            PulumiFn programTwo = () =>
+            var programTwo = PulumiFn.Create(() =>
             {
                 var config = new Pulumi.Config();
                 Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
@@ -450,7 +450,7 @@ namespace Pulumi.Automation.Tests
                     ["exp_cfg"] = config.Get("bar"),
                     ["exp_secret"] = config.GetSecret("buzz"),
                 };
-            };
+            });
 
             using var stackOne = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameOne, stackNameOne, programOne)
             {

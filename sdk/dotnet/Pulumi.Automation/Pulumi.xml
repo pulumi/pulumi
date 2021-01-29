@@ -65,7 +65,7 @@
             to a new temporary directory provided by the OS.
             </summary>
             <param name="args">
-                A set of arguments to initialize a Stack with and inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
+                A set of arguments to initialize a Stack with an inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
                 that runs in process, as well as any additional customizations to be applied to the
                 workspace.
             </param>
@@ -80,7 +80,7 @@
             to a new temporary directory provided by the OS.
             </summary>
             <param name="args">
-                A set of arguments to initialize a Stack with and inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
+                A set of arguments to initialize a Stack with an inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
                 that runs in process, as well as any additional customizations to be applied to the
                 workspace.
             </param>
@@ -123,7 +123,7 @@
             to a new temporary directory provided by the OS.
             </summary>
             <param name="args">
-                A set of arguments to initialize a Stack with and inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
+                A set of arguments to initialize a Stack with an inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
                 that runs in process, as well as any additional customizations to be applied to the
                 workspace.
             </param>
@@ -138,7 +138,7 @@
             to a new temporary directory provided by the OS.
             </summary>
             <param name="args">
-                A set of arguments to initialize a Stack with and inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
+                A set of arguments to initialize a Stack with an inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
                 that runs in process, as well as any additional customizations to be applied to the
                 workspace.
             </param>
@@ -181,7 +181,7 @@
             to a new temporary directory provided by the OS.
             </summary>
             <param name="args">
-                A set of arguments to initialize a Stack with and inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
+                A set of arguments to initialize a Stack with an inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
                 that runs in process, as well as any additional customizations to be applied to the
                 workspace.
             </param>
@@ -196,7 +196,7 @@
             to a new temporary directory provided by the OS.
             </summary>
             <param name="args">
-                A set of arguments to initialize a Stack with and inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
+                A set of arguments to initialize a Stack with an inline <see cref="T:Pulumi.Automation.PulumiFn"/> program
                 that runs in process, as well as any additional customizations to be applied to the
                 workspace.
             </param>
@@ -413,6 +413,48 @@
             <summary>
             A Pulumi program as an inline function (in process).
             </summary>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
+            <summary>
+            Creates an asynchronous inline (in process) pulumi program.
+            </summary>
+            <param name="program">An asynchronous pulumi program that takes in a <see cref="T:System.Threading.CancellationToken"/> and returns an output.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
+            <summary>
+            Creates an asynchronous inline (in process) pulumi program.
+            </summary>
+            <param name="program">An asynchronous pulumi program that returns an output.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task})">
+            <summary>
+            Creates an asynchronous inline (in process) pulumi program.
+            </summary>
+            <param name="program">An asynchronous pulumi program that takes in a <see cref="T:System.Threading.CancellationToken"/>.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.Tasks.Task})">
+            <summary>
+            Creates an asynchronous inline (in process) pulumi program.
+            </summary>
+            <param name="program">An asynchronous pulumi program.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Collections.Generic.IDictionary{System.String,System.Object}})">
+            <summary>
+            Creates an inline (in process) pulumi program.
+            </summary>
+            <param name="program">A pulumi program that returns an output.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.Action)">
+            <summary>
+            Creates an inline (in process) pulumi program.
+            </summary>
+            <param name="program">A pulumi program.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create``1">
+            <summary>
+            Creates an inline (in process) pulumi program via a traditional <see cref="T:Pulumi.Stack"/> implementation.
+            </summary>
+            <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
         </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
