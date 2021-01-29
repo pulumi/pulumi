@@ -2,7 +2,10 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
+  an issue that was preventing passing instances of args classes with nested output values to Provider resources.
+  [#6221](https://github.com/pulumi/pulumi/pull/6221)
 
 ## 2.19.0 (2021-01-27)
 

@@ -29,6 +29,7 @@ from typing import (
     TYPE_CHECKING
 )
 
+from . import _types
 from . import runtime
 from .runtime import rpc
 
@@ -236,7 +237,7 @@ class Output(Generic[T]):
     def from_input(val: Input[T]) -> 'Output[T]':
         """
         Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values through nested
-        lists and dicts.  Nested objects of other types (including Resources) are not deeply unwrapped.
+        lists, dicts, and input classes.  Nested objects of other types (including Resources) are not deeply unwrapped.
 
         :param Input[T] val: An Input to be converted to an Output.
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
@@ -246,6 +247,15 @@ class Output(Generic[T]):
         # Is it an output already? Recurse into the value contained within it.
         if isinstance(val, Output):
             return val.apply(Output.from_input, True)
+
+        # Is it an input type (i.e. args class)? Recurse into the values within.
+        typ = type(val)
+        if _types.is_input_type(typ):
+            # Since Output.all works on lists early, serialize the class's __dict__ into a list of lists first.
+            # Once we have a output of the list of properties, we can use an apply to re-hydrate it back as an instance.
+            items = [[k, Output.from_input(v)] for k, v in val.__dict__.items()]
+            fn = cast(Callable[[List[Any]], T], lambda props: typ(**{k: v for k, v in props}))
+            return Output.all(*items).apply(fn, True)
 
         # Is a dict or list? Recurse into the values within them.
         if isinstance(val, dict):
