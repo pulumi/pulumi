@@ -51,9 +51,9 @@ func GetComponent(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Component resources.
 type componentState struct {
-	Provider       *kubernetes.Provider              `pulumi:"provider"`
-	SecurityGroup  *ec2.SecurityGroup                `pulumi:"securityGroup"`
-	StorageClasses map[string]storagev1.StorageClass `pulumi:"storageClasses"`
+	Provider       *kubernetes.Provider               `pulumi:"provider"`
+	SecurityGroup  *ec2.SecurityGroup                 `pulumi:"securityGroup"`
+	StorageClasses map[string]*storagev1.StorageClass `pulumi:"storageClasses"`
 }
 
 type ComponentState struct {
