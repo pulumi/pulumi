@@ -38,6 +38,10 @@ func (ss StringSet) Add(s string) {
 	ss[s] = struct{}{}
 }
 
+func (ss StringSet) Any() bool {
+	return len(ss) > 0
+}
+
 func (ss StringSet) Delete(s string) {
 	delete(ss, s)
 }
