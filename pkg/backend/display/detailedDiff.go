@@ -142,7 +142,9 @@ func translateDetailedDiff(step engine.StepEventMetadata) *resource.ObjectDiff {
 	var diff resource.ValueDiff
 	for path, pdiff := range step.DetailedDiff {
 		elements, err := resource.ParsePropertyPath(path)
-		contract.Assert(err == nil)
+		if err != nil {
+			elements = []interface{}{path}
+		}
 
 		olds := resource.NewObjectProperty(step.Old.Outputs)
 		if pdiff.InputDiff {

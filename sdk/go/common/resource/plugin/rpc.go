@@ -166,8 +166,8 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		ref := v.ResourceReferenceValue()
 		if !opts.KeepResources {
 			val := string(ref.URN)
-			if ref.HasID {
-				val = string(ref.ID)
+			if !ref.ID.IsNull() {
+				return MarshalPropertyValue(ref.ID, opts)
 			}
 			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
 			return MarshalString(val, opts), nil
@@ -176,8 +176,8 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			resource.SigKey: resource.NewStringProperty(resource.ResourceReferenceSig),
 			"urn":           resource.NewStringProperty(string(ref.URN)),
 		}
-		if ref.HasID {
-			m["id"] = resource.NewStringProperty(string(ref.ID))
+		if id, hasID := ref.IDString(); hasID {
+			m["id"] = resource.NewStringProperty(id)
 		}
 		if ref.PackageVersion != "" {
 			m["packageVersion"] = resource.NewStringProperty(ref.PackageVersion)
@@ -398,15 +398,27 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 
 			if !opts.KeepResources {
 				value := urn.StringValue()
-				if id != "" {
+				if hasID {
+					isIDUnknown := id == ""
+					if isIDUnknown && opts.KeepUnknowns {
+						v := structpb.Value{
+							Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+						}
+						return UnmarshalPropertyValue(&v, opts)
+					}
 					value = id
 				}
 				r := resource.NewStringProperty(value)
 				return &r, nil
 			}
 
-			r := resource.MakeResourceReference(resource.URN(urn.StringValue()), resource.ID(id), hasID, packageVersion)
-			return &r, nil
+			var ref resource.PropertyValue
+			if hasID {
+				ref = resource.MakeCustomResourceReference(resource.URN(urn.StringValue()), resource.ID(id), packageVersion)
+			} else {
+				ref = resource.MakeComponentResourceReference(resource.URN(urn.StringValue()), packageVersion)
+			}
+			return &ref, nil
 		default:
 			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
 		}

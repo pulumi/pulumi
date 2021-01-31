@@ -46,7 +46,7 @@ jobs:
           repo: pulumi/pulumictl
       - name: Repository Dispatch
         run: |
-          pulumictl dispatch -r pulumi/examples -c trigger-cron $(pulumictl get version --language generic -o)
+          pulumictl dispatch -r pulumi/examples -c smoke-test-cli $(pulumictl get version --language generic -o)
         env:
           GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   chocolatey:

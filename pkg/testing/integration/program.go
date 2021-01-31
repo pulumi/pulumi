@@ -204,6 +204,9 @@ type ProgramTestOptions struct {
 	RunBuild bool
 	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
 	RunUpdateTest bool
+	// DecryptSecretsInOutput will ensure that stack output is passed `--show-secrets` parameter
+	// Used in conjunction with ExtraRuntimeValidation
+	DecryptSecretsInOutput bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -411,6 +414,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.RunUpdateTest {
 		opts.RunUpdateTest = overrides.RunUpdateTest
+	}
+	if overrides.DecryptSecretsInOutput {
+		opts.DecryptSecretsInOutput = overrides.DecryptSecretsInOutput
 	}
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
@@ -1424,8 +1430,16 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	fileName := filepath.Join(tempDir, "stack.json")
 
 	// Invoke `pulumi stack export`
+	// There are situations where we want to get access to the secrets in the validation
+	// this will allow us to get access to them as part of running ExtraRuntimeValidation
+	var pulumiCommand []string
+	if pt.opts.DecryptSecretsInOutput {
+		pulumiCommand = append(pulumiCommand, "stack", "export", "--show-secrets", "--file", fileName)
+	} else {
+		pulumiCommand = append(pulumiCommand, "stack", "export", "--file", fileName)
+	}
 	if err = pt.runPulumiCommand("pulumi-export",
-		[]string{"stack", "export", "--file", fileName}, dir, false); err != nil {
+		pulumiCommand, dir, false); err != nil {
 		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
 	}
 

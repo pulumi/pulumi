@@ -432,9 +432,8 @@ func Unsecret(input Output) Output {
 // UnsecretWithContext will unwrap a secret output as a new output with a resolved value and no secretness
 func UnsecretWithContext(ctx context.Context, input Output) Output {
 	var x bool
-	x = false
 	o := toOutputWithContext(ctx, input, &x)
-	// set immediate secretness ahead of resolution/fufillment
+	// set immediate secretness ahead of resolution/fulfillment
 	o.getState().secret = false
 	return o
 }
@@ -448,8 +447,7 @@ func ToSecret(input interface{}) Output {
 // ToSecretWithContext wraps the input in an Output marked as secret
 // that will resolve when all Inputs contained in the given value have resolved.
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
-	var x bool
-	x = true
+	x := true
 	o := toOutputWithContext(ctx, input, &x)
 	// set immediate secretness ahead of resolution/fufillment
 	o.getState().secret = true

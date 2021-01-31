@@ -283,7 +283,7 @@ func (g *generator) getPulumiImport(pkg, vPath, mod string) string {
 
 	// All providers don't follow the sdk/go/<package> scheme. Allow ImportBasePath as
 	// a means to override this assumption.
-	if info.ImportBasePath != "" {
+	if info.ImportBasePath != "" && mod != "" {
 		imp = fmt.Sprintf("%s/%s", info.ImportBasePath, mod)
 	}
 

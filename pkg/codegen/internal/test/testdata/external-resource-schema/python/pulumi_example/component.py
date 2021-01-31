@@ -7,6 +7,9 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
+from pulumi_aws import _ec2_securitygroup.SecurityGroup
+from pulumi_kubernetes import _storage_k8s_io_v1.StorageClass
+from pulumi_kubernetes import meta_v1 as _meta_v1
 import pulumi_kubernetes
 
 __all__ = ['Component']
@@ -16,6 +19,7 @@ class Component(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
+                 metadata: Optional[pulumi.Input[pulumi.InputType['_meta_v1.ObjectMetaArgs']]] = None,
                  __props__=None,
                  __name__=None,
                  __opts__=None):
@@ -41,7 +45,10 @@ class Component(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = dict()
 
+            __props__['metadata'] = metadata
             __props__['provider'] = None
+            __props__['security_group'] = None
+            __props__['storage_classes'] = None
         super(Component, __self__).__init__(
             'example::Component',
             resource_name,
@@ -70,6 +77,16 @@ class Component(pulumi.CustomResource):
     @pulumi.getter
     def provider(self) -> pulumi.Output[Optional['pulumi_kubernetes.Provider']]:
         return pulumi.get(self, "provider")
+
+    @property
+    @pulumi.getter(name="securityGroup")
+    def security_group(self) -> pulumi.Output[Optional['_ec2_securitygroup.SecurityGroup']]:
+        return pulumi.get(self, "security_group")
+
+    @property
+    @pulumi.getter(name="storageClasses")
+    def storage_classes(self) -> pulumi.Output[Optional[Mapping[str, '_storage_k8s_io_v1.StorageClass']]]:
+        return pulumi.get(self, "storage_classes")
 
     def translate_output_property(self, prop):
         return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop

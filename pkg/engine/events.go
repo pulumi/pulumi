@@ -417,7 +417,7 @@ func filterPropertyMap(propertyMap resource.PropertyMap, debug bool) resource.Pr
 		case resource.ResourceReference:
 			return resource.ResourceReference{
 				URN:            resource.URN(filterValue(string(t.URN)).(string)),
-				ID:             resource.ID(filterValue(string(t.ID)).(string)),
+				ID:             resource.PropertyValue{V: filterValue(t.ID.V)},
 				PackageVersion: filterValue(t.PackageVersion).(string),
 			}
 		}

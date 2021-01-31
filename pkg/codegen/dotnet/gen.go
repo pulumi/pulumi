@@ -27,6 +27,7 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
@@ -238,14 +239,16 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 	case *schema.ObjectType:
 		namingCtx := mod
 		if t.Package != mod.pkg {
-			// If object type belongs to another package, we apply naming convensions from that package,
+			// If object type belongs to another package, we apply naming conventions from that package,
 			// including namespace naming and compatibility mode.
+			extPkg := t.Package
 			var info CSharpPackageInfo
+			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
 			if v, ok := t.Package.Language["csharp"].(CSharpPackageInfo); ok {
 				info = v
 			}
 			namingCtx = &modContext{
-				pkg:           t.Package,
+				pkg:           extPkg,
 				namespaces:    info.Namespaces,
 				compatibility: info.Compatibility,
 			}
@@ -271,7 +274,23 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
 			typ = fmt.Sprintf("Pulumi.%s.Provider", namespaceName(mod.namespaces, pkgName))
 		} else {
-			typ = mod.tokenToNamespace(t.Token, "")
+			namingCtx := mod
+			if t.Resource != nil && t.Resource.Package != mod.pkg {
+				// If resource type belongs to another package, we apply naming conventions from that package,
+				// including namespace naming and compatibility mode.
+				extPkg := t.Resource.Package
+				var info CSharpPackageInfo
+				contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+				if v, ok := t.Resource.Package.Language["csharp"].(CSharpPackageInfo); ok {
+					info = v
+				}
+				namingCtx = &modContext{
+					pkg:           extPkg,
+					namespaces:    info.Namespaces,
+					compatibility: info.Compatibility,
+				}
+			}
+			typ = namingCtx.tokenToNamespace(t.Token, "")
 			if typ != "" {
 				typ += "."
 			}
@@ -1259,6 +1278,12 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		}
 		return
 	case *schema.ResourceType:
+		// If it's an external resource, we'll be using fully-qualified type names, so there's no need
+		// for an import.
+		if t.Resource != nil && t.Resource.Package != mod.pkg {
+			return
+		}
+
 		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), ""
 		if modName != mod.mod {
 			mp, err := filepath.Rel(mod.mod, modName)
@@ -1532,10 +1557,13 @@ func (mod *modContext) gen(fs fs) error {
 		mod.getImports(r, imports)
 
 		buffer := &bytes.Buffer{}
-		importStrings := pulumiImports
+		var additionalImports []string
 		for _, i := range imports {
-			importStrings = append(importStrings, i.SortedValues()...)
+			additionalImports = append(additionalImports, i.SortedValues()...)
 		}
+		sort.Strings(additionalImports)
+		importStrings := pulumiImports
+		importStrings = append(importStrings, additionalImports...)
 		mod.genHeader(buffer, importStrings)
 
 		if err := mod.genResource(buffer, r); err != nil {
@@ -1766,7 +1794,11 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 				parent.children = append(parent.children, mod)
 			}
 
-			modules[modName] = mod
+			// Save the module only if it's for the current package.
+			// This way, modules for external packages are not saved.
+			if p == pkg {
+				modules[modName] = mod
+			}
 		}
 		return mod
 	}

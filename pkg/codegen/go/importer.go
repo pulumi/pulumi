@@ -38,6 +38,10 @@ type GoPackageInfo struct {
 	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
 	//
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
+
+	// Generate container types (arrays, maps, pointer output types etc.) for each resource.
+	// These are typically used to support external references.
+	GenerateResourceContainerTypes bool `json:"generateResourceContainerTypes,omitempty"`
 }
 
 // Importer implements schema.Language for Go.
