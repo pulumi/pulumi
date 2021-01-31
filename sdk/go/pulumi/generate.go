@@ -58,8 +58,7 @@ func (b builtin) DefineInputMethods() bool {
 
 func (b builtin) ImplementsPtrType() bool {
 	switch b.Type {
-	case "bool", "float32", "float64", "ID", "int", "int16", "int32", "int64", "int8", "string", "URN", "uint",
-		"uint16", "uint32", "uint64", "uint8":
+	case "bool", "float64", "ID", "int", "string", "URN":
 		return true
 	}
 	return false
@@ -120,22 +119,12 @@ var builtins = makeBuiltins([]*builtin{
 	{Name: "Asset", Type: "Asset", inputType: "*asset", implements: []string{"AssetOrArchive"}, Example: "NewFileAsset(\"foo.txt\")"},
 	{Name: "AssetOrArchive", Type: "AssetOrArchive", Example: "NewFileArchive(\"foo.zip\")"},
 	{Name: "Bool", Type: "bool", Example: "Bool(true)", GenerateConfig: true, DefaultConfig: "false"},
-	{Name: "Float32", Type: "float32", Example: "Float32(1.3)", GenerateConfig: true, DefaultConfig: "0"},
 	{Name: "Float64", Type: "float64", Example: "Float64(999.9)", GenerateConfig: true, DefaultConfig: "0"},
 	{Name: "ID", Type: "ID", inputType: "ID", implements: []string{"String"}, Example: "ID(\"foo\")"},
 	{Name: "Input", Type: "interface{}", Example: "String(\"any\")"},
 	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Int16", Type: "int16", Example: "Int16(33)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Int32", Type: "int32", Example: "Int32(24)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Int64", Type: "int64", Example: "Int64(15)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Int8", Type: "int8", Example: "Int8(6)", GenerateConfig: true, DefaultConfig: "0"},
 	{Name: "String", Type: "string", Example: "String(\"foo\")"},
 	{Name: "URN", Type: "URN", inputType: "URN", implements: []string{"String"}, Example: "URN(\"foo\")"},
-	{Name: "Uint", Type: "uint", Example: "Uint(42)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Uint16", Type: "uint16", Example: "Uint16(33)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Uint32", Type: "uint32", Example: "Uint32(24)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Uint64", Type: "uint64", Example: "Uint64(15)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "Uint8", Type: "uint8", Example: "Uint8(6)", GenerateConfig: true, DefaultConfig: "0"},
 })
 
 func unexported(s string) string {

@@ -32,6 +32,7 @@ const testModeDisabledError = (err: Error) => {
 describe("testMode", () => {
     it("rejects non-test mode", () => {
         runtime._reset();
+        runtime._setTestModeEnabled(false);
 
         // Allocating a resource directly while not in test mode errors out.
         assert.throws(() => { const _ = new FakeResource("fake"); }, testModeDisabledError);

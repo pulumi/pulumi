@@ -84,25 +84,6 @@ def pulumi_test(coro):
 
     return wrapper
 
-class OutputSecretTests(unittest.TestCase):
-    @pulumi_test
-    async def test_secret(self):
-        x = Output.secret("foo")
-        is_secret = await x.is_secret()
-        self.assertTrue(is_secret)
-
-    @pulumi_test
-    async def test_unsecret(self):
-        x = Output.secret("foo")
-        x_is_secret = await x.is_secret()
-        self.assertTrue(x_is_secret)
-
-        y = Output.unsecret(x)
-        y_val = await y.future()
-        y_is_secret = await y.is_secret()
-        self.assertEqual(y_val, "foo")
-        self.assertFalse(y_is_secret)
-
 class NextSerializationTests(unittest.TestCase):
     @pulumi_test
     async def test_list(self):

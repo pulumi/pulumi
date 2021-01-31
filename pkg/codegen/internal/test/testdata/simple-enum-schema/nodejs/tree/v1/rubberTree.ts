@@ -19,7 +19,7 @@ export class RubberTree extends pulumi.CustomResource {
     }
 
     /** @internal */
-    public static readonly __pulumiType = 'plant-provider:tree/v1:RubberTree';
+    public static readonly __pulumiType = 'plant:tree/v1:RubberTree';
 
     /**
      * Returns true if the given object is an instance of RubberTree.  This is designed to work even
@@ -33,7 +33,9 @@ export class RubberTree extends pulumi.CustomResource {
     }
 
     public readonly container!: pulumi.Output<outputs.Container | undefined>;
+    public readonly diameter!: pulumi.Output<enums.tree.v1.Diameter>;
     public readonly farm!: pulumi.Output<enums.tree.v1.Farm | string | undefined>;
+    public readonly size!: pulumi.Output<enums.tree.v1.TreeSize | undefined>;
     public readonly type!: pulumi.Output<enums.tree.v1.RubberTreeVariety>;
 
     /**
@@ -46,15 +48,22 @@ export class RubberTree extends pulumi.CustomResource {
     constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
         if (!(opts && opts.id)) {
+            if ((!args || args.diameter === undefined) && !(opts && opts.urn)) {
+                throw new Error("Missing required property 'diameter'");
+            }
             if ((!args || args.type === undefined) && !(opts && opts.urn)) {
                 throw new Error("Missing required property 'type'");
             }
             inputs["container"] = args ? args.container : undefined;
+            inputs["diameter"] = (args ? args.diameter : undefined) || 6;
             inputs["farm"] = (args ? args.farm : undefined) || "(unknown)";
-            inputs["type"] = args ? args.type : undefined;
+            inputs["size"] = (args ? args.size : undefined) || "medium";
+            inputs["type"] = (args ? args.type : undefined) || "Burgundy";
         } else {
             inputs["container"] = undefined /*out*/;
+            inputs["diameter"] = undefined /*out*/;
             inputs["farm"] = undefined /*out*/;
+            inputs["size"] = undefined /*out*/;
             inputs["type"] = undefined /*out*/;
         }
         if (!opts) {
@@ -73,6 +82,8 @@ export class RubberTree extends pulumi.CustomResource {
  */
 export interface RubberTreeArgs {
     readonly container?: pulumi.Input<inputs.Container>;
+    readonly diameter: pulumi.Input<enums.tree.v1.Diameter>;
     readonly farm?: pulumi.Input<enums.tree.v1.Farm | string>;
+    readonly size?: pulumi.Input<enums.tree.v1.TreeSize>;
     readonly type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }

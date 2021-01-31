@@ -72,11 +72,7 @@ func disableProviderPreview() bool {
 }
 
 func disableResourceReferences() bool {
-	// Allow the resource reference feature to be enabled by explicitly setting an env var.
-	if v, ok := os.LookupEnv("PULUMI_ENABLE_RESOURCE_REFERENCES"); ok && cmdutil.IsTruthy(v) {
-		return false
-	}
-	return true
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
 }
 
 // skipConfirmations returns whether or not confirmation prompts should

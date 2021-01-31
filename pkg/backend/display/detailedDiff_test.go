@@ -708,6 +708,21 @@ func TestTranslateDetailedDiff(t *testing.T) {
 				},
 			},
 		},
+		{
+			state:  map[string]interface{}{},
+			inputs: map[string]interface{}{},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo[something.wonky]probably/miscalculated.by.provider": U,
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"foo[something.wonky]probably/miscalculated.by.provider": {},
+				},
+			},
+		},
 	}
 
 	for _, c := range cases {

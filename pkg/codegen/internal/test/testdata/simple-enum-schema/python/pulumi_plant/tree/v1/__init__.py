@@ -18,13 +18,13 @@ def _register_module():
             return Module._version
 
         def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:
-            if typ == "plant-provider:tree/v1:RubberTree":
+            if typ == "plant:tree/v1:RubberTree":
                 return RubberTree(name, pulumi.ResourceOptions(urn=urn))
             else:
                 raise Exception(f"unknown resource type {typ}")
 
 
     _module_instance = Module()
-    pulumi.runtime.register_resource_module("plant-provider", "tree/v1", _module_instance)
+    pulumi.runtime.register_resource_module("plant", "tree/v1", _module_instance)
 
 _register_module()

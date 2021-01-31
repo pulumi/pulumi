@@ -188,6 +188,12 @@ class Stack:
         return Stack(stack_name, workspace, StackInitMode.CREATE_OR_SELECT)
 
     def __init__(self, name: str, workspace: Workspace, mode: StackInitMode) -> None:
+        """
+        Stack is an isolated, independently configurable instance of a Pulumi program.
+        Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
+        Multiple Stacks are commonly used to denote different phases of development
+        (such as development, staging and production) or feature branches (such as feature-x-dev, jane-feature-x-dev).
+        """
         self.name = name
         self.workspace = workspace
         self._mode = mode

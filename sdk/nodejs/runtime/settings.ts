@@ -54,11 +54,24 @@ export interface Options {
     readonly syncDir?: string;
 }
 
-/**
- * options are the current deployment options being used for this entire session.
- */
-let options = loadOptions();
+const nodeEnvKeys = {
+    project: "PULUMI_NODEJS_PROJECT",
+    stack: "PULUMI_NODEJS_STACK",
+    dryRun: "PULUMI_NODEJS_DRY_RUN",
+    queryMode: "PULUMI_NODEJS_QUERY_MODE",
+    parallel: "PULUMI_NODEJS_PARALLEL",
+    monitorAddr: "PULUMI_NODEJS_MONITOR",
+    engineAddr: "PULUMI_NODEJS_ENGINE",
+    syncDir: "PULUMI_NODEJS_SYNC",
+};
 
+const pulumiEnvKeys = {
+    testMode: "PULUMI_TEST_MODE",
+    legacyApply: "PULUMI_ENABLE_LEGACY_APPLY",
+};
+
+// reset options resets nodejs runtime global state (such as rpc clients),
+// and sets nodejs runtime option env vars to the specified values.
 export function resetOptions(
     project: string, stack: string, parallel: number, engineAddr: string,
     monitorAddr: string, preview: boolean) {
@@ -69,36 +82,33 @@ export function resetOptions(
     rpcDone = Promise.resolve();
     featureSupport = {};
 
-    options = {
-        project,
-        stack,
-        parallel,
-        engineAddr,
-        monitorAddr,
-        dryRun: preview,
-    };
+    // reset node specific environment variables in the process
+    process.env[nodeEnvKeys.project] = project;
+    process.env[nodeEnvKeys.stack] = stack;
+    process.env[nodeEnvKeys.dryRun] = preview.toString();
+    process.env[nodeEnvKeys.queryMode] = isQueryMode.toString();
+    process.env[nodeEnvKeys.parallel] = parallel.toString();
+    process.env[nodeEnvKeys.monitorAddr] = monitorAddr;
+    process.env[nodeEnvKeys.engineAddr] = engineAddr;
 }
 
 export function setMockOptions(mockMonitor: any, project?: string, stack?: string, preview?: boolean) {
-    options = {
-        project: project || options.project || "project",
-        stack: stack || options.stack || "stack",
-        dryRun: preview,
-        queryMode: options.queryMode,
-        parallel: options.parallel,
-        monitorAddr: options.monitorAddr,
-        engineAddr: options.engineAddr,
-        testModeEnabled: true,
-        legacyApply: options.legacyApply,
-        syncDir: options.syncDir,
-    };
+    const opts = options();
+    resetOptions(
+        project || opts.project || "project",
+        stack || opts.stack || "stack",
+        opts.parallel || -1,
+        opts.engineAddr || "",
+        opts.monitorAddr || "",
+        preview || false,
+    );
 
     monitor = mockMonitor;
 }
 
 /** @internal Used only for testing purposes. */
 export function _setIsDryRun(val: boolean) {
-    (options as any).dryRun = val;
+    process.env[nodeEnvKeys.dryRun] = val.toString();
 }
 
 /**
@@ -107,22 +117,17 @@ export function _setIsDryRun(val: boolean) {
  * and therefore certain output properties will never be resolved.
  */
 export function isDryRun(): boolean {
-    return options.dryRun === true;
+    return options().dryRun === true;
 }
 
 /** @internal Used only for testing purposes */
 export function _reset() {
-    monitor = undefined;
-    engine = undefined;
-    rootResource = undefined;
-    rpcDone = Promise.resolve();
-    featureSupport = {};
-    options = {};
+    resetOptions("", "", -1, "", "", false);
 }
 
 /** @internal Used only for testing purposes */
 export function _setTestModeEnabled(val: boolean) {
-    (options as any).testModeEnabled = val;
+    process.env[pulumiEnvKeys.testMode] = val.toString();
 }
 
 /** @internal Used only for testing purposes */
@@ -134,7 +139,7 @@ export function _setFeatureSupport(key: string, val: boolean) {
  * Returns true if test mode is enabled (PULUMI_TEST_MODE).
  */
 export function isTestModeEnabled(): boolean {
-    return options.testModeEnabled === true;
+    return options().testModeEnabled === true;
 }
 
 /**
@@ -148,29 +153,30 @@ function requireTestModeEnabled(): void {
 
 /** @internal Used only for testing purposes. */
 export function _setQueryMode(val: boolean) {
-    (options as any).queryMode = val;
+    process.env[nodeEnvKeys.queryMode] = val.toString();
 }
 
 /**
  * Returns true if query mode is enabled.
  */
 export function isQueryMode(): boolean {
-    return options.queryMode === true;
+    return options().queryMode === true;
 }
 
 /**
  * Returns true if we will resolve missing outputs to inputs during preview (PULUMI_ENABLE_LEGACY_APPLY).
  */
 export function isLegacyApplyEnabled(): boolean {
-    return options.legacyApply === true;
+    return options().legacyApply === true;
 }
 
 /**
  * Get the project being run by the current update.
  */
 export function getProject(): string {
-    if (options.project) {
-        return options.project;
+    const project = options().project;
+    if (project) {
+        return project;
     }
 
     // If the project is missing, specialize the error. First, if test mode is disabled:
@@ -182,15 +188,16 @@ export function getProject(): string {
 
 /** @internal Used only for testing purposes. */
 export function _setProject(val: string | undefined) {
-    (options as any).project = val;
+    process.env[nodeEnvKeys.project] = val;
 }
 
 /**
  * Get the stack being targeted by the current update.
  */
 export function getStack(): string {
-    if (options.stack) {
-        return options.stack;
+    const stack = options().stack;
+    if (stack) {
+        return stack;
     }
 
     // If the stack is missing, specialize the error. First, if test mode is disabled:
@@ -202,7 +209,7 @@ export function getStack(): string {
 
 /** @internal Used only for testing purposes. */
 export function _setStack(val: string | undefined) {
-    (options as any).stack = val;
+    process.env[nodeEnvKeys.stack] = val;
 }
 
 /**
@@ -215,7 +222,7 @@ let featureSupport: Record<string, boolean> = {};
  * hasMonitor returns true if we are currently connected to a resource monitoring service.
  */
 export function hasMonitor(): boolean {
-    return !!monitor && !!options.monitorAddr;
+    return !!monitor && !!options().monitorAddr;
 }
 
 /**
@@ -223,7 +230,7 @@ export function hasMonitor(): boolean {
  */
 export function getMonitor(): Object | undefined {
     if (monitor === undefined) {
-        const addr = options.monitorAddr;
+        const addr = options().monitorAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the monitor.
             monitor = new resrpc.ResourceMonitorClient(
@@ -249,9 +256,10 @@ let syncInvokes: SyncInvokes | undefined;
 
 /** @internal */
 export function tryGetSyncInvokes(): SyncInvokes | undefined {
-    if (syncInvokes === undefined && options.syncDir) {
-        const requests = fs.openSync(path.join(options.syncDir, "invoke_req"), fs.constants.O_WRONLY | fs.constants.O_SYNC);
-        const responses = fs.openSync(path.join(options.syncDir, "invoke_res"), fs.constants.O_RDONLY | fs.constants.O_SYNC);
+    const syncDir = options().syncDir;
+    if (syncInvokes === undefined && syncDir) {
+        const requests = fs.openSync(path.join(syncDir, "invoke_req"), fs.constants.O_WRONLY | fs.constants.O_SYNC);
+        const responses = fs.openSync(path.join(syncDir, "invoke_res"), fs.constants.O_RDONLY | fs.constants.O_SYNC);
         syncInvokes = { requests, responses };
     }
 
@@ -267,7 +275,7 @@ let engine: any | undefined;
  * hasEngine returns true if we are currently connected to an engine.
  */
 export function hasEngine(): boolean {
-    return !!engine && !!options.engineAddr;
+    return !!engine && !!options().engineAddr;
 }
 
 /**
@@ -275,7 +283,7 @@ export function hasEngine(): boolean {
  */
 export function getEngine(): Object | undefined {
     if (engine === undefined) {
-        const addr = options.engineAddr;
+        const addr = options().engineAddr;
         if (addr) {
             // Lazily initialize the RPC connection to the engine.
             engine = new engrpc.EngineClient(
@@ -296,17 +304,24 @@ export function terminateRpcs() {
  * serialize returns true if resource operations should be serialized.
  */
 export function serialize(): boolean {
-    return options.parallel === 1;
+    return options().parallel === 1;
 }
 
 /**
- * loadOptions recovers the options from the environment, which is set before we begin executing. This ensures
- * that even when multiple copies of this module are loaded, they all get the same values.
+ * options returns the options from the environment, which is the source of truth. Options are global per process.
+ * For CLI driven programs, pulumi-language-nodejs sets environment variables prior to the user program loading,
+ * meaning that options could be loaded up front and cached.
+ * Automation API and multi-language components introduced more complex lifecycles for runtime options().
+ * These language hosts manage the lifecycle of options manually throughout the lifetime of the nodejs process.
+ * In addition, node module resolution can lead to duplicate copies of @pulumi/pulumi and thus duplicate options
+ *  objects that may not be synced if options are cached upfront. Mutating options must write to the environment
+ * and reading options must always read directly from the environment.
+
  */
-function loadOptions(): Options {
+function options(): Options {
     // The only option that needs parsing is the parallelism flag.  Ignore any failures.
     let parallel: number | undefined;
-    const parallelOpt = process.env["PULUMI_NODEJS_PARALLEL"];
+    const parallelOpt = process.env[nodeEnvKeys.parallel];
     if (parallelOpt) {
         try {
             parallel = parseInt(parallelOpt, 10);
@@ -319,16 +334,18 @@ function loadOptions(): Options {
     // Now just hydrate the rest from environment variables.  These might be missing, in which case
     // we will fail later on when we actually need to create an RPC connection back to the engine.
     return {
-        project: process.env["PULUMI_NODEJS_PROJECT"],
-        stack: process.env["PULUMI_NODEJS_STACK"],
-        dryRun: (process.env["PULUMI_NODEJS_DRY_RUN"] === "true"),
-        queryMode: (process.env["PULUMI_NODEJS_QUERY_MODE"] === "true"),
+        // node runtime
+        project: process.env[nodeEnvKeys.project],
+        stack: process.env[nodeEnvKeys.stack],
+        dryRun: (process.env[nodeEnvKeys.dryRun] === "true"),
+        queryMode: (process.env[nodeEnvKeys.queryMode] === "true"),
         parallel: parallel,
-        monitorAddr: process.env["PULUMI_NODEJS_MONITOR"],
-        engineAddr: process.env["PULUMI_NODEJS_ENGINE"],
-        testModeEnabled: (process.env["PULUMI_TEST_MODE"] === "true"),
-        legacyApply: (process.env["PULUMI_ENABLE_LEGACY_APPLY"] === "true"),
-        syncDir: process.env["PULUMI_NODEJS_SYNC"],
+        monitorAddr: process.env[nodeEnvKeys.monitorAddr],
+        engineAddr: process.env[nodeEnvKeys.engineAddr],
+        syncDir: process.env[nodeEnvKeys.syncDir],
+        // pulumi specific
+        testModeEnabled: (process.env[pulumiEnvKeys.testMode] === "true"),
+        legacyApply: (process.env[pulumiEnvKeys.legacyApply] === "true"),
     };
 }
 

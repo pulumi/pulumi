@@ -40,6 +40,20 @@ func TestGeneratePackage(t *testing.T) {
 				"types/enums/tree/v1/index.ts",
 			},
 		},
+		{
+			"External resource schema",
+			"external-resource-schema",
+			[]string{
+				"index.ts",
+				"argFunction.ts",
+				"cat.ts",
+				"component.ts",
+				"workload.ts",
+				"types/index.ts",
+				"types/input.ts",
+				"types/output.ts",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
