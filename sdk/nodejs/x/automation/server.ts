@@ -27,11 +27,7 @@ export const maxRPCMessageSize: number = 1024 * 1024 * 400;
 /** @internal */
 export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
     readonly program: () => Promise<T>;
-    readonly result: Promise<T>;
 
-    resolveResult!: (v: any) => void;
-    rejectResult!: (e: Error) => void;
-    pulumiExitCode?: number;
     running: boolean;
 
     // Satisfy the grpc.UntypedServiceImplementation interface.
@@ -39,26 +35,18 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
     constructor(program: () => Promise<T>) {
         this.program = program;
-        this.result = new Promise<any>((resolve, reject) => {
-            this.resolveResult = resolve;
-            this.rejectResult = reject;
-        });
+
         this.running = false;
     }
 
-    getExitError(preview: boolean): Error {
-        return new Error(this.pulumiExitCode === 0 ?
-            "pulumi exited prematurely" :
-            `${preview ? "preview" : "update"} failed with code ${this.pulumiExitCode}`);
-    }
-
-    onPulumiExit(code: number, preview: boolean) {
-        this.pulumiExitCode = code;
+    onPulumiExit() {
+        // check for leaks once the CLI exits
+        const [leaks, leakMessage] = runtime.leakedPromises();
+        if (leaks.size !== 0) {
+            throw new Error(leakMessage);
+        }
         // these are globals and we need to clean up after ourselves
         runtime.resetOptions("", "", -1, "", "", false);
-        if (!this.running) {
-            this.rejectResult(this.getExitError(preview));
-        }
     }
 
     getRequiredPlugins(call: any, callback: any): void {
@@ -71,15 +59,10 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         const req: any = call.request;
         const resp: any = new langproto.RunResponse();
 
-        if (this.pulumiExitCode !== undefined) {
-            callback(this.getExitError(req.getDryrun()));
-            return;
-        }
         this.running = true;
 
         const errorSet = new Set<Error>();
         const uncaughtHandler = newUncaughtHandler(errorSet);
-        let result: Promise<T> | undefined;
         try {
             const args = req.getArgsList();
             const engineAddr = args && args.length > 0 ? args[0] : "";
@@ -117,15 +100,10 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
                 throw new Error("One or more errors occurred");
             }
 
-            const [leaks, leakMessage] = runtime.leakedPromises();
-            if (leaks.size !== 0) {
-                throw new Error(leakMessage);
-            }
-            this.resolveResult(result);
         } catch (e) {
             const err = e instanceof Error ? e : new Error(`unknown error ${e}`);
             resp.setError(err.message);
-            this.rejectResult(err);
+            callback(err, undefined)
         }
 
         callback(undefined, resp);
@@ -155,7 +133,10 @@ function newUncaughtHandler(errorSet: Set<Error>): (err: Error) => void {
         //
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        const defaultMessage = err.stack || err.message || ("" + err);
+        let defaultMessage = ""
+        if (!!err) {
+            defaultMessage = err.stack || err.message || ("" + err);
+        }
 
         // First, log the error.
         if (RunError.isInstance(err)) {
