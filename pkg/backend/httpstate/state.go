@@ -68,6 +68,8 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 			select {
 			case <-ticker.C:
 				newToken, err = backend.client.RenewUpdateLease(ctx, update, token, duration)
+				// If we get an error from the backend, leave `err` set and surface it during
+				// the next request for a lease token.
 				if err != nil {
 					ticker.Stop()
 				} else {
@@ -80,6 +82,7 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 					return
 				}
 
+				// err will be non-nil if the last call to RenewUpdateLease failed.
 				resp := tokenResponse{err: err}
 				if err == nil {
 					resp.token = token
