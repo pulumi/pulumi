@@ -174,7 +174,6 @@ export class Stack {
         let upResult;
         try {
             upResult = await this.runPulumiCmd(args, opts?.onOutput);
-            onExit();
         } finally {
             onExit()
         }
