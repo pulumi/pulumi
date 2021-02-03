@@ -573,13 +573,11 @@ namespace Pulumi.Automation
                             {
                                 kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
                                 {
-                                    // TODO: HTTPS?
                                     listenOptions.Protocols = HttpProtocols.Http2;
                                 });
                             })
                             .ConfigureServices(services =>
                             {
-                                // TODO: allow logging to be configured so it can be captured by the consumer?
                                 services.AddLogging();
 
                                 // to be injected into LanguageRuntimeService
