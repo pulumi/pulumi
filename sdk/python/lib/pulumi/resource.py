@@ -476,15 +476,15 @@ class ResourceOptions:
 
         Conceptually attributes merging follows these basic rules:
 
-        1. if the attributes is a collection, the final value will be a collection containing the
-            values from each options object. Both original collections in each options object will
-            be unchanged.
+        1. If the attributes is a collection, the final value will be a collection containing the
+           values from each options object. Both original collections in each options object will
+           be unchanged.
 
         2. Simple scalar values from `opts2` (i.e. strings, numbers, bools) will replace the values
-            from `opts1`.
+           from `opts1`.
 
         3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
-            as collections, even if only a single value was provided.
+           as collections, even if only a single value was provided.
 
         4. Attributes with value 'None' will not be copied over.
 

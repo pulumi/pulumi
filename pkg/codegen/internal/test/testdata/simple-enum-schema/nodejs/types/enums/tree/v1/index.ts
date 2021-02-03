@@ -2,6 +2,13 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 
+export const Diameter = {
+    Sixinch: 6,
+    Twelveinch: 12,
+} as const;
+
+export type Diameter = (typeof Diameter)[keyof typeof Diameter];
+
 export const Farm = {
     Pulumi_Planters_Inc_: "Pulumi Planters Inc.",
     Plants_R_Us: "Plants'R'Us",
@@ -28,3 +35,11 @@ export const RubberTreeVariety = {
  * types of rubber trees
  */
 export type RubberTreeVariety = (typeof RubberTreeVariety)[keyof typeof RubberTreeVariety];
+
+export const TreeSize = {
+    Small: "small",
+    Medium: "medium",
+    Large: "large",
+} as const;
+
+export type TreeSize = (typeof TreeSize)[keyof typeof TreeSize];

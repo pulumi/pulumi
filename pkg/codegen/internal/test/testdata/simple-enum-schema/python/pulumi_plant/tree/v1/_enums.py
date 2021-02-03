@@ -5,9 +5,16 @@
 from enum import Enum
 
 __all__ = [
+    'Diameter',
     'Farm',
     'RubberTreeVariety',
+    'TreeSize',
 ]
+
+
+class Diameter(float, Enum):
+    SIXINCH = 6
+    TWELVEINCH = 12
 
 
 class Farm(str, Enum):
@@ -22,3 +29,9 @@ class RubberTreeVariety(str, Enum):
     BURGUNDY = "Burgundy"
     RUBY = "Ruby"
     TINEKE = "Tineke"
+
+
+class TreeSize(str, Enum):
+    SMALL = "small"
+    MEDIUM = "medium"
+    LARGE = "large"

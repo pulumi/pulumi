@@ -5,8 +5,36 @@ using System;
 using System.ComponentModel;
 using Pulumi;
 
-namespace Pulumi.PlantProvider.Tree.V1
+namespace Pulumi.Plant.Tree.V1
 {
+    [EnumType]
+    public readonly struct Diameter : IEquatable<Diameter>
+    {
+        private readonly double _value;
+
+        private Diameter(double value)
+        {
+            _value = value;
+        }
+
+        public static Diameter Sixinch { get; } = new Diameter(6);
+        public static Diameter Twelveinch { get; } = new Diameter(12);
+
+        public static bool operator ==(Diameter left, Diameter right) => left.Equals(right);
+        public static bool operator !=(Diameter left, Diameter right) => !left.Equals(right);
+
+        public static explicit operator double(Diameter value) => value._value;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override bool Equals(object? obj) => obj is Diameter other && Equals(other);
+        public bool Equals(Diameter other) => _value == other._value;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override int GetHashCode() => _value.GetHashCode();
+
+        public override string ToString() => _value.ToString();
+    }
+
     [EnumType]
     public readonly struct Farm : IEquatable<Farm>
     {
@@ -69,6 +97,35 @@ namespace Pulumi.PlantProvider.Tree.V1
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override bool Equals(object? obj) => obj is RubberTreeVariety other && Equals(other);
         public bool Equals(RubberTreeVariety other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+
+        public override string ToString() => _value;
+    }
+
+    [EnumType]
+    public readonly struct TreeSize : IEquatable<TreeSize>
+    {
+        private readonly string _value;
+
+        private TreeSize(string value)
+        {
+            _value = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        public static TreeSize Small { get; } = new TreeSize("small");
+        public static TreeSize Medium { get; } = new TreeSize("medium");
+        public static TreeSize Large { get; } = new TreeSize("large");
+
+        public static bool operator ==(TreeSize left, TreeSize right) => left.Equals(right);
+        public static bool operator !=(TreeSize left, TreeSize right) => !left.Equals(right);
+
+        public static explicit operator string(TreeSize value) => value._value;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override bool Equals(object? obj) => obj is TreeSize other && Equals(other);
+        public bool Equals(TreeSize other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override int GetHashCode() => _value?.GetHashCode() ?? 0;

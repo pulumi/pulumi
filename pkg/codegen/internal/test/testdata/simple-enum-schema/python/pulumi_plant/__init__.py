@@ -25,11 +25,11 @@ def _register_module():
             return Package._version
 
         def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:
-            if typ != "pulumi:providers:plant-provider":
+            if typ != "pulumi:providers:plant":
                 raise Exception(f"unknown provider type {typ}")
             return Provider(name, pulumi.ResourceOptions(urn=urn))
 
 
-    pulumi.runtime.register_resource_package("plant-provider", Package())
+    pulumi.runtime.register_resource_package("plant", Package())
 
 _register_module()

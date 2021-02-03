@@ -117,24 +117,63 @@ func (mod *modContext) tokenToModName(tok string) string {
 	return modName
 }
 
-func (mod *modContext) tokenToType(tok string, input, enum bool) string {
-	modName, name := mod.tokenToModName(tok), tokenToName(tok)
+func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext, pkgName string, external bool) {
+	namingCtx = mod
+	if pkg != nil && pkg != mod.pkg {
+		external = true
+		pkgName = pkg.Name + "."
 
-	if enum {
-		return "enums." + modName + title(name)
+		var info NodePackageInfo
+		contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}))
+		if v, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
+			info = v
+		}
+		namingCtx = &modContext{
+			pkg:           pkg,
+			modToPkg:      info.ModuleToPackage,
+			compatibility: info.Compatibility,
+		}
 	}
+	return
+}
+
+func (mod *modContext) objectType(pkg *schema.Package, tok string, input, enum bool) string {
 	root := "outputs."
 	if input {
 		root = "inputs."
 	}
 
-	return root + modName + title(name)
+	namingCtx, pkgName, external := mod.namingContext(pkg)
+	if external {
+		root = "types.output."
+		if input {
+			root = "types.input."
+		}
+	}
+
+	modName, name := namingCtx.tokenToModName(tok), tokenToName(tok)
+
+	if enum {
+		return "enums." + modName + title(name)
+	}
+	return pkgName + root + modName + title(name)
 }
 
-func (mod *modContext) tokenToResource(tok string) string {
-	modName, name := mod.tokenToModName(tok), tokenToName(tok)
+func (mod *modContext) resourceType(r *schema.ResourceType) string {
+	if strings.HasPrefix(r.Token, "pulumi:providers:") {
+		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+		return fmt.Sprintf("%s.Provider", pkgName)
+	}
 
-	return modName + title(name)
+	pkg := mod.pkg
+	if r.Resource != nil {
+		pkg = r.Resource.Package
+	}
+	namingCtx, pkgName, _ := mod.namingContext(pkg)
+
+	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
+
+	return pkgName + modName + title(name)
 }
 
 func tokenToName(tok string) string {
@@ -166,15 +205,15 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
-		typ = mod.tokenToType(t.Token, input, true)
+		typ = mod.objectType(nil, t.Token, input, true)
 	case *schema.ArrayType:
 		typ = mod.typeString(t.ElementType, input, wrapInput, false, constValue) + "[]"
 	case *schema.MapType:
 		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
 	case *schema.ObjectType:
-		typ = mod.tokenToType(t.Token, input, false)
+		typ = mod.objectType(t.Package, t.Token, input, false)
 	case *schema.ResourceType:
-		typ = mod.tokenToResource(t.Token)
+		typ = mod.resourceType(t)
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
@@ -815,7 +854,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, properties, input, wrapInput, false, level)
 }
 
-func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) bool {
+func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set) bool {
 	if seen.Has(t) {
 		return false
 	}
@@ -843,24 +882,38 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 
 	switch t := t.(type) {
 	case *schema.ArrayType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.MapType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.EnumType:
 		return true
 	case *schema.ObjectType:
+		// If it's from another package, add an import for the external package.
+		if t.Package != nil && t.Package != mod.pkg {
+			pkg := t.Package.Name
+			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			return false
+		}
+
 		for _, p := range t.Properties {
-			mod.getTypeImports(p.Type, recurse, imports, seen)
+			mod.getTypeImports(p.Type, recurse, externalImports, imports, seen)
 		}
 		return true
 	case *schema.ResourceType:
+		// If it's from another package, add an import for the external package.
+		if t.Resource != nil && t.Resource.Package != mod.pkg {
+			pkg := t.Resource.Package.Name
+			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			return false
+		}
+
 		return resourceOrTokenImport(t.Token)
 	case *schema.TokenType:
 		return resourceOrTokenImport(t.Token)
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {
-			needsTypes = mod.getTypeImports(e, recurse, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(e, recurse, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	default:
@@ -868,40 +921,40 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 	}
 }
 
-func (mod *modContext) getImports(member interface{}, imports map[string]codegen.StringSet) bool {
+func (mod *modContext) getImports(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, true, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, true, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case *schema.ResourceType:
-		mod.getTypeImports(member, true, imports, seen)
+		mod.getTypeImports(member, true, externalImports, imports, seen)
 		return false
 	case *schema.Resource:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 		}
 		for _, p := range member.InputProperties {
-			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case *schema.Function:
 		needsTypes := false
 		if member.Inputs != nil {
-			needsTypes = mod.getTypeImports(member.Inputs, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(member.Inputs, false, externalImports, imports, seen) || needsTypes
 		}
 		if member.Outputs != nil {
-			needsTypes = mod.getTypeImports(member.Outputs, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(member.Outputs, false, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case []*schema.Property:
 		needsTypes := false
 		for _, p := range member {
-			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	default:
@@ -909,12 +962,19 @@ func (mod *modContext) getImports(member interface{}, imports map[string]codegen
 	}
 }
 
-func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes map[string]codegen.StringSet) {
+func (mod *modContext) genHeader(w io.Writer, imports []string, externalImports codegen.StringSet, importedTypes map[string]codegen.StringSet) {
 	fmt.Fprintf(w, "// *** WARNING: this file was generated by %v. ***\n", mod.tool)
 	fmt.Fprintf(w, "// *** Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
 
 	if len(imports) > 0 {
 		for _, i := range imports {
+			fmt.Fprintf(w, "%s\n", i)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
+	if externalImports.Any() {
+		for _, i := range externalImports.SortedValues() {
 			fmt.Fprintf(w, "%s\n", i)
 		}
 		fmt.Fprintf(w, "\n")
@@ -928,20 +988,14 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes ma
 		sort.Strings(modules)
 
 		for _, module := range modules {
-			var names []string
-			for name := range importedTypes[module] {
-				names = append(names, name)
-			}
-			sort.Strings(names)
-
 			fmt.Fprintf(w, "import {")
-			for i, name := range names {
+			for i, name := range importedTypes[module].SortedValues() {
 				if i > 0 {
 					fmt.Fprint(w, ", ")
 				}
 				fmt.Fprint(w, name)
 			}
-			fmt.Fprintf(w, "} from \"%v\";\n", module)
+			fmt.Fprintf(w, "} from \"%s\";\n", module)
 		}
 		fmt.Fprintf(w, "\n")
 	}
@@ -963,10 +1017,10 @@ func (mod *modContext) configGetter(v *schema.Property) (string, string) {
 }
 
 func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	imports := map[string]codegen.StringSet{}
-	referencesNestedTypes := mod.getImports(variables, imports)
+	externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+	referencesNestedTypes := mod.getImports(variables, externalImports, imports)
 
-	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), imports)
+	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
 	// Create a config bag for the variables to pull from.
 	fmt.Fprintf(w, "let __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
@@ -1025,15 +1079,15 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 }
 
 func (mod *modContext) genTypes() (string, string) {
-	imports := map[string]codegen.StringSet{}
+	externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
 	for _, t := range mod.types {
-		mod.getImports(t, imports)
+		mod.getImports(t, externalImports, imports)
 	}
 
 	inputs, outputs := &bytes.Buffer{}, &bytes.Buffer{}
 
-	mod.genHeader(inputs, mod.sdkImports(true, false), imports)
-	mod.genHeader(outputs, mod.sdkImports(true, false), imports)
+	mod.genHeader(inputs, mod.sdkImports(true, false), externalImports, imports)
+	mod.genHeader(outputs, mod.sdkImports(true, false), externalImports, imports)
 
 	// Build a namespace tree out of the types, then emit them.
 	namespaces := mod.getNamespaces()
@@ -1188,7 +1242,7 @@ func (mod *modContext) gen(fs fs) error {
 	switch mod.mod {
 	case "":
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, nil, nil)
+		mod.genHeader(buffer, nil, nil, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
 		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
@@ -1222,11 +1276,11 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Resources
 	for _, r := range mod.resources {
-		imports := map[string]codegen.StringSet{}
-		referencesNestedTypes := mod.getImports(r, imports)
+		externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+		referencesNestedTypes := mod.getImports(r, externalImports, imports)
 
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), imports)
+		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
 		if err := mod.genResource(buffer, r); err != nil {
 			return err
@@ -1238,11 +1292,11 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Functions
 	for _, f := range mod.functions {
-		imports := map[string]codegen.StringSet{}
-		referencesNestedTypes := mod.getImports(f, imports)
+		externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+		referencesNestedTypes := mod.getImports(f, externalImports, imports)
 
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), imports)
+		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
 		mod.genFunction(buffer, f)
 
@@ -1255,7 +1309,7 @@ func (mod *modContext) gen(fs fs) error {
 
 	if mod.hasEnums() {
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, []string{}, nil)
+		mod.genHeader(buffer, []string{}, nil, nil)
 
 		err := mod.genEnums(buffer, mod.enums)
 		if err != nil {
@@ -1304,7 +1358,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	if len(mod.resources) != 0 {
 		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
 	}
-	mod.genHeader(w, imports, nil)
+	mod.genHeader(w, imports, nil, nil)
 
 	// Export anything flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {

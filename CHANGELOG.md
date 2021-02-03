@@ -5,6 +5,42 @@ CHANGELOG
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
+  
+- [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
+  an issue that was preventing passing instances of args classes with nested output values to Provider resources.
+  [#6221](https://github.com/pulumi/pulumi/pull/6221)
+
+## 2.19.0 (2021-01-27)
+
+- [sdk/nodejs] Always read and write NodeJS runtime options from the environment.
+  [#6076](https://github.com/pulumi/pulumi/pull/6076)
+
+- [sdk/go] Take a breaking change to remove unidiomatic numerical types and drastically improve build performance (binary size and compilation time).
+  [#6143](https://github.com/pulumi/pulumi/pull/6143)
+
+- [cli] Ensure `pulumi stack change-secrets-provider` allows rotating the key from hashivault to passphrase provider
+  [#6210](https://github.com/pulumi/pulumi/pull/6210)
+
+## 2.18.2 (2021-01-22)
+
+- [CLI] Fix malformed resource value bug.
+  [#6164](https://github.com/pulumi/pulumi/pull/6164)
+
+- [sdk/dotnet] Fix `RegisterResourceOutputs` to serialize resources as resource references
+  only when the monitor reports that resource references are supported.
+  [#6172](https://github.com/pulumi/pulumi/pull/6172)
+
+- [CLI] Avoid panic for diffs with invalid property paths.
+  [#6159](https://github.com/pulumi/pulumi/pull/6159)
+
+- Enable resource reference feature by default.
+  [#6202](https://github.com/pulumi/pulumi/pull/6202)
+
+## 2.18.1 (2021-01-21)
+
+- Revert [#6125](https://github.com/pulumi/pulumi/pull/6125) as it caused a which introduced a bug with serializing resource IDs
+
+## 2.18.0 (2021-01-20)
 
 - [CLI] Add the ability to log out of all Pulumi backends at once.
   [#6101](https://github.com/pulumi/pulumi/pull/6101)
@@ -64,7 +100,7 @@ CHANGELOG
 - [sdk/dotnet] Moved urn value retrieval into if statement
   for MockMonitor
   [#6081](https://github.com/pulumi/pulumi/pull/6081)
-  
+
 - [sdk/dotnet] Added `Pulumi.Output.Unsecret` which will
   take an existing secret output and
   create a non-secret variant with an unwrapped secret value.

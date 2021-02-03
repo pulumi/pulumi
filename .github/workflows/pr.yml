@@ -1,6 +1,6 @@
 name: New Pull Request
 on:
-  pull_request:
+  pull_request_target:
 
 jobs:
   comment-on-pr:
@@ -26,9 +26,6 @@ jobs:
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v2
-        with:
-          repository: ${{ github.event.pull_request.head.repo.full_name }}
-          ref: ${{ github.event.pull_request.head.ref }}
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
