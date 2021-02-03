@@ -176,7 +176,7 @@ jobs:
           dockerfile: docker/${{ matrix.sdk }}/Dockerfile.${{ matrix.os }}
           additional-tags: ${{ env.VERSION }}-${{ matrix.os }}
           build-args: PULUMI_VERSION=${{ env.VERSION }}
-          tag-latest: true
+          tag-latest: false
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
