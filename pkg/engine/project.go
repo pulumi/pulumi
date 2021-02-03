@@ -18,7 +18,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -50,16 +49,20 @@ func getPwdMain(root, main string) (string, string, error) {
 	if main == "" {
 		main = "."
 	} else {
-		// The path must be relative from the package root.
-		if path.IsAbs(main) {
-			return "", "", errors.New("project 'main' must be a relative path")
-		}
+		// Note: I had to relax constraints on main being a subfolder of root. I tried computing a relative
+		// path from the auto api tmp directory. But the tmp directory on osx is `/private/var/tmp` and
+		// computing a relative path doesn't work as `/private/User/...` (where the program would be) isn't
+		// a valid file path.
+		//
+		// The reason we had this check in the first place is due to PPC constraints for hosted execution. Look through the original PR
+		// https://github.com/pulumi/pulumi/pull/615 https://github.com/pulumi/pulumi-ppc/pull/102
+		// It would appear that it is now safe to allow root and main to be in disjoint file trees.
+		// Empyrically from my testing it seems to work, but would be worth checking with @chrsmith
 
-		// Check that main is a subdirectory.
-		cleanPwd := filepath.Clean(pwd)
-		main = filepath.Clean(filepath.Join(cleanPwd, main))
-		if !strings.HasPrefix(main, cleanPwd) {
-			return "", "", errors.New("project 'main' must be a subfolder")
+		// The path can be relative from the package root.
+		if !path.IsAbs(main) {
+			cleanPwd := filepath.Clean(pwd)
+			main = filepath.Clean(filepath.Join(cleanPwd, main))
 		}
 
 		// So that any relative paths inside of the program are correct, we still need to pass the pwd

@@ -176,8 +176,12 @@ export class LocalWorkspace implements Workspace {
             wsOpts = { ...opts, program: args.program };
         }
 
+        if(!wsOpts.workDir) {
+            wsOpts.workDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-"));
+        }
+
         if (!wsOpts.projectSettings) {
-            wsOpts.projectSettings = defaultProject(args.projectName);
+            wsOpts.projectSettings = defaultProject(args.projectName, wsOpts.workDir);
         }
 
         const ws = new LocalWorkspace(wsOpts);
@@ -643,7 +647,8 @@ function getStackSettingsName(name: string): string {
 
 type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
-function defaultProject(projectName: string) {
-    const settings: ProjectSettings = { name: projectName, runtime: "nodejs" };
+function defaultProject(projectName: string, workDir: string) {
+
+    const settings: ProjectSettings = { name: projectName, runtime: "nodejs", main: process.cwd() };
     return settings;
 }
