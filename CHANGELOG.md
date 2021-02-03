@@ -2,6 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
+
+## 2.20.0 (2021-02-03)
 
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
   an issue that was preventing passing instances of args classes with nested output values to Provider resources.
