@@ -13,8 +13,7 @@
 # limitations under the License.
 import asyncio
 import os
-import sys
-from typing import Any, Awaitable, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 import grpc
 
 from .. import log
@@ -23,7 +22,7 @@ from ..invoke import InvokeOptions
 from ..runtime.proto import provider_pb2
 from . import rpc
 from .rpc_manager import RPC_MANAGER
-from .settings import get_monitor
+from .settings import get_monitor, handle_grpc_error
 from .sync_await import _sync_await
 
 if TYPE_CHECKING:
@@ -65,6 +64,7 @@ class InvokeResult:
         return self.value
 
     __iter__ = __await__
+
 
 def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ: Optional[type] = None) -> InvokeResult:
     """
@@ -109,18 +109,7 @@ def invoke(tok: str, props: 'Inputs', opts: Optional[InvokeOptions] = None, typ:
             try:
                 return monitor.Invoke(req)
             except grpc.RpcError as exn:
-                # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
-                # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
-                # the .code() member. Pylint doesn't know this because it's not known statically.
-                #
-                # Neither pylint nor I are the only ones who find this confusing:
-                # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-                # pylint: disable=no-member
-                if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                    sys.exit(0)
-
-                details = exn.details()
-            raise Exception(details)
+                handle_grpc_error(exn)
 
         resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
 

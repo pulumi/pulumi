@@ -17,7 +17,6 @@ Runtime settings and configuration.
 """
 import asyncio
 import os
-import sys
 from typing import Optional, Union, Any, TYPE_CHECKING
 
 import grpc
@@ -220,20 +219,31 @@ async def monitor_supports_feature(feature: str) -> bool:
                 resp = monitor.SupportsFeature(req)
                 return resp.hasSupport
             except grpc.RpcError as exn:
-                # See the comment on invoke for the justification for disabling
-                # this warning
-                # pylint: disable=no-member
-                if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                    sys.exit(0)
                 if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
                     return False
-                details = exn.details()
-            raise Exception(details)
+                handle_grpc_error(exn)
 
         result = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         SETTINGS.feature_support[feature] = result
 
     return SETTINGS.feature_support[feature]
+
+
+def handle_grpc_error(exn: grpc.RpcError):
+    # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
+    # the usefulness come from the fact that it is polymorphically also a grpc.Call and thus has
+    # the .code() member. Pylint doesn't know this because it's not known statically.
+    #
+    # Neither pylint nor I are the only ones who find this confusing:
+    # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
+    # pylint: disable=no-member
+    if exn.code() == grpc.StatusCode.UNAVAILABLE:
+        # If the monitor is unavailable, it is in the process of shutting down or has already
+        # shut down. Don't emit an error if this is the case.
+        return
+
+    details = exn.details()
+    raise Exception(details)
 
 
 async def monitor_supports_secrets() -> bool:

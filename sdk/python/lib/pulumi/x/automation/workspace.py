@@ -26,8 +26,7 @@ from .stack_settings import StackSettings
 from .project_settings import ProjectSettings
 from .config import ConfigMap, ConfigValue
 
-# TODO improve typing to encapsulate stack exports
-PulumiFn = Callable[[], Any]
+PulumiFn = Callable[[], None]
 
 
 class StackSummary:
