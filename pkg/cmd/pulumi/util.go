@@ -88,6 +88,19 @@ func skipConfirmations() bool {
 // backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
 
+func isFilestateBackend(opts display.Options) (bool, error) {
+	if backendInstance != nil {
+		return false, nil
+	}
+
+	url, err := workspace.GetCurrentCloudURL()
+	if err != nil {
+		return false, errors.Wrapf(err, "could not get cloud url")
+	}
+
+	return filestate.IsFileStateBackendURL(url), nil
+}
+
 func currentBackend(opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
 		return backendInstance, nil

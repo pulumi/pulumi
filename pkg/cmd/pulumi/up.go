@@ -66,7 +66,7 @@ func newUpCmd() *cobra.Command {
 	var showReads bool
 	var skipPreview bool
 	var suppressOutputs bool
-	var suppressPermaLink bool
+	var suppressPermaLink string
 	var yes bool
 	var secretsProvider string
 	var targets []string
@@ -364,11 +364,29 @@ func newUpCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				ShowReads:            showReads,
 				SuppressOutputs:      suppressOutputs,
-				SuppressPermaLink:    suppressPermaLink,
 				IsInteractive:        interactive,
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+			}
+
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			if suppressPermaLink == "true" {
+				opts.Display.SuppressPermaLink = true
+			} else {
+				opts.Display.SuppressPermaLink = false
+			}
+
+			filestateBackend, err := isFilestateBackend(opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			// by default, we are going to suppress the permalink when using self-managed backends
+			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
+			if suppressPermaLink != "false" && filestateBackend {
+				opts.Display.SuppressPermaLink = true
 			}
 
 			if len(args) > 0 {
@@ -461,9 +479,10 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
-	cmd.PersistentFlags().BoolVar(
-		&suppressPermaLink, "suppress-permalink", false,
+	cmd.PersistentFlags().StringVar(
+		&suppressPermaLink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
+	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
