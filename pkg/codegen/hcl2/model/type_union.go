@@ -155,14 +155,14 @@ func (t *UnionType) AssignableFrom(src Type) bool {
 // type is safely convertible, the conversion is safe; if no element is safely convertible but some element is unsafely
 // convertible, the conversion is unsafe.
 func (t *UnionType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
-func (t *UnionType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		var conversionKind ConversionKind
 		for _, t := range t.ElementTypes {
-			if ck := t.conversionFrom(src, unifying); ck > conversionKind {
+			if ck := t.conversionFrom(src, unifying, seen); ck > conversionKind {
 				conversionKind = ck
 			}
 		}
@@ -173,10 +173,10 @@ func (t *UnionType) conversionFrom(src Type, unifying bool) ConversionKind {
 // If all conversions to a dest type from a union type are safe, the conversion is safe.
 // If no conversions to a dest type from a union type exist, the conversion does not exist.
 // Otherwise, the conversion is unsafe.
-func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
+func (t *UnionType) conversionTo(dest Type, unifying bool, seen map[Type]struct{}) ConversionKind {
 	conversionKind, exists := SafeConversion, false
 	for _, t := range t.ElementTypes {
-		switch dest.conversionFrom(t, unifying) {
+		switch dest.conversionFrom(t, unifying, seen) {
 		case SafeConversion:
 			exists = true
 		case UnsafeConversion:
@@ -192,10 +192,14 @@ func (t *UnionType) conversionTo(dest Type, unifying bool) ConversionKind {
 }
 
 func (t *UnionType) String() string {
+	return t.string(nil)
+}
+
+func (t *UnionType) string(seen map[Type]struct{}) string {
 	if t.s == "" {
 		elements := make([]string, len(t.ElementTypes))
 		for i, e := range t.ElementTypes {
-			elements[i] = e.String()
+			elements[i] = e.string(seen)
 		}
 		t.s = fmt.Sprintf("union(%s)", strings.Join(elements, ", "))
 	}

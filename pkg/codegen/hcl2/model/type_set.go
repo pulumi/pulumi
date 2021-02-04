@@ -72,21 +72,21 @@ func (t *SetType) AssignableFrom(src Type) bool {
 // the entire conversion is unsafe; otherwise the conversion is safe. An unsafe conversion exists from list(U) or
 // or tuple(U_0 ... U_N) to set(T) if a conversion exists from each U to T.
 func (t *SetType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
-func (t *SetType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		switch src := src.(type) {
 		case *SetType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying)
+			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ListType:
-			if conversionKind := t.ElementType.conversionFrom(src.ElementType, unifying); conversionKind == NoConversion {
+			if conversionKind := t.ElementType.conversionFrom(src.ElementType, unifying, seen); conversionKind == NoConversion {
 				return NoConversion
 			}
 			return UnsafeConversion
 		case *TupleType:
-			if conversionKind := NewListType(t.ElementType).conversionFrom(src, unifying); conversionKind == NoConversion {
+			if conversionKind := NewListType(t.ElementType).conversionFrom(src, unifying, seen); conversionKind == NoConversion {
 				return NoConversion
 			}
 			return UnsafeConversion
@@ -96,7 +96,11 @@ func (t *SetType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *SetType) String() string {
-	return fmt.Sprintf("set(%v)", t.ElementType)
+	return t.string(nil)
+}
+
+func (t *SetType) string(seen map[Type]struct{}) string {
+	return fmt.Sprintf("set(%s)", t.ElementType.string(seen))
 }
 
 func (t *SetType) unify(other Type) (Type, ConversionKind) {
@@ -123,7 +127,7 @@ func (t *SetType) unify(other Type) (Type, ConversionKind) {
 			return NewSetType(elementType), conversionKind
 		default:
 			// Prefer the set type.
-			return t, t.conversionFrom(other, true)
+			return t, t.conversionFrom(other, true, nil)
 		}
 	})
 }
