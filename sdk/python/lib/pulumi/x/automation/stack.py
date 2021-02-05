@@ -476,7 +476,7 @@ class Stack:
         """
         args = ["history", "--json", "--show-secrets"]
         if limit is not None:
-            args.extend("--limit", str(limit))
+            args.extend(["--limit", str(limit)])
         result = self._run_pulumi_cmd_sync(args)
         summary_list = json.loads(result.stdout)
 
