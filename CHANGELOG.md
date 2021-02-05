@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [CLI, automation/*] Add `--limit` flag to `pulumi stack history` command and consume this from Automation API SDKs to improve performance of stack updates.
+  [#6257](https://github.com/pulumi/pulumi/pull/6257)
 
 ## 2.20.0 (2021-02-03)
 
