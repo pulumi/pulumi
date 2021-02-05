@@ -1117,6 +1117,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	})
 
+	// Write out Python property getters for all inputs if this is a provider resource because all inputs are implicitly outputs.
+	if res.IsProvider {
+		mod.genProperties(w, res.InputProperties, false /*setters*/, func(prop *schema.Property) string {
+			ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
+			return fmt.Sprintf("pulumi.Output[%s]", ty)
+		})
+	}
+
 	// Override translate_{input|output}_property on each resource to translate between snake case and
 	// camel case when interacting with tfbridge.
 	fmt.Fprintf(w,
