@@ -22,7 +22,7 @@ from typing import List, Any, Mapping, MutableMapping, Optional
 from .cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from .config import ConfigValue, ConfigMap, _SECRET_SENTINEL
 from .errors import StackAlreadyExistsError
-from .server import LanguageServer
+from ._server import LanguageServer
 from .workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
