@@ -86,9 +86,9 @@ class MyOutputTypeDict(dict):
 
     # Property with empty body.
     @property
-    @pulumi.getter(name="firstValue")
+    @pulumi.getter
     def values(self) -> str:
-        """First value docstring."""
+        """Values docstring."""
         ...
 
 
@@ -1195,4 +1195,3 @@ class EnumSerializationTests(unittest.TestCase):
         one = FloatEnum.ZERO_POINT_ONE
         prop = await rpc.serialize_property(one, [])
         self.assertEqual(FloatEnum.ZERO_POINT_ONE, prop)
-
