@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+- [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process. 
+  [#6249](https://github.com/pulumi/pulumi/pull/6249)
 
 ## 2.20.0 (2021-02-03)
 

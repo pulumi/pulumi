@@ -16,7 +16,6 @@
 Support for automatic stack components.
 """
 import asyncio
-import collections
 from inspect import isawaitable
 from typing import Callable, Any, Dict, List, TYPE_CHECKING
 
@@ -45,9 +44,10 @@ async def run_pulumi_func(func: Callable):
         # We await each RPC in turn so that this loop will actually block rather than busy-wait.
         while True:
             await asyncio.sleep(0)
-            if len(RPC_MANAGER.rpcs) == 0:
+            rpcs_remaining = len(RPC_MANAGER.rpcs)
+            if rpcs_remaining == 0:
                 break
-            log.debug(f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding")
+            log.debug(f"waiting for quiescence; {rpcs_remaining} RPCs outstanding")
             await RPC_MANAGER.rpcs.pop()
 
         # Asyncio event loops require that all outstanding tasks be completed by the time that the
