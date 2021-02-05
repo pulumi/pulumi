@@ -36,17 +36,21 @@ class FakeCustomResource(CustomResource):
         self.__dict__["urn"] = Output.from_input(urn)
         self.__dict__["id"] = Output.from_input("id")
 
+
 class FakeComponentResource(ComponentResource):
     def __init__(self, urn):
         self.__dict__["urn"] = Output.from_input(urn)
+
 
 class MyCustomResource(CustomResource):
     def __init__(self, name: str, typ: Optional[str] = None, opts: Optional[ResourceOptions] = None):
         super(MyCustomResource, self).__init__(typ if typ is not None else "test:index:resource", name, None, opts)
 
+
 class MyComponentResource(ComponentResource):
     def __init__(self, name: str, typ: Optional[str] = None, opts: Optional[ResourceOptions] = None):
         super(MyComponentResource, self).__init__(typ if typ is not None else "test:index:component", name, None, opts)
+
 
 class MyResourceModule(ResourceModule):
     def version(self):
@@ -60,6 +64,7 @@ class MyResourceModule(ResourceModule):
         else:
             raise Exception(f"unknown resource type {typ}")
 
+
 class MyMocks(Mocks):
     def call(self, token, args, provider):
         raise Exception(f"unknown function {token}")
@@ -72,8 +77,24 @@ class MyMocks(Mocks):
         else:
             raise Exception(f"unknown resource type {typ}")
 
+
+@pulumi.output_type
+class MyOutputTypeDict(dict):
+
+    def __init__(self, values: list):
+        pulumi.set(self, "values", values)
+
+    # Property with empty body.
+    @property
+    @pulumi.getter(name="firstValue")
+    def values(self) -> str:
+        """First value docstring."""
+        ...
+
+
 def pulumi_test(coro):
     wrapped = pulumi.runtime.test(coro)
+
     def wrapper(*args, **kwargs):
         settings.configure(settings.Settings())
         rpc._RESOURCE_PACKAGES.clear()
@@ -83,6 +104,7 @@ def pulumi_test(coro):
         wrapped(*args, **kwargs)
 
     return wrapper
+
 
 class NextSerializationTests(unittest.TestCase):
     @pulumi_test
@@ -898,6 +920,12 @@ class NextSerializationTests(unittest.TestCase):
         self.assertFalse(await r.is_known())
         self.assertTrue(await r.is_secret())
         self.assertEqual(await r.future(), "inner")
+
+    @pulumi_test
+    async def test_dangerous_prop_output(self):
+        out = self.create_output(MyOutputTypeDict(values=["foo", "bar"]), is_known=True)
+
+        self.assertTrue(await out.is_known())
 
     @pulumi_test
     async def test_apply_unknown_output(self):
