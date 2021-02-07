@@ -25,6 +25,7 @@ from typing import (
     Mapping,
     Any,
     List,
+    Dict,
     Optional,
     TYPE_CHECKING
 )
@@ -321,49 +322,71 @@ class Output(Generic[T]):
         return Output(o._resources, o._future, o._is_known, is_secret)
 
     @staticmethod
-    def all(*args: Input[T]) -> 'Output[List[T]]':
+    def all(*args: Input[T], **kwargs: Input[T]) -> 'Union[Output[List[T]], Output[Dict[T]]]':
         """
-        Produces an Output of Lists from a List of Inputs.
+        Produces an Output of a list (if args i.e a list of inputs are supplied)
+        or dict (if kwargs i.e. keyworded arguments are supplied).
 
         This function can be used to combine multiple, separate Inputs into a single
         Output which can then be used as the target of `apply`. Resource dependencies
         are preserved in the returned Output.
 
+        Examples:
+
+        Output.all(foo, bar) -> Output[[foo, bar]]
+        Output.all(foo=foo, bar=bar) -> Output[{"foo": foo, "bar": bar}]
+
         :param Input[T] args: A list of Inputs to convert.
-        :return: An output of lists, converted from an Input to prompt values.
-        :rtype: Output[List[T]]
+        :param Input[T] kwargs: A list of named Inputs to convert.
+        :return: An output of list or dict, converted from an Input to prompt values.
+        :rtype: Union[Output[List[T]], Output[Dict[T]]]
         """
 
         # Three asynchronous helper functions to assist in the implementation:
         # is_known, which returns True if all of the input's values are known,
         # and false if any of them are not known,
-        async def is_known(outputs):
-            is_known_futures = list(map(lambda o: o._is_known, outputs))
+        async def is_known(outputs: Union[dict, list]):
+            if isinstance(outputs, dict):
+                outputs = [outputs[k] for k in outputs]
+            is_known_futures = [o._is_known for o in outputs]
             each_is_known = await asyncio.gather(*is_known_futures)
             return all(each_is_known)
 
         # is_secret, which returns True if any of the input values are secret, and
         # false if none of them are secret.
-        async def is_secret(outputs):
-            is_secret_futures = list(map(lambda o: o._is_secret, outputs))
+        async def is_secret(outputs: Union[dict, list]):
+            if isinstance(outputs, dict):
+                outputs = [outputs[k] for k in outputs]
+            is_secret_futures = [o._is_secret for o in outputs]
             each_is_secret = await asyncio.gather(*is_secret_futures)
             return any(each_is_secret)
 
-        async def get_resources(outputs):
-            resources_futures = list(map(lambda o: o._resources, outputs))
+        async def get_resources(outputs: Union[dict, list]):
+            if isinstance(outputs, dict):
+                outputs = [outputs[k] for k in outputs]
+            resources_futures = [o._resources for o in outputs]
             resources_agg = await asyncio.gather(*resources_futures)
             # Merge the list of resource dependencies across all inputs.
             return reduce(lambda acc, r: acc.union(r), resources_agg, set())
 
-        # gather_futures, which aggregates the list of futures in each input to a future of a list.
-        async def gather_futures(outputs):
-            value_futures = list(map(lambda o: asyncio.ensure_future(o.future(with_unknowns=True)), outputs))
-            return await asyncio.gather(*value_futures)
+        # gather_futures, which aggregates the list or dict of futures in each input to a future of a list or dict.
+        async def gather_futures(outputs: Union[dict, list]):
+            if isinstance(outputs, list):
+                value_futures = [asyncio.ensure_future(o.future(with_unknowns=True)) for o in outputs]
+                return await asyncio.gather(*value_futures)
+            value_futures = {k: asyncio.ensure_future(v.future(with_unknowns=True)) for k, v in outputs.items()}
+            return await _gather_from_dict(value_futures)
         from_input = cast(Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input)
-        # First, map all inputs to outputs using `from_input`.
-        all_outputs = list(map(from_input, args))
 
-        # Aggregate the list of futures into a future of lists.
+        # First, map all inputs to outputs using `from_input`.
+        if len(args) > 0:
+            all_outputs = list(map(from_input, args))
+        elif len(kwargs) > 0:
+            all_outputs = {k: from_input(v) for k, v in kwargs.items()}
+        else:
+            raise ValueError("Output.all() was supplied no inputs")
+
+        # Aggregate the list or dict of futures into a future of list or dict.
         value_futures = asyncio.ensure_future(gather_futures(all_outputs))
 
         # Aggregate whether or not this output is known.
@@ -389,7 +412,7 @@ class Output(Generic[T]):
 
         transformed_items: List[Input[Any]] = [Output.from_input(v) for v in args]
         # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
-        return Output.all(*transformed_items).apply("".join) # type: ignore
+        return Output.all(*transformed_items).apply("".join)  # type: ignore
 
 
 class Unknown:
@@ -409,3 +432,8 @@ UNKNOWN is the singleton unknown value.
 
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)
+
+
+async def _gather_from_dict(tasks: dict) -> dict:
+    results = await asyncio.gather(*tasks.values())
+    return dict(zip(tasks.keys(), results))
