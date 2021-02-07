@@ -44,7 +44,7 @@ func FindExecutable(program string) (string, error) {
 			fileInfo, err := os.Stat(goPathProgram)
 
 			if err != nil && i+1 == len(potentialPaths) {
-				if os.IsNotExist(err) {
+				if !os.IsNotExist(err) {
 					return "", errors.Wrapf(err, "unable to find program in these paths: %q", strings.Join(potentialPaths, ", "))
 				}
 			}

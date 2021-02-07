@@ -10,7 +10,7 @@ type tt struct {
 	expected int
 }
 
-func TestGetPotentialPathsShouldReturnExpected(t *testing.T) {
+func TestGetPotentialPathsShouldReturnsExpected(t *testing.T) {
 	tests := []tt{
 		{
 			path:     "/home/user/go:/usr/local/go",
