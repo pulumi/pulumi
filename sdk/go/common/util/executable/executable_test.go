@@ -4,14 +4,12 @@ import (
 	"testing"
 )
 
-type tt struct {
-	path     string
-	os       string
-	expected int
-}
-
 func TestGetPotentialPathsShouldReturnsExpected(t *testing.T) {
-	tests := []tt{
+	tt := []struct {
+		path     string
+		os       string
+		expected int
+	}{
 		{
 			path:     "/home/user/go:/usr/local/go",
 			os:       "linux",
@@ -29,7 +27,7 @@ func TestGetPotentialPathsShouldReturnsExpected(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
+	for _, test := range tt {
 		paths := getPotentialPaths(test.path, test.os)
 		if len(paths) != test.expected {
 			t.Errorf("expected path length to be %d, got %d", test.expected, len(paths))
