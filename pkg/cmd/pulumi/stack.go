@@ -43,7 +43,7 @@ func newStackCmd() *cobra.Command {
 		Short: "Manage stacks",
 		Long: "Manage stacks\n" +
 			"\n" +
-			"An stack is a named update target, and a single project may have many of them.\n" +
+			"A stack is a named update target, and a single project may have many of them.\n" +
 			"Each stack has a configuration and update history associated with it, stored in\n" +
 			"the workspace, in addition to a full checkpoint of the last known good update.\n",
 		Args: cmdutil.NoArgs,
@@ -52,7 +52,7 @@ func newStackCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
+			s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

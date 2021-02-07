@@ -132,7 +132,7 @@ func runTotalStateEdit(
 	opts := display.Options{
 		Color: cmdutil.GetGlobalColorization(),
 	}
-	s, err := requireStack(stackName, true, opts, true /*setCurrent*/)
+	s, err := requireStack(stackName, true, opts, false /*setCurrent*/)
 	if err != nil {
 		return result.FromError(err)
 	}
