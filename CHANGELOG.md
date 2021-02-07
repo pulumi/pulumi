@@ -15,6 +15,9 @@ CHANGELOG
 - [sdk/python] Fix a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
   [#6264](https://github.com/pulumi/pulumi/pull/6264)
 
+- [sdk/python] Allow keyword args in Output.all() to create a dict.
+  [#6269](https://github.com/pulumi/pulumi/pull/6269)
+
 ## 2.20.0 (2021-02-03)
 
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
