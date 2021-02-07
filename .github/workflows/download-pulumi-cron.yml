@@ -9,7 +9,7 @@ jobs:
     runs-on: macos-latest
     steps:
       - name: homebrew install
-        run: brew install pulumi
+        run: brew upgrade pulumi
       - name: Pulumi Version Details
         id: vars
         run: |
