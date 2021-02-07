@@ -32,18 +32,27 @@ func FindExecutable(program string) (string, error) {
 		return cwdProgram, nil
 	}
 
-	// look in $GOPATH/bin
+	// look in potentials $GOPATH/bin
 	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
-		goPathProgram := filepath.Join(goPath, "bin", program)
-		fileInfo, err := os.Stat(goPathProgram)
-		if err != nil {
-			if !os.IsNotExist(err) {
-				return "", errors.Wrapf(err, "unable to find program in %q", goPathProgram)
+		// getPotentialPaths will return paths where to look.
+		// Because the GOPATH can take the form of multiple paths (e.g: GOPATH="home/user/go:/usr/local/go")
+		// we need to split the GOPATH, and look into each of the paths.
+		// If the GOPATH hold only one path, there will only be one element in the slice.
+		potentialPaths := getPotentialPaths(goPath, runtime.GOOS)
+		for i, pp := range potentialPaths {
+			goPathProgram := filepath.Join(pp, "bin", program)
+			fileInfo, err := os.Stat(goPathProgram)
+
+			if err != nil && i+1 == len(potentialPaths) {
+				if os.IsNotExist(err) {
+					return "", errors.Wrapf(err, "unable to find program in these paths: %q", strings.Join(potentialPaths, ", "))
+				}
 			}
-		}
-		if fileInfo != nil && !fileInfo.Mode().IsDir() {
-			logging.V(5).Infof("program %s found in $GOPATH/bin", program)
-			return goPathProgram, nil
+
+			if fileInfo != nil && !fileInfo.Mode().IsDir() {
+				logging.V(5).Infof("program %s found in %s/bin", program, pp)
+				return goPathProgram, nil
+			}
 		}
 	}
 
@@ -54,4 +63,16 @@ func FindExecutable(program string) (string, error) {
 	}
 
 	return "", errors.Errorf(unableToFindProgramTemplate, program)
+}
+
+func getPotentialPaths(goPath string, os string) []string {
+	var sep string
+	switch os {
+	case "windows":
+		sep = ";"
+	case "linux", "darwin":
+		sep = ":"
+	}
+
+	return strings.Split(goPath, sep)
 }
