@@ -331,10 +331,10 @@ class Output(Generic[T]):
         Output which can then be used as the target of `apply`. Resource dependencies
         are preserved in the returned Output.
 
-        Examples:
+        Examples::
 
-        Output.all(foo, bar) -> Output[[foo, bar]]
-        Output.all(foo=foo, bar=bar) -> Output[{"foo": foo, "bar": bar}]
+            Output.all(foo, bar) -> Output[[foo, bar]]
+            Output.all(foo=foo, bar=bar) -> Output[{"foo": foo, "bar": bar}]
 
         :param Input[T] args: A list of Inputs to convert.
         :param Input[T] kwargs: A list of named Inputs to convert.
