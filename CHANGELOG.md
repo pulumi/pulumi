@@ -2,6 +2,8 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+- [sdk/go] Support mutiple folders in GOPATH.
+  [#6228](https://github.com/pulumi/pulumi/pull/6228)
 
 - [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process. 
   [#6249](https://github.com/pulumi/pulumi/pull/6249)
