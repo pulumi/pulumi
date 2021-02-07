@@ -677,15 +677,45 @@ func TestConstructNode(t *testing.T) {
 		t.Skip("Temporarily skipping test on Windows")
 	}
 
-	opts := &integration.ProgramTestOptions{
-		Env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+	tests := []struct {
+		componentDir          string
+		expectedResourceCount int
+		env                   []string
+	}{
+		{
+			componentDir:          "testcomponent",
+			expectedResourceCount: 9,
+		},
+		{
+			componentDir:          "testcomponent-python",
+			expectedResourceCount: 9,
+			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir:          "testcomponent-go",
+			expectedResourceCount: 8, // One less because no dynamic provider.
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			integration.ProgramTest(t,
+				optsForConstructNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+		})
+	}
+}
+
+func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+	return &integration.ProgramTestOptions{
+		Env:          env,
 		Dir:          filepath.Join("construct_component", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		NoParallel:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
-			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
+			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
 				stackRes := stackInfo.Deployment.Resources[0]
 				assert.NotNil(t, stackRes)
 				assert.Equal(t, resource.RootStackType, stackRes.Type)
@@ -710,11 +740,6 @@ func TestConstructNode(t *testing.T) {
 			}
 		},
 	}
-
-	runProgramSubTests(t, opts, map[string]string{
-		"WithNodeProvider":   componentPathEnv(t, "construct_component", "testcomponent"),
-		"WithPythonProvider": componentPathEnv(t, "construct_component", "testcomponent-python"),
-	})
 }
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.

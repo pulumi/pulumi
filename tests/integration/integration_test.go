@@ -567,11 +567,6 @@ func TestConfigPaths(t *testing.T) {
 }
 
 //nolint:golint,deadcode
-func testComponentPathEnv(t *testing.T) string {
-	return componentPathEnv(t, "construct_component", "testcomponent")
-}
-
-//nolint:golint,deadcode
 func testComponentSlowPathEnv(t *testing.T) string {
 	return componentPathEnv(t, "construct_component_slow", "testcomponent")
 }

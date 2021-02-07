@@ -292,6 +292,7 @@
 
   <Target Name="TestBuild">
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent" />
 
