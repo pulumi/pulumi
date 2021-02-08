@@ -588,7 +588,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: "#input",
+				Link: "#inputs",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -636,7 +636,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: "#input",
+				Link: "#inputs",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -684,7 +684,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: propertyType{
 				Name: name + "Args",
-				Link: "#input",
+				Link: "#inputs",
 			},
 			Comment: ctorArgsArgComment,
 		},
