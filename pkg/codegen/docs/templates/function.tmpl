@@ -63,23 +63,6 @@ The following output properties are available:
 
 {{ range .NestedTypes }}
 <h4 id="{{ .AnchorID }}">{{ htmlSafe .Name }}</h4>
-{{ if (hasDocLinksForLang .APIDocLinks "nodejs") -}}
-{{ htmlSafe "{{% choosable language nodejs %}}" }}
-> See the {{ if ne .APIDocLinks.nodejs.InputType "" }}<a href="{{ .APIDocLinks.nodejs.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.nodejs.InputType "") (ne .APIDocLinks.nodejs.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.nodejs.OutputType "" }}<a href="{{ .APIDocLinks.nodejs.OutputType }}">output</a>{{ end }} API doc for this type.
-{{ htmlSafe "{{% /choosable %}}" }}
-{{- end }}
-
-{{ if (hasDocLinksForLang .APIDocLinks "go") -}}
-{{ htmlSafe "{{% choosable language go %}}" }}
-> See the {{ if ne .APIDocLinks.go.InputType "" }}<a href="{{ .APIDocLinks.go.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.go.InputType "") (ne .APIDocLinks.go.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.go.OutputType "" }}<a href="{{ .APIDocLinks.go.OutputType }}">output</a>{{ end }} API doc for this type.
-{{ htmlSafe "{{% /choosable %}}" }}
-{{- end }}
-
-{{- if (hasDocLinksForLang .APIDocLinks "csharp") }}
-{{ htmlSafe "{{% choosable language csharp %}}" }}
-> See the {{ if ne .APIDocLinks.csharp.InputType "" }}<a href="{{ .APIDocLinks.csharp.InputType }}">input</a>{{ end }} {{ if and (ne .APIDocLinks.csharp.InputType "") (ne .APIDocLinks.csharp.OutputType "") }}and{{ end }} {{ if ne .APIDocLinks.csharp.OutputType "" }}<a href="{{ .APIDocLinks.csharp.OutputType }}">output</a>{{ end }} API doc for this type.
-{{ htmlSafe "{{% /choosable %}}" }}
-{{- end }}
 
 {{ template "properties" .Properties }}
 {{ end }}
