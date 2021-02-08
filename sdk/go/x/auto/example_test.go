@@ -1034,7 +1034,8 @@ func ExampleStack_History() {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
-	hist, _ := stack.History(ctx)
+	limit := 0 // fetch all history entries
+	hist, _ := stack.History(ctx, limit)
 	// last operation start time
 	fmt.Println(hist[0].StartTime)
 }

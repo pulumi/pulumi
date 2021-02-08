@@ -91,12 +91,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -323,7 +324,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		return res, err
 	}
 
-	history, err := s.History(ctx)
+	history, err := s.History(ctx, 1 /*limit*/)
 	if err != nil {
 		return res, err
 	}
@@ -383,7 +384,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx)
+	history, err := s.History(ctx, 1 /*limit*/)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
@@ -443,7 +444,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx)
+	history, err := s.History(ctx, 1 /*limit*/)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
@@ -510,10 +511,14 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
 // (up/preview/refresh/destroy).
-func (s *Stack) History(ctx context.Context) ([]UpdateSummary, error) {
+func (s *Stack) History(ctx context.Context, limit int) ([]UpdateSummary, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
+	}
+	args := []string{"history", "--json", "--show-secrets"}
+	if limit > 0 {
+		args = append(args, "--limit", fmt.Sprintf("%d", limit))
 	}
 
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */

@@ -373,9 +373,13 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 }
 
 // GetStackUpdates returns all updates to the indicated stack.
-func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier) ([]apitype.UpdateInfo, error) {
+func (pc *Client) GetStackUpdates(ctx context.Context, stack StackIdentifier, pageSize int) ([]apitype.UpdateInfo, error) {
 	var response apitype.GetHistoryResponse
-	if err := pc.restCall(ctx, "GET", getStackPath(stack, "updates"), nil, nil, &response); err != nil {
+	path := getStackPath(stack, "updates")
+	if pageSize > 0 {
+		path += fmt.Sprintf("?pageSize=%d&page=1", pageSize)
+	}
+	if err := pc.restCall(ctx, "GET", path, nil, nil, &response); err != nil {
 		return nil, err
 	}
 

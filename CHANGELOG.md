@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [CLI, automation/*] Add `--limit` flag to `pulumi stack history` command and consume this from Automation API SDKs to improve performance of stack updates.
+  [#6257](https://github.com/pulumi/pulumi/pull/6257)
+
 - [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process. 
   [#6249](https://github.com/pulumi/pulumi/pull/6249)
 
