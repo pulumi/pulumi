@@ -521,9 +521,7 @@ func (s *Stack) History(ctx context.Context, limit int) ([]UpdateSummary, error)
 		args = append(args, "--limit", fmt.Sprintf("%d", limit))
 	}
 
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"history", "--json", "--show-secrets",
-	)
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutputs */, args...)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
 	}
