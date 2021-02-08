@@ -746,7 +746,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	mod.getTypes(member, tokens)
 
 	var typs []docNestedType
-	for token, _ := range tokens {
+	for token := range tokens {
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
