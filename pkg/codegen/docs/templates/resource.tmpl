@@ -27,11 +27,11 @@
     "def Bucket(resource_name, opts=None, acceleration_status=None, ..."
 */}}
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "linkify_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-typescript" data-lang="typescript"><span class="k">new </span>{{ template "unlinked_param" .ConstructorResource.nodejs }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.nodejs }}<span class="p">);</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language python %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ template "unlinked_param" .ConstructorResource.python }}<span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}
@@ -39,7 +39,7 @@
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language csharp %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "linkify_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-csharp" data-lang="csharp"><span class="k">public </span>{{ template "unlinked_param" .ConstructorResource.csharp }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.csharp }}<span class="p">)</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language nodejs %}}" }}
