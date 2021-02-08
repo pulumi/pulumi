@@ -94,6 +94,7 @@ func RunCommand(t *testing.T, name string, args []string, wd string, opts *Progr
 		if logFile, err := writeCommandOutput(name, wd, runout); err != nil {
 			t.Logf("Failed to write output: %v", err)
 		} else {
+			t.Logf(string(runout))
 			t.Logf("Wrote output to %s", logFile)
 		}
 	} else {
