@@ -27,7 +27,8 @@ from typing import (
     List,
     Dict,
     Optional,
-    TYPE_CHECKING
+    TYPE_CHECKING,
+    overload
 )
 
 from . import _types
@@ -263,7 +264,7 @@ class Output(Generic[T]):
             # Since Output.all works on lists early, serialize this dictionary into a list of lists first.
             # Once we have a output of the list of properties, we can use an apply to re-hydrate it back into a dict.
             dict_items = [[k, Output.from_input(v)] for k, v in val.items()]
-            # type checker doesn't like returing a Dict in the apply callback
+            # type checker doesn't like returning a Dict in the apply callback
             fn = cast(Callable[[List[Any]], T], lambda props: {k: v for k, v in props}) # pylint: disable=unnecessary-comprehension
             return Output.all(*dict_items).apply(fn, True)
 
@@ -321,8 +322,18 @@ class Output(Generic[T]):
         is_secret.set_result(True)
         return Output(o._resources, o._future, o._is_known, is_secret)
 
+    @overload
     @staticmethod
-    def all(*args: Input[T], **kwargs: Input[T]) -> 'Union[Output[List[T]], Output[Dict[T]]]':
+    def all(*args: Input[T]) -> 'Output[List[T]]':
+        ...
+
+    @overload
+    @staticmethod
+    def all(**kwargs: Input[T]) -> 'Output[Dict[T]]':
+        ...
+
+    @staticmethod
+    def all(*args: Input[T], **kwargs: Input[T]):
         """
         Produces an Output of a list (if args i.e a list of inputs are supplied)
         or dict (if kwargs i.e. keyworded arguments are supplied).
@@ -338,8 +349,7 @@ class Output(Generic[T]):
 
         :param Input[T] args: A list of Inputs to convert.
         :param Input[T] kwargs: A list of named Inputs to convert.
-        :return: An output of list or dict, converted from an Input to prompt values.
-        :rtype: Union[Output[List[T]], Output[Dict[T]]]
+        :return: An output of list or dict, converted from unnamed or named Inputs respectively.
         """
 
         # Three asynchronous helper functions to assist in the implementation:
