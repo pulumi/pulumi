@@ -692,6 +692,18 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 			if err != nil {
 				return "", errors.Wrapf(err, "Expected to find one of %q on $PATH", pythonCmds)
 			}
+
+			// If the path is a symlink, follow it.
+			info, err := os.Lstat(pt.pythonBin)
+			if err != nil {
+				return "", err
+			}
+			if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+				pt.pythonBin, err = os.Readlink(pt.pythonBin)
+				if err != nil {
+					return "", err
+				}
+			}
 		}
 	}
 	return pt.pythonBin, nil

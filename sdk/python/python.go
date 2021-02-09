@@ -70,6 +70,19 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
 		return exec.Command(shimCmd, arg...), nil
 	}
+
+	// If the path is a symlink, follow it.
+	info, err := os.Lstat(pythonPath)
+	if err != nil {
+		return nil, err
+	}
+	if info.Mode()&os.ModeSymlink == os.ModeSymlink {
+		pythonPath, err = os.Readlink(pythonPath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
 	return exec.Command(pythonPath, arg...), nil
 }
 
