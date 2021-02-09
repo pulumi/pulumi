@@ -46,6 +46,8 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		pythonCmds = []string{"python3", "python"}
 	}
 
+	fmt.Printf("JVP: Looking for the following Python binaries: %q\n", pythonCmds)
+
 	var pythonCmd, pythonPath string
 	for _, pythonCmd = range pythonCmds {
 		pythonPath, err = exec.LookPath(pythonCmd)
@@ -82,6 +84,8 @@ func Command(arg ...string) (*exec.Cmd, error) {
 			return nil, err
 		}
 	}
+
+	fmt.Printf("JVP: Using Python Path: %q\n", pythonPath)
 
 	return exec.Command(pythonPath, arg...), nil
 }
