@@ -28,7 +28,8 @@ func newHistoryCmd() *cobra.Command {
 	var stack string
 	var jsonOut bool
 	var showSecrets bool
-	var limit int
+	var pageSize int
+	var page int
 	var cmd = &cobra.Command{
 		Use:        "history",
 		Aliases:    []string{"hist"},
@@ -50,7 +51,7 @@ func newHistoryCmd() *cobra.Command {
 			}
 
 			b := s.Backend()
-			updates, err := b.GetHistory(commandContext(), s.Ref(), limit)
+			updates, err := b.GetHistory(commandContext(), s.Ref(), pageSize, page)
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
@@ -67,7 +68,7 @@ func newHistoryCmd() *cobra.Command {
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, opts)
+			return displayUpdatesConsole(updates, page, opts)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(
@@ -78,7 +79,9 @@ func newHistoryCmd() *cobra.Command {
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().IntVarP(
-		&limit, "limit", "l", 0, "Limit the number of entries returned, defaults to all")
+	cmd.PersistentFlags().IntVar(
+		&pageSize, "pageSize", 0, "Used with 'page' to control number of results returned")
+	cmd.PersistentFlags().IntVar(
+		&page, "page", 0, "Used with 'pageSize' to paginate results")
 	return cmd
 }
