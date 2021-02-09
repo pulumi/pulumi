@@ -74,9 +74,9 @@ This command displays data about previous updates for a stack.`,
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
 	cmd.PersistentFlags().IntVar(
-		&pageSize, "pageSize", 0, "Used with 'page' to control number of results returned")
+		&pageSize, "page-size", 0, "Used with 'page' to control number of results returned")
 	cmd.PersistentFlags().IntVar(
-		&page, "page", 0, "Used with 'pageSize' to paginate results")
+		&page, "page", 0, "Used with 'page-size' to paginate results")
 	return cmd
 }
 

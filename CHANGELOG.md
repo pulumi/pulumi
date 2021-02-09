@@ -3,7 +3,7 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
-- [CLI] Add pagination options to `pulumi stack history` (`--page`, `--pageSize`). These replace the `--limit` flag.
+- [CLI] Add pagination options to `pulumi stack history` (`--page`, `--page-size`). These replace the `--limit` flag.
   [#6292](https://github.com/pulumi/pulumi/pull/6292)
 
 - [CLI, automation/*] Add `--limit` flag to `pulumi stack history` command and consume this from Automation API SDKs to improve performance of stack updates.

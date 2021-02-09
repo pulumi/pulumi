@@ -522,7 +522,7 @@ func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSu
 		if page < 1 {
 			page = 1
 		}
-		args = append(args, "--pageSize", fmt.Sprintf("%d", pageSize), "--page", fmt.Sprintf("%d", page))
+		args = append(args, "--page-size", fmt.Sprintf("%d", pageSize), "--page", fmt.Sprintf("%d", page))
 	}
 
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutputs */, args...)

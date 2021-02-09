@@ -421,7 +421,7 @@ export class Stack {
             if (!page || page < 1) {
                 page = 1
             }
-            args.push("--pageSize", Math.floor(pageSize).toString(), "--page", Math.floor(page).toString())
+            args.push("--page-size", Math.floor(pageSize).toString(), "--page", Math.floor(page).toString())
         }
         const result = await this.runPulumiCmd(args);
       

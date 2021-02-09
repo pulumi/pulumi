@@ -481,7 +481,7 @@ class Stack:
             # default page=1 when pageSize is set
             if page is None:
                 page = 1
-            args.extend(["--pageSize", str(pageSize), "--page", str(page)])
+            args.extend(["--page-size", str(pageSize), "--page", str(page)])
         result = self._run_pulumi_cmd_sync(args)
         summary_list = json.loads(result.stdout)
 
