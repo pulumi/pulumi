@@ -156,12 +156,6 @@ jobs:
           echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
       - name: Install AWS CLI Tools
         uses: chrislennon/action-aws-cli@v1.1
-      - run: |
-          where python3
-          where python
-          mkdir /tmp/testing-venv
-          cd /tmp/testing-venv
-          python3 -m venv ./venv
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
         with:
