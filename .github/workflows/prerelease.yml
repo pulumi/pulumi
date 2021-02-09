@@ -226,8 +226,11 @@ jobs:
         run: dotnet nuget locals all --clear
       - name: Install Python Deps
         run: |
-          pip3 install pyenv-win
-          pip3 install pipenv
+          pip install --upgrade pip==20.3.3
+          pip install pyenv-win==2.64.3
+          pip install pipenv
+          pip install virtualenv
+      - run: pip -V
       - name: Set Build Env Vars
         shell: bash
         run: |

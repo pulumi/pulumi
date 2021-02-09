@@ -145,8 +145,11 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install Python Deps
         run: |
-          pip3 install pyenv-win
-          pip3 install pipenv
+          pip install --upgrade pip==20.3.3
+          pip install pyenv-win==2.64.3
+          pip install pipenv
+          pip install virtualenv
+      - run: pip -V
       - name: Set Build Env Vars
         shell: bash
         run: |
@@ -185,6 +188,8 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+      - run: dir D:\a\pulumi\pulumi\src\github.com\pulumi\pulumi\sdk\python\env\src
+      - run: pip install -e D:\a\pulumi\pulumi\src\github.com\pulumi\pulumi\sdk\python\env\src
       - name: Run Pulumi Tests
         run: |
           cd src\github.com\${{ github.repository }}
