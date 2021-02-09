@@ -325,7 +325,7 @@ class Output(Generic[T]):
     @overload
     @staticmethod
     # According to mypy these overloads unsafely overlap, so we ignore the type check.
-    # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=All%20of%20the%20arguments%20of%20the,not%20a%20subtype%20of)%20the%20second.
+    # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
     def all(*args: Input[T]) -> 'Output[List[T]]':  # type: ignore
         ...
 
@@ -357,25 +357,19 @@ class Output(Generic[T]):
         # Three asynchronous helper functions to assist in the implementation:
         # is_known, which returns True if all of the input's values are known,
         # and false if any of them are not known,
-        async def is_known(outputs: Union[dict, list]):
-            if isinstance(outputs, dict):
-                outputs = [outputs[k] for k in outputs]
+        async def is_known(outputs: list):
             is_known_futures = [o._is_known for o in outputs]
             each_is_known = await asyncio.gather(*is_known_futures)
             return all(each_is_known)
 
         # is_secret, which returns True if any of the input values are secret, and
         # false if none of them are secret.
-        async def is_secret(outputs: Union[dict, list]):
-            if isinstance(outputs, dict):
-                outputs = [outputs[k] for k in outputs]
+        async def is_secret(outputs: list):
             is_secret_futures = [o._is_secret for o in outputs]
             each_is_secret = await asyncio.gather(*is_secret_futures)
             return any(each_is_secret)
 
-        async def get_resources(outputs: Union[dict, list]):
-            if isinstance(outputs, dict):
-                outputs = [outputs[k] for k in outputs]
+        async def get_resources(outputs: list):
             resources_futures = [o._resources for o in outputs]
             resources_agg = await asyncio.gather(*resources_futures)
             # Merge the list of resource dependencies across all inputs.
@@ -390,21 +384,24 @@ class Output(Generic[T]):
             return await _gather_from_dict(value_futures_dict)
         from_input = cast(Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input)
 
-        # First, map all inputs to outputs using `from_input`.
-        if len(args) > 0:
-            all_outputs: Union[list, dict] = list(map(from_input, args))
-        elif len(kwargs) > 0:
-            all_outputs = {k: from_input(v) for k, v in kwargs.items()}
-        else:
+        if not args and not kwargs:
             raise ValueError("Output.all() was supplied no inputs")
+        if args and kwargs:
+            raise ValueError("Output.all() was supplied a mix of named and unnamed inputs")
+        # First, map all inputs to outputs using `from_input`.
+        if args:
+            all_outputs: Union[list, dict] = [from_input(x) for x in args]
+        else:
+            all_outputs = {k: from_input(v) for k, v in kwargs.items()}
 
         # Aggregate the list or dict of futures into a future of list or dict.
         value_futures = asyncio.ensure_future(gather_futures(all_outputs))
 
         # Aggregate whether or not this output is known.
-        resources_futures = asyncio.ensure_future(get_resources(all_outputs))
-        known_futures = asyncio.ensure_future(is_known(all_outputs))
-        secret_futures = asyncio.ensure_future(is_secret(all_outputs))
+        output_values = [all_outputs[k] for k in all_outputs] if isinstance(all_outputs, dict) else all_outputs
+        resources_futures = asyncio.ensure_future(get_resources(output_values))
+        known_futures = asyncio.ensure_future(is_known(output_values))
+        secret_futures = asyncio.ensure_future(is_secret(output_values))
         return Output(resources_futures, value_futures, known_futures, secret_futures)
 
     @staticmethod

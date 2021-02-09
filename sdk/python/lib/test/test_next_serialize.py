@@ -304,11 +304,12 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual({"out": 42, "other": 99}, prop_dict)
 
     @pulumi_test
-    async def test_output_all_failure(self):
+    async def test_output_all_failure_no_inputs(self):
         self.assertRaises(ValueError, Output.all)
+        self.assertRaisesRegex(ValueError, "Output.all() was supplied no inputs")
 
     @pulumi_test
-    async def test_output_all_args_prioritized_if_mixed(self):
+    async def test_output_all_failure_mixed_inputs(self):
         res = FakeCustomResource("some-resource")
         fut = asyncio.Future()
         fut.set_result(42)
@@ -317,11 +318,8 @@ class NextSerializationTests(unittest.TestCase):
         out = Output({res}, fut, known_fut)
 
         other = Output.from_input(99)
-        combined = Output.all(out, other=other)
-        deps = []
-        prop = await rpc.serialize_property(combined, deps)
-        self.assertSetEqual(set(deps), {res})
-        self.assertEqual([42], prop)
+        self.assertRaises(ValueError, Output.all, out, other=other)
+        self.assertRaisesRegex(ValueError, "Output.all() was supplied a mix of named and unnamed inputs")
 
     @pulumi_test
     async def test_output_all_composes_dependencies(self):
