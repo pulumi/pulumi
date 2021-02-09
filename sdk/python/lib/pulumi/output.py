@@ -256,7 +256,7 @@ class Output(Generic[T]):
             # Since Output.all works on lists early, serialize the class's __dict__ into a list of lists first.
             # Once we have a output of the list of properties, we can use an apply to re-hydrate it back as an instance.
             items = [[k, Output.from_input(v)] for k, v in val.__dict__.items()]
-            fn = cast(Callable[[List[Any]], T], lambda props: typ(**{k: v for k, v in props}))
+            fn = cast(Callable[[List[Any]], T], lambda props: typ(**{k: v for k, v in props}))  # type: ignore
             return Output.all(*items).apply(fn, True)
 
         # Is a dict or list? Recurse into the values within them.
@@ -324,12 +324,14 @@ class Output(Generic[T]):
 
     @overload
     @staticmethod
-    def all(*args: Input[T]) -> 'Output[List[T]]':
+    # According to mypy these overloads unsafely overlap, so we ignore the type check.
+    # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=All%20of%20the%20arguments%20of%20the,not%20a%20subtype%20of)%20the%20second.
+    def all(*args: Input[T]) -> 'Output[List[T]]':  # type: ignore
         ...
 
     @overload
     @staticmethod
-    def all(**kwargs: Input[T]) -> 'Output[Dict[T]]':
+    def all(**kwargs: Input[T]) -> 'Output[Dict[str, T]]':
         ...
 
     @staticmethod
@@ -382,15 +384,15 @@ class Output(Generic[T]):
         # gather_futures, which aggregates the list or dict of futures in each input to a future of a list or dict.
         async def gather_futures(outputs: Union[dict, list]):
             if isinstance(outputs, list):
-                value_futures = [asyncio.ensure_future(o.future(with_unknowns=True)) for o in outputs]
-                return await asyncio.gather(*value_futures)
-            value_futures = {k: asyncio.ensure_future(v.future(with_unknowns=True)) for k, v in outputs.items()}
-            return await _gather_from_dict(value_futures)
+                value_futures_list = [asyncio.ensure_future(o.future(with_unknowns=True)) for o in outputs]
+                return await asyncio.gather(*value_futures_list)
+            value_futures_dict = {k: asyncio.ensure_future(v.future(with_unknowns=True)) for k, v in outputs.items()}
+            return await _gather_from_dict(value_futures_dict)
         from_input = cast(Callable[[Union[T, Awaitable[T], Output[T]]], Output[T]], Output.from_input)
 
         # First, map all inputs to outputs using `from_input`.
         if len(args) > 0:
-            all_outputs = list(map(from_input, args))
+            all_outputs: Union[list, dict] = list(map(from_input, args))
         elif len(kwargs) > 0:
             all_outputs = {k: from_input(v) for k, v in kwargs.items()}
         else:
