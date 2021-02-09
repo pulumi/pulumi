@@ -182,19 +182,12 @@ type enum struct {
 	DeprecationMessage string
 }
 
-// apiTypeDocLinks represents the links for a type's input and output API doc.
-type apiTypeDocLinks struct {
-	InputType  string
-	OutputType string
-}
-
 // docNestedType represents a complex type.
 type docNestedType struct {
-	Name        string
-	AnchorID    string
-	APIDocLinks map[string]apiTypeDocLinks
-	Properties  map[string][]property
-	EnumValues  map[string][]enum
+	Name       string
+	AnchorID   string
+	Properties map[string][]property
+	EnumValues map[string][]enum
 }
 
 // propertyType represents the type of a property.
@@ -329,13 +322,12 @@ func (ss nestedTypeUsageInfo) contains(token string, input bool) bool {
 }
 
 type modContext struct {
-	pkg          *schema.Package
-	mod          string
-	resources    []*schema.Resource
-	functions    []*schema.Function
-	children     []*modContext
-	tool         string
-	emitAPILinks bool
+	pkg       *schema.Package
+	mod       string
+	resources []*schema.Resource
+	functions []*schema.Function
+	children  []*modContext
+	tool      string
 }
 
 func resourceName(r *schema.Resource) string {
@@ -554,11 +546,8 @@ const (
 func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
 	docLangHelper := getLanguageDocHelper("nodejs")
-	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
-	modName := mod.getLanguageModuleName("nodejs")
 
 	var argsType string
-	var argsDocLink string
 	optsType := "CustomResourceOptions"
 	// The args type for k8s package differs from the rest depending on whether we are dealing with
 	// overlay resources or regular k8s resources.
@@ -569,12 +558,9 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			} else {
 				argsType = name + "Opts"
 			}
-			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
 		} else {
 			// The non-schema-based k8s codegen does not apply a suffix to the input types.
 			argsType = name
-			// The args types themselves are all under the input types module path, so use the input type link for the args type.
-			argsDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, argsType, true)
 		}
 
 		if mod.isComponentResource() {
@@ -582,10 +568,6 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 		}
 	} else {
 		argsType = name + "Args"
-		// All args types are in the same module path as the resource class itself even though it is an "input" type.
-		if mod.emitAPILinks {
-			argsDocLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
-		}
 	}
 
 	argsFlag := ""
@@ -606,7 +588,7 @@ func (mod *modContext) genConstructorTS(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: argsDocLink,
+				Link: "#inputs",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -631,13 +613,6 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("go")
-	// Use the Go module to package lookup to transform the module name to its normalized package name.
-	modName := mod.getLanguageModuleName("go")
-
-	var argsTypeLink string
-	if mod.emitAPILinks {
-		argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, argsType)
-	}
 
 	return []formalParam{
 		{
@@ -661,7 +636,7 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 			OptionalFlag: argsFlag,
 			Type: propertyType{
 				Name: argsType,
-				Link: argsTypeLink,
+				Link: "#inputs",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -679,44 +654,10 @@ func (mod *modContext) genConstructorGo(r *schema.Resource, argsOptional bool) [
 
 func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) []formalParam {
 	name := resourceName(r)
-	argsSchemaType := &schema.ObjectType{
-		Token:   r.Token,
-		Package: mod.pkg,
-	}
-	// Get the C#-specific name for the args type, which will be the fully-qualified name.
-	characteristics := propertyCharacteristics{
-		input:    true,
-		optional: argsOptional,
-	}
-
-	var argLangTypeName string
 	optsType := "CustomResourceOptions"
 
-	// Constructor argument types in the k8s package for C# use a different namespace path.
-	// K8s overlay resources are in the same namespace path as the resource itself.
-	if isKubernetesPackage(mod.pkg) {
-		if mod.mod != "" {
-			correctModName := mod.getLanguageModuleName("csharp")
-			if !mod.isKubernetesOverlayModule() {
-				// For k8s, the args type for a resource is part of the `Types.Inputs` namespace.
-				argLangTypeName = "Pulumi.Kubernetes.Types.Inputs." + correctModName + "." + name + "Args"
-			} else {
-				// Helm's resource args type does not use the version number.
-				if strings.HasPrefix(mod.mod, "helm") {
-					correctModName = "Helm"
-				}
-				argLangTypeName = "Pulumi.Kubernetes." + correctModName + "." + name + "Args"
-			}
-		} else {
-			argLangTypeName = "Pulumi.Kubernetes." + name + "Args"
-		}
-
-		if mod.isComponentResource() {
-			optsType = "ComponentResourceOptions"
-		}
-	} else {
-		argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false)
-		argLangTypeName = strings.ReplaceAll(argLangType.Name, "Inputs.", "")
+	if isKubernetesPackage(mod.pkg) && mod.isComponentResource() {
+		optsType = "ComponentResourceOptions"
 	}
 
 	var argsFlag string
@@ -728,11 +669,6 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 
 	docLangHelper := getLanguageDocHelper("csharp")
-
-	var argsTypeLink string
-	if mod.emitAPILinks {
-		argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName)
-	}
 
 	return []formalParam{
 		{
@@ -748,7 +684,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 			DefaultValue: argsDefault,
 			Type: propertyType{
 				Name: name + "Args",
-				Link: argsTypeLink,
+				Link: "#inputs",
 			},
 			Comment: ctorArgsArgComment,
 		},
@@ -812,10 +748,8 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 	// and if it appears in an input object and/or output object.
 	mod.getTypes(member, tokens)
 
-	isK8s := isKubernetesPackage(mod.pkg)
-
 	var typs []docNestedType
-	for token, tyUsage := range tokens {
+	for token := range tokens {
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
@@ -823,71 +757,17 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 					continue
 				}
 
-				// Create maps to hold the per-language properties of this object and links to
-				// the API doc for each language.
+				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
-				apiDocLinks := make(map[string]apiTypeDocLinks)
 				for _, lang := range supportedLanguages {
-					// The nested type may be under a different package in a language.
-					// For example, in k8s, common types are in the core/v1 module and can appear in
-					// nested types elsewhere. So we use the appropriate name of that type,
-					// as well as its language-specific name. For example, module name for use as a C# namespace
-					// or as a Go package name.
-					modName := mod.getLanguageModuleName(lang)
-					nestedTypeModName := mod.pkg.TokenToModule(token)
-					if nestedTypeModName != mod.mod {
-						modName = mod.getLanguageModuleName(lang)
-					}
-
-					docLangHelper := getLanguageDocHelper(lang)
-					inputCharacteristics := propertyCharacteristics{
-						input:    true,
-						optional: true,
-					}
-					outputCharacteristics := propertyCharacteristics{
-						input:    false,
-						optional: true,
-					}
-					inputObjLangType := mod.typeString(t, lang, inputCharacteristics, false /*insertWordBreaks*/)
-					outputObjLangType := mod.typeString(t, lang, outputCharacteristics, false /*insertWordBreaks*/)
-
-					// Get the doc link for this nested type based on whether the type is for a Function or a Resource.
-					var inputTypeDocLink string
-					var outputTypeDocLink string
-					if resourceType {
-						if tyUsage.Input {
-							inputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
-						}
-						if tyUsage.Output {
-							outputTypeDocLink = docLangHelper.GetDocLinkForResourceInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
-						}
-					} else {
-						if tyUsage.Input {
-							inputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, inputObjLangType.Name, true)
-						}
-						if tyUsage.Output {
-							outputTypeDocLink = docLangHelper.GetDocLinkForFunctionInputOrOutputType(mod.pkg, modName, outputObjLangType.Name, false)
-						}
-					}
-
 					props[lang] = mod.getProperties(typ.Properties, lang, true, true)
-					// Don't add C# type links for Kubernetes because there are differences in the namespaces between the schema code gen and
-					// the current code gen that the package uses. So the links will be incorrect.
-					if isK8s && lang == "csharp" {
-						continue
-					}
-					apiDocLinks[lang] = apiTypeDocLinks{
-						InputType:  inputTypeDocLink,
-						OutputType: outputTypeDocLink,
-					}
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
 				typs = append(typs, docNestedType{
-					Name:        wbr(name),
-					AnchorID:    strings.ToLower(name),
-					APIDocLinks: apiDocLinks,
-					Properties:  props,
+					Name:       wbr(name),
+					AnchorID:   strings.ToLower(name),
+					Properties: props,
 				})
 			case *schema.EnumType:
 				if typ.Token != token || len(typ.Elements) == 0 {
@@ -1086,7 +966,6 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		// Reset the type name back to the display name.
 		resourceTypeName = resourceDisplayName
 
-		docLangHelper := getLanguageDocHelper(lang)
 		switch lang {
 		case "nodejs", "go", "python":
 			// Intentionally left blank.
@@ -1108,15 +987,9 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 		parts := strings.Split(resourceTypeName, ".")
 		displayName := parts[len(parts)-1]
 
-		var link string
-		if mod.emitAPILinks {
-			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, resourceTypeName)
-		}
-
 		resourceMap[lang] = propertyType{
 			Name:        resourceDisplayName,
 			DisplayName: displayName,
-			Link:        link,
 		}
 	}
 
@@ -1125,13 +998,6 @@ func (mod *modContext) getConstructorResourceInfo(resourceTypeName string) map[s
 
 func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	docLangHelper := getLanguageDocHelper("nodejs")
-	// Use the NodeJS module to package lookup to transform the module name to its normalized package name.
-	modName := mod.getLanguageModuleName("nodejs")
-
-	var stateLink string
-	if mod.emitAPILinks {
-		stateLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam)
-	}
 
 	return []formalParam{
 		{
@@ -1153,7 +1019,6 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: stateLink,
 			},
 		},
 		{
@@ -1169,13 +1034,6 @@ func (mod *modContext) getTSLookupParams(r *schema.Resource, stateParam string) 
 
 func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) []formalParam {
 	docLangHelper := getLanguageDocHelper("go")
-	// Use the Go module to package lookup to transform the module name to its normalized package name.
-	modName := mod.getLanguageModuleName("go")
-
-	var stateLink string
-	if mod.emitAPILinks {
-		stateLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, modName, stateParam)
-	}
 
 	return []formalParam{
 		{
@@ -1204,7 +1062,6 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: stateParam,
-				Link: stateLink,
 			},
 		},
 		{
@@ -1219,19 +1076,7 @@ func (mod *modContext) getGoLookupParams(r *schema.Resource, stateParam string) 
 }
 
 func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) []formalParam {
-	modName := mod.getLanguageModuleName("csharp")
-	namespace := title(mod.pkg.Name, "csharp")
-	if ns, ok := csharpPkgInfo.Namespaces[mod.pkg.Name]; ok {
-		namespace = ns
-	}
-	stateParamFQDN := fmt.Sprintf("Pulumi.%s.%s.%s", namespace, modName, stateParam)
-
 	docLangHelper := getLanguageDocHelper("csharp")
-
-	var stateLink string
-	if mod.emitAPILinks {
-		stateLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", stateParamFQDN)
-	}
 
 	return []formalParam{
 		{
@@ -1252,7 +1097,6 @@ func (mod *modContext) getCSLookupParams(r *schema.Resource, stateParam string) 
 			OptionalFlag: "?",
 			Type: propertyType{
 				Name: stateParam,
-				Link: stateLink,
 			},
 		},
 		{
@@ -1635,7 +1479,6 @@ type indexData struct {
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
 
-	LanguageLinks  map[string]string
 	Functions      []indexEntry
 	Resources      []indexEntry
 	Modules        []indexEntry
@@ -1675,50 +1518,6 @@ func sortIndexEntries(entries []indexEntry) {
 	}
 
 	sort.Sort(sorter)
-}
-
-// getLanguageLinks returns a map of links for the current module's language-specific
-// docs by language.
-func (mod *modContext) getLanguageLinks() map[string]string {
-	languageLinks := map[string]string{}
-
-	if !mod.emitAPILinks {
-		return languageLinks
-	}
-
-	isK8s := isKubernetesPackage(mod.pkg)
-
-	for _, lang := range supportedLanguages {
-		var link string
-		var title string
-		var langTitle string
-		modName := mod.getLanguageModuleName(lang)
-
-		docLangHelper := getLanguageDocHelper(lang)
-		switch lang {
-		case "csharp":
-			langTitle = ".NET"
-			if override, ok := csharpPkgInfo.Namespaces[modName]; ok {
-				modName = override
-			} else if !ok && isK8s {
-				// For k8s if we don't find a C# namespace override, then don't
-				// include a link to the module since it would lead to a 404.
-				continue
-			}
-		case "go":
-			langTitle = "Go"
-		case "nodejs":
-			langTitle = "Node.js"
-		case "python":
-			langTitle = "Python"
-		default:
-			panic(errors.Errorf("Unknown language %s", lang))
-		}
-
-		title, link = docLangHelper.GetModuleDocLink(mod.pkg, modName)
-		languageLinks[langTitle] = fmt.Sprintf(`<a href="%s" title="%[2]s">%[2]s</a>`, link, title)
-	}
-	return languageLinks
 }
 
 // genIndex emits an _index.md file for the module.
@@ -1799,7 +1598,6 @@ func (mod *modContext) genIndex() indexData {
 		Functions:          functions,
 		Modules:            modules,
 		PackageDetails:     packageDetails,
-		LanguageLinks:      mod.getLanguageLinks(),
 	}
 
 	// If this is the root module, write out the package description.
@@ -1818,16 +1616,14 @@ func formatTitleText(title string) string {
 	return title
 }
 
-func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string,
-	emitAPILinks bool) *modContext {
+func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
 	if !ok {
 		mod = &modContext{
-			pkg:          pkg,
-			mod:          modName,
-			tool:         tool,
-			emitAPILinks: emitAPILinks,
+			pkg:  pkg,
+			mod:  modName,
+			tool: tool,
 		}
 
 		if modName != "" {
@@ -1838,7 +1634,7 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 			} else {
 				parentName = ":" + parentName + ":"
 			}
-			parent := getMod(pkg, parentName, modules, tool, emitAPILinks)
+			parent := getMod(pkg, parentName, modules, tool)
 			parent.children = append(parent.children, mod)
 		}
 
@@ -1858,7 +1654,7 @@ func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource, seenTyp
 	}
 }
 
-func generateModulesFromSchemaPackage(tool string, pkg *schema.Package, emitAPILinks bool) map[string]*modContext {
+func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
 
@@ -1885,7 +1681,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package, emitAPIL
 	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
 
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(pkg, r.Token, modules, tool, emitAPILinks)
+		mod := getMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
 
 		generatePythonPropertyCaseMaps(mod, r, seenCasingTypes)
@@ -1911,7 +1707,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package, emitAPIL
 	glog.V(3).Infoln("done scanning resources")
 
 	for _, f := range pkg.Functions {
-		mod := getMod(pkg, f.Token, modules, tool, emitAPILinks)
+		mod := getMod(pkg, f.Token, modules, tool)
 		mod.functions = append(mod.functions, f)
 	}
 	return modules
@@ -1920,8 +1716,6 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package, emitAPIL
 // GeneratePackage generates the docs package with docs for each resource given the Pulumi
 // schema.
 func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error) {
-	emitAPILinks := pkg.Name != "azure-nextgen" && pkg.Name != "eks"
-
 	templates = template.New("").Funcs(template.FuncMap{
 		"htmlSafe": func(html string) template.HTML {
 			// Markdown fragments in the templates need to be rendered as-is,
@@ -1929,14 +1723,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			// which will most certainly fail.
 			// nolint gosec
 			return template.HTML(html)
-		},
-		"hasDocLinksForLang": func(m map[string]apiTypeDocLinks, lang string) bool {
-			if !emitAPILinks {
-				return false
-			}
-
-			_, ok := m[lang]
-			return ok
 		},
 	})
 
@@ -1948,7 +1734,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 	// Generate the modules from the schema, and for every module
 	// run the generator functions to generate markdown files.
-	modules := generateModulesFromSchemaPackage(tool, pkg, emitAPILinks)
+	modules := generateModulesFromSchemaPackage(tool, pkg)
 	glog.V(3).Infoln("generating package now...")
 	files := fs{}
 	for _, mod := range modules {
