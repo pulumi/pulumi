@@ -1,6 +1,5 @@
 name: Download Pulumi Cron
 "on":
-  workflow_dispatch: {}
   schedule:
     - cron: 0 8 * * *
 
@@ -9,10 +8,8 @@ jobs:
     name: Install Pulumi with Homebrew on macOS
     runs-on: macos-latest
     steps:
-      - name: homedate homebrew formulae
-        run: brew update
       - name: homebrew install
-        run: brew install pulumi
+        run: brew upgrade pulumi
       - name: Pulumi Version Details
         id: vars
         run: |
