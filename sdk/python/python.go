@@ -67,8 +67,9 @@ func Command(arg ...string) (*exec.Cmd, error) {
 	}
 
 	if needsPythonShim(pythonPath) {
-		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
-		return exec.Command(shimCmd, arg...), nil
+		//shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
+		return nil, errors.Errorf("JVP(A): paths checked: %q, using path: %q", pythonCmds, pythonPath)
+		//return exec.Command(shimCmd, arg...), nil
 	}
 
 	// If the path is a symlink, follow it.
@@ -83,7 +84,7 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		}
 	}
 
-	return nil, errors.Errorf("JVP: paths checked: %q, using path: %q", pythonCmds, pythonPath)
+	return nil, errors.Errorf("JVP(B): paths checked: %q, using path: %q", pythonCmds, pythonPath)
 
 	//return exec.Command(pythonPath, arg...), nil
 }
