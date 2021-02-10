@@ -63,7 +63,7 @@
       <VersionPart>$(Version.Split("-")[0])</VersionPart>
       <VersionPrefix>$(VersionPart.Replace("v",""))</VersionPrefix>
     </PropertyGroup>
-    <Exec Command="dotnet build dotnet.sln /p:VersionPrefix=$(VersionPrefix) /p:VersionSuffix=preview"
+    <Exec Command="dotnet build dotnet.sln /p:VersionPrefix=$(VersionPrefix) /p:VersionSuffix=preview" 
           WorkingDirectory="$(DotNetSdkDirectory)" />
     <ItemGroup>
       <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet" />
@@ -83,7 +83,7 @@
       EnvironmentVariables="GOBIN=$(PulumiBin)"
       WorkingDirectory="$(SdkDirectory)"/>
   </Target>
-
+  
   <Target Name="CopyNugetPackages">
     <ItemGroup>
       <DotNetNupkgFile Include="$(DotNetSdkDirectory)\**\*.nupkg" />
@@ -174,7 +174,7 @@
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
   </Target>
-
+  
   <Target Name="CopyNodeJSPackages">
     <MakeDir Directories="$(PulumiRoot)\node_modules\@pulumi\pulumi"/>
     <ItemGroup>
@@ -192,7 +192,7 @@
     <Exec Command="yarn install --prefer-offline --production &amp;&amp; (yarn unlink > NUL || true) &amp;&amp; yarn link"
           WorkingDirectory="$(PulumiRoot)\node_modules\@pulumi\pulumi" />
   </Target>
-
+  
   <!-- This is where we build and install the Python SDK -->
   <Target Name="BuildPythonSDK"
           DependsOnTargets="PythonDependencies;PythonBuild;PythonInstallPlugin">
@@ -203,7 +203,7 @@
     <Exec Command="pipenv --python 3.7 install --dev"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
   </Target>
-
+  
   <Target Name="PythonBuild">
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
@@ -214,7 +214,7 @@
     <Copy
           SourceFiles="@(PythonLibFiles)"
           DestinationFiles="@(PythonLibFiles->'$(PythonSdkDirectory)\env\src\%(RecursiveDir)%(Filename)%(Extension)')" />
-    <ReplaceFileText
+    <ReplaceFileText 
             InputFilename="$(PythonSdkDirectory)\env\src\setup.py"
             OutputFilename="$(PythonSdkDirectory)\env\src\setup.py"
             MatchExpression="\$\{VERSION\}"
@@ -254,7 +254,7 @@
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
   </Target>
-
+  
   <!-- Install the Pulumi SDK -->
   <Target Name="InstallPulumiPlugin">
     <ItemGroup>
@@ -274,7 +274,7 @@
   <Target Name="Build"
           DependsOnTargets="BuildDotNetSDK;BuildGoSDK;BuildNodeJSSDK;BuildPythonSDK;InstallPulumiPlugin">
   </Target>
-
+  
   <!-- Release Build
   This is used to create the dependencies required for shipping the binary to the end user.
   In the old scripts `BuildNodeJSSDK` was called `BuildNodeSdk` and included tasks for
@@ -289,7 +289,7 @@
 
   <!-- This is where we build and install the NodeJS SDK -->
   <Target Name="BuildTests"
-          DependsOnTargets="CopyNodeJSPackages;TestDependencies;TestBuild">
+          DependsOnTargets="TestDependencies;TestBuild">
   </Target>
 
   <Target Name="TestDependencies">
@@ -337,7 +337,7 @@
   <Target Name="Publish">
     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\publish.cmd&quot;" ConsoleToMSBuild="true" />
   </Target>
-
+  
   <Target Name="ReleaseProcess"
           DependsOnTargets="ReleaseBuild;Publish" />
 
