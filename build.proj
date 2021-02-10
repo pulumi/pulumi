@@ -324,7 +324,7 @@
     <Error Text="examples tests (.\tests\examples) failed"
            Condition="$(ExamplesTestExitCode) != 0"/> -->
 
-    <Exec Command="go test -timeout 1h -cover -v -parallel $(TestParallelism) -tags=all .\integration --run=TestPython3NotInstalled"
+    <Exec Command="go test -timeout 1h -cover -v -parallel $(TestParallelism) -tags=all .\integration"
           IgnoreExitCode="true"
           WorkingDirectory="$(TestsDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="IntegrationTestExitCode" />

@@ -10,7 +10,6 @@ env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
   GO111MODULE: "on"
-  PYTHONVERBOSE: 1
 
 jobs:
   comment-notification:
