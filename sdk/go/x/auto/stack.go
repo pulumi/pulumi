@@ -580,7 +580,10 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 // if a resource operation was pending when the update was canceled.
 // This command is not supported for local backends.
 func (s *Stack) Cancel(ctx context.Context) error {
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, "cancel", "--yes", "--stack", s.Name())
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(
+		ctx,
+		nil, /* additionalOutput */
+		"cancel", "--yes", "--stack", s.Name())
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
 	}
