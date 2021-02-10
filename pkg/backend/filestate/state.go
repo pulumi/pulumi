@@ -29,6 +29,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 
 	"github.com/pkg/errors"
+	"gocloud.dev/blob"
 	"gocloud.dev/gcerrors"
 
 	"github.com/pulumi/pulumi/pkg/v2/backend"
@@ -313,13 +314,12 @@ func (b *localBackend) backupDirectory(stack tokens.QName) string {
 
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
-func (b *localBackend) getHistory(name tokens.QName, limit int) ([]backend.UpdateInfo, error) {
+func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]backend.UpdateInfo, error) {
 	contract.Require(name != "", "name")
 
 	dir := b.historyDirectory(name)
-	// TODO: we could consider optimizing the list operation using `limit`.
-	// Unfortunately, this is mildly invasive given the gocloud List API and
-	// the fact that are results are returned in reverse order.
+	// TODO: we could consider optimizing the list operation using `page` and `pageSize`.
+	// Unfortunately, this is mildly invasive given the gocloud List API.
 	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
@@ -329,25 +329,41 @@ func (b *localBackend) getHistory(name tokens.QName, limit int) ([]backend.Updat
 		return nil, err
 	}
 
-	var updates []backend.UpdateInfo
+	var historyEntries []*blob.ListObject
 
-	if limit > 0 {
-		if limit > len(allFiles) {
-			limit = len(allFiles)
-		}
-		limit = len(allFiles) - limit
-	}
-
+	// filter down to just history entries, reversing list to be in most recent order.
 	// listBucket returns the array sorted by file name, but because of how we name files, older updates come before
-	// newer ones. Loop backwards so we added the newest updates to the array we will return first.
-	for i := len(allFiles) - 1; i >= limit; i-- {
+	// newer ones.
+	for i := len(allFiles) - 1; i >= 0; i-- {
 		file := allFiles[i]
 		filepath := file.Key
 
-		// Open all of the history files, ignoring the checkpoints.
+		// ignore checkpoints
 		if !strings.HasSuffix(filepath, ".history.json") {
 			continue
 		}
+
+		historyEntries = append(historyEntries, file)
+	}
+
+	start := 0
+	end := len(historyEntries) - 1
+	if pageSize > 0 {
+		if page < 1 {
+			page = 1
+		}
+		start = (page - 1) * pageSize
+		end = start + pageSize - 1
+		if end > len(historyEntries)-1 {
+			end = len(historyEntries) - 1
+		}
+	}
+
+	var updates []backend.UpdateInfo
+
+	for i := start; i <= end; i++ {
+		file := historyEntries[i]
+		filepath := file.Key
 
 		var update backend.UpdateInfo
 		b, err := b.bucket.ReadAll(context.TODO(), filepath)

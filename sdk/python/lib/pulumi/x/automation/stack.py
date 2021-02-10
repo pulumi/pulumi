@@ -465,18 +465,23 @@ class Stack:
         return outputs
 
     def history(self,
-        limit: Optional[int] = None) -> List[UpdateSummary]:
+        page_size: Optional[int] = None,
+        page: Optional[int] = None) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).
 
-        :param limit: Limit the number of history entires to retrieve, defaults to all.
+        :param page_size: Paginate history entries (used in combination with page), defaults to all.
+        :param page: Paginate history entries (used in combination with page_size), defaults to all.
 
         :returns: List[UpdateSummary]
         """
         args = ["history", "--json", "--show-secrets"]
-        if limit is not None:
-            args.extend(["--limit", str(limit)])
+        if page_size is not None:
+            # default page=1 when page_size is set
+            if page is None:
+                page = 1
+            args.extend(["--page-size", str(page_size), "--page", str(page)])
         result = self._run_pulumi_cmd_sync(args)
         summary_list = json.loads(result.stdout)
 
@@ -501,7 +506,7 @@ class Stack:
 
         :returns: Optional[UpdateSummary]
         """
-        history = self.history(limit=1)
+        history = self.history(page_size=1)
         if not len(history):
             return None
         return history[0]
