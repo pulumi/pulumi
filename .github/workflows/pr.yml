@@ -16,3 +16,16 @@ jobs:
 
             **Note for the maintainer:** To run the acceptance tests, please comment */run-acceptance-tests* on the PR
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  lint:
+    container: golangci/golangci-lint:latest
+    name: Lint ${{ matrix.directory }}
+    strategy:
+      matrix:
+        directory: [ sdk, pkg, tests ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Lint ${{ matrix.directory }}
+        run: |
+          cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
