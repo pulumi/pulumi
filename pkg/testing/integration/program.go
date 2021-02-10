@@ -1751,7 +1751,8 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 
 	if pt.opts.UseAutomaticVirtualEnv {
 		log.Print("Starting run of venv")
-		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv", "--without-pip"}, cwd); err != nil {
+		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv", "--without-pip",
+			"--system-site-packages"}, cwd); err != nil {
 			return errors.Wrap(err, "venv error")
 		}
 
