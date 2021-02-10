@@ -24,7 +24,6 @@ func newStackHistoryCmd() *cobra.Command {
 	var stack string
 	var jsonOut bool
 	var showSecrets bool
-	var limit int
 
 	cmd := &cobra.Command{
 		Use:        "history",
@@ -43,7 +42,7 @@ This command displays data about previous updates for a stack.`,
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(commandContext(), s.Ref(), limit)
+			updates, err := b.GetHistory(commandContext(), s.Ref())
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
@@ -72,8 +71,6 @@ This command displays data about previous updates for a stack.`,
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().IntVarP(
-		&limit, "limit", "l", 0, "Limit the number of entries returned, defaults to all")
 	return cmd
 }
 

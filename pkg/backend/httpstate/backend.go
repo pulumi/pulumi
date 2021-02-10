@@ -1098,13 +1098,13 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	return b.client.CancelUpdate(ctx, updateID)
 }
 
-func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackReference, limit int) ([]backend.UpdateInfo, error) {
+func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	updates, err := b.client.GetStackUpdates(ctx, stack, limit)
+	updates, err := b.client.GetStackUpdates(ctx, stack)
 	if err != nil {
 		return nil, err
 	}

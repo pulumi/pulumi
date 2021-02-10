@@ -171,7 +171,7 @@ type Backend interface {
 
 	// GetHistory returns all updates for the stack. The returned UpdateInfo slice will be in
 	// descending order (newest first).
-	GetHistory(ctx context.Context, stackRef StackReference, limit int) ([]UpdateInfo, error)
+	GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error)
 	// GetLogs fetches a list of log entries for the given stack, with optional filtering/querying.
 	GetLogs(ctx context.Context, stack Stack, cfg StackConfiguration,
 		query operations.LogQuery) ([]operations.LogEntry, error)

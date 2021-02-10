@@ -464,20 +464,14 @@ class Stack:
             outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
         return outputs
 
-    def history(self,
-        limit: Optional[int] = None) -> List[UpdateSummary]:
+    def history(self) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).
 
-        :param limit: Limit the number of history entires to retrieve, defaults to all.
-
         :returns: List[UpdateSummary]
         """
-        args = ["history", "--json", "--show-secrets"]
-        if limit is not None:
-            args.extend(["--limit", str(limit)])
-        result = self._run_pulumi_cmd_sync(args)
+        result = self._run_pulumi_cmd_sync(["history", "--json", "--show-secrets"])
         summary_list = json.loads(result.stdout)
 
         summaries: List[UpdateSummary] = []
@@ -501,7 +495,7 @@ class Stack:
 
         :returns: Optional[UpdateSummary]
         """
-        history = self.history(limit=1)
+        history = self.history()
         if not len(history):
             return None
         return history[0]

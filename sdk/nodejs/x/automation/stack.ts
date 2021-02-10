@@ -415,13 +415,8 @@ export class Stack {
      * Returns a list summarizing all previous and current results from Stack lifecycle operations
      * (up/preview/refresh/destroy).
      */
-    async history(limit?: number): Promise<UpdateSummary[]> {
-        const args = ["history", "--json", "--show-secrets"];
-        if (limit) {
-            args.push("--limit", Math.floor(limit).toString())
-        }
-        const result = await this.runPulumiCmd(args);
-      
+    async history(): Promise<UpdateSummary[]> {
+        const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
         return JSON.parse(result.stdout, (key, value) => {
             if (key === "startTime" || key === "endTime") {
                 return new Date(value);
@@ -430,7 +425,7 @@ export class Stack {
         });
     }
     async info(): Promise<UpdateSummary | undefined> {
-        const history = await this.history(1 /*limit*/);
+        const history = await this.history();
         if (!history || history.length === 0) {
             return undefined;
         }

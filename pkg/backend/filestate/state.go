@@ -18,13 +18,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
 	"time"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
 
 	"github.com/pulumi/pulumi/pkg/v2/engine"
 
@@ -313,13 +312,10 @@ func (b *localBackend) backupDirectory(stack tokens.QName) string {
 
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
-func (b *localBackend) getHistory(name tokens.QName, limit int) ([]backend.UpdateInfo, error) {
+func (b *localBackend) getHistory(name tokens.QName) ([]backend.UpdateInfo, error) {
 	contract.Require(name != "", "name")
 
 	dir := b.historyDirectory(name)
-	// TODO: we could consider optimizing the list operation using `limit`.
-	// Unfortunately, this is mildly invasive given the gocloud List API and
-	// the fact that are results are returned in reverse order.
 	allFiles, err := listBucket(b.bucket, dir)
 	if err != nil {
 		// History doesn't exist until a stack has been updated.
@@ -331,16 +327,9 @@ func (b *localBackend) getHistory(name tokens.QName, limit int) ([]backend.Updat
 
 	var updates []backend.UpdateInfo
 
-	if limit > 0 {
-		if limit > len(allFiles) {
-			limit = len(allFiles)
-		}
-		limit = len(allFiles) - limit
-	}
-
 	// listBucket returns the array sorted by file name, but because of how we name files, older updates come before
 	// newer ones. Loop backwards so we added the newest updates to the array we will return first.
-	for i := len(allFiles) - 1; i >= limit; i-- {
+	for i := len(allFiles) - 1; i >= 0; i-- {
 		file := allFiles[i]
 		filepath := file.Key
 
