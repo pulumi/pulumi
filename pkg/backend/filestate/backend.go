@@ -623,10 +623,7 @@ func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
-func (b *localBackend) GetHistory(
-	ctx context.Context,
-	stackRef backend.StackReference,
-	limit int) ([]backend.UpdateInfo, error) {
+func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference, limit int) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.Name()
 	updates, err := b.getHistory(stackName, limit)
 	if err != nil {
