@@ -149,12 +149,12 @@ class LocalWorkspace(Workspace):
         return
 
     def get_config(self, stack_name: str, key: str) -> ConfigValue:
-        result = self._run_pulumi_cmd_sync(["config", "get", key, "--json", "-s", stack_name])
+        result = self._run_pulumi_cmd_sync(["config", "get", key, "--json", "--stack", stack_name])
         val = json.loads(result.stdout)
         return ConfigValue(value=val["value"], secret=val["secret"])
 
     def get_all_config(self, stack_name: str) -> ConfigMap:
-        result = self._run_pulumi_cmd_sync(["config", "--show-secrets", "--json", "-s", stack_name])
+        result = self._run_pulumi_cmd_sync(["config", "--show-secrets", "--json", "--stack", stack_name])
         config_json = json.loads(result.stdout)
         config_map: ConfigMap = {}
         for key in config_json:
@@ -164,7 +164,7 @@ class LocalWorkspace(Workspace):
 
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
         secret_arg = "--secret" if value.secret else "--plaintext"
-        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg, "-s", stack_name])
+        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg, "--stack", stack_name])
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
         args = ["config", "set-all", "--stack", stack_name]
@@ -176,7 +176,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def remove_config(self, stack_name: str, key: str) -> None:
-        self._run_pulumi_cmd_sync(["config", "rm", key, "-s", stack_name])
+        self._run_pulumi_cmd_sync(["config", "rm", key, "--stack", stack_name])
 
     def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
@@ -184,7 +184,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def refresh_config(self, stack_name: str) -> None:
-        self._run_pulumi_cmd_sync(["config", "refresh", "--force", "-s", stack_name])
+        self._run_pulumi_cmd_sync(["config", "refresh", "--force", "--stack", stack_name])
         self.get_all_config(stack_name)
 
     def who_am_i(self) -> WhoAmIResult:
@@ -257,7 +257,7 @@ class LocalWorkspace(Workspace):
         return plugin_list
 
     def export_stack(self, stack_name: str) -> Deployment:
-        result = self._run_pulumi_cmd_sync(["stack", "export", "--show-secrets", "-s", stack_name])
+        result = self._run_pulumi_cmd_sync(["stack", "export", "--show-secrets", "--stack", stack_name])
         state_json = json.loads(result.stdout)
         return Deployment(**state_json)
 
@@ -265,7 +265,7 @@ class LocalWorkspace(Workspace):
         file = tempfile.NamedTemporaryFile(mode="w", delete=False)
         json.dump(state.__dict__, file, indent=4)
         file.close()
-        self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "-s", stack_name])
+        self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "--stack", stack_name])
         os.remove(file.name)
 
     def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
