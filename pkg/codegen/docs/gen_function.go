@@ -92,12 +92,17 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
 
+		var link string
+		if mod.emitAPILinks {
+			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, resultTypeName)
+		}
+
 		parts := strings.Split(resultTypeName, ".")
 		displayName := parts[len(parts)-1]
 		resourceMap[lang] = propertyType{
 			Name:        resultTypeName,
 			DisplayName: displayName,
-			Link:        "#result",
+			Link:        link,
 		}
 	}
 
@@ -106,14 +111,22 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 
 func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
 	argsType := title(funcName+"Args", "nodejs")
+
 	docLangHelper := getLanguageDocHelper("nodejs")
 	var params []formalParam
+
 	if f.Inputs != nil {
+		var argsTypeLink string
+		if mod.emitAPILinks {
+			argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType)
+		}
+
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			Type: propertyType{
 				Name: argsType,
+				Link: argsTypeLink,
 			},
 		})
 	}
@@ -132,6 +145,7 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []form
 func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
 
+	docLangHelper := getLanguageDocHelper("go")
 	params := []formalParam{
 		{
 			Name:         "ctx",
@@ -144,11 +158,17 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 	}
 
 	if f.Inputs != nil {
+		var argsTypeLink string
+		if mod.emitAPILinks {
+			argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType)
+		}
+
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: argsType,
+				Link: argsTypeLink,
 			},
 		})
 	}
@@ -166,15 +186,35 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 
 func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
+	argsSchemaType := &schema.ObjectType{
+		Token:   f.Token,
+		Package: mod.pkg,
+	}
+
+	characteristics := propertyCharacteristics{
+		input:    true,
+		optional: false,
+	}
+	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false /* insertWordBreaks */)
+	// The args type for a resource isn't part of "Inputs" namespace, so remove the "Inputs"
+	// namespace qualifier.
+	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
+
 	docLangHelper := getLanguageDocHelper("csharp")
 	var params []formalParam
 	if f.Inputs != nil {
+		var argsTypeLink string
+		if mod.emitAPILinks {
+			argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName)
+		}
+
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			DefaultValue: "",
 			Type: propertyType{
 				Name: argsType,
+				Link: argsTypeLink,
 			},
 		})
 	}
