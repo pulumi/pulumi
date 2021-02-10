@@ -240,7 +240,7 @@
     <Copy SourceFiles="@(PythonLanguageExecFiles)"
           DestinationFolder="$(PulumiBin)\" />
     <ItemGroup>
-      <PythonDistFiles Include="$(PythonSdkDirectory)\dist\pulumi-resource-pulumi-python.cmd" />
+      <PythonDistFiles Include="$(PythonSdkDirectory)\dist\*.cmd" />
     </ItemGroup>
     <Copy SourceFiles="@(PythonDistFiles)"
           DestinationFolder="$(PulumiBin)\" />
