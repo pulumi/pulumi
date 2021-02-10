@@ -24,8 +24,7 @@ func newStackHistoryCmd() *cobra.Command {
 	var stack string
 	var jsonOut bool
 	var showSecrets bool
-	var pageSize int
-	var page int
+	var limit int
 
 	cmd := &cobra.Command{
 		Use:        "history",
@@ -44,7 +43,7 @@ This command displays data about previous updates for a stack.`,
 				return err
 			}
 			b := s.Backend()
-			updates, err := b.GetHistory(commandContext(), s.Ref(), pageSize, page)
+			updates, err := b.GetHistory(commandContext(), s.Ref(), limit)
 			if err != nil {
 				return errors.Wrap(err, "getting history")
 			}
@@ -61,7 +60,7 @@ This command displays data about previous updates for a stack.`,
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, page, opts)
+			return displayUpdatesConsole(updates, opts)
 		}),
 	}
 
@@ -73,10 +72,8 @@ This command displays data about previous updates for a stack.`,
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
-	cmd.PersistentFlags().IntVar(
-		&pageSize, "page-size", 0, "Used with 'page' to control number of results returned")
-	cmd.PersistentFlags().IntVar(
-		&page, "page", 0, "Used with 'page-size' to paginate results")
+	cmd.PersistentFlags().IntVarP(
+		&limit, "limit", "l", 0, "Limit the number of entries returned, defaults to all")
 	return cmd
 }
 
@@ -151,12 +148,8 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 	return printJSON(updatesJSON)
 }
 
-func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options) error {
+func displayUpdatesConsole(updates []backend.UpdateInfo, opts display.Options) error {
 	if len(updates) == 0 {
-		if page > 1 {
-			fmt.Printf("No stack updates found on page '%d'\n", page)
-			return nil
-		}
 		fmt.Println("Stack has never been updated")
 		return nil
 	}

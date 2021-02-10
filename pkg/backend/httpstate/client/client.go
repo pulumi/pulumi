@@ -376,15 +376,11 @@ func (pc *Client) DecryptValue(ctx context.Context, stack StackIdentifier, ciphe
 func (pc *Client) GetStackUpdates(
 	ctx context.Context,
 	stack StackIdentifier,
-	pageSize int,
-	page int) ([]apitype.UpdateInfo, error) {
+	pageSize int) ([]apitype.UpdateInfo, error) {
 	var response apitype.GetHistoryResponse
 	path := getStackPath(stack, "updates")
 	if pageSize > 0 {
-		if page < 1 {
-			page = 1
-		}
-		path += fmt.Sprintf("?pageSize=%d&page=%d", pageSize, page)
+		path += fmt.Sprintf("?pageSize=%d&page=1", pageSize)
 	}
 	if err := pc.restCall(ctx, "GET", path, nil, nil, &response); err != nil {
 		return nil, err

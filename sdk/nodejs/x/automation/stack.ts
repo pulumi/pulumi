@@ -415,13 +415,10 @@ export class Stack {
      * Returns a list summarizing all previous and current results from Stack lifecycle operations
      * (up/preview/refresh/destroy).
      */
-    async history(pageSize?: number, page?: number): Promise<UpdateSummary[]> {
+    async history(limit?: number): Promise<UpdateSummary[]> {
         const args = ["history", "--json", "--show-secrets"];
-        if (pageSize) {
-            if (!page || page < 1) {
-                page = 1
-            }
-            args.push("--page-size", Math.floor(pageSize).toString(), "--page", Math.floor(page).toString())
+        if (limit) {
+            args.push("--limit", Math.floor(limit).toString())
         }
         const result = await this.runPulumiCmd(args);
       
@@ -433,7 +430,7 @@ export class Stack {
         });
     }
     async info(): Promise<UpdateSummary | undefined> {
-        const history = await this.history(1 /*pageSize*/);
+        const history = await this.history(1 /*limit*/);
         if (!history || history.length === 0) {
             return undefined;
         }

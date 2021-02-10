@@ -399,7 +399,7 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack) (config.Map, error) {
 
-	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
+	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*limit*/)
 	if err != nil {
 		return nil, err
 	}
@@ -626,10 +626,9 @@ func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
 func (b *localBackend) GetHistory(
 	ctx context.Context,
 	stackRef backend.StackReference,
-	pageSize int,
-	page int) ([]backend.UpdateInfo, error) {
+	limit int) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.Name()
-	updates, err := b.getHistory(stackName, pageSize, page)
+	updates, err := b.getHistory(stackName, limit)
 	if err != nil {
 		return nil, err
 	}

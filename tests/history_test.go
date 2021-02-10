@@ -37,15 +37,6 @@ func assertHasNoHistory(e *ptesting.Environment) {
 	assert.Equal(e.T, "", err)
 	assert.Equal(e.T, "Stack has never been updated\n", out)
 }
-
-// assertNoResultsOnPage runs `pulumi history` and confirms an error that the stack has no
-// updates in the given pagination window
-func assertNoResultsOnPage(e *ptesting.Environment) {
-	// NOTE: pulumi returns with exit code 0 in this scenario.
-	out, err := e.RunCommand("pulumi", "history", "--page-size", "1", "--page", "10000000")
-	assert.Equal(e.T, "", err)
-	assert.Equal(e.T, "No stack updates found on page '10000000'\n", out)
-}
 func TestHistoryCommand(t *testing.T) {
 	// We fail if no stack is selected.
 	t.Run("NoStackSelected", func(t *testing.T) {
@@ -86,12 +77,6 @@ func TestHistoryCommand(t *testing.T) {
 		out, err := e.RunCommand("pulumi", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "this is an updated stack")
-		// Confirm we see the update message in thie history output, with pagination.
-		out, err = e.RunCommand("pulumi", "history", "--page-size", "1")
-		assert.Equal(t, "", err)
-		assert.Contains(t, out, "this is an updated stack")
-		// Get an error message when we page too far
-		assertNoResultsOnPage(e)
 		// Change stack and confirm the history command honors the selected stack.
 		e.RunCommand("pulumi", "stack", "select", "stack-without-updates")
 		assertHasNoHistory(e)
