@@ -46,8 +46,6 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		pythonCmds = []string{"python3", "python"}
 	}
 
-	fmt.Printf("JVP: Looking for the following Python binaries: %q\n", pythonCmds)
-
 	var pythonCmd, pythonPath string
 	for _, pythonCmd = range pythonCmds {
 		pythonPath, err = exec.LookPath(pythonCmd)
@@ -85,9 +83,9 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		}
 	}
 
-	fmt.Printf("JVP: Using Python Path: %q\n", pythonPath)
+	return nil, errors.Errorf("JVP: paths checked: %q, using path: %q", pythonCmds, pythonPath)
 
-	return exec.Command(pythonPath, arg...), nil
+	//return exec.Command(pythonPath, arg...), nil
 }
 
 // resolveWindowsExecutionAlias performs a lookup for python among UWP
