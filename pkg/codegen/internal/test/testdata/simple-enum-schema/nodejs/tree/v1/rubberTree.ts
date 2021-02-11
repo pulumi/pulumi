@@ -45,13 +45,13 @@ export class RubberTree extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: RubberTreeArgs, opts: pulumi.CustomResourceOptions = {}) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
-            if ((!args || args.diameter === undefined) && !(opts && opts.urn)) {
+        if (!opts.id) {
+            if ((!args || args.diameter === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'diameter'");
             }
-            if ((!args || args.type === undefined) && !(opts && opts.urn)) {
+            if ((!args || args.type === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'type'");
             }
             inputs["container"] = args ? args.container : undefined;
@@ -66,12 +66,8 @@ export class RubberTree extends pulumi.CustomResource {
             inputs["size"] = undefined /*out*/;
             inputs["type"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(RubberTree.__pulumiType, name, inputs, opts);
     }

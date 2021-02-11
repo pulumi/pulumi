@@ -43,21 +43,17 @@ export class Cat extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: CatArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args?: CatArgs, opts: pulumi.CustomResourceOptions = {}) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
+        if (!opts.id) {
             inputs["age"] = args ? args.age : undefined;
             inputs["pet"] = args ? args.pet : undefined;
             inputs["name"] = undefined /*out*/;
         } else {
             inputs["name"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(Cat.__pulumiType, name, inputs, opts);
     }

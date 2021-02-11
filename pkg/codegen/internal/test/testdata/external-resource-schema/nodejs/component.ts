@@ -45,9 +45,9 @@ export class Component extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ComponentArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args?: ComponentArgs, opts: pulumi.CustomResourceOptions = {}) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
+        if (!opts.id) {
             inputs["metadata"] = args ? args.metadata : undefined;
             inputs["provider"] = undefined /*out*/;
             inputs["securityGroup"] = undefined /*out*/;
@@ -57,12 +57,8 @@ export class Component extends pulumi.CustomResource {
             inputs["securityGroup"] = undefined /*out*/;
             inputs["storageClasses"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(Component.__pulumiType, name, inputs, opts);
     }

@@ -42,19 +42,15 @@ export class Workload extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: WorkloadArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args?: WorkloadArgs, opts: pulumi.CustomResourceOptions = {}) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
+        if (!opts.id) {
             inputs["pod"] = undefined /*out*/;
         } else {
             inputs["pod"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(Workload.__pulumiType, name, inputs, opts);
     }
