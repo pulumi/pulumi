@@ -677,10 +677,15 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 		pt.pythonBin = pt.opts.PythonBin
 		if pt.opts.PythonBin == "" {
 			var err error
-			// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-			// distributions (in particular the default python.org Windows installation) do not include
-			// a `python3` binary.
+			// Look for `python3` by default, but fallback to `python` if not found, except on Windows
+			// where we look for these in the reverse order because the default python.org Windows
+			// installation does not include a `python3` binary, and the existence of a `python3.exe`
+			// symlink to `python.exe` on some systems does not work correctly with the Python `venv`
+			// module.
 			pythonCmds := []string{"python3", "python"}
+			if runtime.GOOS == windowsOS {
+				pythonCmds = []string{"python", "python3"}
+			}
 			for _, bin := range pythonCmds {
 				pt.pythonBin, err = exec.LookPath(bin)
 				// Break on the first cmd we find on the path (if any).
