@@ -555,13 +555,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
 	}
-	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts?: pulumi.%s)%s\n", argsFlags, argsType,
+	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts: pulumi.%s = {})%s\n", argsFlags, argsType,
 		optionsType, trailingBrace)
 
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired {
-				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !(opts && opts.urn)) {\n", prop.Name)
+				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -618,7 +618,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
 			// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
 			// conditional state into sensible variables using dynamic type tests.
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.%s) {\n",
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts: pulumi.%s = {}) {\n",
 				argsType, stateType, optionsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
@@ -628,7 +628,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		if r.StateInputs != nil {
 			// The lookup case:
-			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
+			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
 				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
@@ -642,7 +642,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		} else {
 			// The creation case:
-			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
+			fmt.Fprintf(w, "        if (!opts.id) {\n")
 			err := genInputProps()
 			if err != nil {
 				return err
@@ -670,12 +670,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        }\n")
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "        if (!opts) {\n")
-	fmt.Fprintf(w, "            opts = {}\n")
-	fmt.Fprintf(w, "        }\n")
-	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "        if (!opts.version) {\n")
-	fmt.Fprintf(w, "            opts.version = utilities.getVersion();\n")
+	fmt.Fprintf(w, "            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});\n")
 	fmt.Fprintf(w, "        }\n")
 
 	// Now invoke the super constructor with the type, name, and a property map.
@@ -688,7 +684,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			mod.genAlias(w, alias)
 		}
 		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, aliasOpts) : aliasOpts;\n")
+		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")
 	}
 
 	if len(secretProps) > 0 {
@@ -700,7 +696,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "%q", sp)
 		}
 		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, secretOpts) : secretOpts;\n")
+		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
 	// If it's a ComponentResource, set the remote option.
