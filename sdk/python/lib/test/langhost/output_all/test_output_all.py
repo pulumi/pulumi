@@ -21,7 +21,7 @@ class OutputAllTest(LanghostTest):
     def test_output_all(self):
         self.run_test(
             program=path.join(self.base_path(), "output_all"),
-            expected_resource_count=3)
+            expected_resource_count=4)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
                           _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
@@ -34,6 +34,12 @@ class OutputAllTest(LanghostTest):
             self.assertEqual(ty, "test:index:MyResource")
             number = 3
         elif name == "testResource3":
+            self.assertEqual(ty, "test:index:FinalResource")
+            # The source program uses Output.apply to merge outputs from the above two resources.
+            # The 5 is produced by adding 2 and 3 in the source program.
+            self.assertEqual(resource["number"], 5)
+            number = resource["number"]
+        elif name == "testResource4":
             self.assertEqual(ty, "test:index:FinalResource")
             # The source program uses Output.apply to merge outputs from the above two resources.
             # The 5 is produced by adding 2 and 3 in the source program.
