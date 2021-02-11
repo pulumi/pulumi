@@ -18,6 +18,9 @@ CHANGELOG
 - [sdk/python] Allow keyword args in Output.all() to create a dict.
   [#6269](https://github.com/pulumi/pulumi/pull/6269)
 
+- Look for `python` binary first on Windows instead of `python3`.
+  [#6317](https://github.com/pulumi/pulumi/pull/6317)
+
 ## 2.20.0 (2021-02-03)
 
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
