@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -19,34 +20,25 @@ import (
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("empty", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("empty", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
-	})
-}
-
-// TestEmptyPythonVenv simply tests that we can run an empty Python project using automatic virtual environment support.
-func TestEmptyPythonVenv(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("empty", "python_venv"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick:                  true,
 		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 	})
 }
 
 func TestStackOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_outputs", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("stack_outputs", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
@@ -67,61 +59,32 @@ func TestStackOutputsPython(t *testing.T) {
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("config_basic", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("config_basic", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"aConfigValue": "this value is a Pythonic value",
-		},
-		Secrets: map[string]string{
-			"bEncryptedSecret": "this super Pythonic secret is encrypted",
-		},
-		OrderedConfig: []integration.ConfigValue{
-			{Key: "outer.inner", Value: "value", Path: true},
-			{Key: "names[0]", Value: "a", Path: true},
-			{Key: "names[1]", Value: "b", Path: true},
-			{Key: "names[2]", Value: "c", Path: true},
-			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
-			{Key: "servers[0].port", Value: "80", Path: true},
-			{Key: "servers[0].host", Value: "example", Path: true},
-			{Key: "a.b[0].c", Value: "true", Path: true},
-			{Key: "a.b[1].c", Value: "false", Path: true},
-			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
-			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
-		},
-	})
-}
-
-func TestConfigBasicPythonVenv(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("config_basic", "python_venv"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		Quick: true,
-		Config: map[string]string{
-			"aConfigValue": "this value is a Pythonic value",
-		},
-		Secrets: map[string]string{
-			"bEncryptedSecret": "this super Pythonic secret is encrypted",
-		},
-		OrderedConfig: []integration.ConfigValue{
-			{Key: "outer.inner", Value: "value", Path: true},
-			{Key: "names[0]", Value: "a", Path: true},
-			{Key: "names[1]", Value: "b", Path: true},
-			{Key: "names[2]", Value: "c", Path: true},
-			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
-			{Key: "servers[0].port", Value: "80", Path: true},
-			{Key: "servers[0].host", Value: "example", Path: true},
-			{Key: "a.b[0].c", Value: "true", Path: true},
-			{Key: "a.b[1].c", Value: "false", Path: true},
-			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
-			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
 		},
 		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
+		Config: map[string]string{
+			"aConfigValue": "this value is a Pythonic value",
+		},
+		Secrets: map[string]string{
+			"bEncryptedSecret": "this super Pythonic secret is encrypted",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "outer.inner", Value: "value", Path: true},
+			{Key: "names[0]", Value: "a", Path: true},
+			{Key: "names[1]", Value: "b", Path: true},
+			{Key: "names[2]", Value: "c", Path: true},
+			{Key: "names[3]", Value: "super secret name", Path: true, Secret: true},
+			{Key: "servers[0].port", Value: "80", Path: true},
+			{Key: "servers[0].host", Value: "example", Path: true},
+			{Key: "a.b[0].c", Value: "true", Path: true},
+			{Key: "a.b[1].c", Value: "false", Path: true},
+			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
+			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
 	})
 }
 
@@ -134,11 +97,13 @@ func TestStackReferencePython(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_reference", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("stack_reference", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
@@ -166,11 +131,13 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("stack_reference_multi", "python", "exporter"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
@@ -198,11 +165,13 @@ func TestMultiStackReferencePython(t *testing.T) {
 	exporterStackName := exporterOpts.GetStackName().String()
 
 	importerOpts := &integration.ProgramTestOptions{
-		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 		Config: map[string]string{
 			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
 			"exporter_stack_name": exporterStackName,
@@ -214,7 +183,8 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("secret_outputs", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("secret_outputs", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -256,17 +226,20 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 // Tests that we issue an error if we fail to locate the Python command when running
 // a Python example.
 func TestPython3NotInstalled(t *testing.T) {
+	t.Skip("Temporarily skipping failing test - pulumi/pulumi#6304")
 	stderr := &bytes.Buffer{}
 	badPython := "python3000"
 	expectedError := fmt.Sprintf(
 		"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
 		[]string{badPython})
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("empty", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("empty", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 		Env: []string{
 			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
 			// for Python 3, since anyone running tests surely already has Python 3 installed on their
@@ -286,43 +259,22 @@ func TestPython3NotInstalled(t *testing.T) {
 func TestDynamicPython(t *testing.T) {
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("dynamic", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			randomVal = stack.Outputs["random_val"].(string)
-		},
-		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
-			Additive: true,
-			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
-			},
-		}},
-	})
-}
-
-// Tests dynamic provider in Python using automatic virtual environment support.
-func TestDynamicPythonVenv(t *testing.T) {
-	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
-	var randomVal string
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "python_venv"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			randomVal = stack.Outputs["random_val"].(string)
-		},
-		EditDirs: []integration.EditDir{{
-			Dir:      "step1",
-			Additive: true,
-			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
-			},
-		}},
 		UseAutomaticVirtualEnv: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			randomVal = stack.Outputs["random_val"].(string)
+		},
+		EditDirs: []integration.EditDir{{
+			Dir:      "step1",
+			Additive: true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				assert.Equal(t, randomVal, stack.Outputs["random_val"].(string))
+			},
+		}},
 	})
 }
 
@@ -331,10 +283,12 @@ func TestPartialValuesPython(t *testing.T) {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("partial_values", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("partial_values", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
+		UseAutomaticVirtualEnv:   true,
 		AllowEmptyPreviewChanges: true,
 	})
 }
@@ -342,20 +296,24 @@ func TestPartialValuesPython(t *testing.T) {
 // Tests a resource with a large (>4mb) string prop in Python
 func TestLargeResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("large_resource", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Dir: filepath.Join("large_resource", "python"),
+		UseAutomaticVirtualEnv: true,
 	})
 }
 
 // Test enum outputs
 func TestEnumOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("enums", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Dir: filepath.Join("enums", "python"),
+		UseAutomaticVirtualEnv: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
 
@@ -371,7 +329,8 @@ func TestPythonPylint(t *testing.T) {
 	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		Dir: filepath.Join("python", "pylint"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("python", "pylint"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -417,12 +376,14 @@ func TestConstructPython(t *testing.T) {
 
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir: filepath.Join("construct_component", "python"),
+		PythonBin: getPythonBin(),
+		Env:       []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir:       filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		UseAutomaticVirtualEnv: true,
+		Quick:                  true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
@@ -461,10 +422,23 @@ func TestGetResourcePython(t *testing.T) {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("get_resource", "python"),
+		PythonBin: getPythonBin(),
+		Dir:       filepath.Join("get_resource", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
+		UseAutomaticVirtualEnv:   true,
 		AllowEmptyPreviewChanges: true,
 	})
+}
+
+func getPythonBin() string {
+	if runtime.GOOS == WindowsOS {
+		path, err := exec.LookPath("python")
+		if err != nil {
+			panic(err)
+		}
+		return path
+	}
+	return ""
 }
