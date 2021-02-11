@@ -1767,16 +1767,8 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 }
 
 func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
-	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
-	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
-	// of Python that you are requesting on the host machine before building a virtualenv for it.
+	// Create a new Pipenv environment.
 	pythonVersion := "3"
-	if runtime.GOOS == windowsOS {
-		// Due to https://bugs.python.org/issue34679, Python Dynamic Providers on Windows do not
-		// work on Python 3.8.0 (but are fixed in 3.8.1).  For now we will force Windows to use 3.7
-		// to avoid this bug, until 3.8.1 is available in all our CI systems.
-		pythonVersion = "3.7"
-	}
 	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
 		return err
 	}
