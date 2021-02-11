@@ -7,7 +7,6 @@ import (
 	"bytes"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -20,8 +19,7 @@ import (
 // TestEmptyPython simply tests that we can run an empty Python project.
 func TestEmptyPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("empty", "python"),
+		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -32,8 +30,7 @@ func TestEmptyPython(t *testing.T) {
 
 func TestStackOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("stack_outputs", "python"),
+		Dir: filepath.Join("stack_outputs", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -59,8 +56,7 @@ func TestStackOutputsPython(t *testing.T) {
 // Tests basic configuration from the perspective of a Pulumi program.
 func TestConfigBasicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("config_basic", "python"),
+		Dir: filepath.Join("config_basic", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -97,8 +93,7 @@ func TestStackReferencePython(t *testing.T) {
 	}
 
 	opts := &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("stack_reference", "python"),
+		Dir: filepath.Join("stack_reference", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -131,8 +126,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 	// build a stack with an export
 	exporterOpts := &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("stack_reference_multi", "python", "exporter"),
+		Dir: filepath.Join("stack_reference_multi", "python", "exporter"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -165,8 +159,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 	exporterStackName := exporterOpts.GetStackName().String()
 
 	importerOpts := &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("stack_reference_multi", "python", "importer"),
+		Dir: filepath.Join("stack_reference_multi", "python", "importer"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -183,8 +176,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 
 func TestResourceWithSecretSerializationPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("secret_outputs", "python"),
+		Dir: filepath.Join("secret_outputs", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -233,8 +225,7 @@ func TestPython3NotInstalled(t *testing.T) {
 		"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
 		[]string{badPython})
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("empty", "python"),
+		Dir: filepath.Join("empty", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -259,8 +250,7 @@ func TestPython3NotInstalled(t *testing.T) {
 func TestDynamicPython(t *testing.T) {
 	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("dynamic", "python"),
+		Dir: filepath.Join("dynamic", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -283,8 +273,7 @@ func TestPartialValuesPython(t *testing.T) {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("partial_values", "python"),
+		Dir: filepath.Join("partial_values", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -296,8 +285,7 @@ func TestPartialValuesPython(t *testing.T) {
 // Tests a resource with a large (>4mb) string prop in Python
 func TestLargeResourcePython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("large_resource", "python"),
+		Dir: filepath.Join("large_resource", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -308,8 +296,7 @@ func TestLargeResourcePython(t *testing.T) {
 // Test enum outputs
 func TestEnumOutputsPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("enums", "python"),
+		Dir: filepath.Join("enums", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -329,8 +316,7 @@ func TestPythonPylint(t *testing.T) {
 	t.Skip("Temporarily skipping test - pulumi/pulumi#4849")
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("python", "pylint"),
+		Dir: filepath.Join("python", "pylint"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -376,9 +362,8 @@ func TestConstructPython(t *testing.T) {
 
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Env:       []string{pathEnv, testYarnLinkPulumiEnv},
-		Dir:       filepath.Join("construct_component", "python"),
+		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -422,23 +407,11 @@ func TestGetResourcePython(t *testing.T) {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
 	}
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		PythonBin: getPythonBin(),
-		Dir:       filepath.Join("get_resource", "python"),
+		Dir: filepath.Join("get_resource", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		UseAutomaticVirtualEnv:   true,
 		AllowEmptyPreviewChanges: true,
 	})
-}
-
-func getPythonBin() string {
-	if runtime.GOOS == WindowsOS {
-		path, err := exec.LookPath("python")
-		if err != nil {
-			panic(err)
-		}
-		return path
-	}
-	return ""
 }
