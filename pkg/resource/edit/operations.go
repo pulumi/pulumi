@@ -79,6 +79,12 @@ func UnprotectResource(_ *deploy.Snapshot, res *resource.State) error {
 	return nil
 }
 
+// ProtectResource protects a resource.
+func ProtectResource(_ *deploy.Snapshot, res *resource.State) error {
+	res.Protect = true
+	return nil
+}
+
 // LocateResource returns all resources in the given snapshot that have the given URN.
 func LocateResource(snap *deploy.Snapshot, urn resource.URN) []*resource.State {
 	// If there is no snapshot then return no resources

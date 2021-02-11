@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [cli] Add the ability to protect resources via `pulumi state protect`
+  [#6313](https://github.com/pulumi/pulumi/pull/6313)
+
 - [CLI] Add pagination options to `pulumi stack history` (`--page`, `--page-size`). These replace the `--limit` flag.
   [#6292](https://github.com/pulumi/pulumi/pull/6292)
 

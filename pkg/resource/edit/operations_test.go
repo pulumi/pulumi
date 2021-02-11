@@ -18,10 +18,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
-
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
+	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
 	"github.com/pulumi/pulumi/pkg/v2/version"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -203,6 +202,26 @@ func TestUnprotectResource(t *testing.T) {
 	assert.Len(t, snap.Resources, 4)
 	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
 	assert.False(t, a.Protect)
+}
+
+func TestProtectResource(t *testing.T) {
+	pA := NewProviderResource("a", "p1", "0")
+	a := NewResource("a", pA)
+	a.Protect = false
+	b := NewResource("b", pA)
+	c := NewResource("c", pA)
+	snap := NewSnapshot([]*resource.State{
+		pA,
+		a,
+		b,
+		c,
+	})
+
+	err := ProtectResource(snap, a)
+	assert.NoError(t, err)
+	assert.Len(t, snap.Resources, 4)
+	assert.Equal(t, []*resource.State{pA, a, b, c}, snap.Resources)
+	assert.True(t, a.Protect)
 }
 
 func TestLocateResourceNotFound(t *testing.T) {
