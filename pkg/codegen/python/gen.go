@@ -129,6 +129,22 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
+func (mod *modContext) modNameAndName(tok string, pkg *schema.Package) (modName string, name string) {
+	var info PackageInfo
+	contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"python": Importer}))
+	if v, ok := pkg.Language["python"].(PackageInfo); ok {
+		info = v
+	}
+	modName, name = tokenToModule(tok, pkg, info.ModuleNameOverrides), tokenToName(tok)
+	if modName == mod.mod {
+		modName = ""
+	}
+	if modName != "" {
+		modName = strings.ReplaceAll(modName, "/", ".") + "."
+	}
+	return
+}
+
 func (mod *modContext) objectType(t *schema.ObjectType, input, functionType bool) string {
 	modName, name := mod.tokenToModule(t.Token), tokenToName(t.Token)
 
@@ -147,22 +163,8 @@ func (mod *modContext) objectType(t *schema.ObjectType, input, functionType bool
 
 	// If it's an external type, reference it via fully qualified name.
 	if t.Package != mod.pkg {
-		pkg := t.Package
-		tok := t.Token
-
-		var info PackageInfo
-		contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"python": Importer}))
-		if v, ok := pkg.Language["python"].(PackageInfo); ok {
-			info = v
-		}
-		modName, name := tokenToModule(tok, pkg, info.ModuleNameOverrides), tokenToName(tok)
-		if modName == mod.mod {
-			modName = ""
-		}
-		if modName != "" {
-			modName = strings.ReplaceAll(modName, "/", ".") + "."
-		}
-		return fmt.Sprintf("'%s.%s%s%s%s'", pyPack(pkg.Name), modName, prefix, name, suffix)
+		modName, name := mod.modNameAndName(t.Token, t.Package)
+		return fmt.Sprintf("'%s.%s%s%s%s'", pyPack(t.Package.Name), modName, prefix, name, suffix)
 	}
 
 	if modName == "" && modName != mod.mod {
@@ -212,20 +214,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	}
 
 	pkg := r.Resource.Package
-	tok := r.Token
-
-	var info PackageInfo
-	contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"python": Importer}))
-	if v, ok := pkg.Language["python"].(PackageInfo); ok {
-		info = v
-	}
-	modName, name := tokenToModule(tok, pkg, info.ModuleNameOverrides), tokenToName(tok)
-	if modName == mod.mod {
-		modName = ""
-	}
-	if modName != "" {
-		modName = strings.ReplaceAll(modName, "/", ".") + "."
-	}
+	modName, name := mod.modNameAndName(r.Token, pkg)
 	return fmt.Sprintf("%s.%s%s", pyPack(pkg.Name), modName, name)
 }
 
