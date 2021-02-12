@@ -13,7 +13,6 @@
 # limitations under the License.
 import asyncio
 import os
-import sys
 import traceback
 
 from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast
@@ -22,10 +21,9 @@ import grpc
 
 from . import rpc, settings, known_types
 from .. import log
-from .invoke import invoke
 from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
-from ..metadata import get_project, get_stack
+from .settings import handle_grpc_error
 
 if TYPE_CHECKING:
     from .. import Resource, ResourceOptions, CustomResource, Inputs, Output
@@ -157,7 +155,7 @@ def resource_output(res: 'Resource') -> Tuple[Callable[[Any, bool, bool, Optiona
             known_future.set_result(known)
             secret_future.set_result(secret)
 
-    return (resolve, Output({res}, value_future, known_future, secret_future))
+    return resolve, Output({res}, value_future, known_future, secret_future)
 
 
 def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> None:
@@ -191,18 +189,7 @@ def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> No
                 try:
                     return monitor.Invoke(req)
                 except grpc.RpcError as exn:
-                    # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
-                    # the usefullness come from the fact that it is polymorphically also a grpc.Call and thus has
-                    # the .code() member. Pylint doesn't know this because it's not known statically.
-                    #
-                    # Neither pylint nor I are the only ones who find this confusing:
-                    # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
-                    # pylint: disable=no-member
-                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                        sys.exit(0)
-
-                    details = exn.details()
-                raise Exception(details)
+                    handle_grpc_error(exn)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
 
@@ -310,14 +297,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                 try:
                     return monitor.ReadResource(req)
                 except grpc.RpcError as exn:
-                    # See the comment on invoke for the justification for disabling
-                    # this warning
-                    # pylint: disable=no-member
-                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                        sys.exit(0)
-
-                    details = exn.details()
-                raise Exception(details)
+                    handle_grpc_error(exn)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
@@ -444,7 +424,7 @@ def register_resource(res: 'Resource',
                 remote=remote,
             )
 
-            from ..resource import create_urn # pylint: disable=import-outside-toplevel
+            from ..resource import create_urn  # pylint: disable=import-outside-toplevel
             mock_urn = await create_urn(name, ty, resolver.parent_urn).future()
 
             def do_rpc_call():
@@ -456,14 +436,7 @@ def register_resource(res: 'Resource',
                 try:
                     return monitor.RegisterResource(req)
                 except grpc.RpcError as exn:
-                    # See the comment on invoke for the justification for disabling
-                    # this warning
-                    # pylint: disable=no-member
-                    if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                        sys.exit(0)
-
-                    details = exn.details()
-                raise Exception(details)
+                    handle_grpc_error(exn)
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
@@ -474,6 +447,9 @@ def register_resource(res: 'Resource',
             if resolve_id is not None:
                 resolve_id(None, True, False, exn)
             raise
+
+        if resp is None:
+            return
 
         log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
@@ -490,7 +466,6 @@ def register_resource(res: 'Resource',
             for k, v in rpc_deps.items():
                 urns = list(v.urns)
                 deps[k] = set(map(new_dependency, urns))
-
 
         rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
 
@@ -516,14 +491,7 @@ def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[In
             try:
                 return monitor.RegisterResourceOutputs(req)
             except grpc.RpcError as exn:
-                # See the comment on invoke for the justification for disabling
-                # this warning
-                # pylint: disable=no-member
-                if exn.code() == grpc.StatusCode.UNAVAILABLE:
-                    sys.exit(0)
-
-                details = exn.details()
-            raise Exception(details)
+                handle_grpc_error(exn)
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(
@@ -549,9 +517,9 @@ class RegisterResponse:
     # pylint: disable=redefined-builtin
     def __init__(self,
                  urn: str,
-                 id: str,
+                 id: Optional[str],
                  object: struct_pb2.Struct,
-                 propertyDependencies: Dict[str, PropertyDependencies]):
+                 propertyDependencies: Optional[Dict[str, PropertyDependencies]]):
         self.urn = urn
         self.id = id
         self.object = object

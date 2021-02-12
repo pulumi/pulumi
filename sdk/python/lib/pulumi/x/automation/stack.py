@@ -22,7 +22,7 @@ from typing import List, Any, Mapping, MutableMapping, Optional
 from .cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from .config import ConfigValue, ConfigMap, _SECRET_SENTINEL
 from .errors import StackAlreadyExistsError
-from .server import LanguageServer
+from ._server import LanguageServer
 from .workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
@@ -464,14 +464,25 @@ class Stack:
             outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
         return outputs
 
-    def history(self) -> List[UpdateSummary]:
+    def history(self,
+        page_size: Optional[int] = None,
+        page: Optional[int] = None) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).
 
+        :param page_size: Paginate history entries (used in combination with page), defaults to all.
+        :param page: Paginate history entries (used in combination with page_size), defaults to all.
+
         :returns: List[UpdateSummary]
         """
-        result = self._run_pulumi_cmd_sync(["history", "--json", "--show-secrets"])
+        args = ["history", "--json", "--show-secrets"]
+        if page_size is not None:
+            # default page=1 when page_size is set
+            if page is None:
+                page = 1
+            args.extend(["--page-size", str(page_size), "--page", str(page)])
+        result = self._run_pulumi_cmd_sync(args)
         summary_list = json.loads(result.stdout)
 
         summaries: List[UpdateSummary] = []
@@ -495,7 +506,7 @@ class Stack:
 
         :returns: Optional[UpdateSummary]
         """
-        history = self.history()
+        history = self.history(page_size=1)
         if not len(history):
             return None
         return history[0]

@@ -272,6 +272,25 @@ describe("LocalWorkspace", () => {
             await stack.workspace.removeStack(stackName);
         }
     }));
+    it(`runs an inline program that rejects a promise and exits gracefully`, asyncTest(async () => {
+        const program = async () => {
+            Promise.reject(new Error());
+            return {};
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "inline_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up        
+        await assert.rejects(stack.up())
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
 });
 
 const getTestSuffix = () => {

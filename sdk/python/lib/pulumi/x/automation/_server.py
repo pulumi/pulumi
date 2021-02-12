@@ -12,12 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
+import grpc
 import sys
 import traceback
 from contextlib import suppress
 
 from .workspace import PulumiFn
-from ...log import *
+from ... import log
 from ...runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
 from ...runtime import run_in_stack, reset_options, set_all_config
 from ...errors import RunError
@@ -61,10 +63,24 @@ class LanguageServer(LanguageRuntimeServicer):
         try:
             loop.run_until_complete(run_in_stack(self.program))
         except RunError as exn:
-            result.error = str(exn)
+            msg = str(exn)
+            log.error(msg)
+            result.error = str(msg)
             return result
+        except grpc.RpcError as exn:
+            # If the monitor is unavailable, it is in the process of shutting down or has already
+            # shut down. Don't emit an error if this is the case.
+            if exn.code() == grpc.StatusCode.UNAVAILABLE:
+                log.debug("Resource monitor has terminated, shutting down.")
+            else:
+                msg = f"RPC error: {exn.details()}"
+                log.error(msg)
+                result.error = msg
+                return result
         except Exception as exn:
-            result.error = str(f"python inline source runtime error: {exn}\n{traceback.format_exc()}")
+            msg = str(f"python inline source runtime error: {exn}\n{traceback.format_exc()}")
+            log.error(msg)
+            result.error = msg
             return result
         finally:
             # If there's an exception during `run_in_stack`, it may result in pending asyncio tasks remaining unresolved
@@ -72,6 +88,7 @@ class LanguageServer(LanguageRuntimeServicer):
             # logged to stdout. To avoid this, we collect all the unresolved tasks in the loop and cancel them before
             # closing the loop.
             pending = asyncio.Task.all_tasks(loop) if _py_version_less_than_3_7 else asyncio.all_tasks(loop)
+            log.debug(f"Cancelling {len(pending)} tasks.")
             for task in pending:
                 task.cancel()
                 with suppress(asyncio.CancelledError):

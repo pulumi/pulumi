@@ -40,10 +40,15 @@ func Command(arg ...string) (*exec.Cmd, error) {
 	if pythonCmd := os.Getenv("PULUMI_PYTHON_CMD"); pythonCmd != "" {
 		pythonCmds = []string{pythonCmd}
 	} else {
-		// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-		// distributions (in particular the default python.org Windows installation) do not include
-		// a `python3` binary.
+		// Look for `python3` by default, but fallback to `python` if not found, except on Windows
+		// where we look for these in the reverse order because the default python.org Windows
+		// installation does not include a `python3` binary, and the existence of a `python3.exe`
+		// symlink to `python.exe` on some systems does not work correctly with the Python `venv`
+		// module.
 		pythonCmds = []string{"python3", "python"}
+		if runtime.GOOS == windows {
+			pythonCmds = []string{"python", "python3"}
+		}
 	}
 
 	var pythonCmd, pythonPath string
