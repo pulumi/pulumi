@@ -860,7 +860,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		comment := prop.Comment
 		// Default values for Provider inputs correspond to environment variables, so add that info to the docs.
 		if isProvider && input && prop.DefaultValue != nil && len(prop.DefaultValue.Environment) > 0 {
-			suffix := ""
+			var suffix string
 			if len(prop.DefaultValue.Environment) > 1 {
 				suffix = "s"
 			}
