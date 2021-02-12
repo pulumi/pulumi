@@ -1192,16 +1192,14 @@ func filterOutputProperties(inputProps []*schema.Property, props []*schema.Prope
 }
 
 func (mod *modContext) genResourceHeader(r *schema.Resource) header {
-	packageName := formatTitleText(mod.pkg.Name)
 	resourceName := resourceName(r)
 	var metaDescription string
 	var titleTag string
 	if mod.mod == "" {
-		metaDescription = fmt.Sprintf("Explore the %s resource of the %s package, "+
-			"including examples, input properties, output properties, "+
-			"lookup functions, and supporting types.", resourceName, packageName) + " " +
-			metaDescriptionRegexp.FindString(r.Comment)
-		titleTag = fmt.Sprintf("Resource %s | Package %s", resourceName, packageName)
+		metaDescription = fmt.Sprintf("Documentation for the %s.%s resource "+
+			"with examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", mod.pkg.Name, resourceName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, resourceName)
 	} else {
 		metaDescription = fmt.Sprintf("Documentation for the %s.%s.%s resource "+
 			"with examples, input properties, output properties, "+
