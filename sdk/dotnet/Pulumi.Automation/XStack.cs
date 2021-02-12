@@ -517,9 +517,26 @@ namespace Pulumi.Automation
         /// <summary>
         /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
         /// </summary>
-        public async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(CancellationToken cancellationToken = default)
+        /// <param name="limit">Limit the number of history entries to retrieve, defaults to all.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(
+            int? limit = null,
+            CancellationToken cancellationToken = default)
         {
-            var result = await this.RunCommandAsync(new[] { "history", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
+            var args = new List<string>()
+            {
+                "history",
+                "--json",
+                "--show-secrets",
+            };
+
+            if (limit.HasValue)
+            {
+                args.Add("--limit");
+                args.Add(limit.Value.ToString());
+            }
+
+            var result = await this.RunCommandAsync(args, null, cancellationToken).ConfigureAwait(false);
             var options = LocalSerializer.BuildJsonSerializerOptions();
             var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, options);
             return list.ToImmutableList();
@@ -527,7 +544,7 @@ namespace Pulumi.Automation
 
         public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default)
         {
-            var history = await this.GetHistoryAsync(cancellationToken).ConfigureAwait(false);
+            var history = await this.GetHistoryAsync(1, cancellationToken).ConfigureAwait(false);
             return history.FirstOrDefault();
         }
 

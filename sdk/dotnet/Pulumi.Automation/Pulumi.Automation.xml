@@ -865,10 +865,12 @@
             Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.XStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.XStack.GetHistoryAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.XStack.GetHistoryAsync(System.Nullable{System.Int32},System.Threading.CancellationToken)">
             <summary>
             Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
             </summary>
+            <param name="limit">Limit the number of history entries to retrieve, defaults to all.</param>
+            <param name="cancellationToken">A cancellation token.</param>
         </member>
     </members>
 </doc>
