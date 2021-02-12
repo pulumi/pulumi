@@ -274,17 +274,38 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 	} else {
 		// If no access token is available from the environment, and we are interactive, prompt and offer to
 		// open a browser to make it easy to generate and use a fresh token.
-		line1 := fmt.Sprintf("Manage your Pulumi stacks by logging in.")
-		line1len := len(line1)
-		line1 = colors.Highlight(line1, "Pulumi stacks", colors.Underline+colors.Bold)
-		fmt.Printf(opts.Color.Colorize(line1) + "\n")
-		maxlen := line1len
 
-		line2 := "Run `pulumi login --help` for alternative login options."
-		line2len := len(line2)
-		fmt.Printf(opts.Color.Colorize(line2) + "\n")
-		if line2len > maxlen {
-			maxlen = line2len
+		lines := []string{
+			"",
+			colors.SpecHeadline + "Welcome to Pulumi!" + colors.Reset,
+			"",
+			"  Pulumi helps you create, deploy, and manage infrastructure on any cloud using",
+			"  your favorite language.  To manage your cloud infrastructure, Pulumi stores the",
+			"  state of your cloud deployments in a backend of your choosing.",
+			"",
+			colors.Highlight(
+				"  To use the default Pulumi Service backend, login below.  If you would prefer to",
+				"login below",
+				colors.BrightCyan+colors.Bold,
+			),
+			"  manage state yourself, you can choose from a variety of self-managed Pulumi",
+			"  backends. Run `pulumi login --help` for alternative login options.",
+			"",
+			colors.Highlight(
+				"  The Pulumi Service backend provides transparent, robust and simple storage for your",
+				"Pulumi Service",
+				colors.Underline+colors.Bold,
+			),
+			"  Pulumi state. All secret values are encrypted in the state, and you can",
+			"  bring your own encryption provider for secrets. Pulumi deployments are always executed",
+			"  locally where the `pulumi` CLI is being invoked, so no ambient cloud credentials,",
+			"  source code, or other sensitive data will ever be shared with the Pulumi Service",
+			"  backend. For more details - see https://www.pulumi.com/docs/intro/concepts/state/.",
+			"",
+		}
+
+		for _, line := range lines {
+			fmt.Printf(opts.Color.Colorize(line) + "\n")
 		}
 
 		// In the case where we could not construct a link to the pulumi console based on the API server's hostname,
@@ -299,23 +320,12 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 				}
 			}
 		} else {
-			line3 := fmt.Sprintf("Enter your access token from %s", accountLink)
-			line3len := len(line3)
-			line3 = colors.Highlight(line3, "access token", colors.BrightCyan+colors.Bold)
-			line3 = colors.Highlight(line3, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
-			fmt.Printf(opts.Color.Colorize(line3) + "\n")
-			if line3len > maxlen {
-				maxlen = line3len
-			}
-
-			line4 := "    or hit <ENTER> to log in using your browser"
-			var padding string
-			if pad := maxlen - len(line4); pad > 0 {
-				padding = strings.Repeat(" ", pad)
-			}
-			line4 = colors.Highlight(line4, "<ENTER>", colors.BrightCyan+colors.Bold)
-
-			if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line4) + padding); err != nil {
+			line1 := fmt.Sprintf("Hit <ENTER> to log in using your browser, or else visit %s", accountLink)
+			line1 = colors.Highlight(line1, "<ENTER>", colors.BrightCyan+colors.Bold)
+			line1 = colors.Highlight(line1, accountLink, colors.BrightBlue+colors.Underline+colors.Bold)
+			fmt.Printf(opts.Color.Colorize(line1) + "\n")
+			line2 := "to manually provision an access token and enter it here"
+			if accessToken, err = cmdutil.ReadConsoleNoEcho(opts.Color.Colorize(line2)); err != nil {
 				return nil, err
 			}
 
@@ -348,22 +358,17 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 // WelcomeUser prints a Welcome to Pulumi message.
 func WelcomeUser(opts display.Options) {
 	fmt.Printf(`
+You are now logged in!
 
-  %s
+Get started with Pulumi at:
 
-  Pulumi helps you create, deploy, and manage infrastructure on any cloud using
-  your favorite language. You can get started today with Pulumi at:
+	https://www.pulumi.com/docs/get-started/
 
-      https://www.pulumi.com/docs/get-started/
+%s Resources you create with Pulumi are given unique names (a randomly
+generated suffix) by default. To learn more about auto-naming or customizing resource
+names see https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming.
 
-  %s Resources you create with Pulumi are given unique names (a randomly
-  generated suffix) by default. To learn more about auto-naming or customizing resource
-  names see https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming.
-
-
-`,
-		opts.Color.Colorize(colors.SpecHeadline+"Welcome to Pulumi!"+colors.Reset),
-		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
+`)
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
