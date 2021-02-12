@@ -500,9 +500,9 @@ namespace Pulumi.Automation
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
             var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, cancellationToken).ConfigureAwait(false);
             var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
-            var options = LocalSerializer.BuildJsonSerializerOptions();
-            var maskedOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, options);
-            var plaintextOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, options);
+            var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
+            var maskedOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
+            var plaintextOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
             
             var output = new Dictionary<string, OutputValue>();
             foreach (var (key, value) in plaintextOutput)
@@ -517,10 +517,10 @@ namespace Pulumi.Automation
         /// <summary>
         /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
         /// </summary>
-        /// <param name="limit">Limit the number of history entries to retrieve, defaults to all.</param>
+        /// <param name="options">Options to customize the behavior of the fetch history action.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         public async Task<ImmutableList<UpdateSummary>> GetHistoryAsync(
-            int? limit = null,
+            HistoryOptions? options = null,
             CancellationToken cancellationToken = default)
         {
             var args = new List<string>()
@@ -530,21 +530,36 @@ namespace Pulumi.Automation
                 "--show-secrets",
             };
 
-            if (limit.HasValue)
+            if (options?.PageSize.HasValue == true)
             {
-                args.Add("--limit");
-                args.Add(limit.Value.ToString());
+                if (options.PageSize!.Value < 1)
+                    throw new ArgumentException($"{nameof(options.PageSize)} must be greater than or equal to 1.", nameof(options.PageSize));
+
+                var page = !options.Page.HasValue ? 1
+                    : options.Page.Value < 1 ? 1
+                    : options.Page.Value;
+
+                args.Add("--page-size");
+                args.Add(options.PageSize.Value.ToString());
+                args.Add("--page");
+                args.Add(page.ToString());
             }
 
             var result = await this.RunCommandAsync(args, null, cancellationToken).ConfigureAwait(false);
-            var options = LocalSerializer.BuildJsonSerializerOptions();
-            var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, options);
+            var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
+            var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, jsonOptions);
             return list.ToImmutableList();
         }
 
         public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default)
         {
-            var history = await this.GetHistoryAsync(1, cancellationToken).ConfigureAwait(false);
+            var history = await this.GetHistoryAsync(
+                new HistoryOptions
+                {
+                    PageSize = 1,
+                },
+                cancellationToken).ConfigureAwait(false);
+
             return history.FirstOrDefault();
         }
 

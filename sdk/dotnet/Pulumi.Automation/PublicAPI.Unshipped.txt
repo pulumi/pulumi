@@ -15,6 +15,12 @@ Pulumi.Automation.DestroyOptions.OnOutput.get -> System.Action<string>
 Pulumi.Automation.DestroyOptions.OnOutput.set -> void
 Pulumi.Automation.DestroyOptions.TargetDependents.get -> bool?
 Pulumi.Automation.DestroyOptions.TargetDependents.set -> void
+Pulumi.Automation.HistoryOptions
+Pulumi.Automation.HistoryOptions.HistoryOptions() -> void
+Pulumi.Automation.HistoryOptions.Page.get -> int?
+Pulumi.Automation.HistoryOptions.Page.set -> void
+Pulumi.Automation.HistoryOptions.PageSize.get -> int?
+Pulumi.Automation.HistoryOptions.PageSize.set -> void
 Pulumi.Automation.InlineProgramArgs
 Pulumi.Automation.InlineProgramArgs.InlineProgramArgs(string projectName, string stackName, Pulumi.Automation.PulumiFn program) -> void
 Pulumi.Automation.InlineProgramArgs.StackName.get -> string
@@ -224,7 +230,7 @@ Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions o
 Pulumi.Automation.WorkspaceStack.Dispose() -> void
 Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
 Pulumi.Automation.WorkspaceStack.GetConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
-Pulumi.Automation.WorkspaceStack.GetHistoryAsync(int? limit = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.UpdateSummary>>
+Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.UpdateSummary>>
 Pulumi.Automation.WorkspaceStack.GetInfoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateSummary>
 Pulumi.Automation.WorkspaceStack.Name.get -> string
 Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>

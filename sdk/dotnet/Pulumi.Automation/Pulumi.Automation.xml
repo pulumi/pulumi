@@ -9,6 +9,11 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="T:Pulumi.Automation.HistoryOptions">
+            <summary>
+            Options controlling the behavior of a <see cref="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.LocalProgramArgs">
             <summary>
             Description of a stack backed by pre-existing local Pulumi CLI program.
@@ -865,11 +870,11 @@
             Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(System.Nullable{System.Int32},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)">
             <summary>
             Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
             </summary>
-            <param name="limit">Limit the number of history entries to retrieve, defaults to all.</param>
+            <param name="options">Options to customize the behavior of the fetch history action.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
     </members>
