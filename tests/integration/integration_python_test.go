@@ -23,8 +23,7 @@ func TestEmptyPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 	})
 }
 
@@ -34,8 +33,7 @@ func TestStackOutputsPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure the checkpoint contains a single resource, the Stack, with two outputs.
 			fmt.Printf("Deployment: %v", stackInfo.Deployment)
@@ -60,8 +58,7 @@ func TestConfigBasicPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		Config: map[string]string{
 			"aConfigValue": "this value is a Pythonic value",
 		},
@@ -97,8 +94,7 @@ func TestStackReferencePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
@@ -130,8 +126,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		Config: map[string]string{
 			"org": os.Getenv("PULUMI_TEST_OWNER"),
 		},
@@ -163,8 +158,7 @@ func TestMultiStackReferencePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		Config: map[string]string{
 			"org":                 os.Getenv("PULUMI_TEST_OWNER"),
 			"exporter_stack_name": exporterStackName,
@@ -180,8 +174,7 @@ func TestResourceWithSecretSerializationPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// The program exports three resources:
 			//   1. One named `withSecret` who's prefix property should be secret, specified via `pulumi.secret()`.
@@ -229,8 +222,7 @@ func TestPython3NotInstalled(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		Env: []string{
 			// Note: we use PULUMI_PYTHON_CMD to override the default behavior of searching
 			// for Python 3, since anyone running tests surely already has Python 3 installed on their
@@ -254,7 +246,6 @@ func TestDynamicPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			randomVal = stack.Outputs["random_val"].(string)
 		},
@@ -277,7 +268,6 @@ func TestPartialValuesPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv:   true,
 		AllowEmptyPreviewChanges: true,
 	})
 }
@@ -289,7 +279,6 @@ func TestLargeResourcePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
 	})
 }
 
@@ -300,7 +289,6 @@ func TestEnumOutputsPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stack.Outputs)
 
@@ -339,8 +327,7 @@ func TestPythonPylint(t *testing.T) {
 			err := integration.RunCommand(t, "pylint", []string{pylint, "__main__.py"}, cwd, opts)
 			assert.NoError(t, err)
 		},
-		Quick:                  true,
-		UseAutomaticVirtualEnv: true,
+		Quick: true,
 	}
 	integration.ProgramTest(t, opts)
 }
@@ -367,8 +354,7 @@ func TestConstructPython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv: true,
-		Quick:                  true,
+		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
@@ -411,7 +397,6 @@ func TestGetResourcePython(t *testing.T) {
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		UseAutomaticVirtualEnv:   true,
 		AllowEmptyPreviewChanges: true,
 	})
 }

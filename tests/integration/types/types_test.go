@@ -27,7 +27,6 @@ func TestPythonTypes(t *testing.T) {
 						assert.Equal(t, 42.0, stack.Outputs[fmt.Sprintf("res%s_second_value", res)])
 					}
 				},
-				UseAutomaticVirtualEnv: true,
 			})
 		})
 	}

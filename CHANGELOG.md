@@ -21,6 +21,10 @@ CHANGELOG
 - Look for `python` binary first on Windows instead of `python3`.
   [#6317](https://github.com/pulumi/pulumi/pull/6317)
 
+- [pkg/testing/integration] Change the default behavior for Python test projects to use `UseAutomaticVirtualEnv` by
+  default. `UsePipenv` can be set to go back to the old behavior of using pipenv with tests.
+  [#6318](https://github.com/pulumi/pulumi/pull/6318)
+
 ## 2.20.0 (2021-02-03)
 
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses

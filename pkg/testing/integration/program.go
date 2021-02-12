@@ -259,8 +259,11 @@ type ProgramTestOptions struct {
 	// Additional environment variables to pass for each command we run.
 	Env []string
 
-	// Automatically create and use a virtual environment, rather than using the Pipenv tool.
+	// Automatically create and use a virtual environment, rather than using the Pipenv tool. This is now the default
+	// behavior, so this option no longer has any affect. To go back to the old behavior use the `UsePipenv` option.
 	UseAutomaticVirtualEnv bool
+	// Use the Pipenv tool to manage the virtual environment.
+	UsePipenv bool
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -465,6 +468,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
+	}
+	if overrides.UsePipenv {
+		opts.UsePipenv = overrides.UsePipenv
 	}
 	return opts
 }
@@ -781,7 +787,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	// the correct version of Python.  We also need to do this for destroy and refresh so that
 	// dynamic providers are run in the right virtual environment.
 	// This is only necessary when not using automatic virtual environment support.
-	if !pt.opts.UseAutomaticVirtualEnv && isUpdate {
+	if pt.opts.UsePipenv && isUpdate {
 		projinfo, err := pt.getProjinfo(wd)
 		if err != nil {
 			return nil
@@ -1741,7 +1747,11 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	if pt.opts.UseAutomaticVirtualEnv {
+	if pt.opts.UsePipenv {
+		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			return err
+		}
+	} else {
 		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv"}, cwd); err != nil {
 			return err
 		}
@@ -1753,11 +1763,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
-			[]string{"pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
-			return err
-		}
-	} else {
-		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
 			return err
 		}
 	}
@@ -1813,14 +1819,14 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 			}
 		}
 
-		if pt.opts.UseAutomaticVirtualEnv {
-			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
-				[]string{"pip", "install", "-e", dep}, cwd); err != nil {
+		if pt.opts.UsePipenv {
+			if err := pt.runPipenvCommand("pipenv-install-package",
+				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
 			}
 		} else {
-			if err := pt.runPipenvCommand("pipenv-install-package",
-				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
+			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
+				[]string{"python", "-m", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
 			}
 		}
