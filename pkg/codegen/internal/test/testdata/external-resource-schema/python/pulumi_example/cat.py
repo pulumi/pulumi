@@ -8,7 +8,7 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
 from ._inputs import *
-from pulumi_random import RandomPet
+import pulumi_random
 
 __all__ = ['Cat']
 

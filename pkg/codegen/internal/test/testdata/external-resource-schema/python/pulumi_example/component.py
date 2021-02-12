@@ -7,9 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
-from pulumi_aws import _ec2_securitygroup.SecurityGroup
-from pulumi_kubernetes import _storage_k8s_io_v1.StorageClass
-from pulumi_kubernetes import meta_v1 as _meta_v1
+import pulumi_aws
 import pulumi_kubernetes
 
 __all__ = ['Component']
@@ -19,7 +17,7 @@ class Component(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 metadata: Optional[pulumi.Input[pulumi.InputType['_meta_v1.ObjectMetaArgs']]] = None,
+                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
                  __props__=None,
                  __name__=None,
                  __opts__=None):
@@ -80,12 +78,12 @@ class Component(pulumi.CustomResource):
 
     @property
     @pulumi.getter(name="securityGroup")
-    def security_group(self) -> pulumi.Output[Optional['_ec2_securitygroup.SecurityGroup']]:
+    def security_group(self) -> pulumi.Output[Optional['pulumi_aws.ec2.SecurityGroup']]:
         return pulumi.get(self, "security_group")
 
     @property
     @pulumi.getter(name="storageClasses")
-    def storage_classes(self) -> pulumi.Output[Optional[Mapping[str, '_storage_k8s_io_v1.StorageClass']]]:
+    def storage_classes(self) -> pulumi.Output[Optional[Mapping[str, 'pulumi_kubernetes.storage.v1.StorageClass']]]:
         return pulumi.get(self, "storage_classes")
 
     def translate_output_property(self, prop):
