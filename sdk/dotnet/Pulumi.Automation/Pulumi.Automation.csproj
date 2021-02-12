@@ -16,7 +16,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
-    <DocumentationFile>.\Pulumi.xml</DocumentationFile>
+    <DocumentationFile>.\Pulumi.Automation.xml</DocumentationFile>
     <NoWarn>1701;1702;1591;NU5105</NoWarn>
   </PropertyGroup>
 
@@ -42,7 +42,7 @@
   <ItemGroup>
     <None Remove="PublicAPI.Shipped.txt" />
     <None Remove="PublicAPI.Unshipped.txt" />
-    <None Remove="Pulumi.xml" />
+    <None Remove="Pulumi.Automation.xml" />
   </ItemGroup>
 
   <ItemGroup>

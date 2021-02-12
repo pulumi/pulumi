@@ -456,6 +456,16 @@
             </summary>
             <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
         </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create``1(System.IServiceProvider)">
+            <summary>
+            Creates an inline (in process) pulumi program via a traditional <see cref="T:Pulumi.Stack"/> implementation.
+            <para/>
+                When invoked, a new stack instance will be resolved based
+                on the provided <typeparamref name="TStack"/> type parameter
+                using the <paramref name="serviceProvider"/>.
+            </summary>
+            <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
+        </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.XStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
