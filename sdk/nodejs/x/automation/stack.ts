@@ -144,7 +144,7 @@ export class Stack {
             }
         }
 
-        let onExit = (code: number) => { return; };
+        let onExit = () => { return; };
 
         if (program) {
             kind = execKind.inline;
@@ -163,16 +163,22 @@ export class Stack {
                 });
             });
             server.start();
-            onExit = (code: number) => {
-                languageServer.onPulumiExit(code, false /* preview */);
+            onExit = () => {
+                languageServer.onPulumiExit();
                 server.forceShutdown();
             };
             args.push(`--client=127.0.0.1:${port}`);
         }
 
         args.push("--exec-kind", kind);
-        const upResult = await this.runPulumiCmd(args, opts?.onOutput);
-        onExit(upResult.code);
+        let upResult;
+        try {
+            upResult = await this.runPulumiCmd(args, opts?.onOutput);
+        } finally {
+            onExit();
+        }
+        
+        
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
         const summary = await this.info();
@@ -224,7 +230,7 @@ export class Stack {
             }
         }
 
-        let onExit = (code: number) => { return; };
+        let onExit = () => { return; };
 
         if (program) {
             kind = execKind.inline;
@@ -243,16 +249,20 @@ export class Stack {
                 });
             });
             server.start();
-            onExit = (code: number) => {
-                languageServer.onPulumiExit(code, false /* preview */);
+            onExit = () => {
+                languageServer.onPulumiExit();
                 server.forceShutdown();
             };
             args.push(`--client=127.0.0.1:${port}`);
         }
 
         args.push("--exec-kind", kind);
-        const preResult = await this.runPulumiCmd(args);
-        onExit(preResult.code);
+        let preResult;
+        try {
+            preResult = await this.runPulumiCmd(args);
+        } finally {
+            onExit();
+        }
         const summary = await this.info();
         return {
             stdout: preResult.stdout,
@@ -405,8 +415,16 @@ export class Stack {
      * Returns a list summarizing all previous and current results from Stack lifecycle operations
      * (up/preview/refresh/destroy).
      */
-    async history(): Promise<UpdateSummary[]> {
-        const result = await this.runPulumiCmd(["history", "--json", "--show-secrets"]);
+    async history(pageSize?: number, page?: number): Promise<UpdateSummary[]> {
+        const args = ["history", "--json", "--show-secrets"];
+        if (pageSize) {
+            if (!page || page < 1) {
+                page = 1
+            }
+            args.push("--page-size", Math.floor(pageSize).toString(), "--page", Math.floor(page).toString())
+        }
+        const result = await this.runPulumiCmd(args);
+      
         return JSON.parse(result.stdout, (key, value) => {
             if (key === "startTime" || key === "endTime") {
                 return new Date(value);
@@ -415,7 +433,7 @@ export class Stack {
         });
     }
     async info(): Promise<UpdateSummary | undefined> {
-        const history = await this.history();
+        const history = await this.history(1 /*pageSize*/);
         if (!history || history.length === 0) {
             return undefined;
         }

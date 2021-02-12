@@ -259,8 +259,11 @@ type ProgramTestOptions struct {
 	// Additional environment variables to pass for each command we run.
 	Env []string
 
-	// Automatically create and use a virtual environment, rather than using the Pipenv tool.
+	// Automatically create and use a virtual environment, rather than using the Pipenv tool. This is now the default
+	// behavior, so this option no longer has any affect. To go back to the old behavior use the `UsePipenv` option.
 	UseAutomaticVirtualEnv bool
+	// Use the Pipenv tool to manage the virtual environment.
+	UsePipenv bool
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -465,6 +468,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
+	}
+	if overrides.UsePipenv {
+		opts.UsePipenv = overrides.UsePipenv
 	}
 	return opts
 }
@@ -677,10 +683,15 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 		pt.pythonBin = pt.opts.PythonBin
 		if pt.opts.PythonBin == "" {
 			var err error
-			// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-			// distributions (in particular the default python.org Windows installation) do not include
-			// a `python3` binary.
+			// Look for `python3` by default, but fallback to `python` if not found, except on Windows
+			// where we look for these in the reverse order because the default python.org Windows
+			// installation does not include a `python3` binary, and the existence of a `python3.exe`
+			// symlink to `python.exe` on some systems does not work correctly with the Python `venv`
+			// module.
 			pythonCmds := []string{"python3", "python"}
+			if runtime.GOOS == windowsOS {
+				pythonCmds = []string{"python", "python3"}
+			}
 			for _, bin := range pythonCmds {
 				pt.pythonBin, err = exec.LookPath(bin)
 				// Break on the first cmd we find on the path (if any).
@@ -776,7 +787,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	// the correct version of Python.  We also need to do this for destroy and refresh so that
 	// dynamic providers are run in the right virtual environment.
 	// This is only necessary when not using automatic virtual environment support.
-	if !pt.opts.UseAutomaticVirtualEnv && isUpdate {
+	if pt.opts.UsePipenv && isUpdate {
 		projinfo, err := pt.getProjinfo(wd)
 		if err != nil {
 			return nil
@@ -1736,7 +1747,11 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	if pt.opts.UseAutomaticVirtualEnv {
+	if pt.opts.UsePipenv {
+		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			return err
+		}
+	} else {
 		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv"}, cwd); err != nil {
 			return err
 		}
@@ -1748,11 +1763,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
-			[]string{"pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
-			return err
-		}
-	} else {
-		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
 			return err
 		}
 	}
@@ -1770,14 +1781,7 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
 	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
 	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	pythonVersion := "3"
-	if runtime.GOOS == windowsOS {
-		// Due to https://bugs.python.org/issue34679, Python Dynamic Providers on Windows do not
-		// work on Python 3.8.0 (but are fixed in 3.8.1).  For now we will force Windows to use 3.7
-		// to avoid this bug, until 3.8.1 is available in all our CI systems.
-		pythonVersion = "3.7"
-	}
-	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
+	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
 		return err
 	}
 
@@ -1815,14 +1819,14 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 			}
 		}
 
-		if pt.opts.UseAutomaticVirtualEnv {
-			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
-				[]string{"pip", "install", "-e", dep}, cwd); err != nil {
+		if pt.opts.UsePipenv {
+			if err := pt.runPipenvCommand("pipenv-install-package",
+				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
 			}
 		} else {
-			if err := pt.runPipenvCommand("pipenv-install-package",
-				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
+			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
+				[]string{"python", "-m", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
 			}
 		}

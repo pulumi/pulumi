@@ -36,17 +36,21 @@ class FakeCustomResource(CustomResource):
         self.__dict__["urn"] = Output.from_input(urn)
         self.__dict__["id"] = Output.from_input("id")
 
+
 class FakeComponentResource(ComponentResource):
     def __init__(self, urn):
         self.__dict__["urn"] = Output.from_input(urn)
+
 
 class MyCustomResource(CustomResource):
     def __init__(self, name: str, typ: Optional[str] = None, opts: Optional[ResourceOptions] = None):
         super(MyCustomResource, self).__init__(typ if typ is not None else "test:index:resource", name, None, opts)
 
+
 class MyComponentResource(ComponentResource):
     def __init__(self, name: str, typ: Optional[str] = None, opts: Optional[ResourceOptions] = None):
         super(MyComponentResource, self).__init__(typ if typ is not None else "test:index:component", name, None, opts)
+
 
 class MyResourceModule(ResourceModule):
     def version(self):
@@ -60,6 +64,7 @@ class MyResourceModule(ResourceModule):
         else:
             raise Exception(f"unknown resource type {typ}")
 
+
 class MyMocks(Mocks):
     def call(self, token, args, provider):
         raise Exception(f"unknown function {token}")
@@ -72,8 +77,24 @@ class MyMocks(Mocks):
         else:
             raise Exception(f"unknown resource type {typ}")
 
+
+@pulumi.output_type
+class MyOutputTypeDict(dict):
+
+    def __init__(self, values: list):
+        pulumi.set(self, "values", values)
+
+    # Property with empty body.
+    @property
+    @pulumi.getter
+    def values(self) -> str:
+        """Values docstring."""
+        ...
+
+
 def pulumi_test(coro):
     wrapped = pulumi.runtime.test(coro)
+
     def wrapper(*args, **kwargs):
         settings.configure(settings.Settings())
         rpc._RESOURCE_PACKAGES.clear()
@@ -83,6 +104,7 @@ def pulumi_test(coro):
         wrapped(*args, **kwargs)
 
     return wrapper
+
 
 class NextSerializationTests(unittest.TestCase):
     @pulumi_test
@@ -273,10 +295,31 @@ class NextSerializationTests(unittest.TestCase):
 
         other = Output.from_input(99)
         combined = Output.all(out, other)
+        combined_dict = Output.all(out=out, other=other)
         deps = []
         prop = await rpc.serialize_property(combined, deps)
-        self.assertListEqual(deps, [res])
+        prop_dict = await rpc.serialize_property(combined_dict, deps)
+        self.assertSetEqual(set(deps), {res})
         self.assertEqual([42, 99], prop)
+        self.assertEqual({"out": 42, "other": 99}, prop_dict)
+
+    @pulumi_test
+    async def test_output_all_failure_no_inputs(self):
+        self.assertRaises(ValueError, Output.all)
+        self.assertRaisesRegex(ValueError, "Output.all() was supplied no inputs")
+
+    @pulumi_test
+    async def test_output_all_failure_mixed_inputs(self):
+        res = FakeCustomResource("some-resource")
+        fut = asyncio.Future()
+        fut.set_result(42)
+        known_fut = asyncio.Future()
+        known_fut.set_result(True)
+        out = Output({res}, fut, known_fut)
+
+        other = Output.from_input(99)
+        self.assertRaises(ValueError, Output.all, out, other=other)
+        self.assertRaisesRegex(ValueError, "Output.all() was supplied a mix of named and unnamed inputs")
 
     @pulumi_test
     async def test_output_all_composes_dependencies(self):
@@ -295,10 +338,13 @@ class NextSerializationTests(unittest.TestCase):
         other_out = Output({other}, other_fut, other_known_fut)
 
         combined = Output.all(out, other_out)
+        combined_dict = Output.all(out=out, other_out=other_out)
         deps = []
         prop = await rpc.serialize_property(combined, deps)
+        prop_dict = await rpc.serialize_property(combined_dict, deps)
         self.assertSetEqual(set(deps), {res, other})
         self.assertEqual([42, 99], prop)
+        self.assertEqual({"out": 42, "other_out": 99}, prop_dict)
 
     @pulumi_test
     async def test_output_all_known_if_all_are_known(self):
@@ -317,13 +363,16 @@ class NextSerializationTests(unittest.TestCase):
         other_out = Output({other}, other_fut, other_known_fut)
 
         combined = Output.all(out, other_out)
+        combined_dict = Output.all(out=out, other_out=other_out)
         deps = []
         prop = await rpc.serialize_property(combined, deps)
+        prop_dict = await rpc.serialize_property(combined_dict, deps)
         self.assertSetEqual(set(deps), {res, other})
 
         # The contents of the list are unknown if any of the Outputs used to
         # create it were unknown.
         self.assertEqual(rpc.UNKNOWN, prop)
+        self.assertEqual(rpc.UNKNOWN, prop_dict)
 
     @pulumi_test
     async def test_unknown_output(self):
@@ -900,6 +949,12 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual(await r.future(), "inner")
 
     @pulumi_test
+    async def test_dangerous_prop_output(self):
+        out = self.create_output(MyOutputTypeDict(values=["foo", "bar"]), is_known=True)
+
+        self.assertTrue(await out.is_known())
+
+    @pulumi_test
     async def test_apply_unknown_output(self):
         out = self.create_output("foo", is_known=True)
 
@@ -976,6 +1031,31 @@ class NextSerializationTests(unittest.TestCase):
         r11 = r9[1]
         self.assertTrue(await r11.is_known())
         self.assertEqual(await r11.future(with_unknowns=True), "bar")
+
+        out_dict = Output.all(foo=Output.from_input("foo"), unknown=Output.from_input(UNKNOWN),
+                              arr=Output.from_input([Output.from_input(UNKNOWN), Output.from_input("bar")]))
+
+        self.assertFalse(await out_dict.is_known())
+
+        r12 = out_dict["foo"]
+        self.assertTrue(await r12.is_known())
+        self.assertEqual(await r12.future(with_unknowns=True), "foo")
+
+        r13 = out_dict["unknown"]
+        self.assertFalse(await r13.is_known())
+        self.assertEqual(await r13.future(with_unknowns=True), UNKNOWN)
+
+        r14 = out_dict["arr"]
+        self.assertFalse(await r14.is_known())
+
+        r15 = r14[0]
+        self.assertFalse(await r15.is_known())
+        self.assertEqual(await r15.future(with_unknowns=True), UNKNOWN)
+
+        r16 = r14[1]
+        self.assertTrue(await r16.is_known())
+        self.assertEqual(await r16.future(with_unknowns=True), "bar")
+
 
     @pulumi_test
     async def test_output_coros(self):
@@ -1167,4 +1247,3 @@ class EnumSerializationTests(unittest.TestCase):
         one = FloatEnum.ZERO_POINT_ONE
         prop = await rpc.serialize_property(one, [])
         self.assertEqual(FloatEnum.ZERO_POINT_ONE, prop)
-

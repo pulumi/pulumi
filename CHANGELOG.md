@@ -5,7 +5,31 @@ CHANGELOG
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
-  
+
+- [CLI] Add pagination options to `pulumi stack history` (`--page`, `--page-size`). These replace the `--limit` flag.
+  [#6292](https://github.com/pulumi/pulumi/pull/6292)
+
+- [CLI, automation/*] Add `--limit` flag to `pulumi stack history` command and consume this from Automation API SDKs to improve performance of stack updates.
+  [#6257](https://github.com/pulumi/pulumi/pull/6257)
+
+- [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process. 
+  [#6249](https://github.com/pulumi/pulumi/pull/6249)
+
+- [sdk/python] Fix a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
+  [#6264](https://github.com/pulumi/pulumi/pull/6264)
+
+- [sdk/python] Allow keyword args in Output.all() to create a dict.
+  [#6269](https://github.com/pulumi/pulumi/pull/6269)
+
+- Look for `python` binary first on Windows instead of `python3`.
+  [#6317](https://github.com/pulumi/pulumi/pull/6317)
+
+- [pkg/testing/integration] Change the default behavior for Python test projects to use `UseAutomaticVirtualEnv` by
+  default. `UsePipenv` can be set to go back to the old behavior of using pipenv with tests.
+  [#6318](https://github.com/pulumi/pulumi/pull/6318)
+
+## 2.20.0 (2021-02-03)
+
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
   an issue that was preventing passing instances of args classes with nested output values to Provider resources.
   [#6221](https://github.com/pulumi/pulumi/pull/6221)

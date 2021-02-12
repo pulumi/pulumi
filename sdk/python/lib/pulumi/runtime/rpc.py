@@ -33,7 +33,7 @@ from .. import _types
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
-    from ..resource import Resource, CustomResource, ProviderResource
+    from ..resource import Resource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
@@ -567,7 +567,7 @@ def contains_unknowns(val: Any) -> bool:
         if not any([x is val for x in stack]):
             stack.append(val)
             if isinstance(val, dict):
-                return any([impl(x, stack) for x in val.values()])
+                return any([impl(val[k], stack) for k in val])
             if isinstance(val, list):
                 return any([impl(x, stack) for x in val])
         return False

@@ -47,7 +47,7 @@ type MockBackend struct {
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
 	QueryF                  func(context.Context, QueryOperation) result.Result
 	GetLatestConfigurationF func(context.Context, Stack) (config.Map, error)
-	GetHistoryF             func(context.Context, StackReference) ([]UpdateInfo, error)
+	GetHistoryF             func(context.Context, StackReference, int, int) ([]UpdateInfo, error)
 	GetStackTagsF           func(context.Context, Stack) (map[apitype.StackTagName]string, error)
 	UpdateStackTagsF        func(context.Context, Stack, map[apitype.StackTagName]string) error
 	ExportDeploymentF       func(context.Context, Stack) (*apitype.UntypedDeployment, error)
@@ -237,9 +237,12 @@ func (be *MockBackend) Query(ctx context.Context, op QueryOperation) result.Resu
 	panic("not implemented")
 }
 
-func (be *MockBackend) GetHistory(ctx context.Context, stackRef StackReference) ([]UpdateInfo, error) {
+func (be *MockBackend) GetHistory(ctx context.Context,
+	stackRef StackReference,
+	pageSize int,
+	page int) ([]UpdateInfo, error) {
 	if be.GetHistoryF != nil {
-		return be.GetHistoryF(ctx, stackRef)
+		return be.GetHistoryF(ctx, stackRef, pageSize, page)
 	}
 	panic("not implemented")
 }

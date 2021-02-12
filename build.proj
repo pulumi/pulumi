@@ -200,7 +200,7 @@
 
   <Target Name="PythonDependencies">
     <MakeDir Directories="$(PythonSdkDirectory)\env\src"/>
-    <Exec Command="pipenv --python 3.7 install --dev"
+    <Exec Command="pipenv install --dev"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
   </Target>
   
