@@ -39,6 +39,14 @@ func Identifier(id string) TypeAst {
 	return &idType{id}
 }
 
+// IsIdentifier returns true if the AST node is an identifier.
+func IsIdentifier(t TypeAst) (string, bool) {
+	if i, ok := t.(*idType); ok {
+		return i.id, true
+	}
+	return "", false
+}
+
 // Builds a `T[]` type from a `T` type.
 func Array(t TypeAst) TypeAst {
 	return &arrayType{t}

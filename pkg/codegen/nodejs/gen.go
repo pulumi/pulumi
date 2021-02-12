@@ -277,16 +277,38 @@ func tokenToFunctionName(tok string) string {
 func (mod *modContext) typeAst(t schema.Type, input bool, constValue interface{}) tstypes.TypeAst {
 	switch t := t.(type) {
 	case *schema.OptionalType:
+		// Treat optional(input(T)) as optional(input(optional(T))).
+		elementType := t.ElementType
+		if input, isInput := elementType.(*schema.InputType); isInput {
+			elementType = &schema.InputType{
+				ElementType: &schema.OptionalType{
+					ElementType: input.ElementType,
+				},
+			}
+		}
+
 		return tstypes.Union(
-			mod.typeAst(t.ElementType, input, constValue),
+			mod.typeAst(elementType, input, constValue),
 			tstypes.Identifier("undefined"),
 		)
 	case *schema.InputType:
-		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, constValue)
-		if typ == "any" {
-			return tstypes.Identifier("any")
+		elementType := t.ElementType
+		optional, isOptional := elementType.(*schema.OptionalType)
+		if isOptional {
+			elementType = optional.ElementType
 		}
-		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typ))
+
+		typ := mod.typeAst(codegen.SimplifyInputUnion(elementType), input, constValue)
+		if id, ok := tstypes.IsIdentifier(typ); ok && id == "any" {
+			return typ
+		}
+
+		if isOptional {
+			typ = tstypes.Union(typ, tstypes.Identifier("undefined"))
+		}
+
+		typeArgument := tstypes.TypeLiteral(tstypes.Normalize(typ))
+		return tstypes.Identifier(fmt.Sprintf("pulumi.Input<%s>", typeArgument))
 	case *schema.EnumType:
 		return tstypes.Identifier(mod.objectType(nil, nil, t.Token, input, false, true))
 	case *schema.ArrayType:
