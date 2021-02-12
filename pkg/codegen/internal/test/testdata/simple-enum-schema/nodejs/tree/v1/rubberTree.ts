@@ -45,8 +45,9 @@ export class RubberTree extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: RubberTreeArgs, opts: pulumi.CustomResourceOptions = {}) {
+    constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
+        opts = opts || {};
         if (!opts.id) {
             if ((!args || args.diameter === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'diameter'");

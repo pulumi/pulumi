@@ -30,8 +30,9 @@ export class OtherResource extends pulumi.ComponentResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: OtherResourceArgs, opts: pulumi.ComponentResourceOptions = {}) {
+    constructor(name: string, args?: OtherResourceArgs, opts?: pulumi.ComponentResourceOptions) {
         let inputs: pulumi.Inputs = {};
+        opts = opts || {};
         if (!opts.id) {
             inputs["foo"] = args ? args.foo : undefined;
         } else {
