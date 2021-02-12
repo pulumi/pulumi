@@ -6,7 +6,7 @@ namespace Pulumi.Automation
 {
     /// <summary>
     /// Common options controlling the behavior of update actions taken
-    /// against an instance of <see cref="XStack"/>.
+    /// against an instance of <see cref="WorkspaceStack"/>.
     /// </summary>
     public class UpdateOptions
     {

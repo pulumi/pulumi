@@ -81,7 +81,7 @@ namespace Pulumi.Automation
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
-        public static Task<XStack> CreateStackAsync(InlineProgramArgs args)
+        public static Task<WorkspaceStack> CreateStackAsync(InlineProgramArgs args)
             => CreateStackAsync(args, default);
 
         /// <summary>
@@ -98,8 +98,8 @@ namespace Pulumi.Automation
         ///     workspace.
         /// </param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static Task<XStack> CreateStackAsync(InlineProgramArgs args, CancellationToken cancellationToken)
-            => CreateStackHelperAsync(args, XStack.CreateAsync, cancellationToken);
+        public static Task<WorkspaceStack> CreateStackAsync(InlineProgramArgs args, CancellationToken cancellationToken)
+            => CreateStackHelperAsync(args, WorkspaceStack.CreateAsync, cancellationToken);
 
         /// <summary>
         /// Creates a Stack with a <see cref="LocalWorkspace"/> utilizing the local Pulumi CLI program
@@ -112,7 +112,7 @@ namespace Pulumi.Automation
         ///     already exists on disk, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
-        public static Task<XStack> CreateStackAsync(LocalProgramArgs args)
+        public static Task<WorkspaceStack> CreateStackAsync(LocalProgramArgs args)
             => CreateStackAsync(args, default);
 
         /// <summary>
@@ -127,8 +127,8 @@ namespace Pulumi.Automation
         ///     workspace.
         /// </param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static Task<XStack> CreateStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
-            => CreateStackHelperAsync(args, XStack.CreateAsync, cancellationToken);
+        public static Task<WorkspaceStack> CreateStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
+            => CreateStackHelperAsync(args, WorkspaceStack.CreateAsync, cancellationToken);
 
         /// <summary>
         /// Selects an existing Stack with a <see cref="LocalWorkspace"/> utilizing the specified
@@ -143,7 +143,7 @@ namespace Pulumi.Automation
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
-        public static Task<XStack> SelectStackAsync(InlineProgramArgs args)
+        public static Task<WorkspaceStack> SelectStackAsync(InlineProgramArgs args)
             => SelectStackAsync(args, default);
 
         /// <summary>
@@ -160,8 +160,8 @@ namespace Pulumi.Automation
         ///     workspace.
         /// </param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static Task<XStack> SelectStackAsync(InlineProgramArgs args, CancellationToken cancellationToken)
-            => CreateStackHelperAsync(args, XStack.SelectAsync, cancellationToken);
+        public static Task<WorkspaceStack> SelectStackAsync(InlineProgramArgs args, CancellationToken cancellationToken)
+            => CreateStackHelperAsync(args, WorkspaceStack.SelectAsync, cancellationToken);
 
         /// <summary>
         /// Selects an existing Stack with a <see cref="LocalWorkspace"/> utilizing the local Pulumi CLI program
@@ -174,7 +174,7 @@ namespace Pulumi.Automation
         ///     already exists on disk, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
-        public static Task<XStack> SelectStackAsync(LocalProgramArgs args)
+        public static Task<WorkspaceStack> SelectStackAsync(LocalProgramArgs args)
             => SelectStackAsync(args, default);
 
         /// <summary>
@@ -189,8 +189,8 @@ namespace Pulumi.Automation
         ///     workspace.
         /// </param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static Task<XStack> SelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
-            => CreateStackHelperAsync(args, XStack.SelectAsync, cancellationToken);
+        public static Task<WorkspaceStack> SelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
+            => CreateStackHelperAsync(args, WorkspaceStack.SelectAsync, cancellationToken);
 
         /// <summary>
         /// Creates or selects an existing Stack with a <see cref="LocalWorkspace"/> utilizing the specified
@@ -205,7 +205,7 @@ namespace Pulumi.Automation
         ///     that runs in process, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
-        public static Task<XStack> CreateOrSelectStackAsync(InlineProgramArgs args)
+        public static Task<WorkspaceStack> CreateOrSelectStackAsync(InlineProgramArgs args)
             => CreateOrSelectStackAsync(args, default);
 
         /// <summary>
@@ -222,8 +222,8 @@ namespace Pulumi.Automation
         ///     workspace.
         /// </param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static Task<XStack> CreateOrSelectStackAsync(InlineProgramArgs args, CancellationToken cancellationToken)
-            => CreateStackHelperAsync(args, XStack.CreateOrSelectAsync, cancellationToken);
+        public static Task<WorkspaceStack> CreateOrSelectStackAsync(InlineProgramArgs args, CancellationToken cancellationToken)
+            => CreateStackHelperAsync(args, WorkspaceStack.CreateOrSelectAsync, cancellationToken);
 
         /// <summary>
         /// Creates or selects an existing Stack with a <see cref="LocalWorkspace"/> utilizing the local Pulumi CLI program
@@ -236,7 +236,7 @@ namespace Pulumi.Automation
         ///     already exists on disk, as well as any additional customizations to be applied to the
         ///     workspace.
         /// </param>
-        public static Task<XStack> CreateOrSelectStackAsync(LocalProgramArgs args)
+        public static Task<WorkspaceStack> CreateOrSelectStackAsync(LocalProgramArgs args)
             => CreateOrSelectStackAsync(args, default);
 
         /// <summary>
@@ -251,12 +251,12 @@ namespace Pulumi.Automation
         ///     workspace.
         /// </param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static Task<XStack> CreateOrSelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
-            => CreateStackHelperAsync(args, XStack.CreateOrSelectAsync, cancellationToken);
+        public static Task<WorkspaceStack> CreateOrSelectStackAsync(LocalProgramArgs args, CancellationToken cancellationToken)
+            => CreateStackHelperAsync(args, WorkspaceStack.CreateOrSelectAsync, cancellationToken);
 
-        private static async Task<XStack> CreateStackHelperAsync(
+        private static async Task<WorkspaceStack> CreateStackHelperAsync(
             InlineProgramArgs args,
-            Func<string, Workspace, CancellationToken, Task<XStack>> initFunc,
+            Func<string, Workspace, CancellationToken, Task<WorkspaceStack>> initFunc,
             CancellationToken cancellationToken)
         {
             if (args.ProjectSettings is null)
@@ -271,9 +271,9 @@ namespace Pulumi.Automation
             return await initFunc(args.StackName, ws, cancellationToken).ConfigureAwait(false);
         }
 
-        private static async Task<XStack> CreateStackHelperAsync(
+        private static async Task<WorkspaceStack> CreateStackHelperAsync(
             LocalProgramArgs args,
-            Func<string, Workspace, CancellationToken, Task<XStack>> initFunc,
+            Func<string, Workspace, CancellationToken, Task<WorkspaceStack>> initFunc,
             CancellationToken cancellationToken)
         {
             var ws = new LocalWorkspace(

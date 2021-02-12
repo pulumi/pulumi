@@ -219,23 +219,23 @@ Pulumi.Automation.WhoAmIResult.WhoAmIResult(string user) -> void
 Pulumi.Automation.Workspace
 Pulumi.Automation.Workspace.CreateStackAsync(string stackName) -> System.Threading.Tasks.Task
 Pulumi.Automation.Workspace.SelectStackAsync(string stackName) -> System.Threading.Tasks.Task
-Pulumi.Automation.XStack
-Pulumi.Automation.XStack.DestroyAsync(Pulumi.Automation.DestroyOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
-Pulumi.Automation.XStack.Dispose() -> void
-Pulumi.Automation.XStack.GetConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
-Pulumi.Automation.XStack.GetConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
-Pulumi.Automation.XStack.GetHistoryAsync(int? limit = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.UpdateSummary>>
-Pulumi.Automation.XStack.GetInfoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateSummary>
-Pulumi.Automation.XStack.Name.get -> string
-Pulumi.Automation.XStack.PreviewAsync(Pulumi.Automation.PreviewOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
-Pulumi.Automation.XStack.RefreshAsync(Pulumi.Automation.RefreshOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
-Pulumi.Automation.XStack.RefreshConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
-Pulumi.Automation.XStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
-Pulumi.Automation.XStack.RemoveConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
-Pulumi.Automation.XStack.SetConfigAsync(System.Collections.Generic.IDictionary<string, Pulumi.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
-Pulumi.Automation.XStack.SetConfigValueAsync(string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
-Pulumi.Automation.XStack.UpAsync(Pulumi.Automation.UpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpResult>
-Pulumi.Automation.XStack.Workspace.get -> Pulumi.Automation.Workspace
+Pulumi.Automation.WorkspaceStack
+Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.WorkspaceStack.Dispose() -> void
+Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+Pulumi.Automation.WorkspaceStack.GetConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
+Pulumi.Automation.WorkspaceStack.GetHistoryAsync(int? limit = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.UpdateSummary>>
+Pulumi.Automation.WorkspaceStack.GetInfoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateSummary>
+Pulumi.Automation.WorkspaceStack.Name.get -> string
+Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.WorkspaceStack.RefreshConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.RemoveConfigValueAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.SetConfigAsync(System.Collections.Generic.IDictionary<string, Pulumi.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.SetConfigValueAsync(string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpResult>
+Pulumi.Automation.WorkspaceStack.Workspace.get -> Pulumi.Automation.Workspace
 abstract Pulumi.Automation.Workspace.CreateStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
 abstract Pulumi.Automation.Workspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
 abstract Pulumi.Automation.Workspace.EnvironmentVariables.set -> void
@@ -294,18 +294,18 @@ override Pulumi.Automation.LocalWorkspace.SetConfigValueAsync(string stackName, 
 override Pulumi.Automation.LocalWorkspace.WhoAmIAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WhoAmIResult>
 override Pulumi.Automation.LocalWorkspace.WorkDir.get -> string
 static Pulumi.Automation.LocalWorkspace.CreateAsync(Pulumi.Automation.LocalWorkspaceOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.LocalWorkspace>
-static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
 static Pulumi.Automation.PulumiFn.Create(System.Action program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Collections.Generic.IDictionary<string, object>> program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> program) -> Pulumi.Automation.PulumiFn
@@ -314,8 +314,8 @@ static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task> program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>() -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>(System.IServiceProvider serviceProvider) -> Pulumi.Automation.PulumiFn
-static Pulumi.Automation.XStack.CreateAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.XStack.CreateOrSelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
-static Pulumi.Automation.XStack.SelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.XStack>
+static Pulumi.Automation.WorkspaceStack.CreateAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.WorkspaceStack.CreateOrSelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.WorkspaceStack.SelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
 virtual Pulumi.Automation.Workspace.Dispose() -> void
 virtual Pulumi.Automation.Workspace.GetStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSummary>

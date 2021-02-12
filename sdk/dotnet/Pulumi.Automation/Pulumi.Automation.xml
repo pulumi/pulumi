@@ -6,7 +6,7 @@
     <members>
         <member name="T:Pulumi.Automation.DestroyOptions">
             <summary>
-            Options controlling the behavior of an <see cref="M:Pulumi.Automation.XStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.LocalProgramArgs">
@@ -348,7 +348,7 @@
         </member>
         <member name="T:Pulumi.Automation.PreviewOptions">
             <summary>
-            Options controlling the behavior of an <see cref="M:Pulumi.Automation.XStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.ProjectBackend">
@@ -468,7 +468,7 @@
         </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
-            Options controlling the behavior of an <see cref="M:Pulumi.Automation.XStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackSettings.SecretsProvider">
@@ -496,12 +496,12 @@
         <member name="T:Pulumi.Automation.UpdateOptions">
             <summary>
             Common options controlling the behavior of update actions taken
-            against an instance of <see cref="T:Pulumi.Automation.XStack"/>.
+            against an instance of <see cref="T:Pulumi.Automation.WorkspaceStack"/>.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
-            Options controlling the behavior of an <see cref="M:Pulumi.Automation.XStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
+            Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Workspace">
@@ -725,30 +725,30 @@
             Returns a list of all plugins installed in the Workspace.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.XStack">
+        <member name="T:Pulumi.Automation.WorkspaceStack">
             <summary>
-            <see cref="T:Pulumi.Automation.XStack"/> is an isolated, independently configurable instance of a
-            Pulumi program. <see cref="T:Pulumi.Automation.XStack"/> exposes methods for the full pulumi lifecycle
+            <see cref="T:Pulumi.Automation.WorkspaceStack"/> is an isolated, independently configurable instance of a
+            Pulumi program. <see cref="T:Pulumi.Automation.WorkspaceStack"/> exposes methods for the full pulumi lifecycle
             (up/preview/refresh/destroy), as well as managing configuration.
             <para/>
             Multiple stacks are commonly used to denote different phases of development
             (such as development, staging, and production) or feature branches (such as
             feature-x-dev, jane-feature-x-dev).
             <para/>
-            Will dispose the <see cref="P:Pulumi.Automation.XStack.Workspace"/> on <see cref="M:Pulumi.Automation.XStack.Dispose"/>.
+            Will dispose the <see cref="P:Pulumi.Automation.WorkspaceStack.Workspace"/> on <see cref="M:Pulumi.Automation.WorkspaceStack.Dispose"/>.
             </summary>
         </member>
-        <member name="P:Pulumi.Automation.XStack.Name">
+        <member name="P:Pulumi.Automation.WorkspaceStack.Name">
             <summary>
             The name identifying the Stack.
             </summary>
         </member>
-        <member name="P:Pulumi.Automation.XStack.Workspace">
+        <member name="P:Pulumi.Automation.WorkspaceStack.Workspace">
             <summary>
             The Workspace the Stack was created from.
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.XStack.CreateAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.CreateAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
             <summary>
             Creates a new stack using the given workspace, and stack name.
             It fails if a stack with that name already exists.
@@ -758,7 +758,7 @@
             <param name="cancellationToken">A cancellation token.</param>
             <exception cref="T:Pulumi.Automation.Commands.Exceptions.StackAlreadyExistsException">If a stack with the provided name already exists.</exception>
         </member>
-        <member name="M:Pulumi.Automation.XStack.SelectAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SelectAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
             <summary>
             Selects stack using the given workspace, and stack name.
             It returns an error if the given Stack does not exist.
@@ -768,7 +768,7 @@
             <param name="cancellationToken">A cancellation token.</param>
             <exception cref="T:Pulumi.Automation.Commands.Exceptions.StackNotFoundException">If a stack with the provided name does not exists.</exception>
         </member>
-        <member name="M:Pulumi.Automation.XStack.CreateOrSelectAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.CreateOrSelectAsync(System.String,Pulumi.Automation.Workspace,System.Threading.CancellationToken)">
             <summary>
             Tries to create a new Stack using the given workspace, and stack name
             if the stack does not already exist, or falls back to selecting an
@@ -779,20 +779,20 @@
             <param name="workspace">The Workspace the Stack was created from.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.GetConfigValueAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigValueAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the config value associated with the specified key.
             </summary>
             <param name="key">The key to use for the config lookup.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.GetConfigAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.Threading.CancellationToken)">
             <summary>
             Returns the full config map associated with the stack in the Workspace.
             </summary>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.SetConfigValueAsync(System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigValueAsync(System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <summary>
             Sets the config key-value pair on the Stack in the associated Workspace.
             </summary>
@@ -800,34 +800,34 @@
             <param name="value">The config value to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.SetConfigAsync(System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigAsync(System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <summary>
             Sets all specified config values on the stack in the associated Workspace.
             </summary>
             <param name="configMap">The map of config key-value pairs to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.RemoveConfigValueAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigValueAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Removes the specified config key from the Stack in the associated Workspace.
             </summary>
             <param name="key">The config key to remove.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <summary>
             Removes the specified config keys from the Stack in the associated Workspace.
             </summary>
             <param name="keys">The config keys to remove.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.RefreshConfigAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RefreshConfigAsync(System.Threading.CancellationToken)">
             <summary>
             Gets and sets the config map used with the last update.
             </summary>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)">
             <summary>
             Creates or updates the resources in a stack by executing the program in the Workspace.
             <para/>
@@ -836,7 +836,7 @@
             <param name="options">Options to customize the behavior of the update.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)">
             <summary>
             Performs a dry-run update to a stack, returning pending changes.
             <para/>
@@ -845,7 +845,7 @@
             <param name="options">Options to customize the behavior of the update.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)">
             <summary>
             Compares the current stack’s resource state with the state known to exist in the actual
             cloud provider. Any such changes are adopted into the current stack.
@@ -853,19 +853,19 @@
             <param name="options">Options to customize the behavior of the refresh.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)">
             <summary>
             Destroy deletes all resources in a stack, leaving all history and configuration intact.
             </summary>
             <param name="options">Options to customize the behavior of the destroy.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.XStack.GetOutputAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetOutputAsync(System.Threading.CancellationToken)">
             <summary>
-            Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.XStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
+            Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.XStack.GetHistoryAsync(System.Nullable{System.Int32},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(System.Nullable{System.Int32},System.Threading.CancellationToken)">
             <summary>
             Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
             </summary>

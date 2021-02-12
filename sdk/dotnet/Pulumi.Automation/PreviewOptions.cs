@@ -5,7 +5,7 @@ using System.Collections.Generic;
 namespace Pulumi.Automation
 {
     /// <summary>
-    /// Options controlling the behavior of an <see cref="XStack.PreviewAsync(PreviewOptions, System.Threading.CancellationToken)"/> operation.
+    /// Options controlling the behavior of an <see cref="WorkspaceStack.PreviewAsync(PreviewOptions, System.Threading.CancellationToken)"/> operation.
     /// </summary>
     public sealed class PreviewOptions : UpdateOptions
     {

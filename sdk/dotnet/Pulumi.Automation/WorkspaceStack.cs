@@ -25,8 +25,8 @@ using Pulumi.Automation.Serialization;
 namespace Pulumi.Automation
 {
     /// <summary>
-    /// <see cref="XStack"/> is an isolated, independently configurable instance of a
-    /// Pulumi program. <see cref="XStack"/> exposes methods for the full pulumi lifecycle
+    /// <see cref="WorkspaceStack"/> is an isolated, independently configurable instance of a
+    /// Pulumi program. <see cref="WorkspaceStack"/> exposes methods for the full pulumi lifecycle
     /// (up/preview/refresh/destroy), as well as managing configuration.
     /// <para/>
     /// Multiple stacks are commonly used to denote different phases of development
@@ -35,7 +35,7 @@ namespace Pulumi.Automation
     /// <para/>
     /// Will dispose the <see cref="Workspace"/> on <see cref="Dispose"/>.
     /// </summary>
-    public sealed class XStack : IDisposable // TODO: come up with a name for this
+    public sealed class WorkspaceStack : IDisposable
     {
         private readonly Task _readyTask;
 
@@ -57,12 +57,12 @@ namespace Pulumi.Automation
         /// <param name="workspace">The Workspace the Stack was created from.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <exception cref="StackAlreadyExistsException">If a stack with the provided name already exists.</exception>
-        public static async Task<XStack> CreateAsync(
+        public static async Task<WorkspaceStack> CreateAsync(
             string name,
             Workspace workspace,
             CancellationToken cancellationToken = default)
         {
-            var stack = new XStack(name, workspace, StackInitMode.Create, cancellationToken);
+            var stack = new WorkspaceStack(name, workspace, WorkspaceStackInitMode.Create, cancellationToken);
             await stack._readyTask.ConfigureAwait(false);
             return stack;
         }
@@ -75,12 +75,12 @@ namespace Pulumi.Automation
         /// <param name="workspace">The Workspace the Stack was created from.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         /// <exception cref="StackNotFoundException">If a stack with the provided name does not exists.</exception>
-        public static async Task<XStack> SelectAsync(
+        public static async Task<WorkspaceStack> SelectAsync(
             string name,
             Workspace workspace,
             CancellationToken cancellationToken = default)
         {
-            var stack = new XStack(name, workspace, StackInitMode.Select, cancellationToken);
+            var stack = new WorkspaceStack(name, workspace, WorkspaceStackInitMode.Select, cancellationToken);
             await stack._readyTask.ConfigureAwait(false);
             return stack;
         }
@@ -94,20 +94,20 @@ namespace Pulumi.Automation
         /// <param name="name">The name of the identifying stack.</param>
         /// <param name="workspace">The Workspace the Stack was created from.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public static async Task<XStack> CreateOrSelectAsync(
+        public static async Task<WorkspaceStack> CreateOrSelectAsync(
             string name,
             Workspace workspace,
             CancellationToken cancellationToken = default)
         {
-            var stack = new XStack(name, workspace, StackInitMode.CreateOrSelect, cancellationToken);
+            var stack = new WorkspaceStack(name, workspace, WorkspaceStackInitMode.CreateOrSelect, cancellationToken);
             await stack._readyTask.ConfigureAwait(false);
             return stack;
         }
 
-        private XStack(
+        private WorkspaceStack(
             string name,
             Workspace workspace,
-            StackInitMode mode,
+            WorkspaceStackInitMode mode,
             CancellationToken cancellationToken)
         {
             this.Name = name;
@@ -115,13 +115,13 @@ namespace Pulumi.Automation
 
             switch (mode)
             {
-                case StackInitMode.Create:
+                case WorkspaceStackInitMode.Create:
                     this._readyTask = workspace.CreateStackAsync(name, cancellationToken);
                     break;
-                case StackInitMode.Select:
+                case WorkspaceStackInitMode.Select:
                     this._readyTask = workspace.SelectStackAsync(name, cancellationToken);
                     break;
-                case StackInitMode.CreateOrSelect:
+                case WorkspaceStackInitMode.CreateOrSelect:
                     this._readyTask = Task.Run(async () =>
                     {
                         try
@@ -563,7 +563,7 @@ namespace Pulumi.Automation
             public const string Inline = "auto.inline";
         }
 
-        private enum StackInitMode // TODO: change name of this as per XStack
+        private enum WorkspaceStackInitMode
         {
             Create,
             Select,

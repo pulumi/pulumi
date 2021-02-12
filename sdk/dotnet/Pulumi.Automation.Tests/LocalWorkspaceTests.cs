@@ -147,7 +147,7 @@ namespace Pulumi.Automation.Tests
             });
 
             var stackName = $"int_test{GetTestSuffix()}";
-            var stack = await XStack.CreateAsync(stackName, workspace);
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
 
             var config = new Dictionary<string, ConfigValue>()
             {
@@ -206,7 +206,7 @@ namespace Pulumi.Automation.Tests
                 for (var i = 0; i < 2; i++)
                 {
                     var stackName = GetStackName();
-                    await XStack.CreateAsync(stackName, workspace);
+                    await WorkspaceStack.CreateAsync(stackName, workspace);
                     stackNames.Add(stackName);
                     var summary = await workspace.GetStackAsync();
                     Assert.NotNull(summary);
@@ -239,7 +239,7 @@ namespace Pulumi.Automation.Tests
             });
 
             var stackName = $"int_test{GetTestSuffix()}";
-            var stack = await XStack.CreateAsync(stackName, workspace);
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
             try
             {
                 var history = await stack.GetHistoryAsync();

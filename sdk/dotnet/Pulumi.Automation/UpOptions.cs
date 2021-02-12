@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace Pulumi.Automation
 {
     /// <summary>
-    /// Options controlling the behavior of an <see cref="XStack.UpAsync(UpOptions, System.Threading.CancellationToken)"/> operation.
+    /// Options controlling the behavior of an <see cref="WorkspaceStack.UpAsync(UpOptions, System.Threading.CancellationToken)"/> operation.
     /// </summary>
     public sealed class UpOptions : UpdateOptions
     {

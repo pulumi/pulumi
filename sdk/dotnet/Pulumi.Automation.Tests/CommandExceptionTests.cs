@@ -73,7 +73,7 @@ namespace Pulumi.Automation.Tests
 
             try
             {
-                var stack = await XStack.SelectAsync(stackName, workspace);
+                var stack = await WorkspaceStack.SelectAsync(stackName, workspace);
 
                 var hitSemaphore = false;
                 using var semaphore = new SemaphoreSlim(0, 1);
