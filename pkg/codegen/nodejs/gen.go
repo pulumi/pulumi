@@ -561,7 +561,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
 			if prop.IsRequired {
-				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !(opts && opts.urn)) {\n", prop.Name)
+				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
 			}
@@ -625,10 +625,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        opts = opts || {};\n")
 
 		if r.StateInputs != nil {
 			// The lookup case:
-			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
+			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
 				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
@@ -642,7 +643,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		} else {
 			// The creation case:
-			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
+			fmt.Fprintf(w, "        if (!opts.id) {\n")
 			err := genInputProps()
 			if err != nil {
 				return err
@@ -655,6 +656,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		}
 	} else {
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        opts = opts || {};\n")
 		fmt.Fprintf(w, "        {\n")
 		err := genInputProps()
 		if err != nil {
@@ -670,12 +672,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        }\n")
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "        if (!opts) {\n")
-	fmt.Fprintf(w, "            opts = {}\n")
-	fmt.Fprintf(w, "        }\n")
-	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "        if (!opts.version) {\n")
-	fmt.Fprintf(w, "            opts.version = utilities.getVersion();\n")
+	fmt.Fprintf(w, "            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});\n")
 	fmt.Fprintf(w, "        }\n")
 
 	// Now invoke the super constructor with the type, name, and a property map.
@@ -688,7 +686,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			mod.genAlias(w, alias)
 		}
 		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, aliasOpts) : aliasOpts;\n")
+		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")
 	}
 
 	if len(secretProps) > 0 {
@@ -700,7 +698,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			fmt.Fprintf(w, "%q", sp)
 		}
 		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, secretOpts) : secretOpts;\n")
+		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
 	// If it's a ComponentResource, set the remote option.
