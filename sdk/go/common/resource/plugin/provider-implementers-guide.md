@@ -2,7 +2,117 @@
 
 ## Provider Programming Model
 
-### Data Types
+### Resources
+
+The core functionality of a resource provider is the management of custom resources and
+construction of component resources within the scope of a Pulumi stack. Custom resources
+have a well-defined lifecycle built around the differences between their acutal state and
+the desired state described by their inputs and implemented using create, read, update,
+and delete (CRUD) operations defined by the provider. Component resources have no
+associated lifecycle, and are constructed by registering child custom or component
+resources with the Pulumi engine.
+
+Each resource registered with the Pulumi engine is logically identified by its 
+uniform resource name (URN). Aresource's URN is derived from the its type, parent type,
+and user-supplied name. Within the scope of a resource-related provider method
+([`Check`](#check), [`Diff`](#diff), [`Create`](#create), [`Read`](#read),
+[`Update`](#update), [`Delete`](#delete), and [`Construct`](#construct)), the type of
+the resource can be extracted from the provided URN.
+
+#### Custom Resources
+
+In addition to its URN, each custom resource has an associated ID. This ID is opaque to
+the Pulumi engine, and is only meaningful to the provider as a means to identify a
+physical resource. The ID must be a string. The empty ID indicates that a resource's ID
+is not known because it has not yet been creatd.
+
+A custom resource has a well-defined lifecycle within the scope of a Pulumi stack. When a
+custom resource is registered by a Pulumi program, the Pulumi engine first determines
+whether the resource is being read, imported, or managed. Each of these operations
+involves a different interaction with the resource's provider.
+
+If the resource is being read, the engine calls the resource's provider's `Read` method
+to fetch the resource's current state. This call to `Read` includes the resource's ID and
+any state provided by the user that may be necessary to read the resource.
+
+If the resource is being imported, the engine first calls the provider's `Read` method
+to fetch the resource's current state and inputs. This call to `Read` only inclues the
+ID of the resource to import; that is, _any importable resource must be identifiable using
+its ID alone_. If the `Read` succeeds, the engine calls the provider's `Check` method with
+the inputs returned by `Read` and the inputs supplied by the user. If any of the inputs
+are invalid, the import fails. Finally, the engine calls the provider's `Diff` method with
+the inputs returned by `Check` and the state returned by `Read`. If the call to `Diff`
+indicates that there is no difference between the desired state described by the inputs
+and the actual state, the import succeeds. Otherwise, the import fails.
+
+If the resource is being managed, the engine first looks up the last registered inputs and
+last refreshed state for the resource's URN. The engine then calls the resource's
+provider's `Check` method with the last registered inputs (if any) and the inputs supplied
+by the user. If any of the inputs are invalid, the registration fails. Otherwise, the
+engine decides which operations to perform on the resource based on the difference between
+the desired state described by its inputs and its actual state. If the resource does not
+exist (i.e. there is no last refereshed state for its URN), the engine calls the
+provider's `Create` method, which returns the ID and state of the created resource. If the
+resource does exist, the action taken depends on the differences (if any) between the
+desired and actual state of the resource.
+
+If the resource does exist, the engine calls the provider's `Diff` method with the
+inputs returned from `Check`, the resource's ID, and the resource's last refreshed state.
+If the result of the call indicates that there is no difference between the desired and
+actual state, no operation is necessary. Otherwise, the resource is either updated (if
+`Diff` does not indicate that the resource must be replaced) or replaced (if `Diff` does
+indicate that the resource must be replaced).
+
+To update a resource, the engine calls the provider's `Update` method with the inputs
+returned from `Check`, the resource's ID, and its last refreshed state. `Update` returns
+the new state of the resource. The resource's ID may not be changed by a call to `Update`.
+
+To replace a resource, the engine first calls `Check` with an empty set of prior inputs
+and the inputs supplied with the resource's registration. If `Check` fails, the resource
+is not replaced. Otherwise, the inputs returned by this call to `Check` will be used to
+create the replacement resource. Next, the engine inspects the resource options supplied
+with the resource's registration and result of the call to `Diff` to determine whether
+the replacement can be created before the original resource is deleted. This order of
+operations is preferred when possible to avoid downtime due to the lag between the
+deletion of the current resource and creation of its replacement. If the replacement may
+be created before the original is deleted, the engine calls the provider's `Create` method
+with the re-checked inputs, then later calls `Delete` with the resource's ID and original
+state. If the resource must be deleted before its replacement can be created, the engine
+first deletes the transitive closure of resource that depend on the resource being
+replaced. Once these deletes have completed, the engine deletes the original resource by
+calling the provider's `Delete` method with the resource's ID and original state. Finally,
+the engine creates the replacement resource by calling `Create` with the re-checked
+inputs.
+
+If a managed resource registered by a Pulumi program is not re-registered by the next
+successful execution of a Pulumi progam in the resource's stack, the engine deletes the
+resource by calling the resource's provider's `Delete` method with the resource's ID and
+last refereshed state.
+
+The diagram below summarizes the resource lifecycle.
+
+![Resource Lifeycle Diagram](./resource_lifecycle.svg)
+
+#### Component Resources
+
+A component resource is a logical conatiner for other resources. Besides its URN, a
+component resource has a set of inputs, a set of outputs, and a tree of children. Its
+only lifecycle semantics are those of its children; its inputs and outputs are not
+related in the same way a [custom resource's](#custom-resources) inputs and state are
+related. The engine can call a resource provider's [`Construct`](#construct) method to
+request that the provider create a component resource of a particular type.
+
+### Functions
+
+A provider function is a function implemented by a provider, and has access to any of the
+provider's state. Each function has a unique token, optionally accepts an input object,
+and optionally produces an output object. The data passed to and returned from a function
+must not be [unknown](#unknowns) or [secret](#secrets), and must not
+[refer to resources](#resource-references). Note that a special exception to these rules
+is made for component resource methods, which may accept values of any type, and are
+provided with a connection to the Pulumi engine.
+
+### Data Exchange Types
 
 The values exchanged between Pulumi resource providers and the Pulumi engine are a 
 superset of the values expressible in JSON.
@@ -62,24 +172,6 @@ A `Secret` represents a value whose contents are sensitive. Values of this type 
 merely wrappers around the sensitive value. A provider should take care not to leak a
 secret value. and should wrap any resource output values that are always sensitive in a
 `Secret`. [Functions](#functions) must not accept or return secret values.
-
-### Resources
-
-#### Custom Resources
-- URN
-- ID
-- inputs
-  - - difference between unchecked and checked inputs
-- outputs
-- associated lifecycle
-- deployment unit
-
-#### Component Resources
-- URN, inputs, outputs
-- resource monitor connection
-
-### Functions
-- simplified data model (no secrets / unknowns)
 
 ## Schema
 
