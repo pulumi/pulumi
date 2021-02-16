@@ -14,6 +14,9 @@ func NewHost(schemaDirectoryPath string) plugin.Host {
 		deploytest.NewProviderLoader("azure", semver.MustParse("3.24.0"), func() (plugin.Provider, error) {
 			return Azure(schemaDirectoryPath)
 		}),
+		deploytest.NewProviderLoader("azure-nextgen", semver.MustParse("0.6.1"), func() (plugin.Provider, error) {
+			return AzureNextGen(schemaDirectoryPath)
+		}),
 		deploytest.NewProviderLoader("random", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
 			return Random(schemaDirectoryPath)
 		}),
