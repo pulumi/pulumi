@@ -38,6 +38,7 @@ type builtin struct {
 	item           *builtin
 	ItemType       string
 	Example        string
+	elemExample    string
 	GenerateConfig bool
 	DefaultConfig  string
 }
@@ -141,16 +142,29 @@ func (b builtin) DefineToFunction() bool {
 	return b.DefineInputMethods()
 }
 
+func (b builtin) ElemExample() string {
+	if strings.HasSuffix(b.Name, "Map") {
+		return fmt.Sprintf("{\"baz\": %s}", b.item.ElemExample())
+	}
+	if strings.HasSuffix(b.Name, "Array") {
+		return fmt.Sprintf("{%s}", b.item.ElemExample())
+	}
+	if b.elemExample != "" {
+		return b.elemExample
+	}
+	return b.Example
+}
+
 var builtins = makeBuiltins([]*builtin{
 	{Name: "Archive", Type: "Archive", inputType: "*archive", implements: []string{"AssetOrArchive"}, Example: "NewFileArchive(\"foo.zip\")"},
 	{Name: "Asset", Type: "Asset", inputType: "*asset", implements: []string{"AssetOrArchive"}, Example: "NewFileAsset(\"foo.txt\")"},
 	{Name: "AssetOrArchive", Type: "AssetOrArchive", Example: "NewFileArchive(\"foo.zip\")"},
-	{Name: "Bool", Type: "bool", Example: "Bool(true)", GenerateConfig: true, DefaultConfig: "false"},
-	{Name: "Float64", Type: "float64", Example: "Float64(999.9)", GenerateConfig: true, DefaultConfig: "0"},
+	{Name: "Bool", Type: "bool", Example: "Bool(true)", GenerateConfig: true, DefaultConfig: "false", elemExample: "true"},
+	{Name: "Float64", Type: "float64", Example: "Float64(999.9)", GenerateConfig: true, DefaultConfig: "0", elemExample: "999.9"},
 	{Name: "ID", Type: "ID", inputType: "ID", implements: []string{"String"}, Example: "ID(\"foo\")"},
 	{Name: "Input", Type: "interface{}", Example: "String(\"any\")"},
-	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0"},
-	{Name: "String", Type: "string", Example: "String(\"foo\")"},
+	{Name: "Int", Type: "int", Example: "Int(42)", GenerateConfig: true, DefaultConfig: "0", elemExample: "42"},
+	{Name: "String", Type: "string", Example: "String(\"foo\")", elemExample: "\"foo\""},
 	{Name: "URN", Type: "URN", inputType: "URN", implements: []string{"String"}, Example: "URN(\"foo\")"},
 })
 
