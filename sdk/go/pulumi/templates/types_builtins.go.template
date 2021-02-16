@@ -162,11 +162,19 @@ func (o {{.Name}}Output) Index(i IntInput) {{.IndexReturnType}}Output {
 
 {{if .DefineToFunction}}
 func To{{.Name}}(in {{.ElementType}}) {{.Name}} {
-	a := make([]{{.ItemType}}, len(in))
+	a := make({{.Name}}, len(in))
 	for i, v := range in {
 		a[i] = {{.IndexConversion}}(v)
 	}
-	return {{.Name}}(a)
+	return a
+}
+
+func To{{.Name}}Output(in []{{.IndexReturnType}}Output) {{.Name}}Output {
+	a := make({{.Name}}, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.To{{.Name}}Output()
 }
 {{end}}
 {{end}}
@@ -180,11 +188,19 @@ func (o {{.Name}}Output) MapIndex(k StringInput) {{.MapIndexReturnType}}Output {
 
 {{if .DefineToFunction}}
 func To{{.Name}}(in {{.ElementType}}) {{.Name}} {
- 	m := make(map[string]{{.ItemType}})
+ 	m := make({{.Name}})
  	for k, v := range in {
  		m[k] = {{.IndexConversion}}(v)
  	}
- 	return {{.Name}}(m)
+ 	return m
+}
+
+func To{{.Name}}Output(in map[string]{{.MapIndexReturnType}}Output) {{.Name}}Output {
+	m := make({{.Name}})
+ 	for k, v := range in {
+ 		m[k] = v
+ 	}
+ 	return m.To{{.Name}}Output()
 }
 {{end}}
 {{end}}

@@ -142,6 +142,10 @@ func (b builtin) DefineToFunction() bool {
 	return b.DefineInputMethods()
 }
 
+func (b builtin) ItemExample() string {
+	return b.item.Example
+}
+
 func (b builtin) ElemExample() string {
 	if strings.HasSuffix(b.Name, "Map") {
 		return fmt.Sprintf("{\"baz\": %s}", b.item.ElemExample())

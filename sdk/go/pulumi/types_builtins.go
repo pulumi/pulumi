@@ -884,11 +884,19 @@ func (o ArchiveArrayOutput) Index(i IntInput) ArchiveOutput {
 }
 
 func ToArchiveArray(in []Archive) ArchiveArray {
-	a := make([]ArchiveInput, len(in))
+	a := make(ArchiveArray, len(in))
 	for i, v := range in {
 		a[i] = (v)
 	}
-	return ArchiveArray(a)
+	return a
+}
+
+func ToArchiveArrayOutput(in []ArchiveOutput) ArchiveArrayOutput {
+	a := make(ArchiveArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveArrayOutput()
 }
 
 var archiveMapType = reflect.TypeOf((*map[string]Archive)(nil)).Elem()
@@ -941,11 +949,19 @@ func (o ArchiveMapOutput) MapIndex(k StringInput) ArchiveOutput {
 }
 
 func ToArchiveMap(in map[string]Archive) ArchiveMap {
-	m := make(map[string]ArchiveInput)
+	m := make(ArchiveMap)
 	for k, v := range in {
 		m[k] = (v)
 	}
-	return ArchiveMap(m)
+	return m
+}
+
+func ToArchiveMapOutput(in map[string]ArchiveOutput) ArchiveMapOutput {
+	m := make(ArchiveMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveMapOutput()
 }
 
 var archiveArrayMapType = reflect.TypeOf((*map[string][]Archive)(nil)).Elem()
@@ -998,11 +1014,19 @@ func (o ArchiveArrayMapOutput) MapIndex(k StringInput) ArchiveArrayOutput {
 }
 
 func ToArchiveArrayMap(in map[string][]Archive) ArchiveArrayMap {
-	m := make(map[string]ArchiveArrayInput)
+	m := make(ArchiveArrayMap)
 	for k, v := range in {
 		m[k] = ToArchiveArray(v)
 	}
-	return ArchiveArrayMap(m)
+	return m
+}
+
+func ToArchiveArrayMapOutput(in map[string]ArchiveArrayOutput) ArchiveArrayMapOutput {
+	m := make(ArchiveArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveArrayMapOutput()
 }
 
 var archiveMapArrayType = reflect.TypeOf((*[]map[string]Archive)(nil)).Elem()
@@ -1062,11 +1086,19 @@ func (o ArchiveMapArrayOutput) Index(i IntInput) ArchiveMapOutput {
 }
 
 func ToArchiveMapArray(in []map[string]Archive) ArchiveMapArray {
-	a := make([]ArchiveMapInput, len(in))
+	a := make(ArchiveMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToArchiveMap(v)
 	}
-	return ArchiveMapArray(a)
+	return a
+}
+
+func ToArchiveMapArrayOutput(in []ArchiveMapOutput) ArchiveMapArrayOutput {
+	a := make(ArchiveMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveMapArrayOutput()
 }
 
 var archiveMapMapType = reflect.TypeOf((*map[string]map[string]Archive)(nil)).Elem()
@@ -1119,11 +1151,19 @@ func (o ArchiveMapMapOutput) MapIndex(k StringInput) ArchiveMapOutput {
 }
 
 func ToArchiveMapMap(in map[string]map[string]Archive) ArchiveMapMap {
-	m := make(map[string]ArchiveMapInput)
+	m := make(ArchiveMapMap)
 	for k, v := range in {
 		m[k] = ToArchiveMap(v)
 	}
-	return ArchiveMapMap(m)
+	return m
+}
+
+func ToArchiveMapMapOutput(in map[string]ArchiveMapOutput) ArchiveMapMapOutput {
+	m := make(ArchiveMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveMapMapOutput()
 }
 
 var archiveArrayArrayType = reflect.TypeOf((*[][]Archive)(nil)).Elem()
@@ -1183,11 +1223,19 @@ func (o ArchiveArrayArrayOutput) Index(i IntInput) ArchiveArrayOutput {
 }
 
 func ToArchiveArrayArray(in [][]Archive) ArchiveArrayArray {
-	a := make([]ArchiveArrayInput, len(in))
+	a := make(ArchiveArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToArchiveArray(v)
 	}
-	return ArchiveArrayArray(a)
+	return a
+}
+
+func ToArchiveArrayArrayOutput(in []ArchiveArrayOutput) ArchiveArrayArrayOutput {
+	a := make(ArchiveArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveArrayArrayOutput()
 }
 
 var assetType = reflect.TypeOf((*Asset)(nil)).Elem()
@@ -1304,11 +1352,19 @@ func (o AssetArrayOutput) Index(i IntInput) AssetOutput {
 }
 
 func ToAssetArray(in []Asset) AssetArray {
-	a := make([]AssetInput, len(in))
+	a := make(AssetArray, len(in))
 	for i, v := range in {
 		a[i] = (v)
 	}
-	return AssetArray(a)
+	return a
+}
+
+func ToAssetArrayOutput(in []AssetOutput) AssetArrayOutput {
+	a := make(AssetArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetArrayOutput()
 }
 
 var assetMapType = reflect.TypeOf((*map[string]Asset)(nil)).Elem()
@@ -1361,11 +1417,19 @@ func (o AssetMapOutput) MapIndex(k StringInput) AssetOutput {
 }
 
 func ToAssetMap(in map[string]Asset) AssetMap {
-	m := make(map[string]AssetInput)
+	m := make(AssetMap)
 	for k, v := range in {
 		m[k] = (v)
 	}
-	return AssetMap(m)
+	return m
+}
+
+func ToAssetMapOutput(in map[string]AssetOutput) AssetMapOutput {
+	m := make(AssetMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetMapOutput()
 }
 
 var assetArrayMapType = reflect.TypeOf((*map[string][]Asset)(nil)).Elem()
@@ -1418,11 +1482,19 @@ func (o AssetArrayMapOutput) MapIndex(k StringInput) AssetArrayOutput {
 }
 
 func ToAssetArrayMap(in map[string][]Asset) AssetArrayMap {
-	m := make(map[string]AssetArrayInput)
+	m := make(AssetArrayMap)
 	for k, v := range in {
 		m[k] = ToAssetArray(v)
 	}
-	return AssetArrayMap(m)
+	return m
+}
+
+func ToAssetArrayMapOutput(in map[string]AssetArrayOutput) AssetArrayMapOutput {
+	m := make(AssetArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetArrayMapOutput()
 }
 
 var assetMapArrayType = reflect.TypeOf((*[]map[string]Asset)(nil)).Elem()
@@ -1482,11 +1554,19 @@ func (o AssetMapArrayOutput) Index(i IntInput) AssetMapOutput {
 }
 
 func ToAssetMapArray(in []map[string]Asset) AssetMapArray {
-	a := make([]AssetMapInput, len(in))
+	a := make(AssetMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToAssetMap(v)
 	}
-	return AssetMapArray(a)
+	return a
+}
+
+func ToAssetMapArrayOutput(in []AssetMapOutput) AssetMapArrayOutput {
+	a := make(AssetMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetMapArrayOutput()
 }
 
 var assetMapMapType = reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem()
@@ -1539,11 +1619,19 @@ func (o AssetMapMapOutput) MapIndex(k StringInput) AssetMapOutput {
 }
 
 func ToAssetMapMap(in map[string]map[string]Asset) AssetMapMap {
-	m := make(map[string]AssetMapInput)
+	m := make(AssetMapMap)
 	for k, v := range in {
 		m[k] = ToAssetMap(v)
 	}
-	return AssetMapMap(m)
+	return m
+}
+
+func ToAssetMapMapOutput(in map[string]AssetMapOutput) AssetMapMapOutput {
+	m := make(AssetMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetMapMapOutput()
 }
 
 var assetArrayArrayType = reflect.TypeOf((*[][]Asset)(nil)).Elem()
@@ -1603,11 +1691,19 @@ func (o AssetArrayArrayOutput) Index(i IntInput) AssetArrayOutput {
 }
 
 func ToAssetArrayArray(in [][]Asset) AssetArrayArray {
-	a := make([]AssetArrayInput, len(in))
+	a := make(AssetArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToAssetArray(v)
 	}
-	return AssetArrayArray(a)
+	return a
+}
+
+func ToAssetArrayArrayOutput(in []AssetArrayOutput) AssetArrayArrayOutput {
+	a := make(AssetArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetArrayArrayOutput()
 }
 
 var assetOrArchiveType = reflect.TypeOf((*AssetOrArchive)(nil)).Elem()
@@ -2128,11 +2224,19 @@ func (o BoolArrayOutput) Index(i IntInput) BoolOutput {
 }
 
 func ToBoolArray(in []bool) BoolArray {
-	a := make([]BoolInput, len(in))
+	a := make(BoolArray, len(in))
 	for i, v := range in {
 		a[i] = Bool(v)
 	}
-	return BoolArray(a)
+	return a
+}
+
+func ToBoolArrayOutput(in []BoolOutput) BoolArrayOutput {
+	a := make(BoolArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolArrayOutput()
 }
 
 var boolMapType = reflect.TypeOf((*map[string]bool)(nil)).Elem()
@@ -2185,11 +2289,19 @@ func (o BoolMapOutput) MapIndex(k StringInput) BoolOutput {
 }
 
 func ToBoolMap(in map[string]bool) BoolMap {
-	m := make(map[string]BoolInput)
+	m := make(BoolMap)
 	for k, v := range in {
 		m[k] = Bool(v)
 	}
-	return BoolMap(m)
+	return m
+}
+
+func ToBoolMapOutput(in map[string]BoolOutput) BoolMapOutput {
+	m := make(BoolMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolMapOutput()
 }
 
 var boolArrayMapType = reflect.TypeOf((*map[string][]bool)(nil)).Elem()
@@ -2242,11 +2354,19 @@ func (o BoolArrayMapOutput) MapIndex(k StringInput) BoolArrayOutput {
 }
 
 func ToBoolArrayMap(in map[string][]bool) BoolArrayMap {
-	m := make(map[string]BoolArrayInput)
+	m := make(BoolArrayMap)
 	for k, v := range in {
 		m[k] = ToBoolArray(v)
 	}
-	return BoolArrayMap(m)
+	return m
+}
+
+func ToBoolArrayMapOutput(in map[string]BoolArrayOutput) BoolArrayMapOutput {
+	m := make(BoolArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolArrayMapOutput()
 }
 
 var boolMapArrayType = reflect.TypeOf((*[]map[string]bool)(nil)).Elem()
@@ -2306,11 +2426,19 @@ func (o BoolMapArrayOutput) Index(i IntInput) BoolMapOutput {
 }
 
 func ToBoolMapArray(in []map[string]bool) BoolMapArray {
-	a := make([]BoolMapInput, len(in))
+	a := make(BoolMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToBoolMap(v)
 	}
-	return BoolMapArray(a)
+	return a
+}
+
+func ToBoolMapArrayOutput(in []BoolMapOutput) BoolMapArrayOutput {
+	a := make(BoolMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolMapArrayOutput()
 }
 
 var boolMapMapType = reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem()
@@ -2363,11 +2491,19 @@ func (o BoolMapMapOutput) MapIndex(k StringInput) BoolMapOutput {
 }
 
 func ToBoolMapMap(in map[string]map[string]bool) BoolMapMap {
-	m := make(map[string]BoolMapInput)
+	m := make(BoolMapMap)
 	for k, v := range in {
 		m[k] = ToBoolMap(v)
 	}
-	return BoolMapMap(m)
+	return m
+}
+
+func ToBoolMapMapOutput(in map[string]BoolMapOutput) BoolMapMapOutput {
+	m := make(BoolMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolMapMapOutput()
 }
 
 var boolArrayArrayType = reflect.TypeOf((*[][]bool)(nil)).Elem()
@@ -2427,11 +2563,19 @@ func (o BoolArrayArrayOutput) Index(i IntInput) BoolArrayOutput {
 }
 
 func ToBoolArrayArray(in [][]bool) BoolArrayArray {
-	a := make([]BoolArrayInput, len(in))
+	a := make(BoolArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToBoolArray(v)
 	}
-	return BoolArrayArray(a)
+	return a
+}
+
+func ToBoolArrayArrayOutput(in []BoolArrayOutput) BoolArrayArrayOutput {
+	a := make(BoolArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolArrayArrayOutput()
 }
 
 var float64Type = reflect.TypeOf((*float64)(nil)).Elem()
@@ -2611,11 +2755,19 @@ func (o Float64ArrayOutput) Index(i IntInput) Float64Output {
 }
 
 func ToFloat64Array(in []float64) Float64Array {
-	a := make([]Float64Input, len(in))
+	a := make(Float64Array, len(in))
 	for i, v := range in {
 		a[i] = Float64(v)
 	}
-	return Float64Array(a)
+	return a
+}
+
+func ToFloat64ArrayOutput(in []Float64Output) Float64ArrayOutput {
+	a := make(Float64Array, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64ArrayOutput()
 }
 
 var float64MapType = reflect.TypeOf((*map[string]float64)(nil)).Elem()
@@ -2668,11 +2820,19 @@ func (o Float64MapOutput) MapIndex(k StringInput) Float64Output {
 }
 
 func ToFloat64Map(in map[string]float64) Float64Map {
-	m := make(map[string]Float64Input)
+	m := make(Float64Map)
 	for k, v := range in {
 		m[k] = Float64(v)
 	}
-	return Float64Map(m)
+	return m
+}
+
+func ToFloat64MapOutput(in map[string]Float64Output) Float64MapOutput {
+	m := make(Float64Map)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64MapOutput()
 }
 
 var float64ArrayMapType = reflect.TypeOf((*map[string][]float64)(nil)).Elem()
@@ -2725,11 +2885,19 @@ func (o Float64ArrayMapOutput) MapIndex(k StringInput) Float64ArrayOutput {
 }
 
 func ToFloat64ArrayMap(in map[string][]float64) Float64ArrayMap {
-	m := make(map[string]Float64ArrayInput)
+	m := make(Float64ArrayMap)
 	for k, v := range in {
 		m[k] = ToFloat64Array(v)
 	}
-	return Float64ArrayMap(m)
+	return m
+}
+
+func ToFloat64ArrayMapOutput(in map[string]Float64ArrayOutput) Float64ArrayMapOutput {
+	m := make(Float64ArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64ArrayMapOutput()
 }
 
 var float64MapArrayType = reflect.TypeOf((*[]map[string]float64)(nil)).Elem()
@@ -2789,11 +2957,19 @@ func (o Float64MapArrayOutput) Index(i IntInput) Float64MapOutput {
 }
 
 func ToFloat64MapArray(in []map[string]float64) Float64MapArray {
-	a := make([]Float64MapInput, len(in))
+	a := make(Float64MapArray, len(in))
 	for i, v := range in {
 		a[i] = ToFloat64Map(v)
 	}
-	return Float64MapArray(a)
+	return a
+}
+
+func ToFloat64MapArrayOutput(in []Float64MapOutput) Float64MapArrayOutput {
+	a := make(Float64MapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64MapArrayOutput()
 }
 
 var float64MapMapType = reflect.TypeOf((*map[string]map[string]float64)(nil)).Elem()
@@ -2846,11 +3022,19 @@ func (o Float64MapMapOutput) MapIndex(k StringInput) Float64MapOutput {
 }
 
 func ToFloat64MapMap(in map[string]map[string]float64) Float64MapMap {
-	m := make(map[string]Float64MapInput)
+	m := make(Float64MapMap)
 	for k, v := range in {
 		m[k] = ToFloat64Map(v)
 	}
-	return Float64MapMap(m)
+	return m
+}
+
+func ToFloat64MapMapOutput(in map[string]Float64MapOutput) Float64MapMapOutput {
+	m := make(Float64MapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64MapMapOutput()
 }
 
 var float64ArrayArrayType = reflect.TypeOf((*[][]float64)(nil)).Elem()
@@ -2910,11 +3094,19 @@ func (o Float64ArrayArrayOutput) Index(i IntInput) Float64ArrayOutput {
 }
 
 func ToFloat64ArrayArray(in [][]float64) Float64ArrayArray {
-	a := make([]Float64ArrayInput, len(in))
+	a := make(Float64ArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToFloat64Array(v)
 	}
-	return Float64ArrayArray(a)
+	return a
+}
+
+func ToFloat64ArrayArrayOutput(in []Float64ArrayOutput) Float64ArrayArrayOutput {
+	a := make(Float64ArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64ArrayArrayOutput()
 }
 
 var idType = reflect.TypeOf((*ID)(nil)).Elem()
@@ -3109,11 +3301,19 @@ func (o IDArrayOutput) Index(i IntInput) IDOutput {
 }
 
 func ToIDArray(in []ID) IDArray {
-	a := make([]IDInput, len(in))
+	a := make(IDArray, len(in))
 	for i, v := range in {
 		a[i] = (v)
 	}
-	return IDArray(a)
+	return a
+}
+
+func ToIDArrayOutput(in []IDOutput) IDArrayOutput {
+	a := make(IDArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDArrayOutput()
 }
 
 var iDMapType = reflect.TypeOf((*map[string]ID)(nil)).Elem()
@@ -3166,11 +3366,19 @@ func (o IDMapOutput) MapIndex(k StringInput) IDOutput {
 }
 
 func ToIDMap(in map[string]ID) IDMap {
-	m := make(map[string]IDInput)
+	m := make(IDMap)
 	for k, v := range in {
 		m[k] = (v)
 	}
-	return IDMap(m)
+	return m
+}
+
+func ToIDMapOutput(in map[string]IDOutput) IDMapOutput {
+	m := make(IDMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDMapOutput()
 }
 
 var iDArrayMapType = reflect.TypeOf((*map[string][]ID)(nil)).Elem()
@@ -3223,11 +3431,19 @@ func (o IDArrayMapOutput) MapIndex(k StringInput) IDArrayOutput {
 }
 
 func ToIDArrayMap(in map[string][]ID) IDArrayMap {
-	m := make(map[string]IDArrayInput)
+	m := make(IDArrayMap)
 	for k, v := range in {
 		m[k] = ToIDArray(v)
 	}
-	return IDArrayMap(m)
+	return m
+}
+
+func ToIDArrayMapOutput(in map[string]IDArrayOutput) IDArrayMapOutput {
+	m := make(IDArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDArrayMapOutput()
 }
 
 var iDMapArrayType = reflect.TypeOf((*[]map[string]ID)(nil)).Elem()
@@ -3287,11 +3503,19 @@ func (o IDMapArrayOutput) Index(i IntInput) IDMapOutput {
 }
 
 func ToIDMapArray(in []map[string]ID) IDMapArray {
-	a := make([]IDMapInput, len(in))
+	a := make(IDMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToIDMap(v)
 	}
-	return IDMapArray(a)
+	return a
+}
+
+func ToIDMapArrayOutput(in []IDMapOutput) IDMapArrayOutput {
+	a := make(IDMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDMapArrayOutput()
 }
 
 var iDMapMapType = reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem()
@@ -3344,11 +3568,19 @@ func (o IDMapMapOutput) MapIndex(k StringInput) IDMapOutput {
 }
 
 func ToIDMapMap(in map[string]map[string]ID) IDMapMap {
-	m := make(map[string]IDMapInput)
+	m := make(IDMapMap)
 	for k, v := range in {
 		m[k] = ToIDMap(v)
 	}
-	return IDMapMap(m)
+	return m
+}
+
+func ToIDMapMapOutput(in map[string]IDMapOutput) IDMapMapOutput {
+	m := make(IDMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDMapMapOutput()
 }
 
 var iDArrayArrayType = reflect.TypeOf((*[][]ID)(nil)).Elem()
@@ -3408,11 +3640,19 @@ func (o IDArrayArrayOutput) Index(i IntInput) IDArrayOutput {
 }
 
 func ToIDArrayArray(in [][]ID) IDArrayArray {
-	a := make([]IDArrayInput, len(in))
+	a := make(IDArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToIDArray(v)
 	}
-	return IDArrayArray(a)
+	return a
+}
+
+func ToIDArrayArrayOutput(in []IDArrayOutput) IDArrayArrayOutput {
+	a := make(IDArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDArrayArrayOutput()
 }
 
 var arrayType = reflect.TypeOf((*[]interface{})(nil)).Elem()
@@ -3472,11 +3712,19 @@ func (o ArrayOutput) Index(i IntInput) Output {
 }
 
 func ToArray(in []interface{}) Array {
-	a := make([]Input, len(in))
+	a := make(Array, len(in))
 	for i, v := range in {
 		a[i] = ToOutput(v)
 	}
-	return Array(a)
+	return a
+}
+
+func ToArrayOutput(in []Output) ArrayOutput {
+	a := make(Array, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArrayOutput()
 }
 
 var mapType = reflect.TypeOf((*map[string]interface{})(nil)).Elem()
@@ -3529,11 +3777,19 @@ func (o MapOutput) MapIndex(k StringInput) Output {
 }
 
 func ToMap(in map[string]interface{}) Map {
-	m := make(map[string]Input)
+	m := make(Map)
 	for k, v := range in {
 		m[k] = ToOutput(v)
 	}
-	return Map(m)
+	return m
+}
+
+func ToMapOutput(in map[string]Output) MapOutput {
+	m := make(Map)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToMapOutput()
 }
 
 var arrayMapType = reflect.TypeOf((*map[string][]interface{})(nil)).Elem()
@@ -3586,11 +3842,19 @@ func (o ArrayMapOutput) MapIndex(k StringInput) ArrayOutput {
 }
 
 func ToArrayMap(in map[string][]interface{}) ArrayMap {
-	m := make(map[string]ArrayInput)
+	m := make(ArrayMap)
 	for k, v := range in {
 		m[k] = ToArray(v)
 	}
-	return ArrayMap(m)
+	return m
+}
+
+func ToArrayMapOutput(in map[string]ArrayOutput) ArrayMapOutput {
+	m := make(ArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArrayMapOutput()
 }
 
 var mapArrayType = reflect.TypeOf((*[]map[string]interface{})(nil)).Elem()
@@ -3650,11 +3914,19 @@ func (o MapArrayOutput) Index(i IntInput) MapOutput {
 }
 
 func ToMapArray(in []map[string]interface{}) MapArray {
-	a := make([]MapInput, len(in))
+	a := make(MapArray, len(in))
 	for i, v := range in {
 		a[i] = ToMap(v)
 	}
-	return MapArray(a)
+	return a
+}
+
+func ToMapArrayOutput(in []MapOutput) MapArrayOutput {
+	a := make(MapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToMapArrayOutput()
 }
 
 var mapMapType = reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem()
@@ -3707,11 +3979,19 @@ func (o MapMapOutput) MapIndex(k StringInput) MapOutput {
 }
 
 func ToMapMap(in map[string]map[string]interface{}) MapMap {
-	m := make(map[string]MapInput)
+	m := make(MapMap)
 	for k, v := range in {
 		m[k] = ToMap(v)
 	}
-	return MapMap(m)
+	return m
+}
+
+func ToMapMapOutput(in map[string]MapOutput) MapMapOutput {
+	m := make(MapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToMapMapOutput()
 }
 
 var arrayArrayType = reflect.TypeOf((*[][]interface{})(nil)).Elem()
@@ -3771,11 +4051,19 @@ func (o ArrayArrayOutput) Index(i IntInput) ArrayOutput {
 }
 
 func ToArrayArray(in [][]interface{}) ArrayArray {
-	a := make([]ArrayInput, len(in))
+	a := make(ArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToArray(v)
 	}
-	return ArrayArray(a)
+	return a
+}
+
+func ToArrayArrayOutput(in []ArrayOutput) ArrayArrayOutput {
+	a := make(ArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArrayArrayOutput()
 }
 
 var intType = reflect.TypeOf((*int)(nil)).Elem()
@@ -3955,11 +4243,19 @@ func (o IntArrayOutput) Index(i IntInput) IntOutput {
 }
 
 func ToIntArray(in []int) IntArray {
-	a := make([]IntInput, len(in))
+	a := make(IntArray, len(in))
 	for i, v := range in {
 		a[i] = Int(v)
 	}
-	return IntArray(a)
+	return a
+}
+
+func ToIntArrayOutput(in []IntOutput) IntArrayOutput {
+	a := make(IntArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntArrayOutput()
 }
 
 var intMapType = reflect.TypeOf((*map[string]int)(nil)).Elem()
@@ -4012,11 +4308,19 @@ func (o IntMapOutput) MapIndex(k StringInput) IntOutput {
 }
 
 func ToIntMap(in map[string]int) IntMap {
-	m := make(map[string]IntInput)
+	m := make(IntMap)
 	for k, v := range in {
 		m[k] = Int(v)
 	}
-	return IntMap(m)
+	return m
+}
+
+func ToIntMapOutput(in map[string]IntOutput) IntMapOutput {
+	m := make(IntMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntMapOutput()
 }
 
 var intArrayMapType = reflect.TypeOf((*map[string][]int)(nil)).Elem()
@@ -4069,11 +4373,19 @@ func (o IntArrayMapOutput) MapIndex(k StringInput) IntArrayOutput {
 }
 
 func ToIntArrayMap(in map[string][]int) IntArrayMap {
-	m := make(map[string]IntArrayInput)
+	m := make(IntArrayMap)
 	for k, v := range in {
 		m[k] = ToIntArray(v)
 	}
-	return IntArrayMap(m)
+	return m
+}
+
+func ToIntArrayMapOutput(in map[string]IntArrayOutput) IntArrayMapOutput {
+	m := make(IntArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntArrayMapOutput()
 }
 
 var intMapArrayType = reflect.TypeOf((*[]map[string]int)(nil)).Elem()
@@ -4133,11 +4445,19 @@ func (o IntMapArrayOutput) Index(i IntInput) IntMapOutput {
 }
 
 func ToIntMapArray(in []map[string]int) IntMapArray {
-	a := make([]IntMapInput, len(in))
+	a := make(IntMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToIntMap(v)
 	}
-	return IntMapArray(a)
+	return a
+}
+
+func ToIntMapArrayOutput(in []IntMapOutput) IntMapArrayOutput {
+	a := make(IntMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntMapArrayOutput()
 }
 
 var intMapMapType = reflect.TypeOf((*map[string]map[string]int)(nil)).Elem()
@@ -4190,11 +4510,19 @@ func (o IntMapMapOutput) MapIndex(k StringInput) IntMapOutput {
 }
 
 func ToIntMapMap(in map[string]map[string]int) IntMapMap {
-	m := make(map[string]IntMapInput)
+	m := make(IntMapMap)
 	for k, v := range in {
 		m[k] = ToIntMap(v)
 	}
-	return IntMapMap(m)
+	return m
+}
+
+func ToIntMapMapOutput(in map[string]IntMapOutput) IntMapMapOutput {
+	m := make(IntMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntMapMapOutput()
 }
 
 var intArrayArrayType = reflect.TypeOf((*[][]int)(nil)).Elem()
@@ -4254,11 +4582,19 @@ func (o IntArrayArrayOutput) Index(i IntInput) IntArrayOutput {
 }
 
 func ToIntArrayArray(in [][]int) IntArrayArray {
-	a := make([]IntArrayInput, len(in))
+	a := make(IntArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToIntArray(v)
 	}
-	return IntArrayArray(a)
+	return a
+}
+
+func ToIntArrayArrayOutput(in []IntArrayOutput) IntArrayArrayOutput {
+	a := make(IntArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntArrayArrayOutput()
 }
 
 var stringType = reflect.TypeOf((*string)(nil)).Elem()
@@ -4438,11 +4774,19 @@ func (o StringArrayOutput) Index(i IntInput) StringOutput {
 }
 
 func ToStringArray(in []string) StringArray {
-	a := make([]StringInput, len(in))
+	a := make(StringArray, len(in))
 	for i, v := range in {
 		a[i] = String(v)
 	}
-	return StringArray(a)
+	return a
+}
+
+func ToStringArrayOutput(in []StringOutput) StringArrayOutput {
+	a := make(StringArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringArrayOutput()
 }
 
 var stringMapType = reflect.TypeOf((*map[string]string)(nil)).Elem()
@@ -4495,11 +4839,19 @@ func (o StringMapOutput) MapIndex(k StringInput) StringOutput {
 }
 
 func ToStringMap(in map[string]string) StringMap {
-	m := make(map[string]StringInput)
+	m := make(StringMap)
 	for k, v := range in {
 		m[k] = String(v)
 	}
-	return StringMap(m)
+	return m
+}
+
+func ToStringMapOutput(in map[string]StringOutput) StringMapOutput {
+	m := make(StringMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringMapOutput()
 }
 
 var stringArrayMapType = reflect.TypeOf((*map[string][]string)(nil)).Elem()
@@ -4552,11 +4904,19 @@ func (o StringArrayMapOutput) MapIndex(k StringInput) StringArrayOutput {
 }
 
 func ToStringArrayMap(in map[string][]string) StringArrayMap {
-	m := make(map[string]StringArrayInput)
+	m := make(StringArrayMap)
 	for k, v := range in {
 		m[k] = ToStringArray(v)
 	}
-	return StringArrayMap(m)
+	return m
+}
+
+func ToStringArrayMapOutput(in map[string]StringArrayOutput) StringArrayMapOutput {
+	m := make(StringArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringArrayMapOutput()
 }
 
 var stringMapArrayType = reflect.TypeOf((*[]map[string]string)(nil)).Elem()
@@ -4616,11 +4976,19 @@ func (o StringMapArrayOutput) Index(i IntInput) StringMapOutput {
 }
 
 func ToStringMapArray(in []map[string]string) StringMapArray {
-	a := make([]StringMapInput, len(in))
+	a := make(StringMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToStringMap(v)
 	}
-	return StringMapArray(a)
+	return a
+}
+
+func ToStringMapArrayOutput(in []StringMapOutput) StringMapArrayOutput {
+	a := make(StringMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringMapArrayOutput()
 }
 
 var stringMapMapType = reflect.TypeOf((*map[string]map[string]string)(nil)).Elem()
@@ -4673,11 +5041,19 @@ func (o StringMapMapOutput) MapIndex(k StringInput) StringMapOutput {
 }
 
 func ToStringMapMap(in map[string]map[string]string) StringMapMap {
-	m := make(map[string]StringMapInput)
+	m := make(StringMapMap)
 	for k, v := range in {
 		m[k] = ToStringMap(v)
 	}
-	return StringMapMap(m)
+	return m
+}
+
+func ToStringMapMapOutput(in map[string]StringMapOutput) StringMapMapOutput {
+	m := make(StringMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringMapMapOutput()
 }
 
 var stringArrayArrayType = reflect.TypeOf((*[][]string)(nil)).Elem()
@@ -4737,11 +5113,19 @@ func (o StringArrayArrayOutput) Index(i IntInput) StringArrayOutput {
 }
 
 func ToStringArrayArray(in [][]string) StringArrayArray {
-	a := make([]StringArrayInput, len(in))
+	a := make(StringArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToStringArray(v)
 	}
-	return StringArrayArray(a)
+	return a
+}
+
+func ToStringArrayArrayOutput(in []StringArrayOutput) StringArrayArrayOutput {
+	a := make(StringArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringArrayArrayOutput()
 }
 
 var urnType = reflect.TypeOf((*URN)(nil)).Elem()
@@ -4936,11 +5320,19 @@ func (o URNArrayOutput) Index(i IntInput) URNOutput {
 }
 
 func ToURNArray(in []URN) URNArray {
-	a := make([]URNInput, len(in))
+	a := make(URNArray, len(in))
 	for i, v := range in {
 		a[i] = (v)
 	}
-	return URNArray(a)
+	return a
+}
+
+func ToURNArrayOutput(in []URNOutput) URNArrayOutput {
+	a := make(URNArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNArrayOutput()
 }
 
 var uRNMapType = reflect.TypeOf((*map[string]URN)(nil)).Elem()
@@ -4993,11 +5385,19 @@ func (o URNMapOutput) MapIndex(k StringInput) URNOutput {
 }
 
 func ToURNMap(in map[string]URN) URNMap {
-	m := make(map[string]URNInput)
+	m := make(URNMap)
 	for k, v := range in {
 		m[k] = (v)
 	}
-	return URNMap(m)
+	return m
+}
+
+func ToURNMapOutput(in map[string]URNOutput) URNMapOutput {
+	m := make(URNMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNMapOutput()
 }
 
 var uRNArrayMapType = reflect.TypeOf((*map[string][]URN)(nil)).Elem()
@@ -5050,11 +5450,19 @@ func (o URNArrayMapOutput) MapIndex(k StringInput) URNArrayOutput {
 }
 
 func ToURNArrayMap(in map[string][]URN) URNArrayMap {
-	m := make(map[string]URNArrayInput)
+	m := make(URNArrayMap)
 	for k, v := range in {
 		m[k] = ToURNArray(v)
 	}
-	return URNArrayMap(m)
+	return m
+}
+
+func ToURNArrayMapOutput(in map[string]URNArrayOutput) URNArrayMapOutput {
+	m := make(URNArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNArrayMapOutput()
 }
 
 var uRNMapArrayType = reflect.TypeOf((*[]map[string]URN)(nil)).Elem()
@@ -5114,11 +5522,19 @@ func (o URNMapArrayOutput) Index(i IntInput) URNMapOutput {
 }
 
 func ToURNMapArray(in []map[string]URN) URNMapArray {
-	a := make([]URNMapInput, len(in))
+	a := make(URNMapArray, len(in))
 	for i, v := range in {
 		a[i] = ToURNMap(v)
 	}
-	return URNMapArray(a)
+	return a
+}
+
+func ToURNMapArrayOutput(in []URNMapOutput) URNMapArrayOutput {
+	a := make(URNMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNMapArrayOutput()
 }
 
 var uRNMapMapType = reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem()
@@ -5171,11 +5587,19 @@ func (o URNMapMapOutput) MapIndex(k StringInput) URNMapOutput {
 }
 
 func ToURNMapMap(in map[string]map[string]URN) URNMapMap {
-	m := make(map[string]URNMapInput)
+	m := make(URNMapMap)
 	for k, v := range in {
 		m[k] = ToURNMap(v)
 	}
-	return URNMapMap(m)
+	return m
+}
+
+func ToURNMapMapOutput(in map[string]URNMapOutput) URNMapMapOutput {
+	m := make(URNMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNMapMapOutput()
 }
 
 var uRNArrayArrayType = reflect.TypeOf((*[][]URN)(nil)).Elem()
@@ -5235,11 +5659,19 @@ func (o URNArrayArrayOutput) Index(i IntInput) URNArrayOutput {
 }
 
 func ToURNArrayArray(in [][]URN) URNArrayArray {
-	a := make([]URNArrayInput, len(in))
+	a := make(URNArrayArray, len(in))
 	for i, v := range in {
 		a[i] = ToURNArray(v)
 	}
-	return URNArrayArray(a)
+	return a
+}
+
+func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
+	a := make(URNArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNArrayArrayOutput()
 }
 
 func getResolvedValue(input Input) (reflect.Value, bool) {

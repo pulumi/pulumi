@@ -5163,6 +5163,20 @@ func TestToArchiveArray(t *testing.T) {
 	assert.EqualValues(t, av.([]Archive)[0], iv)
 }
 
+func TestTopLevelToArchiveArrayOutput(t *testing.T) {
+	out := ToArchiveArrayOutput([]ArchiveOutput{ToOutput(NewFileArchive("foo.zip")).(ArchiveOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]Archive)[0], iv)
+}
+
 func TestArchiveMapArrayIndex(t *testing.T) {
 	out := (ArchiveMapArray{ArchiveMap{"baz": NewFileArchive("foo.zip")}}).ToArchiveMapArrayOutput()
 
@@ -5183,6 +5197,20 @@ func TestArchiveMapArrayIndex(t *testing.T) {
 
 func TestToArchiveMapArray(t *testing.T) {
 	out := ToArchiveMapArray([]map[string]Archive{{"baz": NewFileArchive("foo.zip")}}).ToArchiveMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]Archive)[0], iv)
+}
+
+func TestTopLevelToArchiveMapArrayOutput(t *testing.T) {
+	out := ToArchiveMapArrayOutput([]ArchiveMapOutput{ToOutput(ArchiveMap{"baz": NewFileArchive("foo.zip")}).(ArchiveMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5227,6 +5255,20 @@ func TestToArchiveArrayArray(t *testing.T) {
 	assert.EqualValues(t, av.([][]Archive)[0], iv)
 }
 
+func TestTopLevelToArchiveArrayArrayOutput(t *testing.T) {
+	out := ToArchiveArrayArrayOutput([]ArchiveArrayOutput{ToOutput(ArchiveArray{NewFileArchive("foo.zip")}).(ArchiveArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]Archive)[0], iv)
+}
+
 func TestAssetArrayIndex(t *testing.T) {
 	out := (AssetArray{NewFileAsset("foo.txt")}).ToAssetArrayOutput()
 
@@ -5247,6 +5289,20 @@ func TestAssetArrayIndex(t *testing.T) {
 
 func TestToAssetArray(t *testing.T) {
 	out := ToAssetArray([]Asset{NewFileAsset("foo.txt")}).ToAssetArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]Asset)[0], iv)
+}
+
+func TestTopLevelToAssetArrayOutput(t *testing.T) {
+	out := ToAssetArrayOutput([]AssetOutput{ToOutput(NewFileAsset("foo.txt")).(AssetOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5291,6 +5347,20 @@ func TestToAssetMapArray(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
 }
 
+func TestTopLevelToAssetMapArrayOutput(t *testing.T) {
+	out := ToAssetMapArrayOutput([]AssetMapOutput{ToOutput(AssetMap{"baz": NewFileAsset("foo.txt")}).(AssetMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
+}
+
 func TestAssetArrayArrayIndex(t *testing.T) {
 	out := (AssetArrayArray{AssetArray{NewFileAsset("foo.txt")}}).ToAssetArrayArrayOutput()
 
@@ -5311,6 +5381,20 @@ func TestAssetArrayArrayIndex(t *testing.T) {
 
 func TestToAssetArrayArray(t *testing.T) {
 	out := ToAssetArrayArray([][]Asset{{NewFileAsset("foo.txt")}}).ToAssetArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]Asset)[0], iv)
+}
+
+func TestTopLevelToAssetArrayArrayOutput(t *testing.T) {
+	out := ToAssetArrayArrayOutput([]AssetArrayOutput{ToOutput(AssetArray{NewFileAsset("foo.txt")}).(AssetArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5409,6 +5493,20 @@ func TestToBoolArray(t *testing.T) {
 	assert.EqualValues(t, av.([]bool)[0], iv)
 }
 
+func TestTopLevelToBoolArrayOutput(t *testing.T) {
+	out := ToBoolArrayOutput([]BoolOutput{ToOutput(Bool(true)).(BoolOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]bool)[0], iv)
+}
+
 func TestBoolMapArrayIndex(t *testing.T) {
 	out := (BoolMapArray{BoolMap{"baz": Bool(true)}}).ToBoolMapArrayOutput()
 
@@ -5429,6 +5527,20 @@ func TestBoolMapArrayIndex(t *testing.T) {
 
 func TestToBoolMapArray(t *testing.T) {
 	out := ToBoolMapArray([]map[string]bool{{"baz": true}}).ToBoolMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]bool)[0], iv)
+}
+
+func TestTopLevelToBoolMapArrayOutput(t *testing.T) {
+	out := ToBoolMapArrayOutput([]BoolMapOutput{ToOutput(BoolMap{"baz": Bool(true)}).(BoolMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5473,6 +5585,20 @@ func TestToBoolArrayArray(t *testing.T) {
 	assert.EqualValues(t, av.([][]bool)[0], iv)
 }
 
+func TestTopLevelToBoolArrayArrayOutput(t *testing.T) {
+	out := ToBoolArrayArrayOutput([]BoolArrayOutput{ToOutput(BoolArray{Bool(true)}).(BoolArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]bool)[0], iv)
+}
+
 func TestFloat64ArrayIndex(t *testing.T) {
 	out := (Float64Array{Float64(999.9)}).ToFloat64ArrayOutput()
 
@@ -5493,6 +5619,20 @@ func TestFloat64ArrayIndex(t *testing.T) {
 
 func TestToFloat64Array(t *testing.T) {
 	out := ToFloat64Array([]float64{999.9}).ToFloat64ArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]float64)[0], iv)
+}
+
+func TestTopLevelToFloat64ArrayOutput(t *testing.T) {
+	out := ToFloat64ArrayOutput([]Float64Output{ToOutput(Float64(999.9)).(Float64Output)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5537,6 +5677,20 @@ func TestToFloat64MapArray(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
 }
 
+func TestTopLevelToFloat64MapArrayOutput(t *testing.T) {
+	out := ToFloat64MapArrayOutput([]Float64MapOutput{ToOutput(Float64Map{"baz": Float64(999.9)}).(Float64MapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
+}
+
 func TestFloat64ArrayArrayIndex(t *testing.T) {
 	out := (Float64ArrayArray{Float64Array{Float64(999.9)}}).ToFloat64ArrayArrayOutput()
 
@@ -5557,6 +5711,20 @@ func TestFloat64ArrayArrayIndex(t *testing.T) {
 
 func TestToFloat64ArrayArray(t *testing.T) {
 	out := ToFloat64ArrayArray([][]float64{{999.9}}).ToFloat64ArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]float64)[0], iv)
+}
+
+func TestTopLevelToFloat64ArrayArrayOutput(t *testing.T) {
+	out := ToFloat64ArrayArrayOutput([]Float64ArrayOutput{ToOutput(Float64Array{Float64(999.9)}).(Float64ArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5601,6 +5769,20 @@ func TestToIDArray(t *testing.T) {
 	assert.EqualValues(t, av.([]ID)[0], iv)
 }
 
+func TestTopLevelToIDArrayOutput(t *testing.T) {
+	out := ToIDArrayOutput([]IDOutput{ToOutput(ID("foo")).(IDOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]ID)[0], iv)
+}
+
 func TestIDMapArrayIndex(t *testing.T) {
 	out := (IDMapArray{IDMap{"baz": ID("foo")}}).ToIDMapArrayOutput()
 
@@ -5621,6 +5803,20 @@ func TestIDMapArrayIndex(t *testing.T) {
 
 func TestToIDMapArray(t *testing.T) {
 	out := ToIDMapArray([]map[string]ID{{"baz": ID("foo")}}).ToIDMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]ID)[0], iv)
+}
+
+func TestTopLevelToIDMapArrayOutput(t *testing.T) {
+	out := ToIDMapArrayOutput([]IDMapOutput{ToOutput(IDMap{"baz": ID("foo")}).(IDMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5665,6 +5861,20 @@ func TestToIDArrayArray(t *testing.T) {
 	assert.EqualValues(t, av.([][]ID)[0], iv)
 }
 
+func TestTopLevelToIDArrayArrayOutput(t *testing.T) {
+	out := ToIDArrayArrayOutput([]IDArrayOutput{ToOutput(IDArray{ID("foo")}).(IDArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]ID)[0], iv)
+}
+
 func TestArrayIndex(t *testing.T) {
 	out := (Array{String("any")}).ToArrayOutput()
 
@@ -5685,6 +5895,20 @@ func TestArrayIndex(t *testing.T) {
 
 func TestToArray(t *testing.T) {
 	out := ToArray([]interface{}{String("any")}).ToArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]interface{})[0], iv)
+}
+
+func TestTopLevelToArrayOutput(t *testing.T) {
+	out := ToArrayOutput([]Output{ToOutput(String("any")).(Output)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5729,6 +5953,20 @@ func TestToMapArray(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
 }
 
+func TestTopLevelToMapArrayOutput(t *testing.T) {
+	out := ToMapArrayOutput([]MapOutput{ToOutput(Map{"baz": String("any")}).(MapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
+}
+
 func TestArrayArrayIndex(t *testing.T) {
 	out := (ArrayArray{Array{String("any")}}).ToArrayArrayOutput()
 
@@ -5749,6 +5987,20 @@ func TestArrayArrayIndex(t *testing.T) {
 
 func TestToArrayArray(t *testing.T) {
 	out := ToArrayArray([][]interface{}{{String("any")}}).ToArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]interface{})[0], iv)
+}
+
+func TestTopLevelToArrayArrayOutput(t *testing.T) {
+	out := ToArrayArrayOutput([]ArrayOutput{ToOutput(Array{String("any")}).(ArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5793,6 +6045,20 @@ func TestToIntArray(t *testing.T) {
 	assert.EqualValues(t, av.([]int)[0], iv)
 }
 
+func TestTopLevelToIntArrayOutput(t *testing.T) {
+	out := ToIntArrayOutput([]IntOutput{ToOutput(Int(42)).(IntOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]int)[0], iv)
+}
+
 func TestIntMapArrayIndex(t *testing.T) {
 	out := (IntMapArray{IntMap{"baz": Int(42)}}).ToIntMapArrayOutput()
 
@@ -5813,6 +6079,20 @@ func TestIntMapArrayIndex(t *testing.T) {
 
 func TestToIntMapArray(t *testing.T) {
 	out := ToIntMapArray([]map[string]int{{"baz": 42}}).ToIntMapArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]int)[0], iv)
+}
+
+func TestTopLevelToIntMapArrayOutput(t *testing.T) {
+	out := ToIntMapArrayOutput([]IntMapOutput{ToOutput(IntMap{"baz": Int(42)}).(IntMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5857,6 +6137,20 @@ func TestToIntArrayArray(t *testing.T) {
 	assert.EqualValues(t, av.([][]int)[0], iv)
 }
 
+func TestTopLevelToIntArrayArrayOutput(t *testing.T) {
+	out := ToIntArrayArrayOutput([]IntArrayOutput{ToOutput(IntArray{Int(42)}).(IntArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]int)[0], iv)
+}
+
 func TestStringArrayIndex(t *testing.T) {
 	out := (StringArray{String("foo")}).ToStringArrayOutput()
 
@@ -5877,6 +6171,20 @@ func TestStringArrayIndex(t *testing.T) {
 
 func TestToStringArray(t *testing.T) {
 	out := ToStringArray([]string{"foo"}).ToStringArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]string)[0], iv)
+}
+
+func TestTopLevelToStringArrayOutput(t *testing.T) {
+	out := ToStringArrayOutput([]StringOutput{ToOutput(String("foo")).(StringOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5921,6 +6229,20 @@ func TestToStringMapArray(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]string)[0], iv)
 }
 
+func TestTopLevelToStringMapArrayOutput(t *testing.T) {
+	out := ToStringMapArrayOutput([]StringMapOutput{ToOutput(StringMap{"baz": String("foo")}).(StringMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]string)[0], iv)
+}
+
 func TestStringArrayArrayIndex(t *testing.T) {
 	out := (StringArrayArray{StringArray{String("foo")}}).ToStringArrayArrayOutput()
 
@@ -5941,6 +6263,20 @@ func TestStringArrayArrayIndex(t *testing.T) {
 
 func TestToStringArrayArray(t *testing.T) {
 	out := ToStringArrayArray([][]string{{"foo"}}).ToStringArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]string)[0], iv)
+}
+
+func TestTopLevelToStringArrayArrayOutput(t *testing.T) {
+	out := ToStringArrayArrayOutput([]StringArrayOutput{ToOutput(StringArray{String("foo")}).(StringArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -5985,6 +6321,20 @@ func TestToURNArray(t *testing.T) {
 	assert.EqualValues(t, av.([]URN)[0], iv)
 }
 
+func TestTopLevelToURNArrayOutput(t *testing.T) {
+	out := ToURNArrayOutput([]URNOutput{ToOutput(URN("foo")).(URNOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]URN)[0], iv)
+}
+
 func TestURNMapArrayIndex(t *testing.T) {
 	out := (URNMapArray{URNMap{"baz": URN("foo")}}).ToURNMapArrayOutput()
 
@@ -6017,6 +6367,20 @@ func TestToURNMapArray(t *testing.T) {
 	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
 }
 
+func TestTopLevelToURNMapArrayOutput(t *testing.T) {
+	out := ToURNMapArrayOutput([]URNMapOutput{ToOutput(URNMap{"baz": URN("foo")}).(URNMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
+}
+
 func TestURNArrayArrayIndex(t *testing.T) {
 	out := (URNArrayArray{URNArray{URN("foo")}}).ToURNArrayArrayOutput()
 
@@ -6037,6 +6401,20 @@ func TestURNArrayArrayIndex(t *testing.T) {
 
 func TestToURNArrayArray(t *testing.T) {
 	out := ToURNArrayArray([][]URN{{URN("foo")}}).ToURNArrayArrayOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([][]URN)[0], iv)
+}
+
+func TestTopLevelToURNArrayArrayOutput(t *testing.T) {
+	out := ToURNArrayArrayOutput([]URNArrayOutput{ToOutput(URNArray{URN("foo")}).(URNArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6083,6 +6461,20 @@ func TestToArchiveMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]Archive)["baz"], iv)
 }
 
+func TestTopLevelToArchiveMapOutput(t *testing.T) {
+	out := ToArchiveMapOutput(map[string]ArchiveOutput{"baz": ToOutput(NewFileArchive("foo.zip")).(ArchiveOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]Archive)["baz"], iv)
+}
+
 func TestArchiveArrayMapIndex(t *testing.T) {
 	out := (ArchiveArrayMap{"baz": ArchiveArray{NewFileArchive("foo.zip")}}).ToArchiveArrayMapOutput()
 
@@ -6103,6 +6495,20 @@ func TestArchiveArrayMapIndex(t *testing.T) {
 
 func TestToArchiveArrayMap(t *testing.T) {
 	out := ToArchiveArrayMap(map[string][]Archive{"baz": {NewFileArchive("foo.zip")}}).ToArchiveArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]Archive)["baz"], iv)
+}
+
+func TestTopLevelToArchiveArrayMapOutput(t *testing.T) {
+	out := ToArchiveArrayMapOutput(map[string]ArchiveArrayOutput{"baz": ToOutput(ArchiveArray{NewFileArchive("foo.zip")}).(ArchiveArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6147,6 +6553,20 @@ func TestToArchiveMapMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
 }
 
+func TestTopLevelToArchiveMapMapOutput(t *testing.T) {
+	out := ToArchiveMapMapOutput(map[string]ArchiveMapOutput{"baz": ToOutput(ArchiveMap{"baz": NewFileArchive("foo.zip")}).(ArchiveMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
+}
+
 func TestAssetMapIndex(t *testing.T) {
 	out := (AssetMap{"baz": NewFileAsset("foo.txt")}).ToAssetMapOutput()
 
@@ -6167,6 +6587,20 @@ func TestAssetMapIndex(t *testing.T) {
 
 func TestToAssetMap(t *testing.T) {
 	out := ToAssetMap(map[string]Asset{"baz": NewFileAsset("foo.txt")}).ToAssetMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]Asset)["baz"], iv)
+}
+
+func TestTopLevelToAssetMapOutput(t *testing.T) {
+	out := ToAssetMapOutput(map[string]AssetOutput{"baz": ToOutput(NewFileAsset("foo.txt")).(AssetOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6211,6 +6645,20 @@ func TestToAssetArrayMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
 }
 
+func TestTopLevelToAssetArrayMapOutput(t *testing.T) {
+	out := ToAssetArrayMapOutput(map[string]AssetArrayOutput{"baz": ToOutput(AssetArray{NewFileAsset("foo.txt")}).(AssetArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
+}
+
 func TestAssetMapMapIndex(t *testing.T) {
 	out := (AssetMapMap{"baz": AssetMap{"baz": NewFileAsset("foo.txt")}}).ToAssetMapMapOutput()
 
@@ -6231,6 +6679,20 @@ func TestAssetMapMapIndex(t *testing.T) {
 
 func TestToAssetMapMap(t *testing.T) {
 	out := ToAssetMapMap(map[string]map[string]Asset{"baz": {"baz": NewFileAsset("foo.txt")}}).ToAssetMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
+}
+
+func TestTopLevelToAssetMapMapOutput(t *testing.T) {
+	out := ToAssetMapMapOutput(map[string]AssetMapOutput{"baz": ToOutput(AssetMap{"baz": NewFileAsset("foo.txt")}).(AssetMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6329,6 +6791,20 @@ func TestToBoolMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]bool)["baz"], iv)
 }
 
+func TestTopLevelToBoolMapOutput(t *testing.T) {
+	out := ToBoolMapOutput(map[string]BoolOutput{"baz": ToOutput(Bool(true)).(BoolOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]bool)["baz"], iv)
+}
+
 func TestBoolArrayMapIndex(t *testing.T) {
 	out := (BoolArrayMap{"baz": BoolArray{Bool(true)}}).ToBoolArrayMapOutput()
 
@@ -6349,6 +6825,20 @@ func TestBoolArrayMapIndex(t *testing.T) {
 
 func TestToBoolArrayMap(t *testing.T) {
 	out := ToBoolArrayMap(map[string][]bool{"baz": {true}}).ToBoolArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]bool)["baz"], iv)
+}
+
+func TestTopLevelToBoolArrayMapOutput(t *testing.T) {
+	out := ToBoolArrayMapOutput(map[string]BoolArrayOutput{"baz": ToOutput(BoolArray{Bool(true)}).(BoolArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6393,6 +6883,20 @@ func TestToBoolMapMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
 }
 
+func TestTopLevelToBoolMapMapOutput(t *testing.T) {
+	out := ToBoolMapMapOutput(map[string]BoolMapOutput{"baz": ToOutput(BoolMap{"baz": Bool(true)}).(BoolMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
+}
+
 func TestFloat64MapIndex(t *testing.T) {
 	out := (Float64Map{"baz": Float64(999.9)}).ToFloat64MapOutput()
 
@@ -6413,6 +6917,20 @@ func TestFloat64MapIndex(t *testing.T) {
 
 func TestToFloat64Map(t *testing.T) {
 	out := ToFloat64Map(map[string]float64{"baz": 999.9}).ToFloat64MapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]float64)["baz"], iv)
+}
+
+func TestTopLevelToFloat64MapOutput(t *testing.T) {
+	out := ToFloat64MapOutput(map[string]Float64Output{"baz": ToOutput(Float64(999.9)).(Float64Output)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6457,6 +6975,20 @@ func TestToFloat64ArrayMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
 }
 
+func TestTopLevelToFloat64ArrayMapOutput(t *testing.T) {
+	out := ToFloat64ArrayMapOutput(map[string]Float64ArrayOutput{"baz": ToOutput(Float64Array{Float64(999.9)}).(Float64ArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
+}
+
 func TestFloat64MapMapIndex(t *testing.T) {
 	out := (Float64MapMap{"baz": Float64Map{"baz": Float64(999.9)}}).ToFloat64MapMapOutput()
 
@@ -6477,6 +7009,20 @@ func TestFloat64MapMapIndex(t *testing.T) {
 
 func TestToFloat64MapMap(t *testing.T) {
 	out := ToFloat64MapMap(map[string]map[string]float64{"baz": {"baz": 999.9}}).ToFloat64MapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
+}
+
+func TestTopLevelToFloat64MapMapOutput(t *testing.T) {
+	out := ToFloat64MapMapOutput(map[string]Float64MapOutput{"baz": ToOutput(Float64Map{"baz": Float64(999.9)}).(Float64MapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6521,6 +7067,20 @@ func TestToIDMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]ID)["baz"], iv)
 }
 
+func TestTopLevelToIDMapOutput(t *testing.T) {
+	out := ToIDMapOutput(map[string]IDOutput{"baz": ToOutput(ID("foo")).(IDOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]ID)["baz"], iv)
+}
+
 func TestIDArrayMapIndex(t *testing.T) {
 	out := (IDArrayMap{"baz": IDArray{ID("foo")}}).ToIDArrayMapOutput()
 
@@ -6541,6 +7101,20 @@ func TestIDArrayMapIndex(t *testing.T) {
 
 func TestToIDArrayMap(t *testing.T) {
 	out := ToIDArrayMap(map[string][]ID{"baz": {ID("foo")}}).ToIDArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]ID)["baz"], iv)
+}
+
+func TestTopLevelToIDArrayMapOutput(t *testing.T) {
+	out := ToIDArrayMapOutput(map[string]IDArrayOutput{"baz": ToOutput(IDArray{ID("foo")}).(IDArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6585,6 +7159,20 @@ func TestToIDMapMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
 }
 
+func TestTopLevelToIDMapMapOutput(t *testing.T) {
+	out := ToIDMapMapOutput(map[string]IDMapOutput{"baz": ToOutput(IDMap{"baz": ID("foo")}).(IDMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
+}
+
 func TestMapIndex(t *testing.T) {
 	out := (Map{"baz": String("any")}).ToMapOutput()
 
@@ -6605,6 +7193,20 @@ func TestMapIndex(t *testing.T) {
 
 func TestToMap(t *testing.T) {
 	out := ToMap(map[string]interface{}{"baz": String("any")}).ToMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
+}
+
+func TestTopLevelToMapOutput(t *testing.T) {
+	out := ToMapOutput(map[string]Output{"baz": ToOutput(String("any")).(Output)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6649,6 +7251,20 @@ func TestToArrayMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
 }
 
+func TestTopLevelToArrayMapOutput(t *testing.T) {
+	out := ToArrayMapOutput(map[string]ArrayOutput{"baz": ToOutput(Array{String("any")}).(ArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
+}
+
 func TestMapMapIndex(t *testing.T) {
 	out := (MapMap{"baz": Map{"baz": String("any")}}).ToMapMapOutput()
 
@@ -6669,6 +7285,20 @@ func TestMapMapIndex(t *testing.T) {
 
 func TestToMapMap(t *testing.T) {
 	out := ToMapMap(map[string]map[string]interface{}{"baz": {"baz": String("any")}}).ToMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
+}
+
+func TestTopLevelToMapMapOutput(t *testing.T) {
+	out := ToMapMapOutput(map[string]MapOutput{"baz": ToOutput(Map{"baz": String("any")}).(MapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6713,6 +7343,20 @@ func TestToIntMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]int)["baz"], iv)
 }
 
+func TestTopLevelToIntMapOutput(t *testing.T) {
+	out := ToIntMapOutput(map[string]IntOutput{"baz": ToOutput(Int(42)).(IntOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]int)["baz"], iv)
+}
+
 func TestIntArrayMapIndex(t *testing.T) {
 	out := (IntArrayMap{"baz": IntArray{Int(42)}}).ToIntArrayMapOutput()
 
@@ -6733,6 +7377,20 @@ func TestIntArrayMapIndex(t *testing.T) {
 
 func TestToIntArrayMap(t *testing.T) {
 	out := ToIntArrayMap(map[string][]int{"baz": {42}}).ToIntArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]int)["baz"], iv)
+}
+
+func TestTopLevelToIntArrayMapOutput(t *testing.T) {
+	out := ToIntArrayMapOutput(map[string]IntArrayOutput{"baz": ToOutput(IntArray{Int(42)}).(IntArrayOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6777,6 +7435,20 @@ func TestToIntMapMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
 }
 
+func TestTopLevelToIntMapMapOutput(t *testing.T) {
+	out := ToIntMapMapOutput(map[string]IntMapOutput{"baz": ToOutput(IntMap{"baz": Int(42)}).(IntMapOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
+}
+
 func TestStringMapIndex(t *testing.T) {
 	out := (StringMap{"baz": String("foo")}).ToStringMapOutput()
 
@@ -6797,6 +7469,20 @@ func TestStringMapIndex(t *testing.T) {
 
 func TestToStringMap(t *testing.T) {
 	out := ToStringMap(map[string]string{"baz": "foo"}).ToStringMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]string)["baz"], iv)
+}
+
+func TestTopLevelToStringMapOutput(t *testing.T) {
+	out := ToStringMapOutput(map[string]StringOutput{"baz": ToOutput(String("foo")).(StringOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6841,6 +7527,20 @@ func TestToStringArrayMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
 }
 
+func TestTopLevelToStringArrayMapOutput(t *testing.T) {
+	out := ToStringArrayMapOutput(map[string]StringArrayOutput{"baz": ToOutput(StringArray{String("foo")}).(StringArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
+}
+
 func TestStringMapMapIndex(t *testing.T) {
 	out := (StringMapMap{"baz": StringMap{"baz": String("foo")}}).ToStringMapMapOutput()
 
@@ -6861,6 +7561,20 @@ func TestStringMapMapIndex(t *testing.T) {
 
 func TestToStringMapMap(t *testing.T) {
 	out := ToStringMapMap(map[string]map[string]string{"baz": {"baz": "foo"}}).ToStringMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
+}
+
+func TestTopLevelToStringMapMapOutput(t *testing.T) {
+	out := ToStringMapMapOutput(map[string]StringMapOutput{"baz": ToOutput(StringMap{"baz": String("foo")}).(StringMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
@@ -6905,6 +7619,20 @@ func TestToURNMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string]URN)["baz"], iv)
 }
 
+func TestTopLevelToURNMapOutput(t *testing.T) {
+	out := ToURNMapOutput(map[string]URNOutput{"baz": ToOutput(URN("foo")).(URNOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]URN)["baz"], iv)
+}
+
 func TestURNArrayMapIndex(t *testing.T) {
 	out := (URNArrayMap{"baz": URNArray{URN("foo")}}).ToURNArrayMapOutput()
 
@@ -6937,6 +7665,20 @@ func TestToURNArrayMap(t *testing.T) {
 	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
 }
 
+func TestTopLevelToURNArrayMapOutput(t *testing.T) {
+	out := ToURNArrayMapOutput(map[string]URNArrayOutput{"baz": ToOutput(URNArray{URN("foo")}).(URNArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
+}
+
 func TestURNMapMapIndex(t *testing.T) {
 	out := (URNMapMap{"baz": URNMap{"baz": URN("foo")}}).ToURNMapMapOutput()
 
@@ -6957,6 +7699,20 @@ func TestURNMapMapIndex(t *testing.T) {
 
 func TestToURNMapMap(t *testing.T) {
 	out := ToURNMapMap(map[string]map[string]URN{"baz": {"baz": URN("foo")}}).ToURNMapMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
+}
+
+func TestTopLevelToURNMapMapOutput(t *testing.T) {
+	out := ToURNMapMapOutput(map[string]URNMapOutput{"baz": ToOutput(URNMap{"baz": URN("foo")}).(URNMapOutput)})
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)
