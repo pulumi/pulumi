@@ -13,7 +13,7 @@ associated lifecycle, and are constructed by registering child custom or compone
 resources with the Pulumi engine.
 
 Each resource registered with the Pulumi engine is logically identified by its 
-uniform resource name (URN). Aresource's URN is derived from the its type, parent type,
+uniform resource name (URN). A resource's URN is derived from the its type, parent type,
 and user-supplied name. Within the scope of a resource-related provider method
 ([`Check`](#check), [`Diff`](#diff), [`Create`](#create), [`Read`](#read),
 [`Update`](#update), [`Delete`](#delete), and [`Construct`](#construct)), the type of
@@ -108,9 +108,9 @@ A provider function is a function implemented by a provider, and has access to a
 provider's state. Each function has a unique token, optionally accepts an input object,
 and optionally produces an output object. The data passed to and returned from a function
 must not be [unknown](#unknowns) or [secret](#secrets), and must not
-[refer to resources](#resource-references). Note that a special exception to these rules
-is made for component resource methods, which may accept values of any type, and are
-provided with a connection to the Pulumi engine.
+[refer to resources](#resource-references). Note that an exception to these rules is made
+for component resource methods, which may accept values of any type, and are provided
+with a connection to the Pulumi engine.
 
 ### Data Exchange Types
 
@@ -154,10 +154,10 @@ resource must be inspected, the reference must be resolved by invoking the `getR
 function of the engine's builtin provider. Note that this is only possible if there is a 
 connection to the engine's resource monitor, e.g. within the scope of a call to `Construct`.
 This implies that resource references may not be resolved within calls to other 
-provider methods. Therefore, custom resources and provider functions should not rely on 
-the ability to resolve resource references, and should instead treat resource references 
-as either their ID (if present) or URN. If the ID is present and empty, it should be 
-treated as an [`Unknown`](#unknowns).
+provider methods. Therefore, configuration vales, custom resources and provider functions
+should not rely on  the ability to resolve resource references, and should instead treat
+resource references  as either their ID (if present) or URN. If the ID is present and
+empty, it should be treated as an [`Unknown`](#unknowns).
 
 #### Unknowns
 
@@ -175,6 +175,8 @@ secret value. and should wrap any resource output values that are always sensiti
 
 ## Schema
 
+TODO: document the Pulumi schema model.
+
 - configuration
 - types
 - resources
@@ -182,37 +184,119 @@ secret value. and should wrap any resource output values that are always sensiti
 
 ## Provider Lifecycle
 
-- load
-- configure
-- use
-- shutdown
+Clients of a provider (e.g. the Pulumi CLI) must obey the provider lifecycle. This
+lifecycle guarantees that a provider is configured before any resource operations are
+performed or provider functions are invoked. The lifecycle of a provider instance is
+described in brief below.
 
-### Loading
+1. The user [looks up](#lookup) the factory for a particular `(package, semver)` tuple
+   and uses the factory to create a provider instance.
+2. The user [configures](#configuration) the provider instance with a particular
+   configuration object.
+3. The user performs resource operations and/or calls provider functions with the
+   provider instance.
+4. The user [shuts down](#shutdown) the provider instance.
 
-- Probing process
+Within the scope of a Pulumi stack, each provider instance has a corresponding provider
+resource. Provider resources are custom resources that are managed by the Pulumi engine,
+and obey the usual custom resource lifecycle. The `Check` and `Diff` methods for a
+provider resource are implemented using the [`CheckConfig`](#checkconfig) and
+[`DiffConfig`](#diffconfig) methods of the resource's provider instance. The latter is
+criticially important to the user experience: if [`DiffConfig`](#diffconfig) indicates
+that the provider resource must be replaced, all of the custom resources managed by the
+provider resource will _also_ be replaced. As a result, `DiffConfig` should only indicate
+that replacement is required if the provider's new configuration prevents it from managing
+resources associated with its old configuration.
+
+### Lookup
+
+Before a provider can be used, it must be instantiated. Instatiating a provider requires
+a `(package, semver)` tuple, which is used to find an appropriate provider factory. The
+lookup process proceeds as follows:
+
+- Let the best available factory `B` be empty
+- For each available provider factory `F` with package name `package`:
+	- If the `F`'s version is compatible with `semver`:
+		- If `B` is empty or if `F`'s version is newer than `B`'s version, set `B` to `F`
+- If `B` is empty, no compatible factory is available, and lookup fails
+
+Within the context of the Pulumi CLI, the list of available factories is the list of
+installed resource plugins plus the builtin `pulumi` provider. The list of installed
+resource plugins can be viewed by running `pulumi plugin ls`.
+
+Once an appropriate factory has been found, it is used to construct a provider instance.
 
 ### Configuration
 
-- configuration variables
-- replacement semantics
+A provider may accept a set of configuration variables. After a provider is instantiated,
+the instance must be configured before it may be used, even if its set of configuration
+variables is empty. Configuration variables may be of [any type](#data-exchange-types).
+Because it has no connection to the Pulumi engine during configuration, a provider's
+configuration variables should not rely on the ability to resolve
+[resource references](#resource-references).
+
+In general, a provider's configuration variables define the set of resources it is able
+to manage: for example, the `aws` provider accepts the AWS region to use as a
+configuration variable, which prevents a particular instance of the provider from
+managing AWS resources in other regions. As noted in the [overview](#provider-lifecycle),
+changes to a provider's configuration that prevent the provider from managing resources
+that were created with its old configuration should require that those resources are
+destroyed and recreated.
+
+Provider configuration is performed in at most three steps:
+
+1. [`CheckConfig`](#checkconfig), which validates configuration values and applies
+   defaults computed by the provider. This step is only required when configuring a
+   provider using user-supplied values, and can be skipped when using values that were
+   previously processed by `CheckConfig`.
+2. [`DiffConfig`](#diffconfig), which indicates whether or not the new configuration can
+   be used to manage resources created with the old configuration. Note that this step is
+   only applicable within contexts where new and old configuration exist (e.g. during a
+   [preview](#preview) or [update](#update) of a Pulumi stack).
+3. [`Configure`](#configure), which applies the inputs validated by `CheckConfig`.
 
 #### CheckConfig
 
-- validate configuration
-- apply provider-side defaults
+`CheckConfig` implements the semantics of a custom resource's [`Check`](#check) method,
+with provider configuration in the place of resource inputs. Each call to `CheckConfig` is
+provided with the provider's prior checked configuration (if any) and the configuration
+supplied by the user. The provider may reject configuration values that do not conform to
+the provider's schema, and may apply default values that are not statically computable.
+The type of a computed default value for a property should agree with the property's
+schema.
 
 #### DiffConfig
 
-- determine differences from old configuration
-- decide whether or not resources can still be managed (replacement)
+`DiffConfig` implements the semantics of a custom resource's [`Diff`](#diff) method,
+with provider configuration in the place of resource inputs and state. Each call to
+`DiffConfig` is provided with the provider's prior and current configuration. If there
+are any changes to the provider's configuration, those changes should be reflected in the
+result of `DiffConfig`. If there are changes to the configuration that make the provider
+unable to manage resources created using the prior configuration (e.g. changing an AWS
+provider instance's region), `DiffConfig` should indicate that the provider must be
+replaced. Because replacing a provider will require that all of the resources with
+which it is associated are _also_ replaced, replacement semantics should be reserved
+for changes to configuration properties that are guaranteed to make old resources
+unmanagable (e.g. a change to an AWS access key should not require replacement, as the
+set of resources accesible via an access key is easily knowable).
 
 #### Configure
 
-- create clients, etc. etc.
+`Configure` applies a set of checked configuration values to a provider instance. Within
+a call to `Configure`, a provider instance should use its configuration values to create
+appropriate SDK instances, check connectivity, etc. If configuration fails, the provider
+should return an error.
 
 ### Shutdown
 
-- cancel pending resource operations
+Once a client has finished using a resource provider, it must shut the provider down.
+A client requests that a provider shut down gracefully by calling its `SignalCancellation`
+method. In response to this method, a provider should cancel all outstanding resource
+operations and funtion calls. After calling `SignalCancellation`, the client calls
+`Close` to inform the provider that it should release any resources it holds.
+
+`SignalCancellation` is advisory and non-blocking; it is up to the client to decide how
+long to wait after calling `SignalCancellation` to call `Close`.
 
 ## Resource Lifecycle
 
