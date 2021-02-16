@@ -9,7 +9,7 @@
         "directory": "sdk/nodejs"
     },
     "dependencies": {
-        "@grpc/grpc-js": "^0.6.15",
+        "@grpc/grpc-js": "^1.2.7",
         "@pulumi/query": "^0.3.0",
         "google-protobuf": "^3.5.0",
         "js-yaml": "^3.14.0",

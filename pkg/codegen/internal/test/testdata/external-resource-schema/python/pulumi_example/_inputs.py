@@ -7,7 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
-from pulumi_random import RandomPet
+import pulumi_random
 
 __all__ = [
     'PetArgs',
@@ -17,7 +17,7 @@ __all__ = [
 class PetArgs:
     def __init__(__self__, *,
                  age: Optional[pulumi.Input[int]] = None,
-                 name: Optional[pulumi.Input['RandomPet']] = None):
+                 name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None):
         if age is not None:
             pulumi.set(__self__, "age", age)
         if name is not None:
@@ -34,11 +34,11 @@ class PetArgs:
 
     @property
     @pulumi.getter
-    def name(self) -> Optional[pulumi.Input['RandomPet']]:
+    def name(self) -> Optional[pulumi.Input['pulumi_random.RandomPet']]:
         return pulumi.get(self, "name")
 
     @name.setter
-    def name(self, value: Optional[pulumi.Input['RandomPet']]):
+    def name(self, value: Optional[pulumi.Input['pulumi_random.RandomPet']]):
         pulumi.set(self, "name", value)
 
 

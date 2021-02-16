@@ -282,7 +282,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 		}
 
 		t.Run("InputPropertiesAreSnakeCased", func(t *testing.T) {
-			props := mod.getProperties(r.InputProperties, "python", true, false)
+			props := mod.getProperties(r.InputProperties, "python", true, false, false)
 			for _, p := range props {
 				assert.True(t, strings.Contains(p.Name, "_"), "input property name in python must use snake_case")
 			}

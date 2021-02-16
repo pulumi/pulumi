@@ -7,7 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
-from pulumi_random import RandomPet
+import pulumi_random
 
 __all__ = [
     'ArgFunctionResult',
@@ -37,7 +37,7 @@ class AwaitableArgFunctionResult(ArgFunctionResult):
             age=self.age)
 
 
-def arg_function(name: Optional['RandomPet'] = None,
+def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
                  opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableArgFunctionResult:
     """
     Use this data source to access information about an existing resource.

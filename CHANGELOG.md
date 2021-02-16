@@ -5,6 +5,9 @@ CHANGELOG
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
+  
+- [automation/go] Exposing the version in the UpdateSummary struct.
+  [#6339](https://github.com/pulumi/pulumi/pull/6339)
 
 - [CLI] Add pagination options to `pulumi stack history` (`--page`, `--page-size`). These replace the `--limit` flag.
   [#6292](https://github.com/pulumi/pulumi/pull/6292)
