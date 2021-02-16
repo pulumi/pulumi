@@ -1460,7 +1460,9 @@ async function createMockEngineAsync(
     setRootResourceCallback: (call: any, request: any) => any,
     supportsFeatureCallback: (call: any, request: any) => any) {
     // The resource monitor is hosted in the current process so it can record state, etc.
-    const server = new grpc.Server();
+    const server = new grpc.Server({
+        "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
+    });
     server.addService(resrpc.ResourceMonitorService, {
         supportsFeature: supportsFeatureCallback,
         invoke: invokeCallback,
