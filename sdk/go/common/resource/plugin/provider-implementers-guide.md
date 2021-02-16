@@ -26,6 +26,8 @@ the Pulumi engine, and is only meaningful to the provider as a means to identify
 physical resource. The ID must be a string. The empty ID indicates that a resource's ID
 is not known because it has not yet been creatd.
 
+##### Custom Resource Lifecycle
+
 A custom resource has a well-defined lifecycle within the scope of a Pulumi stack. When a
 custom resource is registered by a Pulumi program, the Pulumi engine first determines
 whether the resource is being read, imported, or managed. Each of these operations
@@ -89,7 +91,7 @@ successful execution of a Pulumi progam in the resource's stack, the engine dele
 resource by calling the resource's provider's `Delete` method with the resource's ID and
 last refereshed state.
 
-The diagram below summarizes the resource lifecycle.
+The diagram below summarizes the custom resource lifecycle.
 
 ![Resource Lifeycle Diagram](./resource_lifecycle.svg)
 
@@ -199,14 +201,15 @@ described in brief below.
 
 Within the scope of a Pulumi stack, each provider instance has a corresponding provider
 resource. Provider resources are custom resources that are managed by the Pulumi engine,
-and obey the usual custom resource lifecycle. The `Check` and `Diff` methods for a
-provider resource are implemented using the [`CheckConfig`](#checkconfig) and
-[`DiffConfig`](#diffconfig) methods of the resource's provider instance. The latter is
-criticially important to the user experience: if [`DiffConfig`](#diffconfig) indicates
-that the provider resource must be replaced, all of the custom resources managed by the
-provider resource will _also_ be replaced. As a result, `DiffConfig` should only indicate
-that replacement is required if the provider's new configuration prevents it from managing
-resources associated with its old configuration.
+and obey the usual [custom resource lifecycle](#custom-resource-lifecycle). The `Check`
+and `Diff` methods for a provider resource are implemented using the
+[`CheckConfig`](#checkconfig) and [`DiffConfig`](#diffconfig) methods of the resource's
+provider instance. The latter is criticially important to the user experience: if
+[`DiffConfig`](#diffconfig) indicates that the provider resource must be replaced, all of
+the custom resources managed by the provider resource will _also_ be replaced. Thus,
+`DiffConfig` should only indicate that replacement is required if the provider's
+new configuration prevents it from managing resources associated with its old
+configuration.
 
 ### Lookup
 
@@ -298,72 +301,38 @@ operations and funtion calls. After calling `SignalCancellation`, the client cal
 `SignalCancellation` is advisory and non-blocking; it is up to the client to decide how
 long to wait after calling `SignalCancellation` to call `Close`.
 
-## Resource Lifecycle
+## Resource Operations
 
-### Scenarios
-
-- preview
-- update
-- import
-- refresh
-- destroy
-
-#### Preview
-
-- check
-- diff
-- create/update preview, read operation
-
-#### Update
-
-- check
-- diff
-- create/update/read/delete operation
-
-#### Import
-
-- read operation
-
-#### Refresh
-
-- read operations
-
-#### Destroy
-
-- delete operation
-
-### Operations
-
-#### Check
+### Check
 
 - validate inputs
 - apply provider-side defaults
 
-#### Diff
+### Diff
 
 - determine differences between requested config and last state
 - decide whether or not diffs require replacement
 - detailed diff
 
-#### Create
+### Create
 
 - create resource
 - partial failures
 
-#### Update
+### Update
 
 - update resource in-place
 - partial failures
 
-#### Read
+### Read
 
 - read live state given an ID
 
-#### Delete
+### Delete
 
 - delete resource
 
-## Component Resources
+## Component Resource Operations
 
 ### Construct
 
@@ -372,6 +341,41 @@ long to wait after calling `SignalCancellation` to call `Close`.
 ## Functions
 
 ### Invoke
+
+### StreamInvoke
+
+## CLI Scenarios
+
+- preview
+- update
+- import
+- refresh
+- destroy
+
+### Preview
+
+- check
+- diff
+- create/update preview, read operation
+
+### Update
+
+- check
+- diff
+- create/update/read/delete operation
+
+### Import
+
+- read operation
+
+### Refresh
+
+- read operations
+
+### Destroy
+
+- delete operation
+
 
 ## Out-of-Process Plugin Lifecycle
 
