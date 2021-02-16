@@ -292,15 +292,19 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			"  backends. Run `pulumi login --help` for alternative login options.",
 			"",
 			colors.Highlight(
-				"  The Pulumi Service backend provides transparent, robust and simple storage for your",
+				"  The Pulumi Service backend provides transparent, robust, and simple storage for your",
 				"Pulumi Service",
 				colors.Underline+colors.Bold,
 			),
-			"  Pulumi state. All secret values are encrypted in the state, and you can",
-			"  bring your own encryption provider for secrets. Pulumi deployments are always executed",
-			"  locally where the `pulumi` CLI is being invoked, so no ambient cloud credentials,",
+			"  Pulumi state. All secret values are encrypted in the stored state before sending to the",
+			"  Pulumi Service; you can bring your own encryption provider for secrets. Pulumi deployments",
+			"  are always executed locally where the `pulumi` CLI is being invoked, so no cloud credentials,",
 			"  source code, or other sensitive data will ever be shared with the Pulumi Service",
-			"  backend. For more details - see https://www.pulumi.com/docs/intro/concepts/state/.",
+			colors.Highlight(
+				"  backend. For more details - see https://www.pulumi.com/docs/intro/concepts/state/.",
+				"https://www.pulumi.com/docs/intro/concepts/state/"
+				colors.Underline+colors.Bold,
+			),
 			"",
 		}
 
