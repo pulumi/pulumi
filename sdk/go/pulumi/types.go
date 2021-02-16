@@ -390,7 +390,10 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 	fn := checkApplier(applier, o.elementType())
 
 	resultType := anyOutputType
-	if ot, ok := concreteTypeToOutputType.Load(fn.Type().Out(0)); ok {
+	outType := fn.Type().Out(0)
+	if outType.Implements(outputType) {
+		resultType = outType
+	} else if ot, ok := concreteTypeToOutputType.Load(outType); ok {
 		resultType = ot.(reflect.Type)
 	}
 

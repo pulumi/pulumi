@@ -596,3 +596,49 @@ func TestDeps(t *testing.T) {
 	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, boolDep1, boolDep2}, deps)
 	assert.NoError(t, err)
 }
+
+func TestApplyTOutput(t *testing.T) {
+	r1 := newSimpleCustomResource(URN("urn1"), ID("id1"))
+	r2 := newSimpleCustomResource(URN("urn2"), ID("id2"))
+	r3 := newSimpleCustomResource(URN("urn3"), ID("id3"))
+	r4 := newSimpleCustomResource(URN("urn4"), ID("id4"))
+	out1 := StringOutput{newOutputState(reflect.TypeOf(""), r1)}
+	out2 := IntOutput{newOutputState(reflect.TypeOf(0), r2)}
+	go func() {
+		out1.resolve("r1 output", true, false, []Resource{r3})
+		out2.resolve(42, true, false, []Resource{r4})
+	}()
+	{
+		out3 := out1.ApplyT(func(v string) (IntOutput, error) {
+			return out2, nil
+		})
+		v, _, _, deps, err := out3.await(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, 42, v)
+		// TODO: This is not actually "correct" - but is the current behaviour.
+		assert.Equal(t, []Resource{r2, r4}, deps)
+	}
+}
+
+func TestApplyOutput(t *testing.T) {
+	r1 := newSimpleCustomResource(URN("urn1"), ID("id1"))
+	r2 := newSimpleCustomResource(URN("urn2"), ID("id2"))
+	r3 := newSimpleCustomResource(URN("urn3"), ID("id3"))
+	r4 := newSimpleCustomResource(URN("urn4"), ID("id4"))
+	out1 := StringOutput{newOutputState(reflect.TypeOf(""), r1)}
+	out2 := IntOutput{newOutputState(reflect.TypeOf(0), r2)}
+	go func() {
+		out1.resolve("r1 output", true, false, []Resource{r3})
+		out2.resolve(42, true, false, []Resource{r4})
+	}()
+	{
+		out3 := out1.Apply(func(v interface{}) (interface{}, error) {
+			return out2, nil
+		})
+		v, _, _, deps, err := out3.await(context.Background())
+		assert.NoError(t, err)
+		assert.Equal(t, 42, v)
+		// TODO: This is not actually "correct" - but is the current behaviour.
+		assert.Equal(t, []Resource{r2, r4}, deps)
+	}
+}
