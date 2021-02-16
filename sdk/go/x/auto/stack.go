@@ -626,6 +626,7 @@ func (s *Stack) Import(ctx context.Context, state apitype.UntypedDeployment) err
 
 // UpdateSummary provides a summary of a Stack lifecycle operation (up/preview/refresh/destroy).
 type UpdateSummary struct {
+	Version     int               `json:"version"`
 	Kind        string            `json:"kind"`
 	StartTime   string            `json:"startTime"`
 	Message     string            `json:"message"`

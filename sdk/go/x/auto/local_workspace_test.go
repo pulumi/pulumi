@@ -758,6 +758,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	assert.True(t, res.Outputs["exp_secret"].Secret)
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
+	assert.Greater(t, res.Summary.Version, 0)
 
 	// -- pulumi preview --
 
