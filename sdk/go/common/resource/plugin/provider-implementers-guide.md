@@ -24,76 +24,8 @@ the resource can be extracted from the provided URN.
 In addition to its URN, each custom resource has an associated ID. This ID is opaque to
 the Pulumi engine, and is only meaningful to the provider as a means to identify a
 physical resource. The ID must be a string. The empty ID indicates that a resource's ID
-is not known because it has not yet been creatd.
-
-##### Custom Resource Lifecycle
-
-A custom resource has a well-defined lifecycle within the scope of a Pulumi stack. When a
-custom resource is registered by a Pulumi program, the Pulumi engine first determines
-whether the resource is being read, imported, or managed. Each of these operations
-involves a different interaction with the resource's provider.
-
-If the resource is being read, the engine calls the resource's provider's `Read` method
-to fetch the resource's current state. This call to `Read` includes the resource's ID and
-any state provided by the user that may be necessary to read the resource.
-
-If the resource is being imported, the engine first calls the provider's `Read` method
-to fetch the resource's current state and inputs. This call to `Read` only inclues the
-ID of the resource to import; that is, _any importable resource must be identifiable using
-its ID alone_. If the `Read` succeeds, the engine calls the provider's `Check` method with
-the inputs returned by `Read` and the inputs supplied by the user. If any of the inputs
-are invalid, the import fails. Finally, the engine calls the provider's `Diff` method with
-the inputs returned by `Check` and the state returned by `Read`. If the call to `Diff`
-indicates that there is no difference between the desired state described by the inputs
-and the actual state, the import succeeds. Otherwise, the import fails.
-
-If the resource is being managed, the engine first looks up the last registered inputs and
-last refreshed state for the resource's URN. The engine then calls the resource's
-provider's `Check` method with the last registered inputs (if any) and the inputs supplied
-by the user. If any of the inputs are invalid, the registration fails. Otherwise, the
-engine decides which operations to perform on the resource based on the difference between
-the desired state described by its inputs and its actual state. If the resource does not
-exist (i.e. there is no last refereshed state for its URN), the engine calls the
-provider's `Create` method, which returns the ID and state of the created resource. If the
-resource does exist, the action taken depends on the differences (if any) between the
-desired and actual state of the resource.
-
-If the resource does exist, the engine calls the provider's `Diff` method with the
-inputs returned from `Check`, the resource's ID, and the resource's last refreshed state.
-If the result of the call indicates that there is no difference between the desired and
-actual state, no operation is necessary. Otherwise, the resource is either updated (if
-`Diff` does not indicate that the resource must be replaced) or replaced (if `Diff` does
-indicate that the resource must be replaced).
-
-To update a resource, the engine calls the provider's `Update` method with the inputs
-returned from `Check`, the resource's ID, and its last refreshed state. `Update` returns
-the new state of the resource. The resource's ID may not be changed by a call to `Update`.
-
-To replace a resource, the engine first calls `Check` with an empty set of prior inputs
-and the inputs supplied with the resource's registration. If `Check` fails, the resource
-is not replaced. Otherwise, the inputs returned by this call to `Check` will be used to
-create the replacement resource. Next, the engine inspects the resource options supplied
-with the resource's registration and result of the call to `Diff` to determine whether
-the replacement can be created before the original resource is deleted. This order of
-operations is preferred when possible to avoid downtime due to the lag between the
-deletion of the current resource and creation of its replacement. If the replacement may
-be created before the original is deleted, the engine calls the provider's `Create` method
-with the re-checked inputs, then later calls `Delete` with the resource's ID and original
-state. If the resource must be deleted before its replacement can be created, the engine
-first deletes the transitive closure of resource that depend on the resource being
-replaced. Once these deletes have completed, the engine deletes the original resource by
-calling the provider's `Delete` method with the resource's ID and original state. Finally,
-the engine creates the replacement resource by calling `Create` with the re-checked
-inputs.
-
-If a managed resource registered by a Pulumi program is not re-registered by the next
-successful execution of a Pulumi progam in the resource's stack, the engine deletes the
-resource by calling the resource's provider's `Delete` method with the resource's ID and
-last refereshed state.
-
-The diagram below summarizes the custom resource lifecycle.
-
-![Resource Lifeycle Diagram](./resource_lifecycle.svg)
+is not known because it has not yet been created. Critically, a custom resource has a
+[well-defined lifecycle](#custom-resource-lifecycle) within the scope of a Pulumi stack.
 
 #### Component Resources
 
@@ -157,7 +89,7 @@ function of the engine's builtin provider. Note that this is only possible if th
 connection to the engine's resource monitor, e.g. within the scope of a call to `Construct`.
 This implies that resource references may not be resolved within calls to other 
 provider methods. Therefore, configuration vales, custom resources and provider functions
-should not rely on  the ability to resolve resource references, and should instead treat
+should not rely on the ability to resolve resource references, and should instead treat
 resource references  as either their ID (if present) or URN. If the ID is present and
 empty, it should be treated as an [`Unknown`](#unknowns).
 
@@ -301,7 +233,74 @@ operations and funtion calls. After calling `SignalCancellation`, the client cal
 `SignalCancellation` is advisory and non-blocking; it is up to the client to decide how
 long to wait after calling `SignalCancellation` to call `Close`.
 
-## Resource Operations
+## Custom Resource Lifecycle
+
+A custom resource has a well-defined lifecycle within the scope of a Pulumi stack. When a
+custom resource is registered by a Pulumi program, the Pulumi engine first determines
+whether the resource is being read, imported, or managed. Each of these operations
+involves a different interaction with the resource's provider.
+
+If the resource is being read, the engine calls the resource's provider's [`Read`](#`read`) method
+to fetch the resource's current state. This call to [`Read`](#`read`) includes the resource's ID and
+any state provided by the user that may be necessary to read the resource.
+
+If the resource is being imported, the engine first calls the provider's [`Read`](#`read`) method
+to fetch the resource's current state and inputs. This call to [`Read`](#`read`) only inclues the
+ID of the resource to import; that is, _any importable resource must be identifiable using
+its ID alone_. If the [`Read`](#`read`) succeeds, the engine calls the provider's [`Check`](#`check`) method with
+the inputs returned by [`Read`](#`read`) and the inputs supplied by the user. If any of the inputs
+are invalid, the import fails. Finally, the engine calls the provider's [`Diff`](#`diff`) method with
+the inputs returned by [`Check`](#`check`) and the state returned by [`Read`](#`read`). If the call to [`Diff`](#`diff`)
+indicates that there is no difference between the desired state described by the inputs
+and the actual state, the import succeeds. Otherwise, the import fails.
+
+If the resource is being managed, the engine first looks up the last registered inputs and
+last refreshed state for the resource's URN. The engine then calls the resource's
+provider's [`Check`](#`check`) method with the last registered inputs (if any) and the inputs supplied
+by the user. If any of the inputs are invalid, the registration fails. Otherwise, the
+engine decides which operations to perform on the resource based on the difference between
+the desired state described by its inputs and its actual state. If the resource does not
+exist (i.e. there is no last refereshed state for its URN), the engine calls the
+provider's [`Create`](#`create`) method, which returns the ID and state of the created resource. If the
+resource does exist, the action taken depends on the differences (if any) between the
+desired and actual state of the resource.
+
+If the resource does exist, the engine calls the provider's [`Diff`](#`diff`) method with the
+inputs returned from [`Check`](#`check`), the resource's ID, and the resource's last refreshed state.
+If the result of the call indicates that there is no difference between the desired and
+actual state, no operation is necessary. Otherwise, the resource is either updated (if
+[`Diff`](#`diff`) does not indicate that the resource must be replaced) or replaced (if [`Diff`](#`diff`) does
+indicate that the resource must be replaced).
+
+To update a resource, the engine calls the provider's [`Update`](#`update`) method with the inputs
+returned from [`Check`](#`check`), the resource's ID, and its last refreshed state. [`Update`](#`update`) returns
+the new state of the resource. The resource's ID may not be changed by a call to [`Update`](#`update`).
+
+To replace a resource, the engine first calls [`Check`](#`check`) with an empty set of prior inputs
+and the inputs supplied with the resource's registration. If [`Check`](#`check`) fails, the resource
+is not replaced. Otherwise, the inputs returned by this call to [`Check`](#`check`) will be used to
+create the replacement resource. Next, the engine inspects the resource options supplied
+with the resource's registration and result of the call to [`Diff`](#`diff`) to determine whether
+the replacement can be created before the original resource is deleted. This order of
+operations is preferred when possible to avoid downtime due to the lag between the
+deletion of the current resource and creation of its replacement. If the replacement may
+be created before the original is deleted, the engine calls the provider's [`Create`](#`create`) method
+with the re-checked inputs, then later calls [`Delete`](#`delete`) with the resource's ID and original
+state. If the resource must be deleted before its replacement can be created, the engine
+first deletes the transitive closure of resource that depend on the resource being
+replaced. Once these deletes have completed, the engine deletes the original resource by
+calling the provider's [`Delete`](#`delete`) method with the resource's ID and original state. Finally,
+the engine creates the replacement resource by calling [`Create`](#`create`) with the re-checked
+inputs.
+
+If a managed resource registered by a Pulumi program is not re-registered by the next
+successful execution of a Pulumi progam in the resource's stack, the engine deletes the
+resource by calling the resource's provider's [`Delete`](#`delete`) method with the resource's ID and
+last refereshed state.
+
+The diagram below summarizes the custom resource lifecycle. Detailed descriptions of each
+
+![Resource Lifeycle Diagram](./resource_lifecycle.svg)
 
 ### Check
 
@@ -332,13 +331,13 @@ long to wait after calling `SignalCancellation` to call `Close`.
 
 - delete resource
 
-## Component Resource Operations
+## Component Resource Lifecycle
 
 ### Construct
 
 - user-level programming model
 
-## Functions
+## Provider Functions
 
 ### Invoke
 
@@ -376,10 +375,11 @@ long to wait after calling `SignalCancellation` to call `Close`.
 
 - delete operation
 
+## Appendix
 
-## Out-of-Process Plugin Lifecycle
+### Out-of-Process Plugin Lifecycle
 
-## gRPC Interface
+### gRPC Interface
 
 - feature negotiation
 - data representation
