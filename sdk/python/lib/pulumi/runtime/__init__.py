@@ -57,3 +57,48 @@ from .rpc import (
     register_resource_module,
     register_resource_package,
 )
+
+__all__ = [
+    # config
+    "set_config",
+    "set_all_config",
+    "get_config",
+    "get_config_env",
+    "get_config_env_key",
+
+    # mocks
+    "Mocks",
+    "set_mocks",
+    "test",
+
+    # settings
+    "Settings",
+    "configure",
+    "is_dry_run",
+    "reset_options",
+
+    # stack
+    "run_in_stack",
+    "get_root_resource",
+    "register_stack_transformation",
+
+    # invoke
+    "invoke",
+
+    # _json
+    "to_json",
+
+    # rpc
+    "ResourceModule",
+    "ResourcePackage",
+    "register_resource_module",
+    "register_resource_package",
+
+    # submodules
+    "config",
+    "mocks",
+    "settings",
+    "stack",
+    "invoke",
+    "rpc"
+]

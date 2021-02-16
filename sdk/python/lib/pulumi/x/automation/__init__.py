@@ -135,3 +135,45 @@ from .stack import (
     DestroyResult,
     fully_qualified_stack_name,
 )
+
+__all__ = [
+    # config
+    "ConfigMap",
+    "ConfigValue",
+
+    # errors
+    "StackNotFoundError",
+    "StackAlreadyExistsError",
+    "CommandError",
+    "ConcurrentUpdateError",
+    "InlineSourceRuntimeError",
+    "RuntimeError",
+    "CompilationError",
+
+    # local_workspace
+    "LocalWorkspace",
+    "LocalWorkspaceOptions",
+    "create_stack",
+    "select_stack",
+    "create_or_select_stack",
+
+    # workspace
+    "PluginInfo",
+    "StackSummary",
+
+    # project_settings
+    "ProjectSettings",
+    "ProjectRuntimeInfo",
+
+    # stack_settings
+    "StackSettings",
+
+    # stack
+    "Stack",
+    "UpdateSummary",
+    "UpResult",
+    "PreviewResult",
+    "RefreshResult",
+    "DestroyResult",
+    "fully_qualified_stack_name",
+]
