@@ -760,7 +760,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
 				for _, lang := range supportedLanguages {
-					props[lang] = mod.getProperties(typ.Properties, lang, true, true)
+					props[lang] = mod.getProperties(typ.Properties, lang, true, true, false)
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
@@ -816,7 +816,8 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested bool) []property {
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested, isProvider bool,
+) []property {
 	if len(properties) == 0 {
 		return nil
 	}
@@ -856,11 +857,27 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			propTypes = append(propTypes, mod.typeString(prop.Type, lang, characteristics, true))
 		}
 
+		comment := prop.Comment
+		// Default values for Provider inputs correspond to environment variables, so add that info to the docs.
+		if isProvider && input && prop.DefaultValue != nil && len(prop.DefaultValue.Environment) > 0 {
+			var suffix string
+			if len(prop.DefaultValue.Environment) > 1 {
+				suffix = "s"
+			}
+			comment += fmt.Sprintf(" It can also be sourced from the following environment variable%s: ", suffix)
+			for i, v := range prop.DefaultValue.Environment {
+				comment += fmt.Sprintf("`%s`", v)
+				if i != len(prop.DefaultValue.Environment)-1 {
+					comment += ", "
+				}
+			}
+		}
+
 		docProperties = append(docProperties, property{
 			ID:                 propID,
 			DisplayName:        wbr(propLangName),
 			Name:               propLangName,
-			Comment:            prop.Comment,
+			Comment:            comment,
 			DeprecationMessage: prop.DeprecationMessage,
 			IsRequired:         prop.IsRequired,
 			IsInput:            input,
@@ -1241,13 +1258,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	})
 
 	for _, lang := range supportedLanguages {
-		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false)
-		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false)
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
+		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false, r.IsProvider)
 		if r.IsProvider {
 			continue
 		}
 		if r.StateInputs != nil {
-			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, false)
+			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, false, r.IsProvider)
 			for i := 0; i < len(stateProps); i++ {
 				id := "state_" + stateProps[i].ID
 				stateProps[i].ID = id

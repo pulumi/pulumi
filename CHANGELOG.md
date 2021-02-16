@@ -5,6 +5,9 @@ CHANGELOG
 
 - [dotnet/sdk] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
+  
+- [automation/go] Exposing the version in the UpdateSummary struct.
+  [#6339](https://github.com/pulumi/pulumi/pull/6339)
 
 - [CLI] Add pagination options to `pulumi stack history` (`--page`, `--page-size`). These replace the `--limit` flag.
   [#6292](https://github.com/pulumi/pulumi/pull/6292)
