@@ -1087,6 +1087,51 @@ func TestImportExportStack(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestNestedConfig(t *testing.T) {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, "nested_config", "dev")
+
+	// initialize
+	pDir := filepath.Join(".", "test", "nested_config")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	allConfig, err := s.GetAllConfig(ctx)
+	if err != nil {
+		t.Errorf("failed to get config, err: %v", err)
+		t.FailNow()
+	}
+
+	outerVal, ok := allConfig["nested_config:outer"]
+	assert.True(t, ok)
+	assert.True(t, outerVal.Secret)
+	assert.JSONEq(t, "{\"inner\":\"my_secret\", \"other\": \"something_else\"}", outerVal.Value)
+
+	listVal, ok := allConfig["nested_config:myList"]
+	assert.True(t, ok)
+	assert.False(t, listVal.Secret)
+	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", listVal.Value)
+
+	outer, err := s.GetConfig(ctx, "outer")
+	if err != nil {
+		t.Errorf("failed to get config, err: %v", err)
+		t.FailNow()
+	}
+	assert.True(t, outer.Secret)
+	assert.JSONEq(t, "{\"inner\":\"my_secret\", \"other\": \"something_else\"}", outer.Value)
+
+	list, err := s.GetConfig(ctx, "myList")
+	if err != nil {
+		t.Errorf("failed to get config, err: %v", err)
+		t.FailNow()
+	}
+	assert.False(t, list.Secret)
+	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
+}
+
 func getTestOrg() string {
 	testOrg := "pulumi-test"
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {

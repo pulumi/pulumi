@@ -16,7 +16,7 @@ import * as assert from "assert";
 import * as upath from "upath";
 
 import { Config } from "../../index";
-import { ConfigMap, LocalWorkspace, ProjectSettings, Stack } from "../../x/automation";
+import { ConfigMap, fullyQualifiedStackName, LocalWorkspace, ProjectSettings, Stack } from "../../x/automation";
 import { asyncTest } from "../util";
 
 describe("LocalWorkspace", () => {
@@ -115,6 +115,28 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(Object.keys(values).length, 2, "expected stack config to have 2 values");
 
         await ws.removeStack(stackName);
+    }));
+    it(`nested_config`, asyncTest(async () => {
+        const stackName = fullyQualifiedStackName("pulumi-test", "nested_config", "dev");
+        const workDir = upath.joinSafe(__dirname, "data", "nested_config");
+        const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
+
+        const allConfig = await stack.getAllConfig();
+        const outerVal = allConfig["nested_config:outer"];
+        assert.strictEqual(outerVal.secret, true);
+        assert.strictEqual(outerVal.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}");
+
+        const listVal = allConfig["nested_config:myList"];
+        assert.strictEqual(listVal.secret, false);
+        assert.strictEqual(listVal.value, "[\"one\",\"two\",\"three\"]");
+
+        const outer = await stack.getConfig("outer");
+        assert.strictEqual(outer.secret, true);
+        assert.strictEqual(outer.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}");
+
+        const list = await stack.getConfig("myList");
+        assert.strictEqual(list.secret, false);
+        assert.strictEqual(list.value, "[\"one\",\"two\",\"three\"]");
     }));
     it(`can list stacks and currently selected stack`, asyncTest(async () => {
         const projectSettings: ProjectSettings = {
@@ -281,8 +303,8 @@ describe("LocalWorkspace", () => {
         const projectName = "inline_node";
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
-        // pulumi up        
-        await assert.rejects(stack.up())
+        // pulumi up
+        await assert.rejects(stack.up());
 
         // pulumi destroy
         const destroyRes = await stack.destroy();

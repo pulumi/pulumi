@@ -152,7 +152,7 @@ class LocalWorkspace(Workspace):
         self.select_stack(stack_name)
         result = self._run_pulumi_cmd_sync(["config", "get", key, "--json"])
         val = json.loads(result.stdout)
-        return ConfigValue(**val)
+        return ConfigValue(value=val["value"], secret=val["secret"])
 
     def get_all_config(self, stack_name: str) -> ConfigMap:
         self.select_stack(stack_name)
@@ -160,7 +160,8 @@ class LocalWorkspace(Workspace):
         config_json = json.loads(result.stdout)
         config_map: ConfigMap = {}
         for key in config_json:
-            config_map[key] = ConfigValue(**config_json[key])
+            config_val_json = config_json[key]
+            config_map[key] = ConfigValue(value=config_val_json["value"], secret=config_val_json["secret"])
         return config_map
 
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
