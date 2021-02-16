@@ -5141,8 +5141,12 @@ func TestArchiveArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]Archive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArchiveMapArrayIndex(t *testing.T) {
@@ -5155,8 +5159,12 @@ func TestArchiveMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]Archive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArchiveArrayArrayIndex(t *testing.T) {
@@ -5169,8 +5177,12 @@ func TestArchiveArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]Archive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetArrayIndex(t *testing.T) {
@@ -5183,8 +5195,12 @@ func TestAssetArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]Asset)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetMapArrayIndex(t *testing.T) {
@@ -5197,8 +5213,12 @@ func TestAssetMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]Asset)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetArrayArrayIndex(t *testing.T) {
@@ -5211,8 +5231,12 @@ func TestAssetArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]Asset)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetOrArchiveArrayIndex(t *testing.T) {
@@ -5225,8 +5249,12 @@ func TestAssetOrArchiveArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]AssetOrArchive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetOrArchiveMapArrayIndex(t *testing.T) {
@@ -5239,8 +5267,12 @@ func TestAssetOrArchiveMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]AssetOrArchive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
@@ -5253,8 +5285,12 @@ func TestAssetOrArchiveArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]AssetOrArchive)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestBoolArrayIndex(t *testing.T) {
@@ -5267,8 +5303,12 @@ func TestBoolArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]bool)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestBoolMapArrayIndex(t *testing.T) {
@@ -5281,8 +5321,12 @@ func TestBoolMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]bool)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestBoolArrayArrayIndex(t *testing.T) {
@@ -5295,8 +5339,12 @@ func TestBoolArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]bool)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestFloat64ArrayIndex(t *testing.T) {
@@ -5309,8 +5357,12 @@ func TestFloat64ArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]float64)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestFloat64MapArrayIndex(t *testing.T) {
@@ -5323,8 +5375,12 @@ func TestFloat64MapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]float64)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestFloat64ArrayArrayIndex(t *testing.T) {
@@ -5337,8 +5393,12 @@ func TestFloat64ArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]float64)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIDArrayIndex(t *testing.T) {
@@ -5351,8 +5411,12 @@ func TestIDArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]ID)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIDMapArrayIndex(t *testing.T) {
@@ -5365,8 +5429,12 @@ func TestIDMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]ID)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIDArrayArrayIndex(t *testing.T) {
@@ -5379,8 +5447,12 @@ func TestIDArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]ID)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArrayIndex(t *testing.T) {
@@ -5393,8 +5465,12 @@ func TestArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]interface{})[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestMapArrayIndex(t *testing.T) {
@@ -5407,8 +5483,12 @@ func TestMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]interface{})[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArrayArrayIndex(t *testing.T) {
@@ -5421,8 +5501,12 @@ func TestArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]interface{})[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIntArrayIndex(t *testing.T) {
@@ -5435,8 +5519,12 @@ func TestIntArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]int)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIntMapArrayIndex(t *testing.T) {
@@ -5449,8 +5537,12 @@ func TestIntMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]int)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIntArrayArrayIndex(t *testing.T) {
@@ -5463,8 +5555,12 @@ func TestIntArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]int)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestStringArrayIndex(t *testing.T) {
@@ -5477,8 +5573,12 @@ func TestStringArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]string)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestStringMapArrayIndex(t *testing.T) {
@@ -5491,8 +5591,12 @@ func TestStringMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]string)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestStringArrayArrayIndex(t *testing.T) {
@@ -5505,8 +5609,12 @@ func TestStringArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]string)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestURNArrayIndex(t *testing.T) {
@@ -5519,8 +5627,12 @@ func TestURNArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]URN)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestURNMapArrayIndex(t *testing.T) {
@@ -5533,8 +5645,12 @@ func TestURNMapArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([]map[string]URN)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestURNArrayArrayIndex(t *testing.T) {
@@ -5547,8 +5663,12 @@ func TestURNArrayArrayIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.([][]URN)[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 // Test map indexers.
@@ -5563,8 +5683,12 @@ func TestArchiveMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArchiveArrayMapIndex(t *testing.T) {
@@ -5577,8 +5701,12 @@ func TestArchiveArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArchiveMapMapIndex(t *testing.T) {
@@ -5591,8 +5719,12 @@ func TestArchiveMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]Archive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetMapIndex(t *testing.T) {
@@ -5605,8 +5737,12 @@ func TestAssetMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetArrayMapIndex(t *testing.T) {
@@ -5619,8 +5755,12 @@ func TestAssetArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetMapMapIndex(t *testing.T) {
@@ -5633,8 +5773,12 @@ func TestAssetMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]Asset)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetOrArchiveMapIndex(t *testing.T) {
@@ -5647,8 +5791,12 @@ func TestAssetOrArchiveMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetOrArchiveArrayMapIndex(t *testing.T) {
@@ -5661,8 +5809,12 @@ func TestAssetOrArchiveArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestAssetOrArchiveMapMapIndex(t *testing.T) {
@@ -5675,8 +5827,12 @@ func TestAssetOrArchiveMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]AssetOrArchive)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestBoolMapIndex(t *testing.T) {
@@ -5689,8 +5845,12 @@ func TestBoolMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestBoolArrayMapIndex(t *testing.T) {
@@ -5703,8 +5863,12 @@ func TestBoolArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestBoolMapMapIndex(t *testing.T) {
@@ -5717,8 +5881,12 @@ func TestBoolMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]bool)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestFloat64MapIndex(t *testing.T) {
@@ -5731,8 +5899,12 @@ func TestFloat64MapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestFloat64ArrayMapIndex(t *testing.T) {
@@ -5745,8 +5917,12 @@ func TestFloat64ArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestFloat64MapMapIndex(t *testing.T) {
@@ -5759,8 +5935,12 @@ func TestFloat64MapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]float64)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIDMapIndex(t *testing.T) {
@@ -5773,8 +5953,12 @@ func TestIDMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIDArrayMapIndex(t *testing.T) {
@@ -5787,8 +5971,12 @@ func TestIDArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIDMapMapIndex(t *testing.T) {
@@ -5801,8 +5989,12 @@ func TestIDMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]ID)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestMapIndex(t *testing.T) {
@@ -5815,8 +6007,12 @@ func TestMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]interface{})["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestArrayMapIndex(t *testing.T) {
@@ -5829,8 +6025,12 @@ func TestArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]interface{})["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestMapMapIndex(t *testing.T) {
@@ -5843,8 +6043,12 @@ func TestMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIntMapIndex(t *testing.T) {
@@ -5857,8 +6061,12 @@ func TestIntMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIntArrayMapIndex(t *testing.T) {
@@ -5871,8 +6079,12 @@ func TestIntArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestIntMapMapIndex(t *testing.T) {
@@ -5885,8 +6097,12 @@ func TestIntMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]int)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestStringMapIndex(t *testing.T) {
@@ -5899,8 +6115,12 @@ func TestStringMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestStringArrayMapIndex(t *testing.T) {
@@ -5913,8 +6133,12 @@ func TestStringArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestStringMapMapIndex(t *testing.T) {
@@ -5927,8 +6151,12 @@ func TestStringMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]string)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestURNMapIndex(t *testing.T) {
@@ -5941,8 +6169,12 @@ func TestURNMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestURNArrayMapIndex(t *testing.T) {
@@ -5955,8 +6187,12 @@ func TestURNArrayMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string][]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
 
 func TestURNMapMapIndex(t *testing.T) {
@@ -5969,6 +6205,10 @@ func TestURNMapMapIndex(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
-
 	assert.EqualValues(t, av.(map[string]map[string]URN)["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
 }
