@@ -35,6 +35,8 @@ type builtin struct {
 	implements     []string
 	Implements     []*builtin
 	elementType    string
+	item           *builtin
+	ItemType       string
 	Example        string
 	GenerateConfig bool
 	DefaultConfig  string
@@ -100,6 +102,24 @@ func (b builtin) MapIndexReturnType() string {
 	return strings.TrimSuffix(b.Name, "Map")
 }
 
+func (b builtin) IndexConversion() string {
+	if b.item.inputType != "" {
+		// No conversion necessary for types which are their own input type.
+		return ""
+	}
+	toType := b.item.Name
+	if toType == "Input" {
+		// There is no direct conversion into `Input`, so special case to use `ToOutput`
+		return "ToOutput"
+	}
+	if b.item.item == nil {
+		// The item type is a primitive - so use a direct conversion into the defined type (e.g. `String(...)`)
+		return toType
+	}
+	// The item type is itself a container - so use one of the other code-generated `To<Type>` methods.
+	return "To" + toType
+}
+
 func (b builtin) ElementType() string {
 	if b.elementType != "" {
 		return b.elementType
@@ -112,6 +132,13 @@ func (b builtin) InputType() string {
 		return b.inputType
 	}
 	return b.Name
+}
+
+func (b builtin) DefineToFunction() bool {
+	if b.item != nil {
+		return b.item.DefineToFunction()
+	}
+	return b.DefineInputMethods()
 }
 
 var builtins = makeBuiltins([]*builtin{
@@ -168,40 +195,54 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 				Example:   fmt.Sprintf("%sPtr(%s(%s))", name, p.Type, p.Example),
 			})
 		}
-		builtins = append(builtins, &builtin{
+		arrType := &builtin{
 			Name:        name + "Array",
 			Type:        "[]" + name + "Input",
+			ItemType:    name + "Input",
 			elementType: "[]" + p.Type,
+			item:        p,
 			Example:     fmt.Sprintf("%sArray{%s}", name, p.Example),
-		})
-		builtins = append(builtins, &builtin{
+		}
+		builtins = append(builtins, arrType)
+		mapType := &builtin{
 			Name:        name + "Map",
 			Type:        "map[string]" + name + "Input",
+			ItemType:    name + "Input",
 			elementType: "map[string]" + p.Type,
+			item:        p,
 			Example:     fmt.Sprintf("%sMap{\"baz\": %s}", name, p.Example),
-		})
+		}
+		builtins = append(builtins, mapType)
 		builtins = append(builtins, &builtin{
 			Name:        name + "ArrayMap",
 			Type:        "map[string]" + name + "ArrayInput",
+			ItemType:    name + "ArrayInput",
 			elementType: "map[string][]" + p.Type,
+			item:        arrType,
 			Example:     fmt.Sprintf("%sArrayMap{\"baz\": %sArray{%s}}", name, name, p.Example),
 		})
 		builtins = append(builtins, &builtin{
 			Name:        name + "MapArray",
 			Type:        "[]" + name + "MapInput",
+			ItemType:    name + "MapInput",
 			elementType: "[]map[string]" + p.Type,
+			item:        mapType,
 			Example:     fmt.Sprintf("%sMapArray{%sMap{\"baz\": %s}}", name, name, p.Example),
 		})
 		builtins = append(builtins, &builtin{
 			Name:        name + "MapMap",
 			Type:        "map[string]" + name + "MapInput",
+			ItemType:    name + "MapInput",
 			elementType: "map[string]map[string]" + p.Type,
+			item:        mapType,
 			Example:     fmt.Sprintf("%sMapMap{\"baz\": %sMap{\"baz\": %s}}", name, name, p.Example),
 		})
 		builtins = append(builtins, &builtin{
 			Name:        name + "ArrayArray",
 			Type:        "[]" + name + "ArrayInput",
+			ItemType:    name + "ArrayInput",
 			elementType: "[][]" + p.Type,
+			item:        arrType,
 			Example:     fmt.Sprintf("%sArrayArray{%sArray{%s}}", name, name, p.Example),
 		})
 	}
