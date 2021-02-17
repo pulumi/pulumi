@@ -19,12 +19,12 @@ import yaml
 from datetime import datetime
 from typing import Optional, List, Mapping, Callable
 
-from .config import ConfigMap, ConfigValue
-from .project_settings import ProjectSettings
-from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
-from .stack import _DATETIME_FORMAT, Stack
-from .cmd import _run_pulumi_cmd, CommandResult, OnOutput
+from ._config import ConfigMap, ConfigValue
+from ._project_settings import ProjectSettings
+from ._stack_settings import StackSettings
+from ._workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
+from ._stack import _DATETIME_FORMAT, Stack
+from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 

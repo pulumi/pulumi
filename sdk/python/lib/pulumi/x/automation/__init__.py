@@ -89,7 +89,12 @@ conflicts::
 
 """
 
-from .config import (
+from ._cmd import (
+    CommandResult,
+    OnOutput
+)
+
+from ._config import (
     ConfigMap,
     ConfigValue
 )
@@ -104,7 +109,7 @@ from .errors import (
     CompilationError
 )
 
-from .local_workspace import (
+from ._local_workspace import (
     LocalWorkspace,
     LocalWorkspaceOptions,
     create_stack,
@@ -112,21 +117,25 @@ from .local_workspace import (
     create_or_select_stack
 )
 
-from .workspace import (
+from ._workspace import (
     PluginInfo,
-    StackSummary
+    StackSummary,
+    PulumiFn,
+    Workspace,
+    WhoAmIResult,
+    Deployment,
 )
 
-from .project_settings import (
+from ._project_settings import (
     ProjectSettings,
     ProjectRuntimeInfo,
 )
 
-from .stack_settings import (
+from ._stack_settings import (
     StackSettings
 )
 
-from .stack import (
+from ._stack import (
     Stack,
     UpdateSummary,
     UpResult,
@@ -137,6 +146,10 @@ from .stack import (
 )
 
 __all__ = [
+    # _cmd
+    "CommandResult",
+    "OnOutput",
+
     # config
     "ConfigMap",
     "ConfigValue",
@@ -160,6 +173,10 @@ __all__ = [
     # workspace
     "PluginInfo",
     "StackSummary",
+    "PulumiFn",
+    "Workspace",
+    "Deployment",
+    "WhoAmIResult",
 
     # project_settings
     "ProjectSettings",
@@ -176,4 +193,7 @@ __all__ = [
     "RefreshResult",
     "DestroyResult",
     "fully_qualified_stack_name",
+
+    # sub-modules
+    "errors",
 ]

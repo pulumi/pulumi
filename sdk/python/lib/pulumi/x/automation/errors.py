@@ -16,7 +16,7 @@ import re
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from .cmd import CommandResult
+    from ._cmd import CommandResult
 
 
 class CommandError(Exception):
