@@ -18,7 +18,7 @@ import sys
 import traceback
 from contextlib import suppress
 
-from .workspace import PulumiFn
+from ._workspace import PulumiFn
 from ... import log
 from ...runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
 from ...runtime import run_in_stack, reset_options, set_all_config

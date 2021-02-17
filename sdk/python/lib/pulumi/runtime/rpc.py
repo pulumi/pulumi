@@ -15,7 +15,6 @@
 Support for serializing and deserializing properties going into or flowing
 out of RPC calls.
 """
-import sys
 import asyncio
 from collections import abc
 import functools
@@ -25,7 +24,7 @@ from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, 
 from enum import Enum
 
 from google.protobuf import struct_pb2
-from semver import VersionInfo as Version # type:ignore
+from semver import VersionInfo as Version  # type:ignore
 import six
 from . import known_types, settings
 from .. import log

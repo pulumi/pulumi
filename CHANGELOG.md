@@ -27,6 +27,9 @@ CHANGELOG
 - [pkg/testing/integration] Change the default behavior for Python test projects to use `UseAutomaticVirtualEnv` by
   default. `UsePipenv` can be set to go back to the old behavior of using pipenv with tests.
   [#6318](https://github.com/pulumi/pulumi/pull/6318)
+  
+- [sdk/python] Define `__all__` in modules for better IDE autocomplete.
+  [#6351](https://github.com/pulumi/pulumi/pull/6351)
 
 ## 2.20.0 (2021-02-03)
 
