@@ -9,3 +9,57 @@ const frontDoor = new azure_nextgen.FrontDoor("frontDoor", {routingRules: [{
         },
     },
 }]});
+const endpoint = new azure_nextgen.Endpoint("endpoint", {
+    deliveryPolicy: {
+        rules: [{
+            actions: [
+                {
+                    name: "CacheExpiration",
+                    parameters: {
+                        cacheBehavior: "Override",
+                        cacheDuration: "10:10:09",
+                        cacheType: "All",
+                        odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleCacheExpirationActionParameters",
+                    },
+                },
+                {
+                    name: "ModifyResponseHeader",
+                    parameters: {
+                        headerAction: "Overwrite",
+                        headerName: "Access-Control-Allow-Origin",
+                        odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
+                        value: "*",
+                    },
+                },
+                {
+                    name: "ModifyRequestHeader",
+                    parameters: {
+                        headerAction: "Overwrite",
+                        headerName: "Accept-Encoding",
+                        odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleHeaderActionParameters",
+                        value: "gzip",
+                    },
+                },
+            ],
+            conditions: [{
+                name: "RemoteAddress",
+                parameters: {
+                    matchValues: [
+                        "192.168.1.0/24",
+                        "10.0.0.0/24",
+                    ],
+                    negateCondition: true,
+                    odataType: "#Microsoft.Azure.Cdn.Models.DeliveryRuleRemoteAddressConditionParameters",
+                    operator: "IPMatch",
+                },
+            }],
+            name: "rule1",
+            order: 1,
+        }],
+    },
+    endpointName: "endpoint1",
+    isCompressionEnabled: true,
+    isHttpAllowed: true,
+    isHttpsAllowed: true,
+    location: "WestUs",
+});

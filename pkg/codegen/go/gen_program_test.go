@@ -28,6 +28,11 @@ func TestGenProgram(t *testing.T) {
 			continue
 		}
 
+		if filepath.Base(f.Name()) == "azure-nextgen.pp" {
+			// Not supported yet
+			continue
+		}
+
 		t.Run(f.Name(), func(t *testing.T) {
 			path := filepath.Join(testdataPath, f.Name())
 			contents, err := ioutil.ReadFile(path)

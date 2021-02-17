@@ -10,10 +10,291 @@
     "homepage": "https://pulumi.com",
     "license": "Apache-2.0",
     "repository": "https://github.com/pulumi/pulumi-azure-nextgen",
-    "meta": {
-        "moduleFormat": "(.*)(?:/[^/]*)"
-    },
     "types": {
+        "azure-nextgen:cdn:CacheExpirationActionParameters": {
+            "description": "Defines the parameters for the cache expiration action.",
+            "properties": {
+                "cacheBehavior": {
+                    "type": "string"
+                },
+                "cacheDuration": {
+                    "type": "string"
+                },
+                "cacheType": {
+                    "type": "string"
+                },
+                "odataType": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "cacheBehavior",
+                "cacheType",
+                "odataType"
+            ]
+        },
+        "azure-nextgen:cdn:DeliveryRule": {
+            "description": "A rule that specifies a set of actions and conditions",
+            "properties": {
+                "actions": {
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "$ref": "#/types/azure-nextgen:cdn:DeliveryRuleCacheExpirationAction"
+                            },
+                            {
+                                "type": "object",
+                                "$ref": "#/types/azure-nextgen:cdn:DeliveryRuleRequestHeaderAction"
+                            },
+                            {
+                                "type": "object",
+                                "$ref": "#/types/azure-nextgen:cdn:DeliveryRuleResponseHeaderAction"
+                            }
+                        ]
+                    },
+                    "description": "A list of actions that are executed when all the conditions of a rule are satisfied."
+                },
+                "conditions": {
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "object",
+                                "$ref": "#/types/azure-nextgen:cdn:DeliveryRuleRemoteAddressCondition"
+                            },
+                            {
+                                "type": "object",
+                                "$ref": "#/types/azure-nextgen:cdn:DeliveryRuleRequestBodyCondition"
+                            }
+                        ]
+                    },
+                    "description": "A list of conditions that must be matched for the actions to be executed"
+                },
+                "name": {
+                    "type": "string",
+                    "description": "Name of the rule"
+                },
+                "order": {
+                    "type": "integer",
+                    "description": "The order in which the rules are applied for the endpoint. Possible values {0,1,2,3,………}. A rule with a lesser order will be applied before a rule with a greater order. Rule with order 0 is a special rule. It does not require any condition and actions listed in it will always be applied."
+                }
+            },
+            "type": "object",
+            "required": [
+                "actions",
+                "order"
+            ]
+        },
+        "azure-nextgen:cdn:DeliveryRuleCacheExpirationAction": {
+            "description": "Defines the cache expiration action for the delivery rule.",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the action for the delivery rule.\nExpected value is 'CacheExpiration'.",
+                    "const": "CacheExpiration"
+                },
+                "parameters": {
+                    "type": "object",
+                    "$ref": "#/types/azure-nextgen:cdn:CacheExpirationActionParameters",
+                    "description": "Defines the parameters for the action."
+                }
+            },
+            "type": "object",
+            "required": [
+                "name",
+                "parameters"
+            ]
+        },
+        "azure-nextgen:cdn:DeliveryRuleRemoteAddressCondition": {
+            "description": "Defines the RemoteAddress condition for the delivery rule.",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the condition for the delivery rule.\nExpected value is 'RemoteAddress'.",
+                    "const": "RemoteAddress"
+                },
+                "parameters": {
+                    "type": "object",
+                    "$ref": "#/types/azure-nextgen:cdn:RemoteAddressMatchConditionParameters",
+                    "description": "Defines the parameters for the condition."
+                }
+            },
+            "type": "object",
+            "required": [
+                "name",
+                "parameters"
+            ]
+        },
+        "azure-nextgen:cdn:DeliveryRuleRequestBodyCondition": {
+            "description": "Defines the RequestBody condition for the delivery rule.",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the condition for the delivery rule.\nExpected value is 'RequestBody'.",
+                    "const": "RequestBody"
+                },
+                "parameters": {
+                    "type": "object",
+                    "$ref": "#/types/azure-nextgen:cdn:RequestBodyMatchConditionParameters",
+                    "description": "Defines the parameters for the condition."
+                }
+            },
+            "type": "object",
+            "required": [
+                "name",
+                "parameters"
+            ]
+        },
+        "azure-nextgen:cdn:DeliveryRuleRequestHeaderAction": {
+            "description": "Defines the request header action for the delivery rule.",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the action for the delivery rule.\nExpected value is 'ModifyRequestHeader'.",
+                    "const": "ModifyRequestHeader"
+                },
+                "parameters": {
+                    "type": "object",
+                    "$ref": "#/types/azure-nextgen:cdn:HeaderActionParameters",
+                    "description": "Defines the parameters for the action."
+                }
+            },
+            "type": "object",
+            "required": [
+                "name",
+                "parameters"
+            ]
+        },
+        "azure-nextgen:cdn:DeliveryRuleResponseHeaderAction": {
+            "description": "Defines the response header action for the delivery rule.",
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "The name of the action for the delivery rule.\nExpected value is 'ModifyResponseHeader'.",
+                    "const": "ModifyResponseHeader"
+                },
+                "parameters": {
+                    "type": "object",
+                    "$ref": "#/types/azure-nextgen:cdn:HeaderActionParameters",
+                    "description": "Defines the parameters for the action."
+                }
+            },
+            "type": "object",
+            "required": [
+                "name",
+                "parameters"
+            ]
+        },
+        "azure-nextgen:cdn:EndpointPropertiesUpdateParametersDeliveryPolicy": {
+            "description": "A policy that specifies the delivery rules to be used for an endpoint.",
+            "properties": {
+                "description": {
+                    "type": "string",
+                    "description": "User-friendly description of the policy."
+                },
+                "rules": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "$ref": "#/types/azure-nextgen:cdn:DeliveryRule"
+                    },
+                    "description": "A list of the delivery rules."
+                }
+            },
+            "type": "object",
+            "required": [
+                "rules"
+            ]
+        },
+        "azure-nextgen:cdn:HeaderActionParameters": {
+            "description": "Defines the parameters for the request header action.",
+            "properties": {
+                "headerAction": {
+                    "type": "string"
+                },
+                "headerName": {
+                    "type": "string",
+                    "description": "Name of the header to modify"
+                },
+                "odataType": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string",
+                    "description": "Value for the specified action"
+                }
+            },
+            "type": "object",
+            "required": [
+                "headerAction",
+                "headerName",
+                "odataType"
+            ]
+        },
+        "azure-nextgen:cdn:RemoteAddressMatchConditionParameters": {
+            "description": "Defines the parameters for RemoteAddress match conditions",
+            "properties": {
+                "matchValues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Match values to match against. The operator will apply to each value in here with OR semantics. If any of them match the variable with the given operator this match condition is considered a match."
+                },
+                "negateCondition": {
+                    "type": "boolean",
+                    "description": "Describes if this is negate condition or not"
+                },
+                "odataType": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                }
+            },
+            "type": "object",
+            "required": [
+                "odataType",
+                "operator"
+            ]
+        },
+        "azure-nextgen:cdn:RequestBodyMatchConditionParameters": {
+            "description": "Defines the parameters for RequestBody match conditions",
+            "properties": {
+                "matchValues": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "The match value for the condition of the delivery rule"
+                },
+                "negateCondition": {
+                    "type": "boolean",
+                    "description": "Describes if this is negate condition or not"
+                },
+                "odataType": {
+                    "type": "string"
+                },
+                "operator": {
+                    "type": "string"
+                },
+                "transforms": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "List of transforms"
+                }
+            },
+            "type": "object",
+            "required": [
+                "odataType",
+                "operator"
+            ]
+        },
         "azure-nextgen:network:ForwardingConfiguration": {
             "properties": {
                 "backendPool": {
@@ -112,7 +393,65 @@
         }
     },
     "resources": {
-        "azure-nextgen:network:FrontDoor": {            
+        "azure-nextgen:cdn:Endpoint": {
+            "type": "object",
+            "inputProperties": {
+                "deliveryPolicy": {
+                    "type": "object",
+                    "$ref": "#/types/azure-nextgen:cdn:EndpointPropertiesUpdateParametersDeliveryPolicy",
+                    "description": "A policy that specifies the delivery rules to be used for an endpoint."
+                },
+                "endpointName": {
+                    "type": "string",
+                    "description": "Name of the endpoint under the profile which is unique globally."
+                },
+                "isCompressionEnabled": {
+                    "type": "boolean",
+                    "description": "Indicates whether content compression is enabled on CDN. Default value is false. If compression is enabled, content will be served as compressed if user requests for a compressed version. Content won't be compressed on CDN when requested content is smaller than 1 byte or larger than 1 MB."
+                },
+                "isHttpAllowed": {
+                    "type": "boolean",
+                    "description": "Indicates whether HTTP traffic is allowed on the endpoint. Default value is true. At least one protocol (HTTP or HTTPS) must be allowed."
+                },
+                "isHttpsAllowed": {
+                    "type": "boolean",
+                    "description": "Indicates whether HTTPS traffic is allowed on the endpoint. Default value is true. At least one protocol (HTTP or HTTPS) must be allowed."
+                },
+                "location": {
+                    "type": "string",
+                    "description": "Resource location."
+                },
+                "originHostHeader": {
+                    "type": "string",
+                    "description": "The host header value sent to the origin with each request. This property at Endpoint is only allowed when endpoint uses single origin and can be overridden by the same property specified at origin.If you leave this blank, the request hostname determines this value. Azure CDN origins, such as Web Apps, Blob Storage, and Cloud Services require this host header value to match the origin hostname by default."
+                },
+                "originPath": {
+                    "type": "string",
+                    "description": "A directory path on the origin that CDN can use to retrieve content from, e.g. contoso.cloudapp.net/originpath."
+                },
+                "probePath": {
+                    "type": "string",
+                    "description": "Path to a file hosted on the origin which helps accelerate delivery of the dynamic content and calculate the most optimal routes for the CDN. This is relative to the origin path. This property is only relevant when using a single origin."
+                },
+                "profileName": {
+                    "type": "string",
+                    "description": "Name of the CDN profile which is unique within the resource group."
+                },
+                "resourceGroupName": {
+                    "type": "string",
+                    "description": "Name of the Resource group within the Azure subscription."
+                },
+                "tags": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    },
+                    "description": "Resource tags."
+                }
+            }
+        },
+        "azure-nextgen:network:FrontDoor": {
+            "type": "object",
             "inputProperties": {
                 "routingRules": {
                     "type": "array",
