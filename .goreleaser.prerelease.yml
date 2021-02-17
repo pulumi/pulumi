@@ -24,7 +24,6 @@ builds:
   dir: pkg
   goarch:
     - amd64
-    - arm64
   goos:
     - linux
     - darwin
