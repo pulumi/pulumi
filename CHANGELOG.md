@@ -2,37 +2,58 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
+_(none)_
 
-- [automation/go] Exposing the version in the UpdateSummary struct.
+## 2.21.0 (2021-02-17)
+
+### Improvements
+
+- [cli] Added pagination options to `pulumi stack history` [#6292](https://github.com/pulumi/pulumi/pull/6292)  
+  This is used as follows:  
+  `pulumi stack history --page-size=20 --page=1`
+  
+- [automation/*] Added pagination options for stack history in Automation API SDKs to improve 
+  performance of stack updates. [#6257](https://github.com/pulumi/pulumi/pull/6257)    
+  This is used similar to the following example in go:  
+```go
+  func ExampleStack_History() {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
+	pageSize := 0
+	page := 0
+	hist, _ := stack.History(ctx, pageSize, page)
+	fmt.Println(hist[0].StartTime)
+  }
+```
+  
+- [pkg/testing/integration] Changed the default behavior for Python test projects to use `UseAutomaticVirtualEnv` by
+  default. `UsePipenv` is now the way to use pipenv with tests.
+  [#6318](https://github.com/pulumi/pulumi/pull/6318)
+
+### Bug Fixes
+
+- [automation/go] Exposed the version in the UpdateSummary for use in understanding the version of a stack update
   [#6339](https://github.com/pulumi/pulumi/pull/6339)
 
-- [CLI] Add pagination options to `pulumi stack history` (`--page`, `--page-size`). These replace the `--limit` flag.
-  [#6292](https://github.com/pulumi/pulumi/pull/6292)
-
-- [CLI, automation/*] Add `--limit` flag to `pulumi stack history` command and consume this from Automation API SDKs to improve performance of stack updates.
-  [#6257](https://github.com/pulumi/pulumi/pull/6257)
-
+- [cli] Changed the behavior for Python on Windows to look for `python` binary first instead of `python3`.
+  [#6317](https://github.com/pulumi/pulumi/pull/6317)
+  
 - [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process. 
   [#6249](https://github.com/pulumi/pulumi/pull/6249)
 
-- [sdk/python] Fix a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
+- [sdk/python] Fixed a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
   [#6264](https://github.com/pulumi/pulumi/pull/6264)
 
-- [sdk/python] Allow keyword args in Output.all() to create a dict.
+- [sdk/python] Allowed keyword args in Output.all() to create a dict.
   [#6269](https://github.com/pulumi/pulumi/pull/6269)
-
-- Look for `python` binary first on Windows instead of `python3`.
-  [#6317](https://github.com/pulumi/pulumi/pull/6317)
-
-- [pkg/testing/integration] Change the default behavior for Python test projects to use `UseAutomaticVirtualEnv` by
-  default. `UsePipenv` can be set to go back to the old behavior of using pipenv with tests.
-  [#6318](https://github.com/pulumi/pulumi/pull/6318)
   
-- [sdk/python] Define `__all__` in modules for better IDE autocomplete.
+- [sdk/python] Defined `__all__` in modules for better IDE autocomplete.
   [#6351](https://github.com/pulumi/pulumi/pull/6351)
 
-- [automation/python] Fix a bug in nested configuration parsing.
+- [automation/python] Fixed a bug in nested configuration parsing.
   [#6349](https://github.com/pulumi/pulumi/pull/6349)
+
 
 ## 2.20.0 (2021-02-03)
 
