@@ -273,26 +273,25 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 }
 
 func (mod *modContext) genFunctionHeader(f *schema.Function) header {
-	funcName := strings.Title(tokenToName(f.Token))
-	packageName := formatTitleText(mod.pkg.Name)
+	funcName := tokenToName(f.Token)
 	var baseDescription string
 	var titleTag string
 	if mod.mod == "" {
-		baseDescription = fmt.Sprintf("Explore the %s function of the %s package, "+
-			"including examples, input properties, output properties, "+
-			"and supporting types.", funcName, packageName)
-		titleTag = fmt.Sprintf("Function %s | Package %s", funcName, packageName)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s function "+
+			"with examples, input properties, output properties, "+
+			"and supporting types.", mod.pkg.Name, funcName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, funcName)
 	} else {
-		baseDescription = fmt.Sprintf("Explore the %s function of the %s module, "+
-			"including examples, input properties, output properties, "+
-			"and supporting types.", funcName, mod.mod)
-		titleTag = fmt.Sprintf("Function %s | Module %s | Package %s", funcName, mod.mod, packageName)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s.%s function "+
+			"with examples, input properties, output properties, "+
+			"and supporting types.", mod.pkg.Name, mod.mod, funcName)
+		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, funcName)
 	}
 
 	return header{
 		Title:    funcName,
 		TitleTag: titleTag,
-		MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(f.Comment),
+		MetaDesc: baseDescription,
 	}
 }
 
