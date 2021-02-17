@@ -35,11 +35,11 @@ from .settings import (
     configure,
     is_dry_run,
     reset_options,
+    get_root_resource,
 )
 
 from .stack import (
     run_in_stack,
-    get_root_resource,
     register_stack_transformation,
 )
 
@@ -76,10 +76,10 @@ __all__ = [
     "configure",
     "is_dry_run",
     "reset_options",
+    "get_root_resource",
 
     # stack
     "run_in_stack",
-    "get_root_resource",
     "register_stack_transformation",
 
     # invoke
@@ -95,10 +95,5 @@ __all__ = [
     "register_resource_package",
 
     # submodules
-    "config",
-    "mocks",
-    "settings",
-    "stack",
-    "invoke",
     "rpc"
 ]

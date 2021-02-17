@@ -166,15 +166,6 @@ __all__ = [
     "set",
 
     # sub-modules
-    "asset",
-    "config",
-    "errors",
-    "invoke",
-    "metadata",
-    "resource",
-    "output",
-    "log",
-    "stack_reference",
     "runtime",
     "dynamic",
     "policy",
