@@ -56,7 +56,7 @@ func ResolveGoogleCredentials(ctx context.Context) (*google.Credentials, error) 
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to run the $PULUMI_GOOGLE_CREDENTIALS_HELPER")
 		}
-		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite, cloudkms.CloudkmsScope)
+		credentials, err := google.CredentialsFromJSON(ctx, creds, storage.ScopeReadWrite, cloudkms.CloudkmsScope)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to parse credentials from $PULUMI_GOOGLE_CREDENTIALS_HELPER")
 		}
