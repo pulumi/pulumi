@@ -44,17 +44,14 @@ export class Workload extends pulumi.CustomResource {
      */
     constructor(name: string, args?: WorkloadArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
+        opts = opts || {};
+        if (!opts.id) {
             inputs["pod"] = undefined /*out*/;
         } else {
             inputs["pod"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(Workload.__pulumiType, name, inputs, opts);
     }

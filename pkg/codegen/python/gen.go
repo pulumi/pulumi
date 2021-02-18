@@ -58,12 +58,12 @@ func (ss stringSet) has(s string) bool {
 
 type imports stringSet
 
-func (imports imports) addType(mod *modContext, tok string, input bool) {
-	imports.addTypeIf(mod, tok, input, nil /*predicate*/)
+func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
+	imports.addTypeIf(mod, t, input, nil /*predicate*/)
 }
 
-func (imports imports) addTypeIf(mod *modContext, tok string, input bool, predicate func(imp string) bool) {
-	if imp := mod.importTypeFromToken(tok, input); imp != "" && (predicate == nil || predicate(imp)) {
+func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bool, predicate func(imp string) bool) {
+	if imp := mod.importObjectType(t, input); imp != "" && (predicate == nil || predicate(imp)) {
 		stringSet(imports).add(imp)
 	}
 }
@@ -74,8 +74,8 @@ func (imports imports) addEnum(mod *modContext, tok string) {
 	}
 }
 
-func (imports imports) addResource(mod *modContext, tok string) {
-	if imp := mod.importResourceFromToken(tok); imp != "" {
+func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
+	if imp := mod.importResourceType(r); imp != "" {
 		stringSet(imports).add(imp)
 	}
 }
@@ -129,8 +129,29 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input, functionType bool) string {
-	modName, name := mod.tokenToModule(tok), tokenToName(tok)
+func (mod *modContext) modNameAndName(tok string, pkg *schema.Package) (modName string, name string) {
+	var info PackageInfo
+	contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"python": Importer}))
+	if v, ok := pkg.Language["python"].(PackageInfo); ok {
+		info = v
+	}
+	modName, name = tokenToModule(tok, pkg, info.ModuleNameOverrides), tokenToName(tok)
+	if modName == mod.mod {
+		modName = ""
+	}
+	if modName != "" {
+		modName = strings.ReplaceAll(modName, "/", ".") + "."
+	}
+	return
+}
+
+func (mod *modContext) objectType(t *schema.ObjectType, input, functionType bool) string {
+	modName, name := mod.tokenToModule(t.Token), tokenToName(t.Token)
+
+	var prefix string
+	if !input {
+		prefix = "outputs."
+	}
 
 	var suffix string
 	switch {
@@ -138,6 +159,12 @@ func (mod *modContext) tokenToType(tok string, input, functionType bool) string 
 		suffix = "Args"
 	case functionType:
 		suffix = "Result"
+	}
+
+	// If it's an external type, reference it via fully qualified name.
+	if t.Package != mod.pkg {
+		modName, name := mod.modNameAndName(t.Token, t.Package)
+		return fmt.Sprintf("'%s.%s%s%s%s'", pyPack(t.Package.Name), modName, prefix, name, suffix)
 	}
 
 	if modName == "" && modName != mod.mod {
@@ -153,11 +180,6 @@ func (mod *modContext) tokenToType(tok string, input, functionType bool) string 
 	}
 	if modName != "" {
 		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
-	}
-
-	var prefix string
-	if !input {
-		prefix = "outputs."
 	}
 
 	return fmt.Sprintf("'%s%s%s%s'", modName, prefix, name, suffix)
@@ -178,6 +200,22 @@ func (mod *modContext) tokenToEnum(tok string) string {
 	}
 
 	return fmt.Sprintf("'%s%s'", modName, name)
+}
+
+func (mod *modContext) resourceType(r *schema.ResourceType) string {
+	if r.Resource == nil || r.Resource.Package == mod.pkg {
+		return mod.tokenToResource(r.Token)
+	}
+
+	// Is it a provider resource?
+	if strings.HasPrefix(r.Token, "pulumi:providers:") {
+		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+		return fmt.Sprintf("pulumi_%s.Provider", pkgName)
+	}
+
+	pkg := r.Resource.Package
+	modName, name := mod.modNameAndName(r.Token, pkg)
+	return fmt.Sprintf("%s.%s%s", pyPack(pkg.Name), modName, name)
 }
 
 func (mod *modContext) tokenToResource(tok string) string {
@@ -583,7 +621,12 @@ func (mod *modContext) genResourceModule(w io.Writer) {
 	fmt.Fprintf(w, "_register_module()\n")
 }
 
-func (mod *modContext) importTypeFromToken(tok string, input bool) string {
+func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string {
+	if t.Package != mod.pkg {
+		return fmt.Sprintf("import %s", pyPack(t.Package.Name))
+	}
+
+	tok := t.Token
 	parts := strings.Split(tok, ":")
 	contract.Assert(len(parts) == 3)
 	refPkgName := parts[0]
@@ -629,7 +672,12 @@ func (mod *modContext) importEnumFromToken(tok string) string {
 	return fmt.Sprintf("from %s import %s", importPath, components[0])
 }
 
-func (mod *modContext) importResourceFromToken(tok string) string {
+func (mod *modContext) importResourceType(r *schema.ResourceType) string {
+	if r.Resource != nil && r.Resource.Package != mod.pkg {
+		return fmt.Sprintf("import %s", pyPack(r.Resource.Package.Name))
+	}
+
+	tok := r.Token
 	parts := strings.Split(tok, ":")
 	contract.Assert(len(parts) == 3)
 
@@ -647,8 +695,18 @@ func (mod *modContext) importResourceFromToken(tok string) string {
 		importPath = fmt.Sprintf("pulumi_%s", refPkgName)
 	}
 
+	name := PyName(tokenToName(r.Token))
+	if mod.compatibility == kubernetes20 {
+		// To maintain backward compatibility for kubernetes, the file names
+		// need to be CamelCase instead of the standard snake_case.
+		name = tokenToName(r.Token)
+	}
+	if r.Resource != nil && r.Resource.IsProvider {
+		name = "provider"
+	}
+
 	components := strings.Split(modName, "/")
-	return fmt.Sprintf("from %s import %s", importPath, components[0])
+	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
 }
 
 // emitConfigVariables emits all config variables in the given module, returning the resulting file.
@@ -659,11 +717,11 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	visitObjectTypesFromProperties(variables, seen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.addType(mod, T.Token, false /*input*/)
+			imports.addType(mod, T, false /*input*/)
 		case *schema.EnumType:
 			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
-			imports.addResource(mod, T.Token)
+			imports.addResource(mod, T)
 		}
 	})
 
@@ -711,14 +769,14 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 				visitObjectTypesFromProperties(t.Properties, inputSeen, func(t interface{}) {
 					switch T := t.(type) {
 					case *schema.ObjectType:
-						imports.addTypeIf(mod, T.Token, true /*input*/, func(imp string) bool {
+						imports.addTypeIf(mod, T, true /*input*/, func(imp string) bool {
 							// No need to import `._inputs` inside _inputs.py.
 							return imp != "from ._inputs import *"
 						})
 					case *schema.EnumType:
 						imports.addEnum(mod, T.Token)
 					case *schema.ResourceType:
-						imports.addResource(mod, T.Token)
+						imports.addResource(mod, T)
 					}
 				})
 			}
@@ -726,11 +784,11 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 				visitObjectTypesFromProperties(t.Properties, outputSeen, func(t interface{}) {
 					switch T := t.(type) {
 					case *schema.ObjectType:
-						imports.addType(mod, T.Token, false /*input*/)
+						imports.addType(mod, T, false /*input*/)
 					case *schema.EnumType:
 						imports.addEnum(mod, T.Token)
 					case *schema.ResourceType:
-						imports.addResource(mod, T.Token)
+						imports.addResource(mod, T)
 					}
 				})
 			}
@@ -866,32 +924,32 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	visitObjectTypesFromProperties(res.Properties, outputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.addType(mod, T.Token, false /*input*/)
+			imports.addType(mod, T, false /*input*/)
 		case *schema.EnumType:
 			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
-			imports.addResource(mod, T.Token)
+			imports.addResource(mod, T)
 		}
 	})
 	visitObjectTypesFromProperties(res.InputProperties, inputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			imports.addType(mod, T.Token, true /*input*/)
+			imports.addType(mod, T, true /*input*/)
 		case *schema.EnumType:
 			imports.addEnum(mod, T.Token)
 		case *schema.ResourceType:
-			imports.addResource(mod, T.Token)
+			imports.addResource(mod, T)
 		}
 	})
 	if res.StateInputs != nil {
 		visitObjectTypesFromProperties(res.StateInputs.Properties, inputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				imports.addType(mod, T.Token, true /*input*/)
+				imports.addType(mod, T, true /*input*/)
 			case *schema.EnumType:
 				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
-				imports.addResource(mod, T.Token)
+				imports.addResource(mod, T)
 			}
 		})
 	}
@@ -1202,11 +1260,11 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		visitObjectTypesFromProperties(fun.Inputs.Properties, inputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				imports.addType(mod, T.Token, true /*input*/)
+				imports.addType(mod, T, true /*input*/)
 			case *schema.EnumType:
 				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
-				imports.addResource(mod, T.Token)
+				imports.addResource(mod, T)
 			}
 		})
 	}
@@ -1214,11 +1272,11 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		visitObjectTypesFromProperties(fun.Outputs.Properties, outputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				imports.addType(mod, T.Token, false /*input*/)
+				imports.addType(mod, T, false /*input*/)
 			case *schema.EnumType:
 				imports.addEnum(mod, T.Token)
 			case *schema.ResourceType:
-				imports.addResource(mod, T.Token)
+				imports.addResource(mod, T)
 			}
 		})
 	}
@@ -1681,7 +1739,8 @@ func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCase
 func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
 	mapCase := true
 	if python, ok := prop.Language["python"]; ok {
-		mapCase = python.(PropertyInfo).MapCase
+		v, ok := python.(PropertyInfo)
+		mapCase = ok && v.MapCase
 	}
 	if mapCase {
 		snakeCaseName := PyNameLegacy(prop.Name)
@@ -1823,12 +1882,12 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 	case *schema.MapType:
 		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
 	case *schema.ObjectType:
-		typ = mod.tokenToType(t.Token, input, mod.details(t).functionType)
+		typ = mod.objectType(t, input, mod.details(t).functionType)
 		if acceptMapping {
 			typ = fmt.Sprintf("pulumi.InputType[%s]", typ)
 		}
 	case *schema.ResourceType:
-		typ = fmt.Sprintf("'%s'", mod.tokenToResource(t.Token))
+		typ = fmt.Sprintf("'%s'", mod.resourceType(t))
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -1916,7 +1975,7 @@ func (mod *modContext) pyType(typ schema.Type) string {
 	case *schema.MapType, *schema.ObjectType, *schema.UnionType:
 		return "dict"
 	case *schema.ResourceType:
-		return mod.tokenToResource(typ.Token)
+		return mod.resourceType(typ)
 	case *schema.TokenType:
 		if typ.UnderlyingType != nil {
 			return mod.pyType(typ.UnderlyingType)
@@ -2166,12 +2225,12 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	// group resources, types, and functions into modules
 	modules := map[string]*modContext{}
 
-	var getMod func(modName string) *modContext
-	getMod = func(modName string) *modContext {
+	var getMod func(modName string, p *schema.Package) *modContext
+	getMod = func(modName string, p *schema.Package) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                  pkg,
+				pkg:                  p,
 				mod:                  modName,
 				tool:                 tool,
 				snakeCaseToCamelCase: snakeCaseToCamelCase,
@@ -2180,29 +2239,33 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				compatibility:        info.Compatibility,
 			}
 
-			if modName != "" {
+			if modName != "" && p == pkg {
 				parentName := path.Dir(modName)
 				if parentName == "." {
 					parentName = ""
 				}
-				parent := getMod(parentName)
+				parent := getMod(parentName, p)
 				parent.children = append(parent.children, mod)
 			}
 
-			modules[modName] = mod
+			// Save the module only if it's for the current package.
+			// This way, modules for external packages are not saved.
+			if p == pkg {
+				modules[modName] = mod
+			}
 		}
 		return mod
 	}
 
-	getModFromToken := func(tok string) *modContext {
-		modName := tokenToModule(tok, pkg, info.ModuleNameOverrides)
-		return getMod(modName)
+	getModFromToken := func(tok string, p *schema.Package) *modContext {
+		modName := tokenToModule(tok, p, info.ModuleNameOverrides)
+		return getMod(modName, p)
 	}
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 &&
 		info.Compatibility != kubernetes20 { // k8s SDK doesn't use config.
-		configMod := getMod("config")
+		configMod := getMod("config", pkg)
 		configMod.isConfig = true
 	}
 
@@ -2210,36 +2273,36 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	visitObjectTypesFromProperties(pkg.Config, outputSeen, func(t interface{}) {
 		switch T := t.(type) {
 		case *schema.ObjectType:
-			getModFromToken(T.Token).details(T).outputType = true
+			getModFromToken(T.Token, T.Package).details(T).outputType = true
 		}
 	})
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getModFromToken(r.Token)
+		mod := getModFromToken(r.Token, pkg)
 		mod.resources = append(mod.resources, r)
 		visitObjectTypesFromProperties(r.Properties, outputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
-				getModFromToken(T.Token).details(T).outputType = true
+				getModFromToken(T.Token, T.Package).details(T).outputType = true
 			}
 		})
 		visitObjectTypesFromProperties(r.InputProperties, inputSeen, func(t interface{}) {
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				if r.IsProvider {
-					getModFromToken(T.Token).details(T).outputType = true
+					getModFromToken(T.Token, T.Package).details(T).outputType = true
 				}
-				getModFromToken(T.Token).details(T).inputType = true
+				getModFromToken(T.Token, T.Package).details(T).inputType = true
 			}
 		})
 		if r.StateInputs != nil {
 			visitObjectTypes(r.StateInputs, inputSeen, func(t interface{}) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token).details(T).inputType = true
+					getModFromToken(T.Token, T.Package).details(T).inputType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token)
+					getModFromToken(T.Token, T.Resource.Package)
 				}
 			})
 		}
@@ -2252,16 +2315,16 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
-		mod := getModFromToken(f.Token)
+		mod := getModFromToken(f.Token, f.Package)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs, inputSeen, func(t interface{}) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token).details(T).inputType = true
-					getModFromToken(T.Token).details(T).functionType = true
+					getModFromToken(T.Token, T.Package).details(T).inputType = true
+					getModFromToken(T.Token, T.Package).details(T).functionType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token)
+					getModFromToken(T.Token, T.Resource.Package)
 				}
 			})
 		}
@@ -2269,10 +2332,10 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			visitObjectTypes(f.Outputs, outputSeen, func(t interface{}) {
 				switch T := t.(type) {
 				case *schema.ObjectType:
-					getModFromToken(T.Token).details(T).outputType = true
-					getModFromToken(T.Token).details(T).functionType = true
+					getModFromToken(T.Token, T.Package).details(T).outputType = true
+					getModFromToken(T.Token, T.Package).details(T).functionType = true
 				case *schema.ResourceType:
-					getModFromToken(T.Token)
+					getModFromToken(T.Token, T.Resource.Package)
 				}
 			})
 		}
@@ -2282,13 +2345,13 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ObjectType:
-			mod := getModFromToken(typ.Token)
+			mod := getModFromToken(typ.Token, typ.Package)
 			d := mod.details(typ)
 			if d.inputType || d.outputType {
 				mod.types = append(mod.types, typ)
 			}
 		case *schema.EnumType:
-			mod := getModFromToken(typ.Token)
+			mod := getModFromToken(typ.Token, pkg)
 			mod.enums = append(mod.enums, typ)
 		default:
 			continue
@@ -2306,7 +2369,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		if modName == "/" || modName == "." {
 			modName = ""
 		}
-		mod := getMod(modName)
+		mod := getMod(modName, pkg)
 		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
 	}
 

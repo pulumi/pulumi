@@ -42,17 +42,14 @@ export class Resource extends pulumi.CustomResource {
      */
     constructor(name: string, args?: ResourceArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
+        opts = opts || {};
+        if (!opts.id) {
             inputs["bar"] = args ? args.bar : undefined;
         } else {
             inputs["bar"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(Resource.__pulumiType, name, inputs, opts);
     }

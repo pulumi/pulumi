@@ -1034,7 +1034,9 @@ func ExampleStack_History() {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName("org", "project", "stack")
 	stack, _ := SelectStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
-	hist, _ := stack.History(ctx)
+	pageSize := 0 // fetch all history entries, don't paginate
+	page := 0     // fetch all history entries, don't paginate
+	hist, _ := stack.History(ctx, pageSize, page)
 	// last operation start time
 	fmt.Println(hist[0].StartTime)
 }

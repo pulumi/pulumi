@@ -91,12 +91,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -323,7 +324,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		return res, err
 	}
 
-	history, err := s.History(ctx)
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return res, err
 	}
@@ -383,7 +384,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx)
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to refresh stack")
 	}
@@ -443,7 +444,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx)
+	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to destroy stack")
 	}
@@ -510,15 +511,21 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
 // (up/preview/refresh/destroy).
-func (s *Stack) History(ctx context.Context) ([]UpdateSummary, error) {
+func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSummary, error) {
 	err := s.Workspace().SelectStack(ctx, s.Name())
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
+	args := []string{"history", "--json", "--show-secrets"}
+	if pageSize > 0 {
+		// default page=1 if unset when pageSize is set
+		if page < 1 {
+			page = 1
+		}
+		args = append(args, "--page-size", fmt.Sprintf("%d", pageSize), "--page", fmt.Sprintf("%d", page))
+	}
 
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"history", "--json", "--show-secrets",
-	)
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutputs */, args...)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "failed to get stack history"), stdout, stderr, errCode)
 	}
@@ -619,6 +626,7 @@ func (s *Stack) Import(ctx context.Context, state apitype.UntypedDeployment) err
 
 // UpdateSummary provides a summary of a Stack lifecycle operation (up/preview/refresh/destroy).
 type UpdateSummary struct {
+	Version     int               `json:"version"`
 	Kind        string            `json:"kind"`
 	StartTime   string            `json:"startTime"`
 	Message     string            `json:"message"`

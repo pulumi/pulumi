@@ -92,17 +92,12 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
 
-		var link string
-		if mod.emitAPILinks {
-			link = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, resultTypeName)
-		}
-
 		parts := strings.Split(resultTypeName, ".")
 		displayName := parts[len(parts)-1]
 		resourceMap[lang] = propertyType{
 			Name:        resultTypeName,
 			DisplayName: displayName,
-			Link:        link,
+			Link:        "#result",
 		}
 	}
 
@@ -111,22 +106,14 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 
 func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
 	argsType := title(funcName+"Args", "nodejs")
-
 	docLangHelper := getLanguageDocHelper("nodejs")
 	var params []formalParam
-
 	if f.Inputs != nil {
-		var argsTypeLink string
-		if mod.emitAPILinks {
-			argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType)
-		}
-
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: argsTypeLink,
 			},
 		})
 	}
@@ -145,7 +132,6 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []form
 func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
 
-	docLangHelper := getLanguageDocHelper("go")
 	params := []formalParam{
 		{
 			Name:         "ctx",
@@ -158,17 +144,11 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 	}
 
 	if f.Inputs != nil {
-		var argsTypeLink string
-		if mod.emitAPILinks {
-			argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType)
-		}
-
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: argsType,
-				Link: argsTypeLink,
 			},
 		})
 	}
@@ -186,35 +166,15 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 
 func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
-	argsSchemaType := &schema.ObjectType{
-		Token:   f.Token,
-		Package: mod.pkg,
-	}
-
-	characteristics := propertyCharacteristics{
-		input:    true,
-		optional: false,
-	}
-	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false /* insertWordBreaks */)
-	// The args type for a resource isn't part of "Inputs" namespace, so remove the "Inputs"
-	// namespace qualifier.
-	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
-
 	docLangHelper := getLanguageDocHelper("csharp")
 	var params []formalParam
 	if f.Inputs != nil {
-		var argsTypeLink string
-		if mod.emitAPILinks {
-			argsTypeLink = docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName)
-		}
-
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			DefaultValue: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: argsTypeLink,
 			},
 		})
 	}
@@ -313,26 +273,25 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 }
 
 func (mod *modContext) genFunctionHeader(f *schema.Function) header {
-	funcName := strings.Title(tokenToName(f.Token))
-	packageName := formatTitleText(mod.pkg.Name)
+	funcName := tokenToName(f.Token)
 	var baseDescription string
 	var titleTag string
 	if mod.mod == "" {
-		baseDescription = fmt.Sprintf("Explore the %s function of the %s package, "+
-			"including examples, input properties, output properties, "+
-			"and supporting types.", funcName, packageName)
-		titleTag = fmt.Sprintf("Function %s | Package %s", funcName, packageName)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s function "+
+			"with examples, input properties, output properties, "+
+			"and supporting types.", mod.pkg.Name, funcName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, funcName)
 	} else {
-		baseDescription = fmt.Sprintf("Explore the %s function of the %s module, "+
-			"including examples, input properties, output properties, "+
-			"and supporting types.", funcName, mod.mod)
-		titleTag = fmt.Sprintf("Function %s | Module %s | Package %s", funcName, mod.mod, packageName)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s.%s function "+
+			"with examples, input properties, output properties, "+
+			"and supporting types.", mod.pkg.Name, mod.mod, funcName)
+		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, funcName)
 	}
 
 	return header{
 		Title:    funcName,
 		TitleTag: titleTag,
-		MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(f.Comment),
+		MetaDesc: baseDescription,
 	}
 }
 
@@ -343,10 +302,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	outputProps := make(map[string][]property)
 	for _, lang := range supportedLanguages {
 		if f.Inputs != nil {
-			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false)
+			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false, false)
 		}
 		if f.Outputs != nil {
-			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false)
+			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false, false)
 		}
 	}
 

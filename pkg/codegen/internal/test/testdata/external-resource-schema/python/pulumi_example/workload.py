@@ -7,8 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union
 from . import _utilities, _tables
-from pulumi_kubernetes import core_v1 as _core_v1
-from pulumi_kubernetes import meta_v1 as _meta_v1
+import pulumi_kubernetes
 
 __all__ = ['Workload']
 
@@ -69,7 +68,7 @@ class Workload(pulumi.CustomResource):
 
     @property
     @pulumi.getter
-    def pod(self) -> pulumi.Output[Optional['_core_v1.outputs.Pod']]:
+    def pod(self) -> pulumi.Output[Optional['pulumi_kubernetes.core.v1.outputs.Pod']]:
         return pulumi.get(self, "pod")
 
     def translate_output_property(self, prop):

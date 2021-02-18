@@ -131,10 +131,9 @@ func getKubernetesMod(pkg *schema.Package, token string, modules map[string]*mod
 	mod, ok := modules[modName]
 	if !ok {
 		mod = &modContext{
-			pkg:          pkg,
-			mod:          modName,
-			tool:         tool,
-			emitAPILinks: true,
+			pkg:  pkg,
+			mod:  modName,
+			tool: tool,
 		}
 
 		if modName != "" {

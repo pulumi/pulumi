@@ -32,17 +32,14 @@ export class OtherResource extends pulumi.ComponentResource {
      */
     constructor(name: string, args?: OtherResourceArgs, opts?: pulumi.ComponentResourceOptions) {
         let inputs: pulumi.Inputs = {};
-        if (!(opts && opts.id)) {
+        opts = opts || {};
+        if (!opts.id) {
             inputs["foo"] = args ? args.foo : undefined;
         } else {
             inputs["foo"] = undefined /*out*/;
         }
-        if (!opts) {
-            opts = {}
-        }
-
         if (!opts.version) {
-            opts.version = utilities.getVersion();
+            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(OtherResource.__pulumiType, name, inputs, opts, true /*remote*/);
     }
