@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"os"
+	"os/exec"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -37,6 +38,24 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to parse credentials from $GOOGLE_CREDENTIALS")
+		}
+		return credentials, nil
+	}
+
+	// PULUMI_GOOGLE_CREDENTIALS_HELPER isn't part of the gcloud standard authorization
+	// but it allows the end user to be flexible on how pulumi gets the credentials
+	// and guarantees that there's no env name clash with anything else down the stack that
+	// can look for the default GCP credentials.
+	if credsHelper := os.Getenv("PULUMI_GOOGLE_CREDENTIALS_HELPER"); credsHelper != "" {
+		// We try $PULUMI_GOOGLE_CREDENTIALS_HELPER before gcp.DefaultCredentials
+		// so that users can override the default creds
+		creds, err := exec.Command(credsHelper).Output()
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to run the $PULUMI_GOOGLE_CREDENTIALS_HELPER")
+		}
+		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite)
+		if err != nil {
+			return nil, errors.Wrap(err, "unable to parse credentials from $PULUMI_GOOGLE_CREDENTIALS_HELPER")
 		}
 		return credentials, nil
 	}
