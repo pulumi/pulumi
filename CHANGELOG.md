@@ -3,8 +3,11 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
- [sdk/dotnet] C# Automation API.
+- [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
+
+- [sdk/dotnet] F# API to specify stack options.
+  [#5077](https://github.com/pulumi/pulumi/pull/5077)
 
 ## 2.21.0 (2021-02-17)
 

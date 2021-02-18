@@ -47,17 +47,18 @@ module Ops =
 /// <summary>
 /// Pulumi deployment functions.
 /// </summary>
-module Deployment = 
+module Deployment =
     open System.Collections.Generic
     open System.Threading.Tasks
-
+      
     /// <summary>
-    /// Runs a function as a Pulumi <see cref="Deployment" />.
+    /// Runs a task function as a Pulumi <see cref="Deployment" />.
     /// Blocks internally until the provided function completes,
     /// so that this function could be used directly from the main function.
+    /// StackOptions can be provided to the deployment.
     /// </summary>
-    let run (f: unit -> IDictionary<string, obj>) =
-        Deployment.RunAsync (fun () -> f())
+    let runTaskWithOptions (f: unit -> Task<IDictionary<string, obj>>) options =
+        Deployment.RunAsync ((fun () -> f()), options)
         |> Async.AwaitTask
         |> Async.RunSynchronously
 
@@ -65,11 +66,10 @@ module Deployment =
     /// Runs an async function as a Pulumi <see cref="Deployment" />.
     /// Blocks internally until the provided function completes,
     /// so that this function could be used directly from the main function.
+    /// StackOptions can be provided to the deployment.
     /// </summary>
-    let runAsync (f: unit -> Async<IDictionary<string, obj>>) =
-        Deployment.RunAsync (fun () -> f() |> Async.StartAsTask)
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
+    let runAsyncWithOptions (f: unit -> Async<IDictionary<string, obj>>) options =
+        runTaskWithOptions (f >> Async.StartAsTask) options
 
     /// <summary>
     /// Runs a task function as a Pulumi <see cref="Deployment" />.
@@ -77,9 +77,23 @@ module Deployment =
     /// so that this function could be used directly from the main function.
     /// </summary>
     let runTask (f: unit -> Task<IDictionary<string, obj>>) =
-        Deployment.RunAsync (fun () -> f())
-        |> Async.AwaitTask
-        |> Async.RunSynchronously
+        runTaskWithOptions f null
+        
+    /// <summary>
+    /// Runs an async function as a Pulumi <see cref="Deployment" />.
+    /// Blocks internally until the provided function completes,
+    /// so that this function could be used directly from the main function.
+    /// </summary>
+    let runAsync (f: unit -> Async<IDictionary<string, obj>>) =
+        runTask (f >> Async.StartAsTask)
+        
+    /// <summary>
+    /// Runs a function as a Pulumi <see cref="Deployment" />.
+    /// Blocks internally until the provided function completes,
+    /// so that this function could be used directly from the main function.
+    /// </summary>
+    let run (f: unit -> IDictionary<string, obj>) =
+        runTask (f >> Task.FromResult)
 
 /// <summary>
 /// Module containing utility functions to work with <see cref="Output{T}" />'s.
