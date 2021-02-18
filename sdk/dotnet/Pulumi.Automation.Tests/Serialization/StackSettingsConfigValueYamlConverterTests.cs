@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
 using Pulumi.Automation.Serialization;
 using Xunit;
 using YamlDotNet.Core;
@@ -69,7 +70,7 @@ config:
         {
             var value = new StackSettingsConfigValue("test", false);
             var yaml = _serializer.SerializeYaml(value);
-            Assert.Equal("test\r\n", yaml);
+            Assert.Equal("test" + Environment.NewLine, yaml);
         }
 
         [Fact]
@@ -77,7 +78,7 @@ config:
         {
             var value = new StackSettingsConfigValue("secret", true);
             var yaml = _serializer.SerializeYaml(value);
-            Assert.Equal("secure: secret\r\n", yaml);
+            Assert.Equal("secure: secret" + Environment.NewLine, yaml);
         }
     }
 }
