@@ -508,7 +508,7 @@ namespace Pulumi.Automation.Tests
                 () => upTask);
         }
 
-        [Fact(Skip = "Parallel execution is not supported in this first version.")]
+        [Fact]
         public async Task InlineProgramAllowsParallelExecution()
         {
             const string projectNameOne = "parallel_inline_node1";
