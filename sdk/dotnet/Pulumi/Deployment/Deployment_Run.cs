@@ -72,7 +72,7 @@ namespace Pulumi
         /// <param name="func">Callback that creates stack resources.</param>
         /// <param name="options">Stack options.</param>
         public static Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options = null)
-            => CreateRunner().RunAsync(func, options);
+            => CreateRunner(() => new Deployment()).RunAsync(func, options);
 
         /// <summary>
         /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
@@ -101,7 +101,7 @@ namespace Pulumi
         /// </para>
         /// </summary>
         public static Task<int> RunAsync<TStack>() where TStack : Stack, new()
-            => CreateRunner().RunAsync<TStack>();
+            => CreateRunner(() => new Deployment()).RunAsync<TStack>();
 
         /// <summary>
         /// <see cref="RunAsync{TStack}()"/> is an entry-point to a Pulumi
@@ -131,7 +131,7 @@ namespace Pulumi
         /// </para>
         /// </summary>
         public static Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
-            => CreateRunner().RunAsync<TStack>(serviceProvider);
+            => CreateRunner(() => new Deployment()).RunAsync<TStack>(serviceProvider);
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
@@ -203,7 +203,7 @@ namespace Pulumi
             }
         }
 
-        private static IRunner CreateRunner()
+        private static IRunner CreateRunner(Func<Deployment> deploymentFactory)
         {
             // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
 
@@ -214,7 +214,7 @@ namespace Pulumi
                     throw new NotSupportedException("Deployment.Run can only be called a single time.");
 
                 Serilog.Log.Debug("Creating new Deployment.");
-                var deployment = new Deployment();
+                var deployment = deploymentFactory();
                 Instance = new DeploymentInstance(deployment);
                 return deployment._runner;
             }

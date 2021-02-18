@@ -2,7 +2,9 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+
+ [sdk/dotnet] C# Automation API.
+  [#5761](https://github.com/pulumi/pulumi/pull/5761)
 
 ## 2.21.0 (2021-02-17)
 
