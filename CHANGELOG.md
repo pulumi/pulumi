@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [sdk/dotnet] Resolve automation api stack manipulation test issue with existing stacks.
+  [#6382](https://github.com/pulumi/pulumi/pull/6382)
+
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
 
