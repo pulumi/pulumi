@@ -19,12 +19,12 @@ import yaml
 from datetime import datetime
 from typing import Optional, List, Mapping, Callable
 
-from .config import ConfigMap, ConfigValue
-from .project_settings import ProjectSettings
-from .stack_settings import StackSettings
-from .workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
-from .stack import _DATETIME_FORMAT, Stack
-from .cmd import _run_pulumi_cmd, CommandResult, OnOutput
+from ._config import ConfigMap, ConfigValue
+from ._project_settings import ProjectSettings
+from ._stack_settings import StackSettings
+from ._workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
+from ._stack import _DATETIME_FORMAT, Stack
+from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
@@ -152,7 +152,7 @@ class LocalWorkspace(Workspace):
         self.select_stack(stack_name)
         result = self._run_pulumi_cmd_sync(["config", "get", key, "--json"])
         val = json.loads(result.stdout)
-        return ConfigValue(**val)
+        return ConfigValue(value=val["value"], secret=val["secret"])
 
     def get_all_config(self, stack_name: str) -> ConfigMap:
         self.select_stack(stack_name)
@@ -160,7 +160,8 @@ class LocalWorkspace(Workspace):
         config_json = json.loads(result.stdout)
         config_map: ConfigMap = {}
         for key in config_json:
-            config_map[key] = ConfigValue(**config_json[key])
+            config_val_json = config_json[key]
+            config_map[key] = ConfigValue(value=config_val_json["value"], secret=config_val_json["secret"])
         return config_map
 
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
