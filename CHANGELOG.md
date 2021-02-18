@@ -9,6 +9,10 @@ CHANGELOG
 - [sdk/dotnet] F# API to specify stack options.
   [#5077](https://github.com/pulumi/pulumi/pull/5077)
   
+## 2.21.1 (2021-02-18)
+
+### Bug Fixes
+
 - [sdk/python] Fixed a change to `Output.all()` that raised an error if no inputs are passed in.
   [#6381](https://github.com/pulumi/pulumi/pull/6381)
 
