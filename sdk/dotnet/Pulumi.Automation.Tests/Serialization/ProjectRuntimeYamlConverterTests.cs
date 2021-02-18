@@ -69,7 +69,7 @@ runtime:
             var yaml = _serializer.SerializeYaml(runtime);
             Console.WriteLine(yaml);
 
-            Assert.Equal("dotnet\r\n", yaml);
+            Assert.Equal("dotnet" + Environment.NewLine, yaml);
         }
 
         [Fact]
@@ -87,9 +87,9 @@ runtime:
             Console.WriteLine(yaml);
 
             var expected = new StringBuilder();
-            expected.Append("name: dotnet\r\n");
-            expected.Append("options:\r\n");
-            expected.Append("  typescript: true\r\n");
+            expected.AppendLine("name: dotnet");
+            expected.AppendLine("options:");
+            expected.AppendLine("  typescript: true");
 
             Assert.Equal(expected.ToString(), yaml);
         }
