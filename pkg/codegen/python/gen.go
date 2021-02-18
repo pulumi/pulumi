@@ -2449,7 +2449,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		if err != nil {
 			return nil, err
 		}
-		files.add("pulumiplugin.json", plugin)
+		files.add(filepath.Join(pyPack(pkg.Name), "pulumiplugin.json"), plugin)
 	}
 
 	// Finally emit the package metadata (setup.py).
