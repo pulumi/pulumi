@@ -73,7 +73,7 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
 	credentials, err := googleCredentials(ctx)
 	if err != nil {
-		return nil, errors.New("missing google credentials")
+		return nil, errors.Wrap(err, "missing google credentials")
 	}
 
 	client, err := gcp.NewHTTPClient(gcp.DefaultTransport(), credentials.TokenSource)
