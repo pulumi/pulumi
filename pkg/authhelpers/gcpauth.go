@@ -1,4 +1,4 @@
-package filestate
+package authhelpers
 
 import (
 	"context"
@@ -14,6 +14,7 @@ import (
 	"gocloud.dev/blob/gcsblob"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/cloudkms/v1"
 
 	"github.com/pkg/errors"
 	"gocloud.dev/blob"
@@ -27,7 +28,9 @@ type GoogleCredentials struct {
 	ClientID     string `json:"client_id"`
 }
 
-func googleCredentials(ctx context.Context) (*google.Credentials, error) {
+// ResolveGoogleCredentials loads the google credentials using the pulumi-specific
+// logic first, falling back to the DefaultCredentials resoulution after.
+func ResolveGoogleCredentials(ctx context.Context) (*google.Credentials, error) {
 	// GOOGLE_CREDENTIALS aren't part of the gcloud standard authorization variables
 	// but the GCP terraform provider uses this variable to allow users to authenticate
 	// with the contents of a credentials.json file instead of just a file path.
@@ -35,7 +38,7 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 	if creds := os.Getenv("GOOGLE_CREDENTIALS"); creds != "" {
 		// We try $GOOGLE_CREDENTIALS before gcp.DefaultCredentials
 		// so that users can override the default creds
-		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite)
+		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite, cloudkms.CloudkmsScope)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to parse credentials from $GOOGLE_CREDENTIALS")
 		}
@@ -53,7 +56,7 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to run the $PULUMI_GOOGLE_CREDENTIALS_HELPER")
 		}
-		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite)
+		credentials, err := google.CredentialsFromJSON(ctx, []byte(creds), storage.ScopeReadWrite, cloudkms.CloudkmsScope)
 		if err != nil {
 			return nil, errors.Wrap(err, "unable to parse credentials from $PULUMI_GOOGLE_CREDENTIALS_HELPER")
 		}
@@ -71,7 +74,7 @@ func googleCredentials(ctx context.Context) (*google.Credentials, error) {
 }
 
 func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
-	credentials, err := googleCredentials(ctx)
+	credentials, err := ResolveGoogleCredentials(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "missing google credentials")
 	}

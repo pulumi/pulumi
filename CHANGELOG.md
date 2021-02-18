@@ -22,6 +22,9 @@ CHANGELOG
   chmod +x helper
   env PULUMI_GOOGLE_CREDENTIALS_HELPER=./helper pulumi login gs://...
   ```
+- [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the
+  state store, including the `PULUMI_GOOGLE_CREDENTIALS_HELPER` by specifying
+  `?google_application_credentials=pulumi` in the secretsprovider URL.
 
 ## 2.21.0 (2021-02-17)
 
