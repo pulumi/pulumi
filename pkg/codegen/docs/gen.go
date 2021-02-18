@@ -26,7 +26,6 @@ import (
 	"html"
 	"html/template"
 	"path"
-	"regexp"
 	"sort"
 	"strings"
 
@@ -120,9 +119,6 @@ var (
 		"equinix-metal": "Equinix Metal",
 		"splunk":        "Splunk",
 	}
-	// metaDescriptionRegexp attempts to extract the description from Resource.Comment.
-	// Extracts the first line, essentially the "human-friendly" part of the description.
-	metaDescriptionRegexp = regexp.MustCompile(`(?m)^.*$`)
 	// Property anchor tag separator, used in a property anchor tag id to separate the
 	// property and language (e.g. property~lang).
 	propertyLangSeparator = "_"
@@ -1209,16 +1205,14 @@ func filterOutputProperties(inputProps []*schema.Property, props []*schema.Prope
 }
 
 func (mod *modContext) genResourceHeader(r *schema.Resource) header {
-	packageName := formatTitleText(mod.pkg.Name)
 	resourceName := resourceName(r)
 	var metaDescription string
 	var titleTag string
 	if mod.mod == "" {
-		metaDescription = fmt.Sprintf("Explore the %s resource of the %s package, "+
-			"including examples, input properties, output properties, "+
-			"lookup functions, and supporting types.", resourceName, packageName) + " " +
-			metaDescriptionRegexp.FindString(r.Comment)
-		titleTag = fmt.Sprintf("Resource %s | Package %s", resourceName, packageName)
+		metaDescription = fmt.Sprintf("Documentation for the %s.%s resource "+
+			"with examples, input properties, output properties, "+
+			"lookup functions, and supporting types.", mod.pkg.Name, resourceName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, resourceName)
 	} else {
 		metaDescription = fmt.Sprintf("Documentation for the %s.%s.%s resource "+
 			"with examples, input properties, output properties, "+
@@ -1598,11 +1592,10 @@ func (mod *modContext) genIndex() indexData {
 	// assume top level package index page when formatting title tags otherwise, if contains modules, assume modules
 	// top level page when generating title tags.
 	if len(modules) > 0 {
-		titleTag = fmt.Sprintf("Package %s", formatTitleText(title))
+		titleTag = fmt.Sprintf("%s Package", formatTitleText(title))
 	} else {
-		pkgName := formatTitleText(mod.pkg.Name)
-		titleTag = fmt.Sprintf("Module %s | Package %s", title, pkgName)
-		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s module in the %s package.", title, pkgName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, title)
+		packageDescription = fmt.Sprintf("Explore the resources and functions of the %s.%s module.", mod.pkg.Name, title)
 	}
 
 	data := indexData{

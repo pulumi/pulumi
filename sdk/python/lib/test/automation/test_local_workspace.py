@@ -20,6 +20,7 @@ from typing import List, Optional
 from pulumi import Config, export
 from pulumi.x.automation import (
     create_stack,
+    create_or_select_stack,
     CommandError,
     ConfigMap,
     ConfigValue,
@@ -28,7 +29,8 @@ from pulumi.x.automation import (
     ProjectSettings,
     StackSummary,
     Stack,
-    StackAlreadyExistsError
+    StackAlreadyExistsError,
+    fully_qualified_stack_name,
 )
 
 
@@ -230,6 +232,28 @@ class TestLocalWorkspace(unittest.TestCase):
         stack.remove_all_config([key for key in config])
 
         ws.remove_stack(stack_name)
+
+    def test_nested_config(self):
+        stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
+        project_dir = test_path("data", "nested_config")
+        stack = create_or_select_stack(stack_name, work_dir=project_dir)
+
+        all_config = stack.get_all_config()
+        outer_val = all_config["nested_config:outer"]
+        self.assertTrue(outer_val.secret)
+        self.assertEqual(outer_val.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}")
+
+        list_val = all_config["nested_config:myList"]
+        self.assertFalse(list_val.secret)
+        self.assertEqual(list_val.value, "[\"one\",\"two\",\"three\"]")
+
+        outer = stack.get_config("outer")
+        self.assertTrue(outer.secret)
+        self.assertEqual(outer_val.value, "{\"inner\":\"my_secret\",\"other\":\"something_else\"}")
+
+        arr = stack.get_config("myList")
+        self.assertFalse(arr.secret)
+        self.assertEqual(arr.value, "[\"one\",\"two\",\"three\"]")
 
     def test_stack_status_methods(self):
         project_settings = ProjectSettings(name="python_test", runtime="python")

@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Text.Json;
 
@@ -23,6 +24,12 @@ namespace Pulumi
         /// </summary>
         internal void SetConfig(string key, string value)
             => AllConfig = AllConfig.Add(key, value);
+
+        /// <summary>
+        /// Appends all provided configuration.
+        /// </summary>
+        internal void SetAllConfig(IDictionary<string, string> config)
+            => AllConfig = AllConfig.AddRange(config);
 
         /// <summary>
         /// Returns a configuration variable's value or <see langword="null"/> if it is unset.

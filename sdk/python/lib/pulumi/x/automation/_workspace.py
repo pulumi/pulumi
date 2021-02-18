@@ -22,9 +22,9 @@ from typing import (
     Optional
 )
 
-from .stack_settings import StackSettings
-from .project_settings import ProjectSettings
-from .config import ConfigMap, ConfigValue
+from ._stack_settings import StackSettings
+from ._project_settings import ProjectSettings
+from ._config import ConfigMap, ConfigValue
 
 PulumiFn = Callable[[], None]
 
