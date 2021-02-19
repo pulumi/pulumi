@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+### Improvements
+
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
 
@@ -15,13 +17,20 @@ CHANGELOG
   Permalinks for these self-managed backends will be suppressed on `update`, `preview`, `destroy`, `import` and `refresh` 
   operations.
   [#6251](https://github.com/pulumi/pulumi/pull/6251)
-  
+
+### Bug Fixes
+
+- [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js 
+  component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
+
 ## 2.21.1 (2021-02-18)
 
 ### Bug Fixes
 
 - [sdk/python] Fixed a change to `Output.all()` that raised an error if no inputs are passed in.
   [#6381](https://github.com/pulumi/pulumi/pull/6381)
+
+### Bug Fixes
 
 ## 2.21.0 (2021-02-17)
 
