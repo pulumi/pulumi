@@ -11,6 +11,13 @@ CHANGELOG
 - [sdk/dotnet] F# API to specify stack options.
   [#5077](https://github.com/pulumi/pulumi/pull/5077)
 
+- [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user 
+  want to get permalinks when using a self backend, they can pass a flag:  
+      `pulumi up --suppress-permalink false`.  
+  Permalinks for these self-managed backends will be suppressed on `update`, `preview`, `destroy`, `import` and `refresh` 
+  operations.
+  [#6251](https://github.com/pulumi/pulumi/pull/6251)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js 
@@ -65,7 +72,7 @@ CHANGELOG
 
 - [sdk/python] Fixed a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
   [#6264](https://github.com/pulumi/pulumi/pull/6264)
-
+  
 - [sdk/python] Allowed keyword args in Output.all() to create a dict.
   [#6269](https://github.com/pulumi/pulumi/pull/6269)
   
@@ -74,7 +81,6 @@ CHANGELOG
 
 - [automation/python] Fixed a bug in nested configuration parsing.
   [#6349](https://github.com/pulumi/pulumi/pull/6349)
-
 
 ## 2.20.0 (2021-02-03)
 
