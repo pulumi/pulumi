@@ -599,12 +599,17 @@ function checkVersion(want?: semver.SemVer, have?: semver.SemVer): boolean {
 }
 
 /** @internal */
-export function register<T extends { readonly version?: string }>(source: Map<string, T[]>, registrationType: string, key: string, item: T): void {
+export function register<T extends { readonly version?: string }>(source: Map<string, T[]>, registrationType: string, key: string, item: T): boolean {
     let items = source.get(key);
     if (items) {
         for (const existing of items) {
             if (sameVersion(existing.version, item.version)) {
-                throw new Error(`Cannot re-register ${registrationType} ${key}@${item.version}. Previous registration was ${existing}, new registration was ${item}.`);
+                // It is possible for the same version of the same provider SDK to be loaded multiple times in Node.js.
+                // In this case, we might legitimately get mutliple registrations of the same resource.  It should not
+                // matter which we use, so we can just skip re-registering.  De-serialized resources will always be
+                // instances of classes from the first registered package.
+                log.debug(`skip re-registering already registered ${registrationType} ${key}@${item.version}.`);
+                return false;
             }
         }
     } else {
@@ -614,6 +619,7 @@ export function register<T extends { readonly version?: string }>(source: Map<st
 
     log.debug(`registering ${registrationType} ${key}@${item.version}`);
     items.push(item);
+    return true
 }
 
 /** @internal */
