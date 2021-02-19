@@ -21,6 +21,8 @@ CHANGELOG
 - [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
   [#6373](https://github.com/pulumi/pulumi/pulls/6373)
 
+- [automation/*] Consume `config set-all` and `config rm-all` from automation API.
+  [#6388](https://github.com/pulumi/pulumi/pulls/6388)
 
 ### Bug Fixes
 

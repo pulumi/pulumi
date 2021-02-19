@@ -382,10 +382,13 @@ export class LocalWorkspace implements Workspace {
      * @param config The `ConfigMap` to upsert against the existing config.
      */
     async setAllConfig(stackName: string, config: ConfigMap): Promise<void> {
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+        let args = ["config", "set-all", "--stack", stackName];
         for (const [key, value] of Object.entries(config)) {
-            await this.setConfig(stackName, key, value);
+            const secretArg = value.secret ? "--secret" : "--plaintext";
+            args = [...args, secretArg, `${key}=${value.value}`];
         }
+
+        await this.runPulumiCmd(args);
     }
     /**
      * Removes the specified key-value pair on the provided stack name.
@@ -407,10 +410,7 @@ export class LocalWorkspace implements Workspace {
      * @param keys The list of keys to remove from the underlying config
      */
     async removeAllConfig(stackName: string, keys: string[]): Promise<void> {
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-        for (const key of keys) {
-            await this.removeConfig(stackName, key);
-        }
+        await this.runPulumiCmd(["config", "rm-all", "--stack", stackName, ...keys]);
     }
     /**
      * Gets and sets the config map used with the last update for Stack matching stack name.
