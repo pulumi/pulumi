@@ -16,6 +16,23 @@ CHANGELOG
 - [sdk/python] Fixed a change to `Output.all()` that raised an error if no inputs are passed in.
   [#6381](https://github.com/pulumi/pulumi/pull/6381)
 
+### Improvements
+
+- [cli] Add support for using `PULUMI_GOOGLE_CREDENTIALS_HELPER` environment variable
+  as a cli tool to get the GCP credentials from an external source. This can be used to
+  e.g. integrate with external secret storages:
+  ```bash
+  cat > helper <<EOF
+  #!/bin/sh
+  exec op get item pulumi-gcp-secret --fields password
+  EOF
+  chmod +x helper
+  env PULUMI_GOOGLE_CREDENTIALS_HELPER=./helper pulumi login gs://...
+  ```
+- [cli] The `gcpkms://` now supports the same credentials resolution mechanism as the
+  state store, including the `PULUMI_GOOGLE_CREDENTIALS_HELPER` by specifying
+  `?google_application_credentials=pulumi` in the secretsprovider URL.
+
 ## 2.21.0 (2021-02-17)
 
 ### Improvements
