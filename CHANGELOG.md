@@ -18,6 +18,10 @@ CHANGELOG
   operations.
   [#6251](https://github.com/pulumi/pulumi/pull/6251)
 
+- [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
+  [#6373](https://github.com/pulumi/pulumi/pulls/6373)
+
+
 ### Bug Fixes
 
 - [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js 
@@ -29,8 +33,6 @@ CHANGELOG
 
 - [sdk/python] Fixed a change to `Output.all()` that raised an error if no inputs are passed in.
   [#6381](https://github.com/pulumi/pulumi/pull/6381)
-
-### Bug Fixes
 
 ## 2.21.0 (2021-02-17)
 
@@ -72,7 +74,7 @@ CHANGELOG
 
 - [sdk/python] Fixed a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
   [#6264](https://github.com/pulumi/pulumi/pull/6264)
-  
+
 - [sdk/python] Allowed keyword args in Output.all() to create a dict.
   [#6269](https://github.com/pulumi/pulumi/pull/6269)
   
