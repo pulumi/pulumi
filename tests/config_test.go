@@ -94,6 +94,20 @@ func TestConfigCommands(t *testing.T) {
 		e.RunCommand("pulumi", "config", "rm-all",
 			"outer.inner", "myList[0]", "outer", "myList", "key1", "my_token")
 
+		// check that you can add keys with '=' in it
+		e.RunCommand("pulumi", "config", "set-all",
+			"--plaintext", "\"foo=\"=value2", "--plaintext", "'=some-weird=key='=value3")
+
+		// check that they registered correctly
+		stdout, _ = e.RunCommand("pulumi", "config", "get", "foo=")
+		assert.Equal(t, "value2", strings.Trim(stdout, "\r\n"))
+
+		stdout, _ = e.RunCommand("pulumi", "config", "get", "=some-weird=key=")
+		assert.Equal(t, "value3", strings.Trim(stdout, "\r\n"))
+
+		// remove the config key
+		e.RunCommand("pulumi", "config", "rm-all", "foo=", "=some-weird=key=")
+
 		// check config is empty again
 		stdout, _ = e.RunCommand("pulumi", "config")
 		assert.Equal(t, "KEY  VALUE", strings.Trim(stdout, "\r\n"))

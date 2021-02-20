@@ -336,17 +336,17 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 		Short: "Remove multiple configuration values",
 		Long: "Remove multiple configuration values.\n\n" +
 			"The `--path` flag indicates that keys should be parsed within maps or lists:\n\n" +
-			"  - `pulumi config rm-all outer.inner foo[0] key1` will remove the " +
-			"`outer.inner`, `foo[0]` and `key1` keys\n" +
 			"  - `pulumi config rm-all --path  outer.inner foo[0] key1` will remove the \n" +
-			"      `inner` key of the `outer` map, the first key of the `foo` list and `key1`.",
+			"    `inner` key of the `outer` map, the first key of the `foo` list and `key1`.\n" +
+			"  - `pulumi config rm-all outer.inner foo[0] key1` will remove the literal" +
+			"    `outer.inner`, `foo[0]` and `key1` keys",
 		Args: cmdutil.MinimumNArgs(1),
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(*stack, true, opts, true /*setCurrent*/)
+			s, err := requireStack(*stack, true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
@@ -649,6 +649,14 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 func parseKeyValuePair(pair string) (config.Key, string, error) {
 	// Split the arg on the first '=' to separate key and value.
 	splitArg := strings.SplitN(pair, "=", 2)
+
+	// Check if the key is wrapped in quote marks and split on the '=' following the wrapping quote.
+	firstChar := string([]rune(pair)[0])
+	if firstChar == "\"" || firstChar == "'" {
+		pair = strings.TrimPrefix(pair, firstChar)
+		splitArg = strings.SplitN(pair, fmt.Sprintf("%s=", firstChar), 2)
+	}
+
 	if len(splitArg) < 2 {
 		return config.Key{}, "", errors.New("config value must be in the form [key]=[value]")
 	}
