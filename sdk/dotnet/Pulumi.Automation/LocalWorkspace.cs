@@ -464,11 +464,14 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override async Task SetConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
         {
-            // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
-            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
-
-            foreach (var (key, value) in configMap)
-                await this.SetConfigValueAsync(key, value, cancellationToken).ConfigureAwait(false);
+            var args = new List<string>{"config", "set-all", "--stack", stackName};
+            foreach (var (key, value) in configMap) 
+            {
+                var secretArg = value.IsSecret ? "--secret" : "--plaintext";
+                args.Add(secretArg);
+                args.Add($"{key}={value.Value}");
+            }
+            await this.RunCommandAsync(args, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task SetConfigValueAsync(string key, ConfigValue value, CancellationToken cancellationToken)
@@ -487,11 +490,9 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override async Task RemoveConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
         {
-            // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/3877
-            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
-
-            foreach (var key in keys)
-                await this.RunCommandAsync(new[] { "config", "rm", key }, cancellationToken).ConfigureAwait(false);
+            var args = new List<string>{"config", "rm-all", "--stack", stackName};
+            args.AddRange(keys);
+            await this.RunCommandAsync(args, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
