@@ -90,6 +90,9 @@ func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bo
 	case *model.IndexExpression:
 		x.Key, _ = rewriteConversions(x.Key, x.KeyType())
 	case *model.ObjectConsExpression:
+		if v := matchDiscriminatedObjectTypes(to, x); v != nil {
+			to = v
+		}
 		for i := range x.Items {
 			item := &x.Items[i]
 
@@ -138,6 +141,59 @@ func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bo
 
 	// Otherwise, wrap the expression in a call to __convert.
 	return NewConvertCall(x, to), true
+}
+
+// matchDiscriminatedObjectTypes reduces discriminated unions of object types to the type that matches
+// the shape of the given object cons expression. Discriminated unions are unions of object types, where each
+// object type has a property with a const value. Those const values are expected to be unique.
+// A given object expression would only match a single type of the union.
+func matchDiscriminatedObjectTypes(modelType model.Type, x *model.ObjectConsExpression) model.Type {
+	switch typ := modelType.(type) {
+	case *model.ObjectType:
+		if els, ok := GetSchemaForType(typ); ok {
+			if v, ok := els.(*schema.ObjectType); ok {
+				for _, prop := range v.Properties {
+					if prop.ConstValue != nil {
+						// This is the essence of the function: we found the discriminator property, so we can
+						// exclude the current type if its const value doesn't match the actual property value.
+						for _, item := range x.Items {
+							if name, ok := item.Key.(*model.LiteralValueExpression); ok {
+								if name.Value.AsString() == prop.Name {
+									if lit, ok := item.Value.(*model.TemplateExpression); ok {
+										if lit.Parts[0].(*model.LiteralValueExpression).Value.AsString() != prop.ConstValue.(string) {
+											return nil
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		return modelType
+	case *model.OutputType:
+		if el := matchDiscriminatedObjectTypes(typ.ElementType, x); el != nil {
+			return model.NewOutputType(el)
+		}
+		return nil
+	case *model.UnionType:
+		var types []model.Type
+		for _, el := range typ.ElementTypes {
+			if elt := matchDiscriminatedObjectTypes(el, x); elt != nil {
+				types = append(types, elt)
+			}
+		}
+		switch len(types) {
+		case 0:
+			return nil
+		case 1:
+			return types[0]
+		default:
+			return model.NewUnionType(types...)
+		}
+	}
+	return modelType
 }
 
 // RewriteConversions wraps automatic conversions indicated by the HCL2 spec and conversions to schema-annotated types

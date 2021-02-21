@@ -171,6 +171,9 @@ func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]mode
 			if !prop.IsRequired {
 				t = model.NewOptionalType(t)
 			}
+			if prop.ConstValue != nil {
+				t = model.NewConstType(t, prop.ConstValue)
+			}
 			properties[prop.Name] = t
 		}
 		return objType
