@@ -304,9 +304,11 @@ class NextSerializationTests(unittest.TestCase):
         self.assertEqual({"out": 42, "other": 99}, prop_dict)
 
     @pulumi_test
-    async def test_output_all_failure_no_inputs(self):
-        self.assertRaises(ValueError, Output.all)
-        self.assertRaisesRegex(ValueError, "Output.all() was supplied no inputs")
+    async def test_output_all_no_inputs(self):
+        empty_all = Output.all()
+        deps = []
+        prop = await rpc.serialize_property(empty_all, deps)
+        self.assertEqual([], prop)
 
     @pulumi_test
     async def test_output_all_failure_mixed_inputs(self):

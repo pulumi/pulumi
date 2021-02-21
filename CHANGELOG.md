@@ -3,6 +3,8 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+### Improvements
+
 - [dotnet/sdk] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
@@ -11,6 +13,31 @@ CHANGELOG
 
 - [sdk/dotnet] F# API to specify stack options.
   [#5077](https://github.com/pulumi/pulumi/pull/5077)
+
+- [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user 
+  want to get permalinks when using a self backend, they can pass a flag:  
+      `pulumi up --suppress-permalink false`.  
+  Permalinks for these self-managed backends will be suppressed on `update`, `preview`, `destroy`, `import` and `refresh` 
+  operations.
+  [#6251](https://github.com/pulumi/pulumi/pull/6251)
+
+- [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
+  [#6373](https://github.com/pulumi/pulumi/pulls/6373)
+
+- [automation/*] Consume `config set-all` and `config rm-all` from automation API.
+  [#6388](https://github.com/pulumi/pulumi/pulls/6388)
+
+### Bug Fixes
+
+- [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js 
+  component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
+
+## 2.21.1 (2021-02-18)
+
+### Bug Fixes
+
+- [sdk/python] Fixed a change to `Output.all()` that raised an error if no inputs are passed in.
+  [#6381](https://github.com/pulumi/pulumi/pull/6381)
 
 ## 2.21.0 (2021-02-17)
 
@@ -61,7 +88,6 @@ CHANGELOG
 
 - [automation/python] Fixed a bug in nested configuration parsing.
   [#6349](https://github.com/pulumi/pulumi/pull/6349)
-
 
 ## 2.20.0 (2021-02-03)
 

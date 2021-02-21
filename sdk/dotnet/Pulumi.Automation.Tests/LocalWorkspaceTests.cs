@@ -101,7 +101,7 @@ namespace Pulumi.Automation.Tests
             Assert.DoesNotContain(plugins, p => p.Name == "aws" && p.Version == "3.0.0");
         }
 
-        [Fact(Skip = "Failing due to workspace already existing with some stacks from previous runs")]
+        [Fact]
         public async Task CreateSelectRemoveStack()
         {
             var projectSettings = new ProjectSettings("node_test", ProjectRuntimeName.NodeJS);
@@ -117,7 +117,12 @@ namespace Pulumi.Automation.Tests
             var stackName = $"int_test{GetTestSuffix()}";
 
             var stacks = await workspace.ListStacksAsync();
-            Assert.Empty(stacks);
+            if (stacks.Any(s => s.Name == stackName))
+            {
+                await workspace.RemoveStackAsync(stackName);
+                stacks = await workspace.ListStacksAsync();
+                Assert.DoesNotContain(stacks, s => s.Name == stackName);
+            }
 
             await workspace.CreateStackAsync(stackName);
             stacks = await workspace.ListStacksAsync();
@@ -128,7 +133,7 @@ namespace Pulumi.Automation.Tests
             await workspace.SelectStackAsync(stackName);
             await workspace.RemoveStackAsync(stackName);
             stacks = await workspace.ListStacksAsync();
-            Assert.Empty(stacks);
+            Assert.DoesNotContain(stacks, s => s.Name == stackName);
         }
 
         [Fact]

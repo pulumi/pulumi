@@ -599,18 +599,25 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
+				// set link to be empty to when there is an error to hide use of Permalinks
+				link = ""
+
 				// we log a warning here rather then returning an error to avoid exiting
 				// pulumi with an error code.
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
+				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
+					"for more information\n"))
 			}
 		}
 
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"Permalink: "+
-				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		if link != "" {
+			fmt.Printf(op.Opts.Display.Color.Colorize(
+				colors.SpecHeadline+"Permalink: "+
+					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		}
 	}
 
 	return changes, nil

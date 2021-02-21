@@ -170,18 +170,22 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg])
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
-        # TODO: Do this in parallel after https://github.com/pulumi/pulumi/issues/6050
+        args = ["config", "set-all", "--stack", stack_name]
+
         for key, value in config.items():
-            self.set_config(stack_name, key, value)
+            secret_arg = "--secret" if value.secret else "--plaintext"
+            args.extend([secret_arg, f"{key}={value.value}"])
+
+        self._run_pulumi_cmd_sync(args)
 
     def remove_config(self, stack_name: str, key: str) -> None:
         self.select_stack(stack_name)
         self._run_pulumi_cmd_sync(["config", "rm", key])
 
     def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
-        # TODO: Do this in parallel after https://github.com/pulumi/pulumi/issues/6050
-        for key in keys:
-            self.remove_config(stack_name, key)
+        args = ["config", "rm-all", "--stack", stack_name]
+        args.extend(keys)
+        self._run_pulumi_cmd_sync(args)
 
     def refresh_config(self, stack_name: str) -> None:
         self.select_stack(stack_name)

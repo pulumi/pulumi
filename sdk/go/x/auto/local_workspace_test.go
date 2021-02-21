@@ -1132,6 +1132,207 @@ func TestNestedConfig(t *testing.T) {
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
 }
 
+func BenchmarkBulkSetConfigMixed(b *testing.B) {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, "set_config_mixed", func(ctx *pulumi.Context) error { return nil })
+	if err != nil {
+		b.Errorf("failed to initialize stack, err: %v", err)
+		b.FailNow()
+	}
+
+	cfg := ConfigMap{
+		"one":        ConfigValue{Value: "one", Secret: true},
+		"two":        ConfigValue{Value: "two"},
+		"three":      ConfigValue{Value: "three", Secret: true},
+		"four":       ConfigValue{Value: "four"},
+		"five":       ConfigValue{Value: "five", Secret: true},
+		"six":        ConfigValue{Value: "six"},
+		"seven":      ConfigValue{Value: "seven", Secret: true},
+		"eight":      ConfigValue{Value: "eight"},
+		"nine":       ConfigValue{Value: "nine", Secret: true},
+		"ten":        ConfigValue{Value: "ten"},
+		"eleven":     ConfigValue{Value: "one", Secret: true},
+		"twelve":     ConfigValue{Value: "two"},
+		"thirteen":   ConfigValue{Value: "three", Secret: true},
+		"fourteen":   ConfigValue{Value: "four"},
+		"fifteen":    ConfigValue{Value: "five", Secret: true},
+		"sixteen":    ConfigValue{Value: "six"},
+		"seventeen":  ConfigValue{Value: "seven", Secret: true},
+		"eighteen":   ConfigValue{Value: "eight"},
+		"nineteen":   ConfigValue{Value: "nine", Secret: true},
+		"twenty":     ConfigValue{Value: "ten"},
+		"one1":       ConfigValue{Value: "one", Secret: true},
+		"two1":       ConfigValue{Value: "two"},
+		"three1":     ConfigValue{Value: "three", Secret: true},
+		"four1":      ConfigValue{Value: "four"},
+		"five1":      ConfigValue{Value: "five", Secret: true},
+		"six1":       ConfigValue{Value: "six"},
+		"seven1":     ConfigValue{Value: "seven", Secret: true},
+		"eight1":     ConfigValue{Value: "eight"},
+		"nine1":      ConfigValue{Value: "nine", Secret: true},
+		"ten1":       ConfigValue{Value: "ten"},
+		"eleven1":    ConfigValue{Value: "one", Secret: true},
+		"twelve1":    ConfigValue{Value: "two"},
+		"thirteen1":  ConfigValue{Value: "three", Secret: true},
+		"fourteen1":  ConfigValue{Value: "four"},
+		"fifteen1":   ConfigValue{Value: "five", Secret: true},
+		"sixteen1":   ConfigValue{Value: "six"},
+		"seventeen1": ConfigValue{Value: "seven", Secret: true},
+		"eighteen1":  ConfigValue{Value: "eight"},
+		"nineteen1":  ConfigValue{Value: "nine", Secret: true},
+		"twenty1":    ConfigValue{Value: "ten"},
+	}
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		b.Errorf("failed to set config, err: %v", err)
+		b.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(b, err, "failed to remove stack. Resources have leaked.")
+	}()
+}
+
+func BenchmarkBulkSetConfigPlain(b *testing.B) {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_plain", "dev")
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, "set_config_plain", func(ctx *pulumi.Context) error { return nil })
+	if err != nil {
+		b.Errorf("failed to initialize stack, err: %v", err)
+		b.FailNow()
+	}
+
+	cfg := ConfigMap{
+		"one":        ConfigValue{Value: "one"},
+		"two":        ConfigValue{Value: "two"},
+		"three":      ConfigValue{Value: "three"},
+		"four":       ConfigValue{Value: "four"},
+		"five":       ConfigValue{Value: "five"},
+		"six":        ConfigValue{Value: "six"},
+		"seven":      ConfigValue{Value: "seven"},
+		"eight":      ConfigValue{Value: "eight"},
+		"nine":       ConfigValue{Value: "nine"},
+		"ten":        ConfigValue{Value: "ten"},
+		"eleven":     ConfigValue{Value: "one"},
+		"twelve":     ConfigValue{Value: "two"},
+		"thirteen":   ConfigValue{Value: "three"},
+		"fourteen":   ConfigValue{Value: "four"},
+		"fifteen":    ConfigValue{Value: "five"},
+		"sixteen":    ConfigValue{Value: "six"},
+		"seventeen":  ConfigValue{Value: "seven"},
+		"eighteen":   ConfigValue{Value: "eight"},
+		"nineteen":   ConfigValue{Value: "nine"},
+		"twenty":     ConfigValue{Value: "ten"},
+		"one1":       ConfigValue{Value: "one"},
+		"two1":       ConfigValue{Value: "two"},
+		"three1":     ConfigValue{Value: "three"},
+		"four1":      ConfigValue{Value: "four"},
+		"five1":      ConfigValue{Value: "five"},
+		"six1":       ConfigValue{Value: "six"},
+		"seven1":     ConfigValue{Value: "seven"},
+		"eight1":     ConfigValue{Value: "eight"},
+		"nine1":      ConfigValue{Value: "nine"},
+		"ten1":       ConfigValue{Value: "ten"},
+		"eleven1":    ConfigValue{Value: "one"},
+		"twelve1":    ConfigValue{Value: "two"},
+		"thirteen1":  ConfigValue{Value: "three"},
+		"fourteen1":  ConfigValue{Value: "four"},
+		"fifteen1":   ConfigValue{Value: "five"},
+		"sixteen1":   ConfigValue{Value: "six"},
+		"seventeen1": ConfigValue{Value: "seven"},
+		"eighteen1":  ConfigValue{Value: "eight"},
+		"nineteen1":  ConfigValue{Value: "nine"},
+		"twenty1":    ConfigValue{Value: "ten"},
+	}
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		b.Errorf("failed to set config, err: %v", err)
+		b.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(b, err, "failed to remove stack. Resources have leaked.")
+	}()
+}
+
+func BenchmarkBulkSetConfigSecret(b *testing.B) {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_plain", "dev")
+
+	// initialize
+	s, err := NewStackInlineSource(ctx, stackName, "set_config_plain", func(ctx *pulumi.Context) error { return nil })
+	if err != nil {
+		b.Errorf("failed to initialize stack, err: %v", err)
+		b.FailNow()
+	}
+
+	cfg := ConfigMap{
+		"one":        ConfigValue{Value: "one", Secret: true},
+		"two":        ConfigValue{Value: "two", Secret: true},
+		"three":      ConfigValue{Value: "three", Secret: true},
+		"four":       ConfigValue{Value: "four", Secret: true},
+		"five":       ConfigValue{Value: "five", Secret: true},
+		"six":        ConfigValue{Value: "six", Secret: true},
+		"seven":      ConfigValue{Value: "seven", Secret: true},
+		"eight":      ConfigValue{Value: "eight", Secret: true},
+		"nine":       ConfigValue{Value: "nine", Secret: true},
+		"ten":        ConfigValue{Value: "ten", Secret: true},
+		"eleven":     ConfigValue{Value: "one", Secret: true},
+		"twelve":     ConfigValue{Value: "two", Secret: true},
+		"thirteen":   ConfigValue{Value: "three", Secret: true},
+		"fourteen":   ConfigValue{Value: "four", Secret: true},
+		"fifteen":    ConfigValue{Value: "five", Secret: true},
+		"sixteen":    ConfigValue{Value: "six", Secret: true},
+		"seventeen":  ConfigValue{Value: "seven", Secret: true},
+		"eighteen":   ConfigValue{Value: "eight", Secret: true},
+		"nineteen":   ConfigValue{Value: "nine", Secret: true},
+		"1twenty":    ConfigValue{Value: "ten", Secret: true},
+		"one1":       ConfigValue{Value: "one", Secret: true},
+		"two1":       ConfigValue{Value: "two", Secret: true},
+		"three1":     ConfigValue{Value: "three", Secret: true},
+		"four1":      ConfigValue{Value: "four", Secret: true},
+		"five1":      ConfigValue{Value: "five", Secret: true},
+		"six1":       ConfigValue{Value: "six", Secret: true},
+		"seven1":     ConfigValue{Value: "seven", Secret: true},
+		"eight1":     ConfigValue{Value: "eight", Secret: true},
+		"nine1":      ConfigValue{Value: "nine", Secret: true},
+		"ten1":       ConfigValue{Value: "ten", Secret: true},
+		"eleven1":    ConfigValue{Value: "one", Secret: true},
+		"twelve1":    ConfigValue{Value: "two", Secret: true},
+		"thirteen1":  ConfigValue{Value: "three", Secret: true},
+		"fourteen1":  ConfigValue{Value: "four", Secret: true},
+		"fifteen1":   ConfigValue{Value: "five", Secret: true},
+		"sixteen1":   ConfigValue{Value: "six", Secret: true},
+		"seventeen1": ConfigValue{Value: "seven", Secret: true},
+		"eighteen1":  ConfigValue{Value: "eight", Secret: true},
+		"nineteen1":  ConfigValue{Value: "nine", Secret: true},
+		"twenty1":    ConfigValue{Value: "ten", Secret: true},
+	}
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		b.Errorf("failed to set config, err: %v", err)
+		b.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(b, err, "failed to remove stack. Resources have leaked.")
+	}()
+}
+
 func getTestOrg() string {
 	testOrg := "pulumi-test"
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {

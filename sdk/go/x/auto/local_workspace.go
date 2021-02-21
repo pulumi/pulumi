@@ -186,11 +186,19 @@ func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key st
 // SetAllConfig sets all values in the provided config map for the specified stack name.
 // LocalWorkspace writes the config to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) SetAllConfig(ctx context.Context, stackName string, config ConfigMap) error {
+	args := []string{"config", "set-all", "--stack", stackName}
+
 	for k, v := range config {
-		err := l.SetConfig(ctx, stackName, k, v)
-		if err != nil {
-			return err
+		secretArg := "--plaintext"
+		if v.Secret {
+			secretArg = "--secret"
 		}
+		args = append(args, secretArg, fmt.Sprintf("%s=%s", k, v.Value))
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -213,11 +221,11 @@ func (l *LocalWorkspace) RemoveConfig(ctx context.Context, stackName string, key
 // RemoveAllConfig removes all values in the provided key list for the specified stack name
 // It will remove any matching values in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, stackName string, keys []string) error {
-	for _, k := range keys {
-		err := l.RemoveConfig(ctx, stackName, k)
-		if err != nil {
-			return err
-		}
+	args := []string{"config", "rm-all", "--stack", stackName}
+	args = append(args, keys...)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
 	}
 	return nil
 }

@@ -49,7 +49,7 @@ func newPreviewCmd() *cobra.Command {
 	var showSames bool
 	var showReads bool
 	var suppressOutputs bool
-	var suppressPermaLink bool
+	var suppressPermaLink string
 	var targets []string
 	var replaces []string
 	var targetReplaces []string
@@ -85,12 +85,29 @@ func newPreviewCmd() *cobra.Command {
 				ShowSameResources:    showSames,
 				ShowReads:            showReads,
 				SuppressOutputs:      suppressOutputs,
-				SuppressPermaLink:    suppressPermaLink,
 				IsInteractive:        cmdutil.Interactive(),
 				Type:                 displayType,
 				JSONDisplay:          jsonDisplay,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+			}
+
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			if suppressPermaLink == "true" {
+				displayOpts.SuppressPermaLink = true
+			} else {
+				displayOpts.SuppressPermaLink = false
+			}
+			filestateBackend, err := isFilestateBackend(displayOpts)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			// by default, we are going to suppress the permalink when using self-managed backends
+			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
+			if suppressPermaLink != "false" && filestateBackend {
+				displayOpts.SuppressPermaLink = true
 			}
 
 			if err := validatePolicyPackConfig(policyPackPaths, policyPackConfigPaths); err != nil {
@@ -253,13 +270,14 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showReads, "show-reads", false,
 		"Show resources that are being read in, alongside those being managed directly in the stack")
-
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
-	cmd.PersistentFlags().BoolVar(
-		&suppressPermaLink, "suppress-permalink", false,
+
+	cmd.PersistentFlags().StringVar(
+		&suppressPermaLink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
+	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 
 	if hasDebugCommands() {
 		cmd.PersistentFlags().StringVar(

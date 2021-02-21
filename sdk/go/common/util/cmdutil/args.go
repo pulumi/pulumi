@@ -44,6 +44,12 @@ func MaximumNArgs(n int) cobra.PositionalArgs {
 	return ArgsFunc(cobra.MaximumNArgs(n))
 }
 
+// MinimumNArgs is the same as cobra.MinimumNArgs, except it is wrapped with ArgsFunc to provide standard
+// Pulumi error handling.
+func MinimumNArgs(n int) cobra.PositionalArgs {
+	return ArgsFunc(cobra.MinimumNArgs(n))
+}
+
 // ExactArgs is the same as cobra.ExactArgs, except it is wrapped with ArgsFunc to provide standard
 // Pulumi error handling.
 func ExactArgs(n int) cobra.PositionalArgs {
