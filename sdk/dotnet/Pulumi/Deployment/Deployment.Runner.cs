@@ -43,7 +43,7 @@ namespace Pulumi
             public Task<int> RunAsync<TStack>() where TStack : Stack, new()
                 => RunAsync(() => new TStack());
 
-            private Task<int> RunAsync<TStack>(Func<TStack> stackFactory) where TStack : Stack
+            public Task<int> RunAsync<TStack>(Func<TStack> stackFactory) where TStack : Stack
             {
                 try
                 {

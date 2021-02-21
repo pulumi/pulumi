@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>netcoreapp3.1</TargetFramework>
@@ -19,7 +19,9 @@
 
   <ItemGroup>
     <!-- Unfortunately, we depend on static state. So we configure xUnit's runner to disable parallelization. -->
-    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="xunit.runner.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>

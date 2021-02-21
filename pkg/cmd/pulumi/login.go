@@ -152,7 +152,7 @@ func newLoginCmd() *cobra.Command {
 
 func validateCloudBackendType(typ string) error {
 	kind := strings.SplitN(typ, ":", 2)[0]
-	supportedKinds := []string{"azblob", "gs", "s3", "file", "https"}
+	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
 	for _, supportedKind := range supportedKinds {
 		if kind == supportedKind {
 			return nil
@@ -160,7 +160,7 @@ func validateCloudBackendType(typ string) error {
 	}
 	return errors.Errorf(
 		"unknown backend cloudUrl format '%s' (supported Url formats are: "+
-			"azblob://, gs://, s3://, file:// and https://)",
+			"azblob://, gs://, s3://, file://, https:// and http://)",
 		kind,
 	)
 }

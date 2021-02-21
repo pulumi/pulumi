@@ -150,7 +150,7 @@ __all__ = [
     "CommandResult",
     "OnOutput",
 
-    # config
+    # _config
     "ConfigMap",
     "ConfigValue",
 
@@ -163,14 +163,14 @@ __all__ = [
     "RuntimeError",
     "CompilationError",
 
-    # local_workspace
+    # _local_workspace
     "LocalWorkspace",
     "LocalWorkspaceOptions",
     "create_stack",
     "select_stack",
     "create_or_select_stack",
 
-    # workspace
+    # _workspace
     "PluginInfo",
     "StackSummary",
     "PulumiFn",
@@ -178,14 +178,14 @@ __all__ = [
     "Deployment",
     "WhoAmIResult",
 
-    # project_settings
+    # _project_settings
     "ProjectSettings",
     "ProjectRuntimeInfo",
 
-    # stack_settings
+    # _stack_settings
     "StackSettings",
 
-    # stack
+    # _stack
     "Stack",
     "UpdateSummary",
     "UpResult",

@@ -423,7 +423,7 @@ func (p *providerServer) Construct(ctx context.Context,
 		aliases[i] = resource.URN(urn)
 	}
 	dependencies := make([]resource.URN, len(req.GetDependencies()))
-	for i, urn := range req.GetAliases() {
+	for i, urn := range req.GetDependencies() {
 		dependencies[i] = resource.URN(urn)
 	}
 	propertyDependencies := map[resource.PropertyKey][]resource.URN{}
