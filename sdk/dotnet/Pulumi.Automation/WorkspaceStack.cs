@@ -205,7 +205,6 @@ namespace Pulumi.Automation
             UpOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
             var args = new List<string>()
@@ -213,6 +212,8 @@ namespace Pulumi.Automation
                 "up",
                 "--yes",
                 "--skip-preview",
+                "--stack",
+                this.Name,
             };
 
             if (options != null)
@@ -307,10 +308,9 @@ namespace Pulumi.Automation
             PreviewOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string>() { "preview" };
+            var args = new List<string>() { "preview", "--stack", this.Name };
 
             if (options != null)
             {
@@ -399,12 +399,13 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var args = new List<string>()
             {
                 "refresh",
                 "--yes",
                 "--skip-preview",
+                "--stack",
+                this.Name
             };
 
             if (options != null)
@@ -451,12 +452,13 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var args = new List<string>()
             {
                 "destroy",
                 "--yes",
                 "--skip-preview",
+                "--stack",
+                this.Name
             };
 
             if (options != null)
@@ -499,11 +501,9 @@ namespace Pulumi.Automation
         /// </summary>
         private async Task<ImmutableDictionary<string, OutputValue>> GetOutputAsync(CancellationToken cancellationToken)
         {
-            await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
-
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, cancellationToken).ConfigureAwait(false);
-            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
+            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--stack", this.Name }, null, cancellationToken).ConfigureAwait(false);
+            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets", "--stack", this.Name }, null, cancellationToken).ConfigureAwait(false);
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
             var maskedOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
             var plaintextOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
