@@ -20,7 +20,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -99,7 +98,7 @@ func doArchiveTest(t *testing.T, files ...fileContents) {
 }
 
 func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte, error) {
-	dir, err := ioutil.TempDir("", "archive-test")
+	dir, err := os.MkdirTemp("", "archive-test")
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +118,7 @@ func archiveContents(prefixPathInsideTar string, files ...fileContents) ([]byte,
 			return nil, err
 		}
 
-		err = ioutil.WriteFile(filepath.Join(dir, name), file.contents, 0600)
+		err = os.WriteFile(filepath.Join(dir, name), file.contents, 0600)
 		if err != nil {
 			return nil, err
 		}

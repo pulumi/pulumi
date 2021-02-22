@@ -15,14 +15,14 @@
 package stack
 
 import (
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestLoadV0Checkpoint(t *testing.T) {
-	bytes, err := ioutil.ReadFile("testdata/checkpoint-v0.json")
+	bytes, err := os.ReadFile("testdata/checkpoint-v0.json")
 	assert.NoError(t, err)
 
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
@@ -32,7 +32,7 @@ func TestLoadV0Checkpoint(t *testing.T) {
 }
 
 func TestLoadV1Checkpoint(t *testing.T) {
-	bytes, err := ioutil.ReadFile("testdata/checkpoint-v1.json")
+	bytes, err := os.ReadFile("testdata/checkpoint-v1.json")
 	assert.NoError(t, err)
 
 	chk, err := UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)

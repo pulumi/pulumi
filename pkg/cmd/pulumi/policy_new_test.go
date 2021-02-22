@@ -14,7 +14,6 @@
 package main
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -25,7 +24,7 @@ import (
 func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -45,7 +44,7 @@ func TestCreatingPolicyPackWithArgsSpecifiedName(t *testing.T) {
 func TestCreatingPolicyPackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -69,7 +68,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		t.Parallel()
-		tempdir, _ := ioutil.TempDir("", "test-env")
+		tempdir, _ := os.MkdirTemp("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.DirExists(t, tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
@@ -89,7 +88,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		t.Parallel()
 
-		tempdir, _ := ioutil.TempDir("", "test-env")
+		tempdir, _ := os.MkdirTemp("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 

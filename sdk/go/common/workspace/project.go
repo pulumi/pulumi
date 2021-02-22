@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -285,7 +284,7 @@ func LoadProject(path string) (*Project, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -313,7 +312,7 @@ func LoadPolicyPack(path string) (*PolicyPackProject, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -341,7 +340,7 @@ func LoadPluginProject(path string) (*PluginProject, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -369,7 +368,7 @@ func LoadProjectStack(path string) (*ProjectStack, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if os.IsNotExist(err) {
 		return &ProjectStack{
 			Config: make(config.Map),
@@ -423,5 +422,5 @@ func save(path string, value interface{}, mkDirAll bool) error {
 
 	// Changing the permissions on these file is ~ a breaking change, so disable golint.
 	//nolint: gosec
-	return ioutil.WriteFile(path, b, 0644)
+	return os.WriteFile(path, b, 0644)
 }

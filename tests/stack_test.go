@@ -19,7 +19,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -173,7 +172,7 @@ func TestStackCommands(t *testing.T) {
 
 				stackFile := path.Join(e.RootPath, "stack.json")
 				e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
-				stackJSON, err := ioutil.ReadFile(stackFile)
+				stackJSON, err := os.ReadFile(stackFile)
 				if !assert.NoError(t, err) {
 					t.FailNow()
 				}
@@ -187,7 +186,7 @@ func TestStackCommands(t *testing.T) {
 				deployment.Version = deploymentVersion
 				bytes, err := json.Marshal(deployment)
 				assert.NoError(t, err)
-				err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+				err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 				if !assert.NoError(t, err) {
 					t.FailNow()
 				}
@@ -223,7 +222,7 @@ func TestStackCommands(t *testing.T) {
 		// becomes invalid.
 		stackFile := path.Join(e.RootPath, "stack.json")
 		e.RunCommand("pulumi", "stack", "export", "--file", "stack.json")
-		stackJSON, err := ioutil.ReadFile(stackFile)
+		stackJSON, err := os.ReadFile(stackFile)
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -256,7 +255,7 @@ func TestStackCommands(t *testing.T) {
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
-		err = ioutil.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
+		err = os.WriteFile(stackFile, bytes, os.FileMode(os.O_CREATE))
 		if !assert.NoError(t, err) {
 			t.FailNow()
 		}
@@ -311,7 +310,7 @@ func TestStackBackups(t *testing.T) {
 		after := time.Now().UnixNano()
 
 		// Verify the backup directory contains a single backup.
-		files, err := ioutil.ReadDir(backupDir)
+		files, err := os.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames := getFileNames(files)
@@ -327,7 +326,7 @@ func TestStackBackups(t *testing.T) {
 		after = time.Now().UnixNano()
 
 		// Verify the backup directory has been updated with 1 additional backups.
-		files, err = ioutil.ReadDir(backupDir)
+		files, err = os.ReadDir(backupDir)
 		assert.NoError(t, err, "getting the files in backup directory")
 		files = filterOutAttrsFiles(files)
 		fileNames = getFileNames(files)
@@ -405,7 +404,7 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
 }
 
-func getFileNames(infos []os.FileInfo) []string {
+func getFileNames(infos []os.DirEntry) []string {
 	var result []string
 	for _, i := range infos {
 		result = append(result, i.Name())
@@ -413,8 +412,8 @@ func getFileNames(infos []os.FileInfo) []string {
 	return result
 }
 
-func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
-	var result []os.FileInfo
+func filterOutAttrsFiles(files []os.DirEntry) []os.DirEntry {
+	var result []os.DirEntry
 	for _, f := range files {
 		if filepath.Ext(f.Name()) != ".attrs" {
 			result = append(result, f)
@@ -423,9 +422,11 @@ func filterOutAttrsFiles(files []os.FileInfo) []os.FileInfo {
 	return result
 }
 
-func assertBackupStackFile(t *testing.T, stackName string, file os.FileInfo, before int64, after int64) {
+func assertBackupStackFile(t *testing.T, stackName string, file os.DirEntry, before int64, after int64) {
 	assert.False(t, file.IsDir())
-	assert.True(t, file.Size() > 0)
+	info, err := file.Info()
+	assert.NoError(t, err)
+	assert.True(t, info.Size() > 0)
 	split := strings.Split(file.Name(), ".")
 	assert.Equal(t, 3, len(split), "Split: %s", strings.Join(split, ", "))
 	assert.Equal(t, stackName, split[0])

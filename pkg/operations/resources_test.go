@@ -16,7 +16,7 @@ package operations
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,7 +27,7 @@ import (
 
 func getPulumiResources(t *testing.T, path string) *Resource {
 	var checkpoint apitype.CheckpointV3
-	byts, err := ioutil.ReadFile(path)
+	byts, err := os.ReadFile(path)
 	assert.NoError(t, err)
 	err = json.Unmarshal(byts, &checkpoint)
 	assert.NoError(t, err)

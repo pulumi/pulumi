@@ -2,7 +2,7 @@ package gen
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -18,7 +18,7 @@ import (
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 func TestGenProgram(t *testing.T) {
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -30,11 +30,11 @@ func TestGenProgram(t *testing.T) {
 
 		t.Run(f.Name(), func(t *testing.T) {
 			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
+			contents, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", path, err)
 			}
-			expected, err := ioutil.ReadFile(path + ".go")
+			expected, err := os.ReadFile(path + ".go")
 			if err != nil {
 				t.Fatalf("could not read %v: %v", path+".go", err)
 			}
@@ -79,7 +79,7 @@ func TestCollectImports(t *testing.T) {
 }
 
 func newTestGenerator(t *testing.T, testFile string) *generator {
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -90,7 +90,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 		}
 
 		path := filepath.Join(testdataPath, f.Name())
-		contents, err := ioutil.ReadFile(path)
+		contents, err := os.ReadFile(path)
 		if err != nil {
 			t.Fatalf("could not read %v: %v", path, err)
 		}

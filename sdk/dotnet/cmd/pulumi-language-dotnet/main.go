@@ -17,7 +17,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -320,7 +319,7 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(versionFilePath)
+	b, err := os.ReadFile(versionFilePath)
 	if err != nil {
 		logging.V(5).Infof("GetRequiredPlugins: err: %v", err)
 		return nil, err

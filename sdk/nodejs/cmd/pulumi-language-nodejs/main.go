@@ -32,18 +32,18 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 
-	"github.com/hashicorp/go-multierror"
-
+	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/hashicorp/go-multierror"
 	opentracing "github.com/opentracing/opentracing-go"
-
 	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
@@ -52,9 +52,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
-	"google.golang.org/grpc"
-
-	"github.com/blang/semver"
 )
 
 const (
@@ -240,7 +237,7 @@ func getPluginsFromDir(
 	dir string, pulumiPackagePathToVersionMap map[string]semver.Version,
 	inNodeModules bool) ([]*pulumirpc.PluginDependency, error) {
 
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, errors.Wrapf(err, "reading plugin dir %s", dir)
 	}
@@ -251,12 +248,6 @@ func getPluginsFromDir(
 		name := file.Name()
 		curr := filepath.Join(dir, name)
 
-		// Re-stat the directory, in case it is a symlink.
-		file, err = os.Stat(curr)
-		if err != nil {
-			allErrors = multierror.Append(allErrors, err)
-			continue
-		}
 		if file.IsDir() {
 			// if a directory, recurse.
 			more, err := getPluginsFromDir(
@@ -268,7 +259,7 @@ func getPluginsFromDir(
 			plugins = append(plugins, more...)
 		} else if inNodeModules && name == "package.json" {
 			// if a package.json file within a node_modules package, parse it, and see if it's a source of plugins.
-			b, err := ioutil.ReadFile(curr)
+			b, err := os.ReadFile(curr)
 			if err != nil {
 				allErrors = multierror.Append(allErrors, errors.Wrapf(err, "reading package.json %s", curr))
 				continue

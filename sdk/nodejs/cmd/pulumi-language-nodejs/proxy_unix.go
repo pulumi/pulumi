@@ -18,7 +18,6 @@ package main
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"syscall"
@@ -31,7 +30,7 @@ import (
 // files that we can communicate over.  Slightly complex as this involves extra cleanup steps to
 // ensure they're cleaned up when we're done.
 func createPipes() (pipes, error) {
-	dir, err := ioutil.TempDir("", "pulumi-node-pipes")
+	dir, err := os.MkdirTemp("", "pulumi-node-pipes")
 	if err != nil {
 		return nil, err
 	}

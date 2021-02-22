@@ -22,7 +22,6 @@ import (
 	"compress/gzip"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -72,9 +71,9 @@ func prepareTestDir(t *testing.T, files map[string][]byte) (string, io.ReadClose
 
 	tgz, err := createTGZ(files)
 	assert.NoError(t, err)
-	tarball := ioutil.NopCloser(bytes.NewReader(tgz))
+	tarball := io.NopCloser(bytes.NewReader(tgz))
 
-	dir, err := ioutil.TempDir("", "plugins-test-dir")
+	dir, err := os.MkdirTemp("", "plugins-test-dir")
 	assert.NoError(t, err)
 
 	v1 := semver.MustParse("0.1.0")
@@ -164,7 +163,7 @@ func TestInstallNoDeps(t *testing.T) {
 
 	assertPluginInstalled(t, dir, plugin)
 
-	b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+	b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 	assert.NoError(t, err)
 	assert.Equal(t, content, b)
 
@@ -181,7 +180,7 @@ func TestConcurrentInstalls(t *testing.T) {
 	assertSuccess := func() {
 		assertPluginInstalled(t, dir, plugin)
 
-		b, err := ioutil.ReadFile(filepath.Join(dir, plugin.Dir(), name))
+		b, err := os.ReadFile(filepath.Join(dir, plugin.Dir(), name))
 		assert.NoError(t, err)
 		assert.Equal(t, content, b)
 	}
@@ -212,16 +211,16 @@ func TestInstallCleansOldFiles(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	// Leftover temp dirs.
-	tempDir1, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir1, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
 	assert.NoError(t, err)
-	tempDir2, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir2, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
 	assert.NoError(t, err)
-	tempDir3, err := ioutil.TempDir(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
+	tempDir3, err := os.MkdirTemp(dir, fmt.Sprintf("%s.tmp", plugin.Dir()))
 	assert.NoError(t, err)
 
 	// Leftover partial file.
 	partialPath := filepath.Join(dir, plugin.Dir()+".partial")
-	err = ioutil.WriteFile(partialPath, nil, 0600)
+	err = os.WriteFile(partialPath, nil, 0600)
 	assert.NoError(t, err)
 
 	err = plugin.Install(tarball)
@@ -246,7 +245,7 @@ func TestGetPluginsSkipsPartial(t *testing.T) {
 	err := plugin.Install(tarball)
 	assert.NoError(t, err)
 
-	err = ioutil.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)
+	err = os.WriteFile(filepath.Join(dir, plugin.Dir()+".partial"), nil, 0600)
 	assert.NoError(t, err)
 
 	assert.False(t, HasPlugin(plugin))

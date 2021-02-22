@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -101,7 +100,7 @@ func (repo TemplateRepository) Templates() ([]Template, error) {
 
 	// Otherwise, read all subdirectories to find the ones
 	// that contain a Pulumi.yaml.
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -151,7 +150,7 @@ func (repo TemplateRepository) PolicyTemplates() ([]PolicyPackTemplate, error) {
 
 	// Otherwise, read all subdirectories to find the ones
 	// that contain a PulumiPolicy.yaml.
-	infos, err := ioutil.ReadDir(path)
+	infos, err := os.ReadDir(path)
 	if err != nil {
 		return nil, err
 	}
@@ -252,7 +251,7 @@ func retrieveURLTemplates(rawurl string, offline bool, templateKind TemplateKind
 
 	// Create a temp dir.
 	var temp string
-	if temp, err = ioutil.TempDir("", "pulumi-template-"); err != nil {
+	if temp, err = os.MkdirTemp("", "pulumi-template-"); err != nil {
 		return TemplateRepository{}, err
 	}
 
@@ -407,7 +406,7 @@ func LoadTemplate(path string) (Template, error) {
 func CopyTemplateFilesDryRun(sourceDir, destDir, projectName string) error {
 	var existing []string
 	if err := walkFiles(sourceDir, destDir, projectName,
-		func(info os.FileInfo, source string, dest string) error {
+		func(info os.DirEntry, source string, dest string) error {
 			if destInfo, statErr := os.Stat(dest); statErr == nil && !destInfo.IsDir() {
 				existing = append(existing, filepath.Base(dest))
 			}
@@ -427,14 +426,14 @@ func CopyTemplateFiles(
 	sourceDir, destDir string, force bool, projectName string, projectDescription string) error {
 
 	return walkFiles(sourceDir, destDir, projectName,
-		func(info os.FileInfo, source string, dest string) error {
+		func(info os.DirEntry, source string, dest string) error {
 			if info.IsDir() {
 				// Create the destination directory.
 				return os.Mkdir(dest, 0700)
 			}
 
 			// Read the source file.
-			b, err := ioutil.ReadFile(source)
+			b, err := os.ReadFile(source)
 			if err != nil {
 				return err
 			}
@@ -609,13 +608,13 @@ func getValidProjectName(name string) string {
 // walkFiles is a helper that walks the directories/files in a source directory
 // and performs an action for each item.
 func walkFiles(sourceDir string, destDir string, projectName string,
-	actionFn func(info os.FileInfo, source string, dest string) error) error {
+	actionFn func(info os.DirEntry, source string, dest string) error) error {
 
 	contract.Require(sourceDir != "", "sourceDir")
 	contract.Require(destDir != "", "destDir")
 	contract.Require(actionFn != nil, "actionFn")
 
-	infos, err := ioutil.ReadDir(sourceDir)
+	infos, err := os.ReadDir(sourceDir)
 	if err != nil {
 		return err
 	}
@@ -673,7 +672,7 @@ func newTemplateNotFoundError(templateDir string, templateName string) error {
 	message := fmt.Sprintf("template '%s' not found", templateName)
 
 	// Attempt to read the directory to offer suggestions.
-	infos, err := ioutil.ReadDir(templateDir)
+	infos, err := os.ReadDir(templateDir)
 	if err != nil {
 		contract.IgnoreError(err)
 		return errors.New(message)

@@ -17,7 +17,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -33,7 +32,7 @@ import (
 func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -56,7 +55,7 @@ func TestCreatingStackWithArgsSpecifiedName(t *testing.T) {
 func TestFailInInteractiveWithoutYes(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -76,7 +75,7 @@ func TestFailInInteractiveWithoutYes(t *testing.T) {
 func TestCreatingStackWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 	uniqueProjectName := filepath.Base(tempdir)
@@ -98,7 +97,7 @@ func TestCreatingStackWithPromptedName(t *testing.T) {
 func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -123,7 +122,7 @@ func TestCreatingStackWithArgsSpecifiedOrgName(t *testing.T) {
 func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -147,7 +146,7 @@ func TestCreatingStackWithPromptedOrgName(t *testing.T) {
 func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -174,7 +173,7 @@ func TestCreatingStackWithArgsSpecifiedFullNameSucceeds(t *testing.T) {
 func TestCreatingProjectWithDefaultName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 	defaultProjectName := filepath.Base(tempdir)
@@ -204,7 +203,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, strings.HasPrefix(b.URL(), "https://app.pulumi.com"))
 
-	fileStateDir, _ := ioutil.TempDir("", "local-state-dir")
+	fileStateDir, _ := os.MkdirTemp("", "local-state-dir")
 	defer os.RemoveAll(fileStateDir)
 
 	// Now override to local filesystem backend
@@ -217,7 +216,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 	}()
 
 	backendInstance = nil
-	tempdir, _ := ioutil.TempDir("", "test-env-local")
+	tempdir, _ := os.MkdirTemp("", "test-env-local")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 	defaultProjectName := filepath.Base(tempdir)
@@ -246,7 +245,7 @@ func TestCreatingProjectWithPulumiBackendURL(t *testing.T) {
 func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 	uniqueProjectName := filepath.Base(tempdir) + "test"
@@ -273,7 +272,7 @@ func TestCreatingProjectWithArgsSpecifiedName(t *testing.T) {
 func TestCreatingProjectWithPromptedName(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 	uniqueProjectName := filepath.Base(tempdir) + "test"
@@ -297,7 +296,7 @@ func TestCreatingProjectWithPromptedName(t *testing.T) {
 func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -324,7 +323,7 @@ func TestCreatingProjectWithExistingArgsSpecifiedNameFails(t *testing.T) {
 func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -349,7 +348,7 @@ func TestCreatingProjectWithExistingPromptedNameFails(t *testing.T) {
 func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -380,7 +379,7 @@ func TestGeneratingProjectWithExistingArgsSpecifiedNameSucceeds(t *testing.T) {
 func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -409,7 +408,7 @@ func TestGeneratingProjectWithExistingPromptedNameSucceeds(t *testing.T) {
 func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -438,7 +437,7 @@ func TestGeneratingProjectWithInvalidArgsSpecifiedNameFails(t *testing.T) {
 func TestGeneratingProjectWithInvalidPromptedNameFails(t *testing.T) {
 	skipIfShortOrNoPulumiAccessToken(t)
 
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -475,7 +474,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 	t.Run("NoTemplateSpecified", func(t *testing.T) {
 		t.Parallel()
-		tempdir, _ := ioutil.TempDir("", "test-env")
+		tempdir, _ := os.MkdirTemp("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 
@@ -494,7 +493,7 @@ func TestInvalidTemplateName(t *testing.T) {
 
 	t.Run("RemoteTemplateNotFound", func(t *testing.T) {
 		t.Parallel()
-		tempdir, _ := ioutil.TempDir("", "test-env")
+		tempdir, _ := os.MkdirTemp("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 
@@ -517,7 +516,7 @@ func TestInvalidTemplateName(t *testing.T) {
 	t.Run("LocalTemplateNotFound", func(t *testing.T) {
 		t.Parallel()
 
-		tempdir, _ := ioutil.TempDir("", "test-env")
+		tempdir, _ := os.MkdirTemp("", "test-env")
 		defer os.RemoveAll(tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 

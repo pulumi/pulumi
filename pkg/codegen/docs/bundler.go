@@ -24,7 +24,6 @@ import (
 	"bytes"
 	"fmt"
 	"go/format"
-	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -88,7 +87,7 @@ func fmtByteSlice(s []byte) string {
 //
 // NOTE: Sub-directories are currently not supported.
 func main() {
-	files, err := ioutil.ReadDir(docsTemplatesPath)
+	files, err := os.ReadDir(docsTemplatesPath)
 	if err != nil {
 		log.Fatalf("Error reading the templates dir: %v", err)
 	}
@@ -98,7 +97,7 @@ func main() {
 		if f.IsDir() {
 			fmt.Printf("%q is a dir. Skipping...\n", f.Name())
 		}
-		b, err := ioutil.ReadFile(docsTemplatesPath + "/" + f.Name())
+		b, err := os.ReadFile(docsTemplatesPath + "/" + f.Name())
 		if err != nil {
 			log.Fatalf("Error reading file %s: %v", f.Name(), err)
 		}
@@ -126,7 +125,7 @@ func main() {
 		log.Fatal("Error formatting generated code", err)
 	}
 
-	if err = ioutil.WriteFile(generatedFileName, data, os.ModePerm); err != nil {
+	if err = os.WriteFile(generatedFileName, data, os.ModePerm); err != nil {
 		log.Fatal("Error writing file", err)
 	}
 }

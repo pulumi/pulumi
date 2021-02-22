@@ -16,7 +16,7 @@ package test
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -30,7 +30,7 @@ type GenPkgSignature func(string, *schema.Package, map[string][]byte) (map[strin
 // GeneratePackageFilesFromSchema loads a schema and generates files using the provided GeneratePackage function.
 func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSignature) (map[string][]byte, error) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(schemaPath)
+	schemaBytes, err := os.ReadFile(schemaPath)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	result := map[string][]byte{}
 	for _, file := range files {
-		fileBytes, err := ioutil.ReadFile(filepath.Join(dir, lang, file))
+		fileBytes, err := os.ReadFile(filepath.Join(dir, lang, file))
 		if err != nil {
 			return nil, err
 		}

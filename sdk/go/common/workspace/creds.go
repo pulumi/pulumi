@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -180,7 +179,7 @@ func GetStoredCredentials() (Credentials, error) {
 		return Credentials{}, err
 	}
 
-	c, err := ioutil.ReadFile(credsFile)
+	c, err := os.ReadFile(credsFile)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return Credentials{}, nil
@@ -227,7 +226,7 @@ func StoreCredentials(creds Credentials) error {
 
 	// Use a temporary file and atomic os.Rename to ensure the file contents are
 	// updated atomically to ensure concurrent `pulumi` CLI operations are safe.
-	tempCredsFile, err := ioutil.TempFile(filepath.Dir(credsFile), "credentials-*.json")
+	tempCredsFile, err := os.CreateTemp(filepath.Dir(credsFile), "credentials-*.json")
 	if err != nil {
 		return err
 	}

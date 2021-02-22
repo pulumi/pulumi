@@ -15,7 +15,6 @@
 package fsutil
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 )
@@ -32,7 +31,7 @@ func WalkUp(path string, walkFn func(string) bool, visitParentFn func(string) bo
 
 	for {
 		// visit each file
-		files, err := ioutil.ReadDir(curr)
+		files, err := os.ReadDir(curr)
 		if err != nil {
 			return "", err
 		}

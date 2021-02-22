@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -303,7 +302,7 @@ func (a *Asset) Bytes() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(blob)
+	return io.ReadAll(blob)
 }
 
 // Read begins reading an asset.
@@ -413,7 +412,7 @@ func (blob *Blob) Size() int64                { return blob.sz }
 // NewByteBlob creates a new byte blob.
 func NewByteBlob(data []byte) *Blob {
 	return &Blob{
-		rd: ioutil.NopCloser(bytes.NewReader(data)),
+		rd: io.NopCloser(bytes.NewReader(data)),
 		sz: int64(len(data)),
 	}
 }
@@ -438,7 +437,7 @@ func NewReadCloserBlob(r io.ReadCloser) (*Blob, error) {
 	}
 	// Otherwise, read it all in, and create a blob out of that.
 	defer contract.IgnoreClose(r)
-	data, err := ioutil.ReadAll(r)
+	data, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -1173,7 +1172,7 @@ func readArchive(ar io.ReadCloser, format ArchiveFormat) (ArchiveReader, error) 
 			}
 			ra = f
 			sz = stat.Size()
-		} else if data, err := ioutil.ReadAll(ar); err != nil {
+		} else if data, err := io.ReadAll(ar); err != nil {
 			return nil, err
 		} else {
 			ra = bytes.NewReader(data)
@@ -1205,7 +1204,7 @@ func (r *tarArchiveReader) Next() (string, *Blob, error) {
 		case tar.TypeReg:
 			// Return the tar reader for this file's contents.
 			data := &Blob{
-				rd: ioutil.NopCloser(r.tr),
+				rd: io.NopCloser(r.tr),
 				sz: file.Size,
 			}
 			name := filepath.Clean(file.Name)

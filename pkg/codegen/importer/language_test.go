@@ -17,7 +17,6 @@ package importer
 import (
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
@@ -46,7 +45,7 @@ func TestGenerateLanguageDefinition(t *testing.T) {
 			}
 
 			var actualState *resource.State
-			err = GenerateLanguageDefinitions(ioutil.Discard, loader, func(_ io.Writer, p *hcl2.Program) error {
+			err = GenerateLanguageDefinitions(io.Discard, loader, func(_ io.Writer, p *hcl2.Program) error {
 				if !assert.Len(t, p.Nodes, 1) {
 					t.Fatal()
 				}

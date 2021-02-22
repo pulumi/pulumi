@@ -15,7 +15,6 @@
 package npm
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +38,7 @@ func testInstall(t *testing.T, expectedBin string) {
 	}
 
 	// Create a new empty test directory and change the current working directory to it.
-	tempdir, _ := ioutil.TempDir("", "test-env")
+	tempdir, _ := os.MkdirTemp("", "test-env")
 	defer os.RemoveAll(tempdir)
 	assert.NoError(t, os.Chdir(tempdir))
 
@@ -55,7 +54,7 @@ func testInstall(t *testing.T, expectedBin string) {
 	        "@pulumi/pulumi": "^2.0.0"
 	    }
 	}`)
-	assert.NoError(t, ioutil.WriteFile(packageJSONFilename, packageJSON, 0600))
+	assert.NoError(t, os.WriteFile(packageJSONFilename, packageJSON, 0600))
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).

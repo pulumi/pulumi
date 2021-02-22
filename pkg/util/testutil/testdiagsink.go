@@ -15,7 +15,7 @@
 package testutil
 
 import (
-	"io/ioutil"
+	"io"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 )
@@ -30,7 +30,7 @@ type TestDiagSink struct {
 func NewTestDiagSink(pwd string) *TestDiagSink {
 	return &TestDiagSink{
 		Pwd: pwd,
-		sink: diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{
+		sink: diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{
 			Pwd: pwd,
 		}),
 		messages: make(map[diag.Severity][]string),

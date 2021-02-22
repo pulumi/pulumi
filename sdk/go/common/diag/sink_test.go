@@ -16,7 +16,6 @@ package diag
 
 import (
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -27,11 +26,11 @@ import (
 func discardSink() Sink {
 	// Create a new default sink with /dev/null writers to avoid spamming the test log.
 	return newDefaultSink(FormatOptions{Color: colors.Never}, map[Severity]io.Writer{
-		Debug:   ioutil.Discard,
-		Info:    ioutil.Discard,
-		Infoerr: ioutil.Discard,
-		Error:   ioutil.Discard,
-		Warning: ioutil.Discard,
+		Debug:   io.Discard,
+		Info:    io.Discard,
+		Infoerr: io.Discard,
+		Error:   io.Discard,
+		Warning: io.Discard,
 	})
 }
 

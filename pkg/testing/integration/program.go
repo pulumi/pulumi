@@ -22,7 +22,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1328,7 +1327,7 @@ func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
 		}
 	} else {
 		// Create a new temporary directory
-		newDir, err := ioutil.TempDir("", pt.opts.StackName+"-")
+		newDir, err := os.MkdirTemp("", pt.opts.StackName+"-")
 		if err != nil {
 			return errors.Wrapf(err, "Couldn't create new temporary directory")
 		}
@@ -1434,7 +1433,8 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	stackName := pt.opts.GetStackName()
 
 	// Create a temporary file name for the stack export
-	tempDir, err := ioutil.TempDir("", string(stackName))
+	// Create a temporary file name for the stack export
+	tempDir, err := os.MkdirTemp("", string(stackName))
 	if err != nil {
 		return err
 	}
@@ -1553,7 +1553,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		tmpdir = targetDir
 		projdir = targetDir
 	} else {
-		targetDir, tempErr := ioutil.TempDir("", stackName+"-")
+		targetDir, tempErr := os.MkdirTemp("", stackName+"-")
 		if tempErr != nil {
 			return "", "", errors.Wrap(tempErr, "Couldn't create temporary directory")
 		}
@@ -1590,7 +1590,7 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 				"@pulumi/pulumi": "latest"
 			}
 		}`
-		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
+		if err := os.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
 			return "", "", err
 		}
 		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {

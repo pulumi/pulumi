@@ -2,7 +2,7 @@ package dotnet
 
 import (
 	"bytes"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -18,7 +18,7 @@ import (
 var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 func TestGenProgram(t *testing.T) {
-	files, err := ioutil.ReadDir(testdataPath)
+	files, err := os.ReadDir(testdataPath)
 	if err != nil {
 		t.Fatalf("could not read test data: %v", err)
 	}
@@ -35,11 +35,11 @@ func TestGenProgram(t *testing.T) {
 
 		t.Run(f.Name(), func(t *testing.T) {
 			path := filepath.Join(testdataPath, f.Name())
-			contents, err := ioutil.ReadFile(path)
+			contents, err := os.ReadFile(path)
 			if err != nil {
 				t.Fatalf("could not read %v: %v", path, err)
 			}
-			expected, err := ioutil.ReadFile(path + ".cs")
+			expected, err := os.ReadFile(path + ".cs")
 			if err != nil {
 				t.Fatalf("could not read %v: %v", path+".cs", err)
 			}

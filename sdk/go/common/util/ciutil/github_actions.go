@@ -17,7 +17,6 @@ package ciutil
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 )
@@ -84,7 +83,7 @@ func (t githubActionsCI) GetPREvent() *githubActionsPullRequestEvent {
 		return nil
 	}
 
-	b, err := ioutil.ReadFile(eventPath)
+	b, err := os.ReadFile(eventPath)
 	if err != nil {
 		return nil
 	}

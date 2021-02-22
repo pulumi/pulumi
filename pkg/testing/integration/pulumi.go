@@ -16,7 +16,6 @@ package integration
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path"
 	"strings"
@@ -34,7 +33,7 @@ func CreateBasicPulumiRepo(e *testing.Environment) {
 	contents := "name: pulumi-test\ndescription: a test\nruntime: nodejs\n"
 	filePath := fmt.Sprintf("%s.yaml", workspace.ProjectFile)
 	filePath = path.Join(e.CWD, filePath)
-	err := ioutil.WriteFile(filePath, []byte(contents), os.ModePerm)
+	err := os.WriteFile(filePath, []byte(contents), os.ModePerm)
 	assert.NoError(e, err, "writing %s file", filePath)
 }
 

@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -350,7 +349,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 	}
 
 	// Create an empty partial file to indicate installation is in-progress.
-	if err := ioutil.WriteFile(partialFilePath, nil, 0600); err != nil {
+	if err := os.WriteFile(partialFilePath, nil, 0600); err != nil {
 		return err
 	}
 
@@ -402,14 +401,14 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 func cleanupTempDirs(finalDir string) error {
 	dir := filepath.Dir(finalDir)
 
-	infos, err := ioutil.ReadDir(dir)
+	infos, err := os.ReadDir(dir)
 	if err != nil {
 		return err
 	}
 
 	for _, info := range infos {
 		// Temp dirs have a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number,
-		// from ioutil.TempFile.
+		// from io.CreateTemp.
 		if info.IsDir() && installingPluginRegexp.MatchString(info.Name()) {
 			path := filepath.Join(dir, info.Name())
 			if err := os.RemoveAll(path); err != nil {
@@ -544,7 +543,7 @@ func GetPlugins() ([]PluginInfo, error) {
 }
 
 func getPlugins(dir string) ([]PluginInfo, error) {
-	files, err := ioutil.ReadDir(dir)
+	files, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
@@ -791,11 +790,11 @@ var pluginRegexp = regexp.MustCompile(
 
 // installingPluginRegexp matches the name of temporary folders. Previous versions of Pulumi first extracted
 // plugins to a temporary folder with a suffix of `.tmpXXXXXX` (where `XXXXXX`) is a random number, from
-// ioutil.TempFile. We should ignore these folders.
+// os.CreateTemp. We should ignore these folders.
 var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
-func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
+func tryPlugin(file os.DirEntry) (PluginKind, string, semver.Version, bool) {
 	// Only directories contain plugins.
 	if !file.IsDir() {
 		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
@@ -860,7 +859,7 @@ func getPluginSize(path string) (int64, error) {
 
 	size := int64(0)
 	if file.IsDir() {
-		subs, err := ioutil.ReadDir(path)
+		subs, err := os.ReadDir(path)
 		if err != nil {
 			return 0, err
 		}

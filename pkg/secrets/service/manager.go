@@ -19,7 +19,7 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 
 	"github.com/pkg/errors"
 
@@ -130,7 +130,7 @@ func NewServiceSecretsManagerFromState(state json.RawMessage) (secrets.Manager, 
 		Project: s.Project,
 		Stack:   s.Stack,
 	}
-	c := client.NewClient(s.URL, token, diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{}))
+	c := client.NewClient(s.URL, token, diag.DefaultSink(io.Discard, io.Discard, diag.FormatOptions{}))
 
 	return &serviceSecretsManager{
 		state:   s,

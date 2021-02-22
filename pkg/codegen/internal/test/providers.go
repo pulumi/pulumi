@@ -1,7 +1,7 @@
 package test
 
 import (
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
@@ -9,7 +9,7 @@ import (
 )
 
 func GetSchema(schemaDirectoryPath, providerName string) ([]byte, error) {
-	return ioutil.ReadFile(filepath.Join(schemaDirectoryPath, providerName+".json"))
+	return os.ReadFile(filepath.Join(schemaDirectoryPath, providerName+".json"))
 }
 
 func AWS(schemaDirectoryPath string) (plugin.Provider, error) {

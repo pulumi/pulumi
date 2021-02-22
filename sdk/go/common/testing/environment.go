@@ -17,7 +17,6 @@ package testing
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -56,7 +55,7 @@ func WriteYarnRCForTest(root string) error {
 	// https://github.com/yarnpkg/yarn/issues/683
 	// Also add --network-concurrency 1 since we've been seeing
 	// https://github.com/yarnpkg/yarn/issues/4563 as well
-	return ioutil.WriteFile(
+	return os.WriteFile(
 		filepath.Join(root, ".yarnrc"),
 		[]byte("--mutex network\n--network-concurrency 1\n"), 0600)
 }
@@ -78,7 +77,7 @@ func NewGoEnvironment(t *testing.T) *Environment {
 
 // NewEnvironment returns a new Environment object, located in a temp directory.
 func NewEnvironment(t *testing.T) *Environment {
-	root, err := ioutil.TempDir("", "test-env")
+	root, err := os.MkdirTemp("", "test-env")
 	assert.NoError(t, err, "creating temp directory")
 	assert.NoError(t, WriteYarnRCForTest(root), "writing .yarnrc file")
 
@@ -192,7 +191,7 @@ func (e *Environment) WriteTestFile(filename string, contents string) {
 		e.T.Fatalf("error making directories for test file (%v): %v", filename, err)
 	}
 
-	if err := ioutil.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
+	if err := os.WriteFile(filename, []byte(contents), os.ModePerm); err != nil {
 		e.T.Fatalf("writing test file (%v): %v", filename, err)
 	}
 }

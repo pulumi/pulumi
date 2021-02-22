@@ -18,7 +18,6 @@ import (
 	"bufio"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -66,7 +65,7 @@ func (plugin *PulumiPluginJSON) JSON() ([]byte, error) {
 }
 
 func LoadPulumiPluginJSON(path string) (*PulumiPluginJSON, error) {
-	b, err := ioutil.ReadFile(path)
+	b, err := os.ReadFile(path)
 	if err != nil {
 		// Deliberately not wrapping the error here so that os.IsNotExist checks can be used to determine
 		// if the file could not be opened due to it not existing.

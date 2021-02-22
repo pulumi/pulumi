@@ -976,7 +976,7 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 
 var functionPackages = map[string][]string{
 	"toJSON":   {"encoding/json"},
-	"readDir":  {"io/ioutil"},
+	"readDir":  {"os"},
 	"mimeType": {"mime", "path"},
 }
 

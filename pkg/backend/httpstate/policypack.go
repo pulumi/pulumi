@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -256,7 +255,7 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 		return errors.Wrap(err, "creating plugin root")
 	}
 
-	tempDir, err := ioutil.TempDir(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
+	tempDir, err := os.MkdirTemp(filepath.Dir(finalDir), fmt.Sprintf("%s.tmp", filepath.Base(finalDir)))
 	if err != nil {
 		return errors.Wrapf(err, "creating plugin directory %s", tempDir)
 	}

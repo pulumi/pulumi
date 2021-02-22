@@ -17,8 +17,8 @@ package schema
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"net/url"
+	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -29,7 +29,7 @@ import (
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	// Read in, decode, and import the schema.
-	schemaBytes, err := ioutil.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
+	schemaBytes, err := os.ReadFile(filepath.Join("..", "internal", "test", "testdata", file))
 	if err != nil {
 		panic(err)
 	}
@@ -187,7 +187,7 @@ func TestImportResourceRef(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Read in, decode, and import the schema.
-			schemaBytes, err := ioutil.ReadFile(
+			schemaBytes, err := os.ReadFile(
 				filepath.Join("..", "internal", "test", "testdata", tt.schemaFile))
 			assert.NoError(t, err)
 

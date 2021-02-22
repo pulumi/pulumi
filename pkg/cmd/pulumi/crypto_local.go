@@ -18,7 +18,6 @@ import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -43,7 +42,7 @@ func readPassphrase(prompt string) (phrase string, interactive bool, err error) 
 		if err != nil {
 			return "", false, errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
 		}
-		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+		phraseDetails, err := os.ReadFile(phraseFilePath)
 		if err != nil {
 			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
 		}

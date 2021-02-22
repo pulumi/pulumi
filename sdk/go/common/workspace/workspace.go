@@ -19,7 +19,6 @@ import (
 	"crypto/sha1"
 	"encoding/hex"
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -140,13 +139,13 @@ func (pw *projectWorkspace) Save() error {
 		return err
 	}
 
-	return ioutil.WriteFile(settingsFile, b, 0600)
+	return os.WriteFile(settingsFile, b, 0600)
 }
 
 func (pw *projectWorkspace) readSettings() error {
 	settingsPath := pw.settingsPath()
 
-	b, err := ioutil.ReadFile(settingsPath)
+	b, err := os.ReadFile(settingsPath)
 	if err != nil && os.IsNotExist(err) {
 		// not an error to not have an existing settings file.
 		pw.settings = &Settings{}
