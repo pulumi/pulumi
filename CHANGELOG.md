@@ -32,6 +32,9 @@ _(none)_
 - [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js
   component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
 
+- [cli] Skip unnecessary state file writes to address performance regression introduced in 2.16.2.
+  [#6396](https://github.com/pulumi/pulumi/pulls/6396)
+
 ## 2.21.1 (2021-02-18)
 
 ### Bug Fixes
