@@ -242,7 +242,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json"}
+	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -255,7 +255,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, args...)
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
@@ -722,8 +722,8 @@ type PropertyDiff struct {
 
 // PreviewResult is the output of Stack.Preview() describing the expected set of changes from the next Stack.Up()
 type PreviewResult struct {
-	Steps         []PreviewStep  `json:"steps"`
-	ChangeSummary map[string]int `json:"changeSummary"`
+	StdOut string
+	StdErr string
 }
 
 // RefreshResult is the output of a successful Stack.Refresh operation

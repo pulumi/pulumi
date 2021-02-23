@@ -17,6 +17,8 @@
 package optpreview
 
 import (
+	"io"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 )
 
@@ -70,6 +72,13 @@ func TargetDependents() Option {
 	})
 }
 
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+func ProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ProgressStreams = writers
+	})
+}
+
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
 		opts.DebugLogOpts = debugOpts
@@ -100,6 +109,8 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+	ProgressStreams []io.Writer
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
 }
