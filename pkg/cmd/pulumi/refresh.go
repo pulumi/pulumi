@@ -109,7 +109,7 @@ func newRefreshCmd() *cobra.Command {
 				opts.Display.SuppressPermaLink = true
 			}
 
-			s, err := requireStack(stack, true, opts.Display, true /*setCurrent*/)
+			s, err := requireStack(stack, true, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}

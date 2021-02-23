@@ -113,7 +113,7 @@ func newDestroyCmd() *cobra.Command {
 				opts.Display.SuppressPermaLink = true
 			}
 
-			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
+			s, err := requireStack(stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}

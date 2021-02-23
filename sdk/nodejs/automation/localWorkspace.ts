@@ -379,8 +379,7 @@ export class LocalWorkspace implements Workspace {
      * @param key The key to use for the config lookup
      */
     async getConfig(stackName: string, key: string): Promise<ConfigValue> {
-        await this.selectStack(stackName);
-        const result = await this.runPulumiCmd(["config", "get", key, "--json"]);
+        const result = await this.runPulumiCmd(["config", "get", key, "--json", "--stack", stackName]);
         return JSON.parse(result.stdout);
     }
     /**
@@ -390,8 +389,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to read config from
      */
     async getAllConfig(stackName: string): Promise<ConfigMap> {
-        await this.selectStack(stackName);
-        const result = await this.runPulumiCmd(["config", "--show-secrets", "--json"]);
+        const result = await this.runPulumiCmd(["config", "--show-secrets", "--json", "--stack", stackName]);
         return JSON.parse(result.stdout);
     }
     /**
@@ -403,9 +401,8 @@ export class LocalWorkspace implements Workspace {
      * @param value The value to set
      */
     async setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
-        await this.selectStack(stackName);
         const secretArg = value.secret ? "--secret" : "--plaintext";
-        await this.runPulumiCmd(["config", "set", key, value.value, secretArg]);
+        await this.runPulumiCmd(["config", "set", key, value.value, secretArg, "--stack", stackName]);
     }
     /**
      * Sets all values in the provided config map for the specified stack name.
@@ -431,8 +428,7 @@ export class LocalWorkspace implements Workspace {
      * @param key The config key to remove
      */
     async removeConfig(stackName: string, key: string): Promise<void> {
-        await this.selectStack(stackName);
-        await this.runPulumiCmd(["config", "rm", key]);
+        await this.runPulumiCmd(["config", "rm", key, "--stack", stackName]);
     }
     /**
      *
@@ -452,8 +448,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to refresh
      */
     async refreshConfig(stackName: string): Promise<ConfigMap> {
-        await this.selectStack(stackName);
-        await this.runPulumiCmd(["config", "refresh", "--force"]);
+        await this.runPulumiCmd(["config", "refresh", "--force", "--stack", stackName]);
         return this.getAllConfig(stackName);
     }
     /**
@@ -531,8 +526,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName the name of the stack.
      */
     async exportStack(stackName: string): Promise<Deployment> {
-        await this.selectStack(stackName);
-        const result = await this.runPulumiCmd(["stack", "export", "--show-secrets"]);
+        const result = await this.runPulumiCmd(["stack", "export", "--show-secrets", "--stack", stackName]);
         return JSON.parse(result.stdout);
     }
     /**
@@ -543,12 +537,11 @@ export class LocalWorkspace implements Workspace {
      * @param state the stack state to import.
      */
     async importStack(stackName: string, state: Deployment): Promise<void> {
-        await this.selectStack(stackName);
         const randomSuffix = Math.floor(100000 + Math.random() * 900000);
         const filepath = upath.joinSafe(os.tmpdir(), `automation-${randomSuffix}`);
         const contents = JSON.stringify(state, null, 4);
         fs.writeFileSync(filepath, contents);
-        await this.runPulumiCmd(["stack", "import", "--file", filepath]);
+        await this.runPulumiCmd(["stack", "import", "--file", filepath, "--stack", stackName]);
         fs.unlinkSync(filepath);
     }
     /**

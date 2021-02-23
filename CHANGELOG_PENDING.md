@@ -1,5 +1,10 @@
 ### Breaking Changes
 
+- [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
+  [#6840](https://github.com/pulumi/pulumi/pull/6840)
+
+- [Automation/*] All operations use `--stack` to specify the stack instead of running `select stack` before the operation.
+  [#6840](https://github.com/pulumi/pulumi/pull/6840)
 
 ### Enhancements
 

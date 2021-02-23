@@ -156,8 +156,7 @@ func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error
 }
 
 // SelectStack selects stack using the given workspace, and stack name.
-// It returns an error if the given Stack does not exist. All LocalWorkspace operations will call SelectStack()
-// before running.
+// It returns an error if the given Stack does not exist.
 func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
@@ -209,11 +208,6 @@ func (s *Stack) Workspace() Workspace {
 // https://www.pulumi.com/docs/reference/cli/pulumi_preview/
 func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
 	var res PreviewResult
-
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to run preview")
-	}
 
 	preOpts := &optpreview.Options{}
 	for _, o := range opts {
@@ -306,10 +300,6 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 // https://www.pulumi.com/docs/reference/cli/pulumi_up/
 func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) {
 	var res UpResult
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to run update")
-	}
 
 	upOpts := &optup.Options{}
 	for _, o := range opts {
@@ -397,11 +387,6 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (RefreshResult, error) {
 	var res RefreshResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to refresh stack")
-	}
-
 	refreshOpts := &optrefresh.Options{}
 	for _, o := range opts {
 		o.ApplyOption(refreshOpts)
@@ -467,11 +452,6 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to destroy stack")
-	}
-
 	destroyOpts := &optdestroy.Options{}
 	for _, o := range opts {
 		o.ApplyOption(destroyOpts)
@@ -535,11 +515,6 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get stack outputs")
-	}
-
 	// standard outputs
 	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
 		"stack", "output", "--json",
@@ -669,12 +644,10 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 // if a resource operation was pending when the update was canceled.
 // This command is not supported for local backends.
 func (s *Stack) Cancel(ctx context.Context) error {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return errors.Wrap(err, "failed to cancel update")
-	}
-
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, "cancel", "--yes")
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(
+		ctx,
+		nil, /* additionalOutput */
+		"cancel", "--yes")
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
 	}
@@ -830,6 +803,8 @@ func (s *Stack) runPulumiCmdSync(
 		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
 	args = append(args, additionalArgs...)
+	args = append(args, "--stack", s.Name())
+
 	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), additionalOutput, env, args...)
 	if err != nil {
 		return stdout, stderr, errCode, err
