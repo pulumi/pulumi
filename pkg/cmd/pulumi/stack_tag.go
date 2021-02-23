@@ -64,7 +64,7 @@ func newStackTagGetCmd(stack *string) *cobra.Command {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
-			s, err := requireStack(*stack, false, opts, false /*setCurrent*/)
+			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
 			if err != nil {
 				return err
 			}
