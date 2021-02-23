@@ -179,13 +179,22 @@ func (u *objectTypeUnifier) unify(t *ObjectType) {
 // This conversion is always unsafe, and may fail if the map does not contain an appropriate set of keys for the
 // destination type.
 func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		switch src := src.(type) {
 		case *ObjectType:
+			if seen != nil {
+				if _, ok := seen[t]; ok {
+					return NoConversion
+				}
+			} else {
+				seen = map[Type]struct{}{}
+			}
+			seen[t] = struct{}{}
+
 			if unifying {
 				var unifier objectTypeUnifier
 				unifier.unify(t)
@@ -199,7 +208,7 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
 				if !ok {
 					src = NoneType
 				}
-				if ck := dst.conversionFrom(src, unifying); ck < conversionKind {
+				if ck := dst.conversionFrom(src, unifying, seen); ck < conversionKind {
 					conversionKind = ck
 				}
 			}
@@ -207,7 +216,7 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
 		case *MapType:
 			conversionKind := UnsafeConversion
 			for _, dst := range t.Properties {
-				if ck := dst.conversionFrom(src.ElementType, unifying); ck < conversionKind {
+				if ck := dst.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
 					conversionKind = ck
 				}
 			}
@@ -218,20 +227,35 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *ObjectType) String() string {
-	if t.s == "" {
-		var properties []string
-		for k, v := range t.Properties {
-			properties = append(properties, fmt.Sprintf("%s = %v", k, v))
-		}
-		sort.Strings(properties)
+	return t.string(nil)
+}
 
-		annotations := ""
-		if len(t.Annotations) != 0 {
-			annotations = fmt.Sprintf(", annotated(%p)", t)
-		}
-
-		t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
+func (t *ObjectType) string(seen map[Type]struct{}) string {
+	if t.s != "" {
+		return t.s
 	}
+
+	if seen != nil {
+		if _, ok := seen[t]; ok {
+			return "..."
+		}
+	} else {
+		seen = map[Type]struct{}{}
+	}
+	seen[t] = struct{}{}
+
+	var properties []string
+	for k, v := range t.Properties {
+		properties = append(properties, fmt.Sprintf("%s = %s", k, v.string(seen)))
+	}
+	sort.Strings(properties)
+
+	annotations := ""
+	if len(t.Annotations) != 0 {
+		annotations = fmt.Sprintf(", annotated(%p)", t)
+	}
+
+	t.s = fmt.Sprintf("object({%s}%v)", strings.Join(properties, ", "), annotations)
 	return t.s
 }
 
@@ -258,7 +282,7 @@ func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
 			return NewObjectType(unifier.properties), unifier.conversionKind
 		default:
 			// Otherwise, prefer the object type.
-			return t, t.conversionFrom(other, true)
+			return t, t.conversionFrom(other, true, nil)
 		}
 	})
 }

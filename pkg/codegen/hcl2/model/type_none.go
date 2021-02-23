@@ -45,16 +45,20 @@ func (noneType) AssignableFrom(src Type) bool {
 }
 
 func (noneType) ConversionFrom(src Type) ConversionKind {
-	return NoneType.conversionFrom(src, false)
+	return NoneType.conversionFrom(src, false, nil)
 }
 
-func (noneType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(NoneType, src, unifying, func() ConversionKind {
+func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(NoneType, src, unifying, seen, func() ConversionKind {
 		return NoConversion
 	})
 }
 
 func (noneType) String() string {
+	return "none"
+}
+
+func (noneType) string(_ map[Type]struct{}) string {
 	return "none"
 }
 

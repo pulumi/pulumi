@@ -4,6 +4,7 @@ on:
       - v*.*.*
     paths-ignore:
       - 'CHANGELOG.md'
+      - 'CHANGELOG_PENDING.md'
       - 'README.md'
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
@@ -204,7 +205,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f .goreleaser.yml --rm-dist
+          args: -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
