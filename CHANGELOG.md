@@ -2,7 +2,7 @@ CHANGELOG
 =========
 
 ## HEAD (Unreleased)
-_(none)_
+_(none)_  
 
 ## 2.21.2 (2021-02-22)
 
