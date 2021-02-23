@@ -38,7 +38,7 @@ func FindExecutable(program string) (string, error) {
 		// Because the GOPATH can take the form of multiple paths (e.g: GOPATH="home/user/go:/usr/local/go")
 		// we need to split the GOPATH, and look into each of the paths.
 		// If the GOPATH hold only one path, there will only be one element in the slice.
-		potentialPaths := getPotentialPaths(goPath, runtime.GOOS)
+		potentialPaths := splitGoPath(goPath, runtime.GOOS)
 		for i, pp := range potentialPaths {
 			goPathProgram := filepath.Join(pp, "bin", program)
 			fileInfo, err := os.Stat(goPathProgram)
@@ -65,7 +65,7 @@ func FindExecutable(program string) (string, error) {
 	return "", errors.Errorf(unableToFindProgramTemplate, program)
 }
 
-func getPotentialPaths(goPath string, os string) []string {
+func splitGoPath(goPath string, os string) []string {
 	var sep string
 	switch os {
 	case "windows":

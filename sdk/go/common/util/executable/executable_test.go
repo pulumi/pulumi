@@ -28,7 +28,7 @@ func TestGetPotentialPathsShouldReturnExpected(t *testing.T) {
 	}
 
 	for _, test := range tt {
-		paths := getPotentialPaths(test.path, test.os)
+		paths := splitGoPath(test.path, test.os)
 		if len(paths) != test.expected {
 			t.Errorf("expected path length to be %d, got %d", test.expected, len(paths))
 		}
