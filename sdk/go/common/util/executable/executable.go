@@ -39,14 +39,11 @@ func FindExecutable(program string) (string, error) {
 		// we need to split the GOPATH, and look into each of the paths.
 		// If the GOPATH hold only one path, there will only be one element in the slice.
 		goPathParts := splitGoPath(goPath, runtime.GOOS)
-		for i, pp := range goPathParts {
+		for _, pp := range goPathParts {
 			goPathProgram := filepath.Join(pp, "bin", program)
 			fileInfo, err := os.Stat(goPathProgram)
-
-			if err != nil && i+1 == len(goPathParts) {
-				if !os.IsNotExist(err) {
-					return "", errors.Wrapf(err, "unable to find program in these paths: %s", strings.Join(goPathParts, ", "))
-				}
+			if err != nil && !os.IsNotExist(err) {
+				return "", err
 			}
 
 			if fileInfo != nil && !fileInfo.Mode().IsDir() {
