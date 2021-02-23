@@ -153,8 +153,7 @@ func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error
 }
 
 // SelectStack selects stack using the given workspace, and stack name.
-// It returns an error if the given Stack does not exist. All LocalWorkspace operations will call SelectStack()
-// before running.
+// It returns an error if the given Stack does not exist.
 func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
@@ -207,11 +206,6 @@ func (s *Stack) Workspace() Workspace {
 func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
 	var res PreviewResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to run preview")
-	}
-
 	preOpts := &optpreview.Options{}
 	for _, o := range opts {
 		o.ApplyOption(preOpts)
@@ -242,7 +236,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json"}
+	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json", "--stack", s.Name()}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -272,10 +266,6 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 // https://www.pulumi.com/docs/reference/cli/pulumi_up/
 func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) {
 	var res UpResult
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to run update")
-	}
 
 	upOpts := &optup.Options{}
 	for _, o := range opts {
@@ -307,7 +297,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
+	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview", "--stack", s.Name()}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -353,11 +343,6 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (RefreshResult, error) {
 	var res RefreshResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to refresh stack")
-	}
-
 	refreshOpts := &optrefresh.Options{}
 	for _, o := range opts {
 		o.ApplyOption(refreshOpts)
@@ -366,7 +351,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	var args []string
 
 	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
-	args = append(args, "refresh", "--yes", "--skip-preview")
+	args = append(args, "refresh", "--yes", "--skip-preview", "--stack", s.Name())
 	if refreshOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
 	}
@@ -413,11 +398,6 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to destroy stack")
-	}
-
 	destroyOpts := &optdestroy.Options{}
 	for _, o := range opts {
 		o.ApplyOption(destroyOpts)
@@ -426,7 +406,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	var args []string
 
 	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
-	args = append(args, "destroy", "--yes", "--skip-preview")
+	args = append(args, "destroy", "--yes", "--skip-preview", "--stack", s.Name())
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
@@ -471,14 +451,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get stack outputs")
-	}
-
 	// standard outputs
 	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json",
+		"stack", "output", "--json", "--stack", s.Name(),
 	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
@@ -486,7 +461,7 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 	// secret outputs
 	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json", "--show-secrets",
+		"stack", "output", "--json", "--show-secrets", "--stack", s.Name(),
 	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
@@ -522,7 +497,7 @@ func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSu
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
-	args := []string{"history", "--json", "--show-secrets"}
+	args := []string{"history", "--json", "--show-secrets", "--stack", s.Name()}
 	if pageSize > 0 {
 		// default page=1 if unset when pageSize is set
 		if page < 1 {
@@ -605,12 +580,10 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 // if a resource operation was pending when the update was canceled.
 // This command is not supported for local backends.
 func (s *Stack) Cancel(ctx context.Context) error {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return errors.Wrap(err, "failed to cancel update")
-	}
-
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, "cancel", "--yes")
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(
+		ctx,
+		nil, /* additionalOutput */
+		"cancel", "--yes", "--stack", s.Name())
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
 	}
