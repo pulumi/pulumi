@@ -486,12 +486,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the update after previewing it")
-
-	if hasDebugCommands() {
-		cmd.PersistentFlags().StringVar(
-			&eventLogPath, "event-log", "",
-			"Log events to a file at this path")
-	}
+	cmd.PersistentFlags().StringVar(
+		&eventLogPath, "event-log", "",
+		"Log events to a file at this path")
 
 	// internal flag
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
