@@ -16,7 +16,14 @@ import * as assert from "assert";
 import * as upath from "upath";
 
 import { Config } from "../../index";
-import { ConfigMap, fullyQualifiedStackName, LocalWorkspace, ProjectSettings, Stack } from "../../x/automation";
+import {
+    ConfigMap,
+    EngineEvent,
+    fullyQualifiedStackName,
+    LocalWorkspace,
+    ProjectSettings,
+    Stack,
+} from "../../x/automation";
 import { asyncTest } from "../util";
 
 describe("LocalWorkspace", () => {
@@ -255,6 +262,61 @@ describe("LocalWorkspace", () => {
 
         // pulumi destroy
         const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
+    it(`handles events`, asyncTest(async () => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "inline_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        const stackConfig: ConfigMap = {
+            "bar": { value: "abc" },
+            "buzz": { value: "secret", secret: true },
+        };
+        await stack.setAllConfig(stackConfig);
+
+        const onEvent = (event: EngineEvent) => {
+            if (event.summaryEvent) {
+                seenSummaryEvent = true;
+                console.log(event);
+                assert.strictEqual(event.summaryEvent.maybeCorrupt, false);
+            }
+        };
+
+        // pulumi preview
+        let seenSummaryEvent = false;
+        await stack.preview({ onEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `preview`");
+
+        // pulumi up
+        seenSummaryEvent = false;
+        const upRes = await stack.up({ onEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `up`");
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi refresh
+        seenSummaryEvent = false;
+        const refRes = await stack.refresh({ onEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `refresh`");
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        seenSummaryEvent = false;
+        const destroyRes = await stack.destroy({ onEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `destroy`");
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
