@@ -74,20 +74,24 @@ func (t *PromiseType) AssignableFrom(src Type) bool {
 // promise(T) is convertible from a type U or promise(U) if U is convertible to T. If the conversion from U to T is
 // unsafe, the entire conversion is unsafe. Otherwise, the conversion is safe.
 func (t *PromiseType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
-func (t *PromiseType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *PromiseType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		if src, ok := src.(*PromiseType); ok {
-			return t.ElementType.conversionFrom(src.ElementType, unifying)
+			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		}
-		return t.ElementType.conversionFrom(src, unifying)
+		return t.ElementType.conversionFrom(src, unifying, seen)
 	})
 }
 
 func (t *PromiseType) String() string {
-	return fmt.Sprintf("promise(%v)", t.ElementType)
+	return t.string(nil)
+}
+
+func (t *PromiseType) string(seen map[Type]struct{}) string {
+	return fmt.Sprintf("promise(%s)", t.ElementType.string(seen))
 }
 
 func (t *PromiseType) unify(other Type) (Type, ConversionKind) {
@@ -103,7 +107,7 @@ func (t *PromiseType) unify(other Type) (Type, ConversionKind) {
 			return NewOutputType(elementType), conversionKind
 		default:
 			// Prefer the promise type.
-			return t, t.conversionFrom(other, true)
+			return t, t.conversionFrom(other, true, nil)
 		}
 	})
 }
