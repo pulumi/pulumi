@@ -5,9 +5,6 @@ import (
 	"encoding/json"
 	"os"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-
 	"golang.org/x/oauth2/google"
 
 	"gocloud.dev/blob/gcsblob"
@@ -68,11 +65,6 @@ func GoogleCredentialsMux(ctx context.Context) (*blob.URLMux, error) {
 	if err == nil && account.ClientEmail != "" && account.PrivateKey != "" {
 		options.GoogleAccessID = account.ClientEmail
 		options.PrivateKey = []byte(account.PrivateKey)
-	} else {
-		cmdutil.Diag().Warningf(diag.Message("",
-			"Pulumi will not be able to print a statefile permalink using these credentials. "+
-				"Neither a GoogleAccessID or PrivateKey are available. "+
-				"Try using a GCP Service Account."))
 	}
 
 	blobmux := &blob.URLMux{}
