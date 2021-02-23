@@ -38,14 +38,14 @@ func FindExecutable(program string) (string, error) {
 		// Because the GOPATH can take the form of multiple paths (https://golang.org/cmd/go/#hdr-GOPATH_environment_variable)
 		// we need to split the GOPATH, and look into each of the paths.
 		// If the GOPATH hold only one path, there will only be one element in the slice.
-		potentialPaths := splitGoPath(goPath, runtime.GOOS)
-		for i, pp := range potentialPaths {
+		goPathParts := splitGoPath(goPath, runtime.GOOS)
+		for i, pp := range goPathParts {
 			goPathProgram := filepath.Join(pp, "bin", program)
 			fileInfo, err := os.Stat(goPathProgram)
 
-			if err != nil && i+1 == len(potentialPaths) {
+			if err != nil && i+1 == len(goPathParts) {
 				if !os.IsNotExist(err) {
-					return "", errors.Wrapf(err, "unable to find program in these paths: %s", strings.Join(potentialPaths, ", "))
+					return "", errors.Wrapf(err, "unable to find program in these paths: %s", strings.Join(goPathParts, ", "))
 				}
 			}
 
