@@ -12,8 +12,6 @@ blobs:
     - pulumi-unix
   provider: s3
   region: us-west-2
-changelog:
-  skip: true
 builds:
 # UNIX builds
 - id: pulumi-unix

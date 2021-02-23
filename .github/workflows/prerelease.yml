@@ -4,6 +4,7 @@ on:
       - v*.*.*-**
     paths-ignore:
       - 'CHANGELOG.md'
+      - 'CHANGELOG_PENDING.md'
       - 'README.md'
 env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
