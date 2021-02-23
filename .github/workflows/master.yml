@@ -4,7 +4,6 @@ on:
       [ "master", "feature/**", "feature-**" ]
     paths-ignore:
       - 'CHANGELOG.md'
-      - 'CHANGELOG_PENDING.md'
       - 'README.md'
 
 env:
