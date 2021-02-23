@@ -34,8 +34,8 @@ func FindExecutable(program string) (string, error) {
 
 	// look in potentials $GOPATH/bin
 	if goPath := os.Getenv("GOPATH"); len(goPath) > 0 {
-		// getPotentialPaths will return paths where to look.
-		// Because the GOPATH can take the form of multiple paths (e.g: GOPATH="home/user/go:/usr/local/go")
+		// splitGoPath will return a list of paths in which to look for the binary.
+		// Because the GOPATH can take the form of multiple paths (https://golang.org/cmd/go/#hdr-GOPATH_environment_variable)
 		// we need to split the GOPATH, and look into each of the paths.
 		// If the GOPATH hold only one path, there will only be one element in the slice.
 		potentialPaths := splitGoPath(goPath, runtime.GOOS)
