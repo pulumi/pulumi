@@ -66,7 +66,8 @@ func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
 	return dest.Equals(src) || dest == DynamicType || assignableFrom()
 }
 
-func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{}, conversionFrom func() ConversionKind) ConversionKind {
+func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
+	conversionFrom func() ConversionKind) ConversionKind {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion
 	}
