@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestGetPotentialPathsShouldReturnExpected(t *testing.T) {
+func TestSplitGoPathShouldReturnExpected(t *testing.T) {
 	tt := []struct {
 		path     string
 		os       string
