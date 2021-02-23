@@ -21,7 +21,7 @@ export interface CancelEvent {
 }
 
 // StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
-// from the pulumi CLI itself. Less common that DiagnosticEvent
+// from the pulumi CLI itself. Less common than DiagnosticEvent
 export interface StdoutEngineEvent {
     message: string;
     color: string;
@@ -39,7 +39,7 @@ export interface DiagnosticEvent {
     ephemeral?: boolean;
 }
 
-// PolicyEvent is emitted whenever there is Policy violation.
+// PolicyEvent is emitted whenever there is a Policy violation.
 export interface PolicyEvent {
     resourceUrn?: string;
     message: string;
@@ -67,7 +67,7 @@ export interface SummaryEvent {
     resourceChanges: Record<string, number>;
     // PolicyPacks run during update. Maps PolicyPackName -> version.
     // Note: When this field was initially added, we forgot to add the JSON tag
-    // and are now locked into to using PascalCase for this field to maintain backwards
+    // and are now locked into using PascalCase for this field to maintain backwards
     // compatibility. For older clients this will map to the version, while for newer ones
     // it will be the version tag prepended with "v".
     policyPacks: Record<string, string>;
@@ -161,7 +161,7 @@ export interface ResOutputsEvent {
 }
 
 // ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
-// emitted before this event, indiciating what the root cause of the error.
+// emitted before this event, indicating what the root cause of the error.
 export interface ResOpFailedEvent {
     metadata: StepEventMetadata;
     status: number;
