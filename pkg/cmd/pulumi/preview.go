@@ -278,12 +278,9 @@ func newPreviewCmd() *cobra.Command {
 		&suppressPermaLink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
-
-	if hasDebugCommands() {
-		cmd.PersistentFlags().StringVar(
-			&eventLogPath, "event-log", "",
-			"Log events to a file at this path")
-	}
+	cmd.PersistentFlags().StringVar(
+		&eventLogPath, "event-log", "",
+		"Log events to a file at this path")
 
 	// internal flag
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")

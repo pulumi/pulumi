@@ -25,7 +25,6 @@ import { StackAlreadyExistsError } from "./errors";
 import { EngineEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
-import { EngineEvent } from "./events";
 
 const langrpc = require("../../proto/language_grpc_pb.js");
 
@@ -549,9 +548,7 @@ export class Stack {
     }
 
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
-        let envs: { [key: string]: string } = {
-            "PULUMI_DEBUG_COMMANDS": "true",
-        };
+        let envs: { [key: string]: string } = {};
         const pulumiHome = this.workspace.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
