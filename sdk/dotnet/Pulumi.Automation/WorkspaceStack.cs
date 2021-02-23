@@ -229,6 +229,9 @@ namespace Pulumi.Automation
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
 
+                if (options.Diff is true)
+                    args.Add("--diff");
+
                 if (options.Replace?.Any() == true)
                 {
                     foreach (var item in options.Replace)
@@ -322,6 +325,9 @@ namespace Pulumi.Automation
 
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
+
+                if (options.Diff is true)
+                    args.Add("--diff");
 
                 if (options.Replace?.Any() == true)
                 {

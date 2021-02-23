@@ -22,7 +22,9 @@ You can easily get all required dependencies with brew and npm
 
 ```bash
 brew install node pipenv python@3 typescript yarn go@1.13 golangci/tap/golangci-lint pulumi/tap/pulumictl
-brew cask install dotnet dotnet-sdk
+curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/0272f0d33f/Casks/dotnet-sdk.rb > dotnet-sdk.rb  # v3.1.0
+brew install --HEAD -s dotnet-sdk.rb
+rm dotnet-sdk.rb
 ```
 
 ## Make build system

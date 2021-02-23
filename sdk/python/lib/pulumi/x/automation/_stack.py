@@ -286,6 +286,7 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
+                diff: Optional[bool] = None,
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
@@ -298,6 +299,7 @@ class Stack:
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param diff: Display operation as a rich diff showing the overall change
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param program: The inline program.
@@ -560,6 +562,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--message", kwargs["message"]])
     if "expect_no_changes" in kwargs and kwargs["expect_no_changes"] is not None:
         extra_args.append("--expect-no-changes")
+    if "diff" in kwargs and kwargs["diff"] is not None:
+        extra_args.append("--diff")
     if "replace" in kwargs and kwargs["replace"] is not None:
         for r in kwargs["replace"]:
             extra_args.extend(["--replace", r])

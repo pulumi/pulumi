@@ -126,6 +126,9 @@ export class Stack {
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.diff) {
+                args.push("--diff");
+            }
             if (opts.replace) {
                 for (const rURN of opts.replace) {
                     args.push("--replace", rURN);
@@ -211,6 +214,9 @@ export class Stack {
             }
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
+            }
+            if (opts.diff) {
+                args.push("--diff");
             }
             if (opts.replace) {
                 for (const rURN of opts.replace) {
@@ -593,6 +599,7 @@ export interface UpOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    diff?: boolean;
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;
@@ -607,6 +614,7 @@ export interface PreviewOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    diff?: boolean;
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;

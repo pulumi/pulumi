@@ -71,6 +71,8 @@ Pulumi.Automation.PluginKind.Resource = 2 -> Pulumi.Automation.PluginKind
 Pulumi.Automation.PreviewOptions
 Pulumi.Automation.PreviewOptions.ExpectNoChanges.get -> bool?
 Pulumi.Automation.PreviewOptions.ExpectNoChanges.set -> void
+Pulumi.Automation.PreviewOptions.Diff.get -> bool?
+Pulumi.Automation.PreviewOptions.Diff.set -> void
 Pulumi.Automation.PreviewOptions.PreviewOptions() -> void
 Pulumi.Automation.PreviewOptions.Program.get -> Pulumi.Automation.PulumiFn
 Pulumi.Automation.PreviewOptions.Program.set -> void
@@ -173,6 +175,8 @@ Pulumi.Automation.StackSummary.Url.get -> string
 Pulumi.Automation.UpOptions
 Pulumi.Automation.UpOptions.ExpectNoChanges.get -> bool?
 Pulumi.Automation.UpOptions.ExpectNoChanges.set -> void
+Pulumi.Automation.UpOptions.Diff.get -> bool?
+Pulumi.Automation.UpOptions.Diff.set -> void
 Pulumi.Automation.UpOptions.OnOutput.get -> System.Action<string>
 Pulumi.Automation.UpOptions.OnOutput.set -> void
 Pulumi.Automation.UpOptions.Program.get -> Pulumi.Automation.PulumiFn

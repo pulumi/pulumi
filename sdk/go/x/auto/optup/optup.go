@@ -43,6 +43,13 @@ func ExpectNoChanges() Option {
 	})
 }
 
+// Diff displays operation as a rich diff showing the overall change
+func Diff() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Diff = true
+	})
+}
+
 // Replace specifies an array of resource URNs to explicitly replace during the update
 func Replace(urns []string) Option {
 	return optionFunc(func(opts *Options) {
@@ -93,6 +100,8 @@ type Options struct {
 	Message string
 	// Return an error if any changes occur during this update
 	ExpectNoChanges bool
+	// Diff displays operation as a rich diff showing the overall change
+	Diff bool
 	// Specify resources to replace
 	Replace []string
 	// Specify an exclusive list of resource URNs to update
