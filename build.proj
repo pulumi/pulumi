@@ -50,148 +50,148 @@
   There may be an additional step for copying packages around.
   -->
 
-  <!-- This section is where we build and package the DotNet SDK -->
-  <Target Name="BuildDotNetSDK"
-           DependsOnTargets="DotNetBuild;DotNetInstallPlugin;CopyNugetPackages">
-  </Target>
+<!--    --><!-- This section is where we build and package the DotNet SDK -->
+<!--   <Target Name="BuildDotNetSDK" -->
+<!--            DependsOnTargets="DotNetBuild;DotNetInstallPlugin;CopyNugetPackages"> -->
+<!--   </Target> -->
 
-  <Target Name="DotNetBuild">
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
-        <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-    </Exec>
-    <PropertyGroup>
-      <VersionPart>$(Version.Split("-")[0])</VersionPart>
-      <VersionPrefix>$(VersionPart.Replace("v",""))</VersionPrefix>
-    </PropertyGroup>
-    <Exec Command="dotnet build dotnet.sln /p:VersionPrefix=$(VersionPrefix) /p:VersionSuffix=preview"
-          WorkingDirectory="$(DotNetSdkDirectory)" />
-    <ItemGroup>
-      <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet" />
-    </ItemGroup>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)"
-          WorkingDirectory="$(SdkDirectory)"/>
-  </Target>
+<!--   <Target Name="DotNetBuild"> -->
+<!--     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true"> -->
+<!--         <Output TaskParameter="ConsoleOutput" PropertyName="Version" /> -->
+<!--     </Exec> -->
+<!--     <PropertyGroup> -->
+<!--       <VersionPart>$(Version.Split("-")[0])</VersionPart> -->
+<!--       <VersionPrefix>$(VersionPart.Replace("v",""))</VersionPrefix> -->
+<!--     </PropertyGroup> -->
+<!--     <Exec Command="dotnet build dotnet.sln /p:VersionPrefix=$(VersionPrefix) /p:VersionSuffix=preview" -->
+<!--           WorkingDirectory="$(DotNetSdkDirectory)" /> -->
+<!--     <ItemGroup> -->
+<!--       <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet" /> -->
+<!--     </ItemGroup> -->
+<!--     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)" -->
+<!--           WorkingDirectory="$(SdkDirectory)"/> -->
+<!--   </Target> -->
 
-  <Target Name="DotNetInstallPlugin">
-    <ItemGroup>
-      <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet" />
-    </ItemGroup>
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-    </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)"
-      EnvironmentVariables="GOBIN=$(PulumiBin)"
-      WorkingDirectory="$(SdkDirectory)"/>
-  </Target>
+<!--   <Target Name="DotNetInstallPlugin"> -->
+<!--     <ItemGroup> -->
+<!--       <DotNetPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet" /> -->
+<!--     </ItemGroup> -->
+<!--     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true"> -->
+<!--       <Output TaskParameter="ConsoleOutput" PropertyName="Version" /> -->
+<!--     </Exec> -->
+<!--     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(DotNetPackagesToBuild.Identity)" -->
+<!--       EnvironmentVariables="GOBIN=$(PulumiBin)" -->
+<!--       WorkingDirectory="$(SdkDirectory)"/> -->
+<!--   </Target> -->
 
-  <Target Name="CopyNugetPackages">
-    <ItemGroup>
-      <DotNetNupkgFile Include="$(DotNetSdkDirectory)\**\*.nupkg" />
-    </ItemGroup>
+<!--   <Target Name="CopyNugetPackages"> -->
+<!--     <ItemGroup> -->
+<!--       <DotNetNupkgFile Include="$(DotNetSdkDirectory)\**\*.nupkg" /> -->
+<!--     </ItemGroup> -->
 
-    <Copy SourceFiles="@(DotNetNupkgFile)"
-          DestinationFolder="$(PulumiRoot)\nuget" />
-  </Target>
+<!--     <Copy SourceFiles="@(DotNetNupkgFile)" -->
+<!--           DestinationFolder="$(PulumiRoot)\nuget" /> -->
+<!--   </Target> -->
 
-  <!-- This is where we build and install the Go SDK -->
-  <Target Name="BuildGoSDK"
-          DependsOnTargets="GoBuild;GoInstallPlugin">
-  </Target>
+<!--    --><!-- This is where we build and install the Go SDK -->
+<!--   <Target Name="BuildGoSDK" -->
+<!--           DependsOnTargets="GoBuild;GoInstallPlugin"> -->
+<!--   </Target> -->
 
-  <Target Name="GoBuild">
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-    </Exec>
-    <ItemGroup>
-      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go" />
-    </ItemGroup>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(GoPackagesToBuild.Identity)"
-    WorkingDirectory="$(SdkDirectory)"/>
-  </Target>
+<!--   <Target Name="GoBuild"> -->
+<!--     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true"> -->
+<!--       <Output TaskParameter="ConsoleOutput" PropertyName="Version" /> -->
+<!--     </Exec> -->
+<!--     <ItemGroup> -->
+<!--       <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go" /> -->
+<!--     </ItemGroup> -->
+<!--     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(GoPackagesToBuild.Identity)" -->
+<!--     WorkingDirectory="$(SdkDirectory)"/> -->
+<!--   </Target> -->
 
-  <Target Name="GoInstallPlugin">
-    <ItemGroup>
-      <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go" />
-    </ItemGroup>
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-    </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(GoPackagesToBuild.Identity)"
-          EnvironmentVariables="GOBIN=$(PulumiBin)"
-          WorkingDirectory="$(SdkDirectory)"/>
-  </Target>
+<!--   <Target Name="GoInstallPlugin"> -->
+<!--     <ItemGroup> -->
+<!--       <GoPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go" /> -->
+<!--     </ItemGroup> -->
+<!--     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true"> -->
+<!--       <Output TaskParameter="ConsoleOutput" PropertyName="Version" /> -->
+<!--     </Exec> -->
+<!--     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(GoPackagesToBuild.Identity)" -->
+<!--           EnvironmentVariables="GOBIN=$(PulumiBin)" -->
+<!--           WorkingDirectory="$(SdkDirectory)"/> -->
+<!--   </Target> -->
 
-  <!-- This is where we build and install the NodeJS SDK -->
-  <Target Name="BuildNodeJSSDK"
-          DependsOnTargets="NodeJSDependencies;NodeJSBuild;NodeJSInstallPlugin;CopyNodeJSPackages">
-  </Target>
+<!--    --><!-- This is where we build and install the NodeJS SDK -->
+<!--   <Target Name="BuildNodeJSSDK" -->
+<!--           DependsOnTargets="NodeJSDependencies;NodeJSBuild;NodeJSInstallPlugin;CopyNodeJSPackages"> -->
+<!--   </Target> -->
 
-  <Target Name="NodeJSDependencies">
-    <Exec Command="yarn install"
-          WorkingDirectory="$(NodeJSSdkDirectory)" />
-  </Target>
+<!--   <Target Name="NodeJSDependencies"> -->
+<!--     <Exec Command="yarn install" -->
+<!--           WorkingDirectory="$(NodeJSSdkDirectory)" /> -->
+<!--   </Target> -->
 
-  <Target Name="NodeJSBuild">
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-    </Exec>
-    <Exec Command="yarn run tsc" WorkingDirectory="$(NodeJSSdkDirectory)" />
-    <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json" DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" />
-    <Exec Command="node &quot;$(RepoRootDirectory)\scripts\reversion.js&quot; &quot;$(NodeJSSdkDirectory)\bin\package.json&quot; $(Version)" />
-    <Exec Command="node &quot;$(RepoRootDirectory)\scripts\reversion.js&quot; &quot;$(NodeJSSdkDirectory)\bin\version.js&quot; $(Version)" />
-    <!-- Copy Protos -->
-    <ItemGroup>
-      <NodeSdkProtos Include="$(NodeJSSdkDirectory)\proto\*.js" />
-    </ItemGroup>
-    <Copy SourceFiles="@(NodeSdkProtos)"
-          DestinationFolder="$(NodeJSSdkDirectory)\bin\proto" />
-    <!-- Copy Language Cases -->
-    <ItemGroup>
-      <NodeSdkTestDataFiles Include="$(NodeJSSdkDirectory)\tests\runtime\langhost\cases\**\*" />
-    </ItemGroup>
-    <Copy SourceFiles="@(NodeSdkTestDataFiles)"
-          DestinationFolder="$(NodeJSSdkDirectory)\bin\tests\runtime\langhost\cases" />
-    <ItemGroup>
-      <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs" />
-    </ItemGroup>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(NodeJSPackagesToBuild.Identity)"
-          WorkingDirectory="$(SdkDirectory)"/>
-  </Target>
+<!--   <Target Name="NodeJSBuild"> -->
+<!--     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true"> -->
+<!--       <Output TaskParameter="ConsoleOutput" PropertyName="Version" /> -->
+<!--     </Exec> -->
+<!--     <Exec Command="yarn run tsc" WorkingDirectory="$(NodeJSSdkDirectory)" /> -->
+<!--     <Copy SourceFiles="$(NodeJSSdkDirectory)\package.json" DestinationFiles="$(NodeJSSdkDirectory)\bin\package.json" /> -->
+<!--     <Exec Command="node &quot;$(RepoRootDirectory)\scripts\reversion.js&quot; &quot;$(NodeJSSdkDirectory)\bin\package.json&quot; $(Version)" /> -->
+<!--     <Exec Command="node &quot;$(RepoRootDirectory)\scripts\reversion.js&quot; &quot;$(NodeJSSdkDirectory)\bin\version.js&quot; $(Version)" /> -->
+<!--      --><!-- Copy Protos -->
+<!--     <ItemGroup> -->
+<!--       <NodeSdkProtos Include="$(NodeJSSdkDirectory)\proto\*.js" /> -->
+<!--     </ItemGroup> -->
+<!--     <Copy SourceFiles="@(NodeSdkProtos)" -->
+<!--           DestinationFolder="$(NodeJSSdkDirectory)\bin\proto" /> -->
+<!--      --><!-- Copy Language Cases -->
+<!--     <ItemGroup> -->
+<!--       <NodeSdkTestDataFiles Include="$(NodeJSSdkDirectory)\tests\runtime\langhost\cases\**\*" /> -->
+<!--     </ItemGroup> -->
+<!--     <Copy SourceFiles="@(NodeSdkTestDataFiles)" -->
+<!--           DestinationFolder="$(NodeJSSdkDirectory)\bin\tests\runtime\langhost\cases" /> -->
+<!--     <ItemGroup> -->
+<!--       <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs" /> -->
+<!--     </ItemGroup> -->
+<!--     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; %(NodeJSPackagesToBuild.Identity)" -->
+<!--           WorkingDirectory="$(SdkDirectory)"/> -->
+<!--   </Target> -->
 
-  <Target Name="NodeJSInstallPlugin">
-    <ItemGroup>
-      <NodeJSDistFiles Include="$(NodeJSSdkDirectory)\dist\*.cmd" />
-    </ItemGroup>
-    <Copy SourceFiles="@(NodeJSDistFiles)"
-          DestinationFolder="$(PulumiBin)\" />
-    <ItemGroup>
-      <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" />
-    </ItemGroup>
-    <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true">
-      <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
-    </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/v2/version.Version=$(Version)&quot; %(NodeJSPackagesToBuild.Identity)"
-          EnvironmentVariables="GOBIN=$(PulumiBin)"
-          WorkingDirectory="$(SdkDirectory)"/>
-  </Target>
+<!--   <Target Name="NodeJSInstallPlugin"> -->
+<!--     <ItemGroup> -->
+<!--       <NodeJSDistFiles Include="$(NodeJSSdkDirectory)\dist\*.cmd" /> -->
+<!--     </ItemGroup> -->
+<!--     <Copy SourceFiles="@(NodeJSDistFiles)" -->
+<!--           DestinationFolder="$(PulumiBin)\" /> -->
+<!--     <ItemGroup> -->
+<!--       <NodeJSPackagesToBuild Include="github.com/pulumi/pulumi/sdk/nodejs/cmd/pulumi-language-nodejs" /> -->
+<!--     </ItemGroup> -->
+<!--     <Exec Command="&quot;$(MSBuildThisFileDirectory)\scripts\get-version.cmd&quot;" ConsoleToMSBuild="true"> -->
+<!--       <Output TaskParameter="ConsoleOutput" PropertyName="Version" /> -->
+<!--     </Exec> -->
+<!--     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/v2/version.Version=$(Version)&quot; %(NodeJSPackagesToBuild.Identity)" -->
+<!--           EnvironmentVariables="GOBIN=$(PulumiBin)" -->
+<!--           WorkingDirectory="$(SdkDirectory)"/> -->
+<!--   </Target> -->
 
-  <Target Name="CopyNodeJSPackages">
-    <MakeDir Directories="$(PulumiRoot)\node_modules\@pulumi\pulumi"/>
-    <ItemGroup>
-      <BinFiles Include="$(NodeJSSdkDirectory)\bin\**\*.*" />
-    </ItemGroup>
-    <Copy
-          SourceFiles="@(BinFiles)"
-          DestinationFiles="@(BinFiles->'$(PulumiRoot)\node_modules\@pulumi\pulumi\%(RecursiveDir)%(Filename)%(Extension)')" />
-    <ItemGroup>
-      <YarnFile Include="$(NodeJSSdkDirectory)\yarn.lock" />
-    </ItemGroup>
-    <Copy SourceFiles="@(YarnFile)"
-          DestinationFolder="$(PulumiRoot)\node_modules\@pulumi\pulumi" />
-    <RemoveDir Directories="$(PulumiRoot)\node_modules\@pulumi\pulumi\node_modules" />
-    <Exec Command="yarn install --prefer-offline --production &amp;&amp; (yarn unlink > NUL || true) &amp;&amp; yarn link"
-          WorkingDirectory="$(PulumiRoot)\node_modules\@pulumi\pulumi" />
-  </Target>
+<!--   <Target Name="CopyNodeJSPackages"> -->
+<!--     <MakeDir Directories="$(PulumiRoot)\node_modules\@pulumi\pulumi"/> -->
+<!--     <ItemGroup> -->
+<!--       <BinFiles Include="$(NodeJSSdkDirectory)\bin\**\*.*" /> -->
+<!--     </ItemGroup> -->
+<!--     <Copy -->
+<!--           SourceFiles="@(BinFiles)" -->
+<!--           DestinationFiles="@(BinFiles->'$(PulumiRoot)\node_modules\@pulumi\pulumi\%(RecursiveDir)%(Filename)%(Extension)')" /> -->
+<!--     <ItemGroup> -->
+<!--       <YarnFile Include="$(NodeJSSdkDirectory)\yarn.lock" /> -->
+<!--     </ItemGroup> -->
+<!--     <Copy SourceFiles="@(YarnFile)" -->
+<!--           DestinationFolder="$(PulumiRoot)\node_modules\@pulumi\pulumi" /> -->
+<!--     <RemoveDir Directories="$(PulumiRoot)\node_modules\@pulumi\pulumi\node_modules" /> -->
+<!--     <Exec Command="yarn install --prefer-offline --production &amp;&amp; (yarn unlink > NUL || true) &amp;&amp; yarn link" -->
+<!--           WorkingDirectory="$(PulumiRoot)\node_modules\@pulumi\pulumi" /> -->
+<!--   </Target> -->
 
   <!-- This is where we build and install the Python SDK -->
   <Target Name="BuildPythonSDK"
@@ -226,7 +226,7 @@
           DestinationFolder="$(PythonSdkDirectory)\env\src" />
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
-    <Exec Command="pipenv run pytest lib\test --ignore lib\test\langhost\resource_thens\test_resource_thens.py"
+    <Exec Command="pipenv run pytest -ra lib\test\automation"
           WorkingDirectory="$(PythonSdkDirectory)" />
     <ItemGroup>
       <PythonPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python" />
