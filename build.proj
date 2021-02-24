@@ -84,8 +84,6 @@
           DestinationFolder="$(PythonSdkDirectory)\env\src" />
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
-    <Exec Command="pipenv run pytest -ra lib\test\automation"
-          WorkingDirectory="$(PythonSdkDirectory)" />
     <ItemGroup>
       <PythonPackagesToBuild Include="github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python" />
     </ItemGroup>
@@ -315,6 +313,9 @@
           WorkingDirectory="$(PkgDirectory)">
       <Output TaskParameter="ExitCode" PropertyName="BackendTestsExitCode" />
     </Exec>
+
+    <Exec Command="pipenv run pytest -ra lib\test\automation"
+              WorkingDirectory="$(PythonSdkDirectory)" />
 
     <Error Text="backend tests (.\pkg\backend) failed"
            Condition="$(BackendTestsExitCode) != 0"/>
