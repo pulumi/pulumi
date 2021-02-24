@@ -5,14 +5,8 @@ CHANGELOG
 
 ### Improvements
 
-- [dotnet/sdk] Thread-safe concurrency-friendly global state
+- [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
-
-- [sdk/dotnet] C# Automation API.
-  [#5761](https://github.com/pulumi/pulumi/pull/5761)
-
-- [sdk/dotnet] F# API to specify stack options.
-  [#5077](https://github.com/pulumi/pulumi/pull/5077)
 
 - [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user
   want to get permalinks when using a self backend, they can pass a flag:  
