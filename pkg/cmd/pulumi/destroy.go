@@ -228,9 +228,12 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
 		"Automatically approve and perform the destroy after previewing it")
-	cmd.PersistentFlags().StringVar(
-		&eventLogPath, "event-log", "",
-		"Log events to a file at this path")
+
+	if hasDebugCommands() {
+		cmd.PersistentFlags().StringVar(
+			&eventLogPath, "event-log", "",
+			"Log events to a file at this path")
+	}
 
 	// internal flag
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
