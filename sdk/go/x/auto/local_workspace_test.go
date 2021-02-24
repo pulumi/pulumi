@@ -189,13 +189,11 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -291,13 +289,11 @@ func TestUpsertStackLocalSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -384,13 +380,11 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -472,13 +466,11 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -572,13 +564,11 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -672,13 +662,11 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -762,13 +750,11 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -851,13 +837,11 @@ func TestUpsertStackInlineSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 

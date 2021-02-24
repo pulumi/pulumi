@@ -669,12 +669,10 @@ func ExampleStack() {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	_, err = s.Preview(ctx)
 	if err != nil {
 		// Handle failure previewing stack.
 	}
-	// no changes after the update
-	fmt.Println(prev.ChangeSummary["same"])
 
 	// -- pulumi refresh --
 
