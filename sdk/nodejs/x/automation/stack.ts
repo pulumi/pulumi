@@ -548,7 +548,9 @@ export class Stack {
     }
 
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
-        let envs: { [key: string]: string } = {};
+        let envs: { [key: string]: string } = {
+            "PULUMI_DEBUG_COMMANDS": "true",
+        };
         const pulumiHome = this.workspace.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
