@@ -715,7 +715,7 @@ type PropertyDiff struct {
 	InputDiff bool `json:"inputDiff"`
 }
 
-// PreviewResult is the output of Stack.Preview() describing the expected set of changes from the next Stack.Up()
+// PreviewResult is the output of Stack.Preview
 type PreviewResult struct {
 	StdOut string
 	StdErr string
