@@ -50,7 +50,7 @@ def _run_pulumi_cmd(args: List[str],
     cmd = ["pulumi"]
     cmd.extend(args)
 
-    stderr_file = tempfile.NamedTemporaryFile()
+    stderr_file = tempfile.NamedTemporaryFile(delete=False)
     stdout_chunks: List[str] = []
 
     with subprocess.Popen(cmd,
@@ -72,7 +72,7 @@ def _run_pulumi_cmd(args: List[str],
 
     with open(stderr_file.name) as stderr:
         stderr_contents = stderr.read()
-    stderr_file.close()
+    os.remove(stderr_file.name)
 
     result = CommandResult(stderr=stderr_contents, stdout='\n'.join(stdout_chunks), code=code)
     if code != 0:
