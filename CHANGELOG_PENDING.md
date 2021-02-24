@@ -1,7 +1,9 @@
 ### Features
 
-
 ### Enhancements
+
+- [sdk/dotnet] Thread-safe concurrency-friendly global state
+  [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
 - [#6410](https://github.com/pulumi/pulumi/pull/6410) Add `diff` option to Automation API's `preview` and `up`
 

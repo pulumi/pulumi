@@ -5,9 +5,6 @@ CHANGELOG
 
 ### Improvements
 
-- [sdk/dotnet] Thread-safe concurrency-friendly global state
-  [#6139](https://github.com/pulumi/pulumi/pull/6139)
-
 - [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user
   want to get permalinks when using a self backend, they can pass a flag:  
       `pulumi up --suppress-permalink false`.  
