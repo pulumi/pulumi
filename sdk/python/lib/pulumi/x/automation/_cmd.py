@@ -69,6 +69,7 @@ def _run_pulumi_cmd(args: List[str],
                 stdout_chunks.append(text)
 
         code = process.returncode
+    stderr_file.close()
 
     with open(stderr_file.name) as stderr:
         stderr_contents = stderr.read()
