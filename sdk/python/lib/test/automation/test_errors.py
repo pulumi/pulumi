@@ -13,8 +13,11 @@
 # limitations under the License.
 
 import os
+import sys
 import subprocess
 import unittest
+import pytest
+
 from pulumi.x.automation import (
     create_stack,
     InlineSourceRuntimeError,
@@ -42,6 +45,7 @@ class TestErrors(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
     def test_runtime_errors(self):
         for lang in ["python", "go", "dotnet", "javascript", "typescript"]:
             stack_name = stack_namer()
@@ -87,6 +91,7 @@ class TestErrors(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    @pytest.mark.skipif(sys.platform == "win32", reason="skipping on windows")
     def test_compilation_error_typescript(self):
         stack_name = stack_namer()
         project_dir = test_path("errors", compilation_error_project, "typescript")
