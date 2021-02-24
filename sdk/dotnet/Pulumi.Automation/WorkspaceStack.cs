@@ -229,6 +229,9 @@ namespace Pulumi.Automation
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
 
+                if (options.Diff is true)
+                    args.Add("--diff");
+
                 if (options.Replace?.Any() == true)
                 {
                     foreach (var item in options.Replace)
@@ -300,7 +303,7 @@ namespace Pulumi.Automation
         /// </summary>
         /// <param name="options">Options to customize the behavior of the update.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public async Task<UpdateResult> PreviewAsync(
+        public async Task<PreviewResult> PreviewAsync(
             PreviewOptions? options = null,
             CancellationToken cancellationToken = default)
         {
@@ -322,6 +325,9 @@ namespace Pulumi.Automation
 
                 if (options.ExpectNoChanges is true)
                     args.Add("--expect-no-changes");
+
+                if (options.Diff is true)
+                    args.Add("--diff");
 
                 if (options.Replace?.Any() == true)
                 {
@@ -370,11 +376,9 @@ namespace Pulumi.Automation
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
-                var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
-                return new UpdateResult(
+                return new PreviewResult(
                     upResult.StandardOutput,
-                    upResult.StandardError,
-                    summary!);
+                    upResult.StandardError);
             }
             finally
             {

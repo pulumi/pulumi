@@ -107,39 +107,51 @@ class UpdateSummary:
 class BaseResult:
     stdout: str
     stderr: str
-    summary: UpdateSummary
 
-    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+    def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
         self.stderr = stderr
-        self.summary = summary
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(summary={self.summary!r}, stdout={self.stdout!r}, stderr={self.stderr!r})"
-
-
-class UpResult(BaseResult):
-    outputs: OutputMap
-
-    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
-        super().__init__(stdout, stderr, summary)
-        self.outputs = outputs
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(outputs={self.outputs!r}, summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
+        return f"{self.__class__.__name__}(stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class PreviewResult(BaseResult):
     pass
 
 
+class UpResult(BaseResult):
+    outputs: OutputMap
+    summary: UpdateSummary
+
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
+        super().__init__(stdout, stderr)
+        self.outputs = outputs
+        self.summary = summary
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(outputs={self.outputs!r}, summary={self.summary!r}, " \
+               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
+
+
 class RefreshResult(BaseResult):
-    pass
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(summary={self.summary!r}, " \
+               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class DestroyResult(BaseResult):
-    pass
+    def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
+        super().__init__(stdout, stderr)
+        self.summary = summary
+
+    def __repr__(self):
+        return f"{self.__class__.__name__}(summary={self.summary!r}, " \
+               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class Stack:
@@ -286,6 +298,7 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
+                diff: Optional[bool] = None,
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
@@ -298,6 +311,7 @@ class Stack:
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param diff: Display operation as a rich diff showing the overall change
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param program: The inline program.
@@ -330,9 +344,7 @@ class Stack:
 
         try:
             preview_result = self._run_pulumi_cmd_sync(args)
-            summary = self.info()
-            assert (summary is not None)
-            return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr, summary=summary)
+            return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr)
         finally:
             if on_exit is not None:
                 on_exit()
@@ -560,6 +572,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.extend(["--message", kwargs["message"]])
     if "expect_no_changes" in kwargs and kwargs["expect_no_changes"] is not None:
         extra_args.append("--expect-no-changes")
+    if "diff" in kwargs and kwargs["diff"] is not None:
+        extra_args.append("--diff")
     if "replace" in kwargs and kwargs["replace"] is not None:
         for r in kwargs["replace"]:
             extra_args.extend(["--replace", r])

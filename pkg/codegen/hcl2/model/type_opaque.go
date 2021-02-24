@@ -95,34 +95,34 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 	})
 }
 
-func (t *OpaqueType) conversionFromImpl(src Type, unifying, checkUnsafe bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *OpaqueType) conversionFromImpl(src Type, unifying, checkUnsafe bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		switch {
 		case t == NumberType:
 			// src == NumberType is handled by t == src above
 			contract.Assert(src != NumberType)
 
-			cki := IntType.conversionFromImpl(src, unifying, false)
+			cki := IntType.conversionFromImpl(src, unifying, false, seen)
 			if cki == SafeConversion {
 				return SafeConversion
 			}
-			if cki == UnsafeConversion || checkUnsafe && StringType.conversionFromImpl(src, unifying, false).Exists() {
+			if cki == UnsafeConversion || checkUnsafe && StringType.conversionFromImpl(src, unifying, false, seen).Exists() {
 				return UnsafeConversion
 			}
 			return NoConversion
 		case t == IntType:
-			if checkUnsafe && NumberType.conversionFromImpl(src, unifying, true).Exists() {
+			if checkUnsafe && NumberType.conversionFromImpl(src, unifying, true, seen).Exists() {
 				return UnsafeConversion
 			}
 			return NoConversion
 		case t == BoolType:
-			if checkUnsafe && StringType.conversionFromImpl(src, unifying, false).Exists() {
+			if checkUnsafe && StringType.conversionFromImpl(src, unifying, false, seen).Exists() {
 				return UnsafeConversion
 			}
 			return NoConversion
 		case t == StringType:
-			ckb := BoolType.conversionFromImpl(src, unifying, false)
-			ckn := NumberType.conversionFromImpl(src, unifying, false)
+			ckb := BoolType.conversionFromImpl(src, unifying, false, seen)
+			ckn := NumberType.conversionFromImpl(src, unifying, false, seen)
 			if ckb == SafeConversion || ckn == SafeConversion {
 				return SafeConversion
 			}
@@ -136,8 +136,8 @@ func (t *OpaqueType) conversionFromImpl(src Type, unifying, checkUnsafe bool) Co
 	})
 }
 
-func (t *OpaqueType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return t.conversionFromImpl(src, unifying, true)
+func (t *OpaqueType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return t.conversionFromImpl(src, unifying, true, seen)
 }
 
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
@@ -152,7 +152,7 @@ func (t *OpaqueType) conversionFrom(src Type, unifying bool) ConversionKind {
 // - The bool type is unsafely convertible from string
 //
 func (t *OpaqueType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
 func (t *OpaqueType) String() string {
@@ -177,6 +177,10 @@ func (t *OpaqueType) String() string {
 	return t.s
 }
 
+func (t *OpaqueType) string(_ map[Type]struct{}) string {
+	return t.String()
+}
+
 var opaquePrecedence = []*OpaqueType{StringType, NumberType, IntType, BoolType}
 
 func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
@@ -189,10 +193,10 @@ func (t *OpaqueType) unify(other Type) (Type, ConversionKind) {
 
 		for _, goal := range opaquePrecedence {
 			if t == goal {
-				return goal, goal.conversionFrom(other, true)
+				return goal, goal.conversionFrom(other, true, nil)
 			}
 			if other == goal {
-				return goal, goal.conversionFrom(t, true)
+				return goal, goal.conversionFrom(t, true, nil)
 			}
 		}
 
