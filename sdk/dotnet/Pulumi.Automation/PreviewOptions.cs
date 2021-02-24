@@ -11,6 +11,8 @@ namespace Pulumi.Automation
     {
         public bool? ExpectNoChanges { get; set; }
 
+        public bool? Diff { get; set; }
+
         public List<string>? Replace { get; set; }
 
         public bool? TargetDependents { get; set; }

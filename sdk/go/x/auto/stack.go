@@ -226,6 +226,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.ExpectNoChanges {
 		sharedArgs = append(sharedArgs, "--expect-no-changes")
 	}
+	if preOpts.Diff {
+		sharedArgs = append(sharedArgs, "--diff")
+	}
 	for _, rURN := range preOpts.Replace {
 		sharedArgs = append(sharedArgs, "--replace %s", rURN)
 	}
@@ -287,6 +290,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.ExpectNoChanges {
 		sharedArgs = append(sharedArgs, "--expect-no-changes")
+	}
+	if upOpts.Diff {
+		sharedArgs = append(sharedArgs, "--diff")
 	}
 	for _, rURN := range upOpts.Replace {
 		sharedArgs = append(sharedArgs, "--replace %s", rURN)
