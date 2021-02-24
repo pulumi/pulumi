@@ -13,10 +13,10 @@ CHANGELOG
   [#6251](https://github.com/pulumi/pulumi/pull/6251)
 
 - [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
-  [#6373](https://github.com/pulumi/pulumi/pulls/6373)
+  [#6373](https://github.com/pulumi/pulumi/pull/6373)
 
 - [automation/*] Consume `config set-all` and `config rm-all` from automation API.
-  [#6388](https://github.com/pulumi/pulumi/pulls/6388)
+  [#6388](https://github.com/pulumi/pulumi/pull/6388)
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
@@ -30,7 +30,7 @@ CHANGELOG
   component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
 
 - [cli] Skip unnecessary state file writes to address performance regression introduced in 2.16.2.
-  [#6396](https://github.com/pulumi/pulumi/pulls/6396)
+  [#6396](https://github.com/pulumi/pulumi/pull/6396)
 
 ## 2.21.1 (2021-02-18)
 
