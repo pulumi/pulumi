@@ -236,7 +236,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json", "--stack", s.Name()}
+	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -297,7 +297,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview", "--stack", s.Name()}
+	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -351,7 +351,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	var args []string
 
 	args = debug.AddArgs(&refreshOpts.DebugLogOpts, args)
-	args = append(args, "refresh", "--yes", "--skip-preview", "--stack", s.Name())
+	args = append(args, "refresh", "--yes", "--skip-preview")
 	if refreshOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", refreshOpts.Message))
 	}
@@ -406,7 +406,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	var args []string
 
 	args = debug.AddArgs(&destroyOpts.DebugLogOpts, args)
-	args = append(args, "destroy", "--yes", "--skip-preview", "--stack", s.Name())
+	args = append(args, "destroy", "--yes", "--skip-preview")
 	if destroyOpts.Message != "" {
 		args = append(args, fmt.Sprintf("--message=%q", destroyOpts.Message))
 	}
@@ -453,7 +453,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 	// standard outputs
 	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json", "--stack", s.Name(),
+		"stack", "output", "--json",
 	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
@@ -461,7 +461,7 @@ func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
 
 	// secret outputs
 	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json", "--show-secrets", "--stack", s.Name(),
+		"stack", "output", "--json", "--show-secrets",
 	)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
@@ -497,7 +497,7 @@ func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSu
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
-	args := []string{"history", "--json", "--show-secrets", "--stack", s.Name()}
+	args := []string{"history", "--json", "--show-secrets"}
 	if pageSize > 0 {
 		// default page=1 if unset when pageSize is set
 		if page < 1 {
@@ -583,7 +583,7 @@ func (s *Stack) Cancel(ctx context.Context) error {
 	stdout, stderr, errCode, err := s.runPulumiCmdSync(
 		ctx,
 		nil, /* additionalOutput */
-		"cancel", "--yes", "--stack", s.Name())
+		"cancel", "--yes")
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
 	}
@@ -739,6 +739,8 @@ func (s *Stack) runPulumiCmdSync(
 		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
 	args = append(args, additionalArgs...)
+	args = append(args, "--stack", s.Name())
+
 	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), additionalOutput, env, args...)
 	if err != nil {
 		return stdout, stderr, errCode, err

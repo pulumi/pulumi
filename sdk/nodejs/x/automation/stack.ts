@@ -110,7 +110,7 @@ export class Stack {
      * @param opts Options to customize the behavior of the update.
      */
     async up(opts?: UpOptions): Promise<UpResult> {
-        const args = ["up", "--yes", "--skip-preview", "--stack", this.name];
+        const args = ["up", "--yes", "--skip-preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
 
@@ -197,7 +197,7 @@ export class Stack {
      */
     async preview(opts?: PreviewOptions): Promise<PreviewResult> {
         // TODO JSON
-        const args = ["preview", "--stack", this.name];
+        const args = ["preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
 
@@ -277,7 +277,7 @@ export class Stack {
      * @param opts Options to customize the behavior of the refresh.
      */
     async refresh(opts?: RefreshOptions): Promise<RefreshResult> {
-        const args = ["refresh", "--yes", "--skip-preview", "--stack", this.name];
+        const args = ["refresh", "--yes", "--skip-preview"];
 
         if (opts) {
             if (opts.message) {
@@ -310,7 +310,7 @@ export class Stack {
      * @param opts Options to customize the behavior of the destroy.
      */
     async destroy(opts?: DestroyOptions): Promise<DestroyResult> {
-        const args = ["destroy", "--yes", "--skip-preview", "--stack", this.name];
+        const args = ["destroy", "--yes", "--skip-preview"];
 
         if (opts) {
             if (opts.message) {
@@ -395,8 +395,8 @@ export class Stack {
      */
     async outputs(): Promise<OutputMap> {
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json", "--stack", this.name]);
-        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets", "--stack", this.name]);
+        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json"]);
+        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]);
         const maskedOuts = JSON.parse(maskedResult.stdout);
         const plaintextOuts = JSON.parse(plaintextResult.stdout);
         const outputs: OutputMap = {};
@@ -443,7 +443,7 @@ export class Stack {
      * This command is not supported for local backends.
      */
     async cancel(): Promise<void> {
-        await this.runPulumiCmd(["cancel", "--yes", "--stack", this.name]);
+        await this.runPulumiCmd(["cancel", "--yes"]);
     }
 
     /**
@@ -472,7 +472,7 @@ export class Stack {
         }
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
-        args = [...args, ...additionalArgs];
+        args = [...args, "--stack", this.name, ...additionalArgs];
         const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
         await this.workspace.postCommandCallback(this.name);
         return result;

@@ -258,7 +258,7 @@ class Stack:
         """
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
-        args = ["up", "--yes", "--skip-preview", "--stack", self.name]
+        args = ["up", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
         kind = ExecKind.LOCAL.value
@@ -317,7 +317,7 @@ class Stack:
         """
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
-        args = ["preview", "--stack", self.name]
+        args = ["preview"]
         args.extend(extra_args)
 
         kind = ExecKind.LOCAL.value
@@ -365,7 +365,7 @@ class Stack:
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["refresh", "--yes", "--skip-preview", "--stack", self.name]
+        args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
         refresh_result = self._run_pulumi_cmd_sync(args, on_output)
@@ -391,7 +391,7 @@ class Stack:
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
-        args = ["destroy", "--yes", "--skip-preview", "--stack", self.name]
+        args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
         destroy_result = self._run_pulumi_cmd_sync(args, on_output)
@@ -459,8 +459,8 @@ class Stack:
 
         :returns: OutputMap
         """
-        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--stack", self.name])
-        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets", "--stack", self.name])
+        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json"])
+        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets"])
         masked_outputs = json.loads(masked_result.stdout)
         plaintext_outputs = json.loads(plaintext_result.stdout)
         outputs: OutputMap = {}
@@ -481,7 +481,7 @@ class Stack:
 
         :returns: List[UpdateSummary]
         """
-        args = ["history", "--json", "--show-secrets", "--stack", self.name]
+        args = ["history", "--json", "--show-secrets"]
         if page_size is not None:
             # default page=1 when page_size is set
             if page is None:
@@ -523,7 +523,7 @@ class Stack:
         if a resource operation was pending when the update was canceled.
         This command is not supported for local backends.
         """
-        self._run_pulumi_cmd_sync(["cancel", "--yes", "--stack", self.name])
+        self._run_pulumi_cmd_sync(["cancel", "--yes"])
 
     def export_stack(self) -> Deployment:
         """
@@ -551,7 +551,7 @@ class Stack:
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
         args.extend(additional_args)
-
+        args.extend(["--stack", self.name])
         result = _run_pulumi_cmd(args, self.workspace.work_dir, envs, on_output)
         self.workspace.post_command_callback(self.name)
         return result
