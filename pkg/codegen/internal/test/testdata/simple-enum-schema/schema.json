@@ -2,6 +2,18 @@
   "version": "0.0.1",
   "name": "plant",
   "resources": {
+    "plant:tree/v1:Nursery": {
+      "inputProperties": {
+        "varieties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
+          },
+          "description": "The varieties available"
+        }
+      },
+      "requiredInputs": [ "varieties"]
+    },
     "plant:tree/v1:RubberTree": {
       "inputProperties": {
         "container": {

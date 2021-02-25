@@ -88,6 +88,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("plant", "tree", "v1", "init.go"),
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
 				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
+				filepath.Join("plant", "tree", "v1", "nursery.go"),
 			},
 			false,
 		},
