@@ -11,6 +11,8 @@ namespace Pulumi.Automation
     public sealed class UpOptions : UpdateOptions
     {
         public bool? ExpectNoChanges { get; set; }
+        
+        public bool? Diff { get; set; }
 
         public List<string>? Replace { get; set; }
 

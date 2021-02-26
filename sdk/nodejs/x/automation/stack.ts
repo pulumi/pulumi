@@ -126,6 +126,9 @@ export class Stack {
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
             }
+            if (opts.diff) {
+                args.push("--diff");
+            }
             if (opts.replace) {
                 for (const rURN of opts.replace) {
                     args.push("--replace", rURN);
@@ -177,8 +180,7 @@ export class Stack {
         } finally {
             onExit();
         }
-        
-        
+
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
         const summary = await this.info();
@@ -211,6 +213,9 @@ export class Stack {
             }
             if (opts.expectNoChanges) {
                 args.push("--expect-no-changes");
+            }
+            if (opts.diff) {
+                args.push("--diff");
             }
             if (opts.replace) {
                 for (const rURN of opts.replace) {
@@ -263,11 +268,9 @@ export class Stack {
         } finally {
             onExit();
         }
-        const summary = await this.info();
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
-            summary: summary!,
         };
     }
     /**
@@ -419,12 +422,12 @@ export class Stack {
         const args = ["history", "--json", "--show-secrets"];
         if (pageSize) {
             if (!page || page < 1) {
-                page = 1
+                page = 1;
             }
-            args.push("--page-size", Math.floor(pageSize).toString(), "--page", Math.floor(page).toString())
+            args.push("--page-size", Math.floor(pageSize).toString(), "--page", Math.floor(page).toString());
         }
         const result = await this.runPulumiCmd(args);
-      
+
         return JSON.parse(result.stdout, (key, value) => {
             if (key === "startTime" || key === "endTime") {
                 return new Date(value);
@@ -565,7 +568,6 @@ export interface UpResult {
 export interface PreviewResult {
     stdout: string;
     stderr: string;
-    summary: UpdateSummary;
 }
 
 /**
@@ -593,6 +595,7 @@ export interface UpOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    diff?: boolean;
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;
@@ -607,6 +610,7 @@ export interface PreviewOptions {
     parallel?: number;
     message?: string;
     expectNoChanges?: boolean;
+    diff?: boolean;
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;

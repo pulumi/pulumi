@@ -1,9 +1,22 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
+## 2.21.2 (2021-02-22)
 
 ### Improvements
+
+- [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user
+  want to get permalinks when using a self backend, they can pass a flag:  
+      `pulumi up --suppress-permalink false`.  
+  Permalinks for these self-managed backends will be suppressed on `update`, `preview`, `destroy`, `import` and `refresh`
+  operations.
+  [#6251](https://github.com/pulumi/pulumi/pull/6251)
+
+- [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
+  [#6373](https://github.com/pulumi/pulumi/pull/6373)
+
+- [automation/*] Consume `config set-all` and `config rm-all` from automation API.
+  [#6388](https://github.com/pulumi/pulumi/pull/6388)
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
@@ -11,23 +24,13 @@ CHANGELOG
 - [sdk/dotnet] F# API to specify stack options.
   [#5077](https://github.com/pulumi/pulumi/pull/5077)
 
-- [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user 
-  want to get permalinks when using a self backend, they can pass a flag:  
-      `pulumi up --suppress-permalink false`.  
-  Permalinks for these self-managed backends will be suppressed on `update`, `preview`, `destroy`, `import` and `refresh` 
-  operations.
-  [#6251](https://github.com/pulumi/pulumi/pull/6251)
-
-- [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
-  [#6373](https://github.com/pulumi/pulumi/pulls/6373)
-
-- [automation/*] Consume `config set-all` and `config rm-all` from automation API.
-  [#6388](https://github.com/pulumi/pulumi/pulls/6388)
-
 ### Bug Fixes
 
-- [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js 
+- [sdk/nodejs] Don't error when loading multiple copies of the same version of a Node.js
   component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
+
+- [cli] Skip unnecessary state file writes to address performance regression introduced in 2.16.2.
+  [#6396](https://github.com/pulumi/pulumi/pull/6396)
 
 ## 2.21.1 (2021-02-18)
 
@@ -43,8 +46,8 @@ CHANGELOG
 - [cli] Added pagination options to `pulumi stack history` [#6292](https://github.com/pulumi/pulumi/pull/6292)  
   This is used as follows:  
   `pulumi stack history --page-size=20 --page=1`
-  
-- [automation/*] Added pagination options for stack history in Automation API SDKs to improve 
+
+- [automation/*] Added pagination options for stack history in Automation API SDKs to improve
   performance of stack updates. [#6257](https://github.com/pulumi/pulumi/pull/6257)    
   This is used similar to the following example in go:  
 ```go
@@ -58,7 +61,7 @@ CHANGELOG
 	fmt.Println(hist[0].StartTime)
   }
 ```
-  
+
 - [pkg/testing/integration] Changed the default behavior for Python test projects to use `UseAutomaticVirtualEnv` by
   default. `UsePipenv` is now the way to use pipenv with tests.
   [#6318](https://github.com/pulumi/pulumi/pull/6318)
@@ -70,8 +73,8 @@ CHANGELOG
 
 - [cli] Changed the behavior for Python on Windows to look for `python` binary first instead of `python3`.
   [#6317](https://github.com/pulumi/pulumi/pull/6317)
-  
-- [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process. 
+
+- [sdk/python] Gracefully handle monitor shutdown in the python runtime without exiting the process.
   [#6249](https://github.com/pulumi/pulumi/pull/6249)
 
 - [sdk/python] Fixed a bug in `contains_unknowns` where outputs with a property named "values" failed with a TypeError.
@@ -79,7 +82,7 @@ CHANGELOG
 
 - [sdk/python] Allowed keyword args in Output.all() to create a dict.
   [#6269](https://github.com/pulumi/pulumi/pull/6269)
-  
+
 - [sdk/python] Defined `__all__` in modules for better IDE autocomplete.
   [#6351](https://github.com/pulumi/pulumi/pull/6351)
 

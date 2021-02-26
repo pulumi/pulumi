@@ -41,7 +41,8 @@ type Type interface {
 	String() string
 
 	equals(other Type, seen map[Type]struct{}) bool
-	conversionFrom(src Type, unifying bool) ConversionKind
+	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind
+	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
 }
@@ -65,12 +66,13 @@ func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
 	return dest.Equals(src) || dest == DynamicType || assignableFrom()
 }
 
-func conversionFrom(dest, src Type, unifying bool, conversionFrom func() ConversionKind) ConversionKind {
+func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
+	conversionFrom func() ConversionKind) ConversionKind {
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion
 	}
 	if src, isUnion := src.(*UnionType); isUnion {
-		return src.conversionTo(dest, unifying)
+		return src.conversionTo(dest, unifying, seen)
 	}
 	if src == DynamicType {
 		return UnsafeConversion
@@ -93,7 +95,7 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 		// The dynamic type unifies with any other type by selecting that other type.
 		return t0, UnsafeConversion
 	default:
-		conversionFrom, conversionTo := t0.conversionFrom(t1, true), t1.conversionFrom(t0, true)
+		conversionFrom, conversionTo := t0.conversionFrom(t1, true, nil), t1.conversionFrom(t0, true, nil)
 		switch {
 		case conversionFrom < conversionTo:
 			return t1, conversionTo

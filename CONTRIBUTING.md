@@ -22,7 +22,9 @@ You can easily get all required dependencies with brew and npm
 
 ```bash
 brew install node pipenv python@3 typescript yarn go@1.13 golangci/tap/golangci-lint pulumi/tap/pulumictl
-brew cask install dotnet dotnet-sdk
+curl https://raw.githubusercontent.com/Homebrew/homebrew-cask/0272f0d33f/Casks/dotnet-sdk.rb > dotnet-sdk.rb  # v3.1.0
+brew install --HEAD -s dotnet-sdk.rb
+rm dotnet-sdk.rb
 ```
 
 ## Make build system
@@ -73,6 +75,7 @@ is a pretty standard starting point during debugging that will show a fairly com
 ## Submitting a Pull Request
 
 For contributors we use the standard fork based workflow. Fork this repository, create a topic branch, and start hacking away.  When you're ready, make sure you've run the tests (`make travis_pull_request` will run the exact flow we run in CI) and open your PR.
+When adding a changelog entry, please be sure to use `CHANGELOG_PENDING.md` for the entry - we will then be able to ensure your PR gets into the next release.
 
 ## Getting Help
 
