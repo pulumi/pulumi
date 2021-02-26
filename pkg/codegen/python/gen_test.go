@@ -71,6 +71,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("pulumi_plant", "tree", "v1", "_enums.py"),
 				filepath.Join("pulumi_plant", "tree", "v1", "__init__.py"),
 				filepath.Join("pulumi_plant", "tree", "v1", "rubber_tree.py"),
+				filepath.Join("pulumi_plant", "tree", "v1", "nursery.py"),
 			},
 		},
 	}

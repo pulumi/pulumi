@@ -21,6 +21,8 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
+	case "plant:tree/v1:Nursery":
+		r, err = NewNursery(ctx, name, nil, pulumi.URN_(urn))
 	case "plant:tree/v1:RubberTree":
 		r, err = NewRubberTree(ctx, name, nil, pulumi.URN_(urn))
 	default:
