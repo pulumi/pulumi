@@ -13,3 +13,5 @@
   
 - [automation/python] - Fix Windows error caused by use of NamedTemporaryFile in automation api.
   [#6421](https://github.com/pulumi/pulumi/pull/6421)
+
+- [sdk/nodejs] Serialize default parameters correctly. [#6397](https://github.com/pulumi/pulumi/pull/6397)

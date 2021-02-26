@@ -1048,6 +1048,27 @@ return () => { try { }
 `,
     });
 
+    {
+        const defaultValue = 1;
+
+        cases.push({
+            title: "Capture default parameters",
+            func: (arg: any = defaultValue) => {},
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ defaultValue: 1 }) {
+
+return (arg = defaultValue) => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
     // Recursive function serialization.
     {
         const fff = "fff!";
