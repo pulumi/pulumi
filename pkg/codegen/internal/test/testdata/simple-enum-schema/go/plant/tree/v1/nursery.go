@@ -57,12 +57,16 @@ func (NurseryState) ElementType() reflect.Type {
 }
 
 type nurseryArgs struct {
+	// The sizes of trees available
+	Sizes map[string]string `pulumi:"sizes"`
 	// The varieties available
 	Varieties []string `pulumi:"varieties"`
 }
 
 // The set of arguments for constructing a Nursery resource.
 type NurseryArgs struct {
+	// The sizes of trees available
+	Sizes TreeSizeMapInput
 	// The varieties available
 	Varieties RubberTreeVarietyArrayInput
 }

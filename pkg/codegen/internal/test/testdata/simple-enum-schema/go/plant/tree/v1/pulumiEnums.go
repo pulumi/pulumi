@@ -168,3 +168,48 @@ func (e TreeSize) ToStringPtrOutput() pulumi.StringPtrOutput {
 func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
+
+// TreeSizeMapInput is an input type that accepts TreeSizeMap and TreeSizeMapOutput values.
+// You can construct a concrete instance of `TreeSizeMapInput` via:
+//
+//          TreeSizeMap{ "key": TreeSizeArgs{...} }
+type TreeSizeMapInput interface {
+	pulumi.Input
+
+	ToTreeSizeMapOutput() TreeSizeMapOutput
+	ToTreeSizeMapOutputWithContext(context.Context) TreeSizeMapOutput
+}
+
+type TreeSizeMap map[string]TreeSize
+
+func (TreeSizeMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return i.ToTreeSizeMapOutputWithContext(context.Background())
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TreeSizeMapOutput)
+}
+
+type TreeSizeMapOutput struct{ *pulumi.OutputState }
+
+func (TreeSizeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) MapIndex(k pulumi.StringInput) pulumi.StringOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) pulumi.StringOutput {
+		return vs[0].(map[string]TreeSize)[vs[1].(string)].ToStringOutput()
+	}).(pulumi.StringOutput)
+}

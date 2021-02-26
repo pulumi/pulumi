@@ -30,6 +30,7 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				"index.ts",
 				"tree/v1/rubberTree.ts",
+				"tree/v1/nursery.ts",
 				"tree/v1/index.ts",
 				"tree/index.ts",
 				"types/input.ts",

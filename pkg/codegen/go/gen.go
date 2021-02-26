@@ -1445,6 +1445,12 @@ func (pkg *pkgContext) getTypeImports(t schema.Type, recurse bool, importsAndAli
 	}
 	seen[t] = struct{}{}
 	switch t := t.(type) {
+	case *schema.EnumType:
+		mod := pkg.tokenToPackage(t.Token)
+		if mod != pkg.mod {
+			p := path.Join(pkg.importBasePath, mod)
+			importsAndAliases[path.Join(pkg.importBasePath, mod)] = pkg.pkgImportAliases[p]
+		}
 	case *schema.ArrayType:
 		pkg.getTypeImports(t.ElementType, recurse, importsAndAliases, seen)
 	case *schema.MapType:
