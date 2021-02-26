@@ -875,7 +875,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n\n", pname, escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n\n", pname, escaped)
 		}
 
 		// Now perform the assignment.
@@ -1004,7 +1004,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, ",\n                 __opts__=None):\n")
 	mod.genInitDocstring(w, res)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, res.DeprecationMessage)
+		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
 	fmt.Fprintf(w, "        if __name__ is not None:\n")
 	fmt.Fprintf(w, "            warnings.warn(\"explicit use of __name__ is deprecated\", DeprecationWarning)\n")
@@ -1058,7 +1058,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "            if %s is not None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "                pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+			fmt.Fprintf(w, "                pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
 		}
 
 		// And add it to the dictionary.
@@ -1352,7 +1352,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	printComment(w, docs.String(), "    ")
 
 	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
+		fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage)
 	}
 
 	// Copy the function arguments into a dictionary.
@@ -2108,7 +2108,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
 		}
 
 		// And add it to the dictionary.
