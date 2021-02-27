@@ -75,7 +75,8 @@ class RubberTree(pulumi.CustomResource):
     @staticmethod
     def get(resource_name: str,
             id: pulumi.Input[str],
-            opts: Optional[pulumi.ResourceOptions] = None) -> 'RubberTree':
+            opts: Optional[pulumi.ResourceOptions] = None,
+            farm: Optional[pulumi.Input[Union['Farm', str]]] = None) -> 'RubberTree':
         """
         Get an existing RubberTree resource's state with the given name, id, and optional extra
         properties used to qualify the lookup.
@@ -88,6 +89,11 @@ class RubberTree(pulumi.CustomResource):
 
         __props__ = dict()
 
+        __props__["farm"] = farm
+        __props__["container"] = None
+        __props__["diameter"] = None
+        __props__["size"] = None
+        __props__["type"] = None
         return RubberTree(resource_name, opts=opts, __props__=__props__)
 
     @property
