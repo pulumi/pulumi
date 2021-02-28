@@ -92,15 +92,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
-
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
+	"github.com/ryboe/q"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
@@ -109,6 +112,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
@@ -255,7 +259,16 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, args...)
+
+	t, err := tailLogs("preview", preOpts.EventStreams)
+	if err != nil {
+		q.Q("failed to tail logs")
+		return res, err
+	}
+	defer t.Cleanup()
+	args = append(args, "--event-log", t.Filename)
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
@@ -319,6 +332,17 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+
+	if len(upOpts.EventStreams) > 0 {
+		t, err := tailLogs("up", upOpts.EventStreams)
+		if err != nil {
+			q.Q("failed to tail logs")
+			return res, err
+		}
+		defer t.Cleanup()
+		args = append(args, "--event-log", t.Filename)
+	}
+
 	args = append(args, sharedArgs...)
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
 	if err != nil {
@@ -385,6 +409,16 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
+	if len(refreshOpts.EventStreams) > 0 {
+		t, err := tailLogs("refresh", refreshOpts.EventStreams)
+		if err != nil {
+			q.Q("failed to tail logs")
+			return res, err
+		}
+		defer t.Cleanup()
+		args = append(args, "--event-log", t.Filename)
+	}
+
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, refreshOpts.ProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
@@ -444,6 +478,16 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		execKind = constant.ExecKindAutoInline
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
+
+	if len(destroyOpts.EventStreams) > 0 {
+		t, err := tailLogs("destroy", destroyOpts.EventStreams)
+		if err != nil {
+			q.Q("failed to tail logs")
+			return res, err
+		}
+		defer t.Cleanup()
+		args = append(args, "--event-log", t.Filename)
+	}
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, destroyOpts.ProgressStreams, args...)
 	if err != nil {
@@ -751,6 +795,8 @@ func (s *Stack) runPulumiCmdSync(
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
+	debugEnv := fmt.Sprintf("%s=%s", "PULUMI_DEBUG_COMMANDS", "true")
+	env = append(env, debugEnv)
 	if s.Workspace().PulumiHome() != "" {
 		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
 		env = append(env, homeEnv)
@@ -923,4 +969,20 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: "1.0.0",
 	}, nil
+}
+
+func tailLogs(command string, streams []io.Writer) (*tail.Tail, error) {
+	logDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("automation-logs-%s-", command))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create logdir")
+	}
+	logFile := filepath.Join(logDir, "eventlog.txt")
+
+	t, err := watchFile(logFile, streams)
+	if err != nil {
+		q.Q("failed to watch file")
+		return nil, err
+	}
+
+	return t, nil
 }

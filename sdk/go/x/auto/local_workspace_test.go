@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -273,7 +274,8 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
-	res, err := s.Up(ctx)
+	var upBuf bytes.Buffer
+	res, err := s.Up(ctx, optup.ProgressStreams(os.Stdout), optup.EventStreams(&upBuf))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -290,29 +292,30 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	// -- pulumi preview --
-
-	prev, err := s.Preview(ctx)
+	var prevBuf bytes.Buffer
+	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout), optpreview.EventStreams(&prevBuf))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
+
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
 	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
-
-	ref, err := s.Refresh(ctx)
-
+	var refBuf bytes.Buffer
+	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout), optrefresh.EventStreams(&refBuf))
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
 	}
+
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
 	// -- pulumi destroy --
-
-	dRes, err := s.Destroy(ctx)
+	var desBuf bytes.Buffer
+	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout), optdestroy.EventStreams(&desBuf))
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()

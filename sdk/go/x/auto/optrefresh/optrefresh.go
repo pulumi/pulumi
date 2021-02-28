@@ -57,6 +57,13 @@ func ProgressStreams(writers ...io.Writer) Option {
 	})
 }
 
+// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
+func EventStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.EventStreams = writers
+	})
+}
+
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
 		opts.DebugLogOpts = debugOpts
@@ -83,6 +90,8 @@ type Options struct {
 	Target []string
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
 	ProgressStreams []io.Writer
+	// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
+	EventStreams []io.Writer
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
 }

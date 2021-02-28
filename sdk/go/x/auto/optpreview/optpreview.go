@@ -18,6 +18,7 @@ package optpreview
 
 import (
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
+	"io"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the update
@@ -76,6 +77,20 @@ func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	})
 }
 
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+func ProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ProgressStreams = writers
+	})
+}
+
+// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
+func EventStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.EventStreams = writers
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -102,6 +117,10 @@ type Options struct {
 	TargetDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+	ProgressStreams []io.Writer
+	// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
+	EventStreams []io.Writer
 }
 
 type optionFunc func(*Options)
