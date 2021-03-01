@@ -3,6 +3,9 @@ CHANGELOG
 
 ## HEAD (Unreleased)
 
+- [cli] Add locking support to the self-managed backends using the `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
+  [#6437](https://github.com/pulumi/pulumi/pull/6437)
+
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
   an issue that was preventing passing instances of args classes with nested output values to Provider resources.
   [#6221](https://github.com/pulumi/pulumi/pull/6221)
@@ -1652,7 +1655,6 @@ CHANGELOG
 
 ### Improvements
 
-- Implement locks in filestate backends
 - Fix an issue where creating a first class provider would fail if any of the
   configuration values for the providers were secrets. (fixes [pulumi/pulumi#2741](https://github.com/pulumi/pulumi/issues/2741)).
 - Fix an issue where when using `--diff` or looking at details for a proposed
