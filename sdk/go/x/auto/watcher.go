@@ -14,13 +14,16 @@
 package auto
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 
 	"github.com/nxadm/tail"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 )
 
-func watchFile(path string, streams []io.Writer) (*tail.Tail, error) {
+func watchFile(path string, streams []io.Writer, events chan<- apitype.EngineEvent) (*tail.Tail, error) {
 	t, err := tail.TailFile(path, tail.Config{
 		Follow: true,
 		Logger: tail.DiscardingLogger,
@@ -33,6 +36,9 @@ func watchFile(path string, streams []io.Writer) (*tail.Tail, error) {
 			for _, s := range streams {
 				_, err = io.WriteString(s, fmt.Sprintf("%s\n", line.Text))
 			}
+			var e apitype.EngineEvent
+			err = json.Unmarshal([]byte(line.Text), &e)
+			events <- e
 		}
 	}(t)
 	return t, nil
