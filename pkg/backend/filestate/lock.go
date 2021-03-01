@@ -34,7 +34,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 )
 
-const pulumiFilestateLockingEnvVar = "PULUMI_FILESTATE_LOCKING"
+// PulumiFilestateLockingEnvVar is an env var that must be truthy to enable locking when using a filestate backend.
+const PulumiFilestateLockingEnvVar = "PULUMI_SELF_MANAGED_STATE_LOCKING"
 
 type lockContent struct {
 	Pid       int       `json:"pid"`

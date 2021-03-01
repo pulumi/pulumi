@@ -420,6 +420,9 @@ func TestLocalStateLocking(t *testing.T) {
 	e.RunCommand("yarn", "install")
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 
+	// Enable self-managed backend locking
+	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
+
 	// Run 10 concurrent updates
 	count := 10
 	stderrs := make(chan string, count)
