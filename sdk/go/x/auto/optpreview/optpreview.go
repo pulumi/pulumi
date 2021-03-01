@@ -17,8 +17,10 @@
 package optpreview
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the update
@@ -77,17 +79,17 @@ func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
 	})
 }
 
-// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
-func EventStreams(writers ...io.Writer) Option {
+// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+func EventStreams(channels ...chan<- apitype.EngineEvent) Option {
 	return optionFunc(func(opts *Options) {
-		opts.EventStreams = writers
+		opts.EventStreams = channels
 	})
 }
 
@@ -117,10 +119,10 @@ type Options struct {
 	TargetDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
 	ProgressStreams []io.Writer
-	// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
-	EventStreams []io.Writer
+	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+	EventStreams []chan<- apitype.EngineEvent
 }
 
 type optionFunc func(*Options)

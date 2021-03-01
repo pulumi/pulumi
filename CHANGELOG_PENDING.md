@@ -19,6 +19,31 @@
   Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
 
+- [automation/go] - BREAKING - Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
+  [#6436](https://github.com/pulumi/pulumi/pull/6436)
+
+  This change is marked breaking because it changes the shape of the PreviewResult struct.
+  
+  Before:
+  
+  ```go
+  type PreviewResult struct {
+    Steps         []PreviewStep  `json:"steps"`
+    ChangeSummary map[string]int `json:"changeSummary"`
+  }
+  ```
+
+  After:
+
+  ```go
+  type PreviewResult struct {
+    StdOut        string
+    StdErr        string
+    ChangeSummary map[string]int
+    EventLog      []apitype.EngineEvent
+  }```
+  
+
 ### Bug Fixes
 
 - [sdk/python] Fix mocks issue when passing a resource more than once.

@@ -17,8 +17,10 @@
 package optrefresh
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the refresh
@@ -57,10 +59,10 @@ func ProgressStreams(writers ...io.Writer) Option {
 	})
 }
 
-// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
-func EventStreams(writers ...io.Writer) Option {
+// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+func EventStreams(channels ...chan<- apitype.EngineEvent) Option {
 	return optionFunc(func(opts *Options) {
-		opts.EventStreams = writers
+		opts.EventStreams = channels
 	})
 }
 
@@ -90,8 +92,8 @@ type Options struct {
 	Target []string
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
 	ProgressStreams []io.Writer
-	// EventStreams allows specifying one or more io.Writers to redirect the Pulumi event stream
-	EventStreams []io.Writer
+	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+	EventStreams []chan<- apitype.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
 }

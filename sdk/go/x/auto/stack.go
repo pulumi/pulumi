@@ -263,7 +263,11 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	eventChannel := make(chan apitype.EngineEvent)
 	go collectEvents(eventChannel, &events)
 
-	t, err := tailLogs("preview", preOpts.EventStreams, eventChannel)
+	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
+	if len(preOpts.EventStreams) > 0 {
+		eventChannels = append(eventChannels, preOpts.EventStreams...)
+	}
+	t, err := tailLogs("preview", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
@@ -288,6 +292,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	res.StdOut = stdout
 	res.StdErr = stderr
 	res.ChangeSummary = previewSummary.ResourceChanges
+	res.EventLog = events
 
 	return res, nil
 }
@@ -347,7 +352,11 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	eventChannel := make(chan apitype.EngineEvent)
 	go collectEvents(eventChannel, &events)
 
-	t, err := tailLogs("up", upOpts.EventStreams, eventChannel)
+	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
+	if len(upOpts.EventStreams) > 0 {
+		eventChannels = append(eventChannels, upOpts.EventStreams...)
+	}
+	t, err := tailLogs("up", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
@@ -425,7 +434,11 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	eventChannel := make(chan apitype.EngineEvent)
 	go collectEvents(eventChannel, &events)
 
-	t, err := tailLogs("refresh", refreshOpts.EventStreams, eventChannel)
+	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
+	if len(refreshOpts.EventStreams) > 0 {
+		eventChannels = append(eventChannels, refreshOpts.EventStreams...)
+	}
+	t, err := tailLogs("refresh", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
@@ -497,7 +510,11 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	eventChannel := make(chan apitype.EngineEvent)
 	go collectEvents(eventChannel, &events)
 
-	t, err := tailLogs("destroy", destroyOpts.EventStreams, eventChannel)
+	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
+	if len(destroyOpts.EventStreams) > 0 {
+		eventChannels = append(eventChannels, destroyOpts.EventStreams...)
+	}
+	t, err := tailLogs("destroy", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
@@ -784,7 +801,7 @@ type PropertyDiff struct {
 type PreviewResult struct {
 	StdOut        string
 	StdErr        string
-	ChangeSummary map[string]int `json:"changeSummary"`
+	ChangeSummary map[string]int
 	EventLog      []apitype.EngineEvent
 }
 
@@ -989,14 +1006,14 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
-func tailLogs(command string, streams []io.Writer, events chan<- apitype.EngineEvent) (*tail.Tail, error) {
+func tailLogs(command string, receivers []chan<- apitype.EngineEvent) (*tail.Tail, error) {
 	logDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create logdir")
 	}
 	logFile := filepath.Join(logDir, "eventlog.txt")
 
-	t, err := watchFile(logFile, streams, events)
+	t, err := watchFile(logFile, receivers)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to watch file")
 	}

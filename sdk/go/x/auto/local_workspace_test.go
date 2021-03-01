@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -196,6 +197,8 @@ func TestNewStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -297,6 +300,8 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	}
 
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 	ref, err := s.Refresh(ctx)
@@ -387,6 +392,8 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -474,6 +481,8 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -573,6 +582,8 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -672,6 +683,8 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -761,6 +774,8 @@ func TestNewStackInlineSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -849,6 +864,8 @@ func TestUpsertStackInlineSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
 
@@ -1176,8 +1193,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
-	var upBuf bytes.Buffer
-	res, err := s.Up(ctx, optup.ProgressStreams(os.Stdout), optup.EventStreams(&upBuf))
+	res, err := s.Up(ctx, optup.ProgressStreams(os.Stdout))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -1194,19 +1210,18 @@ func TestStructuredOutput(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	// -- pulumi preview --
-	var prevBuf bytes.Buffer
-	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout), optpreview.EventStreams(&prevBuf))
+	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	//assert.Equal(t, 1, len(prev.Steps))
+	steps := countSteps(prev.EventLog)
+	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
-	var refBuf bytes.Buffer
-	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout), optrefresh.EventStreams(&refBuf))
+	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout))
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1216,8 +1231,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
 	// -- pulumi destroy --
-	var desBuf bytes.Buffer
-	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout), optdestroy.EventStreams(&desBuf))
+	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout))
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -1434,4 +1448,14 @@ func getTestOrg() string {
 		testOrg = os.Getenv("PULUMI_TEST_ORG")
 	}
 	return testOrg
+}
+
+func countSteps(log []apitype.EngineEvent) int {
+	steps := 0
+	for _, e := range log {
+		if e.ResourcePreEvent != nil {
+			steps++
+		}
+	}
+	return steps
 }
