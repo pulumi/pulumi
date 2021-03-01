@@ -78,7 +78,7 @@ func (b *localBackend) checkForLock(ctxt context.Context, stackRef backend.Stack
 	}
 
 	if len(lockKeys) > 0 {
-		errorString := fmt.Sprintf("the stack is current locked by %v lock(s). Either wait for the other "+
+		errorString := fmt.Sprintf("the stack is currently locked by %v lock(s). Either wait for the other "+
 			"process(es) to end or manually delete the lock file(s).", len(lockKeys))
 
 		for _, lock := range lockKeys {
