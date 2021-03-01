@@ -385,6 +385,47 @@ namespace Pulumi.Automation.Tests
             await stack.Workspace.RemoveStackAsync(stackName);
         }
 
+        [Fact]
+        public async Task OutputStreamAndDelegateIsWritten()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                return new Dictionary<string, object?>
+                {
+                    ["test"] = "test",
+                };
+            });
+
+            var stackName = $"output_test{GetTestSuffix()}";
+            var projectName = "inline_output";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var outputCalled = false;
+
+            // pulumi up
+            var upResult = await stack.UpAsync(new UpOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
+            Assert.True(outputCalled);
+
+            // pulumi refresh
+            outputCalled = false;
+            var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(refreshResult.StandardOutput));
+            Assert.True(outputCalled);
+
+            // pulumi destroy
+            outputCalled = false;
+            var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(destroyResult.StandardOutput));
+            Assert.True(outputCalled);
+        }
+
         private class ValidStack : Stack
         {
             [Output("exp_static")]

@@ -7,6 +7,9 @@
 
 ### Bug Fixes
 
+- [automation/dotnet] - resolve issue with OnOutput delegate not being called properly during pulumi process execution.
+  [#6435](https://github.com/pulumi/pulumi/pull/6435)
+
 - [automation/python,nodejs,dotnet] - BREAKING - Remove `summary` property from `PreviewResult`.
   The `summary` property on `PreviewResult` returns a result that is always incorrect and is being removed.
   [#6405](https://github.com/pulumi/pulumi/pull/6405)

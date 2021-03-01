@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands.Exceptions;
@@ -54,10 +55,14 @@ namespace Pulumi.Automation.Commands
             foreach (var pair in env)
                 proc.StartInfo.Environment[pair.Key] = pair.Value;
 
+            var standardOutputBuilder = new StringBuilder();
             proc.OutputDataReceived += (_, @event) =>
             {
                 if (@event.Data != null)
+                {
+                    standardOutputBuilder.AppendLine(@event.Data);
                     onOutput?.Invoke(@event.Data);
+                }  
             };
 
             var tcs = new TaskCompletionSource<CommandResult>();
@@ -86,10 +91,9 @@ namespace Pulumi.Automation.Commands
             proc.Exited += async (_, @event) =>
             {
                 var code = proc.ExitCode;
-                var stdOut = await proc.StandardOutput.ReadToEndAsync().ConfigureAwait(false);
                 var stdErr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
 
-                var result = new CommandResult(code, stdOut, stdErr);
+                var result = new CommandResult(code, standardOutputBuilder.ToString(), stdErr);
                 if (code != 0)
                 {
                     var ex = CommandException.CreateFromResult(result);
@@ -102,6 +106,7 @@ namespace Pulumi.Automation.Commands
             };
 
             proc.Start();
+            proc.BeginOutputReadLine();
             return await tcs.Task.ConfigureAwait(false);
         }
     }
