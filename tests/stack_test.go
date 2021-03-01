@@ -428,7 +428,7 @@ func TestLocalStateLocking(t *testing.T) {
 	stderrs := make(chan string, count)
 	for i := 0; i < count; i++ {
 		go func() {
-			_, stderr, _ := e.GetCommandResults("/opt/pulumi/bin/pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+			_, stderr, _ := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
 			stderrs <- stderr
 		}()
 	}

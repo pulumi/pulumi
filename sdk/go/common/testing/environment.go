@@ -46,7 +46,7 @@ type Environment struct {
 	CWD string
 	// Backend to use for commands
 	Backend string
-	// Environment variables to add to the environmnet for commands (`key=value`).
+	// Environment variables to add to the environment for commands (`key=value`).
 	Env []string
 }
 
