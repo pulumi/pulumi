@@ -18,7 +18,6 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"math/rand"
 	"os"
 	"os/exec"
@@ -32,6 +31,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 	"github.com/stretchr/testify/assert"
@@ -196,7 +196,6 @@ func TestNewStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -274,8 +273,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
-	var upBuf bytes.Buffer
-	res, err := s.Up(ctx, optup.ProgressStreams(os.Stdout), optup.EventStreams(&upBuf))
+	res, err := s.Up(ctx)
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -292,19 +290,16 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	// -- pulumi preview --
-	var prevBuf bytes.Buffer
-	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout), optpreview.EventStreams(&prevBuf))
+	prev, err := s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
-	var refBuf bytes.Buffer
-	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout), optrefresh.EventStreams(&refBuf))
+	ref, err := s.Refresh(ctx)
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -314,8 +309,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", ref.Summary.Result)
 
 	// -- pulumi destroy --
-	var desBuf bytes.Buffer
-	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout), optdestroy.EventStreams(&desBuf))
+	dRes, err := s.Destroy(ctx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -393,7 +387,6 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -481,7 +474,6 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -581,7 +573,6 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -681,7 +672,6 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -771,7 +761,6 @@ func TestNewStackInlineSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -860,7 +849,6 @@ func TestUpsertStackInlineSource(t *testing.T) {
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	assert.Equal(t, 1, len(prev.Steps))
 
 	// -- pulumi refresh --
 
@@ -1133,6 +1121,110 @@ func TestNestedConfig(t *testing.T) {
 	}
 	assert.False(t, list.Secret)
 	assert.JSONEq(t, "[\"one\",\"two\",\"three\"]", list.Value)
+}
+
+func TestStructuredOutput(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := UpsertStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// Set environment variables scoped to the workspace.
+	envvars := map[string]string{
+		"foo":    "bar",
+		"barfoo": "foobar",
+	}
+	err = s.Workspace().SetEnvVars(envvars)
+	assert.Nil(t, err, "failed to set environment values")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+
+	s.Workspace().SetEnvVar("bar", "buzz")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment value after setting")
+
+	s.Workspace().UnsetEnvVar("bar")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+
+	// -- pulumi up --
+	var upBuf bytes.Buffer
+	res, err := s.Up(ctx, optup.ProgressStreams(os.Stdout), optup.EventStreams(&upBuf))
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	// -- pulumi preview --
+	var prevBuf bytes.Buffer
+	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout), optpreview.EventStreams(&prevBuf))
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	//assert.Equal(t, 1, len(prev.Steps))
+
+	// -- pulumi refresh --
+	var refBuf bytes.Buffer
+	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout), optrefresh.EventStreams(&refBuf))
+	if err != nil {
+		t.Errorf("refresh failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "refresh", ref.Summary.Kind)
+	assert.Equal(t, "succeeded", ref.Summary.Result)
+
+	// -- pulumi destroy --
+	var desBuf bytes.Buffer
+	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout), optdestroy.EventStreams(&desBuf))
+	if err != nil {
+		t.Errorf("destroy failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, "destroy", dRes.Summary.Kind)
+	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {

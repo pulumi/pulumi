@@ -88,6 +88,8 @@
 package auto
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -103,7 +105,6 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
-	"github.com/ryboe/q"
 	"google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
@@ -246,7 +247,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json"}
+	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -260,10 +261,13 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
 
-	t, err := tailLogs("preview", preOpts.EventStreams)
+	var eventStream bytes.Buffer
+	eventOutputs := []io.Writer{&eventStream}
+	eventOutputs = append(eventOutputs, preOpts.EventStreams...)
+
+	t, err := tailLogs("preview", eventOutputs)
 	if err != nil {
-		q.Q("failed to tail logs")
-		return res, err
+		return res, errors.Wrap(err, "failed to tail logs")
 	}
 	defer t.Cleanup()
 	args = append(args, "--event-log", t.Filename)
@@ -273,10 +277,25 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
 
-	err = json.Unmarshal([]byte(stdout), &res)
-	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "unable to unmarshal preview result"), stdout, stderr, code)
+	var previewSummary *apitype.SummaryEvent
+	scanner := bufio.NewScanner(&eventStream)
+	for scanner.Scan() {
+		var e apitype.EngineEvent
+		err = json.Unmarshal(scanner.Bytes(), &e)
+		if err != nil {
+			return res, newAutoError(errors.Wrap(err, "unable to unmarshal preview event"), stdout, stderr, code)
+		}
+		if e.SummaryEvent != nil {
+			previewSummary = e.SummaryEvent
+		}
 	}
+	if previewSummary == nil {
+		return res, newAutoError(errors.Wrap(err, "failed to get preview summary"), stdout, stderr, code)
+	}
+
+	res.StdOut = stdout
+	res.StdErr = stderr
+	res.ChangeSummary = previewSummary.ResourceChanges
 
 	return res, nil
 }
@@ -336,8 +355,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if len(upOpts.EventStreams) > 0 {
 		t, err := tailLogs("up", upOpts.EventStreams)
 		if err != nil {
-			q.Q("failed to tail logs")
-			return res, err
+			return res, errors.Wrap(err, "failed to tail logs")
 		}
 		defer t.Cleanup()
 		args = append(args, "--event-log", t.Filename)
@@ -412,8 +430,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	if len(refreshOpts.EventStreams) > 0 {
 		t, err := tailLogs("refresh", refreshOpts.EventStreams)
 		if err != nil {
-			q.Q("failed to tail logs")
-			return res, err
+			return res, errors.Wrap(err, "failed to tail logs")
 		}
 		defer t.Cleanup()
 		args = append(args, "--event-log", t.Filename)
@@ -482,8 +499,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	if len(destroyOpts.EventStreams) > 0 {
 		t, err := tailLogs("destroy", destroyOpts.EventStreams)
 		if err != nil {
-			q.Q("failed to tail logs")
-			return res, err
+			return res, errors.Wrap(err, "failed to tail logs")
 		}
 		defer t.Cleanup()
 		args = append(args, "--event-log", t.Filename)
@@ -766,7 +782,8 @@ type PropertyDiff struct {
 
 // PreviewResult is the output of Stack.Preview() describing the expected set of changes from the next Stack.Up()
 type PreviewResult struct {
-	Steps         []PreviewStep  `json:"steps"`
+	StdOut        string
+	StdErr        string
 	ChangeSummary map[string]int `json:"changeSummary"`
 }
 
@@ -980,8 +997,7 @@ func tailLogs(command string, streams []io.Writer) (*tail.Tail, error) {
 
 	t, err := watchFile(logFile, streams)
 	if err != nil {
-		q.Q("failed to watch file")
-		return nil, err
+		return nil, errors.Wrap(err, "failed to watch file")
 	}
 
 	return t, nil

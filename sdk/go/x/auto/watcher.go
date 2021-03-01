@@ -14,9 +14,10 @@
 package auto
 
 import (
-	"github.com/nxadm/tail"
-	"github.com/ryboe/q"
+	"fmt"
 	"io"
+
+	"github.com/nxadm/tail"
 )
 
 func watchFile(path string, streams []io.Writer) (*tail.Tail, error) {
@@ -25,18 +26,13 @@ func watchFile(path string, streams []io.Writer) (*tail.Tail, error) {
 		Logger: tail.DiscardingLogger,
 	})
 	if err != nil {
-		q.Q("could not tail file")
 		return nil, err
 	}
 	go func(tailedLog *tail.Tail) {
 		for line := range tailedLog.Lines {
 			for _, s := range streams {
-				_, err = io.WriteString(s, line.Text)
-				if err != nil {
-					q.Q(err)
-				}
+				_, err = io.WriteString(s, fmt.Sprintf("%s\n", line.Text))
 			}
-			q.Q(line.Text)
 		}
 	}(t)
 	return t, nil
