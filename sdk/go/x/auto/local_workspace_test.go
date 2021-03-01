@@ -1208,6 +1208,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, res.Outputs["exp_secret"].Secret)
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
+	assert.True(t, containsSummary(res.EventLog))
 
 	// -- pulumi preview --
 	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout))
@@ -1219,6 +1220,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
 	steps := countSteps(prev.EventLog)
 	assert.Equal(t, 1, steps)
+	assert.True(t, containsSummary(prev.EventLog))
 
 	// -- pulumi refresh --
 	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout))
@@ -1229,6 +1231,7 @@ func TestStructuredOutput(t *testing.T) {
 
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
+	assert.True(t, containsSummary(ref.EventLog))
 
 	// -- pulumi destroy --
 	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout))
@@ -1239,6 +1242,7 @@ func TestStructuredOutput(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+	assert.True(t, containsSummary(dRes.EventLog))
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
@@ -1458,4 +1462,14 @@ func countSteps(log []apitype.EngineEvent) int {
 		}
 	}
 	return steps
+}
+
+func containsSummary(log []apitype.EngineEvent) bool {
+	hasSummary := false
+	for _, e := range log {
+		if e.SummaryEvent != nil {
+			hasSummary = true
+		}
+	}
+	return hasSummary
 }
