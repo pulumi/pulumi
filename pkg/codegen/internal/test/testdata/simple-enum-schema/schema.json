@@ -46,6 +46,17 @@
           "default": 6
         }
       },
+      "stateInputs": {
+        "properties": {
+          "farm": {
+            "oneOf": [
+              {"$ref": "#/types/plant:tree/v1:Farm"},
+              {"type": "string"}
+            ],
+            "default": "(unknown)"
+          }
+        }
+      },
       "properties": {
         "container": {
           "$ref": "#/types/plant::Container"

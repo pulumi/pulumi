@@ -45,18 +45,7 @@ type typeDetails struct {
 	functionType bool
 }
 
-type stringSet map[string]struct{}
-
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
-}
-
-func (ss stringSet) has(s string) bool {
-	_, ok := ss[s]
-	return ok
-}
-
-type imports stringSet
+type imports codegen.StringSet
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
@@ -64,19 +53,19 @@ func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool
 
 func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bool, predicate func(imp string) bool) {
 	if imp := mod.importObjectType(t, input); imp != "" && (predicate == nil || predicate(imp)) {
-		stringSet(imports).add(imp)
+		codegen.StringSet(imports).Add(imp)
 	}
 }
 
 func (imports imports) addEnum(mod *modContext, tok string) {
 	if imp := mod.importEnumFromToken(tok); imp != "" {
-		stringSet(imports).add(imp)
+		codegen.StringSet(imports).Add(imp)
 	}
 }
 
 func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
 	if imp := mod.importResourceType(r); imp != "" {
-		stringSet(imports).add(imp)
+		codegen.StringSet(imports).Add(imp)
 	}
 }
 
@@ -1031,7 +1020,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__ = dict()\n\n")
 	fmt.Fprintf(w, "")
 
-	ins := stringSet{}
+	ins := codegen.NewStringSet()
 	for _, prop := range res.InputProperties {
 		pname := InitParamName(prop.Name)
 		var arg interface{}
@@ -1079,14 +1068,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 		fmt.Fprintf(w, "            __props__['%s'] = %s\n", PyName(prop.Name), arg)
 
-		ins.add(prop.Name)
+		ins.Add(prop.Name)
 	}
 
 	var secretProps []string
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.has(prop.Name) {
+		if !ins.Has(prop.Name) {
 			fmt.Fprintf(w, "            __props__['%s'] = None\n", PyName(prop.Name))
 		}
 
@@ -1160,9 +1149,16 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        __props__ = dict()\n\n")
 
+		stateInputs := codegen.NewStringSet()
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
-				fmt.Fprintf(w, "        __props__[\"%[1]s\"] = %[1]s\n", PyName(prop.Name))
+				stateInputs.Add(prop.Name)
+				fmt.Fprintf(w, "        __props__[%[1]q] = %[1]s\n", PyName(prop.Name))
+			}
+		}
+		for _, prop := range res.Properties {
+			if !stateInputs.Has(prop.Name) {
+				fmt.Fprintf(w, "        __props__[%[1]q] = None\n", PyName(prop.Name))
 			}
 		}
 
@@ -1908,12 +1904,12 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 			}
 			typ = "Any"
 		} else {
-			elementTypeSet := stringSet{}
+			elementTypeSet := codegen.NewStringSet()
 			var elementTypes []schema.Type
 			for _, e := range t.ElementTypes {
 				et := mod.typeString(e, input, false, false, acceptMapping)
-				if !elementTypeSet.has(et) {
-					elementTypeSet.add(et)
+				if !elementTypeSet.Has(et) {
+					elementTypeSet.Add(et)
 					elementTypes = append(elementTypes, e)
 				}
 			}
