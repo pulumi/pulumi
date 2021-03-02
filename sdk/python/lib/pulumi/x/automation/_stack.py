@@ -238,6 +238,7 @@ class Stack:
            message: Optional[str] = None,
            target: Optional[List[str]] = None,
            expect_no_changes: Optional[bool] = None,
+           diff: Optional[bool] = None,
            target_dependents: Optional[bool] = None,
            replace: Optional[List[str]] = None,
            on_output: Optional[OnOutput] = None,
@@ -251,6 +252,7 @@ class Stack:
         :param message: Message (optional) to associate with the update operation.
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
@@ -301,6 +303,7 @@ class Stack:
                 diff: Optional[bool] = None,
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
+                on_output: Optional[OnOutput] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -311,9 +314,10 @@ class Stack:
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
         :param expect_no_changes: Return an error if any changes occur during this update.
-        :param diff: Display operation as a rich diff showing the overall change
+        :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
+        :param on_output: A function to process the stdout stream.
         :param program: The inline program.
         :returns: PreviewResult
         """
@@ -343,7 +347,7 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         try:
-            preview_result = self._run_pulumi_cmd_sync(args)
+            preview_result = self._run_pulumi_cmd_sync(args, on_output)
             return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr)
         finally:
             if on_exit is not None:
