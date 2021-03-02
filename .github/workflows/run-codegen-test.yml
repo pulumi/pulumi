@@ -4,7 +4,7 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '!pkg/codegen/docs/**'
-    - '.github/workflows/codegen-test.yml'
+    - '.github/workflows/run-codegen-test.yml'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -16,7 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
+        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes", "azure-native"]
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
