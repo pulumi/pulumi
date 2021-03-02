@@ -22,7 +22,7 @@ import * as tail from "tail";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
-import { EngineEvent } from "./events";
+import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
@@ -110,20 +110,25 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    // Try for up to 10s to start tailing the file, invoking the callback once per line.  Returns
+    // Try for up to 10s to start tailing the file, invoking the callback once per line. Returns
     // a promise for a callback to invoke to stop tailing the file.
     private async readLines(path: string, callback: (line: string) => void): Promise<() => void> {
         let n = 0;
         while (true) {
             try {
                 // console.log(path);
-                const eventLogTail = new tail.Tail(path);
+                const eventLogTail = new tail.Tail(path, { fromBeginning: true });
+                console.log("Starting tail");
                 eventLogTail.on("line", ev => {
-                    // console.log(ev);
+                    console.log(ev);
                     callback(ev);
                 });
-                return () => eventLogTail.unwatch();
+                return () => {
+                    console.log("Stopping tail");
+                    eventLogTail.unwatch();
+                };
             } catch (err) {
+                console.log("Failed to tail, trying again.");
                 // On the 100th attempt (waiting 100ms per attempt), throw.
                 if (n++ > 100) {
                     throw err;
@@ -175,7 +180,7 @@ export class Stack {
                 args.push("--parallel", opts.parallel.toString());
             }
             if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-"));
+                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-up-"));
                 const logFile = upath.joinSafe(logDir, "eventlog.txt");
                 args.push("--event-log", logFile);
                 const onEvent = opts.onEvent;
@@ -242,48 +247,50 @@ export class Stack {
         const args = ["preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
+        let summary: SummaryEvent | undefined = undefined;
         await this.workspace.selectStack(this.name);
 
-        let stopEventListenerPromise: Promise<() => void> | undefined;
-        if (opts) {
-            if (opts.program) {
-                program = opts.program;
-            }
-            if (opts.message) {
-                args.push("--message", opts.message);
-            }
-            if (opts.expectNoChanges) {
-                args.push("--expect-no-changes");
-            }
-            if (opts.diff) {
-                args.push("--diff");
-            }
-            if (opts.replace) {
-                for (const rURN of opts.replace) {
-                    args.push("--replace", rURN);
-                }
-            }
-            if (opts.target) {
-                for (const tURN of opts.target) {
-                    args.push("--target", tURN);
-                }
-            }
-            if (opts.targetDependents) {
-                args.push("--target-dependents");
-            }
-            if (opts.parallel) {
-                args.push("--parallel", opts.parallel.toString());
-            }
-            if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-"));
-                const logFile = upath.joinSafe(logDir, "eventlog.txt");
-                args.push("--event-log", logFile);
+        const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-preview-"));
+        const logFile = upath.joinSafe(logDir, "eventlog.txt");
+        args.push("--event-log", logFile);
+        const stopEventListenerPromise = this.readLines(logFile, (line) => {
+            const event: EngineEvent = JSON.parse(line);
+            if (opts?.onEvent) {
                 const onEvent = opts.onEvent;
-                stopEventListenerPromise = this.readLines(logFile, (line) => {
-                    const event = JSON.parse(line);
-                    onEvent(event);
-                });
+                onEvent(event);
             }
+            if (event.summaryEvent) {
+                summary = event.summaryEvent;
+            }
+        });
+
+        if (opts?.program) {
+            program = opts.program;
+        }
+        if (opts?.message) {
+            args.push("--message", opts.message);
+        }
+        if (opts?.expectNoChanges) {
+            args.push("--expect-no-changes");
+        }
+        if (opts?.diff) {
+            args.push("--diff");
+        }
+        if (opts?.replace) {
+            for (const rURN of opts.replace) {
+                args.push("--replace", rURN);
+            }
+        }
+        if (opts?.target) {
+            for (const tURN of opts.target) {
+                args.push("--target", tURN);
+            }
+        }
+        if (opts?.targetDependents) {
+            args.push("--target-dependents");
+        }
+        if (opts?.parallel) {
+            args.push("--parallel", opts.parallel.toString());
         }
 
         let onExit = () => { return; };
@@ -318,11 +325,12 @@ export class Stack {
             preResult = await this.runPulumiCmd(args);
         } finally {
             onExit();
-            (await stopEventListenerPromise)?.();
+            await stopEventListenerPromise;
         }
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
+            resourceChanges: summary!.resourceChanges,
         };
     }
     /**
@@ -352,7 +360,7 @@ export class Stack {
                 args.push("--parallel", opts.parallel.toString());
             }
             if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-"));
+                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-refresh-"));
                 const logFile = upath.joinSafe(logDir, "eventlog.txt");
                 args.push("--event-log", logFile);
                 const onEvent = opts.onEvent;
@@ -398,7 +406,7 @@ export class Stack {
                 args.push("--parallel", opts.parallel.toString());
             }
             if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-"));
+                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-destroy-"));
                 const logFile = upath.joinSafe(logDir, "eventlog.txt");
                 args.push("--event-log", logFile);
                 const onEvent = opts.onEvent;
@@ -646,6 +654,7 @@ export interface UpResult {
 export interface PreviewResult {
     stdout: string;
     stderr: string;
+    resourceChanges: Record<string, number>;
 }
 
 /**
@@ -727,3 +736,5 @@ const execKind = {
 };
 
 type StackInitMode = "create" | "select" | "createOrSelect";
+
+const delay = (duration: number) => new Promise(resolve => setTimeout(resolve, duration));

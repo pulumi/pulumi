@@ -296,8 +296,9 @@ describe("LocalWorkspace", () => {
 
         // pulumi preview
         let seenSummaryEvent = false;
-        await stack.preview({ onEvent });
+        const preRes = await stack.preview({ onEvent });
         assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `preview`");
+        assert.strictEqual(preRes.resourceChanges.create, 1);
 
         // pulumi up
         seenSummaryEvent = false;
