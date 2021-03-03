@@ -16,5 +16,5 @@ $PublishTargets=${ReleaseInfo}.Targets
 
 Remove-Item -Force $ReleaseInfo.ArchivePath
 
-$Version=& $PSScriptRoot\get-version.ps1
+$Version=& "$(pulumictl get version)"
 & $BuildSdkScript $Version "$(git rev-parse HEAD)"

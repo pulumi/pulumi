@@ -1,6 +1,6 @@
 PROJECT_NAME     := Pulumi Go SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go
-VERSION          := $(shell ../../scripts/get-version HEAD)
+VERSION          := $(shell cd ../../ && pulumictl get version)
 PROJECT_PKGS     := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... ./x/...| grep -v /vendor/ | grep -v templates)
 
 TESTPARALLELISM := 10
