@@ -1,7 +1,4 @@
-### Features
-
-
-### Enhancements
+### Improvements
 
 - [#6410](https://github.com/pulumi/pulumi/pull/6410) Add `diff` option to Automation API's `preview` and `up`
 
@@ -18,3 +15,6 @@
   [#6421](https://github.com/pulumi/pulumi/pull/6421)
 
 - [sdk/nodejs] Serialize default parameters correctly. [#6397](https://github.com/pulumi/pulumi/pull/6397)
+
+- [cli] Respect provider aliases while diffing resources.
+  [#6453](https://github.com/pulumi/pulumi/pull/6453)
