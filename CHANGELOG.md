@@ -1,6 +1,11 @@
 CHANGELOG
 =========
 
+## HEAD (Unreleased)
+
+- [cli] Respect provider aliases while diffing resources.
+  [#6453](https://github.com/pulumi/pulumi/pull/6453)
+
 ## 2.21.2 (2021-02-22)
 
 ### Improvements
