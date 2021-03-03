@@ -1,9 +1,6 @@
 CHANGELOG
 =========
 
-## HEAD (Unreleased)
-_(none)_
-
 ## 2.22.0 (2021-03-03)
 
 ### Improvements
