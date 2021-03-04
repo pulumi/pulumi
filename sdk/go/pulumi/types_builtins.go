@@ -869,9 +869,17 @@ func (o ArchiveArrayOutput) ToArchiveArrayOutputWithContext(ctx context.Context)
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o ArchiveArrayOutput) Index(i IntInput) ArchiveOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) Archive {
-		return vs[0].([]Archive)[vs[1].(int)]
+		arr := vs[0].([]Archive)
+		idx := vs[1].(int)
+		var ret Archive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(ArchiveOutput)
 }
 
@@ -917,6 +925,7 @@ func (o ArchiveMapOutput) ToArchiveMapOutputWithContext(ctx context.Context) Arc
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o ArchiveMapOutput) MapIndex(k StringInput) ArchiveOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) Archive {
 		return vs[0].(map[string]Archive)[vs[1].(string)]
@@ -965,6 +974,7 @@ func (o ArchiveArrayMapOutput) ToArchiveArrayMapOutputWithContext(ctx context.Co
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o ArchiveArrayMapOutput) MapIndex(k StringInput) ArchiveArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []Archive {
 		return vs[0].(map[string][]Archive)[vs[1].(string)]
@@ -1013,9 +1023,17 @@ func (o ArchiveMapArrayOutput) ToArchiveMapArrayOutputWithContext(ctx context.Co
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o ArchiveMapArrayOutput) Index(i IntInput) ArchiveMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]Archive {
-		return vs[0].([]map[string]Archive)[vs[1].(int)]
+		arr := vs[0].([]map[string]Archive)
+		idx := vs[1].(int)
+		var ret map[string]Archive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(ArchiveMapOutput)
 }
 
@@ -1061,6 +1079,7 @@ func (o ArchiveMapMapOutput) ToArchiveMapMapOutputWithContext(ctx context.Contex
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o ArchiveMapMapOutput) MapIndex(k StringInput) ArchiveMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]Archive {
 		return vs[0].(map[string]map[string]Archive)[vs[1].(string)]
@@ -1109,9 +1128,17 @@ func (o ArchiveArrayArrayOutput) ToArchiveArrayArrayOutputWithContext(ctx contex
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o ArchiveArrayArrayOutput) Index(i IntInput) ArchiveArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []Archive {
-		return vs[0].([][]Archive)[vs[1].(int)]
+		arr := vs[0].([][]Archive)
+		idx := vs[1].(int)
+		var ret []Archive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(ArchiveArrayOutput)
 }
 
@@ -1214,9 +1241,17 @@ func (o AssetArrayOutput) ToAssetArrayOutputWithContext(ctx context.Context) Ass
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o AssetArrayOutput) Index(i IntInput) AssetOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) Asset {
-		return vs[0].([]Asset)[vs[1].(int)]
+		arr := vs[0].([]Asset)
+		idx := vs[1].(int)
+		var ret Asset
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(AssetOutput)
 }
 
@@ -1262,6 +1297,7 @@ func (o AssetMapOutput) ToAssetMapOutputWithContext(ctx context.Context) AssetMa
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o AssetMapOutput) MapIndex(k StringInput) AssetOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) Asset {
 		return vs[0].(map[string]Asset)[vs[1].(string)]
@@ -1310,6 +1346,7 @@ func (o AssetArrayMapOutput) ToAssetArrayMapOutputWithContext(ctx context.Contex
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o AssetArrayMapOutput) MapIndex(k StringInput) AssetArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []Asset {
 		return vs[0].(map[string][]Asset)[vs[1].(string)]
@@ -1358,9 +1395,17 @@ func (o AssetMapArrayOutput) ToAssetMapArrayOutputWithContext(ctx context.Contex
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o AssetMapArrayOutput) Index(i IntInput) AssetMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]Asset {
-		return vs[0].([]map[string]Asset)[vs[1].(int)]
+		arr := vs[0].([]map[string]Asset)
+		idx := vs[1].(int)
+		var ret map[string]Asset
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(AssetMapOutput)
 }
 
@@ -1406,6 +1451,7 @@ func (o AssetMapMapOutput) ToAssetMapMapOutputWithContext(ctx context.Context) A
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o AssetMapMapOutput) MapIndex(k StringInput) AssetMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]Asset {
 		return vs[0].(map[string]map[string]Asset)[vs[1].(string)]
@@ -1454,9 +1500,17 @@ func (o AssetArrayArrayOutput) ToAssetArrayArrayOutputWithContext(ctx context.Co
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o AssetArrayArrayOutput) Index(i IntInput) AssetArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []Asset {
-		return vs[0].([][]Asset)[vs[1].(int)]
+		arr := vs[0].([][]Asset)
+		idx := vs[1].(int)
+		var ret []Asset
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(AssetArrayOutput)
 }
 
@@ -1528,9 +1582,17 @@ func (o AssetOrArchiveArrayOutput) ToAssetOrArchiveArrayOutputWithContext(ctx co
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o AssetOrArchiveArrayOutput) Index(i IntInput) AssetOrArchiveOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) AssetOrArchive {
-		return vs[0].([]AssetOrArchive)[vs[1].(int)]
+		arr := vs[0].([]AssetOrArchive)
+		idx := vs[1].(int)
+		var ret AssetOrArchive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(AssetOrArchiveOutput)
 }
 
@@ -1576,6 +1638,7 @@ func (o AssetOrArchiveMapOutput) ToAssetOrArchiveMapOutputWithContext(ctx contex
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o AssetOrArchiveMapOutput) MapIndex(k StringInput) AssetOrArchiveOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) AssetOrArchive {
 		return vs[0].(map[string]AssetOrArchive)[vs[1].(string)]
@@ -1624,6 +1687,7 @@ func (o AssetOrArchiveArrayMapOutput) ToAssetOrArchiveArrayMapOutputWithContext(
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o AssetOrArchiveArrayMapOutput) MapIndex(k StringInput) AssetOrArchiveArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []AssetOrArchive {
 		return vs[0].(map[string][]AssetOrArchive)[vs[1].(string)]
@@ -1672,9 +1736,17 @@ func (o AssetOrArchiveMapArrayOutput) ToAssetOrArchiveMapArrayOutputWithContext(
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o AssetOrArchiveMapArrayOutput) Index(i IntInput) AssetOrArchiveMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]AssetOrArchive {
-		return vs[0].([]map[string]AssetOrArchive)[vs[1].(int)]
+		arr := vs[0].([]map[string]AssetOrArchive)
+		idx := vs[1].(int)
+		var ret map[string]AssetOrArchive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(AssetOrArchiveMapOutput)
 }
 
@@ -1720,6 +1792,7 @@ func (o AssetOrArchiveMapMapOutput) ToAssetOrArchiveMapMapOutputWithContext(ctx 
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o AssetOrArchiveMapMapOutput) MapIndex(k StringInput) AssetOrArchiveMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]AssetOrArchive {
 		return vs[0].(map[string]map[string]AssetOrArchive)[vs[1].(string)]
@@ -1768,9 +1841,17 @@ func (o AssetOrArchiveArrayArrayOutput) ToAssetOrArchiveArrayArrayOutputWithCont
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o AssetOrArchiveArrayArrayOutput) Index(i IntInput) AssetOrArchiveArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []AssetOrArchive {
-		return vs[0].([][]AssetOrArchive)[vs[1].(int)]
+		arr := vs[0].([][]AssetOrArchive)
+		idx := vs[1].(int)
+		var ret []AssetOrArchive
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(AssetOrArchiveArrayOutput)
 }
 
@@ -1883,9 +1964,14 @@ func (o BoolPtrOutput) ToBoolPtrOutputWithContext(ctx context.Context) BoolPtrOu
 	return o
 }
 
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o BoolPtrOutput) Elem() BoolOutput {
 	return o.ApplyT(func(v *bool) bool {
-		return *v
+		var ret bool
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).(BoolOutput)
 }
 
@@ -1931,9 +2017,17 @@ func (o BoolArrayOutput) ToBoolArrayOutputWithContext(ctx context.Context) BoolA
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o BoolArrayOutput) Index(i IntInput) BoolOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) bool {
-		return vs[0].([]bool)[vs[1].(int)]
+		arr := vs[0].([]bool)
+		idx := vs[1].(int)
+		var ret bool
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(BoolOutput)
 }
 
@@ -1979,6 +2073,7 @@ func (o BoolMapOutput) ToBoolMapOutputWithContext(ctx context.Context) BoolMapOu
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o BoolMapOutput) MapIndex(k StringInput) BoolOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) bool {
 		return vs[0].(map[string]bool)[vs[1].(string)]
@@ -2027,6 +2122,7 @@ func (o BoolArrayMapOutput) ToBoolArrayMapOutputWithContext(ctx context.Context)
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o BoolArrayMapOutput) MapIndex(k StringInput) BoolArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []bool {
 		return vs[0].(map[string][]bool)[vs[1].(string)]
@@ -2075,9 +2171,17 @@ func (o BoolMapArrayOutput) ToBoolMapArrayOutputWithContext(ctx context.Context)
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o BoolMapArrayOutput) Index(i IntInput) BoolMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]bool {
-		return vs[0].([]map[string]bool)[vs[1].(int)]
+		arr := vs[0].([]map[string]bool)
+		idx := vs[1].(int)
+		var ret map[string]bool
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(BoolMapOutput)
 }
 
@@ -2123,6 +2227,7 @@ func (o BoolMapMapOutput) ToBoolMapMapOutputWithContext(ctx context.Context) Boo
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o BoolMapMapOutput) MapIndex(k StringInput) BoolMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]bool {
 		return vs[0].(map[string]map[string]bool)[vs[1].(string)]
@@ -2171,9 +2276,17 @@ func (o BoolArrayArrayOutput) ToBoolArrayArrayOutputWithContext(ctx context.Cont
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o BoolArrayArrayOutput) Index(i IntInput) BoolArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []bool {
-		return vs[0].([][]bool)[vs[1].(int)]
+		arr := vs[0].([][]bool)
+		idx := vs[1].(int)
+		var ret []bool
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(BoolArrayOutput)
 }
 
@@ -2286,9 +2399,14 @@ func (o Float64PtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) Flo
 	return o
 }
 
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o Float64PtrOutput) Elem() Float64Output {
 	return o.ApplyT(func(v *float64) float64 {
-		return *v
+		var ret float64
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).(Float64Output)
 }
 
@@ -2334,9 +2452,17 @@ func (o Float64ArrayOutput) ToFloat64ArrayOutputWithContext(ctx context.Context)
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o Float64ArrayOutput) Index(i IntInput) Float64Output {
 	return All(o, i).ApplyT(func(vs []interface{}) float64 {
-		return vs[0].([]float64)[vs[1].(int)]
+		arr := vs[0].([]float64)
+		idx := vs[1].(int)
+		var ret float64
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(Float64Output)
 }
 
@@ -2382,6 +2508,7 @@ func (o Float64MapOutput) ToFloat64MapOutputWithContext(ctx context.Context) Flo
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o Float64MapOutput) MapIndex(k StringInput) Float64Output {
 	return All(o, k).ApplyT(func(vs []interface{}) float64 {
 		return vs[0].(map[string]float64)[vs[1].(string)]
@@ -2430,6 +2557,7 @@ func (o Float64ArrayMapOutput) ToFloat64ArrayMapOutputWithContext(ctx context.Co
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o Float64ArrayMapOutput) MapIndex(k StringInput) Float64ArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []float64 {
 		return vs[0].(map[string][]float64)[vs[1].(string)]
@@ -2478,9 +2606,17 @@ func (o Float64MapArrayOutput) ToFloat64MapArrayOutputWithContext(ctx context.Co
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o Float64MapArrayOutput) Index(i IntInput) Float64MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]float64 {
-		return vs[0].([]map[string]float64)[vs[1].(int)]
+		arr := vs[0].([]map[string]float64)
+		idx := vs[1].(int)
+		var ret map[string]float64
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(Float64MapOutput)
 }
 
@@ -2526,6 +2662,7 @@ func (o Float64MapMapOutput) ToFloat64MapMapOutputWithContext(ctx context.Contex
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o Float64MapMapOutput) MapIndex(k StringInput) Float64MapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]float64 {
 		return vs[0].(map[string]map[string]float64)[vs[1].(string)]
@@ -2574,9 +2711,17 @@ func (o Float64ArrayArrayOutput) ToFloat64ArrayArrayOutputWithContext(ctx contex
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o Float64ArrayArrayOutput) Index(i IntInput) Float64ArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []float64 {
-		return vs[0].([][]float64)[vs[1].(int)]
+		arr := vs[0].([][]float64)
+		idx := vs[1].(int)
+		var ret []float64
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(Float64ArrayOutput)
 }
 
@@ -2704,9 +2849,14 @@ func (o IDPtrOutput) ToIDPtrOutputWithContext(ctx context.Context) IDPtrOutput {
 	return o
 }
 
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o IDPtrOutput) Elem() IDOutput {
 	return o.ApplyT(func(v *ID) ID {
-		return *v
+		var ret ID
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).(IDOutput)
 }
 
@@ -2752,9 +2902,17 @@ func (o IDArrayOutput) ToIDArrayOutputWithContext(ctx context.Context) IDArrayOu
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o IDArrayOutput) Index(i IntInput) IDOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) ID {
-		return vs[0].([]ID)[vs[1].(int)]
+		arr := vs[0].([]ID)
+		idx := vs[1].(int)
+		var ret ID
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(IDOutput)
 }
 
@@ -2800,6 +2958,7 @@ func (o IDMapOutput) ToIDMapOutputWithContext(ctx context.Context) IDMapOutput {
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o IDMapOutput) MapIndex(k StringInput) IDOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) ID {
 		return vs[0].(map[string]ID)[vs[1].(string)]
@@ -2848,6 +3007,7 @@ func (o IDArrayMapOutput) ToIDArrayMapOutputWithContext(ctx context.Context) IDA
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o IDArrayMapOutput) MapIndex(k StringInput) IDArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []ID {
 		return vs[0].(map[string][]ID)[vs[1].(string)]
@@ -2896,9 +3056,17 @@ func (o IDMapArrayOutput) ToIDMapArrayOutputWithContext(ctx context.Context) IDM
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o IDMapArrayOutput) Index(i IntInput) IDMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]ID {
-		return vs[0].([]map[string]ID)[vs[1].(int)]
+		arr := vs[0].([]map[string]ID)
+		idx := vs[1].(int)
+		var ret map[string]ID
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(IDMapOutput)
 }
 
@@ -2944,6 +3112,7 @@ func (o IDMapMapOutput) ToIDMapMapOutputWithContext(ctx context.Context) IDMapMa
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o IDMapMapOutput) MapIndex(k StringInput) IDMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]ID {
 		return vs[0].(map[string]map[string]ID)[vs[1].(string)]
@@ -2992,9 +3161,17 @@ func (o IDArrayArrayOutput) ToIDArrayArrayOutputWithContext(ctx context.Context)
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o IDArrayArrayOutput) Index(i IntInput) IDArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []ID {
-		return vs[0].([][]ID)[vs[1].(int)]
+		arr := vs[0].([][]ID)
+		idx := vs[1].(int)
+		var ret []ID
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(IDArrayOutput)
 }
 
@@ -3040,9 +3217,17 @@ func (o ArrayOutput) ToArrayOutputWithContext(ctx context.Context) ArrayOutput {
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o ArrayOutput) Index(i IntInput) Output {
 	return All(o, i).ApplyT(func(vs []interface{}) interface{} {
-		return vs[0].([]interface{})[vs[1].(int)]
+		arr := vs[0].([]interface{})
+		idx := vs[1].(int)
+		var ret interface{}
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(Output)
 }
 
@@ -3088,6 +3273,7 @@ func (o MapOutput) ToMapOutputWithContext(ctx context.Context) MapOutput {
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o MapOutput) MapIndex(k StringInput) Output {
 	return All(o, k).ApplyT(func(vs []interface{}) interface{} {
 		return vs[0].(map[string]interface{})[vs[1].(string)]
@@ -3136,6 +3322,7 @@ func (o ArrayMapOutput) ToArrayMapOutputWithContext(ctx context.Context) ArrayMa
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o ArrayMapOutput) MapIndex(k StringInput) ArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []interface{} {
 		return vs[0].(map[string][]interface{})[vs[1].(string)]
@@ -3184,9 +3371,17 @@ func (o MapArrayOutput) ToMapArrayOutputWithContext(ctx context.Context) MapArra
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o MapArrayOutput) Index(i IntInput) MapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]interface{} {
-		return vs[0].([]map[string]interface{})[vs[1].(int)]
+		arr := vs[0].([]map[string]interface{})
+		idx := vs[1].(int)
+		var ret map[string]interface{}
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(MapOutput)
 }
 
@@ -3232,6 +3427,7 @@ func (o MapMapOutput) ToMapMapOutputWithContext(ctx context.Context) MapMapOutpu
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o MapMapOutput) MapIndex(k StringInput) MapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]interface{} {
 		return vs[0].(map[string]map[string]interface{})[vs[1].(string)]
@@ -3280,9 +3476,17 @@ func (o ArrayArrayOutput) ToArrayArrayOutputWithContext(ctx context.Context) Arr
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o ArrayArrayOutput) Index(i IntInput) ArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []interface{} {
-		return vs[0].([][]interface{})[vs[1].(int)]
+		arr := vs[0].([][]interface{})
+		idx := vs[1].(int)
+		var ret []interface{}
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(ArrayOutput)
 }
 
@@ -3395,9 +3599,14 @@ func (o IntPtrOutput) ToIntPtrOutputWithContext(ctx context.Context) IntPtrOutpu
 	return o
 }
 
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o IntPtrOutput) Elem() IntOutput {
 	return o.ApplyT(func(v *int) int {
-		return *v
+		var ret int
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).(IntOutput)
 }
 
@@ -3443,9 +3652,17 @@ func (o IntArrayOutput) ToIntArrayOutputWithContext(ctx context.Context) IntArra
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o IntArrayOutput) Index(i IntInput) IntOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) int {
-		return vs[0].([]int)[vs[1].(int)]
+		arr := vs[0].([]int)
+		idx := vs[1].(int)
+		var ret int
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(IntOutput)
 }
 
@@ -3491,6 +3708,7 @@ func (o IntMapOutput) ToIntMapOutputWithContext(ctx context.Context) IntMapOutpu
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o IntMapOutput) MapIndex(k StringInput) IntOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) int {
 		return vs[0].(map[string]int)[vs[1].(string)]
@@ -3539,6 +3757,7 @@ func (o IntArrayMapOutput) ToIntArrayMapOutputWithContext(ctx context.Context) I
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o IntArrayMapOutput) MapIndex(k StringInput) IntArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []int {
 		return vs[0].(map[string][]int)[vs[1].(string)]
@@ -3587,9 +3806,17 @@ func (o IntMapArrayOutput) ToIntMapArrayOutputWithContext(ctx context.Context) I
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o IntMapArrayOutput) Index(i IntInput) IntMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]int {
-		return vs[0].([]map[string]int)[vs[1].(int)]
+		arr := vs[0].([]map[string]int)
+		idx := vs[1].(int)
+		var ret map[string]int
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(IntMapOutput)
 }
 
@@ -3635,6 +3862,7 @@ func (o IntMapMapOutput) ToIntMapMapOutputWithContext(ctx context.Context) IntMa
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o IntMapMapOutput) MapIndex(k StringInput) IntMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]int {
 		return vs[0].(map[string]map[string]int)[vs[1].(string)]
@@ -3683,9 +3911,17 @@ func (o IntArrayArrayOutput) ToIntArrayArrayOutputWithContext(ctx context.Contex
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o IntArrayArrayOutput) Index(i IntInput) IntArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []int {
-		return vs[0].([][]int)[vs[1].(int)]
+		arr := vs[0].([][]int)
+		idx := vs[1].(int)
+		var ret []int
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(IntArrayOutput)
 }
 
@@ -3798,9 +4034,14 @@ func (o StringPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) Strin
 	return o
 }
 
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o StringPtrOutput) Elem() StringOutput {
 	return o.ApplyT(func(v *string) string {
-		return *v
+		var ret string
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).(StringOutput)
 }
 
@@ -3846,9 +4087,17 @@ func (o StringArrayOutput) ToStringArrayOutputWithContext(ctx context.Context) S
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o StringArrayOutput) Index(i IntInput) StringOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) string {
-		return vs[0].([]string)[vs[1].(int)]
+		arr := vs[0].([]string)
+		idx := vs[1].(int)
+		var ret string
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(StringOutput)
 }
 
@@ -3894,6 +4143,7 @@ func (o StringMapOutput) ToStringMapOutputWithContext(ctx context.Context) Strin
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o StringMapOutput) MapIndex(k StringInput) StringOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) string {
 		return vs[0].(map[string]string)[vs[1].(string)]
@@ -3942,6 +4192,7 @@ func (o StringArrayMapOutput) ToStringArrayMapOutputWithContext(ctx context.Cont
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o StringArrayMapOutput) MapIndex(k StringInput) StringArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []string {
 		return vs[0].(map[string][]string)[vs[1].(string)]
@@ -3990,9 +4241,17 @@ func (o StringMapArrayOutput) ToStringMapArrayOutputWithContext(ctx context.Cont
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o StringMapArrayOutput) Index(i IntInput) StringMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]string {
-		return vs[0].([]map[string]string)[vs[1].(int)]
+		arr := vs[0].([]map[string]string)
+		idx := vs[1].(int)
+		var ret map[string]string
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(StringMapOutput)
 }
 
@@ -4038,6 +4297,7 @@ func (o StringMapMapOutput) ToStringMapMapOutputWithContext(ctx context.Context)
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o StringMapMapOutput) MapIndex(k StringInput) StringMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]string {
 		return vs[0].(map[string]map[string]string)[vs[1].(string)]
@@ -4086,9 +4346,17 @@ func (o StringArrayArrayOutput) ToStringArrayArrayOutputWithContext(ctx context.
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o StringArrayArrayOutput) Index(i IntInput) StringArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []string {
-		return vs[0].([][]string)[vs[1].(int)]
+		arr := vs[0].([][]string)
+		idx := vs[1].(int)
+		var ret []string
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(StringArrayOutput)
 }
 
@@ -4216,9 +4484,14 @@ func (o URNPtrOutput) ToURNPtrOutputWithContext(ctx context.Context) URNPtrOutpu
 	return o
 }
 
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o URNPtrOutput) Elem() URNOutput {
 	return o.ApplyT(func(v *URN) URN {
-		return *v
+		var ret URN
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).(URNOutput)
 }
 
@@ -4264,9 +4537,17 @@ func (o URNArrayOutput) ToURNArrayOutputWithContext(ctx context.Context) URNArra
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o URNArrayOutput) Index(i IntInput) URNOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) URN {
-		return vs[0].([]URN)[vs[1].(int)]
+		arr := vs[0].([]URN)
+		idx := vs[1].(int)
+		var ret URN
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(URNOutput)
 }
 
@@ -4312,6 +4593,7 @@ func (o URNMapOutput) ToURNMapOutputWithContext(ctx context.Context) URNMapOutpu
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o URNMapOutput) MapIndex(k StringInput) URNOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) URN {
 		return vs[0].(map[string]URN)[vs[1].(string)]
@@ -4360,6 +4642,7 @@ func (o URNArrayMapOutput) ToURNArrayMapOutputWithContext(ctx context.Context) U
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o URNArrayMapOutput) MapIndex(k StringInput) URNArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []URN {
 		return vs[0].(map[string][]URN)[vs[1].(string)]
@@ -4408,9 +4691,17 @@ func (o URNMapArrayOutput) ToURNMapArrayOutputWithContext(ctx context.Context) U
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o URNMapArrayOutput) Index(i IntInput) URNMapOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) map[string]URN {
-		return vs[0].([]map[string]URN)[vs[1].(int)]
+		arr := vs[0].([]map[string]URN)
+		idx := vs[1].(int)
+		var ret map[string]URN
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(URNMapOutput)
 }
 
@@ -4456,6 +4747,7 @@ func (o URNMapMapOutput) ToURNMapMapOutputWithContext(ctx context.Context) URNMa
 	return o
 }
 
+// MapIndex looks up the key k in the map.
 func (o URNMapMapOutput) MapIndex(k StringInput) URNMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]URN {
 		return vs[0].(map[string]map[string]URN)[vs[1].(string)]
@@ -4504,9 +4796,17 @@ func (o URNArrayArrayOutput) ToURNArrayArrayOutputWithContext(ctx context.Contex
 	return o
 }
 
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o URNArrayArrayOutput) Index(i IntInput) URNArrayOutput {
 	return All(o, i).ApplyT(func(vs []interface{}) []URN {
-		return vs[0].([][]URN)[vs[1].(int)]
+		arr := vs[0].([][]URN)
+		idx := vs[1].(int)
+		var ret []URN
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).(URNArrayOutput)
 }
 
