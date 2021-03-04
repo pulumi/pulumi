@@ -952,6 +952,7 @@ type Resource struct {
 	dependencies        []resource.URN
 	parent              resource.URN
 	deleteBeforeReplace bool
+	provider            string
 }
 
 func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resources []Resource) error {
@@ -962,6 +963,7 @@ func registerResources(t *testing.T, monitor *deploytest.ResourceMonitor, resour
 			Inputs:              r.props,
 			DeleteBeforeReplace: &r.deleteBeforeReplace,
 			Aliases:             r.aliases,
+			Provider:            r.provider,
 		})
 		if err != nil {
 			return err
@@ -1036,6 +1038,47 @@ func TestAliases(t *testing.T) {
 		}
 		return p.Run(t, snap)
 	}
+
+	// Ensure that provider rename produces same for the resource that is using the provider.
+	snap2 := updateProgramWithResource(nil, []Resource{{
+		t:       "pulumi:providers:pkgA",
+		name:    "p1",
+	}}, []deploy.StepOp{deploy.OpCreate})
+
+	// This works fine, so the provider aliasing works correctly.
+	//snap2 = updateProgramWithResource(snap2, []Resource{{
+	//	t:       "pulumi:providers:pkgA",
+	//	name:    "p2",
+	//	aliases: []resource.URN{"urn:pulumi:test::test::pulumi:providers:pkgA::p1"},
+	//}}, []deploy.StepOp{deploy.OpSame})
+
+	// However, I can't seem to figure out how to create a resource and the provider in one operation
+	// because I need the provider ID here.
+	// So, this second step adds a resource and keeps the provider:
+	providerId := snap2.Resources[0].ID
+	snap2 = updateProgramWithResource(snap2, []Resource{{
+		t:       "pulumi:providers:pkgA",
+		name:    "p1",
+	}, {
+		t:    "pkgA:index:t1",
+		name: "n1",
+		provider: fmt.Sprintf("urn:pulumi:test::test::pulumi:providers:pkgA::p1::%s", providerId),
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpCreate})
+
+	// But the final update has to change both the provider and resource which fails
+	// with a Bail in
+	// https://github.com/pulumi/pulumi/blob/faaba72b6345f3b2c19a414119ab7304063bbe9d/pkg/resource/deploy/step_generator.go#L1164
+	// because a provider with p2 and the same ID isn't found. If I dump
+	// the provider map, it has p1 with the same ID and p2 with unknown ID>.
+	snap2 = updateProgramWithResource(snap2, []Resource{{
+		t:       "pulumi:providers:pkgA",
+		name:    "p2",
+		aliases: []resource.URN{"urn:pulumi:test::test::pulumi:providers:pkgA::p1"},
+	}, {
+		t:    "pkgA:index:t1",
+		name: "n1",
+		provider: fmt.Sprintf("urn:pulumi:test::test::pulumi:providers:pkgA::p2::%s", providerId),
+	}}, []deploy.StepOp{deploy.OpSame, deploy.OpSame})
 
 	snap := updateProgramWithResource(nil, []Resource{{
 		t:    "pkgA:index:t1",
