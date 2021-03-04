@@ -104,21 +104,21 @@ func (b builtin) MapIndexReturnType() string {
 }
 
 func (b builtin) IndexConversion() string {
-	if b.item.inputType != "" {
+	toType := b.item.Name
+	switch {
+	case b.item.inputType != "":
 		// No conversion necessary for types which are their own input type.
 		return ""
-	}
-	toType := b.item.Name
-	if toType == "Input" {
+	case toType == "Input":
 		// There is no direct conversion into `Input`, so special case to use `ToOutput`
 		return "ToOutput"
-	}
-	if b.item.item == nil {
+	case b.item.item == nil:
 		// The item type is a primitive - so use a direct conversion into the defined type (e.g. `String(...)`)
 		return toType
+	default:
+		// The item type is itself a container - so use one of the other code-generated `To<Type>` methods.
+		return "To" + toType
 	}
-	// The item type is itself a container - so use one of the other code-generated `To<Type>` methods.
-	return "To" + toType
 }
 
 func (b builtin) ElementType() string {
