@@ -10,6 +10,7 @@
     },
     "dependencies": {
         "@grpc/grpc-js": "^1.2.7",
+        "@logdna/tail-file": "^2.0.6",
         "@pulumi/query": "^0.3.0",
         "google-protobuf": "^3.5.0",
         "js-yaml": "^3.14.0",
@@ -20,7 +21,7 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
-        "tail": "^2.0.4",
+        "split2": "^3.2.2",
         "ts-node": "^7.0.1",
         "typescript": "~3.7.3",
         "upath": "^1.1.0"
@@ -33,7 +34,7 @@
         "@types/normalize-package-data": "^2.4.0",
         "@types/read-package-tree": "^5.2.0",
         "@types/semver": "^5.5.0",
-        "@types/tail": "^2.0.0",
+        "@types/split2": "^2.1.6",
         "istanbul": "^0.4.5",
         "mocha": "^3.5.0",
         "tslint": "^5.11.0"

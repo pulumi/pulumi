@@ -17,12 +17,13 @@ import * as os from "os";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
-import * as tail from "tail";
+import * as TailFile from "@logdna/tail-file";
+import * as split2 from "split2";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
-import { EngineEvent, SummaryEvent } from "./events";
+import { EngineEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
@@ -112,30 +113,52 @@ export class Stack {
     }
     // Try for up to 10s to start tailing the file, invoking the callback once per line. Returns
     // a promise for a callback to invoke to stop tailing the file.
-    private async readLines(path: string, callback: (line: string) => void): Promise<() => void> {
+    private async readLines(path: string, callback: (event: EngineEvent) => void): Promise<void> {
         let n = 0;
-        while (true) {
-            try {
-                // console.log(path);
-                const eventLogTail = new tail.Tail(path, { fromBeginning: true });
-                console.log("Starting tail");
-                eventLogTail.on("line", ev => {
-                    console.log(ev);
-                    callback(ev);
-                });
-                return () => {
-                    console.log("Stopping tail");
-                    eventLogTail.unwatch();
-                };
-            } catch (err) {
-                console.log("Failed to tail, trying again.");
-                // On the 100th attempt (waiting 100ms per attempt), throw.
-                if (n++ > 100) {
-                    throw err;
-                }
-                await new Promise(resolve => setTimeout(resolve, 100));
+        let seenCancelEvent = false;
+        let fileExists = fs.existsSync(path);
+        while (!fileExists) {
+            if (n > 100) {
+                throw new Error("Log file never found.");
             }
+            await delay(100);
+            fileExists = fs.existsSync(path);
+            n++;
         }
+        const eventLogTail = new TailFile(path, { startPos: 0 });
+        eventLogTail
+            .on("tail_error", (err) => {
+                console.error("TailFile had an error!", err);
+                throw err;
+            })
+            .start()
+            .catch(err => {
+                console.error("Cannot start, does the file exist?", err);
+            });
+
+        eventLogTail
+            .pipe(split2())
+            .on("data", line => {
+                const event = JSON.parse(line);
+                callback(event);
+                if (event.cancelEvent) {
+                    seenCancelEvent = true;
+                }
+            });
+
+
+        // Wait until the cancel event comes through or we time out.
+        n = 0;
+        while (!seenCancelEvent) {
+            if (n > 50) {
+                await eventLogTail.quit();
+                throw new Error("Logs never completed.");
+            }
+            await delay(100);
+            n++;
+        }
+
+        await eventLogTail.quit();
     }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -149,7 +172,18 @@ export class Stack {
         let program = this.workspace.program;
         await this.workspace.selectStack(this.name);
 
-        let stopEventListenerPromise: Promise<() => void> | undefined;
+        const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-up-"));
+        const logFile = upath.joinSafe(logDir, "eventlog.txt");
+        args.push("--event-log", logFile);
+        const eventLog: EngineEvent[] = [];
+        const done = this.readLines(logFile, (event) => {
+            eventLog.push(event);
+            if (opts?.onEvent) {
+                const onEvent = opts.onEvent;
+                onEvent(event);
+            }
+        });
+
         if (opts) {
             if (opts.program) {
                 program = opts.program;
@@ -178,16 +212,6 @@ export class Stack {
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
-            }
-            if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-up-"));
-                const logFile = upath.joinSafe(logDir, "eventlog.txt");
-                args.push("--event-log", logFile);
-                const onEvent = opts.onEvent;
-                stopEventListenerPromise = this.readLines(logFile, (line) => {
-                    const event = JSON.parse(line);
-                    onEvent(event);
-                });
             }
         }
 
@@ -223,17 +247,19 @@ export class Stack {
             upResult = await this.runPulumiCmd(args, opts?.onOutput);
         } finally {
             onExit();
-            (await stopEventListenerPromise)?.();
+            await done;
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
         const summary = await this.info();
+
         return {
             stdout: upResult.stdout,
             stderr: upResult.stderr,
             summary: summary!,
             outputs: outputs!,
+            eventLog,
         };
     }
     /**
@@ -243,54 +269,52 @@ export class Stack {
      * @param opts Options to customize the behavior of the preview.
      */
     async preview(opts?: PreviewOptions): Promise<PreviewResult> {
-        // TODO JSON
         const args = ["preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
-        let summary: SummaryEvent | undefined = undefined;
         await this.workspace.selectStack(this.name);
 
         const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-preview-"));
         const logFile = upath.joinSafe(logDir, "eventlog.txt");
         args.push("--event-log", logFile);
-        const stopEventListenerPromise = this.readLines(logFile, (line) => {
-            const event: EngineEvent = JSON.parse(line);
+        const eventLog: EngineEvent[] = [];
+        const done = this.readLines(logFile, (event) => {
+            eventLog.push(event);
             if (opts?.onEvent) {
                 const onEvent = opts.onEvent;
                 onEvent(event);
             }
-            if (event.summaryEvent) {
-                summary = event.summaryEvent;
-            }
         });
 
-        if (opts?.program) {
-            program = opts.program;
-        }
-        if (opts?.message) {
-            args.push("--message", opts.message);
-        }
-        if (opts?.expectNoChanges) {
-            args.push("--expect-no-changes");
-        }
-        if (opts?.diff) {
-            args.push("--diff");
-        }
-        if (opts?.replace) {
-            for (const rURN of opts.replace) {
-                args.push("--replace", rURN);
+        if (opts) {
+            if (opts.program) {
+                program = opts.program;
             }
-        }
-        if (opts?.target) {
-            for (const tURN of opts.target) {
-                args.push("--target", tURN);
+            if (opts.message) {
+                args.push("--message", opts.message);
             }
-        }
-        if (opts?.targetDependents) {
-            args.push("--target-dependents");
-        }
-        if (opts?.parallel) {
-            args.push("--parallel", opts.parallel.toString());
+            if (opts.expectNoChanges) {
+                args.push("--expect-no-changes");
+            }
+            if (opts.diff) {
+                args.push("--diff");
+            }
+            if (opts.replace) {
+                for (const rURN of opts.replace) {
+                    args.push("--replace", rURN);
+                }
+            }
+            if (opts.target) {
+                for (const tURN of opts.target) {
+                    args.push("--target", tURN);
+                }
+            }
+            if (opts?.targetDependents) {
+                args.push("--target-dependents");
+            }
+            if (opts.parallel) {
+                args.push("--parallel", opts.parallel.toString());
+            }
         }
 
         let onExit = () => { return; };
@@ -325,12 +349,25 @@ export class Stack {
             preResult = await this.runPulumiCmd(args);
         } finally {
             onExit();
-            await stopEventListenerPromise;
+            await done;
         }
+
+        const summary = eventLog.filter(event => {
+            if (event.summaryEvent) {
+                return event;
+            }
+            return;
+        })[0].summaryEvent;
+
+        if (!summary) {
+            throw new Error("No summary of changes.");
+        }
+
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
-            resourceChanges: summary!.resourceChanges,
+            resourceChanges: summary.resourceChanges,
+            eventLog,
         };
     }
     /**
@@ -343,7 +380,18 @@ export class Stack {
         const args = ["refresh", "--yes", "--skip-preview"];
         await this.workspace.selectStack(this.name);
 
-        let finalizer: Promise<() => void> | undefined;
+        const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-refresh-"));
+        const logFile = upath.joinSafe(logDir, "eventlog.txt");
+        args.push("--event-log", logFile);
+        const eventLog: EngineEvent[] = [];
+        const done = this.readLines(logFile, (event) => {
+            eventLog.push(event);
+            if (opts?.onEvent) {
+                const onEvent = opts.onEvent;
+                onEvent(event);
+            }
+        });
+
         if (opts) {
             if (opts.message) {
                 args.push("--message", opts.message);
@@ -359,25 +407,16 @@ export class Stack {
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
-            if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-refresh-"));
-                const logFile = upath.joinSafe(logDir, "eventlog.txt");
-                args.push("--event-log", logFile);
-                const onEvent = opts.onEvent;
-                finalizer = this.readLines(logFile, (line) => {
-                    const event = JSON.parse(line);
-                    onEvent(event);
-                });
-            }
         }
 
         const refResult = await this.runPulumiCmd(args, opts?.onOutput);
-        (await finalizer)?.();
         const summary = await this.info();
+        await done;
         return {
             stdout: refResult.stdout,
             stderr: refResult.stderr,
             summary: summary!,
+            eventLog,
         };
     }
     /**
@@ -389,7 +428,18 @@ export class Stack {
         const args = ["destroy", "--yes", "--skip-preview"];
         await this.workspace.selectStack(this.name);
 
-        let stopEventListenerPromise: Promise<() => void> | undefined;
+        const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-destroy-"));
+        const logFile = upath.joinSafe(logDir, "eventlog.txt");
+        args.push("--event-log", logFile);
+        const eventLog: EngineEvent[] = [];
+        const done = this.readLines(logFile, (event) => {
+            eventLog.push(event);
+            if (opts?.onEvent) {
+                const onEvent = opts.onEvent;
+                onEvent(event);
+            }
+        });
+
         if (opts) {
             if (opts.message) {
                 args.push("--message", opts.message);
@@ -405,25 +455,16 @@ export class Stack {
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
-            if (opts.onEvent) {
-                const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), "automation-logs-destroy-"));
-                const logFile = upath.joinSafe(logDir, "eventlog.txt");
-                args.push("--event-log", logFile);
-                const onEvent = opts.onEvent;
-                stopEventListenerPromise = this.readLines(logFile, (line) => {
-                    const event = JSON.parse(line);
-                    onEvent(event);
-                });
-            }
         }
 
         const preResult = await this.runPulumiCmd(args, opts?.onOutput);
-        (await stopEventListenerPromise)?.();
         const summary = await this.info();
+        await done;
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
             summary: summary!,
+            eventLog,
         };
     }
     /**
@@ -646,6 +687,7 @@ export interface UpResult {
     stderr: string;
     outputs: OutputMap;
     summary: UpdateSummary;
+    eventLog: EngineEvent[];
 }
 
 /**
@@ -655,6 +697,7 @@ export interface PreviewResult {
     stdout: string;
     stderr: string;
     resourceChanges: Record<string, number>;
+    eventLog: EngineEvent[];
 }
 
 /**
@@ -664,6 +707,7 @@ export interface RefreshResult {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
+    eventLog: EngineEvent[];
 }
 
 /**
@@ -673,6 +717,7 @@ export interface DestroyResult {
     stdout: string;
     stderr: string;
     summary: UpdateSummary;
+    eventLog: EngineEvent[];
 }
 
 /**
