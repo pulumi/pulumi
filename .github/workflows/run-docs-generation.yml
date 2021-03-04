@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ 1.15.x ]
+        go-version: [ 1.16.x ]
         node-version: [ 14.x ]
     steps:
       - name: Install Go
