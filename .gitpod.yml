@@ -1,5 +1,5 @@
 image:
-  file: .gitpod.Dockerfile
+  file: .gitpod/Dockerfile
 
 # See: https://www.gitpod.io/docs/config-start-tasks/
 tasks:
