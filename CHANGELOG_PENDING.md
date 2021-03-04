@@ -8,6 +8,9 @@
 
 - [sdk/go] Return zero values instead of panicing in `Index` and `Elem` methods.
   [#6338](https://github.com/pulumi/pulumi/pull/6338)
+  
+- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
+  [#6454](https://github.com/pulumi/pulumi/pull/6454)
 
 - Updating Pulumi to use Go 1.16
   [#6470](https://github.com/pulumi/pulumi/pull/6470)
