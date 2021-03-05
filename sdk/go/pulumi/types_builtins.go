@@ -883,6 +883,22 @@ func (o ArchiveArrayOutput) Index(i IntInput) ArchiveOutput {
 	}).(ArchiveOutput)
 }
 
+func ToArchiveArray(in []Archive) ArchiveArray {
+	a := make(ArchiveArray, len(in))
+	for i, v := range in {
+		a[i] = (v)
+	}
+	return a
+}
+
+func ToArchiveArrayOutput(in []ArchiveOutput) ArchiveArrayOutput {
+	a := make(ArchiveArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveArrayOutput()
+}
+
 var archiveMapType = reflect.TypeOf((*map[string]Archive)(nil)).Elem()
 
 // ArchiveMapInput is an input type that accepts ArchiveMap and ArchiveMapOutput values.
@@ -932,6 +948,22 @@ func (o ArchiveMapOutput) MapIndex(k StringInput) ArchiveOutput {
 	}).(ArchiveOutput)
 }
 
+func ToArchiveMap(in map[string]Archive) ArchiveMap {
+	m := make(ArchiveMap)
+	for k, v := range in {
+		m[k] = (v)
+	}
+	return m
+}
+
+func ToArchiveMapOutput(in map[string]ArchiveOutput) ArchiveMapOutput {
+	m := make(ArchiveMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveMapOutput()
+}
+
 var archiveArrayMapType = reflect.TypeOf((*map[string][]Archive)(nil)).Elem()
 
 // ArchiveArrayMapInput is an input type that accepts ArchiveArrayMap and ArchiveArrayMapOutput values.
@@ -979,6 +1011,22 @@ func (o ArchiveArrayMapOutput) MapIndex(k StringInput) ArchiveArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []Archive {
 		return vs[0].(map[string][]Archive)[vs[1].(string)]
 	}).(ArchiveArrayOutput)
+}
+
+func ToArchiveArrayMap(in map[string][]Archive) ArchiveArrayMap {
+	m := make(ArchiveArrayMap)
+	for k, v := range in {
+		m[k] = ToArchiveArray(v)
+	}
+	return m
+}
+
+func ToArchiveArrayMapOutput(in map[string]ArchiveArrayOutput) ArchiveArrayMapOutput {
+	m := make(ArchiveArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveArrayMapOutput()
 }
 
 var archiveMapArrayType = reflect.TypeOf((*[]map[string]Archive)(nil)).Elem()
@@ -1037,6 +1085,22 @@ func (o ArchiveMapArrayOutput) Index(i IntInput) ArchiveMapOutput {
 	}).(ArchiveMapOutput)
 }
 
+func ToArchiveMapArray(in []map[string]Archive) ArchiveMapArray {
+	a := make(ArchiveMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToArchiveMap(v)
+	}
+	return a
+}
+
+func ToArchiveMapArrayOutput(in []ArchiveMapOutput) ArchiveMapArrayOutput {
+	a := make(ArchiveMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveMapArrayOutput()
+}
+
 var archiveMapMapType = reflect.TypeOf((*map[string]map[string]Archive)(nil)).Elem()
 
 // ArchiveMapMapInput is an input type that accepts ArchiveMapMap and ArchiveMapMapOutput values.
@@ -1084,6 +1148,22 @@ func (o ArchiveMapMapOutput) MapIndex(k StringInput) ArchiveMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]Archive {
 		return vs[0].(map[string]map[string]Archive)[vs[1].(string)]
 	}).(ArchiveMapOutput)
+}
+
+func ToArchiveMapMap(in map[string]map[string]Archive) ArchiveMapMap {
+	m := make(ArchiveMapMap)
+	for k, v := range in {
+		m[k] = ToArchiveMap(v)
+	}
+	return m
+}
+
+func ToArchiveMapMapOutput(in map[string]ArchiveMapOutput) ArchiveMapMapOutput {
+	m := make(ArchiveMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArchiveMapMapOutput()
 }
 
 var archiveArrayArrayType = reflect.TypeOf((*[][]Archive)(nil)).Elem()
@@ -1140,6 +1220,22 @@ func (o ArchiveArrayArrayOutput) Index(i IntInput) ArchiveArrayOutput {
 		}
 		return ret
 	}).(ArchiveArrayOutput)
+}
+
+func ToArchiveArrayArray(in [][]Archive) ArchiveArrayArray {
+	a := make(ArchiveArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToArchiveArray(v)
+	}
+	return a
+}
+
+func ToArchiveArrayArrayOutput(in []ArchiveArrayOutput) ArchiveArrayArrayOutput {
+	a := make(ArchiveArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArchiveArrayArrayOutput()
 }
 
 var assetType = reflect.TypeOf((*Asset)(nil)).Elem()
@@ -1255,6 +1351,22 @@ func (o AssetArrayOutput) Index(i IntInput) AssetOutput {
 	}).(AssetOutput)
 }
 
+func ToAssetArray(in []Asset) AssetArray {
+	a := make(AssetArray, len(in))
+	for i, v := range in {
+		a[i] = (v)
+	}
+	return a
+}
+
+func ToAssetArrayOutput(in []AssetOutput) AssetArrayOutput {
+	a := make(AssetArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetArrayOutput()
+}
+
 var assetMapType = reflect.TypeOf((*map[string]Asset)(nil)).Elem()
 
 // AssetMapInput is an input type that accepts AssetMap and AssetMapOutput values.
@@ -1304,6 +1416,22 @@ func (o AssetMapOutput) MapIndex(k StringInput) AssetOutput {
 	}).(AssetOutput)
 }
 
+func ToAssetMap(in map[string]Asset) AssetMap {
+	m := make(AssetMap)
+	for k, v := range in {
+		m[k] = (v)
+	}
+	return m
+}
+
+func ToAssetMapOutput(in map[string]AssetOutput) AssetMapOutput {
+	m := make(AssetMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetMapOutput()
+}
+
 var assetArrayMapType = reflect.TypeOf((*map[string][]Asset)(nil)).Elem()
 
 // AssetArrayMapInput is an input type that accepts AssetArrayMap and AssetArrayMapOutput values.
@@ -1351,6 +1479,22 @@ func (o AssetArrayMapOutput) MapIndex(k StringInput) AssetArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []Asset {
 		return vs[0].(map[string][]Asset)[vs[1].(string)]
 	}).(AssetArrayOutput)
+}
+
+func ToAssetArrayMap(in map[string][]Asset) AssetArrayMap {
+	m := make(AssetArrayMap)
+	for k, v := range in {
+		m[k] = ToAssetArray(v)
+	}
+	return m
+}
+
+func ToAssetArrayMapOutput(in map[string]AssetArrayOutput) AssetArrayMapOutput {
+	m := make(AssetArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetArrayMapOutput()
 }
 
 var assetMapArrayType = reflect.TypeOf((*[]map[string]Asset)(nil)).Elem()
@@ -1409,6 +1553,22 @@ func (o AssetMapArrayOutput) Index(i IntInput) AssetMapOutput {
 	}).(AssetMapOutput)
 }
 
+func ToAssetMapArray(in []map[string]Asset) AssetMapArray {
+	a := make(AssetMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToAssetMap(v)
+	}
+	return a
+}
+
+func ToAssetMapArrayOutput(in []AssetMapOutput) AssetMapArrayOutput {
+	a := make(AssetMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetMapArrayOutput()
+}
+
 var assetMapMapType = reflect.TypeOf((*map[string]map[string]Asset)(nil)).Elem()
 
 // AssetMapMapInput is an input type that accepts AssetMapMap and AssetMapMapOutput values.
@@ -1456,6 +1616,22 @@ func (o AssetMapMapOutput) MapIndex(k StringInput) AssetMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]Asset {
 		return vs[0].(map[string]map[string]Asset)[vs[1].(string)]
 	}).(AssetMapOutput)
+}
+
+func ToAssetMapMap(in map[string]map[string]Asset) AssetMapMap {
+	m := make(AssetMapMap)
+	for k, v := range in {
+		m[k] = ToAssetMap(v)
+	}
+	return m
+}
+
+func ToAssetMapMapOutput(in map[string]AssetMapOutput) AssetMapMapOutput {
+	m := make(AssetMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToAssetMapMapOutput()
 }
 
 var assetArrayArrayType = reflect.TypeOf((*[][]Asset)(nil)).Elem()
@@ -1512,6 +1688,22 @@ func (o AssetArrayArrayOutput) Index(i IntInput) AssetArrayOutput {
 		}
 		return ret
 	}).(AssetArrayOutput)
+}
+
+func ToAssetArrayArray(in [][]Asset) AssetArrayArray {
+	a := make(AssetArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToAssetArray(v)
+	}
+	return a
+}
+
+func ToAssetArrayArrayOutput(in []AssetArrayOutput) AssetArrayArrayOutput {
+	a := make(AssetArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToAssetArrayArrayOutput()
 }
 
 var assetOrArchiveType = reflect.TypeOf((*AssetOrArchive)(nil)).Elem()
@@ -2031,6 +2223,22 @@ func (o BoolArrayOutput) Index(i IntInput) BoolOutput {
 	}).(BoolOutput)
 }
 
+func ToBoolArray(in []bool) BoolArray {
+	a := make(BoolArray, len(in))
+	for i, v := range in {
+		a[i] = Bool(v)
+	}
+	return a
+}
+
+func ToBoolArrayOutput(in []BoolOutput) BoolArrayOutput {
+	a := make(BoolArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolArrayOutput()
+}
+
 var boolMapType = reflect.TypeOf((*map[string]bool)(nil)).Elem()
 
 // BoolMapInput is an input type that accepts BoolMap and BoolMapOutput values.
@@ -2080,6 +2288,22 @@ func (o BoolMapOutput) MapIndex(k StringInput) BoolOutput {
 	}).(BoolOutput)
 }
 
+func ToBoolMap(in map[string]bool) BoolMap {
+	m := make(BoolMap)
+	for k, v := range in {
+		m[k] = Bool(v)
+	}
+	return m
+}
+
+func ToBoolMapOutput(in map[string]BoolOutput) BoolMapOutput {
+	m := make(BoolMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolMapOutput()
+}
+
 var boolArrayMapType = reflect.TypeOf((*map[string][]bool)(nil)).Elem()
 
 // BoolArrayMapInput is an input type that accepts BoolArrayMap and BoolArrayMapOutput values.
@@ -2127,6 +2351,22 @@ func (o BoolArrayMapOutput) MapIndex(k StringInput) BoolArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []bool {
 		return vs[0].(map[string][]bool)[vs[1].(string)]
 	}).(BoolArrayOutput)
+}
+
+func ToBoolArrayMap(in map[string][]bool) BoolArrayMap {
+	m := make(BoolArrayMap)
+	for k, v := range in {
+		m[k] = ToBoolArray(v)
+	}
+	return m
+}
+
+func ToBoolArrayMapOutput(in map[string]BoolArrayOutput) BoolArrayMapOutput {
+	m := make(BoolArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolArrayMapOutput()
 }
 
 var boolMapArrayType = reflect.TypeOf((*[]map[string]bool)(nil)).Elem()
@@ -2185,6 +2425,22 @@ func (o BoolMapArrayOutput) Index(i IntInput) BoolMapOutput {
 	}).(BoolMapOutput)
 }
 
+func ToBoolMapArray(in []map[string]bool) BoolMapArray {
+	a := make(BoolMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToBoolMap(v)
+	}
+	return a
+}
+
+func ToBoolMapArrayOutput(in []BoolMapOutput) BoolMapArrayOutput {
+	a := make(BoolMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolMapArrayOutput()
+}
+
 var boolMapMapType = reflect.TypeOf((*map[string]map[string]bool)(nil)).Elem()
 
 // BoolMapMapInput is an input type that accepts BoolMapMap and BoolMapMapOutput values.
@@ -2232,6 +2488,22 @@ func (o BoolMapMapOutput) MapIndex(k StringInput) BoolMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]bool {
 		return vs[0].(map[string]map[string]bool)[vs[1].(string)]
 	}).(BoolMapOutput)
+}
+
+func ToBoolMapMap(in map[string]map[string]bool) BoolMapMap {
+	m := make(BoolMapMap)
+	for k, v := range in {
+		m[k] = ToBoolMap(v)
+	}
+	return m
+}
+
+func ToBoolMapMapOutput(in map[string]BoolMapOutput) BoolMapMapOutput {
+	m := make(BoolMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToBoolMapMapOutput()
 }
 
 var boolArrayArrayType = reflect.TypeOf((*[][]bool)(nil)).Elem()
@@ -2288,6 +2560,22 @@ func (o BoolArrayArrayOutput) Index(i IntInput) BoolArrayOutput {
 		}
 		return ret
 	}).(BoolArrayOutput)
+}
+
+func ToBoolArrayArray(in [][]bool) BoolArrayArray {
+	a := make(BoolArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToBoolArray(v)
+	}
+	return a
+}
+
+func ToBoolArrayArrayOutput(in []BoolArrayOutput) BoolArrayArrayOutput {
+	a := make(BoolArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToBoolArrayArrayOutput()
 }
 
 var float64Type = reflect.TypeOf((*float64)(nil)).Elem()
@@ -2466,6 +2754,22 @@ func (o Float64ArrayOutput) Index(i IntInput) Float64Output {
 	}).(Float64Output)
 }
 
+func ToFloat64Array(in []float64) Float64Array {
+	a := make(Float64Array, len(in))
+	for i, v := range in {
+		a[i] = Float64(v)
+	}
+	return a
+}
+
+func ToFloat64ArrayOutput(in []Float64Output) Float64ArrayOutput {
+	a := make(Float64Array, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64ArrayOutput()
+}
+
 var float64MapType = reflect.TypeOf((*map[string]float64)(nil)).Elem()
 
 // Float64MapInput is an input type that accepts Float64Map and Float64MapOutput values.
@@ -2515,6 +2819,22 @@ func (o Float64MapOutput) MapIndex(k StringInput) Float64Output {
 	}).(Float64Output)
 }
 
+func ToFloat64Map(in map[string]float64) Float64Map {
+	m := make(Float64Map)
+	for k, v := range in {
+		m[k] = Float64(v)
+	}
+	return m
+}
+
+func ToFloat64MapOutput(in map[string]Float64Output) Float64MapOutput {
+	m := make(Float64Map)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64MapOutput()
+}
+
 var float64ArrayMapType = reflect.TypeOf((*map[string][]float64)(nil)).Elem()
 
 // Float64ArrayMapInput is an input type that accepts Float64ArrayMap and Float64ArrayMapOutput values.
@@ -2562,6 +2882,22 @@ func (o Float64ArrayMapOutput) MapIndex(k StringInput) Float64ArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []float64 {
 		return vs[0].(map[string][]float64)[vs[1].(string)]
 	}).(Float64ArrayOutput)
+}
+
+func ToFloat64ArrayMap(in map[string][]float64) Float64ArrayMap {
+	m := make(Float64ArrayMap)
+	for k, v := range in {
+		m[k] = ToFloat64Array(v)
+	}
+	return m
+}
+
+func ToFloat64ArrayMapOutput(in map[string]Float64ArrayOutput) Float64ArrayMapOutput {
+	m := make(Float64ArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64ArrayMapOutput()
 }
 
 var float64MapArrayType = reflect.TypeOf((*[]map[string]float64)(nil)).Elem()
@@ -2620,6 +2956,22 @@ func (o Float64MapArrayOutput) Index(i IntInput) Float64MapOutput {
 	}).(Float64MapOutput)
 }
 
+func ToFloat64MapArray(in []map[string]float64) Float64MapArray {
+	a := make(Float64MapArray, len(in))
+	for i, v := range in {
+		a[i] = ToFloat64Map(v)
+	}
+	return a
+}
+
+func ToFloat64MapArrayOutput(in []Float64MapOutput) Float64MapArrayOutput {
+	a := make(Float64MapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64MapArrayOutput()
+}
+
 var float64MapMapType = reflect.TypeOf((*map[string]map[string]float64)(nil)).Elem()
 
 // Float64MapMapInput is an input type that accepts Float64MapMap and Float64MapMapOutput values.
@@ -2667,6 +3019,22 @@ func (o Float64MapMapOutput) MapIndex(k StringInput) Float64MapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]float64 {
 		return vs[0].(map[string]map[string]float64)[vs[1].(string)]
 	}).(Float64MapOutput)
+}
+
+func ToFloat64MapMap(in map[string]map[string]float64) Float64MapMap {
+	m := make(Float64MapMap)
+	for k, v := range in {
+		m[k] = ToFloat64Map(v)
+	}
+	return m
+}
+
+func ToFloat64MapMapOutput(in map[string]Float64MapOutput) Float64MapMapOutput {
+	m := make(Float64MapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToFloat64MapMapOutput()
 }
 
 var float64ArrayArrayType = reflect.TypeOf((*[][]float64)(nil)).Elem()
@@ -2723,6 +3091,22 @@ func (o Float64ArrayArrayOutput) Index(i IntInput) Float64ArrayOutput {
 		}
 		return ret
 	}).(Float64ArrayOutput)
+}
+
+func ToFloat64ArrayArray(in [][]float64) Float64ArrayArray {
+	a := make(Float64ArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToFloat64Array(v)
+	}
+	return a
+}
+
+func ToFloat64ArrayArrayOutput(in []Float64ArrayOutput) Float64ArrayArrayOutput {
+	a := make(Float64ArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToFloat64ArrayArrayOutput()
 }
 
 var idType = reflect.TypeOf((*ID)(nil)).Elem()
@@ -2916,6 +3300,22 @@ func (o IDArrayOutput) Index(i IntInput) IDOutput {
 	}).(IDOutput)
 }
 
+func ToIDArray(in []ID) IDArray {
+	a := make(IDArray, len(in))
+	for i, v := range in {
+		a[i] = (v)
+	}
+	return a
+}
+
+func ToIDArrayOutput(in []IDOutput) IDArrayOutput {
+	a := make(IDArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDArrayOutput()
+}
+
 var iDMapType = reflect.TypeOf((*map[string]ID)(nil)).Elem()
 
 // IDMapInput is an input type that accepts IDMap and IDMapOutput values.
@@ -2965,6 +3365,22 @@ func (o IDMapOutput) MapIndex(k StringInput) IDOutput {
 	}).(IDOutput)
 }
 
+func ToIDMap(in map[string]ID) IDMap {
+	m := make(IDMap)
+	for k, v := range in {
+		m[k] = (v)
+	}
+	return m
+}
+
+func ToIDMapOutput(in map[string]IDOutput) IDMapOutput {
+	m := make(IDMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDMapOutput()
+}
+
 var iDArrayMapType = reflect.TypeOf((*map[string][]ID)(nil)).Elem()
 
 // IDArrayMapInput is an input type that accepts IDArrayMap and IDArrayMapOutput values.
@@ -3012,6 +3428,22 @@ func (o IDArrayMapOutput) MapIndex(k StringInput) IDArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []ID {
 		return vs[0].(map[string][]ID)[vs[1].(string)]
 	}).(IDArrayOutput)
+}
+
+func ToIDArrayMap(in map[string][]ID) IDArrayMap {
+	m := make(IDArrayMap)
+	for k, v := range in {
+		m[k] = ToIDArray(v)
+	}
+	return m
+}
+
+func ToIDArrayMapOutput(in map[string]IDArrayOutput) IDArrayMapOutput {
+	m := make(IDArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDArrayMapOutput()
 }
 
 var iDMapArrayType = reflect.TypeOf((*[]map[string]ID)(nil)).Elem()
@@ -3070,6 +3502,22 @@ func (o IDMapArrayOutput) Index(i IntInput) IDMapOutput {
 	}).(IDMapOutput)
 }
 
+func ToIDMapArray(in []map[string]ID) IDMapArray {
+	a := make(IDMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToIDMap(v)
+	}
+	return a
+}
+
+func ToIDMapArrayOutput(in []IDMapOutput) IDMapArrayOutput {
+	a := make(IDMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDMapArrayOutput()
+}
+
 var iDMapMapType = reflect.TypeOf((*map[string]map[string]ID)(nil)).Elem()
 
 // IDMapMapInput is an input type that accepts IDMapMap and IDMapMapOutput values.
@@ -3117,6 +3565,22 @@ func (o IDMapMapOutput) MapIndex(k StringInput) IDMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]ID {
 		return vs[0].(map[string]map[string]ID)[vs[1].(string)]
 	}).(IDMapOutput)
+}
+
+func ToIDMapMap(in map[string]map[string]ID) IDMapMap {
+	m := make(IDMapMap)
+	for k, v := range in {
+		m[k] = ToIDMap(v)
+	}
+	return m
+}
+
+func ToIDMapMapOutput(in map[string]IDMapOutput) IDMapMapOutput {
+	m := make(IDMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIDMapMapOutput()
 }
 
 var iDArrayArrayType = reflect.TypeOf((*[][]ID)(nil)).Elem()
@@ -3175,6 +3639,22 @@ func (o IDArrayArrayOutput) Index(i IntInput) IDArrayOutput {
 	}).(IDArrayOutput)
 }
 
+func ToIDArrayArray(in [][]ID) IDArrayArray {
+	a := make(IDArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToIDArray(v)
+	}
+	return a
+}
+
+func ToIDArrayArrayOutput(in []IDArrayOutput) IDArrayArrayOutput {
+	a := make(IDArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIDArrayArrayOutput()
+}
+
 var arrayType = reflect.TypeOf((*[]interface{})(nil)).Elem()
 
 // ArrayInput is an input type that accepts Array and ArrayOutput values.
@@ -3231,6 +3711,22 @@ func (o ArrayOutput) Index(i IntInput) Output {
 	}).(Output)
 }
 
+func ToArray(in []interface{}) Array {
+	a := make(Array, len(in))
+	for i, v := range in {
+		a[i] = ToOutput(v)
+	}
+	return a
+}
+
+func ToArrayOutput(in []Output) ArrayOutput {
+	a := make(Array, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArrayOutput()
+}
+
 var mapType = reflect.TypeOf((*map[string]interface{})(nil)).Elem()
 
 // MapInput is an input type that accepts Map and MapOutput values.
@@ -3280,6 +3776,22 @@ func (o MapOutput) MapIndex(k StringInput) Output {
 	}).(Output)
 }
 
+func ToMap(in map[string]interface{}) Map {
+	m := make(Map)
+	for k, v := range in {
+		m[k] = ToOutput(v)
+	}
+	return m
+}
+
+func ToMapOutput(in map[string]Output) MapOutput {
+	m := make(Map)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToMapOutput()
+}
+
 var arrayMapType = reflect.TypeOf((*map[string][]interface{})(nil)).Elem()
 
 // ArrayMapInput is an input type that accepts ArrayMap and ArrayMapOutput values.
@@ -3327,6 +3839,22 @@ func (o ArrayMapOutput) MapIndex(k StringInput) ArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []interface{} {
 		return vs[0].(map[string][]interface{})[vs[1].(string)]
 	}).(ArrayOutput)
+}
+
+func ToArrayMap(in map[string][]interface{}) ArrayMap {
+	m := make(ArrayMap)
+	for k, v := range in {
+		m[k] = ToArray(v)
+	}
+	return m
+}
+
+func ToArrayMapOutput(in map[string]ArrayOutput) ArrayMapOutput {
+	m := make(ArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArrayMapOutput()
 }
 
 var mapArrayType = reflect.TypeOf((*[]map[string]interface{})(nil)).Elem()
@@ -3385,6 +3913,22 @@ func (o MapArrayOutput) Index(i IntInput) MapOutput {
 	}).(MapOutput)
 }
 
+func ToMapArray(in []map[string]interface{}) MapArray {
+	a := make(MapArray, len(in))
+	for i, v := range in {
+		a[i] = ToMap(v)
+	}
+	return a
+}
+
+func ToMapArrayOutput(in []MapOutput) MapArrayOutput {
+	a := make(MapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToMapArrayOutput()
+}
+
 var mapMapType = reflect.TypeOf((*map[string]map[string]interface{})(nil)).Elem()
 
 // MapMapInput is an input type that accepts MapMap and MapMapOutput values.
@@ -3432,6 +3976,22 @@ func (o MapMapOutput) MapIndex(k StringInput) MapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]interface{} {
 		return vs[0].(map[string]map[string]interface{})[vs[1].(string)]
 	}).(MapOutput)
+}
+
+func ToMapMap(in map[string]map[string]interface{}) MapMap {
+	m := make(MapMap)
+	for k, v := range in {
+		m[k] = ToMap(v)
+	}
+	return m
+}
+
+func ToMapMapOutput(in map[string]MapOutput) MapMapOutput {
+	m := make(MapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToMapMapOutput()
 }
 
 var arrayArrayType = reflect.TypeOf((*[][]interface{})(nil)).Elem()
@@ -3488,6 +4048,22 @@ func (o ArrayArrayOutput) Index(i IntInput) ArrayOutput {
 		}
 		return ret
 	}).(ArrayOutput)
+}
+
+func ToArrayArray(in [][]interface{}) ArrayArray {
+	a := make(ArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToArray(v)
+	}
+	return a
+}
+
+func ToArrayArrayOutput(in []ArrayOutput) ArrayArrayOutput {
+	a := make(ArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToArrayArrayOutput()
 }
 
 var intType = reflect.TypeOf((*int)(nil)).Elem()
@@ -3666,6 +4242,22 @@ func (o IntArrayOutput) Index(i IntInput) IntOutput {
 	}).(IntOutput)
 }
 
+func ToIntArray(in []int) IntArray {
+	a := make(IntArray, len(in))
+	for i, v := range in {
+		a[i] = Int(v)
+	}
+	return a
+}
+
+func ToIntArrayOutput(in []IntOutput) IntArrayOutput {
+	a := make(IntArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntArrayOutput()
+}
+
 var intMapType = reflect.TypeOf((*map[string]int)(nil)).Elem()
 
 // IntMapInput is an input type that accepts IntMap and IntMapOutput values.
@@ -3715,6 +4307,22 @@ func (o IntMapOutput) MapIndex(k StringInput) IntOutput {
 	}).(IntOutput)
 }
 
+func ToIntMap(in map[string]int) IntMap {
+	m := make(IntMap)
+	for k, v := range in {
+		m[k] = Int(v)
+	}
+	return m
+}
+
+func ToIntMapOutput(in map[string]IntOutput) IntMapOutput {
+	m := make(IntMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntMapOutput()
+}
+
 var intArrayMapType = reflect.TypeOf((*map[string][]int)(nil)).Elem()
 
 // IntArrayMapInput is an input type that accepts IntArrayMap and IntArrayMapOutput values.
@@ -3762,6 +4370,22 @@ func (o IntArrayMapOutput) MapIndex(k StringInput) IntArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []int {
 		return vs[0].(map[string][]int)[vs[1].(string)]
 	}).(IntArrayOutput)
+}
+
+func ToIntArrayMap(in map[string][]int) IntArrayMap {
+	m := make(IntArrayMap)
+	for k, v := range in {
+		m[k] = ToIntArray(v)
+	}
+	return m
+}
+
+func ToIntArrayMapOutput(in map[string]IntArrayOutput) IntArrayMapOutput {
+	m := make(IntArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntArrayMapOutput()
 }
 
 var intMapArrayType = reflect.TypeOf((*[]map[string]int)(nil)).Elem()
@@ -3820,6 +4444,22 @@ func (o IntMapArrayOutput) Index(i IntInput) IntMapOutput {
 	}).(IntMapOutput)
 }
 
+func ToIntMapArray(in []map[string]int) IntMapArray {
+	a := make(IntMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToIntMap(v)
+	}
+	return a
+}
+
+func ToIntMapArrayOutput(in []IntMapOutput) IntMapArrayOutput {
+	a := make(IntMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntMapArrayOutput()
+}
+
 var intMapMapType = reflect.TypeOf((*map[string]map[string]int)(nil)).Elem()
 
 // IntMapMapInput is an input type that accepts IntMapMap and IntMapMapOutput values.
@@ -3867,6 +4507,22 @@ func (o IntMapMapOutput) MapIndex(k StringInput) IntMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]int {
 		return vs[0].(map[string]map[string]int)[vs[1].(string)]
 	}).(IntMapOutput)
+}
+
+func ToIntMapMap(in map[string]map[string]int) IntMapMap {
+	m := make(IntMapMap)
+	for k, v := range in {
+		m[k] = ToIntMap(v)
+	}
+	return m
+}
+
+func ToIntMapMapOutput(in map[string]IntMapOutput) IntMapMapOutput {
+	m := make(IntMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToIntMapMapOutput()
 }
 
 var intArrayArrayType = reflect.TypeOf((*[][]int)(nil)).Elem()
@@ -3923,6 +4579,22 @@ func (o IntArrayArrayOutput) Index(i IntInput) IntArrayOutput {
 		}
 		return ret
 	}).(IntArrayOutput)
+}
+
+func ToIntArrayArray(in [][]int) IntArrayArray {
+	a := make(IntArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToIntArray(v)
+	}
+	return a
+}
+
+func ToIntArrayArrayOutput(in []IntArrayOutput) IntArrayArrayOutput {
+	a := make(IntArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToIntArrayArrayOutput()
 }
 
 var stringType = reflect.TypeOf((*string)(nil)).Elem()
@@ -4101,6 +4773,22 @@ func (o StringArrayOutput) Index(i IntInput) StringOutput {
 	}).(StringOutput)
 }
 
+func ToStringArray(in []string) StringArray {
+	a := make(StringArray, len(in))
+	for i, v := range in {
+		a[i] = String(v)
+	}
+	return a
+}
+
+func ToStringArrayOutput(in []StringOutput) StringArrayOutput {
+	a := make(StringArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringArrayOutput()
+}
+
 var stringMapType = reflect.TypeOf((*map[string]string)(nil)).Elem()
 
 // StringMapInput is an input type that accepts StringMap and StringMapOutput values.
@@ -4150,6 +4838,22 @@ func (o StringMapOutput) MapIndex(k StringInput) StringOutput {
 	}).(StringOutput)
 }
 
+func ToStringMap(in map[string]string) StringMap {
+	m := make(StringMap)
+	for k, v := range in {
+		m[k] = String(v)
+	}
+	return m
+}
+
+func ToStringMapOutput(in map[string]StringOutput) StringMapOutput {
+	m := make(StringMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringMapOutput()
+}
+
 var stringArrayMapType = reflect.TypeOf((*map[string][]string)(nil)).Elem()
 
 // StringArrayMapInput is an input type that accepts StringArrayMap and StringArrayMapOutput values.
@@ -4197,6 +4901,22 @@ func (o StringArrayMapOutput) MapIndex(k StringInput) StringArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []string {
 		return vs[0].(map[string][]string)[vs[1].(string)]
 	}).(StringArrayOutput)
+}
+
+func ToStringArrayMap(in map[string][]string) StringArrayMap {
+	m := make(StringArrayMap)
+	for k, v := range in {
+		m[k] = ToStringArray(v)
+	}
+	return m
+}
+
+func ToStringArrayMapOutput(in map[string]StringArrayOutput) StringArrayMapOutput {
+	m := make(StringArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringArrayMapOutput()
 }
 
 var stringMapArrayType = reflect.TypeOf((*[]map[string]string)(nil)).Elem()
@@ -4255,6 +4975,22 @@ func (o StringMapArrayOutput) Index(i IntInput) StringMapOutput {
 	}).(StringMapOutput)
 }
 
+func ToStringMapArray(in []map[string]string) StringMapArray {
+	a := make(StringMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToStringMap(v)
+	}
+	return a
+}
+
+func ToStringMapArrayOutput(in []StringMapOutput) StringMapArrayOutput {
+	a := make(StringMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringMapArrayOutput()
+}
+
 var stringMapMapType = reflect.TypeOf((*map[string]map[string]string)(nil)).Elem()
 
 // StringMapMapInput is an input type that accepts StringMapMap and StringMapMapOutput values.
@@ -4302,6 +5038,22 @@ func (o StringMapMapOutput) MapIndex(k StringInput) StringMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]string {
 		return vs[0].(map[string]map[string]string)[vs[1].(string)]
 	}).(StringMapOutput)
+}
+
+func ToStringMapMap(in map[string]map[string]string) StringMapMap {
+	m := make(StringMapMap)
+	for k, v := range in {
+		m[k] = ToStringMap(v)
+	}
+	return m
+}
+
+func ToStringMapMapOutput(in map[string]StringMapOutput) StringMapMapOutput {
+	m := make(StringMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToStringMapMapOutput()
 }
 
 var stringArrayArrayType = reflect.TypeOf((*[][]string)(nil)).Elem()
@@ -4358,6 +5110,22 @@ func (o StringArrayArrayOutput) Index(i IntInput) StringArrayOutput {
 		}
 		return ret
 	}).(StringArrayOutput)
+}
+
+func ToStringArrayArray(in [][]string) StringArrayArray {
+	a := make(StringArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToStringArray(v)
+	}
+	return a
+}
+
+func ToStringArrayArrayOutput(in []StringArrayOutput) StringArrayArrayOutput {
+	a := make(StringArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToStringArrayArrayOutput()
 }
 
 var urnType = reflect.TypeOf((*URN)(nil)).Elem()
@@ -4551,6 +5319,22 @@ func (o URNArrayOutput) Index(i IntInput) URNOutput {
 	}).(URNOutput)
 }
 
+func ToURNArray(in []URN) URNArray {
+	a := make(URNArray, len(in))
+	for i, v := range in {
+		a[i] = (v)
+	}
+	return a
+}
+
+func ToURNArrayOutput(in []URNOutput) URNArrayOutput {
+	a := make(URNArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNArrayOutput()
+}
+
 var uRNMapType = reflect.TypeOf((*map[string]URN)(nil)).Elem()
 
 // URNMapInput is an input type that accepts URNMap and URNMapOutput values.
@@ -4600,6 +5384,22 @@ func (o URNMapOutput) MapIndex(k StringInput) URNOutput {
 	}).(URNOutput)
 }
 
+func ToURNMap(in map[string]URN) URNMap {
+	m := make(URNMap)
+	for k, v := range in {
+		m[k] = (v)
+	}
+	return m
+}
+
+func ToURNMapOutput(in map[string]URNOutput) URNMapOutput {
+	m := make(URNMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNMapOutput()
+}
+
 var uRNArrayMapType = reflect.TypeOf((*map[string][]URN)(nil)).Elem()
 
 // URNArrayMapInput is an input type that accepts URNArrayMap and URNArrayMapOutput values.
@@ -4647,6 +5447,22 @@ func (o URNArrayMapOutput) MapIndex(k StringInput) URNArrayOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) []URN {
 		return vs[0].(map[string][]URN)[vs[1].(string)]
 	}).(URNArrayOutput)
+}
+
+func ToURNArrayMap(in map[string][]URN) URNArrayMap {
+	m := make(URNArrayMap)
+	for k, v := range in {
+		m[k] = ToURNArray(v)
+	}
+	return m
+}
+
+func ToURNArrayMapOutput(in map[string]URNArrayOutput) URNArrayMapOutput {
+	m := make(URNArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNArrayMapOutput()
 }
 
 var uRNMapArrayType = reflect.TypeOf((*[]map[string]URN)(nil)).Elem()
@@ -4705,6 +5521,22 @@ func (o URNMapArrayOutput) Index(i IntInput) URNMapOutput {
 	}).(URNMapOutput)
 }
 
+func ToURNMapArray(in []map[string]URN) URNMapArray {
+	a := make(URNMapArray, len(in))
+	for i, v := range in {
+		a[i] = ToURNMap(v)
+	}
+	return a
+}
+
+func ToURNMapArrayOutput(in []URNMapOutput) URNMapArrayOutput {
+	a := make(URNMapArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNMapArrayOutput()
+}
+
 var uRNMapMapType = reflect.TypeOf((*map[string]map[string]URN)(nil)).Elem()
 
 // URNMapMapInput is an input type that accepts URNMapMap and URNMapMapOutput values.
@@ -4752,6 +5584,22 @@ func (o URNMapMapOutput) MapIndex(k StringInput) URNMapOutput {
 	return All(o, k).ApplyT(func(vs []interface{}) map[string]URN {
 		return vs[0].(map[string]map[string]URN)[vs[1].(string)]
 	}).(URNMapOutput)
+}
+
+func ToURNMapMap(in map[string]map[string]URN) URNMapMap {
+	m := make(URNMapMap)
+	for k, v := range in {
+		m[k] = ToURNMap(v)
+	}
+	return m
+}
+
+func ToURNMapMapOutput(in map[string]URNMapOutput) URNMapMapOutput {
+	m := make(URNMapMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToURNMapMapOutput()
 }
 
 var uRNArrayArrayType = reflect.TypeOf((*[][]URN)(nil)).Elem()
@@ -4808,6 +5656,22 @@ func (o URNArrayArrayOutput) Index(i IntInput) URNArrayOutput {
 		}
 		return ret
 	}).(URNArrayOutput)
+}
+
+func ToURNArrayArray(in [][]URN) URNArrayArray {
+	a := make(URNArrayArray, len(in))
+	for i, v := range in {
+		a[i] = ToURNArray(v)
+	}
+	return a
+}
+
+func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
+	a := make(URNArrayArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToURNArrayArrayOutput()
 }
 
 func getResolvedValue(input Input) (reflect.Value, bool) {

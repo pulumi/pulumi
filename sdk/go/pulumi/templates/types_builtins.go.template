@@ -159,6 +159,24 @@ func (o {{.Name}}Output) Index(i IntInput) {{.IndexReturnType}}Output {
 		return ret
 	}).({{.IndexReturnType}}Output)
 }
+
+{{if .DefineToFunction}}
+func To{{.Name}}(in {{.ElementType}}) {{.Name}} {
+	a := make({{.Name}}, len(in))
+	for i, v := range in {
+		a[i] = {{.IndexConversion}}(v)
+	}
+	return a
+}
+
+func To{{.Name}}Output(in []{{.IndexReturnType}}Output) {{.Name}}Output {
+	a := make({{.Name}}, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.To{{.Name}}Output()
+}
+{{end}}
 {{end}}
 {{if .DefineMapIndex}}
 // MapIndex looks up the key k in the map.
@@ -167,6 +185,24 @@ func (o {{.Name}}Output) MapIndex(k StringInput) {{.MapIndexReturnType}}Output {
 		return vs[0].({{.ElementType}})[vs[1].(string)]
 	}).({{.MapIndexReturnType}}Output)
 }
+
+{{if .DefineToFunction}}
+func To{{.Name}}(in {{.ElementType}}) {{.Name}} {
+ 	m := make({{.Name}})
+ 	for k, v := range in {
+ 		m[k] = {{.IndexConversion}}(v)
+ 	}
+ 	return m
+}
+
+func To{{.Name}}Output(in map[string]{{.MapIndexReturnType}}Output) {{.Name}}Output {
+	m := make({{.Name}})
+ 	for k, v := range in {
+ 		m[k] = v
+ 	}
+ 	return m.To{{.Name}}Output()
+}
+{{end}}
 {{end}}
 {{end}}
 {{end}}

@@ -112,10 +112,6 @@ CHANGELOG
 - [automation/python] Fixed a bug in nested configuration parsing.
   [#6349](https://github.com/pulumi/pulumi/pull/6349)
 
-- [sdk/go] Return zero values instead of panicing in Index and Elem methods.
-  [#6338](https://github.com/pulumi/pulumi/pull/6338)
-
-
 ## 2.20.0 (2021-02-03)
 
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
