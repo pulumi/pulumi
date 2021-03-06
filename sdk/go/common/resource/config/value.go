@@ -44,6 +44,11 @@ func NewObjectValue(v string) Value {
 	return Value{value: v, secure: false, object: true}
 }
 
+// RawValue fetches the raw (possibly encrypted) value of this configuration entry.
+func (c Value) RawValue() string {
+	return c.value
+}
+
 // Value fetches the value of this configuration entry, using decrypter to decrypt if necessary.  If the value
 // is a secret and decrypter is nil, or if decryption fails for any reason, a non-nil error is returned.
 func (c Value) Value(decrypter Decrypter) (string, error) {

@@ -16,7 +16,6 @@ package workspace
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -59,12 +58,6 @@ type ProjectBackend struct {
 }
 
 // Project is a Pulumi project manifest.
-//
-// We explicitly add yaml tags (instead of using the default behavior from https://github.com/ghodss/yaml which works
-// in terms of the JSON tags) so we can directly marshall and unmarshall this struct using go-yaml an have the fields
-// in the serialized object match the order they are defined in this struct.
-//
-// TODO[pulumi/pulumi#423]: use DOM based marshalling so we can roundtrip the seralized structure perfectly.
 type Project struct {
 	// Name is a required fully qualified name.
 	Name tokens.PackageName `json:"name" yaml:"name"`
@@ -90,6 +83,8 @@ type Project struct {
 
 	// Backend is an optional backend configuration
 	Backend *ProjectBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
+
+	FileAST *encoding.FileAST `json:"-" yaml:"-"`
 }
 
 func (proj *Project) Validate() error {
@@ -179,13 +174,19 @@ type ProjectStack struct {
 	EncryptionSalt string `json:"encryptionsalt,omitempty" yaml:"encryptionsalt,omitempty"`
 	// Config is an optional config bag.
 	Config config.Map `json:"config,omitempty" yaml:"config,omitempty"`
+
+	FileAST *encoding.FileAST `json:"-" yaml:"-"`
 }
 
 // Save writes a project definition to a file.
 func (ps *ProjectStack) Save(path string) error {
 	contract.Require(path != "", "path")
 	contract.Require(ps != nil, "ps")
-	return save(path, ps, true /*mkDirAll*/)
+
+	if !ps.FileAST.HasKey("config") {
+		return save(path, ps, true /*mkDirAll*/)
+	}
+	return saveAST(path, ps.FileAST, true /*mkDirAll*/)
 }
 
 type ProjectRuntimeInfo struct {
@@ -285,6 +286,21 @@ func marshallerForPath(path string) (encoding.Marshaler, error) {
 	return m, nil
 }
 
+func saveAST(path string, fileAST *encoding.FileAST, mkDirAll bool) error {
+	contract.Require(path != "", "path")
+	contract.Require(fileAST != nil, "fileAST")
+
+	if mkDirAll {
+		if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+			return err
+		}
+	}
+
+	// Changing the permissions on these file is ~ a breaking change, so disable golint.
+	//nolint: gosec
+	return os.WriteFile(path, fileAST.Marshal(), 0644)
+}
+
 func save(path string, value interface{}, mkDirAll bool) error {
 	contract.Require(path != "", "path")
 	contract.Require(value != nil, "value")
@@ -307,5 +323,5 @@ func save(path string, value interface{}, mkDirAll bool) error {
 
 	// Changing the permissions on these file is ~ a breaking change, so disable golint.
 	//nolint: gosec
-	return ioutil.WriteFile(path, b, 0644)
+	return os.WriteFile(path, b, 0644)
 }

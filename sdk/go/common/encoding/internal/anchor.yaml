@@ -1,0 +1,11 @@
+config:
+  aws:region: us-east-1
+  proj:data:
+    default: &default
+      active: true
+    foo:
+      <<: *default
+    bar:
+      <<: *default
+    biz:
+      active: false

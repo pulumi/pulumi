@@ -1,0 +1,13 @@
+config:
+  foo:
+    - bar
+    - baz
+    - boom
+    nested: beep
+  aws:region: us-west-2
+  items: [1, 2, 3, 4, 5]
+  map: {a: b}
+  default: &default
+    active: true
+  anchor:
+    <<: *default

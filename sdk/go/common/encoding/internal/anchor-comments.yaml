@@ -1,0 +1,13 @@
+config:
+  aws:region: us-east-1 # N. Virginia
+  proj:data:
+    # Define an anchor to DRY out the config.
+    default: &default
+      active: true
+    foo:
+      # Foo config using anchor.
+      <<: *default # Use default anchor.
+    bar:
+      <<: *default
+    biz:
+      active: false

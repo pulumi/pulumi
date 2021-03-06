@@ -1,0 +1,19 @@
+# This config is for the complex-dev stack.
+config:
+  foo:
+    # A config sequence
+    - bar
+    - baz
+    - boom # Test config
+    nested: beep
+  # This config specifies the region for the AWS provider.
+  aws:region: us-west-2 # Oregon
+  # Sequence
+  items: [1, 2, 3, 4, 5]
+  # Map
+  map: {a: b}
+  # Define an anchor to DRY out the config.
+  default: &default
+    active: true
+  anchor:
+    <<: *default # Use default anchor.
