@@ -112,6 +112,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
@@ -259,14 +260,13 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
 
-	var events []apitype.EngineEvent
-	eventChannel := make(chan apitype.EngineEvent)
-	go collectEvents(eventChannel, &events)
+	var evts []events.EngineEvent
+	eventChannel := make(chan events.EngineEvent)
+	go collectEvents(eventChannel, &evts)
 
-	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
-	if len(preOpts.EventStreams) > 0 {
-		eventChannels = append(eventChannels, preOpts.EventStreams...)
-	}
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, preOpts.EventStreams...)
+
 	t, err := tailLogs("preview", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
@@ -280,7 +280,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 
 	var previewSummary *apitype.SummaryEvent
-	for _, e := range events {
+	for _, e := range evts {
 		if e.SummaryEvent != nil {
 			previewSummary = e.SummaryEvent
 		}
@@ -292,7 +292,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	res.StdOut = stdout
 	res.StdErr = stderr
 	res.ChangeSummary = previewSummary.ResourceChanges
-	res.EventLog = events
+	res.EventLog = evts
 
 	return res, nil
 }
@@ -348,14 +348,13 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 
-	var events []apitype.EngineEvent
-	eventChannel := make(chan apitype.EngineEvent)
-	go collectEvents(eventChannel, &events)
+	var evts []events.EngineEvent
+	eventChannel := make(chan events.EngineEvent)
+	go collectEvents(eventChannel, &evts)
 
-	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
-	if len(upOpts.EventStreams) > 0 {
-		eventChannels = append(eventChannels, upOpts.EventStreams...)
-	}
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, upOpts.EventStreams...)
+
 	t, err := tailLogs("up", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
@@ -383,7 +382,7 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		Outputs:  outs,
 		StdOut:   stdout,
 		StdErr:   stderr,
-		EventLog: events,
+		EventLog: evts,
 	}
 
 	if len(history) > 0 {
@@ -430,14 +429,13 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	var events []apitype.EngineEvent
-	eventChannel := make(chan apitype.EngineEvent)
-	go collectEvents(eventChannel, &events)
+	var evts []events.EngineEvent
+	eventChannel := make(chan events.EngineEvent)
+	go collectEvents(eventChannel, &evts)
 
-	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
-	if len(refreshOpts.EventStreams) > 0 {
-		eventChannels = append(eventChannels, refreshOpts.EventStreams...)
-	}
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, refreshOpts.EventStreams...)
+
 	t, err := tailLogs("refresh", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
@@ -464,7 +462,7 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		Summary:  summary,
 		StdOut:   stdout,
 		StdErr:   stderr,
-		EventLog: events,
+		EventLog: evts,
 	}
 
 	return res, nil
@@ -506,14 +504,13 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	var events []apitype.EngineEvent
-	eventChannel := make(chan apitype.EngineEvent)
-	go collectEvents(eventChannel, &events)
+	var evts []events.EngineEvent
+	eventChannel := make(chan events.EngineEvent)
+	go collectEvents(eventChannel, &evts)
 
-	eventChannels := []chan<- apitype.EngineEvent{eventChannel}
-	if len(destroyOpts.EventStreams) > 0 {
-		eventChannels = append(eventChannels, destroyOpts.EventStreams...)
-	}
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, destroyOpts.EventStreams...)
+
 	t, err := tailLogs("destroy", eventChannels)
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
@@ -540,7 +537,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		Summary:  summary,
 		StdOut:   stdout,
 		StdErr:   stderr,
-		EventLog: events,
+		EventLog: evts,
 	}
 
 	return res, nil
@@ -735,7 +732,7 @@ type UpResult struct {
 	StdErr   string
 	Outputs  OutputMap
 	Summary  UpdateSummary
-	EventLog []apitype.EngineEvent
+	EventLog []events.EngineEvent
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the update operation.
@@ -802,7 +799,7 @@ type PreviewResult struct {
 	StdOut        string
 	StdErr        string
 	ChangeSummary map[string]int
-	EventLog      []apitype.EngineEvent
+	EventLog      []events.EngineEvent
 }
 
 // RefreshResult is the output of a successful Stack.Refresh operation
@@ -810,7 +807,7 @@ type RefreshResult struct {
 	StdOut   string
 	StdErr   string
 	Summary  UpdateSummary
-	EventLog []apitype.EngineEvent
+	EventLog []events.EngineEvent
 }
 
 // DestroyResult is the output of a successful Stack.Destroy operation
@@ -818,7 +815,7 @@ type DestroyResult struct {
 	StdOut   string
 	StdErr   string
 	Summary  UpdateSummary
-	EventLog []apitype.EngineEvent
+	EventLog []events.EngineEvent
 }
 
 // secretSentinel represents the CLI response for an output marked as "secret"
@@ -1006,7 +1003,7 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	}, nil
 }
 
-func tailLogs(command string, receivers []chan<- apitype.EngineEvent) (*tail.Tail, error) {
+func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
 	logDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create logdir")
@@ -1021,7 +1018,7 @@ func tailLogs(command string, receivers []chan<- apitype.EngineEvent) (*tail.Tai
 	return t, nil
 }
 
-func collectEvents(eventChannel <-chan apitype.EngineEvent, events *[]apitype.EngineEvent) {
+func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) {
 	for {
 		event, ok := <-eventChannel
 		if !ok {
@@ -1031,7 +1028,7 @@ func collectEvents(eventChannel <-chan apitype.EngineEvent, events *[]apitype.En
 	}
 }
 
-func cleanup(t *tail.Tail, ch chan apitype.EngineEvent) {
+func cleanup(t *tail.Tail, ch chan events.EngineEvent) {
 	t.Cleanup()
 	close(ch)
 }

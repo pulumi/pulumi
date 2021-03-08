@@ -26,13 +26,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 	"github.com/stretchr/testify/assert"
@@ -1193,7 +1192,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
-	res, err := s.Up(ctx, optup.ProgressStreams(os.Stdout))
+	res, err := s.Up(ctx)
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -1211,7 +1210,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, containsSummary(res.EventLog))
 
 	// -- pulumi preview --
-	prev, err := s.Preview(ctx, optpreview.ProgressStreams(os.Stdout))
+	prev, err := s.Preview(ctx)
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -1223,7 +1222,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, containsSummary(prev.EventLog))
 
 	// -- pulumi refresh --
-	ref, err := s.Refresh(ctx, optrefresh.ProgressStreams(os.Stdout))
+	ref, err := s.Refresh(ctx)
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1234,7 +1233,7 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, containsSummary(ref.EventLog))
 
 	// -- pulumi destroy --
-	dRes, err := s.Destroy(ctx, optdestroy.ProgressStreams(os.Stdout))
+	dRes, err := s.Destroy(ctx)
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -1454,7 +1453,7 @@ func getTestOrg() string {
 	return testOrg
 }
 
-func countSteps(log []apitype.EngineEvent) int {
+func countSteps(log []events.EngineEvent) int {
 	steps := 0
 	for _, e := range log {
 		if e.ResourcePreEvent != nil {
@@ -1464,7 +1463,7 @@ func countSteps(log []apitype.EngineEvent) int {
 	return steps
 }
 
-func containsSummary(log []apitype.EngineEvent) bool {
+func containsSummary(log []events.EngineEvent) bool {
 	hasSummary := false
 	for _, e := range log {
 		if e.SummaryEvent != nil {

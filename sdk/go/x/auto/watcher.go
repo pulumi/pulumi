@@ -18,9 +18,10 @@ import (
 	"github.com/nxadm/tail"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 )
 
-func watchFile(path string, receivers []chan<- apitype.EngineEvent) (*tail.Tail, error) {
+func watchFile(path string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
 	t, err := tail.TailFile(path, tail.Config{
 		Follow: true,
 		Logger: tail.DiscardingLogger,
@@ -30,10 +31,22 @@ func watchFile(path string, receivers []chan<- apitype.EngineEvent) (*tail.Tail,
 	}
 	go func(tailedLog *tail.Tail) {
 		for line := range tailedLog.Lines {
+			if line.Err != nil {
+				for _, r := range receivers {
+					r <- events.EngineEvent{Error: line.Err}
+				}
+				continue
+			}
+			var e apitype.EngineEvent
+			err = json.Unmarshal([]byte(line.Text), &e)
+			if err != nil {
+				for _, r := range receivers {
+					r <- events.EngineEvent{Error: err}
+				}
+				continue
+			}
 			for _, r := range receivers {
-				var e apitype.EngineEvent
-				err = json.Unmarshal([]byte(line.Text), &e)
-				r <- e
+				r <- events.EngineEvent{EngineEvent: e}
 			}
 		}
 	}(t)
