@@ -67,6 +67,9 @@ class TestingWithMocks(unittest.TestCase):
     def test_custom_resource_reference(self):
         def check_instance(instance):
             self.assertIsInstance(instance, resources.Instance)
+            def check_ip(ip):
+                self.assertEqual(ip, '203.0.113.12')
+            instance.public_ip.apply(check_ip)
         return resources.mycustom.instance.apply(check_instance)
 
     @pulumi.runtime.test
