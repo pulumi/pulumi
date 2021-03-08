@@ -776,7 +776,11 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range t.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.inputType(p.Type, !p.IsRequired), p.Name)
+		typ := pkg.inputType(p.Type, !p.IsRequired)
+		if p.IsPlain {
+			typ = pkg.plainType(p.Type, !p.IsRequired)
+		}
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), typ, p.Name)
 	}
 	fmt.Fprintf(w, "}\n\n")
 
@@ -1056,7 +1060,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		case *schema.EnumType:
 			// not a pointer type and already handled above
 		default:
-			if p.IsRequired {
+			if p.IsRequired && !p.IsPlain {
 				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
 				fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
 				fmt.Fprintf(w, "\t}\n")
@@ -1212,7 +1216,11 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
 	for _, p := range r.InputProperties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), pkg.inputType(p.Type, !p.IsRequired))
+		typ := pkg.inputType(p.Type, !p.IsRequired)
+		if p.IsPlain {
+			typ = pkg.plainType(p.Type, !p.IsRequired)
+		}
+		fmt.Fprintf(w, "\t%s %s\n", Title(p.Name), typ)
 	}
 	fmt.Fprintf(w, "}\n\n")
 

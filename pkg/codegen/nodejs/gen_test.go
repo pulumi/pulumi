@@ -55,6 +55,16 @@ func TestGeneratePackage(t *testing.T) {
 				"types/output.ts",
 			},
 		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				"component.ts",
+				"types/input.ts",
+				"types/output.ts",
+				"types/index.ts",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {

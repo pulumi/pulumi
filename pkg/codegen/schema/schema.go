@@ -273,6 +273,8 @@ type Property struct {
 	DefaultValue *DefaultValue
 	// IsRequired is true if the property must always be populated.
 	IsRequired bool
+	// IsPlain is true if the property only accepts prompt values.
+	IsPlain bool
 	// DeprecationMessage indicates whether or not the property is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the property.
@@ -693,6 +695,9 @@ type ObjectTypeSpec struct {
 	// Required, if present, is a list of the names of an object type's required properties. These properties must be set
 	// for inputs and will always be set for outputs.
 	Required []string `json:"required,omitempty"`
+	// Plain, if present, is a list of the names of an object type's plain properties. These properties only accept
+	// prompt values.
+	Plain []string `json:"plain,omitempty"`
 	// Language specifies additional language-specific data about the type.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 }
@@ -735,6 +740,8 @@ type ResourceSpec struct {
 	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
 	// RequiredInputs is a list of the names of the resource's required input properties.
 	RequiredInputs []string `json:"requiredInputs,omitempty"`
+	// PlainInputs is a list of the names of the resource's plain input properties that only accept prompt values.
+	PlainInputs []string `json:"plainInputs,omitempty"`
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that mau be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
 	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty"`
@@ -1337,8 +1344,8 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
-func (t *types) bindProperties(properties map[string]PropertySpec,
-	required []string) ([]*Property, map[string]*Property, error) {
+func (t *types) bindProperties(properties map[string]PropertySpec, required []string,
+	plain []string) ([]*Property, map[string]*Property, error) {
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
@@ -1387,6 +1394,15 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 		p.IsRequired = true
 	}
 
+	// Compute plain properties.
+	for _, name := range plain {
+		p, ok := propertyMap[name]
+		if !ok {
+			return nil, nil, errors.Errorf("unknown plain property %q", name)
+		}
+		p.IsPlain = true
+	}
+
 	sort.Slice(result, func(i, j int) bool {
 		return result[i].Name < result[j].Name
 	})
@@ -1394,8 +1410,14 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 	return result, propertyMap, nil
 }
 
-func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ObjectTypeSpec) error {
-	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required)
+func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ObjectTypeSpec,
+	supportsPlainProperties bool) error {
+
+	if !supportsPlainProperties && len(spec.Plain) > 0 {
+		return errors.New("plain cannot be specified")
+	}
+
+	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required, spec.Plain)
 	if err != nil {
 		return err
 	}
@@ -1414,9 +1436,9 @@ func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec Object
 	return nil
 }
 
-func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
+func (t *types) bindObjectType(token string, spec ObjectTypeSpec, supportsPlainProperties bool) (*ObjectType, error) {
 	obj := &ObjectType{}
-	if err := t.bindObjectTypeDetails(obj, token, spec); err != nil {
+	if err := t.bindObjectTypeDetails(obj, token, spec, supportsPlainProperties); err != nil {
 		return nil, err
 	}
 	return obj, nil
@@ -1550,7 +1572,8 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 	// Process object types.
 	for token, spec := range complexTypes {
 		if spec.Type == "object" {
-			if err := typs.bindObjectTypeDetails(typs.objects[token], token, spec.ObjectTypeSpec); err != nil {
+			if err := typs.bindObjectTypeDetails(
+				typs.objects[token], token, spec.ObjectTypeSpec, true /*supportsPlainProperties*/); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
 		}
@@ -1560,24 +1583,31 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 }
 
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
-	properties, _, err := types.bindProperties(spec.Variables, spec.Required)
+	properties, _, err := types.bindProperties(spec.Variables, spec.Required, nil)
 	return properties, err
 }
 
 func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
-	properties, _, err := types.bindProperties(spec.Properties, spec.Required)
+	if len(spec.Plain) > 0 {
+		return nil, errors.New("plain cannot be specified on resources")
+	}
+	if len(spec.PlainInputs) > 0 && !spec.IsComponent {
+		return nil, errors.New("plainInputs can only be specified on component resources")
+	}
+
+	properties, _, err := types.bindProperties(spec.Properties, spec.Required, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs)
+	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs, spec.PlainInputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
-		si, err := types.bindObjectType(token+"Args", *spec.StateInputs)
+		si, err := types.bindObjectType(token+"Args", *spec.StateInputs, false /*supportsPlainProperties*/)
 		if err != nil {
 			return nil, errors.Wrap(err, "error binding inputs")
 		}
@@ -1653,7 +1683,7 @@ func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, ma
 func bindFunction(token string, spec FunctionSpec, types *types) (*Function, error) {
 	var inputs *ObjectType
 	if spec.Inputs != nil {
-		ins, err := types.bindObjectType(token+"Args", *spec.Inputs)
+		ins, err := types.bindObjectType(token+"Args", *spec.Inputs, false /*supportsPlainProperties*/)
 		if err != nil {
 			return nil, errors.Wrap(err, "error binding inputs")
 		}
@@ -1662,7 +1692,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, err
 
 	var outputs *ObjectType
 	if spec.Outputs != nil {
-		outs, err := types.bindObjectType(token+"Result", *spec.Outputs)
+		outs, err := types.bindObjectType(token+"Result", *spec.Outputs, false /*supportsPlainProperties*/)
 		if err != nil {
 			return nil, errors.Wrap(err, "error binding inputs")
 		}

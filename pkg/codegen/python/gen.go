@@ -982,7 +982,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// If there's an argument type, emit it.
 	for _, prop := range res.InputProperties {
-		ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
+		wrapInput := !prop.IsPlain
+		ty := mod.typeString(prop.Type, true, wrapInput, true /*optional*/, true /*acceptMapping*/)
 		fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 	}
 
@@ -1849,7 +1850,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 		return
 	}
 
-	ty := mod.typeString(prop.Type, true, wrapInput, false /*optional*/, acceptMapping)
+	ty := mod.typeString(prop.Type, true, wrapInput && !prop.IsPlain, false /*optional*/, acceptMapping)
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
@@ -2072,7 +2073,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 		var defaultValue string
 		if !prop.IsRequired {
 			defaultValue = " = None"
@@ -2129,7 +2130,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	mod.genProperties(w, props, input /*setters*/, func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 	})
 
 	if !input && !mod.details(obj).functionType {

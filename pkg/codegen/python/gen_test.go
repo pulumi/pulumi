@@ -74,6 +74,15 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("pulumi_plant", "tree", "v1", "nursery.py"),
 			},
 		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				filepath.Join("pulumi_example", "_inputs.py"),
+				filepath.Join("pulumi_example", "component.py"),
+				filepath.Join("pulumi_example", "outputs.py"),
+			},
+		},
 	}
 
 	testDir := filepath.Join("..", "internal", "test", "testdata")
