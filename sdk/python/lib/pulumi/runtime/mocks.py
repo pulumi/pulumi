@@ -91,6 +91,7 @@ class MockMonitor:
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
 
     def Invoke(self, request):
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
         _ensure_event_loop()
 
         args = rpc.deserialize_properties(request.args)
@@ -111,6 +112,7 @@ class MockMonitor:
         return provider_pb2.InvokeResponse(**fields)
 
     def ReadResource(self, request):
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
         _ensure_event_loop()
 
         state = rpc.deserialize_properties(request.properties)
@@ -131,6 +133,7 @@ class MockMonitor:
         if request.type == "pulumi:pulumi:Stack":
             return resource_pb2.RegisterResourceResponse(urn=urn)
 
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
         _ensure_event_loop()
 
         inputs = rpc.deserialize_properties(request.object)
