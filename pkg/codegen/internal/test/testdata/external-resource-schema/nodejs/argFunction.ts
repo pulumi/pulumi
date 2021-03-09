@@ -28,3 +28,11 @@ export interface ArgFunctionArgs {
 export interface ArgFunctionResult {
     readonly age?: number;
 }
+
+export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ArgFunctionResult> {
+    return pulumi.output(args).apply(argFunction);
+}
+
+export interface ArgFunctionOutputArgs {
+    readonly name?: pulumi.Input<random.RandomPet>;
+}

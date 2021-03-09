@@ -738,6 +738,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 
 	// Now, emit the function signature.
 	var argsig string
+	var outputargssig string
 	argsOptional := true
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
@@ -752,6 +753,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 			optFlag = "?"
 		}
 		argsig = fmt.Sprintf("args%s: %sArgs, ", optFlag, title(name))
+		outputargssig = fmt.Sprintf("args%s: %sOutputArgs, ", optFlag, title(name))
 	}
 	var retty string
 	if fun.Outputs == nil {
@@ -797,6 +799,24 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
 		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, false, true, 0)
+	}
+
+	// Also generate a `get<Name>Output` method that takes Inputs and returns an Output
+	outputName := name + "Output"
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {\n", outputName, outputargssig, retty)
+	if fun.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
+		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
+	}
+	if fun.Inputs == nil {
+		fmt.Fprintf(w, "    const args = {};\n")
+	}
+	fmt.Fprintf(w, "    return pulumi.output(args).apply(%s);\n", name)
+	fmt.Fprintf(w, "}\n")
+
+	if fun.Inputs != nil {
+		fmt.Fprintf(w, "\n")
+		mod.genPlainType(w, title(name)+"OutputArgs", fun.Inputs.Comment, fun.Inputs.Properties, true, true, true, 0)
 	}
 }
 
