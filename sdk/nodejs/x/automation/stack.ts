@@ -113,9 +113,8 @@ export class Stack {
     }
     // Try for up to 10s to start tailing the file, invoking the callback once per line. Returns
     // a promise for a callback to invoke to stop tailing the file.
-    private async readLines(path: string, callback: (event: EngineEvent) => void): Promise<void> {
+    private async readLines(path: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
         let n = 0;
-        let seenCancelEvent = false;
         let fileExists = fs.existsSync(path);
         while (!fileExists) {
             if (n > 100) {
@@ -141,17 +140,9 @@ export class Stack {
             .on("data", line => {
                 const event = JSON.parse(line);
                 callback(event);
-                if (event.cancelEvent) {
-                    seenCancelEvent = true;
-                }
             });
 
-        // Wait until the cancel event comes through.
-        while (!seenCancelEvent) {
-            await delay(100);
-        }
-
-        await eventLogTail.quit();
+        return eventLogTail;
     }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -239,10 +230,14 @@ export class Stack {
         const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         const promises: Promise<any>[] = logPromise ? [upPromise, logPromise] : [upPromise];
         let upResult;
+        let tail;
         try {
-            [upResult] = await Promise.all(promises);
+            [upResult, tail] = await Promise.all(promises);
         } finally {
             onExit();
+            if (tail) {
+                await tail.quit();
+            }
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -341,10 +336,14 @@ export class Stack {
         const prePromise = this.runPulumiCmd(args);
 
         let preResult;
+        let tail;
         try {
-            [preResult] = await Promise.all([prePromise, logPromise]);
+            [preResult, tail] = await Promise.all([prePromise, logPromise]);
         } finally {
             onExit();
+            if (tail) {
+                await tail.quit();
+            }
         }
 
         const summary = eventLog.filter(event => {
@@ -405,7 +404,10 @@ export class Stack {
 
         const refPromise = this.runPulumiCmd(args, opts?.onOutput);
         const promises: Promise<any>[] = logPromise ? [refPromise, logPromise] : [refPromise];
-        const [refResult] = await Promise.all(promises);
+        const [refResult, tail] = await Promise.all(promises);
+        if (tail) {
+            await tail.quit();
+        }
 
         const summary = await this.info();
         return {
@@ -454,10 +456,12 @@ export class Stack {
 
         const desPromise = this.runPulumiCmd(args, opts?.onOutput);
         const promises: Promise<any>[] = logPromise ? [desPromise, logPromise] : [desPromise];
+        const [desResult, tail] = await Promise.all(promises);
+        if (tail) {
+            await tail.quit();
+        }
 
-        const [desResult] = await Promise.all(promises);
         const summary = await this.info();
-
         return {
             stdout: desResult.stdout,
             stderr: desResult.stderr,
