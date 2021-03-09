@@ -299,8 +299,15 @@ class Server implements grpc.UntypedServiceImplementation {
                 const deps = (inputDeps ? <resource.URN[]>inputDeps.getUrnsList() : [])
                     .map(depUrn => new resource.DependencyResource(depUrn));
                 const input = deserializedInputs[k];
-                inputs[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
-                    Promise.resolve(runtime.isRpcSecret(input)), Promise.resolve([]));
+                const isSecret = runtime.isRpcSecret(input);
+                if (!isSecret && deps.length === 0) {
+                    // If it's a prompt value, return it directly without wrapping it as an output.
+                    inputs[k] = input;
+                } else {
+                    // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
+                    inputs[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
+                        Promise.resolve(isSecret), Promise.resolve([]));
+                }
             }
 
             // Rebuild the resource options.
