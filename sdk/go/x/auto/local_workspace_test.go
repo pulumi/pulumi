@@ -32,6 +32,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 	"github.com/stretchr/testify/assert"
@@ -190,13 +191,16 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -292,14 +296,18 @@ func TestUpsertStackLocalSource(t *testing.T) {
 	assert.Equal(t, "succeeded", res.Summary.Result)
 
 	// -- pulumi preview --
-	prev, err := s.Preview(ctx)
+
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -385,13 +393,16 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -474,13 +485,16 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -575,13 +589,16 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -676,13 +693,16 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -767,13 +787,16 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -857,13 +880,16 @@ func TestUpsertStackInlineSource(t *testing.T) {
 
 	// -- pulumi preview --
 
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
 	// -- pulumi refresh --
@@ -1192,7 +1218,10 @@ func TestStructuredOutput(t *testing.T) {
 	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
-	res, err := s.Up(ctx)
+	var upEvents []events.EngineEvent
+	upCh := make(chan events.EngineEvent)
+	go collectEvents(upCh, &upEvents)
+	res, err := s.Up(ctx, optup.EventStreams(upCh))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -1207,22 +1236,28 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, res.Outputs["exp_secret"].Secret)
 	assert.Equal(t, "update", res.Summary.Kind)
 	assert.Equal(t, "succeeded", res.Summary.Result)
-	assert.True(t, containsSummary(res.EventLog))
+	assert.True(t, containsSummary(upEvents))
 
 	// -- pulumi preview --
-	prev, err := s.Preview(ctx)
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
 
 	assert.Equal(t, 1, prev.ChangeSummary["same"])
-	steps := countSteps(prev.EventLog)
+	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
-	assert.True(t, containsSummary(prev.EventLog))
+	assert.True(t, containsSummary(previewEvents))
 
 	// -- pulumi refresh --
-	ref, err := s.Refresh(ctx)
+	var refreshEvents []events.EngineEvent
+	refCh := make(chan events.EngineEvent)
+	go collectEvents(refCh, &refreshEvents)
+	ref, err := s.Refresh(ctx, optrefresh.EventStreams(refCh))
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
 		t.FailNow()
@@ -1230,10 +1265,13 @@ func TestStructuredOutput(t *testing.T) {
 
 	assert.Equal(t, "refresh", ref.Summary.Kind)
 	assert.Equal(t, "succeeded", ref.Summary.Result)
-	assert.True(t, containsSummary(ref.EventLog))
+	assert.True(t, containsSummary(refreshEvents))
 
 	// -- pulumi destroy --
-	dRes, err := s.Destroy(ctx)
+	var destroyEvents []events.EngineEvent
+	desCh := make(chan events.EngineEvent)
+	go collectEvents(desCh, &destroyEvents)
+	dRes, err := s.Destroy(ctx, optdestroy.EventStreams(desCh))
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -1241,7 +1279,7 @@ func TestStructuredOutput(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
-	assert.True(t, containsSummary(dRes.EventLog))
+	assert.True(t, containsSummary(destroyEvents))
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
@@ -1471,4 +1509,14 @@ func containsSummary(log []events.EngineEvent) bool {
 		}
 	}
 	return hasSummary
+}
+
+func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) {
+	for {
+		event, ok := <-eventChannel
+		if !ok {
+			return
+		}
+		*events = append(*events, event)
+	}
 }

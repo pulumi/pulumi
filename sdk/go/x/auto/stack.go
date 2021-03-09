@@ -260,9 +260,19 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
 
-	var evts []events.EngineEvent
+	var summaryEvents []apitype.SummaryEvent
 	eventChannel := make(chan events.EngineEvent)
-	go collectEvents(eventChannel, &evts)
+	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent) {
+		for {
+			event, ok := <-eventChannel
+			if !ok {
+				return
+			}
+			if event.SummaryEvent != nil {
+				summaryEvents = append(summaryEvents, *event.SummaryEvent)
+			}
+		}
+	}(eventChannel, &summaryEvents)
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
@@ -271,7 +281,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if err != nil {
 		return res, errors.Wrap(err, "failed to tail logs")
 	}
-	defer cleanup(t, eventChannel)
+	defer cleanup(t, eventChannels)
 	args = append(args, "--event-log", t.Filename)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
@@ -279,20 +289,16 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
 
-	var previewSummary *apitype.SummaryEvent
-	for _, e := range evts {
-		if e.SummaryEvent != nil {
-			previewSummary = e.SummaryEvent
-		}
+	if len(summaryEvents) == 0 {
+		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
 	}
-	if previewSummary == nil {
-		return res, newAutoError(errors.Wrap(err, "failed to get preview summary"), stdout, stderr, code)
+	if len(summaryEvents) > 1 {
+		return res, newAutoError(errors.New("got multiple preview summaries"), stdout, stderr, code)
 	}
 
 	res.StdOut = stdout
 	res.StdErr = stderr
-	res.ChangeSummary = previewSummary.ResourceChanges
-	res.EventLog = evts
+	res.ChangeSummary = summaryEvents[0].ResourceChanges
 
 	return res, nil
 }
@@ -348,19 +354,15 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 
-	var evts []events.EngineEvent
-	eventChannel := make(chan events.EngineEvent)
-	go collectEvents(eventChannel, &evts)
-
-	eventChannels := []chan<- events.EngineEvent{eventChannel}
-	eventChannels = append(eventChannels, upOpts.EventStreams...)
-
-	t, err := tailLogs("up", eventChannels)
-	if err != nil {
-		return res, errors.Wrap(err, "failed to tail logs")
+	if len(upOpts.EventStreams) > 0 {
+		eventChannels := upOpts.EventStreams
+		t, err := tailLogs("up", eventChannels)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to tail logs")
+		}
+		defer cleanup(t, eventChannels)
+		args = append(args, "--event-log", t.Filename)
 	}
-	defer cleanup(t, eventChannel)
-	args = append(args, "--event-log", t.Filename)
 
 	args = append(args, sharedArgs...)
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
@@ -379,10 +381,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 
 	res = UpResult{
-		Outputs:  outs,
-		StdOut:   stdout,
-		StdErr:   stderr,
-		EventLog: evts,
+		Outputs: outs,
+		StdOut:  stdout,
+		StdErr:  stderr,
 	}
 
 	if len(history) > 0 {
@@ -429,19 +430,15 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	var evts []events.EngineEvent
-	eventChannel := make(chan events.EngineEvent)
-	go collectEvents(eventChannel, &evts)
-
-	eventChannels := []chan<- events.EngineEvent{eventChannel}
-	eventChannels = append(eventChannels, refreshOpts.EventStreams...)
-
-	t, err := tailLogs("refresh", eventChannels)
-	if err != nil {
-		return res, errors.Wrap(err, "failed to tail logs")
+	if len(refreshOpts.EventStreams) > 0 {
+		eventChannels := refreshOpts.EventStreams
+		t, err := tailLogs("refresh", eventChannels)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to tail logs")
+		}
+		defer cleanup(t, eventChannels)
+		args = append(args, "--event-log", t.Filename)
 	}
-	defer cleanup(t, eventChannel)
-	args = append(args, "--event-log", t.Filename)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, refreshOpts.ProgressStreams, args...)
 	if err != nil {
@@ -459,10 +456,9 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 
 	res = RefreshResult{
-		Summary:  summary,
-		StdOut:   stdout,
-		StdErr:   stderr,
-		EventLog: evts,
+		Summary: summary,
+		StdOut:  stdout,
+		StdErr:  stderr,
 	}
 
 	return res, nil
@@ -504,19 +500,15 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
-	var evts []events.EngineEvent
-	eventChannel := make(chan events.EngineEvent)
-	go collectEvents(eventChannel, &evts)
-
-	eventChannels := []chan<- events.EngineEvent{eventChannel}
-	eventChannels = append(eventChannels, destroyOpts.EventStreams...)
-
-	t, err := tailLogs("destroy", eventChannels)
-	if err != nil {
-		return res, errors.Wrap(err, "failed to tail logs")
+	if len(destroyOpts.EventStreams) > 0 {
+		eventChannels := destroyOpts.EventStreams
+		t, err := tailLogs("destroy", eventChannels)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to tail logs")
+		}
+		defer cleanup(t, eventChannels)
+		args = append(args, "--event-log", t.Filename)
 	}
-	defer cleanup(t, eventChannel)
-	args = append(args, "--event-log", t.Filename)
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, destroyOpts.ProgressStreams, args...)
 	if err != nil {
@@ -534,10 +526,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 
 	res = DestroyResult{
-		Summary:  summary,
-		StdOut:   stdout,
-		StdErr:   stderr,
-		EventLog: evts,
+		Summary: summary,
+		StdOut:  stdout,
+		StdErr:  stderr,
 	}
 
 	return res, nil
@@ -728,11 +719,10 @@ type OutputValue struct {
 // UpResult contains information about a Stack.Up operation,
 // including Outputs, and a summary of the deployed changes.
 type UpResult struct {
-	StdOut   string
-	StdErr   string
-	Outputs  OutputMap
-	Summary  UpdateSummary
-	EventLog []events.EngineEvent
+	StdOut  string
+	StdErr  string
+	Outputs OutputMap
+	Summary UpdateSummary
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the update operation.
@@ -799,23 +789,20 @@ type PreviewResult struct {
 	StdOut        string
 	StdErr        string
 	ChangeSummary map[string]int
-	EventLog      []events.EngineEvent
 }
 
 // RefreshResult is the output of a successful Stack.Refresh operation
 type RefreshResult struct {
-	StdOut   string
-	StdErr   string
-	Summary  UpdateSummary
-	EventLog []events.EngineEvent
+	StdOut  string
+	StdErr  string
+	Summary UpdateSummary
 }
 
 // DestroyResult is the output of a successful Stack.Destroy operation
 type DestroyResult struct {
-	StdOut   string
-	StdErr   string
-	Summary  UpdateSummary
-	EventLog []events.EngineEvent
+	StdOut  string
+	StdErr  string
+	Summary UpdateSummary
 }
 
 // secretSentinel represents the CLI response for an output marked as "secret"
@@ -1018,17 +1005,9 @@ func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail
 	return t, nil
 }
 
-func collectEvents(eventChannel <-chan events.EngineEvent, events *[]events.EngineEvent) {
-	for {
-		event, ok := <-eventChannel
-		if !ok {
-			return
-		}
-		*events = append(*events, event)
-	}
-}
-
-func cleanup(t *tail.Tail, ch chan events.EngineEvent) {
+func cleanup(t *tail.Tail, channels []chan<- events.EngineEvent) {
 	t.Cleanup()
-	close(ch)
+	for _, ch := range channels {
+		close(ch)
+	}
 }
