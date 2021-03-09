@@ -14,3 +14,5 @@
 
 ### Bug Fixes
 
+- [sdk/python] Fix mocks issue when passing a resource more than once.
+  [#6479](https://github.com/pulumi/pulumi/pull/6479)

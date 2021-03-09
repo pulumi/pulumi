@@ -56,6 +56,11 @@ myinstance = Instance("instance",
 mycustom = MyCustom("mycustom", {"instance": myinstance})
 invoke_result = do_invoke()
 
+# Pass myinstance several more times to ensure deserialization of the resource reference
+# works on other asyncio threads.
+for x in range(5):
+    MyCustom(f"mycustom{x}", {"instance": myinstance})
+
 pulumi.export("hello", "world")
 pulumi.export("outprop", mycomponent.outprop)
 pulumi.export("public_ip", myinstance.public_ip)
