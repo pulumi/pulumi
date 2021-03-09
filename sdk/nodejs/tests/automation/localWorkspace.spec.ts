@@ -206,7 +206,7 @@ describe("LocalWorkspace", () => {
 
         // pulumi preview
         const preRes = await stack.preview();
-        assert.strictEqual(preRes.resourceChanges.same, 1);
+        assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
         const refRes = await stack.refresh();
@@ -253,7 +253,7 @@ describe("LocalWorkspace", () => {
 
         // pulumi preview
         const preRes = await stack.preview();
-        assert.strictEqual(preRes.resourceChanges.same, 1);
+        assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
         const refRes = await stack.refresh();
@@ -289,7 +289,7 @@ describe("LocalWorkspace", () => {
         // pulumi preview
         const preRes = await stack.preview();
         assert.strictEqual(containsSummaryEvent(preRes.eventLog), true, "No SummaryEvent for `preview`");
-        assert.strictEqual(preRes.resourceChanges.create, 1);
+        assert.strictEqual(preRes.changeSummary.create, 1);
 
         // pulumi up
         const upRes = await stack.up();
@@ -300,7 +300,7 @@ describe("LocalWorkspace", () => {
         // pulumi preview
         const preResAgain = await stack.preview();
         assert.strictEqual(containsSummaryEvent(preResAgain.eventLog), true, "No SummaryEvent for `preview`");
-        assert.strictEqual(preResAgain.resourceChanges.same, 1);
+        assert.strictEqual(preResAgain.changeSummary.same, 1);
 
         // pulumi refresh
         const refRes = await stack.refresh();
