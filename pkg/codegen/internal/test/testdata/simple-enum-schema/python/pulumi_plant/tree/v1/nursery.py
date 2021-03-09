@@ -5,14 +5,65 @@
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from ... import _utilities, _tables
 from ._enums import *
 
-__all__ = ['Nursery']
+__all__ = ['NurseryArgs', 'Nursery']
+
+@pulumi.input_type
+class NurseryArgs:
+    def __init__(__self__, *,
+                 varieties: pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]],
+                 sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None):
+        """
+        The set of arguments for constructing a Nursery resource.
+        :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
+        :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
+        """
+        pulumi.set(__self__, "varieties", varieties)
+        if sizes is not None:
+            pulumi.set(__self__, "sizes", sizes)
+
+    @property
+    @pulumi.getter
+    def varieties(self) -> pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]:
+        """
+        The varieties available
+        """
+        return pulumi.get(self, "varieties")
+
+    @varieties.setter
+    def varieties(self, value: pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]):
+        pulumi.set(self, "varieties", value)
+
+    @property
+    @pulumi.getter
+    def sizes(self) -> Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]]:
+        """
+        The sizes of trees available
+        """
+        return pulumi.get(self, "sizes")
+
+    @sizes.setter
+    def sizes(self, value: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]]):
+        pulumi.set(self, "sizes", value)
 
 
 class Nursery(pulumi.CustomResource):
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: NurseryArgs,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a Nursery resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param NurseryArgs args: The arguments to use to populate this resource's properties.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
@@ -28,6 +79,22 @@ class Nursery(pulumi.CustomResource):
         :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
         :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
         """
+        ...
+    def __init__(__self__, resource_name: str, *args, **kwargs):
+        resource_args, opts = _utilities.get_resource_args_opts(NurseryArgs, pulumi.ResourceOptions, *args, **kwargs)
+        if resource_args is not None:
+            __self__._internal_init(resource_name, opts, **resource_args.__dict__)
+        else:
+            __self__._internal_init(resource_name, *args, **kwargs)
+
+    def _internal_init(__self__,
+                 resource_name: str,
+                 opts: Optional[pulumi.ResourceOptions] = None,
+                 sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None,
+                 varieties: Optional[pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]] = None,
+                 __props__=None,
+                 __name__=None,
+                 __opts__=None):
         if __name__ is not None:
             warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)
             resource_name = __name__

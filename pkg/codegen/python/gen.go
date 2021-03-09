@@ -294,7 +294,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 		fmt.Fprintf(w, "import warnings\n")
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
-		fmt.Fprintf(w, "from typing import Any, Mapping, Optional, Sequence, Union\n")
+		fmt.Fprintf(w, "from typing import Any, Mapping, Optional, Sequence, Union, overload\n")
 		fmt.Fprintf(w, "from %s import _utilities, _tables\n", relImport)
 		for _, imp := range imports.strings() {
 			fmt.Fprintf(w, "%s\n", imp)
@@ -805,15 +805,25 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 
 		var hasTypes bool
 		for _, t := range mod.types {
+			name := tokenToName(t.Token)
+			var functionType bool
+			switch {
+			case input:
+				name += "Args"
+			case mod.details(t).functionType:
+				name += "Result"
+				functionType = true
+			}
+
 			if input && mod.details(t).inputType {
-				wrapInput := !mod.details(t).functionType
-				if err := mod.genType(w, t, true, wrapInput); err != nil {
+				wrapInput := !functionType
+				if err := mod.genType(w, name, t.Comment, t.Properties, functionType, true, wrapInput); err != nil {
 					return err
 				}
 				hasTypes = true
 			}
 			if !input && mod.details(t).outputType {
-				if err := mod.genType(w, t, false, false); err != nil {
+				if err := mod.genType(w, name, t.Comment, t.Properties, functionType, false, false); err != nil {
 					return err
 				}
 				hasTypes = true
@@ -951,7 +961,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	// Export only the symbols we want exported.
-	fmt.Fprintf(w, "__all__ = ['%s']\n\n", name)
+	fmt.Fprintf(w, "__all__ = ['%[1]sArgs', '%[1]s']\n\n", name)
+
+	// Produce an args class.
+	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
+	err := mod.genType(w, fmt.Sprintf("%sArgs", name), argsComment, res.InputProperties, false, true, true)
+	if err != nil {
+		return "", err
+	}
 
 	var baseType string
 	switch {
@@ -965,34 +982,75 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	if !res.IsProvider && res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
-		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
+		fmt.Fprintf(w, "warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n\n", escaped)
 	}
 
 	// Produce a class definition with optional """ comment.
-	fmt.Fprint(w, "\n")
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
 	}
-	// Now generate an initializer with arguments for all input properties.
-	fmt.Fprintf(w, "    def __init__(__self__,\n")
-	fmt.Fprintf(w, "                 resource_name: str,\n")
-	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None")
 
-	// If there's an argument type, emit it.
+	// Determine if all inputs are optional.
+	allOptionalInputs := true
 	for _, prop := range res.InputProperties {
-		wrapInput := !prop.IsPlain
-		ty := mod.typeString(prop.Type, true, wrapInput, true /*optional*/, true /*acceptMapping*/)
-		fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
+		allOptionalInputs = allOptionalInputs && !prop.IsRequired
 	}
 
-	// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
-	// compatibility, we still emit them, but we don't emit documentation for them.
-	fmt.Fprintf(w, ",\n                 __props__=None")
-	fmt.Fprintf(w, ",\n                 __name__=None")
-	fmt.Fprintf(w, ",\n                 __opts__=None):\n")
-	mod.genInitDocstring(w, res)
+	// Now generate __init__ overloads along with an implementation...
+
+	// First, generate an __init__ overload that accepts the resource's inputs from the args class.
+	fmt.Fprintf(w, "    @overload\n")
+	fmt.Fprintf(w, "    def __init__(__self__,\n")
+	fmt.Fprintf(w, "                 resource_name: str,\n")
+	if allOptionalInputs {
+		fmt.Fprintf(w, "                 args: Optional[%sArgs] = None,\n", name)
+	} else {
+		fmt.Fprintf(w, "                 args: %sArgs,\n", name)
+	}
+	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None):\n")
+	mod.genInitDocstring(w, res, name, true /*argsOverload*/)
+	fmt.Fprintf(w, "        ...\n")
+
+	// Helper for generating an init method with all properties as arguments.
+	emitInitMethodSignature := func(methodName string) {
+		fmt.Fprintf(w, "    def %s(__self__,\n", methodName)
+		fmt.Fprintf(w, "                 resource_name: str,\n")
+		fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None")
+
+		// If there's an argument type, emit it.
+		for _, prop := range res.InputProperties {
+			wrapInput := !prop.IsPlain
+			ty := mod.typeString(prop.Type, true, wrapInput, true /*optional*/, true /*acceptMapping*/)
+			fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
+		}
+
+		// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
+		// compatibility, we still emit them, but we don't emit documentation for them.
+		fmt.Fprintf(w, ",\n                 __props__=None")
+		fmt.Fprintf(w, ",\n                 __name__=None")
+		fmt.Fprintf(w, ",\n                 __opts__=None):\n")
+	}
+
+	// Next, generate an __init__ overload that accepts the resource's inputs as function arguments.
+	fmt.Fprintf(w, "    @overload\n")
+	emitInitMethodSignature("__init__")
+	mod.genInitDocstring(w, res, name, false /*argsOverload*/)
+	fmt.Fprintf(w, "        ...\n")
+
+	// Next, generate the actual implementation of __init__, which does the appropriate thing based on which
+	// overload was called.
+	fmt.Fprintf(w, "    def __init__(__self__, resource_name: str, *args, **kwargs):\n")
+	fmt.Fprintf(w, "        resource_args, opts = _utilities.get_resource_args_opts(%sArgs, pulumi.ResourceOptions, *args, **kwargs)\n", name)
+	fmt.Fprintf(w, "        if resource_args is not None:\n")
+	fmt.Fprintf(w, "            __self__._internal_init(resource_name, opts, **resource_args.__dict__)\n")
+	fmt.Fprintf(w, "        else:\n")
+	fmt.Fprintf(w, "            __self__._internal_init(resource_name, *args, **kwargs)\n")
+	fmt.Fprintf(w, "\n")
+
+	// Finally, generate the _internal_init helper method which provides the bulk of the __init__ implementation.
+	emitInitMethodSignature("_internal_init")
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
@@ -1783,7 +1841,7 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 //
 // This function does the best it can to navigate these constraints and produce a docstring that
 // Sphinx can make sense of.
-func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
+func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, name string, argOverload bool) {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
@@ -1796,9 +1854,14 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource) {
 
 	// All resources have a resource_name parameter and opts parameter.
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
+	if argOverload {
+		fmt.Fprintf(b, ":param %sArgs args: The arguments to use to populate this resource's properties.\n", name)
+	}
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
-	for _, prop := range res.InputProperties {
-		mod.genPropDocstring(b, InitParamName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
+	if !argOverload {
+		for _, prop := range res.InputProperties {
+			mod.genPropDocstring(b, InitParamName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
+		}
 	}
 
 	// printComment handles the prefix and triple quotes.
@@ -2027,10 +2090,10 @@ func InitParamName(name string) string {
 	}
 }
 
-func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapInput bool) error {
+func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, functionType, input, wrapInput bool) error {
 	// Sort required props first.
-	props := make([]*schema.Property, len(obj.Properties))
-	copy(props, obj.Properties)
+	props := make([]*schema.Property, len(properties))
+	copy(props, properties)
 	sort.Slice(props, func(i, j int) bool {
 		pi, pj := props[i], props[j]
 		switch {
@@ -2046,14 +2109,6 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		decorator = "@pulumi.input_type"
 	}
 
-	name := tokenToName(obj.Token)
-	switch {
-	case input:
-		name += "Args"
-	case mod.details(obj).functionType:
-		name += "Result"
-	}
-
 	var suffix string
 	if !input {
 		suffix = "(dict)"
@@ -2061,8 +2116,8 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 
 	fmt.Fprintf(w, "%s\n", decorator)
 	fmt.Fprintf(w, "class %s%s:\n", name, suffix)
-	if !input && obj.Comment != "" {
-		printComment(w, obj.Comment, "    ")
+	if !input && comment != "" {
+		printComment(w, comment, "    ")
 	}
 
 	// Generate an __init__ method.
@@ -2081,7 +2136,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 	}
 	fmt.Fprintf(w, "):\n")
-	mod.genTypeDocstring(w, obj.Comment, props, wrapInput)
+	mod.genTypeDocstring(w, comment, props, wrapInput)
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
@@ -2133,7 +2188,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 		return mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 	})
 
-	if !input && !mod.details(obj).functionType {
+	if !input && !functionType {
 		// The generated output class is a subclass of dict and contains translated keys
 		// to maintain backwards compatibility. When this function is present, property
 		// getters will use it to translate the key from the Pulumi name before looking
@@ -2538,6 +2593,38 @@ def get_semver_version():
     # their own semver string.
     return SemverVersion(major=major, minor=minor, patch=patch, prerelease=prerelease)
 
+
 def get_version():
-	return str(get_semver_version())
+    return str(get_semver_version())
+
+
+def get_resource_args_opts(resource_args_type, resource_options_type, *args, **kwargs):
+    """
+    Return the resource args and options given the *args and **kwargs of a resource's
+    __init__ method.
+    """
+
+    resource_args, opts = None, None
+
+    # If the first item is the resource args type, save it and remove it from the args list.
+    if args and isinstance(args[0], resource_args_type):
+        resource_args, args = args[0], args[1:]
+
+    # Now look at the first item in the args list again.
+    # If the first item is the resource options class, save it.
+    if args and isinstance(args[0], resource_options_type):
+        opts = args[0]
+
+    # If resource_args is None, see if "args" is in kwargs, and, if so, if it's typed as the
+    # the resource args type.
+    if resource_args is None:
+        a = kwargs.get("args")
+        if isinstance(a, resource_args_type):
+            resource_args = a
+
+    # If opts is None, look it up in kwargs.
+    if opts is None:
+        opts = kwargs.get("opts")
+
+    return resource_args, opts
 `

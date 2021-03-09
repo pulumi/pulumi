@@ -5,15 +5,116 @@
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities, _tables
 from . import outputs
 from ._inputs import *
 
-__all__ = ['Component']
+__all__ = ['ComponentArgs', 'Component']
+
+@pulumi.input_type
+class ComponentArgs:
+    def __init__(__self__, *,
+                 a: bool,
+                 c: int,
+                 e: str,
+                 b: Optional[bool] = None,
+                 d: Optional[int] = None,
+                 f: Optional[str] = None,
+                 foo: Optional[pulumi.Input['FooArgs']] = None):
+        """
+        The set of arguments for constructing a Component resource.
+        """
+        pulumi.set(__self__, "a", a)
+        pulumi.set(__self__, "c", c)
+        pulumi.set(__self__, "e", e)
+        if b is not None:
+            pulumi.set(__self__, "b", b)
+        if d is not None:
+            pulumi.set(__self__, "d", d)
+        if f is not None:
+            pulumi.set(__self__, "f", f)
+        if foo is not None:
+            pulumi.set(__self__, "foo", foo)
+
+    @property
+    @pulumi.getter
+    def a(self) -> bool:
+        return pulumi.get(self, "a")
+
+    @a.setter
+    def a(self, value: bool):
+        pulumi.set(self, "a", value)
+
+    @property
+    @pulumi.getter
+    def c(self) -> int:
+        return pulumi.get(self, "c")
+
+    @c.setter
+    def c(self, value: int):
+        pulumi.set(self, "c", value)
+
+    @property
+    @pulumi.getter
+    def e(self) -> str:
+        return pulumi.get(self, "e")
+
+    @e.setter
+    def e(self, value: str):
+        pulumi.set(self, "e", value)
+
+    @property
+    @pulumi.getter
+    def b(self) -> Optional[bool]:
+        return pulumi.get(self, "b")
+
+    @b.setter
+    def b(self, value: Optional[bool]):
+        pulumi.set(self, "b", value)
+
+    @property
+    @pulumi.getter
+    def d(self) -> Optional[int]:
+        return pulumi.get(self, "d")
+
+    @d.setter
+    def d(self, value: Optional[int]):
+        pulumi.set(self, "d", value)
+
+    @property
+    @pulumi.getter
+    def f(self) -> Optional[str]:
+        return pulumi.get(self, "f")
+
+    @f.setter
+    def f(self, value: Optional[str]):
+        pulumi.set(self, "f", value)
+
+    @property
+    @pulumi.getter
+    def foo(self) -> Optional[pulumi.Input['FooArgs']]:
+        return pulumi.get(self, "foo")
+
+    @foo.setter
+    def foo(self, value: Optional[pulumi.Input['FooArgs']]):
+        pulumi.set(self, "foo", value)
 
 
 class Component(pulumi.ComponentResource):
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: ComponentArgs,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a Component resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param ComponentArgs args: The arguments to use to populate this resource's properties.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
@@ -32,6 +133,27 @@ class Component(pulumi.ComponentResource):
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
+        ...
+    def __init__(__self__, resource_name: str, *args, **kwargs):
+        resource_args, opts = _utilities.get_resource_args_opts(ComponentArgs, pulumi.ResourceOptions, *args, **kwargs)
+        if resource_args is not None:
+            __self__._internal_init(resource_name, opts, **resource_args.__dict__)
+        else:
+            __self__._internal_init(resource_name, *args, **kwargs)
+
+    def _internal_init(__self__,
+                 resource_name: str,
+                 opts: Optional[pulumi.ResourceOptions] = None,
+                 a: Optional[bool] = None,
+                 b: Optional[bool] = None,
+                 c: Optional[int] = None,
+                 d: Optional[int] = None,
+                 e: Optional[str] = None,
+                 f: Optional[str] = None,
+                 foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
+                 __props__=None,
+                 __name__=None,
+                 __opts__=None):
         if __name__ is not None:
             warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)
             resource_name = __name__
