@@ -4,8 +4,8 @@ LABEL "repository"="https://github.com/pulumi/pulumi"
 LABEL "homepage"="https://pulumi.com/"
 LABEL "maintainer"="Pulumi Team <team@pulumi.com>"
 
-ENV GOLANG_VERSION 1.15.2
-ENV GOLANG_SHA256 b49fda1ca29a1946d6bb2a5a6982cf07ccd2aba849289508ee0f9918f6bb4552
+ENV GOLANG_VERSION 1.16.0
+ENV GOLANG_SHA256 013a489ebb3e24ef3d915abe5b94c3286c070dfe0818d5bca8108f1d6e8440d2
 
 # Install deps all in one step
 RUN apt-get update -y && \
