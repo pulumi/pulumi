@@ -286,31 +286,42 @@ describe("LocalWorkspace", () => {
         };
         await stack.setAllConfig(stackConfig);
 
+        let seenSummaryEvent = false;
+        const findSummaryEvent = (event: EngineEvent) => {
+            if (event.summaryEvent) {
+                seenSummaryEvent = true;
+            }
+        };
+
         // pulumi preview
-        const preRes = await stack.preview();
-        assert.strictEqual(containsSummaryEvent(preRes.eventLog), true, "No SummaryEvent for `preview`");
+        const preRes = await stack.preview({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `preview`");
         assert.strictEqual(preRes.changeSummary.create, 1);
 
         // pulumi up
-        const upRes = await stack.up();
-        assert.strictEqual(containsSummaryEvent(upRes.eventLog), true, "No SummaryEvent for `up`");
+        seenSummaryEvent = false;
+        const upRes = await stack.up({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `up`");
         assert.strictEqual(upRes.summary.kind, "update");
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
-        const preResAgain = await stack.preview();
-        assert.strictEqual(containsSummaryEvent(preResAgain.eventLog), true, "No SummaryEvent for `preview`");
+        seenSummaryEvent = false;
+        const preResAgain = await stack.preview({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `preview`");
         assert.strictEqual(preResAgain.changeSummary.same, 1);
 
         // pulumi refresh
-        const refRes = await stack.refresh();
-        assert.strictEqual(containsSummaryEvent(refRes.eventLog), true, "No SummaryEvent for `refresh`");
+        seenSummaryEvent = false;
+        const refRes = await stack.refresh({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `refresh`");
         assert.strictEqual(refRes.summary.kind, "refresh");
         assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
-        const destroyRes = await stack.destroy();
-        assert.strictEqual(containsSummaryEvent(destroyRes.eventLog), true, "No SummaryEvent for `destroy`");
+        seenSummaryEvent = false;
+        const destroyRes = await stack.destroy({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `destroy`");
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
@@ -381,15 +392,4 @@ const normalizeConfigKey = (key: string, projectName: string) => {
         return `${projectName}:${key}`;
     }
     return "";
-};
-
-const containsSummaryEvent = (eventLog: EngineEvent[]) => {
-    let seenSummaryEvent = false;
-    eventLog.forEach(event => {
-        if (event.summaryEvent) {
-            seenSummaryEvent = true;
-            return;
-        }
-    });
-    return seenSummaryEvent;
 };
