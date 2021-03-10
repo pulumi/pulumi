@@ -11,5 +11,6 @@ namespace Pulumi.Automation
         Replace,
         CreateReplacement,
         DeleteReplaced,
+        ReadDiscard,
     }
 }
