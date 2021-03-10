@@ -46,6 +46,14 @@ func TestGeneratePackage(t *testing.T) {
 				"Workload.cs",
 			},
 		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				"Inputs/FooArgs.cs",
+				"Component.cs",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {

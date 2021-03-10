@@ -323,7 +323,8 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false, p.ConstValue))
+		typ := mod.typeString(p.Type, input, wrapInput && !p.IsPlain, false, p.ConstValue)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 }
