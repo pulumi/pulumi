@@ -204,7 +204,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
+          args: -p 3 -f .goreleaser.yml --rm-dist --release-notes=CHANGELOG_PENDING.md
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
