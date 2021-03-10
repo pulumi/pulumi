@@ -15,7 +15,8 @@
 - [build] Updating Pulumi to use Go 1.16
   [#6470](https://github.com/pulumi/pulumi/pull/6470)
 
-- [build] Adding a Pulumi arm64 binary for use on new macOS hardware
+- [build] Adding a Pulumi arm64 binary for use on new macOS hardware.  
+  Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
 
 ### Bug Fixes
