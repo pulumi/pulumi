@@ -22,6 +22,7 @@ import grpc
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
 from .errors import StackAlreadyExistsError
+from .events import OpType
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
@@ -55,7 +56,7 @@ class OutputValue:
 
 OutputMap = MutableMapping[str, OutputValue]
 
-OpMap = MutableMapping[str, int]
+OpMap = MutableMapping[OpType, int]
 
 
 class UpdateSummary:
@@ -493,8 +494,8 @@ class Stack:
         return outputs
 
     def history(self,
-        page_size: Optional[int] = None,
-        page: Optional[int] = None) -> List[UpdateSummary]:
+                page_size: Optional[int] = None,
+                page: Optional[int] = None) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).

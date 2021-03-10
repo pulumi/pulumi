@@ -199,4 +199,5 @@ __all__ = [
 
     # sub-modules
     "errors",
+    "events"
 ]

@@ -49,6 +49,8 @@
 
 - [automation/python] - Expose structured logging for Stack.up/preview/refresh/destroy.
 
+- [automation/python] - Expose structured logging for Stack.up/preview/refresh/destroy.
+
 ### Bug Fixes
 
 - [automation/nodejs] Do not run the promise leak checker if an inline program has errored.

@@ -103,7 +103,7 @@ export interface PropertyDiff {
 // StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
 // to migrate a set of cloud resources from one state to another.
 export interface StepEventMetadata {
-    // Op is the operation being performed, a deploy.StepOp.
+    // Op is the operation being performed.
     op: OpType;
     urn: string;
     type: string;
