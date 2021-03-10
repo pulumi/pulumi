@@ -89,6 +89,10 @@ jobs:
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Ensure
         run: |
           make ensure
@@ -154,6 +158,10 @@ jobs:
           echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
       - name: Install AWS CLI Tools
         uses: chrislennon/action-aws-cli@v1.1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Check out code into the Go module directory
         uses: actions/checkout@v2
         with:

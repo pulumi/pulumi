@@ -53,6 +53,10 @@ jobs:
         run: python -m pip install pip twine
       - name: Checkout Repo
         uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -88,7 +92,7 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
       - name: Configure AWS Credentials
@@ -152,6 +156,10 @@ jobs:
           node-version: ${{ matrix.node-version }}
       - name: Install pipenv
         uses: dschep/install-pipenv-action@v1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Setup git
         run: |
           git config --global user.email "you@example.com"
@@ -239,6 +247,10 @@ jobs:
           echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
       - name: Install AWS CLI Tools
         uses: chrislennon/action-aws-cli@v1.1
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Check out scripts repo into the Go module directory
         uses: actions/checkout@v2
         with:
@@ -289,7 +301,7 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
       - name: Checkout Repo

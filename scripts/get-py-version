@@ -1,7 +1,0 @@
-#!/bin/bash
-set -o nounset -o errexit -o pipefail
-
-SCRIPT_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-NPM_VERSION="$($SCRIPT_ROOT/get-version "$@")"
-
-GO111MODULE=on go run "${SCRIPT_ROOT}/get-py-version.go" "${NPM_VERSION}"

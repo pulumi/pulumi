@@ -1,15 +1,16 @@
-PROJECT_NAME         := Pulumi .NET Core SDK
-LANGHOST_PKG         := github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet
+PROJECT_NAME    := Pulumi .NET Core SDK
+LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet
 
-PROJECT_PKGS         := $(shell go list ./cmd...)
+PROJECT_PKGS    := $(shell go list ./cmd...)
 
-VERSION              := $(shell ../../scripts/get-version HEAD --embed-feature-branch)
-VERSION_DOTNET       := ${VERSION:v%=%}                                   # strip v from the beginning
-VERSION_FIRST_WORD   := $(word 1,$(subst -, ,${VERSION_DOTNET})) # e.g. 1.5.0
-VERSION_SECOND_WORD  := $(word 2,$(subst -, ,${VERSION_DOTNET})) # e.g. alpha or alpha.1
-VERSION_THIRD_WORD   := $(word 3,$(subst -, ,${VERSION_DOTNET})) # e.g. featbranch or featbranch.1
+DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
 
-VERSION_PREFIX       := $(strip ${VERSION_FIRST_WORD})
+### TO-DO: Automation Version - this will be deleted at 3.0
+VERSION_FIRST_WORD   := $(word 1,$(subst -, ,${DOTNET_VERSION})) # e.g. 1.5.0
+VERSION_SECOND_WORD  := $(word 2,$(subst -, ,${DOTNET_VERSION})) # e.g. alpha or alpha.1
+VERSION_THIRD_WORD   := $(word 3,$(subst -, ,${DOTNET_VERSION})) # e.g. featbranch or featbranch.1
+
+PREVIEW_VERSION_PREFIX       := $(strip ${VERSION_FIRST_WORD})
 
 ifeq ($(strip ${VERSION_SECOND_WORD}),)
 	VERSION_SUFFIX   := ""
@@ -38,13 +39,13 @@ build::
 	# following:
 	#
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
-	dotnet clean
-	dotnet build dotnet.sln /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	#dotnet clean
+	dotnet build dotnet.sln /p:Version=${DOTNET_VERSION}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 	# Automation is pre-release, so build it separately with a different version to produce a preview NuGet package
-	dotnet pack Pulumi.Automation/Pulumi.Automation.csproj /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${PREVIEW_VERSION_SUFFIX}
+	dotnet pack Pulumi.Automation/Pulumi.Automation.csproj /p:VersionPrefix=${PREVIEW_VERSION_PREFIX} /p:VersionSuffix=${PREVIEW_VERSION_SUFFIX}
 ifneq (${PREVIEW_VERSION_SUFFIX},${VERSION_SUFFIX})
-	rm -f ./Pulumi/bin/*/Pulumi.${VERSION_PREFIX}-${PREVIEW_VERSION_SUFFIX}.nupkg
+	rm -f ./Pulumi/bin/*/Pulumi.${PREVIEW_VERSION_PREFIX}-${PREVIEW_VERSION_SUFFIX}.nupkg
 endif
 
 install_plugin::
@@ -58,7 +59,7 @@ install:: build install_plugin
 
 dotnet_test:: install
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	dotnet test /p:VersionPrefix=${VERSION_PREFIX} /p:VersionSuffix=${VERSION_SUFFIX}
+	dotnet test /p:Version=${DOTNET_VERSION}
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
