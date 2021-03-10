@@ -23,7 +23,7 @@ import * as split2 from "split2";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
-import { EngineEvent } from "./events";
+import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
@@ -111,38 +111,32 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    // Try for up to 10s to start tailing the file, invoking the callback once per line. Returns
-    // a promise for a callback to invoke to stop tailing the file.
+    // Try for up to 10s to start tailing the file, invoking the callback once per line.
     private async readLines(path: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
         let n = 0;
-        let fileExists = fs.existsSync(path);
-        while (!fileExists) {
-            if (n > 100) {
-                throw new Error("Log file never found.");
-            }
-            await delay(100);
-            fileExists = fs.existsSync(path);
-            n++;
-        }
         const eventLogTail = new TailFile(path, { startPos: 0 });
-        eventLogTail
-            .on("tail_error", (err) => {
-                console.error("TailFile had an error!", err);
-                throw err;
-            })
-            .start()
-            .catch(err => {
-                throw new Error(`Cannot start, does the file exist? ${err}`);
-            });
 
-        eventLogTail
-            .pipe(split2())
-            .on("data", line => {
-                const event = JSON.parse(line);
-                callback(event);
-            });
+        while (true) {
+            try {
+                await eventLogTail.start();
+                eventLogTail
+                    .on("tail_error", (err) => {
+                        throw err;
+                    })
+                    .pipe(split2())
+                    .on("data", (line: string) => {
+                        const event: EngineEvent = JSON.parse(line);
+                        callback(event);
+                    });
 
-        return eventLogTail;
+                return eventLogTail;
+            } catch (err) {
+                if (n++ > 100) {
+                    throw err;
+                }
+                await delay(100);
+            }
+        }
     }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -215,7 +209,7 @@ export class Stack {
 
         args.push("--exec-kind", kind);
 
-        let logPromise;
+        let logPromise: Promise<TailFile> | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
             const onEvent = opts.onEvent;
@@ -228,11 +222,10 @@ export class Stack {
         }
 
         const upPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const promises: Promise<any>[] = logPromise ? [upPromise, logPromise] : [upPromise];
-        let upResult;
-        let tail;
+        let upResult: CommandResult;
+        let tail: TailFile | undefined;
         try {
-            [upResult, tail] = await Promise.all(promises);
+            [upResult, tail] = await Promise.all([upPromise, logPromise]);
         } finally {
             onExit();
             if (tail) {
@@ -325,9 +318,11 @@ export class Stack {
         // Set up event log tailing
         const logFile = createLogFile("preview");
         args.push("--event-log", logFile);
-        const eventLog: EngineEvent[] = [];
+        let summaryEvent: SummaryEvent | undefined;
         const logPromise = this.readLines(logFile, (event) => {
-            eventLog.push(event);
+            if (event.summaryEvent) {
+                summaryEvent = event.summaryEvent;
+            }
             if (opts?.onEvent) {
                 const onEvent = opts.onEvent;
                 onEvent(event);
@@ -335,8 +330,8 @@ export class Stack {
         });
         const prePromise = this.runPulumiCmd(args);
 
-        let preResult;
-        let tail;
+        let preResult: CommandResult;
+        let tail: TailFile | undefined;
         try {
             [preResult, tail] = await Promise.all([prePromise, logPromise]);
         } finally {
@@ -346,21 +341,14 @@ export class Stack {
             }
         }
 
-        const summary = eventLog.filter(event => {
-            if (event.summaryEvent) {
-                return event;
-            }
-            return;
-        })[0].summaryEvent;
-
-        if (!summary) {
+        if (!summaryEvent) {
             throw new Error("No summary of changes.");
         }
 
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
-            changeSummary: summary.resourceChanges,
+            changeSummary: summaryEvent.resourceChanges,
         };
     }
     /**
@@ -390,7 +378,7 @@ export class Stack {
             }
         }
 
-        let logPromise;
+        let logPromise: Promise<TailFile> | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
             const onEvent = opts.onEvent;
@@ -403,8 +391,7 @@ export class Stack {
         }
 
         const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const promises: Promise<any>[] = logPromise ? [refPromise, logPromise] : [refPromise];
-        const [refResult, tail] = await Promise.all(promises);
+        const [refResult, tail] = await Promise.all([refPromise, logPromise]);
         if (tail) {
             await tail.quit();
         }
@@ -442,7 +429,7 @@ export class Stack {
             }
         }
 
-        let logPromise;
+        let logPromise: Promise<TailFile> | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
             const onEvent = opts.onEvent;
@@ -455,8 +442,7 @@ export class Stack {
         }
 
         const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const promises: Promise<any>[] = logPromise ? [desPromise, logPromise] : [desPromise];
-        const [desResult, tail] = await Promise.all(promises);
+        const [desResult, tail] = await Promise.all([desPromise, logPromise]);
         if (tail) {
             await tail.quit();
         }

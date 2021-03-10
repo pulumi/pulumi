@@ -34,7 +34,7 @@ export interface DiagnosticEvent {
     prefix?: string;
     message: string;
     color: string;
-    severity: string;
+    severity: "info" | "info#err" | "warning" | "error";
     streamID?: number;
     ephemeral?: boolean;
 }
@@ -48,24 +48,26 @@ export interface PolicyEvent {
     policyPackName: string;
     policyPackVersion: string;
     policyPackVersionTag: string;
-    enforcementLevel: string;
+    enforcementLevel: "warning" | "mandatory";
 }
 
 // PreludeEvent is emitted at the start of an update.
 export interface PreludeEvent {
+    // config contains the keys and values for the update.
+    // Encrypted configuration values may be blinded.
     config: Record<string, string>;
 }
 
 // SummaryEvent is emitted at the end of an update, with a summary of the changes made.
 export interface SummaryEvent {
-    // MaybeCorrupt is set if one or more of the resources is in an invalid state.
+    // maybeCorrupt is set if one or more of the resources is in an invalid state.
     maybeCorrupt: boolean;
-    // Duration is the number of seconds the update was executing.
+    // duration is the number of seconds the update was executing.
     durationSeconds: number;
-    // ResourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
+    // resourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
     // which is not exported in this package.
     resourceChanges: Record<string, number>;
-    // PolicyPacks run during update. Maps PolicyPackName -> version.
+    // policyPacks run during update. Maps PolicyPackName -> version.
     // Note: When this field was initially added, we forgot to add the JSON tag
     // and are now locked into using PascalCase for this field to maintain backwards
     // compatibility. For older clients this will map to the version, while for newer ones
@@ -74,25 +76,25 @@ export interface SummaryEvent {
 }
 
 export enum DiffKind {
-    // DiffAdd indicates that the property was added.
-    "add",
-    // DiffAddReplace indicates that the property was added and requires that the resource be replaced.
-    "add-replace",
-    // DiffDelete indicates that the property was deleted.
-    "delete",
-    // DiffDeleteReplace indicates that the property was deleted and requires that the resource be replaced.
-    "delete-replace",
-    // DiffUpdate indicates that the property was updated.
-    "update",
-    // DiffUpdateReplace indicates that the property was updated and requires that the resource be replaced.
-    "update-replace",
+    // add indicates that the property was added.
+    add = "add",
+    // addReplace indicates that the property was added and requires that the resource be replaced.
+    addReplace = "add-replace",
+    // delete indicates that the property was deleted.
+    delete = "delete",
+    // deleteReplace indicates that the property was deleted and requires that the resource be replaced.
+    deleteReplace = "delete-replace",
+    // update indicates that the property was updated.
+    update = "update",
+    // updateReplace indicates that the property was updated and requires that the resource be replaced.
+    updateReplace = "update-replace",
 }
 
 // PropertyDiff describes the difference between a single property's old and new values.
 export interface PropertyDiff {
-    // Kind is the kind of difference.
+    // diffKind is the kind of difference.
     diffKind: DiffKind;
-    // InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
+    // inputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
     inputDiff: boolean;
 }
 
