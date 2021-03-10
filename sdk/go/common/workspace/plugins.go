@@ -219,7 +219,7 @@ func (info PluginInfo) Download() (io.ReadCloser, int64, error) {
 	}
 	var arch string
 	switch runtime.GOARCH {
-	case "amd64":
+	case "amd64", "arm64":
 		arch = runtime.GOARCH
 	default:
 		return nil, -1, errors.Errorf("unsupported plugin architecture: %s", runtime.GOARCH)
