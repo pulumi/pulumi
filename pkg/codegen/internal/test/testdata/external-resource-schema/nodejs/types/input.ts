@@ -7,6 +7,6 @@ import { input as inputs, output as outputs } from "../types";
 import * as random from "@pulumi/random";
 
 export interface Pet {
-    age?: pulumi.Input<number>;
-    name?: pulumi.Input<random.RandomPet>;
+    age?: pulumi.Input<number | undefined>;
+    name?: pulumi.Input<random.RandomPet | undefined>;
 }

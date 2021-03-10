@@ -82,9 +82,9 @@ export interface RubberTreeState {
  * The set of arguments for constructing a RubberTree resource.
  */
 export interface RubberTreeArgs {
-    readonly container?: pulumi.Input<inputs.Container>;
+    readonly container?: pulumi.Input<inputs.Container | undefined>;
     readonly diameter: pulumi.Input<enums.tree.v1.Diameter>;
-    readonly farm?: pulumi.Input<enums.tree.v1.Farm | string>;
-    readonly size?: pulumi.Input<enums.tree.v1.TreeSize>;
+    readonly farm?: pulumi.Input<enums.tree.v1.Farm | string | undefined>;
+    readonly size?: pulumi.Input<enums.tree.v1.TreeSize | undefined>;
     readonly type: pulumi.Input<enums.tree.v1.RubberTreeVariety>;
 }

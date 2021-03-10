@@ -13,7 +13,7 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { ComponentResource, CustomResource, Inputs, Resource, ResourceOptions, runtime, secret } from "../../index";
+import { ComponentResource, CustomResource, Input, Inputs, Resource, ResourceOptions, output, runtime, secret } from "../../index";
 import { asyncTest } from "../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -101,7 +101,9 @@ type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
 interface TestInputs {
     aNum: number;
     bStr: string;
+    bStrInput: Input<string>;
     cUnd: undefined;
+    cUndInput: Input<undefined>;
     dArr: Promise<Array<any>>;
     id: string;
     urn: string;
@@ -121,16 +123,18 @@ describe("runtime", () => {
     describe("transferProperties", () => {
         it("marshals basic properties correctly", asyncTest(async () => {
             const inputs: TestInputs = {
-                "aNum": 42,
-                "bStr": "a string",
-                "cUnd": undefined,
-                "dArr": Promise.resolve([ "x", 42, Promise.resolve(true), Promise.resolve(undefined) ]),
-                "id": "foo",
-                "urn": "bar",
-                "strEnum": TestStrEnum.Foo,
-                "intEnum": TestIntEnum.One,
-                "numEnum": TestNumEnum.One,
-                "boolEnum": TestBoolEnum.One,
+                aNum: 42,
+                bStr: "a string",
+                bStrInput: output("a string"),
+                cUnd: undefined,
+                cUndInput: output(undefined),
+                dArr: Promise.resolve([ "x", 42, Promise.resolve(true), Promise.resolve(undefined) ]),
+                id: "foo",
+                urn: "bar",
+                strEnum: TestStrEnum.Foo,
+                intEnum: TestIntEnum.One,
+                numEnum: TestNumEnum.One,
+                boolEnum: TestBoolEnum.One,
             };
             // Serialize and then deserialize all the properties, checking that they round-trip as expected.
             const transfer = gstruct.Struct.fromJavaScript(
@@ -138,7 +142,9 @@ describe("runtime", () => {
             const result = runtime.deserializeProperties(transfer);
             assert.strictEqual(result.aNum, 42);
             assert.strictEqual(result.bStr, "a string");
+            assert.strictEqual(result.bStrInput, "a string");
             assert.strictEqual(result.cUnd, undefined);
+            assert.strictEqual(result.cUndInput, undefined);
             assert.deepStrictEqual(result.dArr, [ "x", 42, true, null ]);
             assert.strictEqual(result.id, "foo");
             assert.strictEqual(result.urn, "bar");

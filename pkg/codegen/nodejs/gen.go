@@ -257,11 +257,11 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	if constValue != nil && typ == "string" {
 		typ = fmt.Sprintf("%q", constValue.(string))
 	}
+	if optional {
+		typ = typ + " | undefined"
+	}
 	if wrapInput && typ != "any" {
 		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
-	}
-	if optional {
-		return typ + " | undefined"
 	}
 	return typ
 }
@@ -323,7 +323,9 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false, p.ConstValue))
+		optional := !p.IsRequired && wrapInput
+
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, optional, p.ConstValue))
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 }
