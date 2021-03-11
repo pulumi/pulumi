@@ -788,7 +788,7 @@ type PropertyDiff struct {
 type PreviewResult struct {
 	StdOut        string
 	StdErr        string
-	ChangeSummary map[string]int
+	ChangeSummary map[apitype.OpType]int
 }
 
 // RefreshResult is the output of a successful Stack.Refresh operation
@@ -991,7 +991,7 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 }
 
 func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
-	logDir, err := ioutil.TempDir(os.TempDir(), fmt.Sprintf("automation-logs-%s-", command))
+	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create logdir")
 	}
@@ -1006,7 +1006,9 @@ func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail
 }
 
 func cleanup(t *tail.Tail, channels []chan<- events.EngineEvent) {
+	logDir := filepath.Dir(t.Filename)
 	t.Cleanup()
+	os.RemoveAll(logDir)
 	for _, ch := range channels {
 		close(ch)
 	}

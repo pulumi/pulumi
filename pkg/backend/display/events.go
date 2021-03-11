@@ -87,9 +87,9 @@ func ConvertEngineEvent(e engine.Event) (apitype.EngineEvent, error) {
 			return apiEvent, eventTypePayloadMismatch
 		}
 		// Convert the resource changes.
-		changes := make(map[string]int)
+		changes := make(map[apitype.OpType]int)
 		for op, count := range p.ResourceChanges {
-			changes[string(op)] = count
+			changes[apitype.OpType(op)] = count
 		}
 		apiEvent.SummaryEvent = &apitype.SummaryEvent{
 			MaybeCorrupt:    p.MaybeCorrupt,
@@ -174,7 +174,7 @@ func convertStepEventMetadata(md engine.StepEventMetadata) apitype.StepEventMeta
 	}
 
 	return apitype.StepEventMetadata{
-		Op:   string(md.Op),
+		Op:   apitype.OpType(md.Op),
 		URN:  string(md.URN),
 		Type: string(md.Type),
 

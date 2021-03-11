@@ -39,7 +39,7 @@ type PreviewResult struct {
 type PreviewResult struct {
   StdOut        string
   StdErr        string
-  ChangeSummary map[string]int
+  ChangeSummary map[apitype.OpType]int
 }
 ```
 

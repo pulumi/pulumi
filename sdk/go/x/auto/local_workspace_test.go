@@ -26,6 +26,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -199,7 +200,7 @@ func TestNewStackLocalSource(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -306,7 +307,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -401,7 +402,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -493,7 +494,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -597,7 +598,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -701,7 +702,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -795,7 +796,7 @@ func TestNewStackInlineSource(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -888,7 +889,7 @@ func TestUpsertStackInlineSource(t *testing.T) {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
 	}
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 
@@ -1248,7 +1249,7 @@ func TestStructuredOutput(t *testing.T) {
 		t.FailNow()
 	}
 
-	assert.Equal(t, 1, prev.ChangeSummary["same"])
+	assert.Equal(t, 1, prev.ChangeSummary[apitype.OpSame])
 	steps := countSteps(previewEvents)
 	assert.Equal(t, 1, steps)
 	assert.True(t, containsSummary(previewEvents))
