@@ -32,11 +32,8 @@ type PreviewResult struct {
 - [sdk/go] Return zero values instead of panicing in `Index` and `Elem` methods.
   [#6338](https://github.com/pulumi/pulumi/pull/6338)
 
-- [sdk/go] Support mutiple folders in GOPATH.
+- [sdk/go] Support multiple folders in GOPATH.
   [#6228](https://github.com/pulumi/pulumi/pull/6228
-  
-- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
-  [#6454](https://github.com/pulumi/pulumi/pull/6454)
 
 - [cli] Add ability to download arm64 provider plugins
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
@@ -47,6 +44,12 @@ type PreviewResult struct {
 - [build] Adding a Pulumi arm64 binary for use on new macOS hardware.  
   Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
+
+- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
+  [#6454](https://github.com/pulumi/pulumi/pull/6454)
+  
+- [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
+  [#6507](https://github.com/pulumi/pulumi/pull/6507)
 
 ### Bug Fixes
 
