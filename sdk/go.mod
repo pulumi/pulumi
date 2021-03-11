@@ -1,6 +1,6 @@
 module github.com/pulumi/pulumi/sdk/v2
 
-go 1.15
+go 1.16
 
 require (
 	github.com/Microsoft/go-winio v0.4.14

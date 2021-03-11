@@ -269,17 +269,14 @@ jobs:
           cd src\github.com\${{ github.repository }}
           pushd .
           cd sdk
-          go mod tidy
           go mod download
           popd
           pushd .
           cd pkg
-          go mod tidy
           go mod download
           popd
           pushd .
           cd tests
-          go mod tidy
           go mod download
           popd
       - name: Build Pulumi

@@ -29,6 +29,7 @@ coverage.cov
 .mypy_cache
 
 # for goreleaser
+**/*.exe
 goreleaser
 pulumi-resource-pulumi-nodejs
 pulumi-resource-pulumi-python
