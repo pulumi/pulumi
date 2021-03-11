@@ -294,7 +294,9 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
-      - run: git status
+      - run: |
+          cd src\github.com\${{ github.repository }}
+          git status
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
