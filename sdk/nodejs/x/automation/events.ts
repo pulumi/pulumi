@@ -17,6 +17,8 @@
 
 // CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
 // the update successfully completes.
+import { OpMap, OpType } from "./stack";
+
 export interface CancelEvent {
 }
 
@@ -66,7 +68,7 @@ export interface SummaryEvent {
     durationSeconds: number;
     // resourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
     // which is not exported in this package.
-    resourceChanges: Record<string, number>;
+    resourceChanges: OpMap;
     // policyPacks run during update. Maps PolicyPackName -> version.
     // Note: When this field was initially added, we forgot to add the JSON tag
     // and are now locked into using PascalCase for this field to maintain backwards
@@ -102,7 +104,7 @@ export interface PropertyDiff {
 // to migrate a set of cloud resources from one state to another.
 export interface StepEventMetadata {
     // Op is the operation being performed, a deploy.StepOp.
-    op: string;
+    op: OpType;
     urn: string;
     type: string;
 

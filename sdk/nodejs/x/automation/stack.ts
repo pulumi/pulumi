@@ -14,6 +14,8 @@
 
 import * as fs from "fs";
 import * as os from "os";
+import * as path from "path";
+import { clean } from "semver";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
@@ -112,9 +114,9 @@ export class Stack {
         }
     }
     // Try for up to 10s to start tailing the file, invoking the callback once per line.
-    private async readLines(path: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
+    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
         let n = 0;
-        const eventLogTail = new TailFile(path, { startPos: 0 });
+        const eventLogTail = new TailFile(logPath, { startPos: 0 });
 
         while (true) {
             try {
@@ -210,10 +212,11 @@ export class Stack {
         args.push("--exec-kind", kind);
 
         let logPromise: Promise<TailFile> | undefined;
+        let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
             const onEvent = opts.onEvent;
-            const logFile = createLogFile("up");
+            logFile = createLogFile("up");
             args.push("--event-log", logFile);
 
             logPromise = this.readLines(logFile, (event) => {
@@ -228,9 +231,7 @@ export class Stack {
             [upResult, tail] = await Promise.all([upPromise, logPromise]);
         } finally {
             onExit();
-            if (tail) {
-                await tail.quit();
-            }
+            await cleanUp(tail, logFile);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -336,9 +337,7 @@ export class Stack {
             [preResult, tail] = await Promise.all([prePromise, logPromise]);
         } finally {
             onExit();
-            if (tail) {
-                await tail.quit();
-            }
+            await cleanUp(tail, logFile);
         }
 
         if (!summaryEvent) {
@@ -379,10 +378,11 @@ export class Stack {
         }
 
         let logPromise: Promise<TailFile> | undefined;
+        let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
             const onEvent = opts.onEvent;
-            const logFile = createLogFile("refresh");
+            logFile = createLogFile("refresh");
             args.push("--event-log", logFile);
 
             logPromise = this.readLines(logFile, (event) => {
@@ -392,9 +392,7 @@ export class Stack {
 
         const refPromise = this.runPulumiCmd(args, opts?.onOutput);
         const [refResult, tail] = await Promise.all([refPromise, logPromise]);
-        if (tail) {
-            await tail.quit();
-        }
+        await cleanUp(tail, logFile);
 
         const summary = await this.info();
         return {
@@ -430,10 +428,11 @@ export class Stack {
         }
 
         let logPromise: Promise<TailFile> | undefined;
+        let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
             const onEvent = opts.onEvent;
-            const logFile = createLogFile("destroy");
+            logFile = createLogFile("destroy");
             args.push("--event-log", logFile);
 
             logPromise = this.readLines(logFile, (event) => {
@@ -443,9 +442,7 @@ export class Stack {
 
         const desPromise = this.runPulumiCmd(args, opts?.onOutput);
         const [desResult, tail] = await Promise.all([desPromise, logPromise]);
-        if (tail) {
-            await tail.quit();
-        }
+        await cleanUp(tail, logFile);
 
         const summary = await this.info();
         return {
@@ -652,7 +649,7 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
 /**
  * The granular CRUD operation performed on a particular resource during an update.
  */
-export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced";
+export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced" | "discard" | "discard-replaced" | "remove-pending-replace" | "import" | "import-replacement";
 
 /**
  * A map of operation types and their corresponding counts.
@@ -682,7 +679,7 @@ export interface UpResult {
 export interface PreviewResult {
     stdout: string;
     stderr: string;
-    changeSummary: Record<string, number>;
+    changeSummary: OpMap;
 }
 
 /**
@@ -770,4 +767,13 @@ const delay = (duration: number) => new Promise(resolve => setTimeout(resolve, d
 const createLogFile = (command: string) => {
     const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), `automation-logs-${command}-`));
     return upath.joinSafe(logDir, "eventlog.txt");
+};
+
+const cleanUp = async (tail?: TailFile, logFile?: string) => {
+    if (tail) {
+        await tail.quit();
+    }
+    if (logFile) {
+        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+    }
 };
