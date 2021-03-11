@@ -297,6 +297,7 @@ jobs:
       - run: |
           cd src\github.com\${{ github.repository }}
           git status
+          git --no-pager diff
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
