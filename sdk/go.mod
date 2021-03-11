@@ -22,6 +22,7 @@ require (
 	github.com/mattn/go-colorable v0.1.6 // indirect
 	github.com/mattn/go-runewidth v0.0.8 // indirect
 	github.com/mitchellh/go-ps v1.0.0
+	github.com/nxadm/tail v1.4.8
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1

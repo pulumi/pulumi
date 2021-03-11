@@ -92,14 +92,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"regexp"
 	"runtime"
 	"strings"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
-
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/nxadm/tail"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
@@ -109,6 +111,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
@@ -242,7 +246,7 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
 
-	kind, args := constant.ExecKindAutoLocal, []string{"preview", "--json"}
+	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -255,15 +259,46 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
 	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, args...)
+
+	var summaryEvents []apitype.SummaryEvent
+	eventChannel := make(chan events.EngineEvent)
+	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent) {
+		for {
+			event, ok := <-eventChannel
+			if !ok {
+				return
+			}
+			if event.SummaryEvent != nil {
+				summaryEvents = append(summaryEvents, *event.SummaryEvent)
+			}
+		}
+	}(eventChannel, &summaryEvents)
+
+	eventChannels := []chan<- events.EngineEvent{eventChannel}
+	eventChannels = append(eventChannels, preOpts.EventStreams...)
+
+	t, err := tailLogs("preview", eventChannels)
+	if err != nil {
+		return res, errors.Wrap(err, "failed to tail logs")
+	}
+	defer cleanup(t, eventChannels)
+	args = append(args, "--event-log", t.Filename)
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
 
-	err = json.Unmarshal([]byte(stdout), &res)
-	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "unable to unmarshal preview result"), stdout, stderr, code)
+	if len(summaryEvents) == 0 {
+		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
 	}
+	if len(summaryEvents) > 1 {
+		return res, newAutoError(errors.New("got multiple preview summaries"), stdout, stderr, code)
+	}
+
+	res.StdOut = stdout
+	res.StdErr = stderr
+	res.ChangeSummary = summaryEvents[0].ResourceChanges
 
 	return res, nil
 }
@@ -317,8 +352,18 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 
 		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
 	}
-
 	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+
+	if len(upOpts.EventStreams) > 0 {
+		eventChannels := upOpts.EventStreams
+		t, err := tailLogs("up", eventChannels)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to tail logs")
+		}
+		defer cleanup(t, eventChannels)
+		args = append(args, "--event-log", t.Filename)
+	}
+
 	args = append(args, sharedArgs...)
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
 	if err != nil {
@@ -385,6 +430,16 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
 
+	if len(refreshOpts.EventStreams) > 0 {
+		eventChannels := refreshOpts.EventStreams
+		t, err := tailLogs("refresh", eventChannels)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to tail logs")
+		}
+		defer cleanup(t, eventChannels)
+		args = append(args, "--event-log", t.Filename)
+	}
+
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, refreshOpts.ProgressStreams, args...)
 	if err != nil {
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
@@ -444,6 +499,16 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		execKind = constant.ExecKindAutoInline
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
+
+	if len(destroyOpts.EventStreams) > 0 {
+		eventChannels := destroyOpts.EventStreams
+		t, err := tailLogs("destroy", eventChannels)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to tail logs")
+		}
+		defer cleanup(t, eventChannels)
+		args = append(args, "--event-log", t.Filename)
+	}
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, destroyOpts.ProgressStreams, args...)
 	if err != nil {
@@ -653,7 +718,6 @@ type OutputValue struct {
 
 // UpResult contains information about a Stack.Up operation,
 // including Outputs, and a summary of the deployed changes.
-// TODO: remote StdOut in favor of structured info https://github.com/pulumi/pulumi/issues/5218
 type UpResult struct {
 	StdOut  string
 	StdErr  string
@@ -722,12 +786,12 @@ type PropertyDiff struct {
 
 // PreviewResult is the output of Stack.Preview() describing the expected set of changes from the next Stack.Up()
 type PreviewResult struct {
-	Steps         []PreviewStep  `json:"steps"`
-	ChangeSummary map[string]int `json:"changeSummary"`
+	StdOut        string
+	StdErr        string
+	ChangeSummary map[apitype.OpType]int
 }
 
 // RefreshResult is the output of a successful Stack.Refresh operation
-// TODO: replace StdOut with structured output https://github.com/pulumi/pulumi/issues/5220
 type RefreshResult struct {
 	StdOut  string
 	StdErr  string
@@ -735,7 +799,6 @@ type RefreshResult struct {
 }
 
 // DestroyResult is the output of a successful Stack.Destroy operation
-// TODO: replace StdOut with structured output https://github.com/pulumi/pulumi/issues/5219
 type DestroyResult struct {
 	StdOut  string
 	StdErr  string
@@ -751,6 +814,8 @@ func (s *Stack) runPulumiCmdSync(
 	args ...string,
 ) (string, string, int, error) {
 	var env []string
+	debugEnv := fmt.Sprintf("%s=%s", "PULUMI_DEBUG_COMMANDS", "true")
+	env = append(env, debugEnv)
 	if s.Workspace().PulumiHome() != "" {
 		homeEnv := fmt.Sprintf("%s=%s", pulumiHomeEnv, s.Workspace().PulumiHome())
 		env = append(env, homeEnv)
@@ -923,4 +988,28 @@ func (s *languageRuntimeServer) GetPluginInfo(ctx context.Context, req *pbempty.
 	return &pulumirpc.PluginInfo{
 		Version: "1.0.0",
 	}, nil
+}
+
+func tailLogs(command string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {
+	logDir, err := ioutil.TempDir("", fmt.Sprintf("automation-logs-%s-", command))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create logdir")
+	}
+	logFile := filepath.Join(logDir, "eventlog.txt")
+
+	t, err := watchFile(logFile, receivers)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to watch file")
+	}
+
+	return t, nil
+}
+
+func cleanup(t *tail.Tail, channels []chan<- events.EngineEvent) {
+	logDir := filepath.Dir(t.Filename)
+	t.Cleanup()
+	os.RemoveAll(logDir)
+	for _, ch := range channels {
+		close(ch)
+	}
 }
