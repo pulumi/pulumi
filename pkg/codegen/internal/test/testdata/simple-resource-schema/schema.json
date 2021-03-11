@@ -9,6 +9,28 @@
         },
         "bar": {
           "type": "string"
+        },
+        "others": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/example::SomeOtherObject"
+            }
+          },
+          "description": "List of lists of other objects"
+        },
+        "stillOthers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/example::SomeOtherObject"
+            }
+          },
+          "description": "Mapping from string to list of some other object"
         }
       },
       "type": "object"
@@ -16,6 +38,14 @@
     "example::OtherResourceOutput": {
       "properties": {
         "foo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::SomeOtherObject": {
+      "properties": {
+        "baz": {
           "type": "string"
         }
       },

@@ -13,6 +13,10 @@ import (
 type Object struct {
 	Bar *string   `pulumi:"bar"`
 	Foo *Resource `pulumi:"foo"`
+	// List of lists of other objects
+	Others [][]SomeOtherObject `pulumi:"others"`
+	// Mapping from string to list of some other object
+	StillOthers map[string][]SomeOtherObject `pulumi:"stillOthers"`
 }
 
 // ObjectInput is an input type that accepts ObjectArgs and ObjectOutput values.
@@ -29,6 +33,10 @@ type ObjectInput interface {
 type ObjectArgs struct {
 	Bar pulumi.StringPtrInput `pulumi:"bar"`
 	Foo ResourceInput         `pulumi:"foo"`
+	// List of lists of other objects
+	Others SomeOtherObjectArrayArrayInput `pulumi:"others"`
+	// Mapping from string to list of some other object
+	StillOthers SomeOtherObjectArrayMapInput `pulumi:"stillOthers"`
 }
 
 func (ObjectArgs) ElementType() reflect.Type {
@@ -63,6 +71,16 @@ func (o ObjectOutput) Bar() pulumi.StringPtrOutput {
 
 func (o ObjectOutput) Foo() ResourceOutput {
 	return o.ApplyT(func(v Object) *Resource { return v.Foo }).(ResourceOutput)
+}
+
+// List of lists of other objects
+func (o ObjectOutput) Others() SomeOtherObjectArrayArrayOutput {
+	return o.ApplyT(func(v Object) [][]SomeOtherObject { return v.Others }).(SomeOtherObjectArrayArrayOutput)
+}
+
+// Mapping from string to list of some other object
+func (o ObjectOutput) StillOthers() SomeOtherObjectArrayMapOutput {
+	return o.ApplyT(func(v Object) map[string][]SomeOtherObject { return v.StillOthers }).(SomeOtherObjectArrayMapOutput)
 }
 
 type OtherResourceOutputType struct {
@@ -114,7 +132,195 @@ func (o OtherResourceOutputTypeOutput) Foo() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v OtherResourceOutputType) *string { return v.Foo }).(pulumi.StringPtrOutput)
 }
 
+type SomeOtherObject struct {
+	Baz *string `pulumi:"baz"`
+}
+
+// SomeOtherObjectInput is an input type that accepts SomeOtherObjectArgs and SomeOtherObjectOutput values.
+// You can construct a concrete instance of `SomeOtherObjectInput` via:
+//
+//          SomeOtherObjectArgs{...}
+type SomeOtherObjectInput interface {
+	pulumi.Input
+
+	ToSomeOtherObjectOutput() SomeOtherObjectOutput
+	ToSomeOtherObjectOutputWithContext(context.Context) SomeOtherObjectOutput
+}
+
+type SomeOtherObjectArgs struct {
+	Baz pulumi.StringPtrInput `pulumi:"baz"`
+}
+
+func (SomeOtherObjectArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*SomeOtherObject)(nil)).Elem()
+}
+
+func (i SomeOtherObjectArgs) ToSomeOtherObjectOutput() SomeOtherObjectOutput {
+	return i.ToSomeOtherObjectOutputWithContext(context.Background())
+}
+
+func (i SomeOtherObjectArgs) ToSomeOtherObjectOutputWithContext(ctx context.Context) SomeOtherObjectOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectOutput)
+}
+
+// SomeOtherObjectArrayInput is an input type that accepts SomeOtherObjectArray and SomeOtherObjectArrayOutput values.
+// You can construct a concrete instance of `SomeOtherObjectArrayInput` via:
+//
+//          SomeOtherObjectArray{ SomeOtherObjectArgs{...} }
+type SomeOtherObjectArrayInput interface {
+	pulumi.Input
+
+	ToSomeOtherObjectArrayOutput() SomeOtherObjectArrayOutput
+	ToSomeOtherObjectArrayOutputWithContext(context.Context) SomeOtherObjectArrayOutput
+}
+
+type SomeOtherObjectArray []SomeOtherObjectInput
+
+func (SomeOtherObjectArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]SomeOtherObject)(nil)).Elem()
+}
+
+func (i SomeOtherObjectArray) ToSomeOtherObjectArrayOutput() SomeOtherObjectArrayOutput {
+	return i.ToSomeOtherObjectArrayOutputWithContext(context.Background())
+}
+
+func (i SomeOtherObjectArray) ToSomeOtherObjectArrayOutputWithContext(ctx context.Context) SomeOtherObjectArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectArrayOutput)
+}
+
+type SomeOtherObjectOutput struct{ *pulumi.OutputState }
+
+func (SomeOtherObjectOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*SomeOtherObject)(nil)).Elem()
+}
+
+func (o SomeOtherObjectOutput) ToSomeOtherObjectOutput() SomeOtherObjectOutput {
+	return o
+}
+
+func (o SomeOtherObjectOutput) ToSomeOtherObjectOutputWithContext(ctx context.Context) SomeOtherObjectOutput {
+	return o
+}
+
+func (o SomeOtherObjectOutput) Baz() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v SomeOtherObject) *string { return v.Baz }).(pulumi.StringPtrOutput)
+}
+
+type SomeOtherObjectArrayOutput struct{ *pulumi.OutputState }
+
+func (SomeOtherObjectArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]SomeOtherObject)(nil)).Elem()
+}
+
+func (o SomeOtherObjectArrayOutput) ToSomeOtherObjectArrayOutput() SomeOtherObjectArrayOutput {
+	return o
+}
+
+func (o SomeOtherObjectArrayOutput) ToSomeOtherObjectArrayOutputWithContext(ctx context.Context) SomeOtherObjectArrayOutput {
+	return o
+}
+
+func (o SomeOtherObjectArrayOutput) Index(i pulumi.IntInput) SomeOtherObjectOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SomeOtherObject {
+		return vs[0].([]SomeOtherObject)[vs[1].(int)]
+	}).(SomeOtherObjectOutput)
+}
+
+type SomeOtherObjectArrayArray []SomeOtherObjectArrayInput
+
+func (SomeOtherObjectArrayArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+}
+
+func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput {
+	return i.ToSomeOtherObjectArrayArrayOutputWithContext(context.Background())
+}
+
+func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutputWithContext(ctx context.Context) SomeOtherObjectArrayArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectArrayArrayOutput)
+}
+
+type SomeOtherObjectArrayArrayOutput struct{ *pulumi.OutputState }
+
+func (SomeOtherObjectArrayArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+}
+
+func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput {
+	return o
+}
+
+func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutputWithContext(ctx context.Context) SomeOtherObjectArrayArrayOutput {
+	return o
+}
+
+func (o SomeOtherObjectArrayArrayOutput) Index(i pulumi.IntInput) SomeOtherObjectArrayOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) SomeOtherObjectArray {
+		return vs[0].([]SomeOtherObjectArray)[vs[1].(int)]
+	}).(SomeOtherObjectArrayOutput)
+}
+
+// SomeOtherObjectArrayArrayInput is an input type that accepts SomeOtherObjectArrayArray and SomeOtherObjectArrayArrayOutput values.
+// You can construct a concrete instance of `SomeOtherObjectArrayArrayInput` via:
+//
+//          SomeOtherObjectArrayArray{SomeOtherObjectArray{SomeOtherObjectArgs{...}, ...}, ...}
+type SomeOtherObjectArrayArrayInput interface {
+	pulumi.Input
+
+	ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput
+	ToSomeOtherObjectArrayArrayOutputWithContext(context.Context) SomeOtherObjectArrayArrayOutput
+}
+
+type SomeOtherObjectArrayMap map[string]SomeOtherObjectArrayInput
+
+func (SomeOtherObjectArrayMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+}
+
+func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput {
+	return i.ToSomeOtherObjectArrayMapOutputWithContext(context.Background())
+}
+
+func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutputWithContext(ctx context.Context) SomeOtherObjectArrayMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(SomeOtherObjectArrayMapOutput)
+}
+
+type SomeOtherObjectArrayMapOutput struct{ *pulumi.OutputState }
+
+func (SomeOtherObjectArrayMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+}
+
+func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput {
+	return o
+}
+
+func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutputWithContext(ctx context.Context) SomeOtherObjectArrayMapOutput {
+	return o
+}
+
+func (o SomeOtherObjectArrayMapOutput) MapIndex(k pulumi.StringInput) SomeOtherObjectArrayOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) SomeOtherObjectArray {
+		return vs[0].(map[string]SomeOtherObjectArray)[vs[1].(string)]
+	}).(SomeOtherObjectArrayOutput)
+}
+
+// SomeOtherObjectArrayMapInput is an input type that accepts SomeOtherObjectArrayMap and SomeOtherObjectArrayMapOutput values.
+// You can construct a concrete instance of `SomeOtherObjectArrayMapInput` via:
+//
+//          SomeOtherObjectArrayMap{"key": SomeOtherObjectArray{SomeOtherObjectArgs{}}}
+type SomeOtherObjectArrayMapInput interface {
+	pulumi.Input
+
+	ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput
+	ToSomeOtherObjectArrayMapOutputWithContext(context.Context) SomeOtherObjectArrayMapOutput
+}
+
 func init() {
 	pulumi.RegisterOutputType(ObjectOutput{})
 	pulumi.RegisterOutputType(OtherResourceOutputTypeOutput{})
+	pulumi.RegisterOutputType(SomeOtherObjectOutput{})
+	pulumi.RegisterOutputType(SomeOtherObjectArrayOutput{})
+	pulumi.RegisterOutputType(SomeOtherObjectArrayArrayOutput{})
+	pulumi.RegisterOutputType(SomeOtherObjectArrayMapOutput{})
 }
