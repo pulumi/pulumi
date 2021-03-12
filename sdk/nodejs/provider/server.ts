@@ -247,7 +247,22 @@ class Server implements grpc.UntypedServiceImplementation {
         }
     }
 
+    /** Queue of construct calls. */
+    constructQueue = Promise.resolve();
+
     public async construct(call: any, callback: any): Promise<void> {
+        // Serialize invocations of `construct` so that each call runs one after another, avoiding concurrent runs.
+        // We do this because `construct` has to modify global state to reset the SDK's runtime options.
+        // This is a short-term workaround to provide correctness, but likely isn't sustainable long-term due to the
+        // limits it places on parallelism. We will likely want to investigate if it's possible to run each invocation
+        // in its own context, possibly using Node's `createContext` API:
+        // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
+        const res = this.constructQueue.then(() => this.constructImpl(call, callback));
+        this.constructQueue = res.catch(() => {});
+        return res;
+    }
+
+    async constructImpl(call: any, callback: any): Promise<void> {
         try {
             const req: any = call.request;
             const type = req.getType();
