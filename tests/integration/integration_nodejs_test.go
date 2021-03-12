@@ -739,6 +739,27 @@ func TestConstructSlowNode(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Test remote component construction with prompt inputs.
+func TestConstructPlainNode(t *testing.T) {
+	pathEnv, err := testComponentPlainPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env:          []string{pathEnv},
+		Dir:          filepath.Join("construct_component_plain", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),
