@@ -1,6 +1,6 @@
 {{ define "constructor_args" }}
 <dl class="resources-properties">
-  {{ range $params := . }}
+  {{- range $params := . -}}
     <dt
         {{ if .OptionalFlag -}}class="property-optional" title="Optional"
         {{- else -}}class="property-required" title="Required"
@@ -12,7 +12,6 @@
     <dd>
       {{ .Comment }}
     </dd>
-  {{ end }}
-
+  {{- end -}}
 </dl>
 {{ end }}
