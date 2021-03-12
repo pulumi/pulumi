@@ -1,31 +1,36 @@
-### Breaking
+### Breaking Changes
 
+- [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
+  [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
-### Improvements
+- [sdk/cli] Bump version of Pulumi CLI and SDK to v3
+  [#6554](https://github.com/pulumi/pulumi/pull/6554)
 
-- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
-  [#6657](https://github.com/pulumi/pulumi/pull/6657)
+- [sdk/go] Simplify `Apply` method options to reduce binary size
+  [#6607](https://github.com/pulumi/pulumi/pull/6607)
 
-- [automation/dotnet] Expose structured logging
-  [#6572](https://github.com/pulumi/pulumi/pull/6572)
+- [Automation/*] All operations use `--stack` to specify the stack instead of running `select stack` before the operation.
+  [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
-- [cli] Support full fidelity YAML round-tripping
-  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
-  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
+- [Automation/go] Moving go automation API package from sdk/v2/go/x/auto -> sdk/v2/go/auto
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
 
-- [sdk/python] Ensure all async tasks are awaited prior to exit.
-  [#6606](https://github.com/pulumi/pulumi/pull/6606)
+- [Automation/nodejs] Moving NodeJS automation API package from sdk/nodejs/x/automation -> sdk/nodejs/automation
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
+
+- [Automation/python] Moving Python automation API package from pulumi.x.automation -> pulumi.automation
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
+
+- [Automation/go] Moving go automation API package from sdk/v2/go/x/auto -> sdk/v2/go/auto
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
+
+- [Automation/nodejs] Moving NodeJS automation API package from sdk/nodejs/x/automation -> sdk/nodejs/automation
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
+
+- [Automation/python] Moving Python automation API package from pulumi.x.automation -> pulumi.automation
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
+
+### Enhancements
+
 
 ### Bug Fixes
-
-- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
-  [#6644](https://github.com/pulumi/pulumi/pull/6644)
-
-- [automation/python] Fix passing of additional environment variables.
-  [#6639](https://github.com/pulumi/pulumi/pull/6639)
-  
-- [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
-  [#6504](https://github.com/pulumi/pulumi/pull/6504)
-
-- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
-  [#6655](https://github.com/pulumi/pulumi/pull/6655)

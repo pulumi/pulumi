@@ -32,7 +32,7 @@ jobs:
     steps:
       - if: github.ref == 'refs/heads/feature-3.0'
         run:
-          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
+          echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -89,7 +89,7 @@ jobs:
     steps:
       - if: github.ref == 'refs/heads/feature-3.0'
         run:
-          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
+          echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -146,7 +146,7 @@ jobs:
     steps:
       - if: github.ref == 'refs/heads/feature-3.0'
         run:
-          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
+          echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -227,7 +227,7 @@ jobs:
     steps:
       - if: github.ref == 'refs/heads/feature-3.0'
         run:
-          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
+          echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
         with:
@@ -320,7 +320,7 @@ jobs:
     steps:
       - if: github.ref == 'refs/heads/feature-3.0'
         run:
-          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
+          echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
