@@ -15,7 +15,6 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
-import { clean } from "semver";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
@@ -329,7 +328,7 @@ export class Stack {
                 onEvent(event);
             }
         });
-        const prePromise = this.runPulumiCmd(args);
+        const prePromise = this.runPulumiCmd(args, opts?.onOutput);
 
         let preResult: CommandResult;
         let tail: TailFile | undefined;
@@ -649,7 +648,21 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
 /**
  * The granular CRUD operation performed on a particular resource during an update.
  */
-export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced" | "discard" | "discard-replaced" | "remove-pending-replace" | "import" | "import-replacement";
+export type OpType = "same"
+    | "create"
+    | "update"
+    | "delete"
+    | "replace"
+    | "create-replacement"
+    | "delete-replaced"
+    | "read"
+    | "read-replacement"
+    | "refresh"
+    | "discard"
+    | "discard-replaced"
+    | "remove-pending-replace"
+    | "import"
+    | "import-replacement";
 
 /**
  * A map of operation types and their corresponding counts.
@@ -728,6 +741,7 @@ export interface PreviewOptions {
     target?: string[];
     targetDependents?: boolean;
     program?: PulumiFn;
+    onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
 }
 
