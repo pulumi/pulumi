@@ -514,25 +514,25 @@ namespace Pulumi.Automation.Tests
 
             // pulumi preview
             outputCalled = false;
-            var previewResult = await stack.PreviewAsync(new PreviewOptions { OnOutput = (str) => outputCalled = true });
+            var previewResult = await stack.PreviewAsync(new PreviewOptions { OnStandardOutput = (str) => outputCalled = true });
             Assert.False(string.IsNullOrEmpty(previewResult.StandardOutput));
             Assert.True(outputCalled);
 
             // pulumi up
             outputCalled = false;
-            var upResult = await stack.UpAsync(new UpOptions { OnOutput = (str) => outputCalled = true });
+            var upResult = await stack.UpAsync(new UpOptions { OnStandardOutput = (str) => outputCalled = true });
             Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
             Assert.True(outputCalled);
 
             // pulumi refresh
             outputCalled = false;
-            var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnOutput = (str) => outputCalled = true });
+            var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnStandardOutput = (str) => outputCalled = true });
             Assert.False(string.IsNullOrEmpty(refreshResult.StandardOutput));
             Assert.True(outputCalled);
 
             // pulumi destroy
             outputCalled = false;
-            var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnOutput = (str) => outputCalled = true });
+            var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnStandardOutput = (str) => outputCalled = true });
             Assert.False(string.IsNullOrEmpty(destroyResult.StandardOutput));
             Assert.True(outputCalled);
         }

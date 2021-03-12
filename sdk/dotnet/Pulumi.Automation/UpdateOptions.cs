@@ -20,11 +20,11 @@ namespace Pulumi.Automation
         /// <summary>
         /// Optional callback which is invoked whenever StandardOutput is written into
         /// </summary>
-        public Action<string>? OnOutput { get; set; }
+        public Action<string>? OnStandardOutput { get; set; }
 
         /// <summary>
         /// Optional callback which is invoked whenever StandardError is written into
         /// </summary>
-        public Action<string>? OnError { get; set; }
+        public Action<string>? OnStandardError { get; set; }
     }
 }
