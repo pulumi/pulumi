@@ -23,7 +23,7 @@ import {
     LocalWorkspace,
     ProjectSettings,
     Stack,
-} from "../../x/automation";
+} from "../../automation";
 import { asyncTest } from "../util";
 
 describe("LocalWorkspace", () => {

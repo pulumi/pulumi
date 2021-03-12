@@ -8,11 +8,13 @@
   
 - [Automation/go] Moving go automation API package from sdk/v2/go/x/auto -> sdk/v2/go/auto
   [#6518](https://github.com/pulumi/pulumi/pull/6518)
-
-### Features
+  
+- [Automation/nodejs] Moving NodeJS automation API package from sdk/nodejs/x/automation -> sdk/nodejs/automation
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
 
 
 ### Enhancements
 
 
 ### Bug Fixes
+

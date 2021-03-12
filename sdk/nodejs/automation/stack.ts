@@ -28,7 +28,7 @@ import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
-const langrpc = require("../../proto/language_grpc_pb.js");
+const langrpc = require("../proto/language_grpc_pb.js");
 
 const secretSentinel = "[secret]";
 
