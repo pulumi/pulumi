@@ -18,4 +18,4 @@
   [#6479](https://github.com/pulumi/pulumi/pull/6479)
 
 - [automation/dotnet] Add ReadDiscard OperationType
-  [#6493] https://github.com/pulumi/pulumi/pull/6493
+  [#6493](https://github.com/pulumi/pulumi/pull/6493)
