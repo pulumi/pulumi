@@ -11,8 +11,6 @@ Pulumi.Automation.ConfigValue.Value.get -> string
 Pulumi.Automation.ConfigValue.Value.set -> void
 Pulumi.Automation.DestroyOptions
 Pulumi.Automation.DestroyOptions.DestroyOptions() -> void
-Pulumi.Automation.DestroyOptions.OnOutput.get -> System.Action<string>
-Pulumi.Automation.DestroyOptions.OnOutput.set -> void
 Pulumi.Automation.DestroyOptions.TargetDependents.get -> bool?
 Pulumi.Automation.DestroyOptions.TargetDependents.set -> void
 Pulumi.Automation.HistoryOptions
@@ -159,8 +157,6 @@ Pulumi.Automation.PulumiFn
 Pulumi.Automation.RefreshOptions
 Pulumi.Automation.RefreshOptions.ExpectNoChanges.get -> bool?
 Pulumi.Automation.RefreshOptions.ExpectNoChanges.set -> void
-Pulumi.Automation.RefreshOptions.OnOutput.get -> System.Action<string>
-Pulumi.Automation.RefreshOptions.OnOutput.set -> void
 Pulumi.Automation.RefreshOptions.RefreshOptions() -> void
 Pulumi.Automation.StackSettings
 Pulumi.Automation.StackSettings.Config.get -> System.Collections.Generic.IDictionary<string, Pulumi.Automation.StackSettingsConfigValue>
@@ -188,8 +184,6 @@ Pulumi.Automation.UpOptions.ExpectNoChanges.get -> bool?
 Pulumi.Automation.UpOptions.ExpectNoChanges.set -> void
 Pulumi.Automation.UpOptions.Diff.get -> bool?
 Pulumi.Automation.UpOptions.Diff.set -> void
-Pulumi.Automation.UpOptions.OnOutput.get -> System.Action<string>
-Pulumi.Automation.UpOptions.OnOutput.set -> void
 Pulumi.Automation.UpOptions.Program.get -> Pulumi.Automation.PulumiFn
 Pulumi.Automation.UpOptions.Program.set -> void
 Pulumi.Automation.UpOptions.Replace.get -> System.Collections.Generic.List<string>
@@ -209,6 +203,10 @@ Pulumi.Automation.UpdateKind.Update = 0 -> Pulumi.Automation.UpdateKind
 Pulumi.Automation.UpdateOptions
 Pulumi.Automation.UpdateOptions.Message.get -> string
 Pulumi.Automation.UpdateOptions.Message.set -> void
+Pulumi.Automation.UpdateOptions.OnOutput.get -> System.Action<string>
+Pulumi.Automation.UpdateOptions.OnOutput.set -> void
+Pulumi.Automation.UpdateOptions.OnStdErr.get -> System.Action<string>
+Pulumi.Automation.UpdateOptions.OnStdErr.set -> void
 Pulumi.Automation.UpdateOptions.Parallel.get -> int?
 Pulumi.Automation.UpdateOptions.Parallel.set -> void
 Pulumi.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>

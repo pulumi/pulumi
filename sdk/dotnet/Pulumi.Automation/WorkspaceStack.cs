@@ -275,7 +275,7 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+                var upResult = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
@@ -372,13 +372,13 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, null, cancellationToken).ConfigureAwait(false);
+                var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
                 return new PreviewResult(
-                    upResult.StandardOutput,
-                    upResult.StandardError);
+                    result.StandardOutput,
+                    result.StandardError);
             }
             finally
             {
@@ -434,7 +434,7 @@ namespace Pulumi.Automation
                 }
             }
 
-            var result = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -486,7 +486,7 @@ namespace Pulumi.Automation
                 }
             }
 
-            var result = await this.RunCommandAsync(args, options?.OnOutput, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -502,12 +502,12 @@ namespace Pulumi.Automation
             await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
 
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, cancellationToken).ConfigureAwait(false);
-            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, cancellationToken).ConfigureAwait(false);
+            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, cancellationToken).ConfigureAwait(false);
+            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, cancellationToken).ConfigureAwait(false);
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
             var maskedOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
             var plaintextOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
-            
+
             var output = new Dictionary<string, OutputValue>();
             foreach (var (key, value) in plaintextOutput)
             {
@@ -549,7 +549,7 @@ namespace Pulumi.Automation
                 args.Add(page.ToString());
             }
 
-            var result = await this.RunCommandAsync(args, null, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, null, null, cancellationToken).ConfigureAwait(false);
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
             var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, jsonOptions);
             return list.ToImmutableList();
@@ -570,8 +570,9 @@ namespace Pulumi.Automation
         private Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             Action<string>? onOutput,
+            Action<string>? onStdErr,
             CancellationToken cancellationToken)
-            => this.Workspace.RunStackCommandAsync(this.Name, args, onOutput, cancellationToken);
+            => this.Workspace.RunStackCommandAsync(this.Name, args, onOutput, onStdErr, cancellationToken);
 
         public void Dispose()
             => this.Workspace.Dispose();

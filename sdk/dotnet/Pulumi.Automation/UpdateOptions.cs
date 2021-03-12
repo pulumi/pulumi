@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
 using System.Collections.Generic;
 
 namespace Pulumi.Automation
@@ -15,5 +16,9 @@ namespace Pulumi.Automation
         public string? Message { get; set; }
 
         public List<string>? Target { get; set; }
+
+        public Action<string>? OnOutput { get; set; }
+
+        public Action<string>? OnStdErr { get; set; }
     }
 }

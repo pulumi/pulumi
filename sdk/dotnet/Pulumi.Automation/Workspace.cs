@@ -249,12 +249,13 @@ namespace Pulumi.Automation
             string stackName,
             IEnumerable<string> args,
             Action<string>? onOutput,
+            Action<string>? onStdErr,
             CancellationToken cancellationToken)
         {
             var additionalArgs = await this.SerializeArgsForOpAsync(stackName, cancellationToken).ConfigureAwait(false);
             var completeArgs = args.Concat(additionalArgs).ToList();
 
-            var result = await this.RunCommandAsync(completeArgs, onOutput, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(completeArgs, onOutput, onStdErr, cancellationToken).ConfigureAwait(false);
             await this.PostCommandCallbackAsync(stackName, cancellationToken).ConfigureAwait(false);
             return result;
         }
@@ -262,11 +263,12 @@ namespace Pulumi.Automation
         internal Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             CancellationToken cancellationToken)
-            => this.RunCommandAsync(args, null, cancellationToken);
+            => this.RunCommandAsync(args, onOutput: null, onStdErr: null, cancellationToken);
 
         internal Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             Action<string>? onOutput,
+            Action<string>? onStdErr,
             CancellationToken cancellationToken)
         {
             var env = new Dictionary<string, string>();
@@ -279,7 +281,7 @@ namespace Pulumi.Automation
                     env[pair.Key] = pair.Value;
             }
 
-            return this._cmd.RunAsync(args, this.WorkDir, env, onOutput, cancellationToken);
+            return this._cmd.RunAsync(args, this.WorkDir, env, onOutput, onStdErr, cancellationToken);
         }
 
         public virtual void Dispose()

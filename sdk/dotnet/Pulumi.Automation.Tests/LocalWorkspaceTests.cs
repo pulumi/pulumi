@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -512,7 +512,14 @@ namespace Pulumi.Automation.Tests
 
             var outputCalled = false;
 
+            // pulumi preview
+            outputCalled = false;
+            var previewResult = await stack.PreviewAsync(new PreviewOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(previewResult.StandardOutput));
+            Assert.True(outputCalled);
+
             // pulumi up
+            outputCalled = false;
             var upResult = await stack.UpAsync(new UpOptions { OnOutput = (str) => outputCalled = true });
             Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
             Assert.True(outputCalled);
