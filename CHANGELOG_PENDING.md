@@ -1,60 +1,13 @@
-### Breaking
+### Breaking Changes
 
-- [automation/go] - Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
-  [#6436](https://github.com/pulumi/pulumi/pull/6436)
+- [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
+  [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
-This change is marked breaking because it changes the shape of the `PreviewResult` struct.
-
-**Before**
-
-```go
-type PreviewResult struct {
-  Steps         []PreviewStep  `json:"steps"`
-  ChangeSummary map[string]int `json:"changeSummary"`
-}
-```
-
-**After**
-
-```go
-type PreviewResult struct {
-  StdOut        string
-  StdErr        string
-  ChangeSummary map[apitype.OpType]int
-}
-```
+- [Automation/*] All operations use `--stack` to specify the stack instead of running `select stack` before the operation.
+  [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
 ### Improvements
 
-- [sdk/go] Add helpers to convert raw Go maps and arrays to Pulumi `Map` and `Array` inputs.
-  [#6337](https://github.com/pulumi/pulumi/pull/6337)
-
-- [sdk/go] Return zero values instead of panicing in `Index` and `Elem` methods.
-  [#6338](https://github.com/pulumi/pulumi/pull/6338)
-
-- [sdk/go] Support multiple folders in GOPATH.
-  [#6228](https://github.com/pulumi/pulumi/pull/6228
-
-- [cli] Add ability to download arm64 provider plugins
-  [#6492](https://github.com/pulumi/pulumi/pull/6492)
-
-- [build] Updating Pulumi to use Go 1.16
-  [#6470](https://github.com/pulumi/pulumi/pull/6470)
-
-- [build] Adding a Pulumi arm64 binary for use on new macOS hardware.  
-  Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
-  [#6492](https://github.com/pulumi/pulumi/pull/6492)
-
-- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
-  [#6454](https://github.com/pulumi/pulumi/pull/6454)
-  
-- [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
-  [#6507](https://github.com/pulumi/pulumi/pull/6507)
 
 ### Bug Fixes
 
-- [sdk/python] Fix mocks issue when passing a resource more than once.
-  [#6479](https://github.com/pulumi/pulumi/pull/6479)
-
-- [automation/dotnet] Add ReadDiscard OperationType
-  [#6493](https://github.com/pulumi/pulumi/pull/6493)
