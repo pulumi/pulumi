@@ -538,7 +538,7 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
 /**
  * The granular CRUD operation performed on a particular resource during an update.
  */
-export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced" | "discard";
+export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced";
 
 /**
  * A map of operation types and their corresponding counts.

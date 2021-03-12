@@ -56,7 +56,14 @@ namespace Pulumi.Automation.Serialization.Json
                 "replace" => OperationType.Replace,
                 "same" => OperationType.Same,
                 "update" => OperationType.Update,
+                "read" => OperationType.Read,
+                "read-replacement" => OperationType.ReadReplacement,
+                "refresh" => OperationType.Refresh,
                 "discard" => OperationType.ReadDiscard,
+                "discard-replaced" => OperationType.DiscardReplaced,
+                "remove-pending-replace" => OperationType.RemovePendingReplace,
+                "import" => OperationType.Import,
+                "import-replacement" => OperationType.ImportReplacement,
                 _ => throw new JsonException($"Invalid operation type: {opType}"),
             };
         }
