@@ -309,9 +309,6 @@ class Server implements grpc.UntypedServiceImplementation {
 
             const result = await this.provider.construct(name, type, inputs, opts);
 
-            // Wait for RPC operations to complete and disconnect.
-            await runtime.disconnect();
-
             const resp = new provproto.ConstructResponse();
 
             resp.setUrn(await output(result.urn).promise());
@@ -324,6 +321,9 @@ class Server implements grpc.UntypedServiceImplementation {
                 stateDependenciesMap.set(key, deps);
             }
             resp.setState(structproto.Struct.fromJavaScript(state));
+
+            // Wait for RPC operations to complete and disconnect.
+            await runtime.disconnect();
 
             callback(undefined, resp);
         } catch (e) {
