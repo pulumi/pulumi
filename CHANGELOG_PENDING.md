@@ -3,9 +3,12 @@
 - [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
   [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
+- [Automation/*] All operations use `--stack` to specify the stack instead of running `select stack` before the operation.
+  [#6300](https://github.com/pulumi/pulumi/pull/6300)
+
 - [sdk/go] Simplify `Apply` method options to reduce binary size
   [#6607](https://github.com/pulumi/pulumi/pull/6607)
-
+  
 - [Automation/*] All operations use `--stack` to specify the stack instead of running `select stack` before the operation.
   [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
@@ -19,7 +22,6 @@
   [#6518](https://github.com/pulumi/pulumi/pull/6518)
   
 ### Enhancements
-
 
 
 ### Bug Fixes
