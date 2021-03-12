@@ -12,6 +12,9 @@
 - [Automation/nodejs] Moving NodeJS automation API package from sdk/nodejs/x/automation -> sdk/nodejs/automation
   [#6518](https://github.com/pulumi/pulumi/pull/6518)
 
+- [Automation/python] Moving Python automation API package from pulumi.x.automation -> pulumi.automation
+  [#6518](https://github.com/pulumi/pulumi/pull/6518)
+
 
 ### Enhancements
 
