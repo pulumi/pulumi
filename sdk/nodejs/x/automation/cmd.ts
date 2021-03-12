@@ -45,6 +45,7 @@ export function runPulumiCmd(
     cwd: string,
     additionalEnv: { [key: string]: string },
     onOutput?: (data: string) => void,
+    onStderr?: (errOutput: string) => void,
 ): Promise<CommandResult> {
     // all commands should be run in non-interactive mode.
     // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
@@ -67,6 +68,12 @@ export function runPulumiCmd(
             stdout += data;
         });
         proc.stderr.on("data", (data) => {
+            if (data && data.toString) {
+                data = data.toString();
+            }
+            if (onStderr) {
+                onStderr(data);
+            }
             stderr += data;
         });
         proc.on("exit", (code, signal) => {

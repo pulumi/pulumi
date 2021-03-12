@@ -50,6 +50,12 @@ type PreviewResult struct {
   
 - [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
   [#6507](https://github.com/pulumi/pulumi/pull/6507)
+  
+- [automation/nodejs] - Add `onStderr` event handler to `PreviewOptions`, `UpOptions`, `RefreshOptions` and `DestroyOptions`.
+  [#6512](https://github.com/pulumi/pulumi/pull/6512)
+
+- [automation/go] - Add `StderrStreams` option to `optpreview.Options`, `optup.Options`, `optrefresh.Options` and `optdestroy.Options`.
+  [#6512](https://github.com/pulumi/pulumi/pull/6512)
 
 ### Bug Fixes
 

@@ -27,7 +27,8 @@ const unknownErrorCode = -2
 func runPulumiCommandSync(
 	ctx context.Context,
 	workdir string,
-	additionalOutput []io.Writer,
+	additionalStdout []io.Writer,
+	additionalStderr []io.Writer,
 	additionalEnv []string,
 	args ...string,
 ) (string, string, int, error) {
@@ -40,9 +41,10 @@ func runPulumiCommandSync(
 
 	var stdout bytes.Buffer
 	var stderr bytes.Buffer
-	additionalOutput = append(additionalOutput, &stdout)
-	cmd.Stdout = io.MultiWriter(additionalOutput...)
-	cmd.Stderr = &stderr
+	additionalStdout = append(additionalStdout, &stdout)
+	additionalStderr = append(additionalStderr, &stderr)
+	cmd.Stdout = io.MultiWriter(additionalStdout...)
+	cmd.Stderr = io.MultiWriter(additionalStderr...)
 
 	code := unknownErrorCode
 	err := cmd.Run()

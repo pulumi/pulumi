@@ -223,7 +223,7 @@ export class Stack {
             });
         }
 
-        const upPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const upPromise = this.runPulumiCmd(args, opts?.onOutput, opts?.onStderr);
         let upResult: CommandResult;
         let tail: TailFile | undefined;
         try {
@@ -328,7 +328,7 @@ export class Stack {
                 onEvent(event);
             }
         });
-        const prePromise = this.runPulumiCmd(args, opts?.onOutput);
+        const prePromise = this.runPulumiCmd(args, opts?.onOutput, opts?.onStderr);
 
         let preResult: CommandResult;
         let tail: TailFile | undefined;
@@ -389,7 +389,7 @@ export class Stack {
             });
         }
 
-        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const refPromise = this.runPulumiCmd(args, opts?.onOutput, opts?.onStderr);
         const [refResult, tail] = await Promise.all([refPromise, logPromise]);
         await cleanUp(tail, logFile);
 
@@ -439,7 +439,7 @@ export class Stack {
             });
         }
 
-        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const desPromise = this.runPulumiCmd(args, opts?.onOutput, opts?.onStderr);
         const [desResult, tail] = await Promise.all([desPromise, logPromise]);
         await cleanUp(tail, logFile);
 
@@ -579,7 +579,9 @@ export class Stack {
         return this.workspace.importStack(this.name, state);
     }
 
-    private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
+    private async runPulumiCmd(args: string[],
+                               onOutput?: (out: string) => void,
+                               onStderr?: (errOutput: string) => void): Promise<CommandResult> {
         let envs: { [key: string]: string } = {
             "PULUMI_DEBUG_COMMANDS": "true",
         };
@@ -590,7 +592,7 @@ export class Stack {
         envs = { ...envs, ...this.workspace.envVars };
         const additionalArgs = await this.workspace.serializeArgsForOp(this.name);
         args = [...args, ...additionalArgs];
-        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput);
+        const result = await runPulumiCmd(args, this.workspace.workDir, envs, onOutput, onStderr);
         await this.workspace.postCommandCallback(this.name);
         return result;
     }
@@ -725,6 +727,7 @@ export interface UpOptions {
     target?: string[];
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
+    onStderr?: (errOutput: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
 }
@@ -742,6 +745,7 @@ export interface PreviewOptions {
     targetDependents?: boolean;
     program?: PulumiFn;
     onOutput?: (out: string) => void;
+    onStderr?: (errOutput: string) => void;
     onEvent?: (event: EngineEvent) => void;
 }
 
@@ -754,6 +758,7 @@ export interface RefreshOptions {
     expectNoChanges?: boolean;
     target?: string[];
     onOutput?: (out: string) => void;
+    onStderr?: (errOutput: string) => void;
     onEvent?: (event: EngineEvent) => void;
 }
 
@@ -766,6 +771,7 @@ export interface DestroyOptions {
     target?: string[];
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
+    onStderr?: (errOutput: string) => void;
     onEvent?: (event: EngineEvent) => void;
 }
 

@@ -494,7 +494,7 @@ func (l *LocalWorkspace) runPulumiCmdSync(
 			env = append(env, strings.Join(e, "="))
 		}
 	}
-	return runPulumiCommandSync(ctx, l.WorkDir(), nil /* additionalOutputs */, env, args...)
+	return runPulumiCommandSync(ctx, l.WorkDir(), nil /* additionalStdout */, nil /* additionalStderr */, env, args...)
 }
 
 // NewLocalWorkspace creates and configures a LocalWorkspace. LocalWorkspaceOptions can be used to
