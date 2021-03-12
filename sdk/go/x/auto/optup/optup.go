@@ -73,10 +73,17 @@ func TargetDependents() Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental stdout output
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
+	})
+}
+
+// StderrStreams allows specifying one or more io.Writers to redirect incremental stderr output
+func StderrStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.StderrStreams = writers
 	})
 }
 
@@ -119,8 +126,10 @@ type Options struct {
 	TargetDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental stdout output
 	ProgressStreams []io.Writer
+	// StderrStreams allows specifying one or more io.Writers to redirect incremental stderr output
+	StderrStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
 }
