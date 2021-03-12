@@ -18,11 +18,11 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     ""aws:region"": {
         ""value"": ""us-east-1"",
-        ""secret"": false,
+        ""secret"": false
     },
     ""project:name"": {
         ""value"": ""test"",
-        ""secret"": true,
+        ""secret"": true
     }
 }
 ";
