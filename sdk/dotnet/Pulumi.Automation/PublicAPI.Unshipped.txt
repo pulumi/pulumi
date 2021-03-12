@@ -203,10 +203,10 @@ Pulumi.Automation.UpdateKind.Update = 0 -> Pulumi.Automation.UpdateKind
 Pulumi.Automation.UpdateOptions
 Pulumi.Automation.UpdateOptions.Message.get -> string
 Pulumi.Automation.UpdateOptions.Message.set -> void
+Pulumi.Automation.UpdateOptions.OnError.get -> System.Action<string>
+Pulumi.Automation.UpdateOptions.OnError.set -> void
 Pulumi.Automation.UpdateOptions.OnOutput.get -> System.Action<string>
 Pulumi.Automation.UpdateOptions.OnOutput.set -> void
-Pulumi.Automation.UpdateOptions.OnStdErr.get -> System.Action<string>
-Pulumi.Automation.UpdateOptions.OnStdErr.set -> void
 Pulumi.Automation.UpdateOptions.Parallel.get -> int?
 Pulumi.Automation.UpdateOptions.Parallel.set -> void
 Pulumi.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>

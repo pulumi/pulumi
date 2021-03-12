@@ -17,8 +17,14 @@ namespace Pulumi.Automation
 
         public List<string>? Target { get; set; }
 
+        /// <summary>
+        /// Optional callback which is invoked whenever StandardOutput is written into
+        /// </summary>
         public Action<string>? OnOutput { get; set; }
 
-        public Action<string>? OnStdErr { get; set; }
+        /// <summary>
+        /// Optional callback which is invoked whenever StandardError is written into
+        /// </summary>
+        public Action<string>? OnError { get; set; }
     }
 }

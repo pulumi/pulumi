@@ -18,7 +18,7 @@ namespace Pulumi.Automation.Commands
             string workingDir,
             IDictionary<string, string> additionalEnv,
             Action<string>? onOutput = null,
-            Action<string>? onStdErr = null,
+            Action<string>? onError = null,
             CancellationToken cancellationToken = default)
         {
             // all commands should be run in non-interactive mode.
@@ -72,7 +72,7 @@ namespace Pulumi.Automation.Commands
                 if (@event.Data != null)
                 {
                     standardErrorBuilder.AppendLine(@event.Data);
-                    onStdErr?.Invoke(@event.Data);
+                    onError?.Invoke(@event.Data);
                 }
             };
 

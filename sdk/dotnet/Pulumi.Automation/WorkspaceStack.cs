@@ -275,7 +275,7 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
+                var upResult = await this.RunCommandAsync(args, options?.OnOutput, options?.OnError, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
@@ -372,7 +372,7 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
+                var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnError, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
@@ -434,7 +434,7 @@ namespace Pulumi.Automation
                 }
             }
 
-            var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -486,7 +486,7 @@ namespace Pulumi.Automation
                 }
             }
 
-            var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnStdErr, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnOutput, options?.OnError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -570,9 +570,9 @@ namespace Pulumi.Automation
         private Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             Action<string>? onOutput,
-            Action<string>? onStdErr,
+            Action<string>? onError,
             CancellationToken cancellationToken)
-            => this.Workspace.RunStackCommandAsync(this.Name, args, onOutput, onStdErr, cancellationToken);
+            => this.Workspace.RunStackCommandAsync(this.Name, args, onOutput, onError, cancellationToken);
 
         public void Dispose()
             => this.Workspace.Dispose();
