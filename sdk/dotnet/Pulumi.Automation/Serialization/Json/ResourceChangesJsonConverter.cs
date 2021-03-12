@@ -47,25 +47,25 @@ namespace Pulumi.Automation.Serialization.Json
 
         private static OperationType ConvertToOperationType(string opType)
         {
-            switch (opType)
+            return opType switch
             {
-                case "create":
-                    return OperationType.Create;
-                case "create-replacement":
-                    return OperationType.CreateReplacement;
-                case "delete":
-                    return OperationType.Delete;
-                case "delete-replaced":
-                    return OperationType.DeleteReplaced;
-                case "replace":
-                    return OperationType.Replace;
-                case "same":
-                    return OperationType.Same;
-                case "update":
-                    return OperationType.Update;
-                default:
-                    throw new JsonException($"Invalid operation type: {opType}");
-            }
+                "create" => OperationType.Create,
+                "create-replacement" => OperationType.CreateReplacement,
+                "delete" => OperationType.Delete,
+                "delete-replaced" => OperationType.DeleteReplaced,
+                "replace" => OperationType.Replace,
+                "same" => OperationType.Same,
+                "update" => OperationType.Update,
+                "read" => OperationType.Read,
+                "read-replacement" => OperationType.ReadReplacement,
+                "refresh" => OperationType.Refresh,
+                "discard" => OperationType.ReadDiscard,
+                "discard-replaced" => OperationType.DiscardReplaced,
+                "remove-pending-replace" => OperationType.RemovePendingReplace,
+                "import" => OperationType.Import,
+                "import-replacement" => OperationType.ImportReplacement,
+                _ => throw new JsonException($"Invalid operation type: {opType}"),
+            };
         }
     }
 }
