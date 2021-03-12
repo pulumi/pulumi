@@ -30,6 +30,9 @@ jobs:
         node-version: [ 14.x ]
         language: [ "nodejs", "python", "dotnet" ]
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -84,6 +87,9 @@ jobs:
       matrix:
         go-version: [ 1.16.x ]
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -138,6 +144,9 @@ jobs:
         node-version: [ 14.x ]
     runs-on: ${{ matrix.platform }}
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -216,6 +225,9 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
         with:
@@ -306,6 +318,9 @@ jobs:
         node-version: [ 14.x ]
     runs-on: ubuntu-latest
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
