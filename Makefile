@@ -59,26 +59,7 @@ test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
-.PHONY: publish_tgz
-publish_tgz:
-	$(call STEP_MESSAGE)
-	./scripts/publish_tgz.sh
-
-.PHONY: publish_packages
-publish_packages:
-	$(call STEP_MESSAGE)
-	./scripts/publish_packages.sh
-
 .PHONY: test_containers
 test_containers:
 	$(call STEP_MESSAGE)
 	./scripts/test-containers.sh ${VERSION}
-
-# The travis_* targets are entrypoints for CI.
-.PHONY: travis_cron travis_push travis_pull_request travis_api
-travis_cron: install dist all
-travis_push: install dist publish_tgz only_test publish_packages
-travis_pull_request:
-	$(call STEP_MESSAGE)
-	@echo moved to GitHub Actions
-travis_api: install dist all
