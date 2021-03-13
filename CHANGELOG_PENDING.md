@@ -24,6 +24,11 @@ type PreviewResult struct {
 }
 ```
 
+- [automation/dotnet] Add ability to capture stderr
+  [#6513](https://github.com/pulumi/pulumi/pull/6513)
+
+This change is marked breaking because it also renames `OnOutput` to `OnStandardOutput`.
+
 ### Improvements
 
 - [sdk/go] Add helpers to convert raw Go maps and arrays to Pulumi `Map` and `Array` inputs.
@@ -41,13 +46,13 @@ type PreviewResult struct {
 - [build] Updating Pulumi to use Go 1.16
   [#6470](https://github.com/pulumi/pulumi/pull/6470)
 
-- [build] Adding a Pulumi arm64 binary for use on new macOS hardware.  
+- [build] Adding a Pulumi arm64 binary for use on new macOS hardware.
   Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
 
 - [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
   [#6454](https://github.com/pulumi/pulumi/pull/6454)
-  
+
 - [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
   [#6507](https://github.com/pulumi/pulumi/pull/6507)
 
