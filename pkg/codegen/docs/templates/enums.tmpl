@@ -3,7 +3,8 @@
 {{- range $lang, $enums := . }}
 
 {{ print "{{% choosable language" }} {{ print $lang }} {{ print "%}}" }}
-<dl class="tabular">{{ range . }}
+<dl class="tabular">
+{{- range . -}}
     <dt>
         {{- htmlSafe .DisplayName -}}
     </dt>
@@ -12,7 +13,7 @@
         {{- if .Comment }}{{ print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" }}{{ end -}}
         {{- if .DeprecationMessage }}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- htmlSafe .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
     </dd>
-{{- end }}
+{{- end -}}
 </dl>
 {{ print "{{% /choosable %}}" }}
 
