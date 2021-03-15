@@ -263,7 +263,7 @@ func (o SomeOtherObjectArrayArrayOutput) Index(i pulumi.IntInput) SomeOtherObjec
 // SomeOtherObjectArrayArrayInput is an input type that accepts SomeOtherObjectArrayArray and SomeOtherObjectArrayArrayOutput values.
 // You can construct a concrete instance of `SomeOtherObjectArrayArrayInput` via:
 //
-//          SomeOtherObjectArrayArray{SomeOtherObjectArray{SomeOtherObjectArgs{...}, ...}, ...}
+//          SomeOtherObjectArrayArray{ SomeOtherObjectArray{ SomeOtherObjectArgs{...} } }
 type SomeOtherObjectArrayArrayInput interface {
 	pulumi.Input
 
@@ -308,7 +308,7 @@ func (o SomeOtherObjectArrayMapOutput) MapIndex(k pulumi.StringInput) SomeOtherO
 // SomeOtherObjectArrayMapInput is an input type that accepts SomeOtherObjectArrayMap and SomeOtherObjectArrayMapOutput values.
 // You can construct a concrete instance of `SomeOtherObjectArrayMapInput` via:
 //
-//          SomeOtherObjectArrayMap{"key": SomeOtherObjectArray{SomeOtherObjectArgs{}}}
+//          SomeOtherObjectArrayMap{ "key": SomeOtherObjectArray{ SomeOtherObjectArgs{...} } }
 type SomeOtherObjectArrayMapInput interface {
 	pulumi.Input
 

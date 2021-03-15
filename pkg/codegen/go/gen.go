@@ -498,7 +498,7 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 }
 
 func genInputInterface(w io.Writer, name, argsName string) {
-	printComment(w, getInputUsage(name, argsName), false)
+	printComment(w, getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
@@ -506,34 +506,69 @@ func genInputInterface(w io.Writer, name, argsName string) {
 	fmt.Fprintf(w, "}\n\n")
 }
 
-func getInputUsage(name, argsName string) string {
-	if strings.HasSuffix(name, "Array") {
-		return strings.Join([]string{
-			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
-			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
-			"",
-			fmt.Sprintf("\t\t %s{ %sArgs{...} }", name, argsName),
-			" ",
-		}, "\n")
+func getUsageForNestedType(name, baseTypeName string) string {
+	const defaultExampleFormat = "%sArgs{...}"
+	example := fmt.Sprintf(defaultExampleFormat, baseTypeName)
 
+	if !strings.HasSuffix(name, "Array") && !strings.HasSuffix(name, "Map") {
+		return example
+	}
+	trimmer := func(typeName string) string {
+		if strings.HasSuffix(typeName, "Array") {
+			return typeName[:strings.LastIndex(typeName, "Array")]
+		}
+		if strings.HasSuffix(typeName, "Map") {
+			return typeName[:strings.LastIndex(typeName, "Map")]
+		}
+		return typeName
 	}
 
 	if strings.HasSuffix(name, "Map") {
+		if !strings.HasSuffix(baseTypeName, "Array") && !strings.HasSuffix(baseTypeName, "Map") {
+			return fmt.Sprintf("%s{ \"key\": %s }", name, example)
+		}
+		return fmt.Sprintf("%s{ \"key\": %s }", name, getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
+	}
+
+	if strings.HasSuffix(name, "Array") {
+		if !strings.HasSuffix(baseTypeName, "Array") && !strings.HasSuffix(baseTypeName, "Map") {
+			return fmt.Sprintf("%s{ %s }", name, example)
+		}
+		return fmt.Sprintf("%s{ %s }", name, getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
+	}
+	return example
+}
+
+func getInputUsage(name string) string {
+	if strings.HasSuffix(name, "Array") {
+		baseTypeName := name[:strings.LastIndex(name, "Array")]
 		return strings.Join([]string{
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			fmt.Sprintf("\t\t %s{ \"key\": %sArgs{...} }", name, argsName),
+			"\t\t " + getUsageForNestedType(name, baseTypeName),
+			" ",
+		}, "\n")
+	}
+
+	if strings.HasSuffix(name, "Map") {
+		baseTypeName := name[:strings.LastIndex(name, "Map")]
+		return strings.Join([]string{
+			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
+			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
+			"",
+			"\t\t " + getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
 	}
 
 	if strings.HasSuffix(name, "Ptr") {
+		baseTypeName := name[:strings.LastIndex(name, "Ptr")]
 		return strings.Join([]string{
-			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, argsName, name, name),
+			fmt.Sprintf("%sInput is an input type that accepts %sArgs, %s and %sOutput values.", name, baseTypeName, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			fmt.Sprintf("\t\t %sArgs{...}", argsName),
+			fmt.Sprintf("\t\t %sArgs{...}", baseTypeName),
 			"",
 			" or:",
 			"",
