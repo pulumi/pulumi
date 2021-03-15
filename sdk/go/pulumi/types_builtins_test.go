@@ -2468,7 +2468,7 @@ func TestToOutputArrayArray(t *testing.T) {
 }
 
 func TestToOutputArrayArrayMap(t *testing.T) {
-	out := ToOutput(ArrayArrayMap{"baz": ArrayArray{String("any")}})
+	out := ToOutput(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
 	_, ok := out.(ArrayArrayMapInput)
 	assert.True(t, ok)
 
@@ -4348,7 +4348,7 @@ func TestToArrayArrayOutput(t *testing.T) {
 }
 
 func TestToArrayArrayMapOutput(t *testing.T) {
-	in := ArrayArrayMapInput(ArrayArrayMap{"baz": ArrayArray{String("any")}})
+	in := ArrayArrayMapInput(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
 
 	out := in.ToArrayArrayMapOutput()
 
@@ -7375,7 +7375,7 @@ func TestTopLevelToMapMapOutput(t *testing.T) {
 }
 
 func TestArrayArrayMapIndex(t *testing.T) {
-	out := (ArrayArrayMap{"baz": ArrayArray{String("any")}}).ToArrayArrayMapOutput()
+	out := (ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}}).ToArrayArrayMapOutput()
 
 	av, known, _, _, err := await(out)
 	assert.True(t, known)

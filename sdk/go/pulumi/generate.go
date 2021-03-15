@@ -273,7 +273,7 @@ func makeBuiltins(primitives []*builtin) []*builtin {
 				ItemType:    "ArrayArrayInput",
 				elementType: "map[string][][]" + p.Type,
 				item:        arrayArrayType,
-				Example:     fmt.Sprintf("%sArrayArrayMap{\"baz\": %sArrayArray{%s}}", name, name, p.Example),
+				Example:     fmt.Sprintf("%sArrayArrayMap{\"baz\": %sArrayArray{Array{%s}}}", name, name, p.Example),
 			})
 		}
 	}
