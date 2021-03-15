@@ -90,6 +90,13 @@ func newStackExportCmd() *cobra.Command {
 			}
 
 			if showSecrets {
+				// Currently, the stack.DefaultSecretsProvider is cached so adding a call to getStackSecretsManager
+				// will ensure that the user has the correct credentials to decrypt the stack deployment
+				_, err := getStackSecretsManager(s)
+				if err != nil {
+					return errors.Wrap(err, "getting secrets manager")
+				}
+
 				snap, err := stack.DeserializeUntypedDeployment(deployment, stack.DefaultSecretsProvider)
 				if err != nil {
 					return checkDeploymentVersionError(err, stackName)

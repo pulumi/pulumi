@@ -58,3 +58,7 @@ type PreviewResult struct {
 
 - [automation/dotnet] Add ReadDiscard OperationType
   [#6493](https://github.com/pulumi/pulumi/pull/6493)
+
+- [cli] Ensure the user has the correct access to the secrets manager before using it as part of
+  `pulumi stack export --show-secrets`.
+  [#6215](https://github.com/pulumi/pulumi/pull/6210)
