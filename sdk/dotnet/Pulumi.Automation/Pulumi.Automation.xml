@@ -504,6 +504,16 @@
             against an instance of <see cref="T:Pulumi.Automation.WorkspaceStack"/>.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.OnStandardOutput">
+            <summary>
+            Optional callback which is invoked whenever StandardOutput is written into
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.UpdateOptions.OnStandardError">
+            <summary>
+            Optional callback which is invoked whenever StandardError is written into
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.UpOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
