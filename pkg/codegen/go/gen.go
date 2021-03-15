@@ -120,7 +120,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
+	contract.Assertf(len(components) == 3, "tok: %s", tok)
 	if pkg == nil {
 		panic(fmt.Errorf("pkg is nil. token %s", tok))
 	}
@@ -1398,14 +1398,20 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 	var names []string
 	switch t := typ.(type) {
 	case *schema.ArrayType:
+		// Builtins already cater to primitive arrays
+		if schema.IsPrimitiveType(t.ElementType) {
+			return nil
+		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName += "Array"
-		// rawElementTypeName = "[]" + elementTypeName
 		names = pkg.addSuffixesToName(t, elementTypeName)
 	case *schema.MapType:
+		// Builtins already cater to primitive maps
+		if schema.IsPrimitiveType(t.ElementType) {
+			return nil
+		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName += "Map"
-		// rawElementTypeName = "map[string]" + elementTypeName
 		names = pkg.addSuffixesToName(t, elementTypeName)
 	}
 
