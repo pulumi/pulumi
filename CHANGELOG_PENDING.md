@@ -1,9 +1,4 @@
 ### Breaking
-
-### Enhancements
-
-- [sdk/dotnet] Thread-safe concurrency-friendly global state
-  [#6139](https://github.com/pulumi/pulumi/pull/6139)
   
 - [automation/go] - Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
   [#6436](https://github.com/pulumi/pulumi/pull/6436)
@@ -30,6 +25,9 @@ type PreviewResult struct {
 ```
 
 ### Improvements
+
+- [sdk/dotnet] Thread-safe concurrency-friendly global state
+  [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
 - [sdk/go] Add helpers to convert raw Go maps and arrays to Pulumi `Map` and `Array` inputs.
   [#6337](https://github.com/pulumi/pulumi/pull/6337)
