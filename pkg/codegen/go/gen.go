@@ -1398,12 +1398,12 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 	var names []string
 	switch t := typ.(type) {
 	case *schema.ArrayType:
-		elementTypeName = pkg.nestedTypeToType(t.ElementType, false, false)
+		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName += "Array"
 		// rawElementTypeName = "[]" + elementTypeName
 		names = pkg.addSuffixesToName(t, elementTypeName)
 	case *schema.MapType:
-		elementTypeName = pkg.nestedTypeToType(t.ElementType, false, false)
+		elementTypeName = pkg.nestedTypeToType(t.ElementType)
 		elementTypeName += "Map"
 		// rawElementTypeName = "map[string]" + elementTypeName
 		names = pkg.addSuffixesToName(t, elementTypeName)
@@ -1444,71 +1444,17 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 	return names
 }
 
-func (pkg *pkgContext) nestedTypeToType(typ schema.Type, addSuffix bool, elementType bool) string {
-	contract.Assertf(!addSuffix || !elementType, "at most one of addSuffix and elementType should be set")
-	details := pkg.detailsForType(typ)
+func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 	switch t := typ.(type) {
 	case *schema.ArrayType:
-		elem := pkg.nestedTypeToType(t.ElementType, addSuffix, elementType)
-		if addSuffix {
-			if details.mapElement {
-				return elem + "Map"
-			}
-			if details.arrayElement {
-				return elem + "Array"
-			}
-			return elem
-		}
-
-		if elementType {
-			if details.arrayElement {
-				return "[]" + elem
-			}
-			if details.mapElement {
-				return "map[string]" + elem
-			}
-		}
+		elem := pkg.nestedTypeToType(t.ElementType)
 		return elem
 	case *schema.MapType:
-		elem := pkg.nestedTypeToType(t.ElementType, addSuffix, elementType)
-		if addSuffix {
-			if details.mapElement {
-				return elem + "Map"
-			}
-			if details.arrayElement {
-				return elem + "Array"
-			}
-			return elem
-		}
-
-		if elementType {
-			if details.arrayElement {
-				return "[]" + elem
-			}
-			if details.mapElement {
-				return "map[string]" + elem
-			}
-		}
+		elem := pkg.nestedTypeToType(t.ElementType)
 		return elem
 	}
 
 	tokenType := pkg.tokenToType(typ.String())
-	if addSuffix {
-		if details.mapElement {
-			return tokenType + "Map"
-		}
-		if details.arrayElement {
-			return tokenType + "Array"
-		}
-	}
-	if elementType {
-		if details.mapElement {
-			return "map[string]" + tokenType
-		}
-		if details.arrayElement {
-			return "[]" + tokenType
-		}
-	}
 	return tokenType
 }
 
