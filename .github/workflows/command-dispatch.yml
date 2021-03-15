@@ -1,4 +1,4 @@
-name: Command Dispatch for Running PR Acceptance Tests
+name: Command Dispatch for PR events
 on:
   issue_comment:
     types: [created, edited]
@@ -14,6 +14,19 @@ jobs:
           token: ${{ secrets.PULUMI_BOT_TOKEN }}
           reaction-token: ${{ secrets.GITHUB_TOKEN }}
           commands: run-acceptance-tests
+          permission: write
+          issue-type: pull-request
+          repository: pulumi/pulumi
+  auto-rebase-command:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Build
+        uses: peter-evans/slash-command-dispatch@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          reaction-token: ${{ secrets.GITHUB_TOKEN }}
+          commands: auto-rebase
           permission: write
           issue-type: pull-request
           repository: pulumi/pulumi

@@ -11,7 +11,6 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
-  GO111MODULE: "on"
   NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   NUGET_PUBLISH_KEY: ${{ secrets.NUGET_PUBLISH_KEY }}
@@ -25,12 +24,15 @@ jobs:
     needs: publish-binaries
     strategy:
       matrix:
-        go-version: [ 1.15.x ]
+        go-version: [ 1.16.x ]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
         language: [ "nodejs", "python", "dotnet" ]
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -55,6 +57,10 @@ jobs:
         run: python -m pip install pip twine
       - name: Checkout Repo
         uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -79,8 +85,11 @@ jobs:
     needs: [build-and-test, windows-build]
     strategy:
       matrix:
-        go-version: [ 1.15.x ]
+        go-version: [ 1.16.x ]
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -91,7 +100,7 @@ jobs:
         run: |
           git fetch --quiet --prune --unshallow --tags
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
       - name: Configure AWS Credentials
@@ -110,7 +119,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v2
         with:
           version: latest
-          args: -f .goreleaser.prerelease.yml --rm-dist --skip-validate
+          args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
@@ -129,12 +138,15 @@ jobs:
     strategy:
       matrix:
         platform: [ ubuntu-latest, macos-latest ]
-        go-version: [1.15.x]
+        go-version: [1.16.x]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
     runs-on: ${{ matrix.platform }}
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -147,6 +159,7 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
+      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
       - name: Set up Node ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -162,6 +175,10 @@ jobs:
           echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Fetch Tags
         run: |
           git fetch --quiet --prune --unshallow --tags
@@ -196,7 +213,7 @@ jobs:
     name: Windows Build + Test + Publish
     strategy:
       matrix:
-        go-version: [1.15.x]
+        go-version: [1.16.x]
         node-version: [14.x]
         python-version: [3.9.x]
         dotnet: [3.1.x]
@@ -208,10 +225,14 @@ jobs:
       AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY_LEGACY }}
       ACTIONS_ALLOW_UNSECURE_COMMANDS: true
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet }}
+      - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
       - name: Use Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -226,6 +247,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Clean
         run: dotnet nuget locals all --clear
+      - name: Create Local Nuget
+        run: mkdir -p "D:\\Pulumi\\nuget"
+        shell: bash
       - name: Install Python Deps
         run: |
           pip3 install pyenv-win
@@ -245,6 +269,10 @@ jobs:
         uses: actions/checkout@v2
         with:
           path: ./src/github.com/${{ github.repository }}
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
       - name: Fetch Tags
         run: |
           cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
@@ -253,17 +281,14 @@ jobs:
           cd src\github.com\${{ github.repository }}
           pushd .
           cd sdk
-          go mod tidy
           go mod download
           popd
           pushd .
           cd pkg
-          go mod tidy
           go mod download
           popd
           pushd .
           cd tests
-          go mod tidy
           go mod download
           popd
       - name: Build Pulumi
@@ -278,23 +303,30 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+      - run: |
+          cd src\github.com\${{ github.repository }}
+          git status
+          git --no-pager diff
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
     strategy:
       matrix:
-        go-version: [1.15.x]
+        go-version: [1.16.x]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
     runs-on: ubuntu-latest
     steps:
+      - if: github.ref == 'refs/heads/feature-3.0'
+        run:
+          echo "VERSION_PREFIX=v3.0.0" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
           go-version: ${{ matrix.go-version }}
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
       - name: Checkout Repo

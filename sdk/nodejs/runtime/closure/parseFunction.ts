@@ -663,6 +663,11 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
         // The parameters of any function are in scope at the top level of the function.
         for (const param of node.parameters) {
             nameWalk(param.name, /*isVar:*/ true);
+
+            // Parse default argument expressions
+            if (param.initializer) {
+                walk(param.initializer);
+            }
         }
 
         // Next, visit the body underneath this new context.

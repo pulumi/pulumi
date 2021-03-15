@@ -64,6 +64,7 @@ class Workload(pulumi.CustomResource):
 
         __props__ = dict()
 
+        __props__["pod"] = None
         return Workload(resource_name, opts=opts, __props__=__props__)
 
     @property

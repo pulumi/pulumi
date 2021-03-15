@@ -23,7 +23,7 @@ from typing import Dict, NamedTuple, Optional, Tuple, TYPE_CHECKING
 from google.protobuf import empty_pb2
 from . import rpc
 from .settings import Settings, configure, get_stack, get_project, get_root_resource
-from .sync_await import _sync_await
+from .sync_await import _ensure_event_loop, _sync_await
 from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
 
@@ -91,6 +91,9 @@ class MockMonitor:
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
 
     def Invoke(self, request):
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
+        _ensure_event_loop()
+
         args = rpc.deserialize_properties(request.args)
 
         if request.tok == "pulumi:pulumi:getResource":
@@ -109,6 +112,9 @@ class MockMonitor:
         return provider_pb2.InvokeResponse(**fields)
 
     def ReadResource(self, request):
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
+        _ensure_event_loop()
+
         state = rpc.deserialize_properties(request.properties)
 
         id_, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
@@ -126,6 +132,9 @@ class MockMonitor:
 
         if request.type == "pulumi:pulumi:Stack":
             return resource_pb2.RegisterResourceResponse(urn=urn)
+
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
+        _ensure_event_loop()
 
         inputs = rpc.deserialize_properties(request.object)
 

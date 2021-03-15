@@ -17,8 +17,10 @@
 package optdestroy
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the destroy
@@ -57,6 +59,13 @@ func ProgressStreams(writers ...io.Writer) Option {
 	})
 }
 
+// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+func EventStreams(channels ...chan<- events.EngineEvent) Option {
+	return optionFunc(func(opts *Options) {
+		opts.EventStreams = channels
+	})
+}
+
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
 		opts.DebugLogOpts = debugOpts
@@ -83,6 +92,8 @@ type Options struct {
 	TargetDependents bool
 	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
 	ProgressStreams []io.Writer
+	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+	EventStreams []chan<- events.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
 }

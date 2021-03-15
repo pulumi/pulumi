@@ -17,8 +17,10 @@
 package optup
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
 	"io"
+
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the update
@@ -84,6 +86,13 @@ func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	})
 }
 
+// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+func EventStreams(channels ...chan<- events.EngineEvent) Option {
+	return optionFunc(func(opts *Options) {
+		opts.EventStreams = channels
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Up() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -108,10 +117,12 @@ type Options struct {
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
-	ProgressStreams []io.Writer
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+	ProgressStreams []io.Writer
+	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
+	EventStreams []chan<- events.EngineEvent
 }
 
 type optionFunc func(*Options)

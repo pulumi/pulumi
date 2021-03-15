@@ -69,6 +69,7 @@ class Cat(pulumi.CustomResource):
 
         __props__ = dict()
 
+        __props__["name"] = None
         return Cat(resource_name, opts=opts, __props__=__props__)
 
     @property

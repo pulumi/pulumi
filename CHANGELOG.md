@@ -1,6 +1,29 @@
 CHANGELOG
 =========
 
+## 2.22.0 (2021-03-03)
+
+### Improvements
+
+- [#6410](https://github.com/pulumi/pulumi/pull/6410) Add `diff` option to Automation API's `preview` and `up`
+
+### Bug Fixes
+
+- [automation/dotnet] - resolve issue with OnOutput delegate not being called properly during pulumi process execution.
+  [#6435](https://github.com/pulumi/pulumi/pull/6435)
+
+- [automation/python,nodejs,dotnet] - BREAKING - Remove `summary` property from `PreviewResult`.
+  The `summary` property on `PreviewResult` returns a result that is always incorrect and is being removed.
+  [#6405](https://github.com/pulumi/pulumi/pull/6405)
+
+- [automation/python] - Fix Windows error caused by use of NamedTemporaryFile in automation api.
+  [#6421](https://github.com/pulumi/pulumi/pull/6421)
+
+- [sdk/nodejs] Serialize default parameters correctly. [#6397](https://github.com/pulumi/pulumi/pull/6397)
+
+- [cli] Respect provider aliases while diffing resources.
+  [#6453](https://github.com/pulumi/pulumi/pull/6453)
+
 ## 2.21.2 (2021-02-22)
 
 ### Improvements
@@ -13,10 +36,10 @@ CHANGELOG
   [#6251](https://github.com/pulumi/pulumi/pull/6251)
 
 - [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
-  [#6373](https://github.com/pulumi/pulumi/pulls/6373)
+  [#6373](https://github.com/pulumi/pulumi/pull/6373)
 
 - [automation/*] Consume `config set-all` and `config rm-all` from automation API.
-  [#6388](https://github.com/pulumi/pulumi/pulls/6388)
+  [#6388](https://github.com/pulumi/pulumi/pull/6388)
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
@@ -30,7 +53,7 @@ CHANGELOG
   component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
 
 - [cli] Skip unnecessary state file writes to address performance regression introduced in 2.16.2.
-  [#6396](https://github.com/pulumi/pulumi/pulls/6396)
+  [#6396](https://github.com/pulumi/pulumi/pull/6396)
 
 ## 2.21.1 (2021-02-18)
 

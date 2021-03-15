@@ -64,6 +64,7 @@ class Resource(pulumi.CustomResource):
 
         __props__ = dict()
 
+        __props__["bar"] = None
         return Resource(resource_name, opts=opts, __props__=__props__)
 
     @property

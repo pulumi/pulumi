@@ -69,6 +69,9 @@ class Component(pulumi.CustomResource):
 
         __props__ = dict()
 
+        __props__["provider"] = None
+        __props__["security_group"] = None
+        __props__["storage_classes"] = None
         return Component(resource_name, opts=opts, __props__=__props__)
 
     @property

@@ -410,9 +410,42 @@ func Test{{.Name}}Index(t *testing.T) {
 	iv, known, _, _, err := await(out.Index(Int(0)))
 	assert.True(t, known)
 	assert.NoError(t, err)
+	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
+
+	iv, known, _, _, err = await(out.Index(Int(-1)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+{{if .DefineToFunction}}
+func TestTo{{.Name}}(t *testing.T) {
+	out := To{{.Name}}([]{{.IndexElementType}}{{.ElemExample}}).To{{.Name}}Output()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
 }
+
+func TestTopLevelTo{{.Name}}Output(t *testing.T) {
+	out := To{{.Name}}Output([]{{.IndexReturnType}}Output{ ToOutput({{.ItemExample}}).({{.IndexReturnType}}Output) })
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.Index(Int(0)))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.([]{{.IndexElementType}})[0], iv)
+}
+{{end}}
 {{end}}
 {{end}}
 
@@ -429,8 +462,41 @@ func Test{{.Name}}Index(t *testing.T) {
 	iv, known, _, _, err := await(out.MapIndex(String("baz")))
 	assert.True(t, known)
 	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+{{if .DefineToFunction}}
+func TestTo{{.Name}}(t *testing.T) {
+	out := To{{.Name}}(map[string]{{.MapIndexElementType}}{{.ElemExample}}).To{{.Name}}Output()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
 }
+
+func TestTopLevelTo{{.Name}}Output(t *testing.T) {
+	out := To{{.Name}}Output(map[string]{{.MapIndexReturnType}}Output{"baz": ToOutput({{.ItemExample}}).({{.MapIndexReturnType}}Output)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string]{{.MapIndexElementType}})["baz"], iv)
+}
+{{end}}
 {{end}}
 {{end}}

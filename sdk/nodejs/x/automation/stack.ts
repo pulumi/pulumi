@@ -12,11 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as fs from "fs";
+import * as os from "os";
+import * as path from "path";
+import * as upath from "upath";
+
 import * as grpc from "@grpc/grpc-js";
+import * as TailFile from "@logdna/tail-file";
+import * as split2 from "split2";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
+import { EngineEvent, SummaryEvent } from "./events";
 import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
@@ -104,6 +112,33 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
+    // Try for up to 10s to start tailing the file, invoking the callback once per line.
+    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
+        let n = 0;
+        const eventLogTail = new TailFile(logPath, { startPos: 0 });
+
+        while (true) {
+            try {
+                await eventLogTail.start();
+                eventLogTail
+                    .on("tail_error", (err) => {
+                        throw err;
+                    })
+                    .pipe(split2())
+                    .on("data", (line: string) => {
+                        const event: EngineEvent = JSON.parse(line);
+                        callback(event);
+                    });
+
+                return eventLogTail;
+            } catch (err) {
+                if (n++ > 100) {
+                    throw err;
+                }
+                await delay(100);
+            }
+        }
+    }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
      * https://www.pulumi.com/docs/reference/cli/pulumi_up/
@@ -174,16 +209,34 @@ export class Stack {
         }
 
         args.push("--exec-kind", kind);
-        let upResult;
+
+        let logPromise: Promise<TailFile> | undefined;
+        let logFile: string | undefined;
+        // Set up event log tailing
+        if (opts?.onEvent) {
+            const onEvent = opts.onEvent;
+            logFile = createLogFile("up");
+            args.push("--event-log", logFile);
+
+            logPromise = this.readLines(logFile, (event) => {
+                onEvent(event);
+            });
+        }
+
+        const upPromise = this.runPulumiCmd(args, opts?.onOutput);
+        let upResult: CommandResult;
+        let tail: TailFile | undefined;
         try {
-            upResult = await this.runPulumiCmd(args, opts?.onOutput);
+            [upResult, tail] = await Promise.all([upPromise, logPromise]);
         } finally {
             onExit();
+            await cleanUp(tail, logFile);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const outputs = await this.outputs();
         const summary = await this.info();
+
         return {
             stdout: upResult.stdout,
             stderr: upResult.stderr,
@@ -198,7 +251,6 @@ export class Stack {
      * @param opts Options to customize the behavior of the preview.
      */
     async preview(opts?: PreviewOptions): Promise<PreviewResult> {
-        // TODO JSON
         const args = ["preview"];
         let kind = execKind.local;
         let program = this.workspace.program;
@@ -262,15 +314,39 @@ export class Stack {
         }
 
         args.push("--exec-kind", kind);
-        let preResult;
+
+        // Set up event log tailing
+        const logFile = createLogFile("preview");
+        args.push("--event-log", logFile);
+        let summaryEvent: SummaryEvent | undefined;
+        const logPromise = this.readLines(logFile, (event) => {
+            if (event.summaryEvent) {
+                summaryEvent = event.summaryEvent;
+            }
+            if (opts?.onEvent) {
+                const onEvent = opts.onEvent;
+                onEvent(event);
+            }
+        });
+        const prePromise = this.runPulumiCmd(args, opts?.onOutput);
+
+        let preResult: CommandResult;
+        let tail: TailFile | undefined;
         try {
-            preResult = await this.runPulumiCmd(args);
+            [preResult, tail] = await Promise.all([prePromise, logPromise]);
         } finally {
             onExit();
+            await cleanUp(tail, logFile);
         }
+
+        if (!summaryEvent) {
+            throw new Error("No summary of changes.");
+        }
+
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
+            changeSummary: summaryEvent.resourceChanges,
         };
     }
     /**
@@ -300,7 +376,23 @@ export class Stack {
             }
         }
 
-        const refResult = await this.runPulumiCmd(args, opts?.onOutput);
+        let logPromise: Promise<TailFile> | undefined;
+        let logFile: string | undefined;
+        // Set up event log tailing
+        if (opts?.onEvent) {
+            const onEvent = opts.onEvent;
+            logFile = createLogFile("refresh");
+            args.push("--event-log", logFile);
+
+            logPromise = this.readLines(logFile, (event) => {
+                onEvent(event);
+            });
+        }
+
+        const refPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const [refResult, tail] = await Promise.all([refPromise, logPromise]);
+        await cleanUp(tail, logFile);
+
         const summary = await this.info();
         return {
             stdout: refResult.stdout,
@@ -334,11 +426,27 @@ export class Stack {
             }
         }
 
-        const preResult = await this.runPulumiCmd(args, opts?.onOutput);
+        let logPromise: Promise<TailFile> | undefined;
+        let logFile: string | undefined;
+        // Set up event log tailing
+        if (opts?.onEvent) {
+            const onEvent = opts.onEvent;
+            logFile = createLogFile("destroy");
+            args.push("--event-log", logFile);
+
+            logPromise = this.readLines(logFile, (event) => {
+                onEvent(event);
+            });
+        }
+
+        const desPromise = this.runPulumiCmd(args, opts?.onOutput);
+        const [desResult, tail] = await Promise.all([desPromise, logPromise]);
+        await cleanUp(tail, logFile);
+
         const summary = await this.info();
         return {
-            stdout: preResult.stdout,
-            stderr: preResult.stderr,
+            stdout: desResult.stdout,
+            stderr: desResult.stderr,
             summary: summary!,
         };
     }
@@ -472,7 +580,9 @@ export class Stack {
     }
 
     private async runPulumiCmd(args: string[], onOutput?: (out: string) => void): Promise<CommandResult> {
-        let envs: { [key: string]: string } = {};
+        let envs: { [key: string]: string } = {
+            "PULUMI_DEBUG_COMMANDS": "true",
+        };
         const pulumiHome = this.workspace.pulumiHome;
         if (pulumiHome) {
             envs["PULUMI_HOME"] = pulumiHome;
@@ -538,7 +648,21 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
 /**
  * The granular CRUD operation performed on a particular resource during an update.
  */
-export type OpType = "same" | "create" | "update" | "delete" | "replace" | "create-replacement" | "delete-replaced";
+export type OpType = "same"
+    | "create"
+    | "update"
+    | "delete"
+    | "replace"
+    | "create-replacement"
+    | "delete-replaced"
+    | "read"
+    | "read-replacement"
+    | "refresh"
+    | "discard"
+    | "discard-replaced"
+    | "remove-pending-replace"
+    | "import"
+    | "import-replacement";
 
 /**
  * A map of operation types and their corresponding counts.
@@ -568,6 +692,7 @@ export interface UpResult {
 export interface PreviewResult {
     stdout: string;
     stderr: string;
+    changeSummary: OpMap;
 }
 
 /**
@@ -600,6 +725,7 @@ export interface UpOptions {
     target?: string[];
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
+    onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
 }
 
@@ -615,6 +741,8 @@ export interface PreviewOptions {
     target?: string[];
     targetDependents?: boolean;
     program?: PulumiFn;
+    onOutput?: (out: string) => void;
+    onEvent?: (event: EngineEvent) => void;
 }
 
 /**
@@ -626,6 +754,7 @@ export interface RefreshOptions {
     expectNoChanges?: boolean;
     target?: string[];
     onOutput?: (out: string) => void;
+    onEvent?: (event: EngineEvent) => void;
 }
 
 /**
@@ -637,6 +766,7 @@ export interface DestroyOptions {
     target?: string[];
     targetDependents?: boolean;
     onOutput?: (out: string) => void;
+    onEvent?: (event: EngineEvent) => void;
 }
 
 const execKind = {
@@ -645,3 +775,19 @@ const execKind = {
 };
 
 type StackInitMode = "create" | "select" | "createOrSelect";
+
+const delay = (duration: number) => new Promise(resolve => setTimeout(resolve, duration));
+
+const createLogFile = (command: string) => {
+    const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), `automation-logs-${command}-`));
+    return upath.joinSafe(logDir, "eventlog.txt");
+};
+
+const cleanUp = async (tail?: TailFile, logFile?: string) => {
+    if (tail) {
+        await tail.quit();
+    }
+    if (logFile) {
+        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+    }
+};

@@ -45,15 +45,7 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
     """
 
     # Fetch the current event loop and ensure a future.
-    loop = None
-    try:
-        loop = asyncio.get_event_loop()
-    except RuntimeError:
-        pass
-    if loop is None:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-
+    loop = _ensure_event_loop()
     fut = asyncio.ensure_future(awaitable)
 
     # If the loop is not running, we can just use run_until_complete. Without this, we would need to duplicate a fair
@@ -93,3 +85,14 @@ def _sync_await(awaitable: Awaitable[Any]) -> Any:
 
     # Return the result of the future.
     return fut.result()
+
+
+def _ensure_event_loop():
+    """Ensures an asyncio event loop exists for the current thread."""
+    loop = None
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    return loop

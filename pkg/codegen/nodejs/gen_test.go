@@ -30,6 +30,7 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				"index.ts",
 				"tree/v1/rubberTree.ts",
+				"tree/v1/nursery.ts",
 				"tree/v1/index.ts",
 				"tree/index.ts",
 				"types/input.ts",
@@ -52,6 +53,16 @@ func TestGeneratePackage(t *testing.T) {
 				"types/index.ts",
 				"types/input.ts",
 				"types/output.ts",
+			},
+		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				"component.ts",
+				"types/input.ts",
+				"types/output.ts",
+				"types/index.ts",
 			},
 		},
 	}

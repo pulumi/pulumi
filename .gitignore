@@ -22,10 +22,14 @@ coverage.cov
 # By default, we don't check in yarn.lock files
 **/yarn.lock
 
+# By default, we don't check in Pipfile.lock files
+**/Pipfile.lock
+
 # Turning on MyPy in VSCode creates this workspace local folder
 .mypy_cache
 
 # for goreleaser
+**/*.exe
 goreleaser
 pulumi-resource-pulumi-nodejs
 pulumi-resource-pulumi-python

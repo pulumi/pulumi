@@ -88,6 +88,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("plant", "tree", "v1", "init.go"),
 				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
 				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
+				filepath.Join("plant", "tree", "v1", "nursery.go"),
 			},
 			false,
 		},
@@ -106,6 +107,19 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("example", "workload.go"),
 			},
 			true,
+		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				filepath.Join("example", "doc.go"),
+				filepath.Join("example", "init.go"),
+				filepath.Join("example", "component.go"),
+				filepath.Join("example", "provider.go"),
+				filepath.Join("example", "pulumiTypes.go"),
+				filepath.Join("example", "pulumiUtilities.go"),
+			},
+			false,
 		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")

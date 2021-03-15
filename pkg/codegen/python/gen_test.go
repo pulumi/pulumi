@@ -71,6 +71,16 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("pulumi_plant", "tree", "v1", "_enums.py"),
 				filepath.Join("pulumi_plant", "tree", "v1", "__init__.py"),
 				filepath.Join("pulumi_plant", "tree", "v1", "rubber_tree.py"),
+				filepath.Join("pulumi_plant", "tree", "v1", "nursery.py"),
+			},
+		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				filepath.Join("pulumi_example", "_inputs.py"),
+				filepath.Join("pulumi_example", "component.py"),
+				filepath.Join("pulumi_example", "outputs.py"),
 			},
 		},
 	}

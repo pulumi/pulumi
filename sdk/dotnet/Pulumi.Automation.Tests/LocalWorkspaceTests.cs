@@ -17,12 +17,20 @@ namespace Pulumi.Automation.Tests
         private static readonly string _dataDirectory =
             Path.Combine(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "Data");
 
+        private static readonly string _pulumiOrg = GetTestOrg();
+
         private static string GetTestSuffix()
         {
             var random = new Random();
             var result = 100000 + random.Next(0, 900000);
             return result.ToString();
         }
+
+        private static string GetTestOrg() =>
+            Environment.GetEnvironmentVariable("PULUMI_TEST_ORG") ?? "pulumi-test";
+
+        private static string FullyQualifiedStackName(string org, string project, string stack) =>
+            $"{org}/{project}/{stack}";
 
         private static string NormalizeConfigKey(string key, string projectName)
         {
@@ -385,6 +393,143 @@ namespace Pulumi.Automation.Tests
             await stack.Workspace.RemoveStackAsync(stackName);
         }
 
+        [Fact(Skip="Breaking builds")]
+        public async Task StackReferenceDestroyDiscardsWithTwoInlinePrograms()
+        {
+            var programA = PulumiFn.Create(() =>
+            {
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "foo",
+                };
+            });
+
+            var programB = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                var stackRef = new StackReference(config.Require("Ref"));
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = stackRef.GetOutput("exp_static"),
+                };
+            });
+
+            var stackNameA = $"int_test{GetTestSuffix()}-a";
+            var stackNameB = $"int_test{GetTestSuffix()}-b";
+            var projectName = "inline_stack_reference";
+
+            var stackA = await SetupStack(projectName, stackNameA, programA, new Dictionary<string, ConfigValue>());
+
+            var stackB = await SetupStack(projectName, stackNameB, programB, new Dictionary<string, ConfigValue>()
+            {
+                ["Ref"] = new ConfigValue(FullyQualifiedStackName(_pulumiOrg, projectName, stackNameA)),
+            });
+
+            try
+            {
+                // Update the first stack
+                {
+                    var upResult = await stackA.UpAsync();
+                    Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                    Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                    Assert.Equal(1, upResult.Outputs.Count);
+
+                    // exp_static
+                    Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                    Assert.Equal("foo", expStaticValue!.Value);
+                    Assert.False(expStaticValue.IsSecret);
+                }
+
+                // Update the second stack which references the first
+                {
+                    var upResult = await stackB.UpAsync();
+                    Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                    Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                    Assert.Equal(1, upResult.Outputs.Count);
+
+                    // exp_static
+                    Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                    Assert.Equal("foo", expStaticValue!.Value);
+                    Assert.False(expStaticValue.IsSecret);
+                }
+
+                // Destroy stacks in reverse order
+                {
+                    var destroyResult = await stackB.DestroyAsync();
+                    Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                    Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                }
+
+                {
+                    var destroyResult = await stackA.DestroyAsync();
+                    Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                    Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                }
+            }
+            // Ensure stacks are deleted even if some of the operations fail
+            finally
+            {
+                await stackA.Workspace.RemoveStackAsync(stackNameA);
+                await stackB.Workspace.RemoveStackAsync(stackNameB);
+            }
+
+            static async Task<WorkspaceStack> SetupStack(string project, string stackName, PulumiFn program, Dictionary<string, ConfigValue> configMap)
+            {
+                var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(project, stackName, program)
+                {
+                    EnvironmentVariables = new Dictionary<string, string>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                    }
+                });
+
+                await stack.SetConfigAsync(configMap);
+
+                return stack;
+            }
+        }
+
+        [Fact]
+        public async Task OutputStreamAndDelegateIsWritten()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                return new Dictionary<string, object?>
+                {
+                    ["test"] = "test",
+                };
+            });
+
+            var stackName = $"output_test{GetTestSuffix()}";
+            var projectName = "inline_output";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var outputCalled = false;
+
+            // pulumi up
+            var upResult = await stack.UpAsync(new UpOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
+            Assert.True(outputCalled);
+
+            // pulumi refresh
+            outputCalled = false;
+            var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(refreshResult.StandardOutput));
+            Assert.True(outputCalled);
+
+            // pulumi destroy
+            outputCalled = false;
+            var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnOutput = (str) => outputCalled = true });
+            Assert.False(string.IsNullOrEmpty(destroyResult.StandardOutput));
+            Assert.True(outputCalled);
+        }
+
         private class ValidStack : Stack
         {
             [Output("exp_static")]
@@ -618,7 +763,7 @@ namespace Pulumi.Automation.Tests
             // alternately allow them to progress
             semaphoreOne.Release();
             var upResultOne = await upTaskOne;
-            
+
             semaphoreTwo.Release();
             var upResultTwo = await upTaskTwo;
 

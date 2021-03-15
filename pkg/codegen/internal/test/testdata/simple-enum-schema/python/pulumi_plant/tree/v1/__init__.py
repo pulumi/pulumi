@@ -4,6 +4,7 @@
 
 # Export this package's modules as members:
 from ._enums import *
+from .nursery import *
 from .rubber_tree import *
 
 def _register_module():
@@ -18,7 +19,9 @@ def _register_module():
             return Module._version
 
         def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:
-            if typ == "plant:tree/v1:RubberTree":
+            if typ == "plant:tree/v1:Nursery":
+                return Nursery(name, pulumi.ResourceOptions(urn=urn))
+            elif typ == "plant:tree/v1:RubberTree":
                 return RubberTree(name, pulumi.ResourceOptions(urn=urn))
             else:
                 raise Exception(f"unknown resource type {typ}")

@@ -45,18 +45,7 @@ type typeDetails struct {
 	functionType bool
 }
 
-type stringSet map[string]struct{}
-
-func (ss stringSet) add(s string) {
-	ss[s] = struct{}{}
-}
-
-func (ss stringSet) has(s string) bool {
-	_, ok := ss[s]
-	return ok
-}
-
-type imports stringSet
+type imports codegen.StringSet
 
 func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool) {
 	imports.addTypeIf(mod, t, input, nil /*predicate*/)
@@ -64,19 +53,19 @@ func (imports imports) addType(mod *modContext, t *schema.ObjectType, input bool
 
 func (imports imports) addTypeIf(mod *modContext, t *schema.ObjectType, input bool, predicate func(imp string) bool) {
 	if imp := mod.importObjectType(t, input); imp != "" && (predicate == nil || predicate(imp)) {
-		stringSet(imports).add(imp)
+		codegen.StringSet(imports).Add(imp)
 	}
 }
 
 func (imports imports) addEnum(mod *modContext, tok string) {
 	if imp := mod.importEnumFromToken(tok); imp != "" {
-		stringSet(imports).add(imp)
+		codegen.StringSet(imports).Add(imp)
 	}
 }
 
 func (imports imports) addResource(mod *modContext, r *schema.ResourceType) {
 	if imp := mod.importResourceType(r); imp != "" {
-		stringSet(imports).add(imp)
+		codegen.StringSet(imports).Add(imp)
 	}
 }
 
@@ -875,7 +864,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n\n", pname, escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n\n", pname, escaped)
 		}
 
 		// Now perform the assignment.
@@ -993,7 +982,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// If there's an argument type, emit it.
 	for _, prop := range res.InputProperties {
-		ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
+		wrapInput := !prop.IsPlain
+		ty := mod.typeString(prop.Type, true, wrapInput, true /*optional*/, true /*acceptMapping*/)
 		fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 	}
 
@@ -1004,7 +994,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, ",\n                 __opts__=None):\n")
 	mod.genInitDocstring(w, res)
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
-		fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, res.DeprecationMessage)
+		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
 	fmt.Fprintf(w, "        if __name__ is not None:\n")
 	fmt.Fprintf(w, "            warnings.warn(\"explicit use of __name__ is deprecated\", DeprecationWarning)\n")
@@ -1031,7 +1021,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __props__ = dict()\n\n")
 	fmt.Fprintf(w, "")
 
-	ins := stringSet{}
+	ins := codegen.NewStringSet()
 	for _, prop := range res.InputProperties {
 		pname := InitParamName(prop.Name)
 		var arg interface{}
@@ -1058,7 +1048,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "            if %s is not None and not opts.urn:\n", pname)
 			fmt.Fprintf(w, "                warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "                pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+			fmt.Fprintf(w, "                pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
 		}
 
 		// And add it to the dictionary.
@@ -1079,14 +1069,14 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		}
 		fmt.Fprintf(w, "            __props__['%s'] = %s\n", PyName(prop.Name), arg)
 
-		ins.add(prop.Name)
+		ins.Add(prop.Name)
 	}
 
 	var secretProps []string
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
-		if !ins.has(prop.Name) {
+		if !ins.Has(prop.Name) {
 			fmt.Fprintf(w, "            __props__['%s'] = None\n", PyName(prop.Name))
 		}
 
@@ -1160,9 +1150,16 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "\n")
 		fmt.Fprintf(w, "        __props__ = dict()\n\n")
 
+		stateInputs := codegen.NewStringSet()
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
-				fmt.Fprintf(w, "        __props__[\"%[1]s\"] = %[1]s\n", PyName(prop.Name))
+				stateInputs.Add(prop.Name)
+				fmt.Fprintf(w, "        __props__[%[1]q] = %[1]s\n", PyName(prop.Name))
+			}
+		}
+		for _, prop := range res.Properties {
+			if !stateInputs.Has(prop.Name) {
+				fmt.Fprintf(w, "        __props__[%[1]q] = None\n", PyName(prop.Name))
 			}
 		}
 
@@ -1352,7 +1349,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	printComment(w, docs.String(), "    ")
 
 	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "    pulumi.log.warn(\"%s is deprecated: %s\")\n", name, fun.DeprecationMessage)
+		fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage)
 	}
 
 	// Copy the function arguments into a dictionary.
@@ -1853,7 +1850,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 		return
 	}
 
-	ty := mod.typeString(prop.Type, true, wrapInput, false /*optional*/, acceptMapping)
+	ty := mod.typeString(prop.Type, true, wrapInput && !prop.IsPlain, false /*optional*/, acceptMapping)
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
@@ -1908,12 +1905,12 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 			}
 			typ = "Any"
 		} else {
-			elementTypeSet := stringSet{}
+			elementTypeSet := codegen.NewStringSet()
 			var elementTypes []schema.Type
 			for _, e := range t.ElementTypes {
 				et := mod.typeString(e, input, false, false, acceptMapping)
-				if !elementTypeSet.has(et) {
-					elementTypeSet.add(et)
+				if !elementTypeSet.Has(et) {
+					elementTypeSet.Add(et)
 					elementTypes = append(elementTypes, e)
 				}
 			}
@@ -2076,7 +2073,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 		var defaultValue string
 		if !prop.IsRequired {
 			defaultValue = " = None"
@@ -2108,7 +2105,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 			escaped := strings.ReplaceAll(prop.DeprecationMessage, `"`, `\"`)
 			fmt.Fprintf(w, "        if %s is not None:\n", pname)
 			fmt.Fprintf(w, "            warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n", escaped)
-			fmt.Fprintf(w, "            pulumi.log.warn(\"%s is deprecated: %s\")\n", pname, escaped)
+			fmt.Fprintf(w, "            pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", pname, escaped)
 		}
 
 		// And add it to the dictionary.
@@ -2133,7 +2130,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input, wrapI
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	mod.genProperties(w, props, input /*setters*/, func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, input, wrapInput, !prop.IsRequired, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 	})
 
 	if !input && !mod.details(obj).functionType {

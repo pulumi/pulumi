@@ -28,6 +28,7 @@ func TestGeneratePackage(t *testing.T) {
 			"simple-enum-schema",
 			[]string{
 				"Tree/V1/RubberTree.cs",
+				"Tree/V1/Nursery.cs",
 				"Tree/V1/Enums.cs",
 				"Enums.cs",
 				"Inputs/ContainerArgs.cs",
@@ -43,6 +44,14 @@ func TestGeneratePackage(t *testing.T) {
 				"Cat.cs",
 				"Component.cs",
 				"Workload.cs",
+			},
+		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				"Inputs/FooArgs.cs",
+				"Component.cs",
 			},
 		},
 	}
