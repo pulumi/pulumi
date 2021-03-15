@@ -21,7 +21,6 @@ import (
 	"os"
 	"os/user"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -62,8 +61,8 @@ func newLockContent() (*lockContent, error) {
 }
 
 // checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
-func (b *localBackend) checkForLock(ctxt context.Context, stackRef backend.StackReference) error {
-	allFiles, err := listBucket(b.bucket, b.lockDir())
+func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
+	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
 	if err != nil {
 		return err
 	}
@@ -73,7 +72,7 @@ func (b *localBackend) checkForLock(ctxt context.Context, stackRef backend.Stack
 		if file.IsDir {
 			continue
 		}
-		if b.isLockForThisStack(file.Key, stackRef) && file.Key != b.lockPath(stackRef.Name()) {
+		if file.Key != b.lockPath(stackRef.Name()) {
 			lockKeys = append(lockKeys, file.Key)
 		}
 	}
@@ -83,7 +82,7 @@ func (b *localBackend) checkForLock(ctxt context.Context, stackRef backend.Stack
 			"process(es) to end or manually delete the lock file(s).", len(lockKeys))
 
 		for _, lock := range lockKeys {
-			content, err := b.bucket.ReadAll(ctxt, lock)
+			content, err := b.bucket.ReadAll(ctx, lock)
 			if err != nil {
 				return err
 			}
@@ -143,20 +142,16 @@ func (b *localBackend) Unlock(ctx context.Context, stackRef backend.StackReferen
 	}
 }
 
-func (b *localBackend) lockDir() string {
+func lockDir() string {
 	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
 }
 
-func (b *localBackend) lockPrefix(stack tokens.QName) string {
+func stackLockDir(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
-	return path.Join(b.lockDir(), fsutil.QnamePath(stack)+".")
-}
-
-func (b *localBackend) isLockForThisStack(file string, stackRef backend.StackReference) bool {
-	return strings.HasPrefix(file, b.lockPrefix(stackRef.Name()))
+	return path.Join(lockDir(), fsutil.QnamePath(stack))
 }
 
 func (b *localBackend) lockPath(stack tokens.QName) string {
 	contract.Require(stack != "", "stack")
-	return b.lockPrefix(stack) + b.lockID + ".json"
+	return path.Join(stackLockDir(stack), b.lockID+".json")
 }
