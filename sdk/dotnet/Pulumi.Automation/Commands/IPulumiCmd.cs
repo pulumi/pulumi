@@ -13,7 +13,8 @@ namespace Pulumi.Automation.Commands
             IEnumerable<string> args,
             string workingDir,
             IDictionary<string, string> additionalEnv,
-            Action<string>? onOutput = null,
+            Action<string>? onStandardOutput = null,
+            Action<string>? onStandardError = null,
             CancellationToken cancellationToken = default);
     }
 }

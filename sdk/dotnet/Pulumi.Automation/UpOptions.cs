@@ -1,6 +1,5 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
 
 namespace Pulumi.Automation
@@ -11,14 +10,12 @@ namespace Pulumi.Automation
     public sealed class UpOptions : UpdateOptions
     {
         public bool? ExpectNoChanges { get; set; }
-        
+
         public bool? Diff { get; set; }
 
         public List<string>? Replace { get; set; }
 
         public bool? TargetDependents { get; set; }
-
-        public Action<string>? OnOutput { get; set; }
 
         public PulumiFn? Program { get; set; }
     }

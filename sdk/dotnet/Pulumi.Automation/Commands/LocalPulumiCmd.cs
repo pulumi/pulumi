@@ -17,7 +17,8 @@ namespace Pulumi.Automation.Commands
             IEnumerable<string> args,
             string workingDir,
             IDictionary<string, string> additionalEnv,
-            Action<string>? onOutput = null,
+            Action<string>? onStandardOutput = null,
+            Action<string>? onStandardError = null,
             CancellationToken cancellationToken = default)
         {
             // all commands should be run in non-interactive mode.
@@ -61,8 +62,18 @@ namespace Pulumi.Automation.Commands
                 if (@event.Data != null)
                 {
                     standardOutputBuilder.AppendLine(@event.Data);
-                    onOutput?.Invoke(@event.Data);
-                }  
+                    onStandardOutput?.Invoke(@event.Data);
+                }
+            };
+
+            var standardErrorBuilder = new StringBuilder();
+            proc.ErrorDataReceived += (_, @event) =>
+            {
+                if (@event.Data != null)
+                {
+                    standardErrorBuilder.AppendLine(@event.Data);
+                    onStandardError?.Invoke(@event.Data);
+                }
             };
 
             var tcs = new TaskCompletionSource<CommandResult>();
@@ -88,12 +99,11 @@ namespace Pulumi.Automation.Commands
                 }
             });
 
-            proc.Exited += async (_, @event) =>
+            proc.Exited += (_, @event) =>
             {
                 var code = proc.ExitCode;
-                var stdErr = await proc.StandardError.ReadToEndAsync().ConfigureAwait(false);
 
-                var result = new CommandResult(code, standardOutputBuilder.ToString(), stdErr);
+                var result = new CommandResult(code, standardOutputBuilder.ToString(), standardErrorBuilder.ToString());
                 if (code != 0)
                 {
                     var ex = CommandException.CreateFromResult(result);
@@ -107,6 +117,7 @@ namespace Pulumi.Automation.Commands
 
             proc.Start();
             proc.BeginOutputReadLine();
+            proc.BeginErrorReadLine();
             return await tcs.Task.ConfigureAwait(false);
         }
     }
