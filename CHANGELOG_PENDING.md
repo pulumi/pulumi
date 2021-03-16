@@ -56,6 +56,9 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 - [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
   [#6507](https://github.com/pulumi/pulumi/pull/6507)
 
+- [cli] Add locking support to the self-managed backends using the `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
+  [#2697](https://github.com/pulumi/pulumi/pull/2697)
+
 ### Bug Fixes
 
 - [sdk/python] Fix mocks issue when passing a resource more than once.
