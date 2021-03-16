@@ -27,6 +27,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
 	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
@@ -74,6 +75,8 @@ type localBackend struct {
 
 	bucket Bucket
 	mutex  sync.Mutex
+
+	lockID string
 }
 
 type localBackendReference struct {
@@ -142,11 +145,18 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		}
 	}
 
+	// Allocate a unique lock ID for this backend instance.
+	lockID, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
 	return &localBackend{
 		d:           d,
 		originalURL: originalURL,
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
+		lockID:      lockID.String(),
 	}, nil
 }
 
@@ -268,6 +278,14 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stackRef)
+		if err != nil {
+			return nil, err
+		}
+		defer b.Unlock(ctx, stackRef)
+	}
+
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
 	stackName := stackRef.Name()
@@ -335,6 +353,15 @@ func (b *localBackend) ListStacks(
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return false, err
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	stackName := stack.Ref().Name()
 	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
@@ -351,6 +378,15 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 
 func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
 	newName tokens.QName) (backend.StackReference, error) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, err
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
 	snap, _, err := b.getStack(stackName)
@@ -420,6 +456,15 @@ func (b *localBackend) PackPolicies(
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -430,22 +475,56 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	op.Imports = imports
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
@@ -709,6 +788,14 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stk.Ref())
+		if err != nil {
+			return err
+		}
+		defer b.Unlock(ctx, stk.Ref())
+	}
 
 	stackName := stk.Ref().Name()
 	_, _, err := b.getStack(stackName)
