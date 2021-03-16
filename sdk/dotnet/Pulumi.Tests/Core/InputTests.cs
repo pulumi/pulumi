@@ -13,42 +13,21 @@ namespace Pulumi.Tests.Core
     public class InputTests : PulumiTest
     {
         [Fact]
-        public Task ConvertDefaultSimpleImmutableArray()
+        public Task InputListImplicitConversionFromDefaultImmutableArray()
             => RunInPreview(async () =>
             {
-                ImmutableArray<bool> defaultArray = default;
+                // Using explicit cast for the default value which then
+                // ends up being implicitly converted to InputList
+                await AssertCanConvert((ImmutableArray<bool>) default);
+                await AssertCanConvert((ImmutableArray<Input<bool>>) default);
+                await AssertCanConvert((ImmutableArray<Output<bool>>) default);
 
-                InputList<bool> inputList= defaultArray;
+                static async Task AssertCanConvert(InputList<bool> inputList)
+                {
+                    var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
 
-                var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
-
-                Assert.Empty(data.Value);
-            });
-
-        [Fact]
-        public Task ConvertDefaultInputImmutableArray()
-            => RunInPreview(async () =>
-            {
-                ImmutableArray<Input<bool>> defaultArray = default;
-
-                InputList<bool> inputList= defaultArray;
-
-                var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
-
-                Assert.Empty(data.Value);
-            });
-
-        [Fact]
-        public Task ConvertDefaultOutputImmutableArray()
-            => RunInPreview(async () =>
-            {
-                ImmutableArray<Output<bool>> defaultArray = default;
-
-                InputList<bool> inputList= defaultArray;
-
-                var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
-
-                Assert.Empty(data.Value);
+                    Assert.Empty(data.Value);
+                }
             });
 
         [Fact]
