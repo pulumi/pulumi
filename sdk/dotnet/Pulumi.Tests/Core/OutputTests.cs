@@ -352,29 +352,17 @@ namespace Pulumi.Tests.Core
                 });
 
             [Fact]
-            public Task OutputAllInputImmutableArrayDefault()
+            public Task OutputAllDefaultImmutableArray()
                 => RunInPreview(async () =>
                 {
-                    ImmutableArray<Input<bool>> defaultArray = default;
+                    await AssertEmpty(Output.All((ImmutableArray<Input<bool>>) default));
+                    await AssertEmpty(Output.All((ImmutableArray<Output<bool>>) default));
 
-                    var output = Output.All(defaultArray);
-
-                    var result = await output.DataTask.ConfigureAwait(false);
-
-                    Assert.Empty(result.Value);
-                });
-
-            [Fact]
-            public Task OutputAllOutputImmutableArrayDefault()
-                => RunInPreview(async () =>
-                {
-                    ImmutableArray<Output<bool>> defaultArray = default;
-
-                    var output = Output.All(defaultArray);
-
-                    var result = await output.DataTask.ConfigureAwait(false);
-
-                    Assert.Empty(result.Value);
+                    static async Task AssertEmpty(Output<ImmutableArray<bool>> output)
+                    {
+                        var result = await output.DataTask.ConfigureAwait(false);
+                        Assert.Empty(result.Value);
+                    }
                 });
         }
 
