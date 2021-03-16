@@ -295,8 +295,6 @@ static Pulumi.Log.Info(string message, Pulumi.Resource resource = null, int? str
 static Pulumi.Log.Warn(string message, Pulumi.Resource resource = null, int? streamId = null, bool? ephemeral = null) -> void
 static Pulumi.Output.All<T>(System.Collections.Generic.IEnumerable<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.All<T>(System.Collections.Generic.IEnumerable<Pulumi.Output<T>> outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
-static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Input<T>> inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
-static Pulumi.Output.All<T>(System.Collections.Immutable.ImmutableArray<Pulumi.Output<T>> outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.All<T>(params Pulumi.Input<T>[] inputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.All<T>(params Pulumi.Output<T>[] outputs) -> Pulumi.Output<System.Collections.Immutable.ImmutableArray<T>>
 static Pulumi.Output.Create<T>(System.Threading.Tasks.Task<T> value) -> Pulumi.Output<T>

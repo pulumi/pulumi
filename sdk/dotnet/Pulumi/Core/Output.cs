@@ -57,13 +57,10 @@ namespace Pulumi
         /// <see cref="All{T}(Input{T}[])"/> for more details.
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(IEnumerable<Input<T>> inputs)
-            => Output<T>.All(ImmutableArray.CreateRange(inputs));
-
-        /// <summary>
-        /// <see cref="All{T}(Input{T}[])"/> for more details.
-        /// </summary>
-        public static Output<ImmutableArray<T>> All<T>(ImmutableArray<Input<T>> inputs)
-            => Output<T>.All(ImmutableArray.CreateRange(inputs.EnsureNotDefault()));
+            => Output<T>.All(ImmutableArray.CreateRange(inputs switch {
+                   ImmutableArray<Input<T>> immutable => immutable.EnsureNotDefault(),
+                   _ => inputs,
+               }));
 
         /// <summary>
         /// Combines all the <see cref="Output{T}"/> values in <paramref name="outputs"/>
@@ -79,13 +76,10 @@ namespace Pulumi
         /// <see cref="All{T}(Output{T}[])"/> for more details.
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(IEnumerable<Output<T>> outputs)
-            => Output<T>.All(ImmutableArray.CreateRange(outputs.Select(o => (Input<T>)o)));
-
-        /// <summary>
-        /// <see cref="All{T}(Output{T}[])"/> for more details.
-        /// </summary>
-        public static Output<ImmutableArray<T>> All<T>(ImmutableArray<Output<T>> outputs)
-            => Output<T>.All(ImmutableArray.CreateRange(outputs.EnsureNotDefault().Select(o => (Input<T>)o)));
+            => Output<T>.All(ImmutableArray.CreateRange((outputs switch {
+                   ImmutableArray<Output<T>> immutable => immutable.EnsureNotDefault(),
+                   _ => outputs,
+               }).Select(o => (Input<T>)o)));
 
         /// <summary>
         /// Takes in a <see cref="FormattableString"/> with potential <see cref="Input{T}"/>s or
