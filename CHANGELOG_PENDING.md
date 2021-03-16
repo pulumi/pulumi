@@ -70,3 +70,6 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 - [cli] Ensure the user has the correct access to the secrets manager before using it as part of
   `pulumi stack export --show-secrets`.
   [#6215](https://github.com/pulumi/pulumi/pull/6210)
+
+- [sdk/go] Implement getResource in the mock monitor.
+  [#5923](https://github.com/pulumi/pulumi/pull/5923)
