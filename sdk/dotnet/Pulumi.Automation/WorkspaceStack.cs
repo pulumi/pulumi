@@ -434,6 +434,10 @@ namespace Pulumi.Automation
                 }
             }
 
+            var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
+            args.Add("--exec-kind");
+            args.Add(execKind);
+
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
@@ -485,6 +489,10 @@ namespace Pulumi.Automation
                     args.Add(options.Parallel.Value.ToString());
                 }
             }
+
+            var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
+            args.Add("--exec-kind");
+            args.Add(execKind);
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);

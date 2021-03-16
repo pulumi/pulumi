@@ -389,6 +389,9 @@ export class Stack {
             });
         }
 
+        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        args.push("--exec-kind", kind);
+
         const refPromise = this.runPulumiCmd(args, opts?.onOutput);
         const [refResult, tail] = await Promise.all([refPromise, logPromise]);
         await cleanUp(tail, logFile);
@@ -438,6 +441,9 @@ export class Stack {
                 onEvent(event);
             });
         }
+
+        const kind = this.workspace.program ? execKind.inline : execKind.local;
+        args.push("--exec-kind", kind);
 
         const desPromise = this.runPulumiCmd(args, opts?.onOutput);
         const [desResult, tail] = await Promise.all([desPromise, logPromise]);

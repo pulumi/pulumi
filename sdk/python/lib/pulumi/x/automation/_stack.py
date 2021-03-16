@@ -375,6 +375,9 @@ class Stack:
         args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
+
         self.workspace.select_stack(self.name)
         refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
@@ -401,6 +404,9 @@ class Stack:
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
+
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
 
         self.workspace.select_stack(self.name)
         destroy_result = self._run_pulumi_cmd_sync(args, on_output)
