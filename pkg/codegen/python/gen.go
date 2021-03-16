@@ -806,13 +806,12 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 		var hasTypes bool
 		for _, t := range mod.types {
 			name := tokenToName(t.Token)
-			var functionType bool
+			functionType := mod.details(t).functionType
 			switch {
 			case input:
 				name += "Args"
-			case mod.details(t).functionType:
+			case functionType:
 				name += "Result"
-				functionType = true
 			}
 
 			if input && mod.details(t).inputType {
