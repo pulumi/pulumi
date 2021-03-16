@@ -25,7 +25,6 @@ namespace Pulumi.Tests.Core
                 static async Task AssertCanConvert(InputList<bool> inputList)
                 {
                     var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
-
                     Assert.Empty(data.Value);
                 }
             });
