@@ -27,7 +27,6 @@ namespace Pulumi
             value = pair.Value;
         }
 
-
         public static Output<object?> ToObjectOutput(this object? obj)
         {
             var output = obj is IInput input ? input.ToOutput() : obj as IOutput;
