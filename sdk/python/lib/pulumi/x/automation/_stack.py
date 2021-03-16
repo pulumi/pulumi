@@ -12,23 +12,28 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import json
+import grpc
+import os
+import tempfile
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional
-import grpc
+from typing import List, Any, Mapping, MutableMapping, Optional, Callable
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
 from .errors import StackAlreadyExistsError
-from .events import OpType
+from .events import OpType, EngineEvent
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
 
 _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
+
+OnEvent = Callable[[EngineEvent], Any]
 
 
 class ExecKind(str, Enum):
@@ -60,26 +65,14 @@ OpMap = MutableMapping[OpType, int]
 
 
 class UpdateSummary:
-    # pre-update info
-    kind: str
-    start_time: datetime
-    message: str
-    environment: Mapping[str, str]
-    config: ConfigMap
-
-    # post-update info
-    result: str
-    end_time: datetime
-    version: Optional[int]
-    deployment: Optional[str]
-    resource_changes: Optional[OpMap]
-
     def __init__(self,
+                 # pre-update info
                  kind: str,
                  start_time: datetime,
                  message: str,
                  environment: Mapping[str, str],
                  config: Mapping[str, dict],
+                 # post-update info
                  result: str,
                  end_time: datetime,
                  version: Optional[int] = None,
@@ -106,33 +99,28 @@ class UpdateSummary:
 
 
 class BaseResult:
-    stdout: str
-    stderr: str
-
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
         self.stderr = stderr
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(stdout={self.stdout!r}, stderr={self.stderr!r})"
+        inputs = self.__dict__
+        fields = [f"{key}={inputs[key]!r}" for key in inputs]
+        fields = ", ".join(fields)
+        return f"{self.__class__.__name__}({fields})"
 
 
 class PreviewResult(BaseResult):
-    pass
+    def __init__(self, stdout: str, stderr: str, change_summary: OpMap):
+        super().__init__(stdout, stderr)
+        self.change_summary = change_summary
 
 
 class UpResult(BaseResult):
-    outputs: OutputMap
-    summary: UpdateSummary
-
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
         super().__init__(stdout, stderr)
         self.outputs = outputs
         self.summary = summary
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(outputs={self.outputs!r}, summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class RefreshResult(BaseResult):
@@ -140,30 +128,14 @@ class RefreshResult(BaseResult):
         super().__init__(stdout, stderr)
         self.summary = summary
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
-
 
 class DestroyResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
         super().__init__(stdout, stderr)
         self.summary = summary
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
-
 
 class Stack:
-    # pylint: disable=unused-argument
-
-    name: str
-    """The name identifying the Stack."""
-
-    workspace: Workspace
-    """The Workspace the Stack was created from."""
-
     @classmethod
     def create(cls, stack_name: str, workspace: Workspace) -> 'Stack':
         """
@@ -245,6 +217,7 @@ class Stack:
            target_dependents: Optional[bool] = None,
            replace: Optional[List[str]] = None,
            on_output: Optional[OnOutput] = None,
+           on_event: Optional[OnEvent] = None,
            program: Optional[PulumiFn] = None) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -259,6 +232,7 @@ class Stack:
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :returns: UpResult
         """
@@ -290,6 +264,10 @@ class Stack:
 
         args.extend(["--exec-kind", kind])
 
+        if on_event:
+            log_file, temp_dir = _create_log_file("up")
+            args.extend(["--event-log", log_file])
+
         try:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
@@ -309,6 +287,7 @@ class Stack:
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
                 on_output: Optional[OnOutput] = None,
+                on_event: Optional[OnEvent] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -323,6 +302,7 @@ class Stack:
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :returns: PreviewResult
         """
@@ -353,6 +333,9 @@ class Stack:
             args.append(f"--client=127.0.0.1:{port}")
         args.extend(["--exec-kind", kind])
 
+        log_file, temp_dir = _create_log_file("preview")
+        args.extend(["--event-log", log_file])
+
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output)
             return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr)
@@ -365,7 +348,8 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
-                on_output: Optional[OnOutput] = None) -> RefreshResult:
+                on_output: Optional[OnOutput] = None,
+                on_event: Optional[OnEvent] = None) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
@@ -376,6 +360,7 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :returns: RefreshResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -386,6 +371,10 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         self.workspace.select_stack(self.name)
+
+        if on_event:
+            log_file, temp_dir = _create_log_file("refresh")
+            args.extend(["--event-log", log_file])
         refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
         assert summary is not None
@@ -396,7 +385,8 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 target_dependents: Optional[bool] = None,
-                on_output: Optional[OnOutput] = None) -> DestroyResult:
+                on_output: Optional[OnOutput] = None,
+                on_event: Optional[OnEvent] = None) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
 
@@ -406,6 +396,7 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :returns: DestroyResult
         """
         extra_args = _parse_extra_args(**locals())
@@ -416,6 +407,11 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         self.workspace.select_stack(self.name)
+
+        if on_event:
+            log_file, temp_dir = _create_log_file("destroy")
+            args.extend(["--event-log", log_file])
+
         destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
         assert summary is not None
@@ -571,7 +567,9 @@ class Stack:
     def _run_pulumi_cmd_sync(self,
                              args: List[str],
                              on_output: Optional[OnOutput] = None) -> CommandResult:
-        envs = {"PULUMI_HOME": self.workspace.pulumi_home} if self.workspace.pulumi_home else {}
+        envs = {"PULUMI_DEBUG_COMMANDS": "true"}
+        if self.workspace.pulumi_home is not None:
+            envs = {**envs, "PULUMI_HOME": self.workspace.pulumi_home}
         envs = {**envs, **self.workspace.env_vars}
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
@@ -621,3 +619,29 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
     :returns: The fully qualified stack name.
     """
     return f"{org}/{project}/{stack}"
+
+
+def _create_log_file(command: str) -> (str, tempfile.TemporaryDirectory):
+    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")
+    return os.path.join(log_dir.name, "eventlog.txt"), log_dir
+
+
+async def _watch_logs(filename: str):
+    n = 0
+    while not os.path.exists(filename):
+        n += 1
+        # If the file still doesn't exist after 10 seconds, raise an exception.
+        if n > 100:
+            raise TimeoutError("Log file never found.")
+        await asyncio.sleep(0.1)
+
+    with open(filename) as f:
+        while True:
+            line = f.readline()
+
+            # sleep if file hasn't been updated
+            if not line:
+                await asyncio.sleep(0.1)
+                continue
+
+            yield line
