@@ -36,18 +36,6 @@ class Component(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[ComponentArgs] = None,
-                 opts: Optional[pulumi.ResourceOptions] = None):
-        """
-        Create a Component resource with the given unique name, props, and options.
-        :param str resource_name: The name of the resource.
-        :param ComponentArgs args: The arguments to use to populate this resource's properties.
-        :param pulumi.ResourceOptions opts: Options for the resource.
-        """
-        ...
-    @overload
-    def __init__(__self__,
-                 resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
                  __props__=None,
@@ -56,6 +44,18 @@ class Component(pulumi.CustomResource):
         """
         Create a Component resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: Optional[ComponentArgs] = None,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a Component resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param ComponentArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...

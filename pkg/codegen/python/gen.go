@@ -998,22 +998,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		allOptionalInputs = allOptionalInputs && !prop.IsRequired
 	}
 
-	// Now generate __init__ overloads along with an implementation...
+	// Emit __init__ overloads and implementation...
 
-	// First, generate an __init__ overload that accepts the resource's inputs from the args class.
-	fmt.Fprintf(w, "    @overload\n")
-	fmt.Fprintf(w, "    def __init__(__self__,\n")
-	fmt.Fprintf(w, "                 resource_name: str,\n")
-	if allOptionalInputs {
-		fmt.Fprintf(w, "                 args: Optional[%sArgs] = None,\n", name)
-	} else {
-		fmt.Fprintf(w, "                 args: %sArgs,\n", name)
-	}
-	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None):\n")
-	mod.genInitDocstring(w, res, name, true /*argsOverload*/)
-	fmt.Fprintf(w, "        ...\n")
-
-	// Helper for generating an init method with all properties as arguments.
+	// Helper for generating an init method with inputs as function arguments.
 	emitInitMethodSignature := func(methodName string) {
 		fmt.Fprintf(w, "    def %s(__self__,\n", methodName)
 		fmt.Fprintf(w, "                 resource_name: str,\n")
@@ -1033,13 +1020,26 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, ",\n                 __opts__=None):\n")
 	}
 
-	// Next, generate an __init__ overload that accepts the resource's inputs as function arguments.
+	// Emit an __init__ overload that accepts the resource's inputs as function arguments.
 	fmt.Fprintf(w, "    @overload\n")
 	emitInitMethodSignature("__init__")
 	mod.genInitDocstring(w, res, name, false /*argsOverload*/)
 	fmt.Fprintf(w, "        ...\n")
 
-	// Next, generate the actual implementation of __init__, which does the appropriate thing based on which
+	// Emit an __init__ overload that accepts the resource's inputs from the args class.
+	fmt.Fprintf(w, "    @overload\n")
+	fmt.Fprintf(w, "    def __init__(__self__,\n")
+	fmt.Fprintf(w, "                 resource_name: str,\n")
+	if allOptionalInputs {
+		fmt.Fprintf(w, "                 args: Optional[%sArgs] = None,\n", name)
+	} else {
+		fmt.Fprintf(w, "                 args: %sArgs,\n", name)
+	}
+	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None):\n")
+	mod.genInitDocstring(w, res, name, true /*argsOverload*/)
+	fmt.Fprintf(w, "        ...\n")
+
+	// Emit the actual implementation of __init__, which does the appropriate thing based on which
 	// overload was called.
 	fmt.Fprintf(w, "    def __init__(__self__, resource_name: str, *args, **kwargs):\n")
 	fmt.Fprintf(w, "        resource_args, opts = _utilities.get_resource_args_opts(%sArgs, pulumi.ResourceOptions, *args, **kwargs)\n", name)
@@ -1049,7 +1049,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            __self__._internal_init(resource_name, *args, **kwargs)\n")
 	fmt.Fprintf(w, "\n")
 
-	// Finally, generate the _internal_init helper method which provides the bulk of the __init__ implementation.
+	// Emit the _internal_init helper method which provides the bulk of the __init__ implementation.
 	emitInitMethodSignature("_internal_init")
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)

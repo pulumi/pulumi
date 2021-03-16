@@ -92,18 +92,6 @@ class RubberTree(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: RubberTreeArgs,
-                 opts: Optional[pulumi.ResourceOptions] = None):
-        """
-        Create a RubberTree resource with the given unique name, props, and options.
-        :param str resource_name: The name of the resource.
-        :param RubberTreeArgs args: The arguments to use to populate this resource's properties.
-        :param pulumi.ResourceOptions opts: Options for the resource.
-        """
-        ...
-    @overload
-    def __init__(__self__,
-                 resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  container: Optional[pulumi.Input[pulumi.InputType['_root_inputs.ContainerArgs']]] = None,
                  diameter: Optional[pulumi.Input['Diameter']] = None,
@@ -116,6 +104,18 @@ class RubberTree(pulumi.CustomResource):
         """
         Create a RubberTree resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: RubberTreeArgs,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a RubberTree resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param RubberTreeArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...

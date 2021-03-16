@@ -48,18 +48,6 @@ class Cat(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[CatArgs] = None,
-                 opts: Optional[pulumi.ResourceOptions] = None):
-        """
-        Create a Cat resource with the given unique name, props, and options.
-        :param str resource_name: The name of the resource.
-        :param CatArgs args: The arguments to use to populate this resource's properties.
-        :param pulumi.ResourceOptions opts: Options for the resource.
-        """
-        ...
-    @overload
-    def __init__(__self__,
-                 resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  age: Optional[pulumi.Input[int]] = None,
                  pet: Optional[pulumi.Input[pulumi.InputType['PetArgs']]] = None,
@@ -69,6 +57,18 @@ class Cat(pulumi.CustomResource):
         """
         Create a Cat resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: Optional[CatArgs] = None,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a Cat resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param CatArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...

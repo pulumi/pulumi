@@ -24,18 +24,6 @@ class Workload(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: Optional[WorkloadArgs] = None,
-                 opts: Optional[pulumi.ResourceOptions] = None):
-        """
-        Create a Workload resource with the given unique name, props, and options.
-        :param str resource_name: The name of the resource.
-        :param WorkloadArgs args: The arguments to use to populate this resource's properties.
-        :param pulumi.ResourceOptions opts: Options for the resource.
-        """
-        ...
-    @overload
-    def __init__(__self__,
-                 resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  __props__=None,
                  __name__=None,
@@ -43,6 +31,18 @@ class Workload(pulumi.CustomResource):
         """
         Create a Workload resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: Optional[WorkloadArgs] = None,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a Workload resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param WorkloadArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...

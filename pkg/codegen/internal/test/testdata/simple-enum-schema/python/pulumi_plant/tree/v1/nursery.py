@@ -54,18 +54,6 @@ class Nursery(pulumi.CustomResource):
     @overload
     def __init__(__self__,
                  resource_name: str,
-                 args: NurseryArgs,
-                 opts: Optional[pulumi.ResourceOptions] = None):
-        """
-        Create a Nursery resource with the given unique name, props, and options.
-        :param str resource_name: The name of the resource.
-        :param NurseryArgs args: The arguments to use to populate this resource's properties.
-        :param pulumi.ResourceOptions opts: Options for the resource.
-        """
-        ...
-    @overload
-    def __init__(__self__,
-                 resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  sizes: Optional[pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]]] = None,
                  varieties: Optional[pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]]] = None,
@@ -78,6 +66,18 @@ class Nursery(pulumi.CustomResource):
         :param pulumi.ResourceOptions opts: Options for the resource.
         :param pulumi.Input[Mapping[str, pulumi.Input['TreeSize']]] sizes: The sizes of trees available
         :param pulumi.Input[Sequence[pulumi.Input['RubberTreeVariety']]] varieties: The varieties available
+        """
+        ...
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: NurseryArgs,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a Nursery resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param NurseryArgs args: The arguments to use to populate this resource's properties.
+        :param pulumi.ResourceOptions opts: Options for the resource.
         """
         ...
     def __init__(__self__, resource_name: str, *args, **kwargs):
