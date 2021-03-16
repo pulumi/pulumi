@@ -114,9 +114,6 @@ CHANGELOG
 
 ## 2.20.0 (2021-02-03)
 
-- [cli] Add locking support to the self-managed backends using the `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
-  [#6437](https://github.com/pulumi/pulumi/pull/6437)
-
 - [sdk/python] Fix `Output.from_input` to unwrap nested output values in input types (args classes), which addresses
   an issue that was preventing passing instances of args classes with nested output values to Provider resources.
   [#6221](https://github.com/pulumi/pulumi/pull/6221)
