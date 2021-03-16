@@ -13,6 +13,45 @@ namespace Pulumi.Tests.Core
     public class InputTests : PulumiTest
     {
         [Fact]
+        public Task ConvertDefaultSimpleImmutableArray()
+            => RunInPreview(async () =>
+            {
+                ImmutableArray<bool> defaultArray = default;
+
+                InputList<bool> inputList= defaultArray;
+
+                var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
+
+                Assert.Empty(data.Value);
+            });
+
+        [Fact]
+        public Task ConvertDefaultInputImmutableArray()
+            => RunInPreview(async () =>
+            {
+                ImmutableArray<Input<bool>> defaultArray = default;
+
+                InputList<bool> inputList= defaultArray;
+
+                var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
+
+                Assert.Empty(data.Value);
+            });
+
+        [Fact]
+        public Task ConvertDefaultOutputImmutableArray()
+            => RunInPreview(async () =>
+            {
+                ImmutableArray<Output<bool>> defaultArray = default;
+
+                InputList<bool> inputList= defaultArray;
+
+                var data = await inputList.ToOutput().DataTask.ConfigureAwait(false);
+
+                Assert.Empty(data.Value);
+            });
+
+        [Fact]
         public Task MergeInputMaps()
             => RunInPreview(async () =>
             {
@@ -61,7 +100,7 @@ namespace Pulumi.Tests.Core
                 Assert.True(data.Value.ContainsValue("testValue"));
                 Assert.True(data.Value.ContainsValue(123));
             });
-        
+
         [Fact]
         public Task InputListUnionInitializer()
             => RunInPreview(async () =>

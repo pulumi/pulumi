@@ -27,6 +27,7 @@ namespace Pulumi
             value = pair.Value;
         }
 
+
         public static Output<object?> ToObjectOutput(this object? obj)
         {
             var output = obj is IInput input ? input.ToOutput() : obj as IOutput;
@@ -34,6 +35,9 @@ namespace Pulumi
                 ? new Output<object?>(output.GetDataAsync())
                 : Output.Create(obj);
         }
+
+        public static ImmutableArray<TItem> EnsureNotDefault<TItem>(this ImmutableArray<TItem> items)
+            => items.IsDefault ? ImmutableArray<TItem>.Empty : items;
 
         public static ImmutableArray<TResult> SelectAsArray<TItem, TResult>(this ImmutableArray<TItem> items, Func<TItem, TResult> map)
             => ImmutableArray.CreateRange(items, map);

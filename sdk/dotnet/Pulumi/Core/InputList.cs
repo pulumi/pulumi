@@ -114,10 +114,10 @@ namespace Pulumi
         #region construct from immutable array
 
         public static implicit operator InputList<T>(ImmutableArray<T> values)
-            => values.SelectAsArray(v => (Input<T>)v);
+            => values.EnsureNotDefault().SelectAsArray(v => (Input<T>)v);
 
         public static implicit operator InputList<T>(ImmutableArray<Output<T>> values)
-            => values.SelectAsArray(v => (Input<T>)v);
+            => values.EnsureNotDefault().SelectAsArray(v => (Input<T>)v);
 
         public static implicit operator InputList<T>(ImmutableArray<Input<T>> values)
             => Output.All(values);
