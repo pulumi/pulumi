@@ -65,7 +65,7 @@
     </PropertyGroup>
     <Exec Command="dotnet build dotnet.sln /p:Version=$(Version)"
           WorkingDirectory="$(DotNetSdkDirectory)" />
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet"
           WorkingDirectory="$(SdkDirectory)"/>
     
   </Target>
@@ -74,7 +74,7 @@
     <Exec Command="pulumictl get version --language dotnet" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet"
       EnvironmentVariables="GOBIN=$(PulumiBin)"
       WorkingDirectory="$(SdkDirectory)"/>
     
@@ -98,7 +98,7 @@
     <Exec Command="pulumictl get version" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go"
         WorkingDirectory="$(SdkDirectory)"/>
     
   </Target>
@@ -107,7 +107,7 @@
     <Exec Command="pulumictl get version" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go"
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
     
@@ -143,7 +143,7 @@
     </ItemGroup>
     <Copy SourceFiles="@(NodeSdkTestDataFiles)"
           DestinationFolder="$(NodeJSSdkDirectory)\bin\tests\runtime\langhost\cases" />
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs"
           WorkingDirectory="$(SdkDirectory)"/>
     
   </Target>
@@ -157,7 +157,7 @@
     <Exec Command="pulumictl get version --language javascript" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs"
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
     
@@ -217,7 +217,7 @@
           DestinationFolder="$(PythonSdkDirectory)\env\src" />
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python"
     WorkingDirectory="$(SdkDirectory)"/>
     
   </Target>
@@ -236,7 +236,7 @@
     <Exec Command="pulumictl get version" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python"
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
     

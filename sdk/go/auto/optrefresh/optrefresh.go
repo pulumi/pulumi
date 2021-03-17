@@ -19,8 +19,8 @@ package optrefresh
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the refresh

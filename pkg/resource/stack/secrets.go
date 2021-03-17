@@ -23,8 +23,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/service"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 // DefaultSecretsProvider is the default SecretsProvider to use when deserializing deployments.

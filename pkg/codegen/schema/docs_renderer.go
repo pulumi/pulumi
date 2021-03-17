@@ -10,7 +10,7 @@ import (
 	"github.com/pgavlin/goldmark/renderer"
 	"github.com/pgavlin/goldmark/renderer/markdown"
 	"github.com/pgavlin/goldmark/util"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A RendererOption controls the behavior of a Renderer.
