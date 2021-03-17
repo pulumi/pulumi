@@ -15,8 +15,8 @@
 package plugin
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // ConfigSource is an interface that allows a plugin context to fetch configuration data for a plugin named by

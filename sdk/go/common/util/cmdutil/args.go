@@ -17,7 +17,7 @@ package cmdutil
 import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/spf13/cobra"
 )
 

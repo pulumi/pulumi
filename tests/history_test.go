@@ -16,8 +16,8 @@ package tests
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
