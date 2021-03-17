@@ -17,7 +17,7 @@ package deploytest
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 // BackendClient provides a simple implementation of deploy.BackendClient that defers to a function value.

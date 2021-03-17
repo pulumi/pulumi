@@ -3,7 +3,7 @@ package test
 import (
 	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func NewHost(schemaDirectoryPath string) plugin.Host {

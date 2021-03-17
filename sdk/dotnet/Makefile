@@ -1,5 +1,5 @@
 PROJECT_NAME    := Pulumi .NET Core SDK
-LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet
+LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 
@@ -41,7 +41,7 @@ build::
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
 	#dotnet clean
 	dotnet build dotnet.sln /p:Version=${DOTNET_VERSION}
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 	# Automation is pre-release, so build it separately with a different version to produce a preview NuGet package
 	dotnet pack Pulumi.Automation/Pulumi.Automation.csproj /p:VersionPrefix=${PREVIEW_VERSION_PREFIX} /p:VersionSuffix=${PREVIEW_VERSION_SUFFIX}
 ifneq (${PREVIEW_VERSION_SUFFIX},${VERSION_SUFFIX})
@@ -49,7 +49,7 @@ ifneq (${PREVIEW_VERSION_SUFFIX},${VERSION_SUFFIX})
 endif
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: build install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
@@ -68,11 +68,11 @@ test_all:: dotnet_test
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"

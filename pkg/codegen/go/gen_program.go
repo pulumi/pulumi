@@ -15,7 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type generator struct {
@@ -131,7 +131,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, 
 	}
 
 	g.Fprintf(w, "\n")
-	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v2/go/pulumi\"\n")
+	g.Fprintf(w, "\"github.com/pulumi/pulumi/sdk/v3/go/pulumi\"\n")
 
 	for _, imp := range pulumiImports.SortedValues() {
 		g.Fprintf(w, "%s\n", imp)
@@ -163,7 +163,7 @@ func (g *generator) collectImports(
 			pulumiImports.Add(g.getPulumiImport(pkg, vPath, mod))
 		}
 		if _, isConfigVar := n.(*hcl2.ConfigVariable); isConfigVar {
-			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config\"")
+			pulumiImports.Add("\"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config\"")
 		}
 
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {

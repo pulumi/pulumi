@@ -19,8 +19,8 @@ import (
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Require loads a configuration value by its key, or panics if it doesn't exist.
