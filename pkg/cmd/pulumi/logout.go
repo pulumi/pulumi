@@ -21,8 +21,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/backend"
 	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
 	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newLogoutCmd() *cobra.Command {

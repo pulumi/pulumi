@@ -23,8 +23,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/backend/display"
 	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newStackOutputCmd() *cobra.Command {

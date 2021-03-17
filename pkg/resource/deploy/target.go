@@ -15,9 +15,9 @@
 package deploy
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // Target represents information about a deployment target.

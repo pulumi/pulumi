@@ -19,9 +19,9 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v2/secrets"
 	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider string) (secrets.Manager, error) {

@@ -17,10 +17,10 @@ package plugin
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Analyzer provides a pluggable interface for performing arbitrary analysis of entire projects/stacks/snapshots, and/or

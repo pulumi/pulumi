@@ -18,7 +18,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier) result.Result {

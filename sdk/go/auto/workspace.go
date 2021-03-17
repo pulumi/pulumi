@@ -17,9 +17,9 @@ package auto
 import (
 	"context"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.

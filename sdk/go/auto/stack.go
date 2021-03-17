@@ -105,19 +105,19 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/events"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optpreview"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optup"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 // Stack is an isolated, independently configurable instance of a Pulumi program.
@@ -873,7 +873,7 @@ func isNestedInvocation() bool {
 
 		frames := runtime.CallersFrames(callers)
 		for f, more := frames.Next(); more; f, more = frames.Next() {
-			if f.Function == "github.com/pulumi/pulumi/sdk/v2/go/pulumi.RunWithContext" {
+			if f.Function == "github.com/pulumi/pulumi/sdk/v3/go/pulumi.RunWithContext" {
 				return true
 			}
 		}

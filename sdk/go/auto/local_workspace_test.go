@@ -29,16 +29,16 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/events"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optpreview"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v2/go/auto/optup"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 var pulumiOrg = getTestOrg()
