@@ -112,7 +112,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task CreateSelectRemoveStack()
         {
-            var projectSettings = new ProjectSettings("node_test", ProjectRuntimeName.NodeJS);
+            var projectSettings = new ProjectSettings("create_select_remove_stack_test", ProjectRuntimeName.NodeJS);
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
@@ -147,7 +147,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task ManipulateConfig()
         {
-            var projectName = "node_test";
+            var projectName = "manipulate_config_test";
             var projectSettings = new ProjectSettings(projectName, ProjectRuntimeName.NodeJS);
 
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
@@ -241,7 +241,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task CheckStackStatus()
         {
-            var projectSettings = new ProjectSettings("node_test", ProjectRuntimeName.NodeJS);
+            var projectSettings = new ProjectSettings("check_stack_status_test", ProjectRuntimeName.NodeJS);
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
