@@ -449,7 +449,7 @@ class ResOutputsEvent(BaseEvent):
 class ResOpFailedEvent(BaseEvent):
     """
     ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
-    emitted before this event, indicating what the root cause of the error.
+    emitted before this event, indicating the root cause of the error.
     """
     def __init__(self,
                  metadata: StepEventMetadata,

@@ -174,7 +174,7 @@ type ResOutputsEvent struct {
 }
 
 // ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
-// emitted before this event, indiciating what the root cause of the error.
+// emitted before this event, indicating the root cause of the error.
 type ResOpFailedEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Status   int               `json:"status"`
