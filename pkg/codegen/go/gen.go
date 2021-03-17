@@ -34,7 +34,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/pkg/v2/codegen"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type typeDetails struct {
@@ -1690,7 +1690,7 @@ func (pkg *pkgContext) getImports(member interface{}, importsAndAliases map[stri
 		return
 	}
 
-	importsAndAliases["github.com/pulumi/pulumi/sdk/v2/go/pulumi"] = ""
+	importsAndAliases["github.com/pulumi/pulumi/sdk/v3/go/pulumi"] = ""
 }
 
 func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAliases map[string]string) {
@@ -1744,7 +1744,7 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 }
 
 func (pkg *pkgContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	importsAndAliases := map[string]string{"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config": ""}
+	importsAndAliases := map[string]string{"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config": ""}
 	pkg.getImports(variables, importsAndAliases)
 
 	pkg.genHeader(w, nil, importsAndAliases)
@@ -1806,7 +1806,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 	imports := map[string]string{
 		"github.com/blang/semver":                   "",
-		"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
+		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 	}
 	topLevelModule := pkg.mod == ""
 	if !topLevelModule {
@@ -2277,7 +2277,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			buffer := &bytes.Buffer{}
 			importsAndAliases := map[string]string{
 				"github.com/blang/semver":                   "",
-				"github.com/pulumi/pulumi/sdk/v2/go/pulumi": "",
+				"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 

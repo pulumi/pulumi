@@ -22,7 +22,7 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // Output helps encode the relationship between resources in a Pulumi application. Specifically an output property

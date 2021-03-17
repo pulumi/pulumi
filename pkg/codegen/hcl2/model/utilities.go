@@ -21,7 +21,7 @@ import (
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func syntaxOrNone(node hclsyntax.Node) hclsyntax.Node {

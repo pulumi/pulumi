@@ -45,14 +45,14 @@ import (
 	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
 	"github.com/pulumi/pulumi/pkg/v2/util/tracing"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/constant"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func hasDebugCommands() bool {
