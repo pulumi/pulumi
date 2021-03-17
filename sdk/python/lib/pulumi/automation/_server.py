@@ -19,10 +19,10 @@ from contextlib import suppress
 import grpc
 
 from ._workspace import PulumiFn
-from ... import log
-from ...runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
-from ...runtime import run_in_stack, reset_options, set_all_config
-from ...errors import RunError
+from .. import log
+from ..runtime.proto import language_pb2, plugin_pb2, LanguageRuntimeServicer
+from ..runtime import run_in_stack, reset_options, set_all_config
+from ..errors import RunError
 
 _py_version_less_than_3_7 = sys.version_info[0] == 3 and sys.version_info[1] < 7
 

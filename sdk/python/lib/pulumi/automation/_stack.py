@@ -29,8 +29,8 @@ from .errors import StackAlreadyExistsError
 from .events import OpMap, EngineEvent, SummaryEvent
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
-from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
-from ...runtime.proto import language_pb2_grpc
+from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
+from ..runtime.proto import language_pb2_grpc
 
 _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 

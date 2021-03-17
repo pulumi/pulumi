@@ -17,7 +17,7 @@ import sys
 import subprocess
 import unittest
 import pytest
-from pulumi.x.automation import (
+from pulumi.automation import (
     create_stack,
     InlineSourceRuntimeError,
     RuntimeError,
