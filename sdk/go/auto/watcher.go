@@ -17,8 +17,8 @@ import (
 	"encoding/json"
 	"github.com/nxadm/tail"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/events"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
 )
 
 func watchFile(path string, receivers []chan<- events.EngineEvent) (*tail.Tail, error) {

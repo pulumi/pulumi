@@ -29,16 +29,16 @@ import (
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/events"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 )
 
 var pulumiOrg = getTestOrg()
