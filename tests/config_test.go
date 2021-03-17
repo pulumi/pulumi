@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 func TestConfigCommands(t *testing.T) {

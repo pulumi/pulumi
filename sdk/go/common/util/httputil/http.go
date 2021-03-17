@@ -19,8 +19,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
 )
 
 // maxRetryCount is the number of times to try an http request before giving up an returning the last error
