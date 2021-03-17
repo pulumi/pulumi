@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package optdestroy contains functional options to be used with stack destroy operations
-// github.com/sdk/v2/go/x/auto Stack.Destroy(...optdestroy.Option)
-package optdestroy
+// Package optpreview contains functional options to be used with stack preview operations
+// github.com/sdk/v2/go/x/auto Stack.Preview(...optpreview.Option)
+package optpreview
 
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/events"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/debug"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/events"
 )
 
-// Parallel is the number of resource operations to run in parallel at once during the destroy
+// Parallel is the number of resource operations to run in parallel at once during the update
 // (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 func Parallel(n int) Option {
 	return optionFunc(func(opts *Options) {
@@ -31,14 +31,35 @@ func Parallel(n int) Option {
 	})
 }
 
-// Message (optional) to associate with the destroy operation
+// Message (optional) to associate with the preview operation
 func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Message = message
 	})
 }
 
-// Target specifies an exclusive list of resource URNs to destroy
+// ExpectNoChanges will cause the preview to return an error if any changes occur
+func ExpectNoChanges() Option {
+	return optionFunc(func(opts *Options) {
+		opts.ExpectNoChanges = true
+	})
+}
+
+// Diff displays operation as a rich diff showing the overall change
+func Diff() Option {
+	return optionFunc(func(opts *Options) {
+		opts.Diff = true
+	})
+}
+
+// Replace specifies an array of resource URNs to explicitly replace during the preview
+func Replace(urns []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.Replace = urns
+	})
+}
+
+// Target specifies an exclusive list of resource URNs to update
 func Target(urns []string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Target = urns
@@ -52,7 +73,13 @@ func TargetDependents() Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
+func DebugLogging(debugOpts debug.LoggingOptions) Option {
+	return optionFunc(func(opts *Options) {
+		opts.DebugLogOpts = debugOpts
+	})
+}
+
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
@@ -66,13 +93,7 @@ func EventStreams(channels ...chan<- events.EngineEvent) Option {
 	})
 }
 
-func DebugLogging(debugOpts debug.LoggingOptions) Option {
-	return optionFunc(func(opts *Options) {
-		opts.DebugLogOpts = debugOpts
-	})
-}
-
-// Option is a parameter to be applied to a Stack.Destroy() operation
+// Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
 }
@@ -84,18 +105,24 @@ type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 	Parallel int
-	// Message (optional) to associate with the destroy operation
+	// Message (optional) to associate with the preview operation
 	Message string
+	// Return an error if any changes occur during this preview
+	ExpectNoChanges bool
+	// Diff displays operation as a rich diff showing the overall change
+	Diff bool
+	// Specify resources to replace
+	Replace []string
 	// Specify an exclusive list of resource URNs to update
 	Target []string
 	// Allows updating of dependent targets discovered but not specified in the Target list
 	TargetDependents bool
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
+	// DebugLogOpts specifies additional settings for debug logging
+	DebugLogOpts debug.LoggingOptions
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
 	ProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
-	// DebugLogOpts specifies additional settings for debug logging
-	DebugLogOpts debug.LoggingOptions
 }
 
 type optionFunc func(*Options)

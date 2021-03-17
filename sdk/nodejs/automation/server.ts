@@ -13,12 +13,12 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
-import { isGrpcError, ResourceError, RunError } from "../../errors";
-import * as log from "../../log";
-import * as runtime from "../../runtime";
+import { isGrpcError, ResourceError, RunError } from "../errors";
+import * as log from "../log";
+import * as runtime from "../runtime";
 
-const langproto = require("../../proto/language_pb.js");
-const plugproto = require("../../proto/plugin_pb.js");
+const langproto = require("../proto/language_pb.js");
+const plugproto = require("../proto/plugin_pb.js");
 
 // maxRPCMessageSize raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 /** @internal */
