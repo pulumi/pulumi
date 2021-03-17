@@ -513,8 +513,14 @@ namespace Pulumi.Automation
             var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, cancellationToken).ConfigureAwait(false);
             var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, cancellationToken).ConfigureAwait(false);
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
-            var maskedOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
-            var plaintextOutput = JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
+
+            var maskedOutput = string.IsNullOrWhiteSpace(maskedResult.StandardOutput)
+                ? new Dictionary<string, object>()
+                : JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
+
+            var plaintextOutput = string.IsNullOrWhiteSpace(plaintextResult.StandardOutput)
+                ? new Dictionary<string, object>()
+                : JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
 
             var output = new Dictionary<string, OutputValue>();
             foreach (var (key, value) in plaintextOutput)
@@ -558,6 +564,9 @@ namespace Pulumi.Automation
             }
 
             var result = await this.RunCommandAsync(args, null, null, cancellationToken).ConfigureAwait(false);
+            if (string.IsNullOrWhiteSpace(result.StandardOutput))
+                return ImmutableList<UpdateSummary>.Empty;
+
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
             var list = JsonSerializer.Deserialize<List<UpdateSummary>>(result.StandardOutput, jsonOptions);
             return list.ToImmutableList();
