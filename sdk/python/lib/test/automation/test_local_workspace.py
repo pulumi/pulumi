@@ -19,7 +19,7 @@ from semver import VersionInfo
 from typing import List, Optional
 
 from pulumi import Config, export
-from pulumi.x.automation import (
+from pulumi.automation import (
     create_stack,
     create_or_select_stack,
     CommandError,

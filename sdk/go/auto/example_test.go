@@ -25,14 +25,14 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optdestroy"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optpreview"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v2/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
 )
 
 func Example() {

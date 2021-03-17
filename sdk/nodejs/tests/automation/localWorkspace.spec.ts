@@ -25,7 +25,7 @@ import {
     ProjectSettings,
     Stack,
     validatePulumiVersion,
-} from "../../x/automation";
+} from "../../automation";
 import { asyncTest } from "../util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
