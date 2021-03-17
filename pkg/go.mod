@@ -4,7 +4,7 @@ go 1.16
 
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
-	//github.com/pulumi/pulumi/sdk/v2 => ../sdk
+	github.com/pulumi/pulumi/sdk/v2 => ../sdk
 )
 
 require (
