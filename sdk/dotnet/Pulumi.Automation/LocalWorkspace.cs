@@ -450,6 +450,8 @@ namespace Pulumi.Automation
         private async Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(CancellationToken cancellationToken)
         {
             var result = await this.RunCommandAsync(new[] { "config", "--show-secrets", "--json" }, cancellationToken).ConfigureAwait(false);
+            Console.WriteLine("***JSON result in GetConfigAsync");
+            Console.WriteLine(result.StandardOutput);
             var dict = this._serializer.DeserializeJson<Dictionary<string, ConfigValue>>(result.StandardOutput);
             return dict.ToImmutableDictionary();
         }
