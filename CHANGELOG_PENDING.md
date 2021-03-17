@@ -39,6 +39,9 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 
 - [sdk/go] Support multiple folders in GOPATH.
   [#6228](https://github.com/pulumi/pulumi/pull/6228
+  
+- [sdk/nodejs] Allow `Mocks::newResource` to determine whether the created resource is a `CustomResource`.
+  [#6551](https://github.com/pulumi/pulumi/pull/6551)
 
 - [cli] Add ability to download arm64 provider plugins
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
