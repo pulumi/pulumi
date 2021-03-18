@@ -63,11 +63,9 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 			return nil, fmt.Errorf("project path already set: %q, unexpected path: %q", singleton.path, path)
 		}
 
-		fmt.Println("Using Project singleton")
 		return singleton.internal, nil
 	}
 
-	fmt.Println("Initializing Project singleton")
 	marshaller, err := marshallerForPath(path)
 	if err != nil {
 		return nil, err
@@ -105,11 +103,9 @@ func (singleton *projectStackLoader) load(path string) (*ProjectStack, error) {
 	defer singleton.Unlock()
 
 	if v, ok := singleton.internal[path]; ok {
-		fmt.Println("Using ProjectStack singleton")
 		return v, nil
 	}
 
-	fmt.Println("Initializing ProjectStack singleton")
 	marshaler, err := marshallerForPath(path)
 	if err != nil {
 		return nil, err
