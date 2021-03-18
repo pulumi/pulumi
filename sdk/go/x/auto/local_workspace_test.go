@@ -1295,24 +1295,56 @@ func TestPulumiVersion(t *testing.T) {
 	assert.Regexp(t, `v(\d+\.)(\d+\.)(\d+)(-.*)?`, version.String())
 }
 
+var minVersionTests = []struct {
+	name           string
+	minimumVersion Version
+	expected       bool
+}{
+	{
+		"higher_major",
+		Version{Major: 100, Minor: 0, Patch: 0},
+		false,
+	},
+	{
+		"lower_major",
+		Version{Major: 1, Minor: 0, Patch: 0},
+		false,
+	},
+	{
+		"higher_minor",
+		Version{Major: 2, Minor: 22, Patch: 0},
+		false,
+	},
+	{
+		"lower_minor",
+		Version{Major: 2, Minor: 1, Patch: 0},
+		true,
+	},
+	{
+		"equal_minor_higher_patch",
+		Version{Major: 2, Minor: 21, Patch: 2},
+		false,
+	},
+	{
+		"equal_minor_equal_patch",
+		Version{Major: 2, Minor: 21, Patch: 1},
+		true,
+	},
+	{
+		"equal_minor_lower_patch",
+		Version{Major: 2, Minor: 21, Patch: 0},
+		true,
+	},
+}
+
 func TestMinimumVersion(t *testing.T) {
-	ctx := context.Background()
-	ws, err := NewLocalWorkspace(ctx)
-	if err != nil {
-		t.Errorf("failed to create workspace, err: %v", err)
-		t.FailNow()
+	for _, tt := range minVersionTests {
+		t.Run(tt.name, func(t *testing.T) {
+			ws := LocalWorkspace{pulumiVersion: Version{Major: 2, Minor: 21, Patch: 1}}
+			versionIsValid := ws.checkVersionIsValid(tt.minimumVersion)
+			assert.Equal(t, tt.expected, versionIsValid)
+		})
 	}
-	testInvalidMinVersion := Version{
-		Major: 100,
-	}
-	versionIsValid := ws.checkValidVersion(testInvalidMinVersion)
-	assert.False(t, versionIsValid)
-	testValidMinVersion := Version{
-		Major: 2,
-		Minor: 1,
-	}
-	versionIsValid = ws.checkValidVersion(testValidMinVersion)
-	assert.True(t, versionIsValid)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {

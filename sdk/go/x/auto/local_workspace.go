@@ -546,17 +546,21 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (Version, error) 
 	return version, nil
 }
 
-func (l *LocalWorkspace) checkValidVersion(minVersion Version) bool {
-	if minVersion.Major > l.pulumiVersion.Major {
+func (l *LocalWorkspace) checkVersionIsValid(minVersion Version) bool {
+	pv := l.pulumiVersion
+	if minVersion.Major != pv.Major {
 		return false
 	}
-	if minVersion.Minor > l.pulumiVersion.Minor {
+	if minVersion.Minor < pv.Minor {
+		return true
+	}
+	if minVersion.Minor == pv.Minor {
+		if minVersion.Patch <= pv.Patch {
+			return true
+		}
 		return false
 	}
-	if minVersion.Patch > l.pulumiVersion.Patch {
-		return false
-	}
-	return true
+	return false
 }
 
 func (l *LocalWorkspace) runPulumiCmdSync(
@@ -625,7 +629,8 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	}
 	l.pulumiVersion = v
 
-	if !l.checkValidVersion(minimumVersion) {
+	if !l.checkVersionIsValid(minimumVersion) {
+		//nolint:lll
 		return nil, errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, l.pulumiVersion))
 	}
 
