@@ -35,9 +35,6 @@ import (
 const (
 	defaultProjectName = "project"
 
-	pulumiTemplateGitRepository       = "https://github.com/pulumi/templates.git"
-	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
-
 	// This file will be ignored when copying from the template cache to
 	// a project directory.
 	legacyPulumiTemplateManifestFile = ".pulumi.template.yaml"
@@ -49,6 +46,19 @@ const (
 	// pulumiLocalPolicyTemplatePathEnvVar is a path to the folder where policy templates are stored.
 	// It is used in sandboxed environments where the classic template folder may not be writable.
 	pulumiLocalPolicyTemplatePathEnvVar = "PULUMI_POLICY_TEMPLATE_PATH"
+)
+
+// These are variables instead of constants in order that they can be set using the `-X`
+// `ldflag` at build time, if necessary.
+var (
+	// The Git URL for Pulumi program templates
+	pulumiTemplateGitRepository = "https://github.com/pulumi/templates.git"
+	// The branch name for the template repository
+	pulumiTemplateBranch = "master"
+	// The Git URL for Pulumi Policy Pack templates
+	pulumiPolicyTemplateGitRepository = "https://github.com/pulumi/templates-policy.git"
+	// The branch name for the policy pack template repository
+	pulumiPolicyTemplateBranch = "master"
 )
 
 // TemplateKind describes the form of a template.
@@ -302,10 +312,12 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 	if !offline {
 		// Clone or update the pulumi/templates repo.
 		repo := pulumiTemplateGitRepository
+		branch := plumbing.NewBranchReferenceName(pulumiTemplateBranch)
 		if templateKind == TemplateKindPolicyPack {
 			repo = pulumiPolicyTemplateGitRepository
+			branch = plumbing.NewBranchReferenceName(pulumiPolicyTemplateBranch)
 		}
-		err := gitutil.GitCloneOrPull(repo, plumbing.HEAD, templateDir, false /*shallow*/)
+		err := gitutil.GitCloneOrPull(repo, branch, templateDir, false /*shallow*/)
 		if err != nil {
 			return TemplateRepository{}, err
 		}
