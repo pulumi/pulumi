@@ -70,9 +70,7 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
 }
 
 /**
- * error logs a fatal condition. Calling error does not by itself stop
- * processing resource operations. To stop programs should raise
- * unhandled exceptions after calling error.
+ * error logs a fatal condition. Consider raising an exception after calling error to stop the Pulumi program.
  */
 export function error(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     errcnt++; // remember the error so we can suppress leaks.

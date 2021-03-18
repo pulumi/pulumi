@@ -69,9 +69,8 @@ func (log *logState) Warn(msg string, args *LogArgs) error {
 	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_WARNING, msg, args)
 }
 
-// Logs a fatal condition. Calling Error does not by itself stop
-// processing resource operations. To stop programs should panic or
-// explicitly return a non-nil error object early after calling Error.
+// Logs a fatal condition. Consider returning a non-nil error object
+// after calling Error to stop the Pulumi program.
 func (log *logState) Error(msg string, args *LogArgs) error {
 	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_ERROR, msg, args)
 }
