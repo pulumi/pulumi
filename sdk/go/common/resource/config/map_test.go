@@ -17,6 +17,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"sync"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -1244,6 +1245,58 @@ func TestCopyMap(t *testing.T) {
 		})
 	}
 
+}
+
+func TestConcurrentOperations(t *testing.T) {
+	configs := map[string]string{
+		"1":  "a",
+		"2":  "b",
+		"3":  "c",
+		"4":  "d",
+		"5":  "e",
+		"6":  "f",
+		"7":  "g",
+		"8":  "h",
+		"9":  "i",
+		"10": "j",
+	}
+	configMap := NewSyncMap()
+	expectedMap := &SyncMap{
+		Map: Map{
+			MustMakeKey("test", "1"):  NewValue("a"),
+			MustMakeKey("test", "2"):  NewValue("b"),
+			MustMakeKey("test", "3"):  NewValue("c"),
+			MustMakeKey("test", "4"):  NewValue("d"),
+			MustMakeKey("test", "5"):  NewValue("e"),
+			MustMakeKey("test", "6"):  NewValue("f"),
+			MustMakeKey("test", "7"):  NewValue("g"),
+			MustMakeKey("test", "8"):  NewValue("h"),
+			MustMakeKey("test", "9"):  NewValue("i"),
+			MustMakeKey("test", "10"): NewValue("j"),
+		},
+	}
+	var wg sync.WaitGroup
+	for k, v := range configs {
+		wg.Add(1)
+		go func(k, v string) {
+			defer wg.Done()
+			err := configMap.Set(MustMakeKey("test", k), NewValue(v), false)
+			assert.NoError(t, err)
+		}(k, v)
+	}
+	wg.Wait()
+	assert.Equal(t, configMap, expectedMap)
+
+	for k, v := range configs {
+		wg.Add(1)
+		go func(k, v string) {
+			defer wg.Done()
+			err := configMap.Remove(MustMakeKey("test", k), false)
+			assert.NoError(t, err)
+		}(k, v)
+	}
+	wg.Wait()
+	assert.Equal(t, configMap, NewSyncMap())
 }
 
 func roundtripMapYAML(m Map) (Map, error) {

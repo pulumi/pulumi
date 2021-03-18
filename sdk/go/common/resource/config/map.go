@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,9 +18,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
@@ -29,6 +29,84 @@ var errSecureKeyReserved = errors.New(`"secure" key in maps of length 1 are rese
 
 // Map is a bag of config stored in the settings file.
 type Map map[Key]Value
+
+// SyncMap is a bag of config stored in the settings file, and is safe to use concurrently.
+// This type should be allocated using NewSyncMap.
+type SyncMap struct {
+	sync.RWMutex
+	Map
+}
+
+func NewSyncMap() *SyncMap {
+	return &SyncMap{
+		Map: make(Map),
+	}
+}
+
+// Decrypt returns the configuration as a map from module member to decrypted value.
+func (sm *SyncMap) Decrypt(decrypter Decrypter) (map[Key]string, error) {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map.Decrypt(decrypter)
+}
+
+func (sm *SyncMap) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map.Copy(decrypter, encrypter)
+}
+
+// HasSecureValue returns true if the config map contains a secure (encrypted) value.
+func (sm *SyncMap) HasSecureValue() bool {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map.HasSecureValue()
+}
+
+// Get gets the value for a given key. If path is true, the key's name portion is treated as a path.
+func (sm *SyncMap) Get(k Key, path bool) (Value, bool, error) {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map.Get(k, path)
+}
+
+// Remove removes the value for a given key. If path is true, the key's name portion is treated as a path.
+func (sm *SyncMap) Remove(k Key, path bool) error {
+	sm.Lock()
+	defer sm.Unlock()
+	return sm.Map.Remove(k, path)
+}
+
+// Set sets the value for a given key. If path is true, the key's name portion is treated as a path.
+func (sm *SyncMap) Set(k Key, v Value, path bool) error {
+	sm.Lock()
+	defer sm.Unlock()
+	return sm.Map.Set(k, v, path)
+}
+
+func (sm *SyncMap) MarshalJSON() ([]byte, error) {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map.MarshalJSON()
+}
+
+func (sm *SyncMap) UnmarshalJSON(b []byte) error {
+	sm.Lock()
+	defer sm.Unlock()
+	return sm.Map.UnmarshalJSON(b)
+}
+
+func (sm *SyncMap) MarshalYAML() (interface{}, error) {
+	sm.RLock()
+	defer sm.RUnlock()
+	return sm.Map.MarshalYAML()
+}
+
+func (sm *SyncMap) UnmarshalYAML(unmarshal func(interface{}) error) error {
+	sm.Lock()
+	defer sm.Unlock()
+	return sm.Map.UnmarshalYAML(unmarshal)
+}
 
 // Decrypt returns the configuration as a map from module member to decrypted value.
 func (m Map) Decrypt(decrypter Decrypter) (map[Key]string, error) {
