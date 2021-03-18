@@ -120,7 +120,7 @@ namespace Pulumi
             => values.EnsureNotDefault().SelectAsArray(v => (Input<T>)v);
 
         public static implicit operator InputList<T>(ImmutableArray<Input<T>> values)
-            => Output.All(values);
+            => Output.All(values.EnsureNotDefault());
 
         #endregion
 
@@ -136,7 +136,7 @@ namespace Pulumi
             => values.Apply(a => ImmutableArray.CreateRange(a));
 
         public static implicit operator InputList<T>(Output<ImmutableArray<T>> values)
-            => new InputList<T>(values);
+            => new InputList<T>(values.Apply(v => v.EnsureNotDefault()));
 
         #endregion
 

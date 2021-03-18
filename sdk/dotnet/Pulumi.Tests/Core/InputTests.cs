@@ -21,6 +21,7 @@ namespace Pulumi.Tests.Core
                 await AssertCanConvert((ImmutableArray<bool>) default);
                 await AssertCanConvert((ImmutableArray<Input<bool>>) default);
                 await AssertCanConvert((ImmutableArray<Output<bool>>) default);
+                await AssertCanConvert(Output.Create((ImmutableArray<bool>) default));
 
                 static async Task AssertCanConvert(InputList<bool> inputList)
                 {

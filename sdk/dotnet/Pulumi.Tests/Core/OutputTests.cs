@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
@@ -353,16 +354,10 @@ namespace Pulumi.Tests.Core
 
             [Fact]
             public Task OutputAllDefaultImmutableArray()
-                => RunInPreview(async () =>
+                => RunInPreview(() =>
                 {
-                    await AssertEmpty(Output.All((ImmutableArray<Input<bool>>) default));
-                    await AssertEmpty(Output.All((ImmutableArray<Output<bool>>) default));
-
-                    static async Task AssertEmpty(Output<ImmutableArray<bool>> output)
-                    {
-                        var result = await output.DataTask.ConfigureAwait(false);
-                        Assert.Empty(result.Value);
-                    }
+                    Assert.Throws<InvalidOperationException>(() => Output.All((ImmutableArray<Input<bool>>) default));
+                    Assert.Throws<InvalidOperationException>(() => Output.All((ImmutableArray<Output<bool>>) default));
                 });
         }
 
