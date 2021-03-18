@@ -2,6 +2,7 @@
 
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Pulumi.Automation.Events;
 using Pulumi.Automation.Serialization.Json;
 using Pulumi.Automation.Serialization.Yaml;
 using YamlDotNet.Serialization;
@@ -55,6 +56,7 @@ namespace Pulumi.Automation.Serialization
             options.Converters.Add(new MapToModelJsonConverter<ProjectSettings, ProjectSettingsModel>());
             options.Converters.Add(new MapToModelJsonConverter<StackSummary, StackSummaryModel>());
             options.Converters.Add(new MapToModelJsonConverter<UpdateSummary, UpdateSummaryModel>());
+            options.Converters.Add(new MapToModelJsonConverter<EngineEvent, EngineEventModel>());
             options.Converters.Add(new ProjectRuntimeJsonConverter());
             options.Converters.Add(new ResourceChangesJsonConverter());
             options.Converters.Add(new StackSettingsConfigValueJsonConverter());

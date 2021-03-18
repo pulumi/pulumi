@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Pulumi.Automation.Events;
 
 namespace Pulumi.Automation
 {
@@ -26,5 +27,8 @@ namespace Pulumi.Automation
         /// Optional callback which is invoked whenever StandardError is written into
         /// </summary>
         public Action<string>? OnStandardError { get; set; }
+
+        // TODO: Internal -> public
+        internal Action<EngineEvent>? OnEvent { get; set; }
     }
 }

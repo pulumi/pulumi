@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.ExceptionServices;
@@ -20,6 +21,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
+using Pulumi.Automation.Events;
 using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation
@@ -358,6 +360,9 @@ namespace Pulumi.Automation
             }
 
             InlineLanguageHost? inlineHost = null;
+
+            var (logFile, watcher) = SetupEventLogWatchIfEnabled(args, options, "preview");
+
             try
             {
                 if (program != null)
@@ -386,6 +391,8 @@ namespace Pulumi.Automation
                 {
                     await inlineHost.DisposeAsync().ConfigureAwait(false);
                 }
+
+                CleanupEventLogWatch(logFile, watcher);
             }
         }
 
@@ -593,6 +600,51 @@ namespace Pulumi.Automation
 
         public void Dispose()
             => this.Workspace.Dispose();
+
+        private static (string? logFile, EventLogWatcher? watcher) SetupEventLogWatchIfEnabled(
+            List<string> args,
+            UpdateOptions? options,
+            string command)
+        {
+            string? logFile = null;
+            EventLogWatcher? watcher = null;
+
+            if (options?.OnEvent != null)
+            {
+                logFile = CreateEventLogFile(command);
+                args.AddRange(new[] { "--event-log", logFile });
+                watcher = new EventLogWatcher(logFile, options.OnEvent);
+            }
+
+            return (logFile, watcher);
+
+            static string CreateEventLogFile(string command)
+            {
+                var logDir = Path.Combine(Path.GetTempPath(), $"automation-logs-{command}-{Path.GetRandomFileName()}");
+                Directory.CreateDirectory(logDir);
+                return Path.Combine(logDir, "eventlog.txt");
+            }
+        }
+
+        private static void CleanupEventLogWatch(string? logFile,  EventLogWatcher? watcher)
+        {
+            watcher?.Dispose();
+
+            if (!string.IsNullOrWhiteSpace(logFile))
+            {
+                try
+                {
+                    Directory.Delete(Path.GetDirectoryName(logFile), recursive: true);
+                }
+                catch
+                {
+                    // allow graceful exit if for some reason
+                    // we're not able to delete the directory
+                    // will rely on OS to clean temp directory
+                    // in this case.
+                }
+            }
+        }
 
         private static class ExecKind
         {

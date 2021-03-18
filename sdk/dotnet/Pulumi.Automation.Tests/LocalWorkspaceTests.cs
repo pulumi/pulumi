@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands.Exceptions;
+using Pulumi.Automation.Events;
 using Xunit;
 
 namespace Pulumi.Automation.Tests
@@ -557,6 +558,107 @@ namespace Pulumi.Automation.Tests
             finally
             {
                 await stack.Workspace.RemoveStackAsync(stack.Name);
+            }
+        }
+
+        [Fact]
+        public async Task HandlesEventsSequentially()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "foo",
+                };
+            });
+            var stackName = $"int_test{GetTestSuffix()}";
+            var projectName = "inline_node";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var seenSummaryEvent = false;
+            var seenCancelEvent = false;
+            var nextSequence = 0;
+
+            void HandleEvents(EngineEvent @event) {
+                // Ensure we actually process each event in the correct sequence
+                Assert.Equal(nextSequence, @event.Sequence);
+                nextSequence = @event.Sequence + 1;
+                if (@event.SummaryEvent != null) {
+                    seenSummaryEvent = true;
+                }
+
+                if (@event.CancelEvent != null) {
+                    seenCancelEvent = true;
+                }
+            }
+
+            try
+            {
+                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnEvent = HandleEvents });
+                Assert.True(seenSummaryEvent, "No SummaryEvent for 'preview'");
+                Assert.True(seenCancelEvent, "No CancelEvent for 'preview'");
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task HandlesEvents()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Pulumi.Config();
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "foo",
+                    ["exp_cfg"] = config.Get("bar"),
+                    ["exp_secret"] = config.GetSecret("buzz"),
+                };
+            });
+
+            var stackName = $"int_test{GetTestSuffix()}";
+            var projectName = "inline_node";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["bar"] = new ConfigValue("abc"),
+                ["buzz"] = new ConfigValue("secret", isSecret: true),
+            };
+            await stack.SetConfigAsync(config);
+
+            var seenSummaryEvent = false;
+
+            void FindSummaryEvent(EngineEvent @event) {
+                if (@event.SummaryEvent != null) {
+                    seenSummaryEvent = true;
+                }
+            }
+
+            try
+            {
+                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnEvent = FindSummaryEvent });
+                Assert.True(seenSummaryEvent, "No SummaryEvent for 'preview'");
+
+                // TODO: rest of the operations
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
             }
         }
 
