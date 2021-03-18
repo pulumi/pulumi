@@ -70,7 +70,9 @@ export function warn(msg: string, resource?: resourceTypes.Resource, streamId?: 
 }
 
 /**
- * error logs a fatal error to indicate that the tool should stop processing resource operations immediately.
+ * error logs a fatal condition. Calling error does not by itself stop
+ * processing resource operations. To stop programs should raise
+ * unhandled exceptions after calling error.
  */
 export function error(msg: string, resource?: resourceTypes.Resource, streamId?: number, ephemeral?: boolean) {
     errcnt++; // remember the error so we can suppress leaks.

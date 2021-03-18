@@ -74,12 +74,17 @@ def warn(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[in
 
 def error(msg: str, resource: Optional['Resource'] = None, stream_id: Optional[int] = None, ephemeral: Optional[bool] = None):
     """
-    Logs a message to the Pulumi CLI's error channel, associating it with a resource
-    and stream_id if provided.
+    Logs a message to the Pulumi CLI's error channel, associating it
+    with a resource and stream_id if provided.
+
+    Calling error does not by itself stop processing resource
+    operations. To stop programs should raise unhandled errors after
+    calling this function.
 
     :param str msg: The message to send to the Pulumi CLI.
     :param Optional[Resource] resource: If provided, associate this message with the given resource in the Pulumi CLI.
     :param Optional[int] stream_id: If provided, associate this message with a stream of other messages.
+
     """
     engine = get_engine()
     if engine is not None:

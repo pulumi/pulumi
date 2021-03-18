@@ -66,8 +66,10 @@ namespace Pulumi
             }
 
             /// <summary>
-            /// Error logs a fatal error to indicate that the tool should stop processing resource
-            /// operations immediately.
+            /// Logs a fatal condition. Calling ErrorAsync does not by
+            /// itself stop processing resource operations. To stop
+            /// programs should raise unhandled exceptions after
+            /// calling ErrorAsync.
             /// </summary>
             Task ILogger.ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
                 => ErrorAsync(message, resource, streamId, ephemeral);
