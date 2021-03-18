@@ -276,6 +276,9 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.WhoAmIAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.PulumiVersionAsync(System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.CreateStackAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
@@ -668,6 +671,11 @@
         <member name="M:Pulumi.Automation.Workspace.WhoAmIAsync(System.Threading.CancellationToken)">
             <summary>
             Returns the currently authenticated user.
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.PulumiVersionAsync(System.Threading.CancellationToken)">
+            <summary>
+            Returns the version of the underlying Pulumi CLI/Engine.
             </summary>
         </member>
         <member name="M:Pulumi.Automation.Workspace.GetStackAsync(System.Threading.CancellationToken)">

@@ -637,6 +637,17 @@ namespace Pulumi.Automation.Tests
                 () => upTask);
         }
 
+        [Fact]
+        public async Task PulumiVersionTest()
+        {
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                WorkDir = Path.Combine(_dataDirectory, "testproj"),
+            });
+            var version = await workspace.PulumiVersionAsync();
+            Assert.Matches("v(\\d+\\.)(\\d+\\.)(\\d+)(-.*)?", version);
+        }
+
         private class FileNotFoundStack : Pulumi.Stack
         {
             public FileNotFoundStack()

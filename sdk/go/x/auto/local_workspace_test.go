@@ -1283,6 +1283,21 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, containsSummary(destroyEvents))
 }
 
+func TestPulumiVersion(t *testing.T) {
+	ctx := context.Background()
+	ws, err := NewLocalWorkspace(ctx)
+	if err != nil {
+		t.Errorf("failed to create workspace, err: %v", err)
+		t.FailNow()
+	}
+	version, err := ws.PulumiVersion(ctx)
+	if err != nil {
+		t.Errorf("failed to get pulumi version, err: %v", err)
+		t.FailNow()
+	}
+	assert.Regexp(t, `v(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")

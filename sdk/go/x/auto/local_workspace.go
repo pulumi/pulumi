@@ -479,6 +479,16 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	return nil
 }
 
+// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
+func (l *LocalWorkspace) PulumiVersion(ctx context.Context) (string, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
+	if err != nil {
+		return "", newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+	}
+	version := strings.TrimSpace(stdout)
+	return version, nil
+}
+
 func (l *LocalWorkspace) runPulumiCmdSync(
 	ctx context.Context,
 	args ...string,

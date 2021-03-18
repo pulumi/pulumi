@@ -274,6 +274,15 @@ class Workspace(ABC):
         pass
 
     @abstractmethod
+    def pulumi_version(self) -> str:
+        """
+        Returns the version of the underlying Pulumi CLI/Engine.
+
+        :returns: str
+        """
+        pass
+
+    @abstractmethod
     def stack(self) -> Optional[StackSummary]:
         """
         Returns a summary of the currently selected stack, if any.

@@ -158,6 +158,11 @@ class TestLocalWorkspace(unittest.TestCase):
         result = ws.who_am_i()
         self.assertIsNotNone(result.user)
 
+    def test_pulumi_version(self):
+        ws = LocalWorkspace()
+        result = ws.pulumi_version()
+        self.assertRegexpMatches(result, r"v(\d+\.)(\d+\.)(\d+)(-.*)?")
+
     def test_stack_init(self):
         project_settings = ProjectSettings(name="python_test", runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)

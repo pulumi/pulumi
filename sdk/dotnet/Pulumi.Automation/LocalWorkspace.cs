@@ -514,6 +514,13 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
+        public override async Task<string> PulumiVersionAsync(CancellationToken cancellationToken = default)
+        {
+            var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
+            return result.StandardOutput.Trim();
+        }
+
+        /// <inheritdoc/>
         public override Task CreateStackAsync(string stackName, CancellationToken cancellationToken)
         {
             var args = new List<string>()

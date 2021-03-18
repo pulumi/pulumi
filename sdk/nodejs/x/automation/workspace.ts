@@ -140,6 +140,10 @@ export interface Workspace {
      */
     whoAmI(): Promise<WhoAmIResult>;
     /**
+     * Returns the version of the underlying Pulumi CLI/Engine.
+     */
+    pulumiVersion(): Promise<string>;
+    /**
      * Returns a summary of the currently selected stack, if any.
      */
     stack(): Promise<StackSummary | undefined>;

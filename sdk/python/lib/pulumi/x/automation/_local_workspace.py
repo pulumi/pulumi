@@ -196,6 +196,10 @@ class LocalWorkspace(Workspace):
         result = self._run_pulumi_cmd_sync(["whoami"])
         return WhoAmIResult(user=result.stdout.strip())
 
+    def pulumi_version(self) -> str:
+        result = self._run_pulumi_cmd_sync(["version"])
+        return result.stdout.strip()
+
     def stack(self) -> Optional[StackSummary]:
         stacks = self.list_stacks()
         for stack in stacks:

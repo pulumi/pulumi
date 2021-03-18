@@ -26,6 +26,8 @@ import {
 } from "../../x/automation";
 import { asyncTest } from "../util";
 
+const versionRegex = /v(\d+\.)(\d+\.)(\d+)(-.*)?/;
+
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
         for (const ext of ["yaml", "yml", "json"]) {
@@ -46,6 +48,12 @@ describe("LocalWorkspace", () => {
             assert.strictEqual(settings.config!["plain"], "plain");
             assert.strictEqual(settings.config!["secure"].secure, "secret");
         }
+    }));
+
+    it(`test pulumi version`, asyncTest(async () => {
+        const ws = await LocalWorkspace.create({ workDir: upath.joinSafe(__dirname, "data", "testproj") });
+        const version = await ws.pulumiVersion();
+        assert.strictEqual(versionRegex.test(version), true);
     }));
 
     it(`adds/removes/lists plugins successfully`, asyncTest(async () => {

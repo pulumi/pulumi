@@ -170,6 +170,11 @@ namespace Pulumi.Automation
         public abstract Task<WhoAmIResult> WhoAmIAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Returns the version of the underlying Pulumi CLI/Engine.
+        /// </summary>
+        public abstract Task<string> PulumiVersionAsync(CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Returns a summary of the currently selected stack, if any.
         /// </summary>
         public virtual async Task<StackSummary?> GetStackAsync(CancellationToken cancellationToken = default)

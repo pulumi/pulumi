@@ -88,7 +88,7 @@ type Workspace interface {
 	ListStacks(context.Context) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
-	// RemovePlugin deletes the plugin matching the specified name and verision.
+	// RemovePlugin deletes the plugin matching the specified name and version.
 	RemovePlugin(context.Context, string, string) error
 	// ListPlugins lists all installed plugins.
 	ListPlugins(context.Context) ([]workspace.PluginInfo, error)
@@ -103,6 +103,8 @@ type Workspace interface {
 	// ImportStack imports the specified deployment state into a pre-existing stack.
 	// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
+	// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
+	PulumiVersion(context.Context) (string, error)
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.

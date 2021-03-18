@@ -431,6 +431,13 @@ export class LocalWorkspace implements Workspace {
         return { user: result.stdout.trim() };
     }
     /**
+     * Returns the underlying Pulumi CLI/Engine version.
+     */
+    async pulumiVersion(): Promise<string> {
+        const result = await this.runPulumiCmd(["version"]);
+        return result.stdout.trim();
+    }
+    /**
      * Returns a summary of the currently selected stack, if any.
      */
     async stack(): Promise<StackSummary | undefined> {
