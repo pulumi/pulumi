@@ -15,7 +15,6 @@
 package workspace
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"sync"
@@ -24,8 +23,11 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
-// projectSingleton is a singleton instance of projectLoader, which controls a global instance of the Project config.
-var projectSingleton *projectLoader = &projectLoader{}
+// projectSingleton is a singleton instance of projectLoader, which controls a global map of instances of Project
+// configs (one per path).
+var projectSingleton *projectLoader = &projectLoader{
+	internal: map[string]*Project{},
+}
 
 // projectStackSingleton is a singleton instance of projectStackLoader, which controls a global map of instances of
 // ProjectStack configs (one per path).
@@ -48,8 +50,7 @@ var policyPackProjectSingleton *policyPackProjectLoader = &policyPackProjectLoad
 // projectLoader is used to load a single global instance of a Project config.
 type projectLoader struct {
 	sync.RWMutex
-	path     string
-	internal *Project
+	internal map[string]*Project
 }
 
 // Load a Project config file from the specified path. The configuration will be cached for subsequent loads.
@@ -57,13 +58,8 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 	singleton.Lock()
 	defer singleton.Unlock()
 
-	if singleton.internal != nil {
-		// Currently, we only support a single Project.yaml per workspace, so return an error if another path is set.
-		if singleton.path != path {
-			return nil, fmt.Errorf("project path already set: %q, unexpected path: %q", singleton.path, path)
-		}
-
-		return singleton.internal, nil
+	if v, ok := singleton.internal[path]; ok {
+		return v, nil
 	}
 
 	marshaller, err := marshallerForPath(path)
@@ -87,8 +83,8 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
-	singleton.internal, singleton.path = &project, path
-	return singleton.internal, nil
+	singleton.internal[path] = &project
+	return &project, nil
 }
 
 // projectStackLoader is used to load a single global instance of a ProjectStack config.
