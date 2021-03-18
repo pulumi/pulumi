@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -46,6 +47,55 @@ type LocalWorkspace struct {
 	program         pulumi.RunFunc
 	envvars         map[string]string
 	secretsProvider string
+	pulumiVersion   Version
+}
+
+type Version struct {
+	Major  int
+	Minor  int
+	Patch  int
+	Suffix string
+}
+
+func (v Version) String() string {
+	if v.Suffix != "" {
+		return fmt.Sprintf("v%v.%v.%v-%s", v.Major, v.Minor, v.Patch, v.Suffix)
+	}
+	return fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, v.Patch)
+}
+
+func parseVersion(versionString string) (Version, error) {
+	v := Version{}
+	split := strings.SplitN(versionString, "-", 2)
+	if len(split) > 1 {
+		v.Suffix = split[1]
+	}
+	split = strings.Split(split[0], ".")
+	if len(split) != 3 {
+		return v, errors.New("invalid version")
+	}
+	majorString := split[0]
+	if majorString[0] != 'v' {
+		return v, errors.New("invalid version")
+	}
+	majorString = strings.Replace(majorString, "v", "", -1)
+	major, err := strconv.Atoi(majorString)
+	if err != nil {
+		return v, errors.Wrap(err, "invalid version")
+	}
+	minor, err := strconv.Atoi(split[1])
+	if err != nil {
+		return v, errors.Wrap(err, "invalid version")
+	}
+	patch, err := strconv.Atoi(split[2])
+	if err != nil {
+		return v, errors.Wrap(err, "invalid version")
+	}
+	v.Major = major
+	v.Minor = minor
+	v.Patch = patch
+
+	return v, nil
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -309,6 +359,11 @@ func (l *LocalWorkspace) PulumiHome() string {
 	return l.pulumiHome
 }
 
+// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
+func (l *LocalWorkspace) PulumiVersion() Version {
+	return l.pulumiVersion
+}
+
 // WhoAmI returns the currently authenticated user
 func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
@@ -479,6 +534,31 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	return nil
 }
 
+func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (Version, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
+	if err != nil {
+		return Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+	}
+	version, err := parseVersion(strings.TrimSpace(stdout))
+	if err != nil {
+		return Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+	}
+	return version, nil
+}
+
+func (l *LocalWorkspace) checkValidVersion(minVersion Version) bool {
+	if minVersion.Major > l.pulumiVersion.Major {
+		return false
+	}
+	if minVersion.Minor > l.pulumiVersion.Minor {
+		return false
+	}
+	if minVersion.Patch > l.pulumiVersion.Patch {
+		return false
+	}
+	return true
+}
+
 func (l *LocalWorkspace) runPulumiCmdSync(
 	ctx context.Context,
 	args ...string,
@@ -537,6 +617,16 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		workDir:    workDir,
 		program:    program,
 		pulumiHome: lwOpts.PulumiHome,
+	}
+
+	v, err := l.getPulumiVersion(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create workspace, unable to get pulumi version")
+	}
+	l.pulumiVersion = v
+
+	if !l.checkValidVersion(minimumVersion) {
+		return nil, errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, l.pulumiVersion))
 	}
 
 	if lwOpts.Project != nil {
@@ -617,7 +707,7 @@ type GitRepo struct {
 	// URL to clone git repo
 	URL string
 	// Optional path relative to the repo root specifying location of the pulumi program.
-	// Specifying this option will update the Worspace's WorkDir accordingly.
+	// Specifying this option will update the Workspace's WorkDir accordingly.
 	ProjectPath string
 	// Optional branch to checkout.
 	Branch string
@@ -844,7 +934,7 @@ func NewStackInlineSource(
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
-	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one.
+	// as we implicitly create project on behalf of the user, prepend to opts in case the user specifies one.
 	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
@@ -872,7 +962,7 @@ func UpsertStackInlineSource(
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
 	}
-	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one.
+	// as we implicitly create project on behalf of the user, prepend to opts in case the user specifies one.
 	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
@@ -899,7 +989,7 @@ func SelectStackInlineSource(
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to select stack")
 	}
-	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one
+	// as we implicitly create project on behalf of the user, prepend to opts in case the user specifies one
 	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {

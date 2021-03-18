@@ -1283,6 +1283,38 @@ func TestStructuredOutput(t *testing.T) {
 	assert.True(t, containsSummary(destroyEvents))
 }
 
+func TestPulumiVersion(t *testing.T) {
+	ctx := context.Background()
+	ws, err := NewLocalWorkspace(ctx)
+	if err != nil {
+		t.Errorf("failed to create workspace, err: %v", err)
+		t.FailNow()
+	}
+	version := ws.PulumiVersion()
+	assert.NotEqual(t, "0.0.0", version.String())
+	assert.Regexp(t, `v(\d+\.)(\d+\.)(\d+)(-.*)?`, version.String())
+}
+
+func TestMinimumVersion(t *testing.T) {
+	ctx := context.Background()
+	ws, err := NewLocalWorkspace(ctx)
+	if err != nil {
+		t.Errorf("failed to create workspace, err: %v", err)
+		t.FailNow()
+	}
+	testInvalidMinVersion := Version{
+		Major: 100,
+	}
+	versionIsValid := ws.checkValidVersion(testInvalidMinVersion)
+	assert.False(t, versionIsValid)
+	testValidMinVersion := Version{
+		Major: 2,
+		Minor: 1,
+	}
+	versionIsValid = ws.checkValidVersion(testValidMinVersion)
+	assert.True(t, versionIsValid)
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
