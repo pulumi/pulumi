@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import { Config } from "../../index";
@@ -24,7 +25,6 @@ import {
     LocalWorkspace,
     ProjectSettings,
     Stack,
-    Version,
 } from "../../x/automation";
 import { asyncTest } from "../util";
 
@@ -429,12 +429,12 @@ describe(`checkVersionIsValid`, () => {
             expectError: false,
         },
     ];
-    const currentVersion = new Version("v2.21.1");
+    const currentVersion = new semver.SemVer("v2.21.1");
 
     versionTests.forEach(test => {
         it(`validates ${test.minVersion}`, () => {
             assert(true);
-            const minVersion = new Version(test.minVersion);
+            const minVersion = new semver.SemVer(test.minVersion);
 
             if (test.expectError) {
                 assert.throws(() => checkVersionIsValid(minVersion, currentVersion));

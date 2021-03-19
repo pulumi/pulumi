@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-import { Version } from "./workspace";
 
-export const minimumVersion = new Version("v2.21.0");
+import * as semver from "semver";
+
+export const minimumVersion = new semver.SemVer("v2.21.0");

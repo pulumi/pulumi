@@ -15,6 +15,7 @@
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as os from "os";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
@@ -23,7 +24,7 @@ import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { Deployment, PluginInfo, PulumiFn, StackSummary, Version, WhoAmIResult, Workspace } from "./workspace";
+import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
@@ -56,7 +57,7 @@ export class LocalWorkspace implements Workspace {
     /**
      * The version of the underlying Pulumi CLI/Engine.
      */
-    pulumiVersion?: Version;
+    pulumiVersion?: semver.SemVer;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
@@ -542,9 +543,9 @@ export class LocalWorkspace implements Workspace {
         // LocalWorkspace does not utilize this extensibility point.
         return;
     }
-    private async getPulumiVersion(minVersion: Version) {
+    private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
-        const version = new Version(result.stdout.trim());
+        const version = new semver.SemVer(result.stdout.trim());
         checkVersionIsValid(minVersion, version);
         this.pulumiVersion = version;
     }
@@ -659,7 +660,7 @@ function defaultProject(projectName: string) {
     return settings;
 }
 
-export function checkVersionIsValid(minVersion: Version, currentVersion: Version) {
+export function checkVersionIsValid(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
     const err = new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minimumVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
     if (minVersion.major !== currentVersion.major) {
         throw err;

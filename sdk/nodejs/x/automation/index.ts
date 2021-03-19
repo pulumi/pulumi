@@ -21,5 +21,3 @@ export * from "./projectSettings";
 export * from "./localWorkspace";
 export * from "./workspace";
 export * from "./events";
-import { Version } from "./workspace";
-export { Version };

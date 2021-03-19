@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as semver from "semver";
+
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { StackSettings } from "./stackSettings";
@@ -41,7 +43,7 @@ export interface Workspace {
     /**
      * The version of the underlying Pulumi CLI/Engine.
      */
-    pulumiVersion?: Version;
+    pulumiVersion?: semver.SemVer;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
@@ -259,37 +261,3 @@ export interface PluginInfo {
 }
 
 export type PluginKind = "analyzer" | "language" | "resource";
-
-export class Version {
-    readonly major: number;
-    readonly minor: number;
-    readonly patch: number;
-    readonly suffix?: string;
-
-    public constructor(version: string) {
-        let splitVersion = version.split("-", 2);
-        if (splitVersion.length > 1) {
-            this.suffix = splitVersion[1];
-        }
-        splitVersion = splitVersion[0].split(".");
-        if (splitVersion.length !== 3) {
-            throw new Error("invalid version");
-        }
-        let majorString = splitVersion[0];
-        // `pulumi version` may or may not start with a `v` depending on platform
-        if (majorString[0] === "v") {
-            majorString = majorString.replace("v", "");
-        }
-        this.major = parseInt(majorString, 10);
-        this.minor = parseInt(splitVersion[1], 10);
-        this.patch = parseInt(splitVersion[2], 10);
-    }
-
-    public toString(): string {
-        const version = `v${this.major}.${this.minor}.${this.patch}`;
-        if (this.suffix) {
-            return `${version}-${this.suffix}`;
-        }
-        return version;
-    }
-}
