@@ -1349,53 +1349,6 @@ func TestMinimumVersion(t *testing.T) {
 	}
 }
 
-var parseVersionTests = []struct {
-	input    string
-	expected semver.Version
-}{
-	{
-		"2.24.0-alpha.1616101879+f42faa09",
-		semver.Version{Major: 2, Minor: 24, Patch: 0,
-			Pre:   []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1616101879, IsNum: true}},
-			Build: []string{"f42faa09"},
-		},
-	},
-	{
-		"v2.22.0-alpha.1614186969+g022fef222.dirty",
-		semver.Version{Major: 2, Minor: 22, Patch: 0,
-			Pre:   []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1614186969, IsNum: true}},
-			Build: []string{"g022fef222", "dirty"},
-		},
-	},
-	{
-		"3.0.0",
-		semver.Version{Major: 3, Minor: 0, Patch: 0},
-	},
-	{
-		"v3.0.0",
-		semver.Version{Major: 3, Minor: 0, Patch: 0},
-	},
-	{
-		"v3.0.0-beta.1",
-		semver.Version{Major: 3, Minor: 0, Patch: 0,
-			Pre: []semver.PRVersion{{VersionStr: "beta"}, {VersionNum: 1, IsNum: true}},
-		},
-	},
-}
-
-func TestParseVersion(t *testing.T) {
-	for _, tt := range parseVersionTests {
-		t.Run(tt.input, func(t *testing.T) {
-			version, err := semver.ParseTolerant(tt.input)
-			if err != nil {
-				t.Errorf("failed to parse version, err: %v", err)
-				t.FailNow()
-			}
-			assert.Equal(t, tt.expected, version)
-		})
-	}
-}
-
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
