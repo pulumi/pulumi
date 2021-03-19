@@ -17,14 +17,18 @@ import * as upath from "upath";
 
 import { Config } from "../../index";
 import {
+    checkVersionIsValid,
     ConfigMap,
     EngineEvent,
     fullyQualifiedStackName,
     LocalWorkspace,
     ProjectSettings,
     Stack,
+    Version,
 } from "../../x/automation";
 import { asyncTest } from "../util";
+
+const versionRegex = /v(\d+\.)(\d+\.)(\d+)(-.*)?/;
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
@@ -380,7 +384,67 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
+    it(`sets pulumi version`, asyncTest(async () => {
+        const ws = await LocalWorkspace.create({});
+        assert(ws.pulumiVersion);
+        assert.strictEqual(versionRegex.test(ws.pulumiVersion.toString()), true);
+    }));
 });
+
+describe(`checkVersionIsValid`, () => {
+    const versionTests = [
+        {
+            name: "higher_major",
+            minVersion: "100.0.0",
+            expectError: true,
+        },
+        {
+            name: "lower_major",
+            minVersion: "1.0.0",
+            expectError: true,
+        },
+        {
+            name: "higher_minor",
+            minVersion: "v2.22.0",
+            expectError: true,
+        },
+        {
+            name: "lower_minor",
+            minVersion: "v2.1.0",
+            expectError: false,
+        },
+        {
+            name: "equal_minor_higher_patch",
+            minVersion: "v2.21.2",
+            expectError: true,
+        },
+        {
+            name: "equal_minor_equal_patch",
+            minVersion: "v2.21.1",
+            expectError: false,
+        },
+        {
+            name: "equal_minor_lower_patch",
+            minVersion: "v2.21.0",
+            expectError: false,
+        },
+    ];
+    const currentVersion = new Version("v2.21.1");
+
+    versionTests.forEach(test => {
+        it(`validates ${test.minVersion}`, () => {
+            assert(true);
+            const minVersion = new Version(test.minVersion);
+
+            if (test.expectError) {
+                assert.throws(() => checkVersionIsValid(minVersion, currentVersion));
+            } else {
+                assert.doesNotThrow(() => checkVersionIsValid(minVersion, currentVersion));
+            }
+        });
+    });
+});
+
 
 const getTestSuffix = () => {
     return Math.floor(100000 + Math.random() * 900000);

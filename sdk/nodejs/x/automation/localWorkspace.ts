@@ -19,10 +19,11 @@ import * as upath from "upath";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
+import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
+import { Deployment, PluginInfo, PulumiFn, StackSummary, Version, WhoAmIResult, Workspace } from "./workspace";
 
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
@@ -52,6 +53,10 @@ export class LocalWorkspace implements Workspace {
      * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
      */
     readonly secretsProvider?: string;
+    /**
+     * The version of the underlying Pulumi CLI/Engine.
+     */
+    pulumiVersion?: Version;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
@@ -206,7 +211,7 @@ export class LocalWorkspace implements Workspace {
         this.workDir = dir;
         this.envVars = envs;
 
-        const readinessPromises: Promise<any>[] = [];
+        const readinessPromises: Promise<any>[] = [this.getPulumiVersion(minimumVersion)];
 
         if (opts && opts.projectSettings) {
             readinessPromises.push(this.saveProjectSettings(opts.projectSettings));
@@ -537,6 +542,12 @@ export class LocalWorkspace implements Workspace {
         // LocalWorkspace does not utilize this extensibility point.
         return;
     }
+    private async getPulumiVersion(minVersion: Version) {
+        const result = await this.runPulumiCmd(["version"]);
+        const version = new Version(result.stdout.trim());
+        checkVersionIsValid(minVersion, version);
+        this.pulumiVersion = version;
+    }
     private async runPulumiCmd(
         args: string[],
     ): Promise<CommandResult> {
@@ -646,4 +657,20 @@ type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 function defaultProject(projectName: string) {
     const settings: ProjectSettings = { name: projectName, runtime: "nodejs" };
     return settings;
+}
+
+export function checkVersionIsValid(minVersion: Version, currentVersion: Version) {
+    const err = new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minimumVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
+    if (minVersion.major !== currentVersion.major) {
+        throw err;
+    }
+    if (minVersion.minor < currentVersion.minor) {
+        return;
+    }
+    if (minVersion.minor === currentVersion.minor) {
+        if (minVersion.patch <= currentVersion.patch) {
+            return;
+        }
+    }
+    throw err;
 }
