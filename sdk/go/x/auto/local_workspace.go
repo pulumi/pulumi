@@ -75,10 +75,10 @@ func parseVersion(versionString string) (Version, error) {
 		return v, errors.New("invalid version")
 	}
 	majorString := split[0]
-	// `pulumi version` may or may not start with a `v` depending on platform
-	if majorString[0] == 'v' {
-		majorString = strings.Replace(majorString, "v", "", -1)
+	if majorString[0] != 'v' {
+		return v, errors.New("invalid version")
 	}
+	majorString = strings.Replace(majorString, "v", "", -1)
 	major, err := strconv.Atoi(majorString)
 	if err != nil {
 		return v, errors.Wrap(err, "invalid version")

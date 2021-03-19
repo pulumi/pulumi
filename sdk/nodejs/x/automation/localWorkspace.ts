@@ -22,7 +22,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
-import { Deployment, PluginInfo, PulumiFn, StackSummary, Version, WhoAmIResult, Workspace } from "./workspace";
+import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
@@ -52,10 +52,6 @@ export class LocalWorkspace implements Workspace {
      * See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers
      */
     readonly secretsProvider?: string;
-    /**
-     * The version of the underlying Pulumi CLI/Engine.
-     */
-    pulumiVersion?: Version;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
@@ -210,7 +206,7 @@ export class LocalWorkspace implements Workspace {
         this.workDir = dir;
         this.envVars = envs;
 
-        const readinessPromises: Promise<any>[] = [this.getPulumiVersion()];
+        const readinessPromises: Promise<any>[] = [];
 
         if (opts && opts.projectSettings) {
             readinessPromises.push(this.saveProjectSettings(opts.projectSettings));
@@ -540,18 +536,6 @@ export class LocalWorkspace implements Workspace {
     async postCommandCallback(_: string): Promise<void> {
         // LocalWorkspace does not utilize this extensibility point.
         return;
-    }
-    private async getPulumiVersion() {
-        const result = await this.runPulumiCmd(["version"]);
-        this.pulumiVersion = new Version(result.stdout.trim());
-    }
-    private checkVersionIsValid(minVersion: Version): boolean {
-        const version = this.pulumiVersion;
-        if (version !== "0.0.0")
-        if (minVersion.major !== version.major) {
-
-        }
-
     }
     private async runPulumiCmd(
         args: string[],
