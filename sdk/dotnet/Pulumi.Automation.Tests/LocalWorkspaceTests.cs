@@ -19,6 +19,8 @@ namespace Pulumi.Automation.Tests
 
         private static readonly string _pulumiOrg = GetTestOrg();
 
+        private static readonly string _projectName = "dotnet_tests";
+
         private static string GetTestSuffix()
         {
             var random = new Random();
@@ -112,7 +114,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task CreateSelectRemoveStack()
         {
-            var projectSettings = new ProjectSettings("node_test", ProjectRuntimeName.NodeJS);
+            var projectSettings = new ProjectSettings(_projectName, ProjectRuntimeName.NodeJS);
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
@@ -122,7 +124,7 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var stackName = $"int_test{GetTestSuffix()}";
+            var stackName = $"stack_manip_test{GetTestSuffix()}";
 
             var stacks = await workspace.ListStacksAsync();
             if (stacks.Any(s => s.Name == stackName))
@@ -147,8 +149,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task ManipulateConfig()
         {
-            var projectName = "node_test";
-            var projectSettings = new ProjectSettings(projectName, ProjectRuntimeName.NodeJS);
+            var projectSettings = new ProjectSettings(_projectName, ProjectRuntimeName.NodeJS);
 
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
@@ -159,49 +160,56 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var stackName = $"int_test{GetTestSuffix()}";
-            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            var stackName = $"config_manip_test{GetTestSuffix()}";
+            var stack = await WorkspaceStack.CreateOrSelectAsync(stackName, workspace);
 
-            var config = new Dictionary<string, ConfigValue>()
+            try
             {
-                ["plain"] = new ConfigValue("abc"),
-                ["secret"] = new ConfigValue("def", isSecret: true),
-            };
+                var config = new Dictionary<string, ConfigValue>()
+                {
+                    ["plain"] = new ConfigValue("abc"),
+                    ["secret"] = new ConfigValue("def", isSecret: true),
+                };
 
-            var plainKey = NormalizeConfigKey("plain", projectName);
-            var secretKey = NormalizeConfigKey("secret", projectName);
+                var plainKey = NormalizeConfigKey("plain", _projectName);
+                var secretKey = NormalizeConfigKey("secret", _projectName);
 
-            await Assert.ThrowsAsync<CommandException>(
-                () => stack.GetConfigValueAsync(plainKey));
+                await Assert.ThrowsAsync<CommandException>(
+                    () => stack.GetConfigValueAsync(plainKey));
 
-            var values = await stack.GetConfigAsync();
-            Assert.Empty(values);
+                var values = await stack.GetConfigAsync();
+                Assert.Empty(values);
 
-            await stack.SetConfigAsync(config);
-            values = await stack.GetConfigAsync();
-            Assert.True(values.TryGetValue(plainKey, out var plainValue));
-            Assert.Equal("abc", plainValue!.Value);
-            Assert.False(plainValue.IsSecret);
-            Assert.True(values.TryGetValue(secretKey, out var secretValue));
-            Assert.Equal("def", secretValue!.Value);
-            Assert.True(secretValue.IsSecret);
+                await stack.SetConfigAsync(config);
+                values = await stack.GetConfigAsync();
+                Assert.True(values.TryGetValue(plainKey, out var plainValue));
+                Assert.Equal("abc", plainValue!.Value);
+                Assert.False(plainValue.IsSecret);
+                Assert.True(values.TryGetValue(secretKey, out var secretValue));
+                Assert.Equal("def", secretValue!.Value);
+                Assert.True(secretValue.IsSecret);
 
-            await stack.RemoveConfigValueAsync("plain");
-            values = await stack.GetConfigAsync();
-            Assert.Single(values);
+                await stack.RemoveConfigValueAsync("plain");
+                values = await stack.GetConfigAsync();
+                Assert.False(values.ContainsKey(plainKey));
 
-            await stack.SetConfigValueAsync("foo", new ConfigValue("bar"));
-            values = await stack.GetConfigAsync();
-            Assert.Equal(2, values.Count);
-
-            await workspace.RemoveStackAsync(stackName);
+                await stack.SetConfigValueAsync("foo", new ConfigValue("bar"));
+                values = await stack.GetConfigAsync();
+                var fooKey = NormalizeConfigKey("foo", _projectName);
+                Assert.True(values.TryGetValue(fooKey, out var fooValue));
+                Assert.Equal("bar", fooValue!.Value);
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
         }
 
         [Fact]
         public async Task ListStackAndCurrentlySelected()
         {
             var projectSettings = new ProjectSettings(
-                $"node_list_test{GetTestSuffix()}",
+                $"stack_list_test{GetTestSuffix()}",
                 ProjectRuntimeName.NodeJS);
 
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
@@ -216,6 +224,10 @@ namespace Pulumi.Automation.Tests
             var stackNames = new List<string>();
             try
             {
+                var stacks = await workspace.ListStacksAsync();
+                foreach (var item in stacks)
+                    await workspace.RemoveStackAsync(item.Name);
+
                 for (var i = 0; i < 2; i++)
                 {
                     var stackName = GetStackName();
@@ -224,7 +236,7 @@ namespace Pulumi.Automation.Tests
                     var summary = await workspace.GetStackAsync();
                     Assert.NotNull(summary);
                     Assert.True(summary!.IsCurrent);
-                    var stacks = await workspace.ListStacksAsync();
+                    stacks = await workspace.ListStacksAsync();
                     Assert.Equal(i + 1, stacks.Count);
                 }
             }
@@ -241,7 +253,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task CheckStackStatus()
         {
-            var projectSettings = new ProjectSettings("node_test", ProjectRuntimeName.NodeJS);
+            var projectSettings = new ProjectSettings(_projectName, ProjectRuntimeName.NodeJS);
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
@@ -251,7 +263,7 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var stackName = $"int_test{GetTestSuffix()}";
+            var stackName = $"stack_status_test{GetTestSuffix()}";
             var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
             try
             {
@@ -269,9 +281,9 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task StackLifecycleLocalProgram()
         {
-            var stackName = $"int_test{GetTestSuffix()}";
+            var stackName = $"local_lifecycle_test{GetTestSuffix()}";
             var workingDir = Path.Combine(_dataDirectory, "testproj");
-            using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
                 {
@@ -279,49 +291,54 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
+            try
             {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
-            await stack.SetConfigAsync(config);
+                var config = new Dictionary<string, ConfigValue>()
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
+                await stack.SetConfigAsync(config);
 
-            // pulumi up
-            var upResult = await stack.UpAsync();
-            Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
-            Assert.Equal(3, upResult.Outputs.Count);
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
 
-            // exp_static
-            Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
-            Assert.Equal("foo", expStaticValue!.Value);
-            Assert.False(expStaticValue.IsSecret);
+                // exp_static
+                Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
 
-            // exp_cfg
-            Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
-            Assert.Equal("abc", expConfigValue!.Value);
-            Assert.False(expConfigValue.IsSecret);
+                // exp_cfg
+                Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
 
-            // exp_secret
-            Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
-            Assert.Equal("secret", expSecretValue!.Value);
-            Assert.True(expSecretValue.IsSecret);
+                // exp_secret
+                Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
 
-            // pulumi preview
-            await stack.PreviewAsync();
-            // TODO: update assertions when we have structured output
+                // pulumi preview
+                await stack.PreviewAsync();
+                // TODO: update assertions when we have structured output
 
-            // pulumi refresh
-            var refreshResult = await stack.RefreshAsync();
-            Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+                // pulumi refresh
+                var refreshResult = await stack.RefreshAsync();
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
 
-            // pulumi destroy
-            var destroyResult = await stack.DestroyAsync();
-            Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
-
-            await stack.Workspace.RemoveStackAsync(stackName);
+                // pulumi destroy
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
         }
 
         [Fact]
@@ -338,9 +355,8 @@ namespace Pulumi.Automation.Tests
                 };
             });
 
-            var stackName = $"int_test{GetTestSuffix()}";
-            var projectName = "inline_node";
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            var stackName = $"inline_lifecycle_test{GetTestSuffix()}";
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(new InlineProgramArgs(_projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
                 {
@@ -348,49 +364,54 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
+            try
             {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
-            await stack.SetConfigAsync(config);
+                var config = new Dictionary<string, ConfigValue>()
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
+                await stack.SetConfigAsync(config);
 
-            // pulumi up
-            var upResult = await stack.UpAsync();
-            Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
-            Assert.Equal(3, upResult.Outputs.Count);
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
 
-            // exp_static
-            Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
-            Assert.Equal("foo", expStaticValue!.Value);
-            Assert.False(expStaticValue.IsSecret);
+                // exp_static
+                Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
 
-            // exp_cfg
-            Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
-            Assert.Equal("abc", expConfigValue!.Value);
-            Assert.False(expConfigValue.IsSecret);
+                // exp_cfg
+                Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
 
-            // exp_secret
-            Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
-            Assert.Equal("secret", expSecretValue!.Value);
-            Assert.True(expSecretValue.IsSecret);
+                // exp_secret
+                Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
 
-            // pulumi preview
-            await stack.PreviewAsync();
-            // TODO: update assertions when we have structured output
+                // pulumi preview
+                await stack.PreviewAsync();
+                // TODO: update assertions when we have structured output
 
-            // pulumi refresh
-            var refreshResult = await stack.RefreshAsync();
-            Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+                // pulumi refresh
+                var refreshResult = await stack.RefreshAsync();
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
 
-            // pulumi destroy
-            var destroyResult = await stack.DestroyAsync();
-            Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
-
-            await stack.Workspace.RemoveStackAsync(stackName);
+                // pulumi destroy
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
         }
 
         [Fact(Skip="Breaking builds")]
@@ -414,13 +435,13 @@ namespace Pulumi.Automation.Tests
                 };
             });
 
-            var stackNameA = $"int_test{GetTestSuffix()}-a";
-            var stackNameB = $"int_test{GetTestSuffix()}-b";
+            var stackNameA = $"ref_test{GetTestSuffix()}-a";
+            var stackNameB = $"ref_test{GetTestSuffix()}-b";
             var projectName = "inline_stack_reference";
 
-            var stackA = await SetupStack(projectName, stackNameA, programA, new Dictionary<string, ConfigValue>());
+            using var stackA = await SetupStack(projectName, stackNameA, programA, new Dictionary<string, ConfigValue>());
 
-            var stackB = await SetupStack(projectName, stackNameB, programB, new Dictionary<string, ConfigValue>()
+            using var stackB = await SetupStack(projectName, stackNameB, programB, new Dictionary<string, ConfigValue>()
             {
                 ["Ref"] = new ConfigValue(FullyQualifiedStackName(_pulumiOrg, projectName, stackNameA)),
             });
@@ -501,8 +522,7 @@ namespace Pulumi.Automation.Tests
             });
 
             var stackName = $"output_test{GetTestSuffix()}";
-            var projectName = "inline_output";
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(new InlineProgramArgs(_projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
                 {
@@ -512,29 +532,36 @@ namespace Pulumi.Automation.Tests
 
             var outputCalled = false;
 
-            // pulumi preview
-            outputCalled = false;
-            var previewResult = await stack.PreviewAsync(new PreviewOptions { OnStandardOutput = (str) => outputCalled = true });
-            Assert.False(string.IsNullOrEmpty(previewResult.StandardOutput));
-            Assert.True(outputCalled);
+            try
+            {
+                // pulumi preview
+                outputCalled = false;
+                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnStandardOutput = (str) => outputCalled = true });
+                Assert.False(string.IsNullOrEmpty(previewResult.StandardOutput));
+                Assert.True(outputCalled);
 
-            // pulumi up
-            outputCalled = false;
-            var upResult = await stack.UpAsync(new UpOptions { OnStandardOutput = (str) => outputCalled = true });
-            Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
-            Assert.True(outputCalled);
+                // pulumi up
+                outputCalled = false;
+                var upResult = await stack.UpAsync(new UpOptions { OnStandardOutput = (str) => outputCalled = true });
+                Assert.False(string.IsNullOrEmpty(upResult.StandardOutput));
+                Assert.True(outputCalled);
 
-            // pulumi refresh
-            outputCalled = false;
-            var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnStandardOutput = (str) => outputCalled = true });
-            Assert.False(string.IsNullOrEmpty(refreshResult.StandardOutput));
-            Assert.True(outputCalled);
+                // pulumi refresh
+                outputCalled = false;
+                var refreshResult = await stack.RefreshAsync(new RefreshOptions { OnStandardOutput = (str) => outputCalled = true });
+                Assert.False(string.IsNullOrEmpty(refreshResult.StandardOutput));
+                Assert.True(outputCalled);
 
-            // pulumi destroy
-            outputCalled = false;
-            var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnStandardOutput = (str) => outputCalled = true });
-            Assert.False(string.IsNullOrEmpty(destroyResult.StandardOutput));
-            Assert.True(outputCalled);
+                // pulumi destroy
+                outputCalled = false;
+                var destroyResult = await stack.DestroyAsync(new DestroyOptions { OnStandardOutput = (str) => outputCalled = true });
+                Assert.False(string.IsNullOrEmpty(destroyResult.StandardOutput));
+                Assert.True(outputCalled);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
         }
 
         private class ValidStack : Stack
@@ -562,9 +589,8 @@ namespace Pulumi.Automation.Tests
         {
             var program = PulumiFn.Create<ValidStack>();
 
-            var stackName = $"int_test{GetTestSuffix()}";
-            var projectName = "inline_tstack_node";
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            var stackName = $"inline_t_lifecycle_test{GetTestSuffix()}";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(_projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
                 {
@@ -572,59 +598,63 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
+            try
             {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
-            await stack.SetConfigAsync(config);
+                var config = new Dictionary<string, ConfigValue>()
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
+                await stack.SetConfigAsync(config);
 
-            // pulumi up
-            var upResult = await stack.UpAsync();
-            Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
-            Assert.Equal(3, upResult.Outputs.Count);
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
 
-            // exp_static
-            Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
-            Assert.Equal("foo", expStaticValue!.Value);
-            Assert.False(expStaticValue.IsSecret);
+                // exp_static
+                Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
 
-            // exp_cfg
-            Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
-            Assert.Equal("abc", expConfigValue!.Value);
-            Assert.False(expConfigValue.IsSecret);
+                // exp_cfg
+                Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
 
-            // exp_secret
-            Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
-            Assert.Equal("secret", expSecretValue!.Value);
-            Assert.True(expSecretValue.IsSecret);
+                // exp_secret
+                Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
 
-            // pulumi preview
-            await stack.PreviewAsync();
-            // TODO: update assertions when we have structured output
+                // pulumi preview
+                await stack.PreviewAsync();
+                // TODO: update assertions when we have structured output
 
-            // pulumi refresh
-            var refreshResult = await stack.RefreshAsync();
-            Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+                // pulumi refresh
+                var refreshResult = await stack.RefreshAsync();
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
 
-            // pulumi destroy
-            var destroyResult = await stack.DestroyAsync();
-            Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
-            Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
-
-            await stack.Workspace.RemoveStackAsync(stackName);
+                // pulumi destroy
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
         }
 
         [Fact]
         public async Task InlineProgramExceptionPropagatesToCaller()
         {
-            const string projectName = "exception_inline_node";
-            var stackName = $"int_test_{GetTestSuffix()}";
+            var stackName = $"exception_inline_{GetTestSuffix()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(new InlineProgramArgs(_projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
                 {
@@ -632,9 +662,16 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var upTask = stack.UpAsync();
-            await Assert.ThrowsAsync<FileNotFoundException>(
-                () => upTask);
+            try
+            {
+                var upTask = stack.UpAsync();
+                await Assert.ThrowsAsync<FileNotFoundException>(
+                    () => upTask);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
         }
 
         private class FileNotFoundStack : Pulumi.Stack
@@ -648,11 +685,10 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task InlineProgramExceptionPropagatesToCallerWithTStack()
         {
-            const string projectName = "exception_inline_tstack_node";
-            var stackName = $"int_test_{GetTestSuffix()}";
+            var stackName = $"exception_inline_t_{GetTestSuffix()}";
             var program = PulumiFn.Create<FileNotFoundStack>();
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(new InlineProgramArgs(_projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
                 {
@@ -660,9 +696,16 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var upTask = stack.UpAsync();
-            await Assert.ThrowsAsync<FileNotFoundException>(
-                () => upTask);
+            try
+            {
+                var upTask = stack.UpAsync();
+                await Assert.ThrowsAsync<FileNotFoundException>(
+                    () => upTask);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
         }
 
         [Fact(Skip = "Parallel execution is not supported in this first version.")]
@@ -776,6 +819,9 @@ namespace Pulumi.Automation.Tests
 
             AssertUpResult(upResultOne, "1");
             AssertUpResult(upResultTwo, "2");
+
+            await stackOne.Workspace.RemoveStackAsync(stackNameOne);
+            await stackTwo.Workspace.RemoveStackAsync(stackNameTwo);
 
             static void AssertUpResult(UpResult upResult, string value)
             {
