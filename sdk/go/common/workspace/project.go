@@ -21,7 +21,6 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
@@ -274,121 +273,6 @@ func (info *ProjectRuntimeInfo) UnmarshalYAML(unmarshal func(interface{}) error)
 	}
 
 	return errors.New("runtime section must be a string or an object with name and options attributes")
-}
-
-// LoadProject reads a project definition from a file.
-func LoadProject(path string) (*Project, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var proj Project
-	err = m.Unmarshal(b, &proj)
-	if err != nil {
-		return nil, err
-	}
-
-	err = proj.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return &proj, err
-}
-
-// LoadPolicyPack reads a policy pack definition from a file.
-func LoadPolicyPack(path string) (*PolicyPackProject, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var proj PolicyPackProject
-	err = m.Unmarshal(b, &proj)
-	if err != nil {
-		return nil, err
-	}
-
-	err = proj.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return &proj, err
-}
-
-// LoadPluginProject reads a plugin project definition from a file.
-func LoadPluginProject(path string) (*PluginProject, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if err != nil {
-		return nil, err
-	}
-
-	var proj PluginProject
-	err = m.Unmarshal(b, &proj)
-	if err != nil {
-		return nil, err
-	}
-
-	err = proj.Validate()
-	if err != nil {
-		return nil, err
-	}
-
-	return &proj, err
-}
-
-// LoadProjectStack reads a stack definition from a file.
-func LoadProjectStack(path string) (*ProjectStack, error) {
-	contract.Require(path != "", "path")
-
-	m, err := marshallerForPath(path)
-	if err != nil {
-		return nil, err
-	}
-
-	b, err := ioutil.ReadFile(path)
-	if os.IsNotExist(err) {
-		return &ProjectStack{
-			Config: make(config.Map),
-		}, nil
-	} else if err != nil {
-		return nil, err
-	}
-
-	var ps ProjectStack
-	err = m.Unmarshal(b, &ps)
-	if err != nil {
-		return nil, err
-	}
-
-	if ps.Config == nil {
-		ps.Config = make(config.Map)
-	}
-
-	return &ps, err
 }
 
 func marshallerForPath(path string) (encoding.Marshaler, error) {
