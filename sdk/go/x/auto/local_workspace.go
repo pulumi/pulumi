@@ -51,20 +51,6 @@ type LocalWorkspace struct {
 	pulumiVersion   semver.Version
 }
 
-type Version struct {
-	Major  int
-	Minor  int
-	Patch  int
-	Suffix string
-}
-
-func (v Version) String() string {
-	if v.Suffix != "" {
-		return fmt.Sprintf("v%v.%v.%v-%s", v.Major, v.Minor, v.Patch, v.Suffix)
-	}
-	return fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, v.Patch)
-}
-
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
 
 // ProjectSettings returns the settings object for the current project if any
