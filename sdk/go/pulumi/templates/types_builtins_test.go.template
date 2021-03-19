@@ -126,25 +126,6 @@ func TestOutputApply(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
-	// Test builtin applies.
-	{
-		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
-
-{{range .Builtins}}
-		t.Run("Apply{{.Name}}", func(t *testing.T) {
-			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-		})
-{{end}}
-	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
 	{
 		out := newIntOutput()
