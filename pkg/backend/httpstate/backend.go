@@ -302,7 +302,7 @@ func Login(ctx context.Context, d diag.Sink, cloudURL string, opts display.Optio
 			"  source code, or other sensitive data will ever be shared with the Pulumi Service",
 			colors.Highlight(
 				"  backend. For more details - see https://www.pulumi.com/docs/intro/concepts/state/.",
-				"https://www.pulumi.com/docs/intro/concepts/state/"
+				"https://www.pulumi.com/docs/intro/concepts/state/",
 				colors.Underline+colors.Bold,
 			),
 			"",
@@ -372,7 +372,8 @@ Get started with Pulumi at:
 generated suffix) by default. To learn more about auto-naming or customizing resource
 names see https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming.
 
-`)
+`,
+		opts.Color.Colorize(colors.SpecSubHeadline+"Tip of the day:"+colors.Reset))
 }
 
 func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string, error) {
