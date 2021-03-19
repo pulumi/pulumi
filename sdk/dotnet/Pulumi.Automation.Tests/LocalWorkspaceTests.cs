@@ -264,7 +264,7 @@ namespace Pulumi.Automation.Tests
             });
 
             var stackName = $"stack_status_test{GetTestSuffix()}";
-            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            var stack = await WorkspaceStack.CreateOrSelectAsync(stackName, workspace);
             try
             {
                 var history = await stack.GetHistoryAsync();
