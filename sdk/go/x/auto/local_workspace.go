@@ -21,10 +21,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -47,7 +48,7 @@ type LocalWorkspace struct {
 	program         pulumi.RunFunc
 	envvars         map[string]string
 	secretsProvider string
-	pulumiVersion   Version
+	pulumiVersion   semver.Version
 }
 
 type Version struct {
@@ -62,40 +63,6 @@ func (v Version) String() string {
 		return fmt.Sprintf("v%v.%v.%v-%s", v.Major, v.Minor, v.Patch, v.Suffix)
 	}
 	return fmt.Sprintf("v%v.%v.%v", v.Major, v.Minor, v.Patch)
-}
-
-func parseVersion(versionString string) (Version, error) {
-	v := Version{}
-	split := strings.SplitN(versionString, "-", 2)
-	if len(split) > 1 {
-		v.Suffix = split[1]
-	}
-	split = strings.Split(split[0], ".")
-	if len(split) != 3 {
-		return v, errors.New("invalid version")
-	}
-	majorString := split[0]
-	// `pulumi version` may or may not start with a `v` depending on platform
-	if majorString[0] == 'v' {
-		majorString = strings.Replace(majorString, "v", "", -1)
-	}
-	major, err := strconv.Atoi(majorString)
-	if err != nil {
-		return v, errors.Wrap(err, "invalid version")
-	}
-	minor, err := strconv.Atoi(split[1])
-	if err != nil {
-		return v, errors.Wrap(err, "invalid version")
-	}
-	patch, err := strconv.Atoi(split[2])
-	if err != nil {
-		return v, errors.Wrap(err, "invalid version")
-	}
-	v.Major = major
-	v.Minor = minor
-	v.Patch = patch
-
-	return v, nil
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -360,7 +327,7 @@ func (l *LocalWorkspace) PulumiHome() string {
 }
 
 // PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
-func (l *LocalWorkspace) PulumiVersion() Version {
+func (l *LocalWorkspace) PulumiVersion() semver.Version {
 	return l.pulumiVersion
 }
 
@@ -534,19 +501,19 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	return nil
 }
 
-func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (Version, error) {
+func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
 	if err != nil {
-		return Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+		return semver.Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
 	}
-	version, err := parseVersion(strings.TrimSpace(stdout))
+	version, err := semver.ParseTolerant(stdout)
 	if err != nil {
-		return Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+		return semver.Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
 	}
 	return version, nil
 }
 
-func (l *LocalWorkspace) checkVersionIsValid(minVersion Version) bool {
+func (l *LocalWorkspace) checkVersionIsValid(minVersion semver.Version) bool {
 	pv := l.pulumiVersion
 	if minVersion.Major != pv.Major {
 		return false

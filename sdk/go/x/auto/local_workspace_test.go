@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
@@ -36,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
-	"github.com/stretchr/testify/assert"
 )
 
 var pulumiOrg = getTestOrg()
@@ -1297,42 +1299,42 @@ func TestPulumiVersion(t *testing.T) {
 
 var minVersionTests = []struct {
 	name           string
-	minimumVersion Version
+	minimumVersion semver.Version
 	expected       bool
 }{
 	{
 		"higher_major",
-		Version{Major: 100, Minor: 0, Patch: 0},
+		semver.Version{Major: 100, Minor: 0, Patch: 0},
 		false,
 	},
 	{
 		"lower_major",
-		Version{Major: 1, Minor: 0, Patch: 0},
+		semver.Version{Major: 1, Minor: 0, Patch: 0},
 		false,
 	},
 	{
 		"higher_minor",
-		Version{Major: 2, Minor: 22, Patch: 0},
+		semver.Version{Major: 2, Minor: 22, Patch: 0},
 		false,
 	},
 	{
 		"lower_minor",
-		Version{Major: 2, Minor: 1, Patch: 0},
+		semver.Version{Major: 2, Minor: 1, Patch: 0},
 		true,
 	},
 	{
 		"equal_minor_higher_patch",
-		Version{Major: 2, Minor: 21, Patch: 2},
+		semver.Version{Major: 2, Minor: 21, Patch: 2},
 		false,
 	},
 	{
 		"equal_minor_equal_patch",
-		Version{Major: 2, Minor: 21, Patch: 1},
+		semver.Version{Major: 2, Minor: 21, Patch: 1},
 		true,
 	},
 	{
 		"equal_minor_lower_patch",
-		Version{Major: 2, Minor: 21, Patch: 0},
+		semver.Version{Major: 2, Minor: 21, Patch: 0},
 		true,
 	},
 }
@@ -1340,7 +1342,7 @@ var minVersionTests = []struct {
 func TestMinimumVersion(t *testing.T) {
 	for _, tt := range minVersionTests {
 		t.Run(tt.name, func(t *testing.T) {
-			ws := LocalWorkspace{pulumiVersion: Version{Major: 2, Minor: 21, Patch: 1}}
+			ws := LocalWorkspace{pulumiVersion: semver.Version{Major: 2, Minor: 21, Patch: 1}}
 			versionIsValid := ws.checkVersionIsValid(tt.minimumVersion)
 			assert.Equal(t, tt.expected, versionIsValid)
 		})
@@ -1349,34 +1351,42 @@ func TestMinimumVersion(t *testing.T) {
 
 var parseVersionTests = []struct {
 	input    string
-	expected Version
+	expected semver.Version
 }{
 	{
 		"2.24.0-alpha.1616101879+f42faa09",
-		Version{Major: 2, Minor: 24, Patch: 0, Suffix: "alpha.1616101879+f42faa09"},
+		semver.Version{Major: 2, Minor: 24, Patch: 0,
+			Pre:   []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1616101879, IsNum: true}},
+			Build: []string{"f42faa09"},
+		},
 	},
 	{
 		"v2.22.0-alpha.1614186969+g022fef222.dirty",
-		Version{Major: 2, Minor: 22, Patch: 0, Suffix: "alpha.1614186969+g022fef222.dirty"},
+		semver.Version{Major: 2, Minor: 22, Patch: 0,
+			Pre:   []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1614186969, IsNum: true}},
+			Build: []string{"g022fef222", "dirty"},
+		},
 	},
 	{
 		"3.0.0",
-		Version{Major: 3, Minor: 0, Patch: 0},
+		semver.Version{Major: 3, Minor: 0, Patch: 0},
 	},
 	{
 		"v3.0.0",
-		Version{Major: 3, Minor: 0, Patch: 0},
+		semver.Version{Major: 3, Minor: 0, Patch: 0},
 	},
 	{
 		"v3.0.0-beta.1",
-		Version{Major: 3, Minor: 0, Patch: 0, Suffix: "beta.1"},
+		semver.Version{Major: 3, Minor: 0, Patch: 0,
+			Pre: []semver.PRVersion{{VersionStr: "beta"}, {VersionNum: 1, IsNum: true}},
+		},
 	},
 }
 
 func TestParseVersion(t *testing.T) {
 	for _, tt := range parseVersionTests {
 		t.Run(tt.input, func(t *testing.T) {
-			version, err := parseVersion(tt.input)
+			version, err := semver.ParseTolerant(tt.input)
 			if err != nil {
 				t.Errorf("failed to parse version, err: %v", err)
 				t.FailNow()
