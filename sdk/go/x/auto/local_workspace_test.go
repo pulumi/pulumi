@@ -1291,7 +1291,7 @@ func TestPulumiVersion(t *testing.T) {
 		t.FailNow()
 	}
 	version := ws.PulumiVersion()
-	assert.NotEqual(t, "0.0.0", version.String())
+	assert.NotEqual(t, "v0.0.0", version.String())
 	assert.Regexp(t, `v(\d+\.)(\d+\.)(\d+)(-.*)?`, version.String())
 }
 
@@ -1343,6 +1343,45 @@ func TestMinimumVersion(t *testing.T) {
 			ws := LocalWorkspace{pulumiVersion: Version{Major: 2, Minor: 21, Patch: 1}}
 			versionIsValid := ws.checkVersionIsValid(tt.minimumVersion)
 			assert.Equal(t, tt.expected, versionIsValid)
+		})
+	}
+}
+
+var parseVersionTests = []struct {
+	input    string
+	expected Version
+}{
+	{
+		"2.24.0-alpha.1616101879+f42faa09",
+		Version{Major: 2, Minor: 24, Patch: 0, Suffix: "alpha.1616101879+f42faa09"},
+	},
+	{
+		"v2.22.0-alpha.1614186969+g022fef222.dirty",
+		Version{Major: 2, Minor: 22, Patch: 0, Suffix: "alpha.1614186969+g022fef222.dirty"},
+	},
+	{
+		"3.0.0",
+		Version{Major: 3, Minor: 0, Patch: 0},
+	},
+	{
+		"v3.0.0",
+		Version{Major: 3, Minor: 0, Patch: 0},
+	},
+	{
+		"v3.0.0-beta.1",
+		Version{Major: 3, Minor: 0, Patch: 0, Suffix: "beta.1"},
+	},
+}
+
+func TestParseVersion(t *testing.T) {
+	for _, tt := range parseVersionTests {
+		t.Run(tt.input, func(t *testing.T) {
+			version, err := parseVersion(tt.input)
+			if err != nil {
+				t.Errorf("failed to parse version, err: %v", err)
+				t.FailNow()
+			}
+			assert.Equal(t, tt.expected, version)
 		})
 	}
 }
