@@ -3,6 +3,7 @@
 using System.Collections.Generic;
 using Pulumi.Automation.Serialization.Json;
 using Pulumi.Automation.Events;
+using System.Linq;
 
 // NOTE: The classes in this file are intended to align with the serialized
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
@@ -134,7 +135,7 @@ namespace Pulumi.Automation.Serialization
 
         public List<string>? Diffs { get; set; } = null!;
 
-        public Dictionary<string, PropertyDiff>? DetailedDiff { get; set; } = null!;
+        public Dictionary<string, PropertyDiffModel>? DetailedDiff { get; set; } = null!;
 
         public bool? Logical { get; set; } = null!;
 
@@ -149,7 +150,7 @@ namespace Pulumi.Automation.Serialization
                 this.New?.Convert(),
                 this.Keys,
                 this.Diffs,
-                this.DetailedDiff,
+                this.DetailedDiff?.ToDictionary(kvp => kvp.Key, kvp => kvp.Value.Convert()),
                 this.Logical,
                 this.Provider);
     }
