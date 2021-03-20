@@ -263,6 +263,9 @@ namespace Pulumi.Automation
             }
 
             InlineLanguageHost? inlineHost = null;
+
+            using var watcher = SetupEventLogWatchIfEnabled(args, options, "up");
+
             try
             {
                 if (program != null)
@@ -361,7 +364,7 @@ namespace Pulumi.Automation
 
             InlineLanguageHost? inlineHost = null;
 
-            var (logFile, watcher) = SetupEventLogWatchIfEnabled(args, options, "preview");
+            using var watcher = SetupEventLogWatchIfEnabled(args, options, "preview");
 
             try
             {
@@ -391,8 +394,6 @@ namespace Pulumi.Automation
                 {
                     await inlineHost.DisposeAsync().ConfigureAwait(false);
                 }
-
-                CleanupEventLogWatch(logFile, watcher);
             }
         }
 
@@ -444,6 +445,8 @@ namespace Pulumi.Automation
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
             args.Add("--exec-kind");
             args.Add(execKind);
+
+            using var watcher = SetupEventLogWatchIfEnabled(args, options, "refresh");
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -500,6 +503,8 @@ namespace Pulumi.Automation
             var execKind = Workspace.Program is null ? ExecKind.Local : ExecKind.Inline;
             args.Add("--exec-kind");
             args.Add(execKind);
+
+            using var watcher = SetupEventLogWatchIfEnabled(args, options, "destroy");
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -601,7 +606,7 @@ namespace Pulumi.Automation
         public void Dispose()
             => this.Workspace.Dispose();
 
-        private static (string? logFile, EventLogWatcher? watcher) SetupEventLogWatchIfEnabled(
+        private static EventLogFileWatcher SetupEventLogWatchIfEnabled(
             List<string> args,
             UpdateOptions? options,
             string command)
@@ -616,7 +621,7 @@ namespace Pulumi.Automation
                 watcher = new EventLogWatcher(logFile, options.OnEvent);
             }
 
-            return (logFile, watcher);
+            return new EventLogFileWatcher(logFile, watcher);
 
             static string CreateEventLogFile(string command)
             {
@@ -626,22 +631,35 @@ namespace Pulumi.Automation
             }
         }
 
-        private static void CleanupEventLogWatch(string? logFile,  EventLogWatcher? watcher)
+        // Wraps an event-log file and its watcher and ensures they are cleaned up when Dispose is called.
+        private class EventLogFileWatcher : IDisposable
         {
-            watcher?.Dispose();
-
-            if (!string.IsNullOrWhiteSpace(logFile))
+            public EventLogFileWatcher(string? logFile, EventLogWatcher? eventLogWatcher)
             {
-                try
+                LogFile = logFile;
+                EventLogWatcher = eventLogWatcher;
+            }
+
+            public string? LogFile { get; }
+            public EventLogWatcher? EventLogWatcher { get; }
+
+            public void Dispose()
+            {
+                EventLogWatcher?.Dispose();
+
+                if (!string.IsNullOrWhiteSpace(LogFile))
                 {
-                    Directory.Delete(Path.GetDirectoryName(logFile), recursive: true);
-                }
-                catch
-                {
-                    // allow graceful exit if for some reason
-                    // we're not able to delete the directory
-                    // will rely on OS to clean temp directory
-                    // in this case.
+                    try
+                    {
+                        Directory.Delete(Path.GetDirectoryName(LogFile), recursive: true);
+                    }
+                    catch
+                    {
+                        // allow graceful exit if for some reason
+                        // we're not able to delete the directory
+                        // will rely on OS to clean temp directory
+                        // in this case.
+                    }
                 }
             }
         }
