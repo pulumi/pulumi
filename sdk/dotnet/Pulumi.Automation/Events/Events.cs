@@ -123,8 +123,10 @@ namespace Pulumi.Automation.Events
     /// </summary>
     public class PreludeEvent
     {
-        // Config contains the keys and values for the update.
-        // Encrypted configuration values may be blinded.
+        /// <summary>
+        /// Config contains the keys and values for the update.
+        /// Encrypted configuration values may be blinded.
+        /// </summary>
         public IImmutableDictionary<string, string> Config { get; }
 
         internal PreludeEvent(IDictionary<string, string> config)
