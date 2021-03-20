@@ -10,8 +10,7 @@ namespace Pulumi.Automation
 
         public string StandardError { get; }
 
-        // TODO: internal -> public
-        internal IImmutableDictionary<OperationType, int> ChangeSummary { get; }
+        public IImmutableDictionary<OperationType, int> ChangeSummary { get; }
 
         internal PreviewResult(
             string standardOutput,

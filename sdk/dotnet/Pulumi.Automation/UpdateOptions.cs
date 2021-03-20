@@ -28,7 +28,9 @@ namespace Pulumi.Automation
         /// </summary>
         public Action<string>? OnStandardError { get; set; }
 
-        // TODO: Internal -> public
-        internal Action<EngineEvent>? OnEvent { get; set; }
+        /// <summary>
+        /// Optional callback which is invoked with the engine events
+        /// </summary>
+        public Action<EngineEvent>? OnEvent { get; set; }
     }
 }

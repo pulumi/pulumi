@@ -170,6 +170,7 @@ Pulumi.Automation.PreviewOptions.Replace.set -> void
 Pulumi.Automation.PreviewOptions.TargetDependents.get -> bool?
 Pulumi.Automation.PreviewOptions.TargetDependents.set -> void
 Pulumi.Automation.PreviewResult
+Pulumi.Automation.PreviewResult.ChangeSummary.get -> System.Collections.Immutable.IImmutableDictionary<Pulumi.Automation.OperationType, int>
 Pulumi.Automation.PreviewResult.StandardError.get -> string
 Pulumi.Automation.PreviewResult.StandardOutput.get -> string
 Pulumi.Automation.ProjectBackend
@@ -286,6 +287,8 @@ Pulumi.Automation.UpdateKind.Update = 0 -> Pulumi.Automation.UpdateKind
 Pulumi.Automation.UpdateOptions
 Pulumi.Automation.UpdateOptions.Message.get -> string
 Pulumi.Automation.UpdateOptions.Message.set -> void
+Pulumi.Automation.UpdateOptions.OnEvent.get -> System.Action<Pulumi.Automation.Events.EngineEvent>
+Pulumi.Automation.UpdateOptions.OnEvent.set -> void
 Pulumi.Automation.UpdateOptions.OnStandardError.get -> System.Action<string>
 Pulumi.Automation.UpdateOptions.OnStandardError.set -> void
 Pulumi.Automation.UpdateOptions.OnStandardOutput.get -> System.Action<string>
