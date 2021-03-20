@@ -314,6 +314,7 @@ override Pulumi.Automation.LocalWorkspace.SetConfigAsync(string stackName, Syste
 override Pulumi.Automation.LocalWorkspace.SetConfigValueAsync(string stackName, string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.Automation.LocalWorkspace.WhoAmIAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WhoAmIResult>
 override Pulumi.Automation.LocalWorkspace.WorkDir.get -> string
+static Pulumi.Automation.LocalWorkspace.CheckVersionIsValid(Semver.SemVersion minVersion, Semver.SemVersion currentVersion) -> void
 static Pulumi.Automation.LocalWorkspace.CreateAsync(Pulumi.Automation.LocalWorkspaceOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.LocalWorkspace>
 static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
 static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>

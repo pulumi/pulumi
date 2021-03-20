@@ -369,9 +369,9 @@ namespace Pulumi.Automation
             this.pulumiVersion = version;
         }
 
-        private static void CheckVersionIsValid(SemVersion minVersion, SemVersion currentVersion)
+        public static void CheckVersionIsValid(SemVersion minVersion, SemVersion currentVersion)
         {
-            var err = new Exception($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.");
+            var err = new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.");
             if (minVersion.Major != currentVersion.Major) {
                 throw err;
             }

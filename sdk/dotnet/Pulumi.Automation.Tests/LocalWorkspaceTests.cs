@@ -1,5 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation
 
+using Semver;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -832,6 +833,28 @@ namespace Pulumi.Automation.Tests
         {
             using var workspace = await LocalWorkspace.CreateAsync();
             Assert.Matches("(\\d+\\.)(\\d+\\.)(\\d+)(-.*)?", workspace.PulumiVersion.ToString());
+        }
+
+        [Theory]
+        [InlineData("100.0.0", true)]
+        [InlineData("1.0.0", true)]
+        [InlineData("2.22.0", true)]
+        [InlineData("2.1.0", false)]
+        [InlineData("2.21.2", true)]
+        [InlineData("2.21.1", false)]
+        [InlineData("2.21.0", false)]
+        public void ValidVersionTheory(string minVersion, bool errorExpected)
+        {
+            var testCurrentVersion = SemVersion.Parse("2.21.1");
+            if (errorExpected)
+            {
+                Action act = () => LocalWorkspace.CheckVersionIsValid(minVersion, testCurrentVersion);
+                Assert.Throws<InvalidOperationException>(act);
+            }
+            else
+            {
+                LocalWorkspace.CheckVersionIsValid(minVersion, testCurrentVersion);
+            }
         }
     }
 }
