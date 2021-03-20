@@ -15,6 +15,7 @@
 import os
 import unittest
 from random import random
+from semver import VersionInfo
 from typing import List, Optional
 
 from pulumi import Config, export
@@ -24,6 +25,7 @@ from pulumi.x.automation import (
     CommandError,
     ConfigMap,
     ConfigValue,
+    InvalidVersionError,
     LocalWorkspace,
     PluginInfo,
     ProjectSettings,
@@ -32,9 +34,20 @@ from pulumi.x.automation import (
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-
+from pulumi.x.automation._local_workspace import _check_version_is_valid
 
 extensions = ["json", "yaml", "yml"]
+
+version_tests = [
+    ("100.0.0", True),
+    ("1.0.0", True),
+    ("2.22.0", True),
+    ("2.1.0", False),
+    ("2.21.2", True),
+    ("2.21.1", False),
+    ("2.21.0", False)
+]
+current_test_version = VersionInfo.parse("2.21.1")
 
 
 def test_path(*paths):
@@ -347,6 +360,25 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)
+
+    def test_pulumi_version(self):
+        ws = LocalWorkspace()
+        self.assertIsNotNone(ws.pulumi_version)
+        self.assertRegex(str(ws.pulumi_version), r"(\d+\.)(\d+\.)(\d+)(-.*)?")
+
+    def test_check_version_is_valid(self):
+        for test in version_tests:
+            min_version = VersionInfo.parse(test[0])
+
+            if test[1] is True:
+                with self.assertRaisesRegex(
+                        InvalidVersionError,
+                        "Minimum version requirement failed. The minimum CLI version requirement is",
+                        msg=f"min_version:{min_version}, current_version:{current_test_version}"
+                ):
+                    _check_version_is_valid(min_version, current_test_version)
+            else:
+                self.assertIsNone(_check_version_is_valid(min_version, current_test_version))
 
 
 def pulumi_program():

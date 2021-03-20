@@ -14,6 +14,7 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
+from semver import VersionInfo
 from typing import (
     Callable,
     Mapping,
@@ -129,6 +130,11 @@ class Workspace(ABC):
     env_vars: Mapping[str, str] = {}
     """
     Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
+    """
+
+    pulumi_version: VersionInfo
+    """
+    The version of the underlying Pulumi CLI/Engine.
     """
 
     @abstractmethod

@@ -17,6 +17,7 @@ import tempfile
 import json
 import yaml
 from datetime import datetime
+from semver import VersionInfo
 from typing import Optional, List, Mapping, Callable
 
 from ._config import ConfigMap, ConfigValue
@@ -25,6 +26,8 @@ from ._stack_settings import StackSettings
 from ._workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
 from ._stack import _DATETIME_FORMAT, Stack
 from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
+from ._minimum_version import _MINIMUM_VERSION
+from .errors import InvalidVersionError
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
@@ -80,6 +83,9 @@ class LocalWorkspace(Workspace):
         self.secrets_provider = secrets_provider
         self.env_vars = env_vars or {}
         self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
+
+        self.pulumi_version = self._get_pulumi_version()
+        _check_version_is_valid(_MINIMUM_VERSION, self.pulumi_version)
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -275,6 +281,13 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name])
         os.remove(file.name)
 
+    def _get_pulumi_version(self) -> VersionInfo:
+        result = self._run_pulumi_cmd_sync(["version"])
+        version_string = result.stdout.strip()
+        if version_string[0] == "v":
+            version_string = version_string[1:]
+        return VersionInfo.parse(version_string)
+
     def _run_pulumi_cmd_sync(self, args: List[str], on_output: Optional[OnOutput] = None) -> CommandResult:
         envs = {"PULUMI_HOME": self.pulumi_home} if self.pulumi_home else {}
         envs = {**envs, **self.env_vars}
@@ -445,3 +458,18 @@ def get_stack_settings_name(name: str) -> str:
     if len(parts) < 1:
         return name
     return parts[-1]
+
+
+def _check_version_is_valid(min_version: VersionInfo, current_version: VersionInfo):
+    error = InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
+                                f"${min_version}, your current CLI version is ${current_version}. "
+                                f"Please update the Pulumi CLI.")
+
+    if min_version.major != current_version.major:
+        raise error
+    if min_version.minor < current_version.minor:
+        return
+    if min_version.minor == current_version.minor:
+        if min_version.patch <= current_version.patch:
+            return
+    raise error
