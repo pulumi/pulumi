@@ -7,8 +7,6 @@ using System.Collections.Immutable;
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
 namespace Pulumi.Automation.Events
 {
-    // TODO(vipentti): Split to separate files?
-
     /// <summary>
     /// CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
     /// the update successfully completes.
@@ -49,7 +47,6 @@ namespace Pulumi.Automation.Events
 
         public string Color { get; }
 
-        // TODO: Make this into enum?
         public string Severity { get; }
 
         public string? StreamId { get; }
@@ -249,7 +246,6 @@ namespace Pulumi.Automation.Events
         /// <summary>
         /// New is the state of the resource after performing the step.
         /// </summary>
-        // TODO: can this actually ever be null?
         public StepEventStateMetadata? New { get; }
 
         /// <summary>

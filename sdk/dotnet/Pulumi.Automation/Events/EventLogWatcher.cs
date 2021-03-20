@@ -31,7 +31,6 @@ namespace Pulumi.Automation.Events
             {
                 Path = Path.GetDirectoryName(LogFile),
                 Filter = Path.GetFileName(LogFile),
-                // TODO: Verify which filters are actually required
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
                 EnableRaisingEvents = true,
             };

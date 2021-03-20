@@ -35,7 +35,6 @@ namespace Pulumi.Automation.Serialization
 
         public string Color { get; set; } = null!;
 
-        // TODO: Make this into enum?
         public string Severity { get; set; } = null!;
 
         public string? StreamId { get; set; }
@@ -128,7 +127,6 @@ namespace Pulumi.Automation.Serialization
 
         public StepEventStateMetadataModel? Old { get; set; } = null!;
 
-        // TODO: can this ever be null?
         public StepEventStateMetadataModel? New { get; set; } = null!;
 
         public List<string>? Keys { get; set; } = null!;

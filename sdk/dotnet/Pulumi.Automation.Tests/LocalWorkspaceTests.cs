@@ -173,7 +173,7 @@ namespace Pulumi.Automation.Tests
             var plainKey = NormalizeConfigKey("plain", projectName);
             var secretKey = NormalizeConfigKey("secret", projectName);
 
-            try 
+            try
             {
                 await Assert.ThrowsAsync<CommandException>(
                     () => stack.GetConfigValueAsync(plainKey));
@@ -197,7 +197,7 @@ namespace Pulumi.Automation.Tests
                 await stack.SetConfigValueAsync("foo", new ConfigValue("bar"));
                 values = await stack.GetConfigAsync();
                 Assert.Equal(2, values.Count);
-            } 
+            }
             finally
             {
                 await workspace.RemoveStackAsync(stackName);
@@ -291,7 +291,7 @@ namespace Pulumi.Automation.Tests
                 ["bar"] = new ConfigValue("abc"),
                 ["buzz"] = new ConfigValue("secret", isSecret: true),
             };
-            try 
+            try
             {
                 await stack.SetConfigAsync(config);
 
@@ -317,8 +317,9 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
 
                 // pulumi preview
-                await stack.PreviewAsync();
-                // TODO: update assertions when we have structured output
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
                 // pulumi refresh
                 var refreshResult = await stack.RefreshAsync();
@@ -391,8 +392,9 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
 
                 // pulumi preview
-                await stack.PreviewAsync();
-                // TODO: update assertions when we have structured output
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
                 // pulumi refresh
                 var refreshResult = await stack.RefreshAsync();
@@ -698,8 +700,9 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
 
                 // pulumi preview
-                await stack.PreviewAsync();
-                // TODO: update assertions when we have structured output
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
                 // pulumi refresh
                 var refreshResult = await stack.RefreshAsync();
