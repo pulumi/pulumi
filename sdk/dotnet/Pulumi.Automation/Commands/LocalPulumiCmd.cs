@@ -25,11 +25,7 @@ namespace Pulumi.Automation.Commands
             // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
             var completeArgs = args.Concat(new[] { "--non-interactive" });
 
-            var env = new Dictionary<string, string>()
-            {
-                // Required for event log
-                ["PULUMI_DEBUG_COMMANDS"] = "true",
-            };
+            var env = new Dictionary<string, string>();
 
             foreach (var element in Environment.GetEnvironmentVariables())
             {

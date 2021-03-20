@@ -286,6 +286,13 @@ namespace Pulumi.Automation
                     env[pair.Key] = pair.Value;
             }
 
+            // Required for event log
+            // We add it after the provided env vars to ensure it is set to true
+            if (args.Any(arg => arg == "--event-log"))
+            {
+                env["PULUMI_DEBUG_COMMANDS"] = "true";
+            }
+
             return this._cmd.RunAsync(args, this.WorkDir, env, onStandardOutput, onStandardError, cancellationToken);
         }
 
