@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using Semver;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -34,12 +35,27 @@ namespace Pulumi.Automation
         private readonly LocalSerializer _serializer = new LocalSerializer();
         private readonly bool _ownsWorkingDir;
         private readonly Task _readyTask;
+        private static readonly SemVersion _minimumVersion = SemVersion.Parse("2.21.0");
 
         /// <inheritdoc/>
         public override string WorkDir { get; }
 
         /// <inheritdoc/>
         public override string? PulumiHome { get; }
+
+        private SemVersion? pulumiVersion;
+        /// <inheritdoc/>
+        public override SemVersion PulumiVersion 
+        { 
+            get 
+            { 
+                if (pulumiVersion == null)
+                {
+                    throw new ArgumentNullException("pulumiVersion");
+                }
+                return pulumiVersion; 
+            }
+        }
 
         /// <inheritdoc/>
         public override string? SecretsProvider { get; }
@@ -320,6 +336,8 @@ namespace Pulumi.Automation
 
             this.WorkDir = dir;
 
+            readyTasks.Add(this.GetPulumiVersionAsync(cancellationToken));
+
             // these are after working dir is set because they start immediately
             if (options?.ProjectSettings != null)
                 readyTasks.Add(this.SaveProjectSettingsAsync(options.ProjectSettings, cancellationToken));
@@ -334,6 +352,39 @@ namespace Pulumi.Automation
         }
 
         private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
+
+        private async Task GetPulumiVersionAsync(CancellationToken cancellationToken = default)
+        {
+            var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
+            var versionString = result.StandardOutput.Trim();
+            if (versionString[0] == 'v') {
+                versionString = versionString.TrimStart('v');
+            }
+            var version = SemVersion.Parse(versionString);
+            if (version == null)
+            {
+                throw new ArgumentNullException("version");
+            }
+            LocalWorkspace.CheckVersionIsValid(LocalWorkspace._minimumVersion, version);
+            this.pulumiVersion = version;
+        }
+
+        private static void CheckVersionIsValid(SemVersion minVersion, SemVersion currentVersion)
+        {
+            var err = new Exception($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.");
+            if (minVersion.Major != currentVersion.Major) {
+                throw err;
+            }
+            if (minVersion.Minor < currentVersion.Minor) {
+                return;
+            }
+            if (minVersion.Minor == currentVersion.Minor) {
+                if (minVersion.Patch <= currentVersion.Patch) {
+                    return;
+                }
+            }
+            throw err;
+        }
 
         /// <inheritdoc/>
         public override async Task<ProjectSettings?> GetProjectSettingsAsync(CancellationToken cancellationToken = default)

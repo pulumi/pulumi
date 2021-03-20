@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using Semver;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -37,6 +38,11 @@ namespace Pulumi.Automation
         /// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
         /// </summary>
         public abstract string? PulumiHome { get; }
+
+        /// <summary>
+        /// The version of the underlying Pulumi CLI/Engine.
+        /// </summary>
+        public abstract SemVersion PulumiVersion { get; }
 
         /// <summary>
         /// The secrets provider to use for encryption and decryption of stack secrets.

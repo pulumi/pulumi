@@ -826,5 +826,12 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
             }
         }
+    
+        [Fact]
+        public async Task PulumiVersionTest()
+        {
+            using var workspace = await LocalWorkspace.CreateAsync();
+            Assert.Matches("(\\d+\\.)(\\d+\\.)(\\d+)(-.*)?", workspace.PulumiVersion.ToString());
+        }
     }
 }
