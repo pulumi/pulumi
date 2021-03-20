@@ -37,6 +37,12 @@
             PreludeEvent is emitted at the start of an update.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.Events.PreludeEvent.Config">
+            <summary>
+            Config contains the keys and values for the update.
+            Encrypted configuration values may be blinded.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Events.SummaryEvent">
             <summary>
             SummaryEvent is emitted at the end of an update, with a summary of the changes made.
