@@ -85,7 +85,7 @@ class LocalWorkspace(Workspace):
         self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
 
         self.pulumi_version = self._get_pulumi_version()
-        _check_version_is_valid(_MINIMUM_VERSION, self.pulumi_version)
+        _validate_pulumi_version(_MINIMUM_VERSION, self.pulumi_version)
 
         if project_settings:
             self.save_project_settings(project_settings)
@@ -460,16 +460,11 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _check_version_is_valid(min_version: VersionInfo, current_version: VersionInfo):
-    error = InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
-                                f"${min_version}, your current CLI version is ${current_version}. "
-                                f"Please update the Pulumi CLI.")
-
-    if min_version.major != current_version.major:
-        raise error
-    if min_version.minor < current_version.minor:
-        return
-    if min_version.minor == current_version.minor:
-        if min_version.patch <= current_version.patch:
-            return
-    raise error
+def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo):
+    if min_version.major < current_version.major:
+        raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {current_version} with "
+                                  f"Automation SDK v{min_version.major}. Please update the SDK.")
+    if min_version.compare(current_version) == 1:
+        raise InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
+                                  f"{min_version}, your current CLI version is {current_version}. "
+                                  f"Please update the Pulumi CLI.")
