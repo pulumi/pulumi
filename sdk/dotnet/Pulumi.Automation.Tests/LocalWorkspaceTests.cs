@@ -562,68 +562,15 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
-        public async Task HandlesEventsSequentially()
-        {
-            var program = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
-                {
-                    ["exp_static"] = "foo",
-                };
-            });
-            var stackName = $"int_test{GetTestSuffix()}";
-            var projectName = "inline_node";
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
-            {
-                EnvironmentVariables = new Dictionary<string, string>()
-                {
-                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
-                }
-            });
-
-            var seenSummaryEvent = false;
-            var seenCancelEvent = false;
-            var nextSequence = 0;
-
-            void HandleEvents(EngineEvent @event) {
-                // Ensure we actually process each event in the correct sequence
-                Assert.Equal(nextSequence, @event.Sequence);
-                nextSequence = @event.Sequence + 1;
-                if (@event.SummaryEvent != null) {
-                    seenSummaryEvent = true;
-                }
-
-                if (@event.CancelEvent != null) {
-                    seenCancelEvent = true;
-                }
-            }
-
-            try
-            {
-                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnEvent = HandleEvents });
-                Assert.True(seenSummaryEvent, "No SummaryEvent for 'preview'");
-                Assert.True(seenCancelEvent, "No CancelEvent for 'preview'");
-            }
-            finally
-            {
-                await stack.Workspace.RemoveStackAsync(stackName);
-            }
-        }
-
-        [Fact]
         public async Task HandlesEvents()
         {
             var program = PulumiFn.Create(() =>
             {
-                var config = new Pulumi.Config();
                 return new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
-                    ["exp_cfg"] = config.Get("bar"),
-                    ["exp_secret"] = config.GetSecret("buzz"),
                 };
             });
-
             var stackName = $"int_test{GetTestSuffix()}";
             var projectName = "inline_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
@@ -634,31 +581,46 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
-            await stack.SetConfigAsync(config);
-
-            var seenSummaryEvent = false;
-
-            void FindSummaryEvent(EngineEvent @event) {
-                if (@event.SummaryEvent != null) {
-                    seenSummaryEvent = true;
-                }
-            }
-
             try
             {
-                var previewResult = await stack.PreviewAsync(new PreviewOptions { OnEvent = FindSummaryEvent });
-                Assert.True(seenSummaryEvent, "No SummaryEvent for 'preview'");
+                var previewResult = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                // TODO: Validate previewResult
 
-                // TODO: rest of the operations
+                var upResult = await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+
+                // TODO: Preview again
+
+                var refreshResult = await RunCommand<UpdateResult, RefreshOptions>(stack.RefreshAsync, "refresh");
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+
+                var destroyResult = await RunCommand<UpdateResult, DestroyOptions>(stack.DestroyAsync, "destroy");
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
             }
             finally
             {
                 await stack.Workspace.RemoveStackAsync(stackName);
+            }
+
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+                where TOptions: UpdateOptions, new()
+            {
+                var events = new List<EngineEvent>();
+
+                var result = await func(new TOptions() { OnEvent = events.Add }, CancellationToken.None);
+
+                var seenSummaryEvent = events.Any(@event => @event.SummaryEvent != null);
+                var seenCancelEvent = events.Any(@event => @event.CancelEvent != null);
+
+                Assert.True(events.Any(), $"No Events found for '{command}'");
+                Assert.True(events.SequenceEqual(events.OrderBy(@event => @event.Sequence)), $"Events should be received in the sequence order for '{command}'");
+                Assert.True(seenSummaryEvent, $"No SummaryEvent for '{command}'");
+                Assert.True(seenCancelEvent, $"No CancelEvent for '{command}'");
+
+                return result;
             }
         }
 
