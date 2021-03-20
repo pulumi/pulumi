@@ -15,57 +15,10 @@
             the update successfully completes.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.StdoutEngineEvent">
-            <summary>
-            StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
-            from the pulumi CLI itself. Less common than DiagnosticEvent.
-            </summary>
-        </member>
         <member name="T:Pulumi.Automation.Events.DiagnosticEvent">
             <summary>
             DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
             a cloud resource provider while trying to create or update a resource.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Automation.Events.PolicyEvent">
-            <summary>
-            PolicyEvent is emitted whenever there is Policy violation.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Automation.Events.PreludeEvent">
-            <summary>
-            PreludeEvent is emitted at the start of an update.
-            </summary>
-        </member>
-        <member name="P:Pulumi.Automation.Events.PreludeEvent.Config">
-            <summary>
-            Config contains the keys and values for the update.
-            Encrypted configuration values may be blinded.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Automation.Events.SummaryEvent">
-            <summary>
-            SummaryEvent is emitted at the end of an update, with a summary of the changes made.
-            </summary>
-        </member>
-        <member name="P:Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt">
-            <summary>
-            MaybeCorrupt is set if one or more of the resources is in an invalid state.
-            </summary>
-        </member>
-        <member name="P:Pulumi.Automation.Events.SummaryEvent.DurationSeconds">
-            <summary>
-            Duration is the number of seconds the update was executing.
-            </summary>
-        </member>
-        <member name="P:Pulumi.Automation.Events.SummaryEvent.ResourceChanges">
-            <summary>
-            ResourceChanges contains the count for resource change by type.
-            </summary>
-        </member>
-        <member name="P:Pulumi.Automation.Events.SummaryEvent.PolicyPacks">
-            <summary>
-            PolicyPacks run during update. Maps PolicyPackName -> version.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.DiffKind">
@@ -103,6 +56,47 @@
             UpdateReplace indicates that the property was updated and requires that the resource be replaced.
             </summary>
         </member>
+        <member name="T:Pulumi.Automation.Events.EngineEvent">
+            <summary>
+            EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
+            message. EngineEvent is a discriminated union of all possible event types, and exactly one
+            field will be non-null.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.EngineEvent.Sequence">
+            <summary>
+            Sequence is a unique, and monotonically increasing number for each engine event sent to the
+            Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
+            the sequence number is to ensure events can be placed into a total ordering.
+            <para>
+            - No two events can have the same sequence number.
+            </para>
+            <para>
+            - Events with a lower sequence number must have been emitted before those with a higher sequence number.
+            </para>
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.EngineEvent.Timestamp">
+            <summary>
+            Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PolicyEvent">
+            <summary>
+            PolicyEvent is emitted whenever there is Policy violation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PreludeEvent">
+            <summary>
+            PreludeEvent is emitted at the start of an update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PreludeEvent.Config">
+            <summary>
+            Config contains the keys and values for the update.
+            Encrypted configuration values may be blinded.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Events.PropertyDiff">
             <summary>
             PropertyDiff describes the difference between a single property's old and new values.
@@ -116,6 +110,28 @@
         <member name="P:Pulumi.Automation.Events.PropertyDiff.InputDiff">
             <summary>
             InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResOpFailedEvent">
+            <summary>
+            ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
+            emitted before this event, indiciating what the root cause of the error.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResourcePreEvent">
+            <summary>
+            ResourcePreEvent is emitted before a resource is modified.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResOutputsEvent">
+            <summary>
+            ResOutputsEvent is emitted when a resource is finished being provisioned.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StdoutEngineEvent">
+            <summary>
+            StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
+            from the pulumi CLI itself. Less common than DiagnosticEvent.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.StepEventMetadata">
@@ -216,45 +232,29 @@
             InitErrors is the set of errors encountered in the process of initializing resource.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.ResourcePreEvent">
+        <member name="T:Pulumi.Automation.Events.SummaryEvent">
             <summary>
-            ResourcePreEvent is emitted before a resource is modified.
+            SummaryEvent is emitted at the end of an update, with a summary of the changes made.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.ResOutputsEvent">
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt">
             <summary>
-            ResOutputsEvent is emitted when a resource is finished being provisioned.
+            MaybeCorrupt is set if one or more of the resources is in an invalid state.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.ResOpFailedEvent">
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.DurationSeconds">
             <summary>
-            ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
-            emitted before this event, indiciating what the root cause of the error.
+            Duration is the number of seconds the update was executing.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.EngineEvent">
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.ResourceChanges">
             <summary>
-            EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
-            message. EngineEvent is a discriminated union of all possible event types, and exactly one
-            field will be non-null.
+            ResourceChanges contains the count for resource change by type.
             </summary>
         </member>
-        <member name="P:Pulumi.Automation.Events.EngineEvent.Sequence">
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.PolicyPacks">
             <summary>
-            Sequence is a unique, and monotonically increasing number for each engine event sent to the
-            Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
-            the sequence number is to ensure events can be placed into a total ordering.
-            <para>
-            - No two events can have the same sequence number.
-            </para>
-            <para>
-            - Events with a lower sequence number must have been emitted before those with a higher sequence number.
-            </para>
-            </summary>
-        </member>
-        <member name="P:Pulumi.Automation.Events.EngineEvent.Timestamp">
-            <summary>
-            Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+            PolicyPacks run during update. Maps PolicyPackName -> version.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.HistoryOptions">
