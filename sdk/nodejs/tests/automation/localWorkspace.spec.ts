@@ -28,7 +28,7 @@ import {
 } from "../../x/automation";
 import { asyncTest } from "../util";
 
-const versionRegex = /v(\d+\.)(\d+\.)(\d+)(-.*)?/;
+const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
@@ -433,11 +433,10 @@ describe(`checkVersionIsValid`, () => {
 
     versionTests.forEach(test => {
         it(`validates ${test.minVersion}`, () => {
-            assert(true);
             const minVersion = new semver.SemVer(test.minVersion);
 
             if (test.expectError) {
-                assert.throws(() => checkVersionIsValid(minVersion, currentVersion));
+                assert.throws(() => checkVersionIsValid(minVersion, currentVersion), /Minimum version requirement failed. The minimum CLI version requirement is/);
             } else {
                 assert.doesNotThrow(() => checkVersionIsValid(minVersion, currentVersion));
             }
