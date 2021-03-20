@@ -9,6 +9,248 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="T:Pulumi.Automation.Events.CancelEvent">
+            <summary>
+            CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
+            the update successfully completes.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StdoutEngineEvent">
+            <summary>
+            StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
+            from the pulumi CLI itself. Less common than DiagnosticEvent.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.DiagnosticEvent">
+            <summary>
+            DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
+            a cloud resource provider while trying to create or update a resource.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PolicyEvent">
+            <summary>
+            PolicyEvent is emitted whenever there is Policy violation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PreludeEvent">
+            <summary>
+            PreludeEvent is emitted at the start of an update.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.SummaryEvent">
+            <summary>
+            SummaryEvent is emitted at the end of an update, with a summary of the changes made.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt">
+            <summary>
+            MaybeCorrupt is set if one or more of the resources is in an invalid state.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.DurationSeconds">
+            <summary>
+            Duration is the number of seconds the update was executing.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.ResourceChanges">
+            <summary>
+            ResourceChanges contains the count for resource change by type.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.SummaryEvent.PolicyPacks">
+            <summary>
+            PolicyPacks run during update. Maps PolicyPackName -> version.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.DiffKind">
+            <summary>
+            DiffKind describes the kind of a particular property diff.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.Add">
+            <summary>
+            Add indicates that the property was added.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.AddReplace">
+            <summary>
+            AddReplace indicates that the property was added and requires that the resource be replaced.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.Delete">
+            <summary>
+            Delete indicates that the property was deleted.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.DeleteReplace">
+            <summary>
+            DeleteReplace indicates that the property was deleted and requires that the resource be replaced.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.Update">
+            <summary>
+            Update indicates that the property was updated.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Events.DiffKind.UpdateReplace">
+            <summary>
+            UpdateReplace indicates that the property was updated and requires that the resource be replaced.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.PropertyDiff">
+            <summary>
+            PropertyDiff describes the difference between a single property's old and new values.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PropertyDiff.Kind">
+            <summary>
+            Kind is the kind of difference.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PropertyDiff.InputDiff">
+            <summary>
+            InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StepEventMetadata">
+            <summary>
+            StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
+            to migrate a set of cloud resources from one state to another.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Op">
+            <summary>
+            Op is the operation being performed.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Old">
+            <summary>
+            Old is the state of the resource before performing the step.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.New">
+            <summary>
+            New is the state of the resource after performing the step.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Keys">
+            <summary>
+            Keys causing a replacement (only applicable for "create" and "replace" Ops).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Diffs">
+            <summary>
+            Keys that changed with this step.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.DetailedDiff">
+            <summary>
+            The diff for this step as a list of property paths and difference types.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Logical">
+            <summary>
+            Logical is set if the step is a logical operation in the program.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventMetadata.Provider">
+            <summary>
+            Provider actually performing the step.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.StepEventStateMetadata">
+            <summary>
+            StepEventStateMetadata is the more detailed state information for a resource as it relates to
+            a step(s) being performed.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Custom">
+            <summary>
+            Custom indicates if the resource is managed by a plugin.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Delete">
+            <summary>
+            Delete is true when the resource is pending deletion due to a replacement.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Id">
+            <summary>
+            ID is the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Parent">
+            <summary>
+            Parent is an optional parent URN that this resource belongs to.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Protect">
+            <summary>
+            Protect is true to "protect" this resource (protected resources cannot be deleted).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Inputs">
+            <summary>
+            Inputs contains the resource's input properties (as specified by the program). Secrets have
+            filtered out, and large assets have been replaced by hashes as applicable.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Outputs">
+            <summary>
+            Outputs contains the resource's complete output state (as returned by the resource provider).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.Provider">
+            <summary>
+            Provider is the resource's provider reference
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.StepEventStateMetadata.InitErrors">
+            <summary>
+            InitErrors is the set of errors encountered in the process of initializing resource.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResourcePreEvent">
+            <summary>
+            ResourcePreEvent is emitted before a resource is modified.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResOutputsEvent">
+            <summary>
+            ResOutputsEvent is emitted when a resource is finished being provisioned.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResOpFailedEvent">
+            <summary>
+            ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
+            emitted before this event, indiciating what the root cause of the error.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.EngineEvent">
+            <summary>
+            EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
+            message. EngineEvent is a discriminated union of all possible event types, and exactly one
+            field will be non-null.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.EngineEvent.Sequence">
+            <summary>
+            Sequence is a unique, and monotonically increasing number for each engine event sent to the
+            Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
+            the sequence number is to ensure events can be placed into a total ordering.
+            <para>
+            - No two events can have the same sequence number.
+            </para>
+            <para>
+            - Events with a lower sequence number must have been emitted before those with a higher sequence number.
+            </para>
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.EngineEvent.Timestamp">
+            <summary>
+            Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.HistoryOptions">
             <summary>
             Options controlling the behavior of a <see cref="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)"/> operation.

@@ -9,13 +9,20 @@ namespace Pulumi.Automation.Events
 {
     // TODO(vipentti): internal -> public, and add to Unshipped.txt once ready
     // TODO(vipentti): Split to separate files?
-    // TODO(vipentti): Add doc comments based on apitype/events.go
 
+    /// <summary>
+    /// CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
+    /// the update successfully completes.
+    /// </summary>
     internal class CancelEvent
     {
         internal CancelEvent() {}
     }
 
+    /// <summary>
+    /// StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
+    /// from the pulumi CLI itself. Less common than DiagnosticEvent.
+    /// </summary>
     internal class StdoutEngineEvent
     {
         public string Message { get; }
@@ -29,6 +36,10 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
+    /// a cloud resource provider while trying to create or update a resource.
+    /// </summary>
     internal class DiagnosticEvent
     {
         public string? Urn { get; }
@@ -66,6 +77,9 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// PolicyEvent is emitted whenever there is Policy violation.
+    /// </summary>
     internal class PolicyEvent
     {
         public string? ResourceUrn { get; }
@@ -105,9 +119,13 @@ namespace Pulumi.Automation.Events
         }
     }
 
-
+    /// <summary>
+    /// PreludeEvent is emitted at the start of an update.
+    /// </summary>
     internal class PreludeEvent
     {
+        // Config contains the keys and values for the update.
+        // Encrypted configuration values may be blinded.
         public IImmutableDictionary<string, string> Config { get; }
 
         internal PreludeEvent(IDictionary<string, string> config)
@@ -116,14 +134,29 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// SummaryEvent is emitted at the end of an update, with a summary of the changes made.
+    /// </summary>
     internal class SummaryEvent
     {
+        /// <summary>
+        /// MaybeCorrupt is set if one or more of the resources is in an invalid state.
+        /// </summary>
         public bool MaybeCorrupt { get; }
 
+        /// <summary>
+        /// Duration is the number of seconds the update was executing.
+        /// </summary>
         public int DurationSeconds { get; }
 
+        /// <summary>
+        /// ResourceChanges contains the count for resource change by type.
+        /// </summary>
         public IImmutableDictionary<OperationType, int> ResourceChanges { get; }
 
+        /// <summary>
+        /// PolicyPacks run during update. Maps PolicyPackName -> version.
+        /// </summary>
         public IImmutableDictionary<string, string> PolicyPacks { get; }
 
         internal SummaryEvent(
@@ -139,20 +172,50 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// DiffKind describes the kind of a particular property diff.
+    /// </summary>
     internal enum DiffKind
     {
+        /// <summary>
+        /// Add indicates that the property was added.
+        /// </summary>
         Add,
+        /// <summary>
+        /// AddReplace indicates that the property was added and requires that the resource be replaced.
+        /// </summary>
         AddReplace,
+        /// <summary>
+        /// Delete indicates that the property was deleted.
+        /// </summary>
         Delete,
+        /// <summary>
+        /// DeleteReplace indicates that the property was deleted and requires that the resource be replaced.
+        /// </summary>
         DeleteReplace,
+        /// <summary>
+        /// Update indicates that the property was updated.
+        /// </summary>
         Update,
+        /// <summary>
+        /// UpdateReplace indicates that the property was updated and requires that the resource be replaced.
+        /// </summary>
         UpdateReplace,
     }
 
+    /// <summary>
+    /// PropertyDiff describes the difference between a single property's old and new values.
+    /// </summary>
     internal class PropertyDiff
     {
+        /// <summary>
+        /// Kind is the kind of difference.
+        /// </summary>
         public DiffKind Kind { get; }
 
+        /// <summary>
+        /// InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
+        /// </summary>
         public bool InputDiff { get; }
 
         internal PropertyDiff(DiffKind kind, bool inputDiff)
@@ -162,27 +225,55 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
+    /// to migrate a set of cloud resources from one state to another.
+    /// </summary>
     internal class StepEventMetadata
     {
+        /// <summary>
+        /// Op is the operation being performed.
+        /// </summary>
         public OperationType Op { get; }
 
         public string Urn { get; }
 
         public string Type { get; }
 
+        /// <summary>
+        /// Old is the state of the resource before performing the step.
+        /// </summary>
         public StepEventStateMetadata? Old { get; }
 
+        /// <summary>
+        /// New is the state of the resource after performing the step.
+        /// </summary>
         // TODO: can this actually ever be null?
         public StepEventStateMetadata? New { get; }
 
+        /// <summary>
+        /// Keys causing a replacement (only applicable for "create" and "replace" Ops).
+        /// </summary>
         public ImmutableArray<string>? Keys { get; }
 
+        /// <summary>
+        /// Keys that changed with this step.
+        /// </summary>
         public ImmutableArray<string>? Diffs { get; }
 
+        /// <summary>
+        /// The diff for this step as a list of property paths and difference types.
+        /// </summary>
         public IImmutableDictionary<string, PropertyDiff>? DetailedDiff { get; }
 
+        /// <summary>
+        /// Logical is set if the step is a logical operation in the program.
+        /// </summary>
         public bool? Logical { get; }
 
+        /// <summary>
+        /// Provider actually performing the step.
+        /// </summary>
         public string Provider { get; }
 
         internal StepEventMetadata(
@@ -210,28 +301,60 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// StepEventStateMetadata is the more detailed state information for a resource as it relates to
+    /// a step(s) being performed.
+    /// </summary>
     internal class StepEventStateMetadata
     {
         public string Urn { get; }
 
         public string Type { get; }
 
+        /// <summary>
+        /// Custom indicates if the resource is managed by a plugin.
+        /// </summary>
         public bool? Custom { get; }
 
+        /// <summary>
+        /// Delete is true when the resource is pending deletion due to a replacement.
+        /// </summary>
         public bool? Delete { get; }
 
+        /// <summary>
+        /// ID is the resource's unique ID, assigned by the resource provider (or blank if none/uncreated).
+        /// </summary>
         public string Id { get; }
 
+        /// <summary>
+        /// Parent is an optional parent URN that this resource belongs to.
+        /// </summary>
         public string Parent { get; }
 
+        /// <summary>
+        /// Protect is true to "protect" this resource (protected resources cannot be deleted).
+        /// </summary>
         public bool? Protect { get; }
 
+        /// <summary>
+        /// Inputs contains the resource's input properties (as specified by the program). Secrets have
+        /// filtered out, and large assets have been replaced by hashes as applicable.
+        /// </summary>
         public IImmutableDictionary<string, object> Inputs { get; }
 
+        /// <summary>
+        /// Outputs contains the resource's complete output state (as returned by the resource provider).
+        /// </summary>
         public IImmutableDictionary<string, object> Outputs { get; }
 
+        /// <summary>
+        /// Provider is the resource's provider reference
+        /// </summary>
         public string Provider { get; }
 
+        /// <summary>
+        /// InitErrors is the set of errors encountered in the process of initializing resource.
+        /// </summary>
         public ImmutableArray<string>? InitErrors { get; }
 
         internal StepEventStateMetadata(
@@ -261,6 +384,9 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// ResourcePreEvent is emitted before a resource is modified.
+    /// </summary>
     internal class ResourcePreEvent
     {
         public StepEventMetadata Metadata { get; }
@@ -273,6 +399,9 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// ResOutputsEvent is emitted when a resource is finished being provisioned.
+    /// </summary>
     internal class ResOutputsEvent
     {
         public StepEventMetadata Metadata { get; }
@@ -285,6 +414,10 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
+    /// emitted before this event, indiciating what the root cause of the error.
+    /// </summary>
     internal class ResOpFailedEvent
     {
         public StepEventMetadata Metadata { get; }
@@ -299,10 +432,29 @@ namespace Pulumi.Automation.Events
         }
     }
 
+    /// <summary>
+    /// EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
+    /// message. EngineEvent is a discriminated union of all possible event types, and exactly one
+    /// field will be non-null.
+    /// </summary>
     internal class EngineEvent
     {
+        /// <summary>
+        /// Sequence is a unique, and monotonically increasing number for each engine event sent to the
+        /// Pulumi Service. Since events may be sent concurrently, and/or delayed via network routing,
+        /// the sequence number is to ensure events can be placed into a total ordering.
+        /// <para>
+        /// - No two events can have the same sequence number.
+        /// </para>
+        /// <para>
+        /// - Events with a lower sequence number must have been emitted before those with a higher sequence number.
+        /// </para>
+        /// </summary>
         public int Sequence { get; }
 
+        /// <summary>
+        /// Timestamp is a Unix timestamp (seconds) of when the event was emitted.
+        /// </summary>
         public int Timestamp { get; }
 
         public CancelEvent? CancelEvent { get; }
