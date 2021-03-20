@@ -43,7 +43,7 @@ export interface Workspace {
     /**
      * The version of the underlying Pulumi CLI/Engine.
      */
-    pulumiVersion?: semver.SemVer;
+    readonly pulumiVersion: semver.SemVer;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.

@@ -55,10 +55,6 @@ export class LocalWorkspace implements Workspace {
      */
     readonly secretsProvider?: string;
     /**
-     * The version of the underlying Pulumi CLI/Engine.
-     */
-    pulumiVersion?: semver.SemVer;
-    /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
      */
@@ -67,6 +63,16 @@ export class LocalWorkspace implements Workspace {
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
      */
     envVars: { [key: string]: string };
+    private _pulumiVersion?: semver.SemVer;
+    /**
+     * The version of the underlying Pulumi CLI/Engine.
+     */
+    public get pulumiVersion(): semver.SemVer {
+        if (!this._pulumiVersion) {
+            throw new Error("Failed to get pulumi version.");
+        }
+        return this._pulumiVersion;
+    }
     private ready: Promise<any[]>;
     /**
      * Creates a workspace using the specified options. Used for maximal control and customization
@@ -547,7 +553,7 @@ export class LocalWorkspace implements Workspace {
         const result = await this.runPulumiCmd(["version"]);
         const version = new semver.SemVer(result.stdout.trim());
         checkVersionIsValid(minVersion, version);
-        this.pulumiVersion = version;
+        this._pulumiVersion = version;
     }
     private async runPulumiCmd(
         args: string[],
