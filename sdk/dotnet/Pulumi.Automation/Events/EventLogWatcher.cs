@@ -2,7 +2,6 @@
 
 using System;
 using System.IO;
-using System.Threading;
 using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation.Events
@@ -10,8 +9,7 @@ namespace Pulumi.Automation.Events
     internal class EventLogWatcher : IDisposable
     {
         // Used to ensure only one event handler ends up reading the file at a time
-        // TODO: Verify if this is actually necessary?
-        private readonly SemaphoreSlim _semaphore = new SemaphoreSlim(1, 1);
+        private readonly object _eventLogReaderLock = new object();
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
         private readonly FileSystemWatcher _fileSystemWatcher;
         private readonly Action<EngineEvent> _onEvent;
@@ -37,7 +35,7 @@ namespace Pulumi.Automation.Events
                 NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
                 EnableRaisingEvents = true,
             };
-            _fileSystemWatcher.Changed += HandleEvent;
+            _fileSystemWatcher.Changed += HandleChangedEvent;
         }
 
         public void Dispose()
@@ -45,10 +43,9 @@ namespace Pulumi.Automation.Events
             _fileSystemWatcher.Dispose();
         }
 
-        private void HandleEvent(object sender, FileSystemEventArgs args)
+        private void HandleChangedEvent(object sender, FileSystemEventArgs args)
         {
-            _semaphore.Wait();
-            try
+            lock(_eventLogReaderLock)
             {
                 using var fs = new FileStream(args.FullPath, FileMode.Open, FileAccess.Read);
                 var newLength = fs.Length;
@@ -68,10 +65,6 @@ namespace Pulumi.Automation.Events
                 }
 
                 _previousLength = newLength;
-            }
-            finally
-            {
-                _semaphore.Release();
             }
         }
     }
