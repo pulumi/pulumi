@@ -7,14 +7,13 @@ using System.Collections.Immutable;
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
 namespace Pulumi.Automation.Events
 {
-    // TODO(vipentti): internal -> public, and add to Unshipped.txt once ready
     // TODO(vipentti): Split to separate files?
 
     /// <summary>
     /// CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
     /// the update successfully completes.
     /// </summary>
-    internal class CancelEvent
+    public class CancelEvent
     {
         internal CancelEvent() {}
     }
@@ -23,7 +22,7 @@ namespace Pulumi.Automation.Events
     /// StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
     /// from the pulumi CLI itself. Less common than DiagnosticEvent.
     /// </summary>
-    internal class StdoutEngineEvent
+    public class StdoutEngineEvent
     {
         public string Message { get; }
 
@@ -40,7 +39,7 @@ namespace Pulumi.Automation.Events
     /// DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
     /// a cloud resource provider while trying to create or update a resource.
     /// </summary>
-    internal class DiagnosticEvent
+    public class DiagnosticEvent
     {
         public string? Urn { get; }
 
@@ -80,7 +79,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// PolicyEvent is emitted whenever there is Policy violation.
     /// </summary>
-    internal class PolicyEvent
+    public class PolicyEvent
     {
         public string? ResourceUrn { get; }
 
@@ -122,7 +121,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// PreludeEvent is emitted at the start of an update.
     /// </summary>
-    internal class PreludeEvent
+    public class PreludeEvent
     {
         // Config contains the keys and values for the update.
         // Encrypted configuration values may be blinded.
@@ -137,7 +136,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// SummaryEvent is emitted at the end of an update, with a summary of the changes made.
     /// </summary>
-    internal class SummaryEvent
+    public class SummaryEvent
     {
         /// <summary>
         /// MaybeCorrupt is set if one or more of the resources is in an invalid state.
@@ -175,7 +174,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// DiffKind describes the kind of a particular property diff.
     /// </summary>
-    internal enum DiffKind
+    public enum DiffKind
     {
         /// <summary>
         /// Add indicates that the property was added.
@@ -206,7 +205,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// PropertyDiff describes the difference between a single property's old and new values.
     /// </summary>
-    internal class PropertyDiff
+    public class PropertyDiff
     {
         /// <summary>
         /// Kind is the kind of difference.
@@ -229,7 +228,7 @@ namespace Pulumi.Automation.Events
     /// StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
     /// to migrate a set of cloud resources from one state to another.
     /// </summary>
-    internal class StepEventMetadata
+    public class StepEventMetadata
     {
         /// <summary>
         /// Op is the operation being performed.
@@ -305,7 +304,7 @@ namespace Pulumi.Automation.Events
     /// StepEventStateMetadata is the more detailed state information for a resource as it relates to
     /// a step(s) being performed.
     /// </summary>
-    internal class StepEventStateMetadata
+    public class StepEventStateMetadata
     {
         public string Urn { get; }
 
@@ -387,7 +386,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// ResourcePreEvent is emitted before a resource is modified.
     /// </summary>
-    internal class ResourcePreEvent
+    public class ResourcePreEvent
     {
         public StepEventMetadata Metadata { get; }
         public bool? Planning { get; }
@@ -402,7 +401,7 @@ namespace Pulumi.Automation.Events
     /// <summary>
     /// ResOutputsEvent is emitted when a resource is finished being provisioned.
     /// </summary>
-    internal class ResOutputsEvent
+    public class ResOutputsEvent
     {
         public StepEventMetadata Metadata { get; }
         public bool? Planning { get; }
@@ -418,7 +417,7 @@ namespace Pulumi.Automation.Events
     /// ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
     /// emitted before this event, indiciating what the root cause of the error.
     /// </summary>
-    internal class ResOpFailedEvent
+    public class ResOpFailedEvent
     {
         public StepEventMetadata Metadata { get; }
         public int Status { get; }
@@ -437,7 +436,7 @@ namespace Pulumi.Automation.Events
     /// message. EngineEvent is a discriminated union of all possible event types, and exactly one
     /// field will be non-null.
     /// </summary>
-    internal class EngineEvent
+    public class EngineEvent
     {
         /// <summary>
         /// Sequence is a unique, and monotonically increasing number for each engine event sent to the
