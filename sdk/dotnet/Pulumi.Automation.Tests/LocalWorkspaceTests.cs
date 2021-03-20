@@ -583,19 +583,27 @@ namespace Pulumi.Automation.Tests
 
             try
             {
+                // pulumi preview
                 var previewResult = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
-                // TODO: Validate previewResult
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Create, out var createCount));
+                Assert.Equal(1, createCount);
 
+                // pulumi up
                 var upResult = await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
                 Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
 
-                // TODO: Preview again
+                // pulumi preview
+                var previewResultAgain = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                Assert.True(previewResultAgain.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
+                // pulumi refresh
                 var refreshResult = await RunCommand<UpdateResult, RefreshOptions>(stack.RefreshAsync, "refresh");
                 Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
 
+                // pulumi destroy
                 var destroyResult = await RunCommand<UpdateResult, DestroyOptions>(stack.DestroyAsync, "destroy");
                 Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);

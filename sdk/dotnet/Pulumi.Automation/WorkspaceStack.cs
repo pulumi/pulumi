@@ -264,7 +264,7 @@ namespace Pulumi.Automation
 
             InlineLanguageHost? inlineHost = null;
 
-            using var watcher = SetupEventLogWatchIfEnabled(args, options, "up");
+            using var watcher = SetupEventLogWatch(args, options?.OnEvent, "up");
 
             try
             {
@@ -364,7 +364,17 @@ namespace Pulumi.Automation
 
             InlineLanguageHost? inlineHost = null;
 
-            using var watcher = SetupEventLogWatchIfEnabled(args, options, "preview");
+            SummaryEvent? summaryEvent = null;
+
+            using var watcher = SetupEventLogWatch(args, @event =>
+            {
+                if (@event.SummaryEvent != null)
+                {
+                    summaryEvent = @event.SummaryEvent;
+                }
+
+                options?.OnEvent?.Invoke(@event);
+            }, "preview");
 
             try
             {
@@ -384,9 +394,15 @@ namespace Pulumi.Automation
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
+                if (summaryEvent is null)
+                {
+                    throw new InvalidOperationException("No summary of changes.");
+                }
+
                 return new PreviewResult(
                     result.StandardOutput,
-                    result.StandardError);
+                    result.StandardError,
+                    summaryEvent.ResourceChanges);
             }
             finally
             {
@@ -446,7 +462,7 @@ namespace Pulumi.Automation
             args.Add("--exec-kind");
             args.Add(execKind);
 
-            using var watcher = SetupEventLogWatchIfEnabled(args, options, "refresh");
+            using var watcher = SetupEventLogWatch(args, options?.OnEvent, "refresh");
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -504,7 +520,7 @@ namespace Pulumi.Automation
             args.Add("--exec-kind");
             args.Add(execKind);
 
-            using var watcher = SetupEventLogWatchIfEnabled(args, options, "destroy");
+            using var watcher = SetupEventLogWatch(args, options?.OnEvent, "destroy");
 
             var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -606,19 +622,19 @@ namespace Pulumi.Automation
         public void Dispose()
             => this.Workspace.Dispose();
 
-        private static EventLogFileWatcher SetupEventLogWatchIfEnabled(
+        private static EventLogFileWatcher SetupEventLogWatch(
             List<string> args,
-            UpdateOptions? options,
+            Action<EngineEvent>? onEvent,
             string command)
         {
             string? logFile = null;
             EventLogWatcher? watcher = null;
 
-            if (options?.OnEvent != null)
+            if (onEvent != null)
             {
                 logFile = CreateEventLogFile(command);
                 args.AddRange(new[] { "--event-log", logFile });
-                watcher = new EventLogWatcher(logFile, options.OnEvent);
+                watcher = new EventLogWatcher(logFile, onEvent);
             }
 
             return new EventLogFileWatcher(logFile, watcher);

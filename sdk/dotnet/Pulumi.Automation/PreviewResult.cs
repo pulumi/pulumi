@@ -1,5 +1,7 @@
 // Copyright 2016-2021, Pulumi Corporation
 
+using System.Collections.Immutable;
+
 namespace Pulumi.Automation
 {
     public class PreviewResult
@@ -8,12 +10,17 @@ namespace Pulumi.Automation
 
         public string StandardError { get; }
 
+        // TODO: internal -> public
+        internal IImmutableDictionary<OperationType, int> ChangeSummary { get; }
+
         internal PreviewResult(
             string standardOutput,
-            string standardError)
+            string standardError,
+            IImmutableDictionary<OperationType, int> changeSummary)
         {
             this.StandardOutput = standardOutput;
             this.StandardError = standardError;
+            this.ChangeSummary = changeSummary;
         }
     }
 }
