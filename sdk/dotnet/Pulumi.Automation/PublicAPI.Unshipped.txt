@@ -34,11 +34,11 @@ Pulumi.Automation.Events.EngineEvent.CancelEvent.get -> Pulumi.Automation.Events
 Pulumi.Automation.Events.EngineEvent.DiagnosticEvent.get -> Pulumi.Automation.Events.DiagnosticEvent
 Pulumi.Automation.Events.EngineEvent.PolicyEvent.get -> Pulumi.Automation.Events.PolicyEvent
 Pulumi.Automation.Events.EngineEvent.PreludeEvent.get -> Pulumi.Automation.Events.PreludeEvent
-Pulumi.Automation.Events.EngineEvent.ResOpFailedEvent.get -> Pulumi.Automation.Events.ResourceOperationFailedEvent
-Pulumi.Automation.Events.EngineEvent.ResOutputsEvent.get -> Pulumi.Automation.Events.ResourceOutputsEvent
+Pulumi.Automation.Events.EngineEvent.ResourceOperationFailedEvent.get -> Pulumi.Automation.Events.ResourceOperationFailedEvent
+Pulumi.Automation.Events.EngineEvent.ResourceOutputsEvent.get -> Pulumi.Automation.Events.ResourceOutputsEvent
 Pulumi.Automation.Events.EngineEvent.ResourcePreEvent.get -> Pulumi.Automation.Events.ResourcePreEvent
 Pulumi.Automation.Events.EngineEvent.Sequence.get -> int
-Pulumi.Automation.Events.EngineEvent.StdoutEvent.get -> Pulumi.Automation.Events.StandardOutputEngineEvent
+Pulumi.Automation.Events.EngineEvent.StandardOutputEvent.get -> Pulumi.Automation.Events.StandardOutputEngineEvent
 Pulumi.Automation.Events.EngineEvent.SummaryEvent.get -> Pulumi.Automation.Events.SummaryEvent
 Pulumi.Automation.Events.EngineEvent.Timestamp.get -> int
 Pulumi.Automation.Events.PolicyEvent

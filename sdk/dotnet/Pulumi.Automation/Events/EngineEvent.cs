@@ -30,13 +30,13 @@ namespace Pulumi.Automation.Events
         public int Timestamp { get; }
 
         public CancelEvent? CancelEvent { get; }
-        public StandardOutputEngineEvent? StdoutEvent { get; }
+        public StandardOutputEngineEvent? StandardOutputEvent { get; }
         public DiagnosticEvent? DiagnosticEvent { get; }
         public PreludeEvent? PreludeEvent { get; }
         public SummaryEvent? SummaryEvent { get; }
         public ResourcePreEvent? ResourcePreEvent { get; }
-        public ResourceOutputsEvent? ResOutputsEvent { get; }
-        public ResourceOperationFailedEvent? ResOpFailedEvent { get; }
+        public ResourceOutputsEvent? ResourceOutputsEvent { get; }
+        public ResourceOperationFailedEvent? ResourceOperationFailedEvent { get; }
         public PolicyEvent? PolicyEvent { get; }
 
         internal EngineEvent(
@@ -55,13 +55,13 @@ namespace Pulumi.Automation.Events
             Sequence = sequence;
             Timestamp = timestamp;
             CancelEvent = cancelEvent;
-            StdoutEvent = stdoutEvent;
+            StandardOutputEvent = stdoutEvent;
             DiagnosticEvent = diagnosticEvent;
             PreludeEvent = preludeEvent;
             SummaryEvent = summaryEvent;
             ResourcePreEvent = resourcePreEvent;
-            ResOutputsEvent = resOutputsEvent;
-            ResOpFailedEvent = resOpFailedEvent;
+            ResourceOutputsEvent = resOutputsEvent;
+            ResourceOperationFailedEvent = resOpFailedEvent;
             PolicyEvent = policyEvent;
         }
     }
