@@ -96,6 +96,9 @@ Pulumi.Automation.Events.SummaryEvent.DurationSeconds.get -> int
 Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt.get -> bool
 Pulumi.Automation.Events.SummaryEvent.PolicyPacks.get -> System.Collections.Immutable.IImmutableDictionary<string, string>
 Pulumi.Automation.Events.SummaryEvent.ResourceChanges.get -> System.Collections.Immutable.IImmutableDictionary<Pulumi.Automation.OperationType, int>
+Pulumi.Automation.Exceptions.MissingExpectedEventException
+Pulumi.Automation.Exceptions.MissingExpectedEventException.Name.get -> string
+Pulumi.Automation.Exceptions.NoSummaryEventException
 Pulumi.Automation.HistoryOptions
 Pulumi.Automation.HistoryOptions.HistoryOptions() -> void
 Pulumi.Automation.HistoryOptions.Page.get -> int?

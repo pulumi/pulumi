@@ -22,6 +22,7 @@ using Microsoft.Extensions.Hosting;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
+using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation
@@ -396,7 +397,7 @@ namespace Pulumi.Automation
 
                 if (summaryEvent is null)
                 {
-                    throw new InvalidOperationException("No summary of changes.");
+                    throw new NoSummaryEventException("No summary of changes for 'preview'");
                 }
 
                 return new PreviewResult(
