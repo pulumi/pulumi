@@ -573,8 +573,8 @@ namespace Pulumi.Automation.Tests
                     ["exp_static"] = "foo",
                 };
             });
-            var stackName = $"int_test{GetTestSuffix()}";
-            var projectName = "inline_node";
+            var projectName = "event_test";
+            var stackName = $"inline_events{GetTestSuffix()}";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
