@@ -112,10 +112,15 @@
             InputDiff is true if this is a difference between old and new inputs rather than old state and new inputs.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.ResOpFailedEvent">
+        <member name="T:Pulumi.Automation.Events.ResourceOperationFailedEvent">
             <summary>
-            ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
+            <see cref="T:Pulumi.Automation.Events.ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a DiagnosticEvent is
             emitted before this event, indiciating what the root cause of the error.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Events.ResourceOutputsEvent">
+            <summary>
+            <see cref="T:Pulumi.Automation.Events.ResourceOutputsEvent"/> is emitted when a resource is finished being provisioned.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.ResourcePreEvent">
@@ -123,15 +128,10 @@
             ResourcePreEvent is emitted before a resource is modified.
             </summary>
         </member>
-        <member name="T:Pulumi.Automation.Events.ResOutputsEvent">
+        <member name="T:Pulumi.Automation.Events.StandardOutputEngineEvent">
             <summary>
-            ResOutputsEvent is emitted when a resource is finished being provisioned.
-            </summary>
-        </member>
-        <member name="T:Pulumi.Automation.Events.StdoutEngineEvent">
-            <summary>
-            StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
-            from the pulumi CLI itself. Less common than DiagnosticEvent.
+            <see cref="T:Pulumi.Automation.Events.StandardOutputEngineEvent"/> is emitted whenever a generic message is written, for example warnings
+            from the pulumi CLI itself. Less common than <see cref="T:Pulumi.Automation.Events.DiagnosticEvent"/>.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.StepEventMetadata">

@@ -5,16 +5,16 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
+    /// <see cref="ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a DiagnosticEvent is
     /// emitted before this event, indiciating what the root cause of the error.
     /// </summary>
-    public class ResOpFailedEvent
+    public class ResourceOperationFailedEvent
     {
         public StepEventMetadata Metadata { get; }
         public int Status { get; }
         public int Steps { get; }
 
-        internal ResOpFailedEvent(StepEventMetadata metadata, int status, int steps)
+        internal ResourceOperationFailedEvent(StepEventMetadata metadata, int status, int steps)
         {
             Metadata = metadata;
             Status = status;

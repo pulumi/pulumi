@@ -5,16 +5,16 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
-    /// from the pulumi CLI itself. Less common than DiagnosticEvent.
+    /// <see cref="StandardOutputEngineEvent"/> is emitted whenever a generic message is written, for example warnings
+    /// from the pulumi CLI itself. Less common than <see cref="DiagnosticEvent"/>.
     /// </summary>
-    public class StdoutEngineEvent
+    public class StandardOutputEngineEvent
     {
         public string Message { get; }
 
         public string Color { get; }
 
-        internal StdoutEngineEvent(string message, string color)
+        internal StandardOutputEngineEvent(string message, string color)
         {
             Message = message;
             Color = color;

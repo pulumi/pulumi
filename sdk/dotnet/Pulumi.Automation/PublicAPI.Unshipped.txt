@@ -34,11 +34,11 @@ Pulumi.Automation.Events.EngineEvent.CancelEvent.get -> Pulumi.Automation.Events
 Pulumi.Automation.Events.EngineEvent.DiagnosticEvent.get -> Pulumi.Automation.Events.DiagnosticEvent
 Pulumi.Automation.Events.EngineEvent.PolicyEvent.get -> Pulumi.Automation.Events.PolicyEvent
 Pulumi.Automation.Events.EngineEvent.PreludeEvent.get -> Pulumi.Automation.Events.PreludeEvent
-Pulumi.Automation.Events.EngineEvent.ResOpFailedEvent.get -> Pulumi.Automation.Events.ResOpFailedEvent
-Pulumi.Automation.Events.EngineEvent.ResOutputsEvent.get -> Pulumi.Automation.Events.ResOutputsEvent
+Pulumi.Automation.Events.EngineEvent.ResOpFailedEvent.get -> Pulumi.Automation.Events.ResourceOperationFailedEvent
+Pulumi.Automation.Events.EngineEvent.ResOutputsEvent.get -> Pulumi.Automation.Events.ResourceOutputsEvent
 Pulumi.Automation.Events.EngineEvent.ResourcePreEvent.get -> Pulumi.Automation.Events.ResourcePreEvent
 Pulumi.Automation.Events.EngineEvent.Sequence.get -> int
-Pulumi.Automation.Events.EngineEvent.StdoutEvent.get -> Pulumi.Automation.Events.StdoutEngineEvent
+Pulumi.Automation.Events.EngineEvent.StdoutEvent.get -> Pulumi.Automation.Events.StandardOutputEngineEvent
 Pulumi.Automation.Events.EngineEvent.SummaryEvent.get -> Pulumi.Automation.Events.SummaryEvent
 Pulumi.Automation.Events.EngineEvent.Timestamp.get -> int
 Pulumi.Automation.Events.PolicyEvent
@@ -55,19 +55,19 @@ Pulumi.Automation.Events.PreludeEvent.Config.get -> System.Collections.Immutable
 Pulumi.Automation.Events.PropertyDiff
 Pulumi.Automation.Events.PropertyDiff.InputDiff.get -> bool
 Pulumi.Automation.Events.PropertyDiff.Kind.get -> Pulumi.Automation.Events.DiffKind
-Pulumi.Automation.Events.ResOpFailedEvent
-Pulumi.Automation.Events.ResOpFailedEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
-Pulumi.Automation.Events.ResOpFailedEvent.Status.get -> int
-Pulumi.Automation.Events.ResOpFailedEvent.Steps.get -> int
-Pulumi.Automation.Events.ResOutputsEvent
-Pulumi.Automation.Events.ResOutputsEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
-Pulumi.Automation.Events.ResOutputsEvent.Planning.get -> bool?
+Pulumi.Automation.Events.ResourceOperationFailedEvent
+Pulumi.Automation.Events.ResourceOperationFailedEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
+Pulumi.Automation.Events.ResourceOperationFailedEvent.Status.get -> int
+Pulumi.Automation.Events.ResourceOperationFailedEvent.Steps.get -> int
+Pulumi.Automation.Events.ResourceOutputsEvent
+Pulumi.Automation.Events.ResourceOutputsEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
+Pulumi.Automation.Events.ResourceOutputsEvent.Planning.get -> bool?
 Pulumi.Automation.Events.ResourcePreEvent
 Pulumi.Automation.Events.ResourcePreEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
 Pulumi.Automation.Events.ResourcePreEvent.Planning.get -> bool?
-Pulumi.Automation.Events.StdoutEngineEvent
-Pulumi.Automation.Events.StdoutEngineEvent.Color.get -> string
-Pulumi.Automation.Events.StdoutEngineEvent.Message.get -> string
+Pulumi.Automation.Events.StandardOutputEngineEvent
+Pulumi.Automation.Events.StandardOutputEngineEvent.Color.get -> string
+Pulumi.Automation.Events.StandardOutputEngineEvent.Message.get -> string
 Pulumi.Automation.Events.StepEventMetadata
 Pulumi.Automation.Events.StepEventMetadata.DetailedDiff.get -> System.Collections.Immutable.IImmutableDictionary<string, Pulumi.Automation.Events.PropertyDiff>
 Pulumi.Automation.Events.StepEventMetadata.Diffs.get -> System.Collections.Immutable.ImmutableArray<string>?

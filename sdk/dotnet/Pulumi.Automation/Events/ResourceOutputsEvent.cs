@@ -5,14 +5,14 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// ResOutputsEvent is emitted when a resource is finished being provisioned.
+    /// <see cref="ResourceOutputsEvent"/> is emitted when a resource is finished being provisioned.
     /// </summary>
-    public class ResOutputsEvent
+    public class ResourceOutputsEvent
     {
         public StepEventMetadata Metadata { get; }
         public bool? Planning { get; }
 
-        internal ResOutputsEvent(StepEventMetadata metadata, bool? planning)
+        internal ResourceOutputsEvent(StepEventMetadata metadata, bool? planning)
         {
             Metadata = metadata;
             Planning = planning;

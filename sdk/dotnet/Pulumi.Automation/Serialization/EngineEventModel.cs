@@ -14,13 +14,13 @@ namespace Pulumi.Automation.Serialization
         public int Timestamp { get; set; }
 
         public CancelEventModel? CancelEvent { get; set; }
-        public StdoutEngineEventModel? StdoutEvent { get; set; }
+        public StandardOutputEngineEventModel? StdoutEvent { get; set; }
         public DiagnosticEventModel? DiagnosticEvent { get; set; }
         public PreludeEventModel? PreludeEvent { get; set; }
         public SummaryEventModel? SummaryEvent { get; set; }
         public ResourcePreEventModel? ResourcePreEvent { get; set; }
-        public ResOutputsEventModel? ResOutputsEvent { get; set; }
-        public ResOpFailedEventModel? ResOpFailedEvent { get; set; }
+        public ResourceOutputsEventModel? ResOutputsEvent { get; set; }
+        public ResourceOperationFailedEventModel? ResOpFailedEvent { get; set; }
         public PolicyEventModel? PolicyEvent { get; set; }
 
         public EngineEvent Convert() =>

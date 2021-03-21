@@ -7,14 +7,14 @@ using Pulumi.Automation.Events;
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
 namespace Pulumi.Automation.Serialization
 {
-    internal class ResOpFailedEventModel : IJsonModel<ResOpFailedEvent>
+    internal class ResourceOperationFailedEventModel : IJsonModel<ResourceOperationFailedEvent>
     {
         public StepEventMetadataModel Metadata { get; set; } = null!;
         public int Status { get; set; }
         public int Steps { get; set; }
 
-        public ResOpFailedEvent Convert() =>
-            new ResOpFailedEvent(
+        public ResourceOperationFailedEvent Convert() =>
+            new ResourceOperationFailedEvent(
                 this.Metadata.Convert(),
                 this.Status,
                 this.Steps);

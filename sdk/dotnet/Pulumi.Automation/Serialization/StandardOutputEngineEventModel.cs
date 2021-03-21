@@ -7,13 +7,13 @@ using Pulumi.Automation.Events;
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
 namespace Pulumi.Automation.Serialization
 {
-    internal class StdoutEngineEventModel : IJsonModel<StdoutEngineEvent>
+    internal class StandardOutputEngineEventModel : IJsonModel<StandardOutputEngineEvent>
     {
         public string Message { get; set; } = null!;
 
         public string Color { get; set; } = null!;
 
-        public StdoutEngineEvent Convert() =>
-            new StdoutEngineEvent(this.Message, this.Color);
+        public StandardOutputEngineEvent Convert() =>
+            new StandardOutputEngineEvent(this.Message, this.Color);
     }
 }
