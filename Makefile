@@ -3,7 +3,7 @@ SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
 
-PROJECT         := github.com/pulumi/pulumi/pkg/v2/cmd/pulumi
+PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
 TESTS_PKGS      := $(shell cd ./tests && go list ./... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell pulumictl get version)
@@ -26,23 +26,23 @@ generate::
 	cd pkg && go generate ./codegen/docs/gen.go
 
 build:: generate
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 build_debug:: generate
-	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install:: generate
-	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 install_all:: install
 
 dist:: build
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" ${PROJECT}
 
 # NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
 brew:: BREW_VERSION := $(shell scripts/get-version HEAD)
 brew::
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${BREW_VERSION}" ${PROJECT}
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${BREW_VERSION}" ${PROJECT}
 
 lint::
 	for DIR in "pkg" "sdk" "tests" ; do \

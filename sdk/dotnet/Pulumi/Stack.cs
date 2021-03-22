@@ -37,7 +37,7 @@ namespace Pulumi
         /// <see cref="_rootPulumiStackTypeName"/> is the type name that should be used to construct
         /// the root component in the tree of Pulumi resources allocated by a deployment.This must
         /// be kept up to date with
-        /// <c>github.com/pulumi/pulumi/sdk/v2/go/common/resource/stack.RootStackType</c>.
+        /// <c>github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType</c>.
         /// </summary>
         internal const string _rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 

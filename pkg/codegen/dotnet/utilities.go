@@ -15,7 +15,7 @@
 package dotnet
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"regexp"
 	"strings"
 	"unicode"

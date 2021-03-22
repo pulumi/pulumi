@@ -9,7 +9,7 @@ import (
 	"runtime"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,7 +19,7 @@ func TestEmptyGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 	})
@@ -30,7 +30,7 @@ func TestEmptyGoRun(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 	})
@@ -41,7 +41,7 @@ func TestEmptyGoRunMain(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("empty", "gorun_main"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 	})
@@ -52,7 +52,7 @@ func TestConfigBasicGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("config_basic", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -89,7 +89,7 @@ func TestStackReferenceGo(t *testing.T) {
 	opts := &integration.ProgramTestOptions{
 		Dir: filepath.Join("stack_reference", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 		Config: map[string]string{
@@ -113,7 +113,7 @@ func TestStackReferenceGo(t *testing.T) {
 func TestLargeResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Dir: filepath.Join("large_resource", "go"),
 	})
@@ -139,7 +139,7 @@ func TestConstructGo(t *testing.T) {
 		Env: []string{pathEnv, testYarnLinkPulumiEnv},
 		Dir: filepath.Join("construct_component", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -178,7 +178,7 @@ func TestConstructGo(t *testing.T) {
 func TestGetResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Dir:                      filepath.Join("get_resource", "go"),
 		AllowEmptyPreviewChanges: true,
