@@ -3,6 +3,9 @@
 - [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
   [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
+- [sdk/cli] Bump version of Pulumi CLI and SDK to v3
+  [#6554](https://github.com/pulumi/pulumi/pull/6554)
+
 - [sdk/go] Simplify `Apply` method options to reduce binary size
   [#6607](https://github.com/pulumi/pulumi/pull/6607)
 

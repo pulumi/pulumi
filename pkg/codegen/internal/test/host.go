@@ -2,7 +2,7 @@ package test
 
 import (
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 

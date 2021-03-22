@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/graph"
+	"github.com/pulumi/pulumi/pkg/v3/graph"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 

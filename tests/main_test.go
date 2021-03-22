@@ -7,7 +7,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
 )
 
 func TestMain(m *testing.M) {

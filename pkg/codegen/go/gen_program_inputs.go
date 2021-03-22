@@ -1,8 +1,8 @@
 package gen
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
 // rewriteInputs wraps expressions in an __input intrinsic

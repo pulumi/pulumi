@@ -5,7 +5,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
 func errorf(subject hcl.Range, f string, args ...interface{}) *hcl.Diagnostic {

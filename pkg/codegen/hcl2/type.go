@@ -15,7 +15,7 @@
 package hcl2
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
 var (

@@ -17,8 +17,8 @@ package main
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	resourceanalyzer "github.com/pulumi/pulumi/pkg/v2/resource/analyzer"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	resourceanalyzer "github.com/pulumi/pulumi/pkg/v3/resource/analyzer"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
