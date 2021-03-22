@@ -247,7 +247,7 @@
     <Exec Command="pulumictl get version" ConsoleToMSBuild="true">
       <Output TaskParameter="ConsoleOutput" PropertyName="Version" />
     </Exec>
-    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/v2/version.Version=v$(Version)&quot; github.com/pulumi/pulumi/pkg/v2/cmd/pulumi"
+    <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/v3/version.Version=v$(Version)&quot; github.com/pulumi/pulumi/pkg/v3/cmd/pulumi"
        EnvironmentVariables="GOBIN=$(PulumiBin)"
        WorkingDirectory="$(PkgDirectory)"/>
     

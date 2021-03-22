@@ -8,8 +8,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	user "github.com/tweekmonster/luser"
 
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 

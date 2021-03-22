@@ -44,7 +44,7 @@ jobs:
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
-          replacements: github.com/pulumi/pulumi/pkg/v2=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk
+          replacements: github.com/pulumi/pulumi/pkg/v3=pulumi/pkg,github.com/pulumi/pulumi/sdk/v3=pulumi/sdk
           downstream-name: pulumi-${{ matrix.provider }}
           downstream-url: https://github.com/pulumi/pulumi-${{ matrix.provider }}
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}

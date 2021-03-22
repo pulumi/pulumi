@@ -3,7 +3,7 @@ package main
 import (
 	"reflect"
 
-	"github.com/pulumi/pulumi-random/sdk/v2/go/random"
+	"github.com/pulumi/pulumi-random/sdk/v3/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
