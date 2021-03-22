@@ -18,8 +18,8 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // projectSingleton is a singleton instance of projectLoader, which controls a global map of instances of Project
