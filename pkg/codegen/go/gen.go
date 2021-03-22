@@ -1724,11 +1724,12 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 			registrations.Add(tokenToModule(r.Token))
 			fmt.Fprintf(w, "\tcase %q:\n", r.Token)
-			fmt.Fprintf(w, "\t\tr, err = New%s(ctx, name, nil, pulumi.URN_(urn))\n", resourceName(r))
+			fmt.Fprintf(w, "\t\tr = &%s{}\n", resourceName(r))
 		}
 		fmt.Fprintf(w, "\tdefault:\n")
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown resource type: %%s\", typ)\n")
 		fmt.Fprintf(w, "\t}\n\n")
+		fmt.Fprintf(w, "\terr = ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))\n")
 		fmt.Fprintf(w, "\treturn\n")
 		fmt.Fprintf(w, "}\n\n")
 	}
@@ -1746,7 +1747,9 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "\tif typ != \"pulumi:providers:%s\" {\n", pkg.pkg.Name)
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown provider type: %%s\", typ)\n")
 		fmt.Fprintf(w, "\t}\n\n")
-		fmt.Fprintf(w, "\treturn NewProvider(ctx, name, nil, pulumi.URN_(urn))\n")
+		fmt.Fprintf(w, "\tr := &Provider{}\n")
+		fmt.Fprintf(w, "\terr := ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))\n")
+		fmt.Fprintf(w, "\treturn r, err\n")
 		fmt.Fprintf(w, "}\n\n")
 	}
 
