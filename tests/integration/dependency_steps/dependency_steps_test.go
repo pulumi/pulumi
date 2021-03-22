@@ -6,7 +6,7 @@ package ints
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 )
 
 // TestDependencySteps tests a case where the dependency graph between two

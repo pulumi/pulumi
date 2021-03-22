@@ -19,7 +19,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // useLegacyName are names that should return the result of PyNameLegacy from PyName, for compatibility.

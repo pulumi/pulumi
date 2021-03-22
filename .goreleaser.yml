@@ -24,7 +24,7 @@ builds:
     - linux
     - darwin
   ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   main: ./cmd/pulumi
 - id: pulumi-language-nodejs-unix
   binary: pulumi-language-nodejs
@@ -36,7 +36,7 @@ builds:
     - linux
     - darwin
   ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   main: ./nodejs/cmd/pulumi-language-nodejs
 - id: pulumi-language-python-unix
   binary: pulumi-language-python
@@ -48,7 +48,7 @@ builds:
     - linux
     - darwin
   ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   main: ./python/cmd/pulumi-language-python
 - id: pulumi-language-dotnet-unix
   binary: pulumi-language-dotnet
@@ -60,7 +60,7 @@ builds:
     - linux
     - darwin
   ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   main: ./dotnet/cmd/pulumi-language-dotnet
 - id: pulumi-language-go-unix
   binary: pulumi-language-go
@@ -72,7 +72,7 @@ builds:
     - linux
     - darwin
   ldflags:
-    - -X github.com/pulumi/pulumi/pkg/v2/version.Version={{.Tag}}
+    - -X github.com/pulumi/pulumi/pkg/v3/version.Version={{.Tag}}
   main: ./go/pulumi-language-go
 
 

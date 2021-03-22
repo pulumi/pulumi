@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/pkg/v2
+module github.com/pulumi/pulumi/pkg/v3
 
 go 1.16
 

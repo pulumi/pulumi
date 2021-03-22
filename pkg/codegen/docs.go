@@ -17,7 +17,7 @@ package codegen
 import (
 	"github.com/pgavlin/goldmark/ast"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
