@@ -1293,8 +1293,8 @@ func TestPulumiVersion(t *testing.T) {
 		t.FailNow()
 	}
 	version := ws.PulumiVersion()
-	assert.NotEqual(t, "v0.0.0", version.String())
-	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version.String())
+	assert.NotEqual(t, "v0.0.0", version)
+	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
 var minVersionTests = []struct {

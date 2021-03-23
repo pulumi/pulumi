@@ -76,7 +76,7 @@ type Workspace interface {
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	PulumiHome() string
 	// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
-	PulumiVersion() semver.Version
+	PulumiVersion() string
 	// WhoAmI returns the currently authenticated user.
 	WhoAmI(context.Context) (string, error)
 	// Stack returns a summary of the currently selected stack, if any.

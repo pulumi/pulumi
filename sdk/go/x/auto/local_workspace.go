@@ -313,8 +313,8 @@ func (l *LocalWorkspace) PulumiHome() string {
 }
 
 // PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
-func (l *LocalWorkspace) PulumiVersion() semver.Version {
-	return l.pulumiVersion
+func (l *LocalWorkspace) PulumiVersion() string {
+	return l.pulumiVersion.String()
 }
 
 // WhoAmI returns the currently authenticated user
