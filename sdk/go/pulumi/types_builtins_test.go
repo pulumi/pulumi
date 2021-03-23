@@ -132,72 +132,72 @@ func TestOutputApply(t *testing.T) {
 		go func() { out.resolve(42, true, false, nil) }()
 
 		t.Run("ApplyArchive", func(t *testing.T) {
-			o2 := out.ApplyArchive(func(v int) Archive { return *new(Archive) })
+			o2 := ApplyArchive(out, func(v int) Archive { return *new(Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveWithContext(context.Background(), func(_ context.Context, v int) Archive { return *new(Archive) })
+			o2 = ApplyArchiveWithContext(context.Background(), out, func(_ context.Context, v int) Archive { return *new(Archive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveArray", func(t *testing.T) {
-			o2 := out.ApplyArchiveArray(func(v int) []Archive { return *new([]Archive) })
+			o2 := ApplyArchiveArray(out, func(v int) []Archive { return *new([]Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveArrayWithContext(context.Background(), func(_ context.Context, v int) []Archive { return *new([]Archive) })
+			o2 = ApplyArchiveArrayWithContext(context.Background(), out, func(_ context.Context, v int) []Archive { return *new([]Archive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveMap", func(t *testing.T) {
-			o2 := out.ApplyArchiveMap(func(v int) map[string]Archive { return *new(map[string]Archive) })
+			o2 := ApplyArchiveMap(out, func(v int) map[string]Archive { return *new(map[string]Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveMapWithContext(context.Background(), func(_ context.Context, v int) map[string]Archive { return *new(map[string]Archive) })
+			o2 = ApplyArchiveMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]Archive { return *new(map[string]Archive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveArrayMap", func(t *testing.T) {
-			o2 := out.ApplyArchiveArrayMap(func(v int) map[string][]Archive { return *new(map[string][]Archive) })
+			o2 := ApplyArchiveArrayMap(out, func(v int) map[string][]Archive { return *new(map[string][]Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]Archive { return *new(map[string][]Archive) })
+			o2 = ApplyArchiveArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]Archive { return *new(map[string][]Archive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveMapArray", func(t *testing.T) {
-			o2 := out.ApplyArchiveMapArray(func(v int) []map[string]Archive { return *new([]map[string]Archive) })
+			o2 := ApplyArchiveMapArray(out, func(v int) []map[string]Archive { return *new([]map[string]Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]Archive { return *new([]map[string]Archive) })
+			o2 = ApplyArchiveMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]Archive { return *new([]map[string]Archive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArchiveMapMap", func(t *testing.T) {
-			o2 := out.ApplyArchiveMapMap(func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) })
+			o2 := ApplyArchiveMapMap(out, func(v int) map[string]map[string]Archive { return *new(map[string]map[string]Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]Archive {
+			o2 = ApplyArchiveMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]Archive {
 				return *new(map[string]map[string]Archive)
 			})
 			_, known, _, _, err = await(o2)
@@ -206,168 +206,168 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		t.Run("ApplyArchiveArrayArray", func(t *testing.T) {
-			o2 := out.ApplyArchiveArrayArray(func(v int) [][]Archive { return *new([][]Archive) })
+			o2 := ApplyArchiveArrayArray(out, func(v int) [][]Archive { return *new([][]Archive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArchiveArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]Archive { return *new([][]Archive) })
+			o2 = ApplyArchiveArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]Archive { return *new([][]Archive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAsset", func(t *testing.T) {
-			o2 := out.ApplyAsset(func(v int) Asset { return *new(Asset) })
+			o2 := ApplyAsset(out, func(v int) Asset { return *new(Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetWithContext(context.Background(), func(_ context.Context, v int) Asset { return *new(Asset) })
+			o2 = ApplyAssetWithContext(context.Background(), out, func(_ context.Context, v int) Asset { return *new(Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetArray", func(t *testing.T) {
-			o2 := out.ApplyAssetArray(func(v int) []Asset { return *new([]Asset) })
+			o2 := ApplyAssetArray(out, func(v int) []Asset { return *new([]Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetArrayWithContext(context.Background(), func(_ context.Context, v int) []Asset { return *new([]Asset) })
+			o2 = ApplyAssetArrayWithContext(context.Background(), out, func(_ context.Context, v int) []Asset { return *new([]Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetMap", func(t *testing.T) {
-			o2 := out.ApplyAssetMap(func(v int) map[string]Asset { return *new(map[string]Asset) })
+			o2 := ApplyAssetMap(out, func(v int) map[string]Asset { return *new(map[string]Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetMapWithContext(context.Background(), func(_ context.Context, v int) map[string]Asset { return *new(map[string]Asset) })
+			o2 = ApplyAssetMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]Asset { return *new(map[string]Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetArrayMap", func(t *testing.T) {
-			o2 := out.ApplyAssetArrayMap(func(v int) map[string][]Asset { return *new(map[string][]Asset) })
+			o2 := ApplyAssetArrayMap(out, func(v int) map[string][]Asset { return *new(map[string][]Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]Asset { return *new(map[string][]Asset) })
+			o2 = ApplyAssetArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]Asset { return *new(map[string][]Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetMapArray", func(t *testing.T) {
-			o2 := out.ApplyAssetMapArray(func(v int) []map[string]Asset { return *new([]map[string]Asset) })
+			o2 := ApplyAssetMapArray(out, func(v int) []map[string]Asset { return *new([]map[string]Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]Asset { return *new([]map[string]Asset) })
+			o2 = ApplyAssetMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]Asset { return *new([]map[string]Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetMapMap", func(t *testing.T) {
-			o2 := out.ApplyAssetMapMap(func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) })
+			o2 := ApplyAssetMapMap(out, func(v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) })
+			o2 = ApplyAssetMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]Asset { return *new(map[string]map[string]Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetArrayArray", func(t *testing.T) {
-			o2 := out.ApplyAssetArrayArray(func(v int) [][]Asset { return *new([][]Asset) })
+			o2 := ApplyAssetArrayArray(out, func(v int) [][]Asset { return *new([][]Asset) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]Asset { return *new([][]Asset) })
+			o2 = ApplyAssetArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]Asset { return *new([][]Asset) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchive", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchive(func(v int) AssetOrArchive { return *new(AssetOrArchive) })
+			o2 := ApplyAssetOrArchive(out, func(v int) AssetOrArchive { return *new(AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveWithContext(context.Background(), func(_ context.Context, v int) AssetOrArchive { return *new(AssetOrArchive) })
+			o2 = ApplyAssetOrArchiveWithContext(context.Background(), out, func(_ context.Context, v int) AssetOrArchive { return *new(AssetOrArchive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveArray", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchiveArray(func(v int) []AssetOrArchive { return *new([]AssetOrArchive) })
+			o2 := ApplyAssetOrArchiveArray(out, func(v int) []AssetOrArchive { return *new([]AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveArrayWithContext(context.Background(), func(_ context.Context, v int) []AssetOrArchive { return *new([]AssetOrArchive) })
+			o2 = ApplyAssetOrArchiveArrayWithContext(context.Background(), out, func(_ context.Context, v int) []AssetOrArchive { return *new([]AssetOrArchive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveMap", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchiveMap(func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) })
+			o2 := ApplyAssetOrArchiveMap(out, func(v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveMapWithContext(context.Background(), func(_ context.Context, v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) })
+			o2 = ApplyAssetOrArchiveMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]AssetOrArchive { return *new(map[string]AssetOrArchive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveArrayMap", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchiveArrayMap(func(v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) })
+			o2 := ApplyAssetOrArchiveArrayMap(out, func(v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) })
+			o2 = ApplyAssetOrArchiveArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]AssetOrArchive { return *new(map[string][]AssetOrArchive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveMapArray", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchiveMapArray(func(v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) })
+			o2 := ApplyAssetOrArchiveMapArray(out, func(v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) })
+			o2 = ApplyAssetOrArchiveMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]AssetOrArchive { return *new([]map[string]AssetOrArchive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyAssetOrArchiveMapMap", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchiveMapMap(func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) })
+			o2 := ApplyAssetOrArchiveMapMap(out, func(v int) map[string]map[string]AssetOrArchive { return *new(map[string]map[string]AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]AssetOrArchive {
+			o2 = ApplyAssetOrArchiveMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]AssetOrArchive {
 				return *new(map[string]map[string]AssetOrArchive)
 			})
 			_, known, _, _, err = await(o2)
@@ -376,192 +376,192 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		t.Run("ApplyAssetOrArchiveArrayArray", func(t *testing.T) {
-			o2 := out.ApplyAssetOrArchiveArrayArray(func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) })
+			o2 := ApplyAssetOrArchiveArrayArray(out, func(v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyAssetOrArchiveArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) })
+			o2 = ApplyAssetOrArchiveArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]AssetOrArchive { return *new([][]AssetOrArchive) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBool", func(t *testing.T) {
-			o2 := out.ApplyBool(func(v int) bool { return *new(bool) })
+			o2 := ApplyBool(out, func(v int) bool { return *new(bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolWithContext(context.Background(), func(_ context.Context, v int) bool { return *new(bool) })
+			o2 = ApplyBoolWithContext(context.Background(), out, func(_ context.Context, v int) bool { return *new(bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolPtr", func(t *testing.T) {
-			o2 := out.ApplyBoolPtr(func(v int) *bool { return *new(*bool) })
+			o2 := ApplyBoolPtr(out, func(v int) *bool { return *new(*bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolPtrWithContext(context.Background(), func(_ context.Context, v int) *bool { return *new(*bool) })
+			o2 = ApplyBoolPtrWithContext(context.Background(), out, func(_ context.Context, v int) *bool { return *new(*bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolArray", func(t *testing.T) {
-			o2 := out.ApplyBoolArray(func(v int) []bool { return *new([]bool) })
+			o2 := ApplyBoolArray(out, func(v int) []bool { return *new([]bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolArrayWithContext(context.Background(), func(_ context.Context, v int) []bool { return *new([]bool) })
+			o2 = ApplyBoolArrayWithContext(context.Background(), out, func(_ context.Context, v int) []bool { return *new([]bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolMap", func(t *testing.T) {
-			o2 := out.ApplyBoolMap(func(v int) map[string]bool { return *new(map[string]bool) })
+			o2 := ApplyBoolMap(out, func(v int) map[string]bool { return *new(map[string]bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolMapWithContext(context.Background(), func(_ context.Context, v int) map[string]bool { return *new(map[string]bool) })
+			o2 = ApplyBoolMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]bool { return *new(map[string]bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolArrayMap", func(t *testing.T) {
-			o2 := out.ApplyBoolArrayMap(func(v int) map[string][]bool { return *new(map[string][]bool) })
+			o2 := ApplyBoolArrayMap(out, func(v int) map[string][]bool { return *new(map[string][]bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]bool { return *new(map[string][]bool) })
+			o2 = ApplyBoolArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]bool { return *new(map[string][]bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolMapArray", func(t *testing.T) {
-			o2 := out.ApplyBoolMapArray(func(v int) []map[string]bool { return *new([]map[string]bool) })
+			o2 := ApplyBoolMapArray(out, func(v int) []map[string]bool { return *new([]map[string]bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]bool { return *new([]map[string]bool) })
+			o2 = ApplyBoolMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]bool { return *new([]map[string]bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolMapMap", func(t *testing.T) {
-			o2 := out.ApplyBoolMapMap(func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) })
+			o2 := ApplyBoolMapMap(out, func(v int) map[string]map[string]bool { return *new(map[string]map[string]bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]bool { return *new(map[string]map[string]bool) })
+			o2 = ApplyBoolMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]bool { return *new(map[string]map[string]bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyBoolArrayArray", func(t *testing.T) {
-			o2 := out.ApplyBoolArrayArray(func(v int) [][]bool { return *new([][]bool) })
+			o2 := ApplyBoolArrayArray(out, func(v int) [][]bool { return *new([][]bool) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyBoolArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]bool { return *new([][]bool) })
+			o2 = ApplyBoolArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]bool { return *new([][]bool) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64", func(t *testing.T) {
-			o2 := out.ApplyFloat64(func(v int) float64 { return *new(float64) })
+			o2 := ApplyFloat64(out, func(v int) float64 { return *new(float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64WithContext(context.Background(), func(_ context.Context, v int) float64 { return *new(float64) })
+			o2 = ApplyFloat64WithContext(context.Background(), out, func(_ context.Context, v int) float64 { return *new(float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64Ptr", func(t *testing.T) {
-			o2 := out.ApplyFloat64Ptr(func(v int) *float64 { return *new(*float64) })
+			o2 := ApplyFloat64Ptr(out, func(v int) *float64 { return *new(*float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64PtrWithContext(context.Background(), func(_ context.Context, v int) *float64 { return *new(*float64) })
+			o2 = ApplyFloat64PtrWithContext(context.Background(), out, func(_ context.Context, v int) *float64 { return *new(*float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64Array", func(t *testing.T) {
-			o2 := out.ApplyFloat64Array(func(v int) []float64 { return *new([]float64) })
+			o2 := ApplyFloat64Array(out, func(v int) []float64 { return *new([]float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64ArrayWithContext(context.Background(), func(_ context.Context, v int) []float64 { return *new([]float64) })
+			o2 = ApplyFloat64ArrayWithContext(context.Background(), out, func(_ context.Context, v int) []float64 { return *new([]float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64Map", func(t *testing.T) {
-			o2 := out.ApplyFloat64Map(func(v int) map[string]float64 { return *new(map[string]float64) })
+			o2 := ApplyFloat64Map(out, func(v int) map[string]float64 { return *new(map[string]float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64MapWithContext(context.Background(), func(_ context.Context, v int) map[string]float64 { return *new(map[string]float64) })
+			o2 = ApplyFloat64MapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]float64 { return *new(map[string]float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64ArrayMap", func(t *testing.T) {
-			o2 := out.ApplyFloat64ArrayMap(func(v int) map[string][]float64 { return *new(map[string][]float64) })
+			o2 := ApplyFloat64ArrayMap(out, func(v int) map[string][]float64 { return *new(map[string][]float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64ArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]float64 { return *new(map[string][]float64) })
+			o2 = ApplyFloat64ArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]float64 { return *new(map[string][]float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64MapArray", func(t *testing.T) {
-			o2 := out.ApplyFloat64MapArray(func(v int) []map[string]float64 { return *new([]map[string]float64) })
+			o2 := ApplyFloat64MapArray(out, func(v int) []map[string]float64 { return *new([]map[string]float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64MapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]float64 { return *new([]map[string]float64) })
+			o2 = ApplyFloat64MapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]float64 { return *new([]map[string]float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyFloat64MapMap", func(t *testing.T) {
-			o2 := out.ApplyFloat64MapMap(func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) })
+			o2 := ApplyFloat64MapMap(out, func(v int) map[string]map[string]float64 { return *new(map[string]map[string]float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64MapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]float64 {
+			o2 = ApplyFloat64MapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]float64 {
 				return *new(map[string]map[string]float64)
 			})
 			_, known, _, _, err = await(o2)
@@ -570,168 +570,168 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		t.Run("ApplyFloat64ArrayArray", func(t *testing.T) {
-			o2 := out.ApplyFloat64ArrayArray(func(v int) [][]float64 { return *new([][]float64) })
+			o2 := ApplyFloat64ArrayArray(out, func(v int) [][]float64 { return *new([][]float64) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyFloat64ArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]float64 { return *new([][]float64) })
+			o2 = ApplyFloat64ArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]float64 { return *new([][]float64) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyID", func(t *testing.T) {
-			o2 := out.ApplyID(func(v int) ID { return *new(ID) })
+			o2 := ApplyID(out, func(v int) ID { return *new(ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDWithContext(context.Background(), func(_ context.Context, v int) ID { return *new(ID) })
+			o2 = ApplyIDWithContext(context.Background(), out, func(_ context.Context, v int) ID { return *new(ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDPtr", func(t *testing.T) {
-			o2 := out.ApplyIDPtr(func(v int) *ID { return *new(*ID) })
+			o2 := ApplyIDPtr(out, func(v int) *ID { return *new(*ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDPtrWithContext(context.Background(), func(_ context.Context, v int) *ID { return *new(*ID) })
+			o2 = ApplyIDPtrWithContext(context.Background(), out, func(_ context.Context, v int) *ID { return *new(*ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDArray", func(t *testing.T) {
-			o2 := out.ApplyIDArray(func(v int) []ID { return *new([]ID) })
+			o2 := ApplyIDArray(out, func(v int) []ID { return *new([]ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDArrayWithContext(context.Background(), func(_ context.Context, v int) []ID { return *new([]ID) })
+			o2 = ApplyIDArrayWithContext(context.Background(), out, func(_ context.Context, v int) []ID { return *new([]ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDMap", func(t *testing.T) {
-			o2 := out.ApplyIDMap(func(v int) map[string]ID { return *new(map[string]ID) })
+			o2 := ApplyIDMap(out, func(v int) map[string]ID { return *new(map[string]ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDMapWithContext(context.Background(), func(_ context.Context, v int) map[string]ID { return *new(map[string]ID) })
+			o2 = ApplyIDMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]ID { return *new(map[string]ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDArrayMap", func(t *testing.T) {
-			o2 := out.ApplyIDArrayMap(func(v int) map[string][]ID { return *new(map[string][]ID) })
+			o2 := ApplyIDArrayMap(out, func(v int) map[string][]ID { return *new(map[string][]ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]ID { return *new(map[string][]ID) })
+			o2 = ApplyIDArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]ID { return *new(map[string][]ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDMapArray", func(t *testing.T) {
-			o2 := out.ApplyIDMapArray(func(v int) []map[string]ID { return *new([]map[string]ID) })
+			o2 := ApplyIDMapArray(out, func(v int) []map[string]ID { return *new([]map[string]ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]ID { return *new([]map[string]ID) })
+			o2 = ApplyIDMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]ID { return *new([]map[string]ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDMapMap", func(t *testing.T) {
-			o2 := out.ApplyIDMapMap(func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) })
+			o2 := ApplyIDMapMap(out, func(v int) map[string]map[string]ID { return *new(map[string]map[string]ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]ID { return *new(map[string]map[string]ID) })
+			o2 = ApplyIDMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]ID { return *new(map[string]map[string]ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIDArrayArray", func(t *testing.T) {
-			o2 := out.ApplyIDArrayArray(func(v int) [][]ID { return *new([][]ID) })
+			o2 := ApplyIDArrayArray(out, func(v int) [][]ID { return *new([][]ID) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIDArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]ID { return *new([][]ID) })
+			o2 = ApplyIDArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]ID { return *new([][]ID) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArray", func(t *testing.T) {
-			o2 := out.ApplyArray(func(v int) []interface{} { return *new([]interface{}) })
+			o2 := ApplyArray(out, func(v int) []interface{} { return *new([]interface{}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArrayWithContext(context.Background(), func(_ context.Context, v int) []interface{} { return *new([]interface{}) })
+			o2 = ApplyArrayWithContext(context.Background(), out, func(_ context.Context, v int) []interface{} { return *new([]interface{}) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyMap", func(t *testing.T) {
-			o2 := out.ApplyMap(func(v int) map[string]interface{} { return *new(map[string]interface{}) })
+			o2 := ApplyMap(out, func(v int) map[string]interface{} { return *new(map[string]interface{}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyMapWithContext(context.Background(), func(_ context.Context, v int) map[string]interface{} { return *new(map[string]interface{}) })
+			o2 = ApplyMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]interface{} { return *new(map[string]interface{}) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyArrayMap", func(t *testing.T) {
-			o2 := out.ApplyArrayMap(func(v int) map[string][]interface{} { return *new(map[string][]interface{}) })
+			o2 := ApplyArrayMap(out, func(v int) map[string][]interface{} { return *new(map[string][]interface{}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]interface{} { return *new(map[string][]interface{}) })
+			o2 = ApplyArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]interface{} { return *new(map[string][]interface{}) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyMapArray", func(t *testing.T) {
-			o2 := out.ApplyMapArray(func(v int) []map[string]interface{} { return *new([]map[string]interface{}) })
+			o2 := ApplyMapArray(out, func(v int) []map[string]interface{} { return *new([]map[string]interface{}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]interface{} { return *new([]map[string]interface{}) })
+			o2 = ApplyMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]interface{} { return *new([]map[string]interface{}) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyMapMap", func(t *testing.T) {
-			o2 := out.ApplyMapMap(func(v int) map[string]map[string]interface{} { return *new(map[string]map[string]interface{}) })
+			o2 := ApplyMapMap(out, func(v int) map[string]map[string]interface{} { return *new(map[string]map[string]interface{}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]interface{} {
+			o2 = ApplyMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]interface{} {
 				return *new(map[string]map[string]interface{})
 			})
 			_, known, _, _, err = await(o2)
@@ -740,300 +740,300 @@ func TestOutputApply(t *testing.T) {
 		})
 
 		t.Run("ApplyArrayArray", func(t *testing.T) {
-			o2 := out.ApplyArrayArray(func(v int) [][]interface{} { return *new([][]interface{}) })
+			o2 := ApplyArrayArray(out, func(v int) [][]interface{} { return *new([][]interface{}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]interface{} { return *new([][]interface{}) })
+			o2 = ApplyArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]interface{} { return *new([][]interface{}) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyInt", func(t *testing.T) {
-			o2 := out.ApplyInt(func(v int) int { return *new(int) })
+			o2 := ApplyInt(out, func(v int) int { return *new(int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntWithContext(context.Background(), func(_ context.Context, v int) int { return *new(int) })
+			o2 = ApplyIntWithContext(context.Background(), out, func(_ context.Context, v int) int { return *new(int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntPtr", func(t *testing.T) {
-			o2 := out.ApplyIntPtr(func(v int) *int { return *new(*int) })
+			o2 := ApplyIntPtr(out, func(v int) *int { return *new(*int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntPtrWithContext(context.Background(), func(_ context.Context, v int) *int { return *new(*int) })
+			o2 = ApplyIntPtrWithContext(context.Background(), out, func(_ context.Context, v int) *int { return *new(*int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntArray", func(t *testing.T) {
-			o2 := out.ApplyIntArray(func(v int) []int { return *new([]int) })
+			o2 := ApplyIntArray(out, func(v int) []int { return *new([]int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntArrayWithContext(context.Background(), func(_ context.Context, v int) []int { return *new([]int) })
+			o2 = ApplyIntArrayWithContext(context.Background(), out, func(_ context.Context, v int) []int { return *new([]int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntMap", func(t *testing.T) {
-			o2 := out.ApplyIntMap(func(v int) map[string]int { return *new(map[string]int) })
+			o2 := ApplyIntMap(out, func(v int) map[string]int { return *new(map[string]int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntMapWithContext(context.Background(), func(_ context.Context, v int) map[string]int { return *new(map[string]int) })
+			o2 = ApplyIntMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]int { return *new(map[string]int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntArrayMap", func(t *testing.T) {
-			o2 := out.ApplyIntArrayMap(func(v int) map[string][]int { return *new(map[string][]int) })
+			o2 := ApplyIntArrayMap(out, func(v int) map[string][]int { return *new(map[string][]int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]int { return *new(map[string][]int) })
+			o2 = ApplyIntArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]int { return *new(map[string][]int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntMapArray", func(t *testing.T) {
-			o2 := out.ApplyIntMapArray(func(v int) []map[string]int { return *new([]map[string]int) })
+			o2 := ApplyIntMapArray(out, func(v int) []map[string]int { return *new([]map[string]int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]int { return *new([]map[string]int) })
+			o2 = ApplyIntMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]int { return *new([]map[string]int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntMapMap", func(t *testing.T) {
-			o2 := out.ApplyIntMapMap(func(v int) map[string]map[string]int { return *new(map[string]map[string]int) })
+			o2 := ApplyIntMapMap(out, func(v int) map[string]map[string]int { return *new(map[string]map[string]int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]int { return *new(map[string]map[string]int) })
+			o2 = ApplyIntMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]int { return *new(map[string]map[string]int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyIntArrayArray", func(t *testing.T) {
-			o2 := out.ApplyIntArrayArray(func(v int) [][]int { return *new([][]int) })
+			o2 := ApplyIntArrayArray(out, func(v int) [][]int { return *new([][]int) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyIntArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]int { return *new([][]int) })
+			o2 = ApplyIntArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]int { return *new([][]int) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyString", func(t *testing.T) {
-			o2 := out.ApplyString(func(v int) string { return *new(string) })
+			o2 := ApplyString(out, func(v int) string { return *new(string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringWithContext(context.Background(), func(_ context.Context, v int) string { return *new(string) })
+			o2 = ApplyStringWithContext(context.Background(), out, func(_ context.Context, v int) string { return *new(string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringPtr", func(t *testing.T) {
-			o2 := out.ApplyStringPtr(func(v int) *string { return *new(*string) })
+			o2 := ApplyStringPtr(out, func(v int) *string { return *new(*string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringPtrWithContext(context.Background(), func(_ context.Context, v int) *string { return *new(*string) })
+			o2 = ApplyStringPtrWithContext(context.Background(), out, func(_ context.Context, v int) *string { return *new(*string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringArray", func(t *testing.T) {
-			o2 := out.ApplyStringArray(func(v int) []string { return *new([]string) })
+			o2 := ApplyStringArray(out, func(v int) []string { return *new([]string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringArrayWithContext(context.Background(), func(_ context.Context, v int) []string { return *new([]string) })
+			o2 = ApplyStringArrayWithContext(context.Background(), out, func(_ context.Context, v int) []string { return *new([]string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringMap", func(t *testing.T) {
-			o2 := out.ApplyStringMap(func(v int) map[string]string { return *new(map[string]string) })
+			o2 := ApplyStringMap(out, func(v int) map[string]string { return *new(map[string]string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringMapWithContext(context.Background(), func(_ context.Context, v int) map[string]string { return *new(map[string]string) })
+			o2 = ApplyStringMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]string { return *new(map[string]string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringArrayMap", func(t *testing.T) {
-			o2 := out.ApplyStringArrayMap(func(v int) map[string][]string { return *new(map[string][]string) })
+			o2 := ApplyStringArrayMap(out, func(v int) map[string][]string { return *new(map[string][]string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]string { return *new(map[string][]string) })
+			o2 = ApplyStringArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]string { return *new(map[string][]string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringMapArray", func(t *testing.T) {
-			o2 := out.ApplyStringMapArray(func(v int) []map[string]string { return *new([]map[string]string) })
+			o2 := ApplyStringMapArray(out, func(v int) []map[string]string { return *new([]map[string]string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]string { return *new([]map[string]string) })
+			o2 = ApplyStringMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]string { return *new([]map[string]string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringMapMap", func(t *testing.T) {
-			o2 := out.ApplyStringMapMap(func(v int) map[string]map[string]string { return *new(map[string]map[string]string) })
+			o2 := ApplyStringMapMap(out, func(v int) map[string]map[string]string { return *new(map[string]map[string]string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]string { return *new(map[string]map[string]string) })
+			o2 = ApplyStringMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]string { return *new(map[string]map[string]string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyStringArrayArray", func(t *testing.T) {
-			o2 := out.ApplyStringArrayArray(func(v int) [][]string { return *new([][]string) })
+			o2 := ApplyStringArrayArray(out, func(v int) [][]string { return *new([][]string) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyStringArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]string { return *new([][]string) })
+			o2 = ApplyStringArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]string { return *new([][]string) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURN", func(t *testing.T) {
-			o2 := out.ApplyURN(func(v int) URN { return *new(URN) })
+			o2 := ApplyURN(out, func(v int) URN { return *new(URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNWithContext(context.Background(), func(_ context.Context, v int) URN { return *new(URN) })
+			o2 = ApplyURNWithContext(context.Background(), out, func(_ context.Context, v int) URN { return *new(URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNPtr", func(t *testing.T) {
-			o2 := out.ApplyURNPtr(func(v int) *URN { return *new(*URN) })
+			o2 := ApplyURNPtr(out, func(v int) *URN { return *new(*URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNPtrWithContext(context.Background(), func(_ context.Context, v int) *URN { return *new(*URN) })
+			o2 = ApplyURNPtrWithContext(context.Background(), out, func(_ context.Context, v int) *URN { return *new(*URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNArray", func(t *testing.T) {
-			o2 := out.ApplyURNArray(func(v int) []URN { return *new([]URN) })
+			o2 := ApplyURNArray(out, func(v int) []URN { return *new([]URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNArrayWithContext(context.Background(), func(_ context.Context, v int) []URN { return *new([]URN) })
+			o2 = ApplyURNArrayWithContext(context.Background(), out, func(_ context.Context, v int) []URN { return *new([]URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNMap", func(t *testing.T) {
-			o2 := out.ApplyURNMap(func(v int) map[string]URN { return *new(map[string]URN) })
+			o2 := ApplyURNMap(out, func(v int) map[string]URN { return *new(map[string]URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNMapWithContext(context.Background(), func(_ context.Context, v int) map[string]URN { return *new(map[string]URN) })
+			o2 = ApplyURNMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]URN { return *new(map[string]URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNArrayMap", func(t *testing.T) {
-			o2 := out.ApplyURNArrayMap(func(v int) map[string][]URN { return *new(map[string][]URN) })
+			o2 := ApplyURNArrayMap(out, func(v int) map[string][]URN { return *new(map[string][]URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][]URN { return *new(map[string][]URN) })
+			o2 = ApplyURNArrayMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string][]URN { return *new(map[string][]URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNMapArray", func(t *testing.T) {
-			o2 := out.ApplyURNMapArray(func(v int) []map[string]URN { return *new([]map[string]URN) })
+			o2 := ApplyURNMapArray(out, func(v int) []map[string]URN { return *new([]map[string]URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNMapArrayWithContext(context.Background(), func(_ context.Context, v int) []map[string]URN { return *new([]map[string]URN) })
+			o2 = ApplyURNMapArrayWithContext(context.Background(), out, func(_ context.Context, v int) []map[string]URN { return *new([]map[string]URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNMapMap", func(t *testing.T) {
-			o2 := out.ApplyURNMapMap(func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) })
+			o2 := ApplyURNMapMap(out, func(v int) map[string]map[string]URN { return *new(map[string]map[string]URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNMapMapWithContext(context.Background(), func(_ context.Context, v int) map[string]map[string]URN { return *new(map[string]map[string]URN) })
+			o2 = ApplyURNMapMapWithContext(context.Background(), out, func(_ context.Context, v int) map[string]map[string]URN { return *new(map[string]map[string]URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 		})
 
 		t.Run("ApplyURNArrayArray", func(t *testing.T) {
-			o2 := out.ApplyURNArrayArray(func(v int) [][]URN { return *new([][]URN) })
+			o2 := ApplyURNArrayArray(out, func(v int) [][]URN { return *new([][]URN) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.ApplyURNArrayArrayWithContext(context.Background(), func(_ context.Context, v int) [][]URN { return *new([][]URN) })
+			o2 = ApplyURNArrayArrayWithContext(context.Background(), out, func(_ context.Context, v int) [][]URN { return *new([][]URN) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)

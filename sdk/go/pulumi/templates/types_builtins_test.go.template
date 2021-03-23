@@ -133,12 +133,12 @@ func TestOutputApply(t *testing.T) {
 
 {{range .Builtins}}
 		t.Run("Apply{{.Name}}", func(t *testing.T) {
-			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			o2 := Apply{{.Name}}(out, func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
 			_, known, _, _, err := await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)
 
-			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
+			o2 = Apply{{.Name}}WithContext(context.Background(), out, func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
 			_, known, _, _, err = await(o2)
 			assert.True(t, known)
 			assert.NoError(t, err)

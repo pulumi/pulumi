@@ -556,7 +556,7 @@ func TestNil(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
-	bo := ao.ApplyBool(func(x interface{}) bool {
+	bo := ApplyBool(ao, func(x interface{}) bool {
 		return x == nil
 	})
 	v, known, secret, deps, err = await(bo)

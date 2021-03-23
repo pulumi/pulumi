@@ -22,12 +22,12 @@ import (
 
 {{range .Builtins}}
 // Apply{{.Name}} is like ApplyT, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}(applier interface{}) {{.Name}}Output {
+func Apply{{.Name}}(o Output, applier interface{}) {{.Name}}Output {
 	return o.ApplyT(applier).({{.Name}}Output)
 }
 
 // Apply{{.Name}}WithContext is like ApplyTWithContext, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}WithContext(ctx context.Context, applier interface{}) {{.Name}}Output {
+func Apply{{.Name}}WithContext(ctx context.Context, o Output, applier interface{}) {{.Name}}Output {
 	return o.ApplyTWithContext(ctx, applier).({{.Name}}Output)
 }
 {{end}}
