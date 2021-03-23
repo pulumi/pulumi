@@ -570,7 +570,7 @@ func TestOutputApply(t *testing.T) {
 			}
 		})
 
-		res5 := All(res3, res4).Apply(func(v interface{}) (interface{}, error) {
+		res5 := All(res3, res4).ApplyT(func(v interface{}) (interface{}, error) {
 			vs := v.([]interface{})
 			res3 := vs[0].(string)
 			res4 := vs[1].(*myStructType)
