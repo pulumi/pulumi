@@ -68,10 +68,7 @@ export class LocalWorkspace implements Workspace {
      * The version of the underlying Pulumi CLI/Engine.
      */
     public get pulumiVersion(): semver.SemVer {
-        if (!this._pulumiVersion) {
-            throw new Error("Failed to get pulumi version.");
-        }
-        return this._pulumiVersion;
+        return this._pulumiVersion!;
     }
     private ready: Promise<any[]>;
     /**
@@ -552,7 +549,7 @@ export class LocalWorkspace implements Workspace {
     private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
         const version = new semver.SemVer(result.stdout.trim());
-        checkVersionIsValid(minVersion, version);
+        validatePulumiVersion(minVersion, version);
         this._pulumiVersion = version;
     }
     private async runPulumiCmd(
@@ -666,18 +663,11 @@ function defaultProject(projectName: string) {
     return settings;
 }
 
-export function checkVersionIsValid(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
-    const err = new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minimumVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
-    if (minVersion.major !== currentVersion.major) {
-        throw err;
+export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
+    if (minVersion.major < currentVersion.major) {
+        throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
     }
-    if (minVersion.minor < currentVersion.minor) {
-        return;
+    if (minVersion.compare(currentVersion) === 1) {
+        throw new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
     }
-    if (minVersion.minor === currentVersion.minor) {
-        if (minVersion.patch <= currentVersion.patch) {
-            return;
-        }
-    }
-    throw err;
 }

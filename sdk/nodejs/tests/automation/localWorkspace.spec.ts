@@ -18,13 +18,13 @@ import * as upath from "upath";
 
 import { Config } from "../../index";
 import {
-    checkVersionIsValid,
     ConfigMap,
     EngineEvent,
     fullyQualifiedStackName,
     LocalWorkspace,
     ProjectSettings,
     Stack,
+    validatePulumiVersion,
 } from "../../x/automation";
 import { asyncTest } from "../util";
 
@@ -436,9 +436,13 @@ describe(`checkVersionIsValid`, () => {
             const minVersion = new semver.SemVer(test.minVersion);
 
             if (test.expectError) {
-                assert.throws(() => checkVersionIsValid(minVersion, currentVersion), /Minimum version requirement failed. The minimum CLI version requirement is/);
+                if (minVersion.major < currentVersion.major) {
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Major version mismatch./);
+                } else {
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Minimum version requirement failed./);
+                }
             } else {
-                assert.doesNotThrow(() => checkVersionIsValid(minVersion, currentVersion));
+                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion));
             }
         });
     });
