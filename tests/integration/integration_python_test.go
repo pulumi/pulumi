@@ -463,6 +463,6 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	})
 
 	t.Run("AbsolutePath", func(t *testing.T) {
-		check(t, "${root}/absvenv")
+		check(t, filepath.Join("${root}", "absvenv"))
 	})
 }
