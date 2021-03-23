@@ -16,3 +16,5 @@
   
 ### Bug Fixes
 
+- [automation/python] Fix Settings file save
+  [#6605](https://github.com/pulumi/pulumi/pull/6605)
