@@ -26,6 +26,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/blang/semver"
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
@@ -36,7 +39,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optrefresh"
 	"github.com/pulumi/pulumi/sdk/v2/go/x/auto/optup"
-	"github.com/stretchr/testify/assert"
 )
 
 var pulumiOrg = getTestOrg()
@@ -1281,6 +1283,80 @@ func TestStructuredOutput(t *testing.T) {
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 	assert.True(t, containsSummary(destroyEvents))
+}
+
+func TestPulumiVersion(t *testing.T) {
+	ctx := context.Background()
+	ws, err := NewLocalWorkspace(ctx)
+	if err != nil {
+		t.Errorf("failed to create workspace, err: %v", err)
+		t.FailNow()
+	}
+	version := ws.PulumiVersion()
+	assert.NotEqual(t, "v0.0.0", version.String())
+	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version.String())
+}
+
+var minVersionTests = []struct {
+	name           string
+	minimumVersion semver.Version
+	expectError    bool
+}{
+	{
+		"higher_major",
+		semver.Version{Major: 100, Minor: 0, Patch: 0},
+		true,
+	},
+	{
+		"lower_major",
+		semver.Version{Major: 1, Minor: 0, Patch: 0},
+		true,
+	},
+	{
+		"higher_minor",
+		semver.Version{Major: 2, Minor: 22, Patch: 0},
+		true,
+	},
+	{
+		"lower_minor",
+		semver.Version{Major: 2, Minor: 1, Patch: 0},
+		false,
+	},
+	{
+		"equal_minor_higher_patch",
+		semver.Version{Major: 2, Minor: 21, Patch: 2},
+		true,
+	},
+	{
+		"equal_minor_equal_patch",
+		semver.Version{Major: 2, Minor: 21, Patch: 1},
+		false,
+	},
+	{
+		"equal_minor_lower_patch",
+		semver.Version{Major: 2, Minor: 21, Patch: 0},
+		false,
+	},
+}
+
+func TestMinimumVersion(t *testing.T) {
+	for _, tt := range minVersionTests {
+		t.Run(tt.name, func(t *testing.T) {
+			currentVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
+			ws := LocalWorkspace{pulumiVersion: currentVersion}
+			err := ws.validatePulumiVersion(tt.minimumVersion)
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.minimumVersion.Major < currentVersion.Major {
+					assert.Regexp(t, `Major version mismatch.`, err.Error())
+				} else {
+					assert.Regexp(t, `Minimum version requirement failed.`, err.Error())
+				}
+			} else {
+				assert.Nil(t, err)
+			}
+		})
+	}
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
