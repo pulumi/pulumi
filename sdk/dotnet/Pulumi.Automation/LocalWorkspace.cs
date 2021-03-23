@@ -45,13 +45,7 @@ namespace Pulumi.Automation
 
         private SemVersion? pulumiVersion;
         /// <inheritdoc/>
-        public override SemVersion PulumiVersion 
-        { 
-            get 
-            { 
-                return pulumiVersion!; 
-            }
-        }
+        public override SemVersion PulumiVersion => pulumiVersion ?? throw new InvalidOperationException("Failed to get Pulumi version.");
 
         /// <inheritdoc/>
         public override string? SecretsProvider { get; }
@@ -349,7 +343,7 @@ namespace Pulumi.Automation
 
         private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
 
-        private async Task PopulatePulumiVersionAsync(CancellationToken cancellationToken = default)
+        private async Task PopulatePulumiVersionAsync(CancellationToken cancellationToken)
         {
             var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
             var versionString = result.StandardOutput.Trim();
@@ -367,8 +361,8 @@ namespace Pulumi.Automation
             if (minVersion.Major < currentVersion.Major) {
                 throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {currentVersion} with Automation SDK v{minVersion.Major}. Please update the SDK.");
             }
-            if (minVersion.CompareTo(currentVersion) == 1) {
-                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.");
+            if (minVersion > currentVersion) {
+                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is {currentVersion}. Please update the Pulumi CLI.");
             }
         }
 
