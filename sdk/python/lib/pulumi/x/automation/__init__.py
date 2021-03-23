@@ -106,7 +106,8 @@ from .errors import (
     ConcurrentUpdateError,
     InlineSourceRuntimeError,
     RuntimeError,
-    CompilationError
+    CompilationError,
+    InvalidVersionError
 )
 
 from ._local_workspace import (
@@ -162,6 +163,7 @@ __all__ = [
     "InlineSourceRuntimeError",
     "RuntimeError",
     "CompilationError",
+    "InvalidVersionError",
 
     # _local_workspace
     "LocalWorkspace",
