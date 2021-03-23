@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import * as semver from "semver";
-
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
 import { StackSettings } from "./stackSettings";
@@ -43,7 +41,7 @@ export interface Workspace {
     /**
      * The version of the underlying Pulumi CLI/Engine.
      */
-    readonly pulumiVersion: semver.SemVer;
+    readonly pulumiVersion: string;
     /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.

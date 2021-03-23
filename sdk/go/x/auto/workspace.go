@@ -17,8 +17,6 @@ package auto
 import (
 	"context"
 
-	"github.com/blang/semver"
-
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
@@ -76,7 +74,7 @@ type Workspace interface {
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	PulumiHome() string
 	// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
-	PulumiVersion() semver.Version
+	PulumiVersion() string
 	// WhoAmI returns the currently authenticated user.
 	WhoAmI(context.Context) (string, error)
 	// Stack returns a summary of the currently selected stack, if any.
@@ -107,8 +105,6 @@ type Workspace interface {
 	// ImportStack imports the specified deployment state into a pre-existing stack.
 	// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
-	// Check the underlying Pulumi version against the minimum valid version.
-	validatePulumiVersion(minVersion semver.Version) error
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.

@@ -1293,8 +1293,8 @@ func TestPulumiVersion(t *testing.T) {
 		t.FailNow()
 	}
 	version := ws.PulumiVersion()
-	assert.NotEqual(t, "v0.0.0", version.String())
-	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version.String())
+	assert.NotEqual(t, "v0.0.0", version)
+	assert.Regexp(t, `(\d+\.)(\d+\.)(\d+)(-.*)?`, version)
 }
 
 var minVersionTests = []struct {
@@ -1343,8 +1343,7 @@ func TestMinimumVersion(t *testing.T) {
 	for _, tt := range minVersionTests {
 		t.Run(tt.name, func(t *testing.T) {
 			currentVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
-			ws := LocalWorkspace{pulumiVersion: currentVersion}
-			err := ws.validatePulumiVersion(tt.minimumVersion)
+			err := validatePulumiVersion(tt.minimumVersion, currentVersion)
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.minimumVersion.Major < currentVersion.Major {

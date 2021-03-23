@@ -313,8 +313,8 @@ func (l *LocalWorkspace) PulumiHome() string {
 }
 
 // PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
-func (l *LocalWorkspace) PulumiVersion() semver.Version {
-	return l.pulumiVersion
+func (l *LocalWorkspace) PulumiVersion() string {
+	return l.pulumiVersion.String()
 }
 
 // WhoAmI returns the currently authenticated user
@@ -500,13 +500,12 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, 
 }
 
 //nolint:lll
-func (l *LocalWorkspace) validatePulumiVersion(minVersion semver.Version) error {
-	pv := l.pulumiVersion
-	if minVersion.Major < pv.Major {
-		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", pv, minVersion.Major))
+func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version) error {
+	if minVersion.Major < currentVersion.Major {
+		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major))
 	}
-	if minVersion.GT(pv) {
-		return errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, l.pulumiVersion))
+	if minVersion.GT(currentVersion) {
+		return errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion))
 	}
 	return nil
 }
@@ -577,7 +576,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	}
 	l.pulumiVersion = v
 
-	if err = l.validatePulumiVersion(minimumVersion); err != nil {
+	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion); err != nil {
 		return nil, err
 	}
 

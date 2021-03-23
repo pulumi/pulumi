@@ -84,8 +84,9 @@ class LocalWorkspace(Workspace):
         self.env_vars = env_vars or {}
         self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
 
-        self.pulumi_version = self._get_pulumi_version()
-        _validate_pulumi_version(_MINIMUM_VERSION, self.pulumi_version)
+        pulumi_version = self._get_pulumi_version()
+        _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version)
+        self.pulumi_version = str(pulumi_version)
 
         if project_settings:
             self.save_project_settings(project_settings)
