@@ -11,9 +11,12 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
 	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 // TestEmptyPython simply tests that we can run an empty Python project.
@@ -399,4 +402,31 @@ func TestGetResourcePython(t *testing.T) {
 		},
 		AllowEmptyPreviewChanges: true,
 	})
+}
+
+// Regresses https://github.com/pulumi/pulumi/issues/6471
+func TestAutomaticVenvCreation(t *testing.T) {
+	// Do not use itnegration.ProgramTest to avoid automatic venv
+	// handling by test harness; we actually are testing venv
+	// handilng by the pulumi CLI itself.
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory(filepath.Join("python", "venv"))
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "teststack")
+	e.RunCommand("pulumi", "preview")
+
+	venvPath := filepath.Join(e.RootPath, "venv")
+
+	if !python.IsVirtualEnv(venvPath) {
+		t.Errorf("Expected a virtual environment to be created at %s but it is not there",
+			venvPath)
+	}
 }
