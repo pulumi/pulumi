@@ -49,11 +49,7 @@ namespace Pulumi.Automation
         { 
             get 
             { 
-                if (pulumiVersion == null)
-                {
-                    throw new ArgumentNullException("pulumiVersion");
-                }
-                return pulumiVersion; 
+                return pulumiVersion!; 
             }
         }
 
@@ -336,7 +332,7 @@ namespace Pulumi.Automation
 
             this.WorkDir = dir;
 
-            readyTasks.Add(this.GetPulumiVersionAsync(cancellationToken));
+            readyTasks.Add(this.PopulatePulumiVersionAsync(cancellationToken));
 
             // these are after working dir is set because they start immediately
             if (options?.ProjectSettings != null)
@@ -353,37 +349,27 @@ namespace Pulumi.Automation
 
         private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
 
-        private async Task GetPulumiVersionAsync(CancellationToken cancellationToken = default)
+        private async Task PopulatePulumiVersionAsync(CancellationToken cancellationToken = default)
         {
             var result = await this.RunCommandAsync(new[] { "version" }, cancellationToken).ConfigureAwait(false);
             var versionString = result.StandardOutput.Trim();
-            if (versionString[0] == 'v') {
-                versionString = versionString.TrimStart('v');
-            }
-            var version = SemVersion.Parse(versionString);
-            if (version == null)
+            versionString = versionString.TrimStart('v');
+            if (!SemVersion.TryParse(versionString, out var version))
             {
-                throw new ArgumentNullException("version");
+                throw new InvalidOperationException("Failed to get Pulumi version.");
             }
-            LocalWorkspace.CheckVersionIsValid(LocalWorkspace._minimumVersion, version);
+            LocalWorkspace.ValidatePulumiVersion(LocalWorkspace._minimumVersion, version);
             this.pulumiVersion = version;
         }
 
-        public static void CheckVersionIsValid(SemVersion minVersion, SemVersion currentVersion)
+        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion)
         {
-            var err = new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.");
-            if (minVersion.Major != currentVersion.Major) {
-                throw err;
+            if (minVersion.Major < currentVersion.Major) {
+                throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {currentVersion} with Automation SDK v{minVersion.Major}. Please update the SDK.");
             }
-            if (minVersion.Minor < currentVersion.Minor) {
-                return;
+            if (minVersion.CompareTo(currentVersion) == 1) {
+                throw new InvalidOperationException($"Minimum version requirement failed. The minimum CLI version requirement is {minVersion}, your current CLI version is ${currentVersion}. Please update the Pulumi CLI.");
             }
-            if (minVersion.Minor == currentVersion.Minor) {
-                if (minVersion.Patch <= currentVersion.Patch) {
-                    return;
-                }
-            }
-            throw err;
         }
 
         /// <inheritdoc/>

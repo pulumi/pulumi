@@ -848,12 +848,12 @@ namespace Pulumi.Automation.Tests
             var testCurrentVersion = SemVersion.Parse("2.21.1");
             if (errorExpected)
             {
-                Action act = () => LocalWorkspace.CheckVersionIsValid(minVersion, testCurrentVersion);
+                Action act = () => LocalWorkspace.ValidatePulumiVersion(minVersion, testCurrentVersion);
                 Assert.Throws<InvalidOperationException>(act);
             }
             else
             {
-                LocalWorkspace.CheckVersionIsValid(minVersion, testCurrentVersion);
+                LocalWorkspace.ValidatePulumiVersion(minVersion, testCurrentVersion);
             }
         }
     }
