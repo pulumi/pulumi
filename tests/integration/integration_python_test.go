@@ -6,9 +6,11 @@ package ints
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -406,27 +408,61 @@ func TestGetResourcePython(t *testing.T) {
 
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
-	// Do not use itnegration.ProgramTest to avoid automatic venv
+	// Do not use integration.ProgramTest to avoid automatic venv
 	// handling by test harness; we actually are testing venv
-	// handilng by the pulumi CLI itself.
+	// handling by the pulumi CLI itself.
 
-	e := ptesting.NewEnvironment(t)
-	defer func() {
-		if !t.Failed() {
-			e.DeleteEnvironment()
+	check := func(t *testing.T, venvPathTemplate string) {
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
+
+		e.ImportDirectory(filepath.Join("python", "venv"))
+
+		// replace "virtualenv: venv" with "virtualenv: ${venvPath}" in Pulumi.yaml
+		pulumiYaml := filepath.Join(e.RootPath, "Pulumi.yaml")
+
+		oldYaml, err := ioutil.ReadFile(pulumiYaml)
+		if err != nil {
+			t.Error(err)
+			return
 		}
-	}()
+		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
+			"virtualenv: venv",
+			fmt.Sprintf("virtualenv: %s", venvPath)))
+		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
+			t.Error(err)
+			return
+		}
 
-	e.ImportDirectory(filepath.Join("python", "venv"))
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "teststack")
+		e.RunCommand("pulumi", "preview")
 
-	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	e.RunCommand("pulumi", "stack", "init", "teststack")
-	e.RunCommand("pulumi", "preview")
+		var absVenvPath string
+		if filepath.IsAbs(venvPath) {
+			absVenvPath = venvPath
+		} else {
+			absVenvPath = filepath.Join(e.RootPath, venvPath)
+		}
 
-	venvPath := filepath.Join(e.RootPath, "venv")
-
-	if !python.IsVirtualEnv(venvPath) {
-		t.Errorf("Expected a virtual environment to be created at %s but it is not there",
-			venvPath)
+		if !python.IsVirtualEnv(absVenvPath) {
+			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
+				venvPath)
+		}
 	}
+
+	t.Run("RelativePath", func(t *testing.T) {
+		check(t, "venv")
+	})
+
+	t.Run("AbsolutePath", func(t *testing.T) {
+		check(t, "${root}/absvenv")
+	})
 }
