@@ -82,19 +82,18 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	if parent != nil {
-		parentPrefix = parent.ToStringOutput().ApplyT(func(p string) string {
-			return p[0:strings.LastIndex(p, "::")] + "$"
-		}).(StringOutput)
+		parentPrefix = ApplyStringToString(parent, func(p string) (string, error) {
+			return p[0:strings.LastIndex(p, "::")] + "$", nil
+		})
 	} else {
-		parentPrefix = All(stack, project).ApplyT(func(a []interface{}) string {
-			return "urn:pulumi:" + a[0].(string) + "::" + a[1].(string) + "::"
-		}).(StringOutput)
-
+		parentPrefix = ApplyArrayToString(All(stack, project), func(a []interface{}) (string, error) {
+			return "urn:pulumi:" + a[0].(string) + "::" + a[1].(string) + "::", nil
+		})
 	}
 
-	return All(parentPrefix, t, name).ApplyT(func(a []interface{}) URN {
-		return URN(a[0].(string) + a[1].(string) + "::" + a[2].(string))
-	}).(URNOutput)
+	return ApplyArrayToURN(All(parentPrefix, t, name), func(a []interface{}) (URN, error) {
+		return URN(a[0].(string) + a[1].(string) + "::" + a[2].(string)), nil
+	})
 }
 
 // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
@@ -103,10 +102,10 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN URNOutput) URNOutput {
 	aliasName := StringInput(String(childName))
 	if strings.HasPrefix(childName, parentName) {
-		aliasName = parentURN.ApplyT(func(urn URN) string {
+		aliasName = ApplyURNToString(parentURN, func(urn URN) (string, error) {
 			parentPrefix := urn[strings.LastIndex(string(urn), "::")+2:]
-			return string(parentPrefix) + childName[len(parentName):]
-		}).(StringOutput)
+			return string(parentPrefix) + childName[len(parentName):], nil
+		})
 	}
 	return CreateURN(aliasName, String(childType), parentURN, String(project), String(stack))
 }

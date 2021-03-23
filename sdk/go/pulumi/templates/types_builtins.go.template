@@ -213,8 +213,8 @@ func init() {
 {{range $from := $builtins}}
 {{range $to := $builtins}}
 // Apply{{$from.Name}}To{{$to.Name}} is like ApplyT, but returns a {{$to.Name}}Output.
-func Apply{{$from.Name}}To{{$to.Name}}(o {{$from.Name}}Output, applier func (v {{$from.ElementType}}) ({{$to.ElementType}}, error)) {{$to.Name}}Output {
-	return o.ApplyT(applier).({{$to.Name}}Output)
+func Apply{{$from.Name}}To{{$to.Name}}(o {{$from.Name}}Input, applier func (v {{$from.ElementType}}) ({{$to.ElementType}}, error)) {{$to.Name}}Output {
+	return o.To{{$from.Name}}Output().ApplyT(applier).({{$to.Name}}Output)
 }
 {{end}}
 {{end}}
