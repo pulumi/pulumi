@@ -406,9 +406,9 @@ func TestGetResourcePython(t *testing.T) {
 
 // Regresses https://github.com/pulumi/pulumi/issues/6471
 func TestAutomaticVenvCreation(t *testing.T) {
-	// Do not use itnegration.ProgramTest to avoid automatic venv
+	// Do not use integration.ProgramTest to avoid automatic venv
 	// handling by test harness; we actually are testing venv
-	// handilng by the pulumi CLI itself.
+	// handling by the pulumi CLI itself.
 
 	e := ptesting.NewEnvironment(t)
 	defer func() {
