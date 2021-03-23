@@ -36,7 +36,6 @@ type Output interface {
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
 	getState() *OutputState
-	IsSecret() bool
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -395,7 +394,7 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 }
 
 // IsSecret returns a bool representing the secretness of the Output
-func (o *OutputState) IsSecret() bool {
+func IsSecret(o Output) bool {
 	return o.getState().secret
 }
 
