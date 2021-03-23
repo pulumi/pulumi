@@ -387,7 +387,7 @@ describe("LocalWorkspace", () => {
     it(`sets pulumi version`, asyncTest(async () => {
         const ws = await LocalWorkspace.create({});
         assert(ws.pulumiVersion);
-        assert.strictEqual(versionRegex.test(ws.pulumiVersion.toString()), true);
+        assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
     }));
 });
 
