@@ -19,7 +19,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -219,7 +218,7 @@ func InstallDependenciesWithWriters(root, venvDir string, showOutput bool, infoW
 	print("Creating virtual environment...")
 
 	// Create the virtual environment by running `python -m venv <venvDir>`.
-	if !path.IsAbs(venvDir) {
+	if !filepath.IsAbs(venvDir) {
 		venvDir = filepath.Join(root, venvDir)
 	}
 
