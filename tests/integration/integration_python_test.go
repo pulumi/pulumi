@@ -422,6 +422,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		}()
 
 		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
+		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
 
 		e.ImportDirectory(filepath.Join("python", "venv"))
 
@@ -435,11 +436,13 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		}
 		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
 			"virtualenv: venv",
-			fmt.Sprintf("virtualenv: %s", venvPath)))
+			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
 		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
 			t.Error(err)
 			return
 		}
+
+		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
 
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "teststack")
@@ -454,7 +457,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 
 		if !python.IsVirtualEnv(absVenvPath) {
 			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
-				venvPath)
+				absVenvPath)
 		}
 	}
 
