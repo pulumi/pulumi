@@ -15,14 +15,30 @@ namespace Pulumi
     /// </summary>
     public static partial class Output
     {
-        public static Output<T> Create<T>([MaybeNull]T value)
-            => Create(Task.FromResult(value));
+
+	private static void DeleteThisCreateNullTest() {
+	    string? foo = null;
+	    Output<string> mout = Output.Create<string>(foo);
+	}
+
+        public static Output<T> Create<T>([AllowNull] T value) {
+	    if (value == null) {
+		return Output<T>.CreateDefault(isSecret: false);
+	    } else {
+		return Create(Task.FromResult(value));
+	    }
+	}
 
         public static Output<T> Create<T>(Task<T> value)
             => Output<T>.Create(value);
 
-        public static Output<T> CreateSecret<T>([MaybeNull]T value)
-            => CreateSecret(Task.FromResult(value));
+        public static Output<T> CreateSecret<T>([AllowNull]T value) {
+	    if (value == null) {
+		return Output<T>.CreateDefault(isSecret: true);
+	    } else {
+		return CreateSecret(Task.FromResult(value));
+	    }
+	}
 
         public static Output<T> CreateSecret<T>(Task<T> value)
             => Output<T>.CreateSecret(value);
@@ -58,7 +74,7 @@ namespace Pulumi
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(IEnumerable<Input<T>> inputs)
             => Output<T>.All(ImmutableArray.CreateRange(inputs));
-        
+
         /// <summary>
         /// Combines all the <see cref="Output{T}"/> values in <paramref name="outputs"/>
         /// into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>
@@ -182,9 +198,21 @@ namespace Pulumi
             }
 
             var tcs = new TaskCompletionSource<OutputData<T>>();
-            value.Assign(tcs, t => OutputData.Create(ImmutableHashSet<Resource>.Empty, t, isKnown: true, isSecret: isSecret));
+            value.Assign(tcs, t => OutputData.Create(ImmutableHashSet<Resource>.Empty,
+						     t,
+						     isKnown: true,
+						     isSecret: isSecret));
             return new Output<T>(tcs.Task);
         }
+
+	internal static Output<T> CreateDefault(bool isSecret) {
+	    var tcs = new TaskCompletionSource<OutputData<T>>();
+	    Task.FromResult(false).Assign(tcs, _ => OutputData.Create<T>(ImmutableHashSet<Resource>.Empty,
+									 default(T),
+									 isKnown: true,
+									 isSecret: isSecret));
+            return new Output<T>(tcs.Task);
+	}
 
         /// <summary>
         /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
