@@ -832,7 +832,7 @@ namespace Pulumi.Automation.Tests
         public async Task PulumiVersionTest()
         {
             using var workspace = await LocalWorkspace.CreateAsync();
-            Assert.Matches("(\\d+\\.)(\\d+\\.)(\\d+)(-.*)?", workspace.PulumiVersion.ToString());
+            Assert.Matches("(\\d+\\.)(\\d+\\.)(\\d+)(-.*)?", workspace.PulumiVersion);
         }
 
         [Theory]

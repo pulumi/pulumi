@@ -42,7 +42,7 @@ namespace Pulumi.Automation
         /// <summary>
         /// The version of the underlying Pulumi CLI/Engine.
         /// </summary>
-        public abstract SemVersion PulumiVersion { get; }
+        public abstract string PulumiVersion { get; }
 
         /// <summary>
         /// The secrets provider to use for encryption and decryption of stack secrets.

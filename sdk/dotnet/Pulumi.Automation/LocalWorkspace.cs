@@ -45,7 +45,7 @@ namespace Pulumi.Automation
 
         private SemVersion? pulumiVersion;
         /// <inheritdoc/>
-        public override SemVersion PulumiVersion => pulumiVersion ?? throw new InvalidOperationException("Failed to get Pulumi version.");
+        public override string PulumiVersion => pulumiVersion is null ? throw new InvalidOperationException("Failed to get Pulumi version.") : pulumiVersion.ToString();
 
         /// <inheritdoc/>
         public override string? SecretsProvider { get; }
