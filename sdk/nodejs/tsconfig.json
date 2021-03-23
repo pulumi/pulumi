@@ -72,6 +72,7 @@
         "x/automation/cmd.ts",
         "x/automation/config.ts",
         "x/automation/localWorkspace.ts",
+        "x/automation/minimumVersion.ts",
         "x/automation/projectSettings.ts",
         "x/automation/stackSettings.ts",
         "x/automation/server.ts",
