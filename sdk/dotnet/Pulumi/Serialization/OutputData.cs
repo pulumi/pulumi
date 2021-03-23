@@ -8,20 +8,20 @@ namespace Pulumi.Serialization
     internal static class OutputData
     {
         public static OutputData<X> Create<X>(ImmutableHashSet<Resource> resources,
-					      [AllowNull] X value,
-					      bool isKnown,
-					      bool isSecret)
-	    => new OutputData<X>(resources, value, isKnown, isSecret);
+                                              [AllowNull] X value,
+                                              bool isKnown,
+                                              bool isSecret)
+            => new OutputData<X>(resources, value, isKnown, isSecret);
 
         public static (bool isKnown, bool isSecret) Combine<X>(OutputData<X> data, bool isKnown, bool isSecret)
-	    => (isKnown && data.IsKnown, isSecret || data.IsSecret);
+            => (isKnown && data.IsKnown, isSecret || data.IsSecret);
     }
 
     internal struct OutputData<X>
     {
         public readonly ImmutableHashSet<Resource> Resources;
 
-	[AllowNull]
+        [AllowNull]
         public readonly X Value;
 
         public readonly bool IsKnown;
