@@ -14,7 +14,6 @@
 
 from abc import ABC, abstractmethod
 from datetime import datetime
-from semver import VersionInfo
 from typing import (
     Callable,
     Mapping,

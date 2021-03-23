@@ -1343,8 +1343,7 @@ func TestMinimumVersion(t *testing.T) {
 	for _, tt := range minVersionTests {
 		t.Run(tt.name, func(t *testing.T) {
 			currentVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
-			ws := LocalWorkspace{pulumiVersion: currentVersion}
-			err := ws.validatePulumiVersion(tt.minimumVersion)
+			err := validatePulumiVersion(tt.minimumVersion, currentVersion)
 			if tt.expectError {
 				assert.Error(t, err)
 				if tt.minimumVersion.Major < currentVersion.Major {
