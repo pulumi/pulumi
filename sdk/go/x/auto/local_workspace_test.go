@@ -1300,51 +1300,61 @@ func TestPulumiVersion(t *testing.T) {
 var minVersionTests = []struct {
 	name           string
 	minimumVersion semver.Version
-	expected       bool
+	expectError    bool
 }{
 	{
 		"higher_major",
 		semver.Version{Major: 100, Minor: 0, Patch: 0},
-		false,
+		true,
 	},
 	{
 		"lower_major",
 		semver.Version{Major: 1, Minor: 0, Patch: 0},
-		false,
+		true,
 	},
 	{
 		"higher_minor",
 		semver.Version{Major: 2, Minor: 22, Patch: 0},
-		false,
+		true,
 	},
 	{
 		"lower_minor",
 		semver.Version{Major: 2, Minor: 1, Patch: 0},
-		true,
+		false,
 	},
 	{
 		"equal_minor_higher_patch",
 		semver.Version{Major: 2, Minor: 21, Patch: 2},
-		false,
+		true,
 	},
 	{
 		"equal_minor_equal_patch",
 		semver.Version{Major: 2, Minor: 21, Patch: 1},
-		true,
+		false,
 	},
 	{
 		"equal_minor_lower_patch",
 		semver.Version{Major: 2, Minor: 21, Patch: 0},
-		true,
+		false,
 	},
 }
 
 func TestMinimumVersion(t *testing.T) {
 	for _, tt := range minVersionTests {
 		t.Run(tt.name, func(t *testing.T) {
-			ws := LocalWorkspace{pulumiVersion: semver.Version{Major: 2, Minor: 21, Patch: 1}}
-			versionIsValid := ws.checkVersionIsValid(tt.minimumVersion)
-			assert.Equal(t, tt.expected, versionIsValid)
+			currentVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
+			ws := LocalWorkspace{pulumiVersion: currentVersion}
+			err := ws.validatePulumiVersion(tt.minimumVersion)
+			if tt.expectError {
+				assert.Error(t, err)
+				if tt.minimumVersion.Major < currentVersion.Major {
+					assert.Regexp(t, `Major version mismatch.`, err.Error())
+				} else {
+					assert.Regexp(t, `Minimum version requirement failed.`, err.Error())
+				}
+			} else {
+				assert.Nil(t, err)
+			}
 		})
 	}
 }

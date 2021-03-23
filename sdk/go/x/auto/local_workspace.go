@@ -499,18 +499,16 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, 
 	return version, nil
 }
 
-func (l *LocalWorkspace) checkVersionIsValid(minVersion semver.Version) bool {
+//nolint:lll
+func (l *LocalWorkspace) validatePulumiVersion(minVersion semver.Version) error {
 	pv := l.pulumiVersion
-	if minVersion.Major != pv.Major {
-		return false
+	if minVersion.Major < pv.Major {
+		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", pv, minVersion.Major))
 	}
-	if minVersion.Minor < pv.Minor {
-		return true
+	if minVersion.GT(pv) {
+		return errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, l.pulumiVersion))
 	}
-	if minVersion.Minor == pv.Minor {
-		return minVersion.Patch <= pv.Patch
-	}
-	return false
+	return nil
 }
 
 func (l *LocalWorkspace) runPulumiCmdSync(
@@ -579,9 +577,8 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	}
 	l.pulumiVersion = v
 
-	if !l.checkVersionIsValid(minimumVersion) {
-		//nolint:lll
-		return nil, errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, l.pulumiVersion))
+	if err = l.validatePulumiVersion(minimumVersion); err != nil {
+		return nil, err
 	}
 
 	if lwOpts.Project != nil {
