@@ -118,7 +118,8 @@ class LocalWorkspace(Workspace):
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
         with open(path, "w") as file:
-            json.dump(settings, file, indent=4) if found_ext == ".json" else yaml.dump(settings, stream=file)
+            json.dump(settings.__dict__, file, indent=4) if found_ext == ".json" else yaml.dump(
+                settings.__dict__, stream=file)
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
@@ -145,7 +146,8 @@ class LocalWorkspace(Workspace):
                 break
         path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{found_ext}")
         with open(path, "w") as file:
-            json.dump(settings, file, indent=4) if found_ext == ".json" else yaml.dump(settings, stream=file)
+            json.dump(settings.__dict__, file, indent=4) if found_ext == ".json" else yaml.dump(
+                settings.__dict__, stream=file)
 
     def serialize_args_for_op(self, stack_name: str) -> List[str]:
         # Not used by LocalWorkspace

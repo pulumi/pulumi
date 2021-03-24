@@ -16,5 +16,8 @@
 
 ### Bug Fixes
 
+- [automation/python] Fix Settings file save
+  [#6605](https://github.com/pulumi/pulumi/pull/6605)
+
 - [sdk/dotnet] Remove MaybeNull from Output/Input.Create to avoid spurious warnings
   [#6600](https://github.com/pulumi/pulumi/pull/6600)
