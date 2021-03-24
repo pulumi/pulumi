@@ -469,3 +469,24 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		check(t, filepath.Join("${root}", "absvenv"))
 	})
 }
+
+func TestPythonAwait(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: "python_await",
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		AllowEmptyPreviewChanges: true,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			sawMagicStringMessage := false
+			for _, evt := range stack.Events {
+				if evt.DiagnosticEvent != nil {
+					if strings.Contains(evt.DiagnosticEvent.Message, "magic string") {
+						sawMagicStringMessage = true
+					}
+				}
+			}
+			assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+		},
+	})
+}
