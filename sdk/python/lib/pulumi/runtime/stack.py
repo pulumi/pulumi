@@ -73,15 +73,17 @@ async def run_pulumi_func(func: Callable):
 
             done, pending = await asyncio.wait(outstanding_tasks, return_when="FIRST_EXCEPTION")
 
-            if len(pending) == 0:
-                log.debug("All outstanding tasks completed")
-            else:
+            if len(pending) > 0:
                 # If there are any pending tasks, it's because an exception was thrown.
-                # Cancel all remaining tasks.
-                log.debug(f"Encountered an exception in a non-RPC future - cancelling {len(pending)} remaining tasks.")
+                # Cancel any pending tasks.
+                log.debug(f"Cancelling {len(pending)} remaining tasks.")
                 for task in pending:
                     task.cancel()
-                log.debug("Tasks cancelled, exiting.")
+
+            for task in done:
+                if task.exception() is not None:
+                    log.debug("A future resolved in an exception, raising exception.")
+                    raise task.exception()
 
         # By now, all tasks have exited and we're good to go.
         log.debug("run_pulumi_func completed")

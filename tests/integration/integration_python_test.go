@@ -470,9 +470,9 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	})
 }
 
-func TestPythonAwait(t *testing.T) {
+func TestPythonAwaitSuccess(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: "python_await",
+		Dir: filepath.Join("python_await", "success"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
@@ -487,6 +487,25 @@ func TestPythonAwait(t *testing.T) {
 				}
 			}
 			assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+		},
+	})
+}
+
+func TestPythonAwaitFailure(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	expectedError := "IndexError: list index out of range"
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python_await", "failure"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		AllowEmptyPreviewChanges: true,
+		ExpectFailure:            true,
+		Quick:                    true,
+		Stderr:                   stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
 		},
 	})
 }
