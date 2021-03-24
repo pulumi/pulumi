@@ -16,6 +16,7 @@
 Support for automatic stack components.
 """
 import asyncio
+from contextlib import suppress
 from inspect import isawaitable
 from typing import Callable, Any, Dict, List, TYPE_CHECKING
 
@@ -27,6 +28,15 @@ from .. import log
 
 if TYPE_CHECKING:
     from .. import Output
+
+
+def _get_running_tasks() -> List[asyncio.Task]:
+    pending = []
+    for task in _all_tasks():
+        # Don't kill ourselves, that would be silly.
+        if not task == _get_current_task():
+            pending.append(task)
+    return pending
 
 
 async def run_pulumi_func(func: Callable):
@@ -50,28 +60,32 @@ async def run_pulumi_func(func: Callable):
             log.debug(f"waiting for quiescence; {rpcs_remaining} RPCs outstanding")
             await RPC_MANAGER.rpcs.pop()
 
-        # Asyncio event loops require that all outstanding tasks be completed by the time that the
-        # event loop closes. If we're at this point and there are no outstanding RPCs, we should
-        # just cancel all outstanding tasks.
-        #
-        # We will occasionally start tasks deliberately that we know will never complete. We must
-        # cancel them before shutting down the event loop.
-        log.debug("Canceling all outstanding tasks")
-        for task in _all_tasks():
-            # Don't kill ourselves, that would be silly.
-            if task == _get_current_task():
-                continue
-            task.cancel()
+        if RPC_MANAGER.unhandled_exception is not None:
+            raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
-        # Pump the event loop again. Task.cancel is delivered asynchronously to all running tasks
-        # and each task needs to get scheduled in order to acknowledge the cancel and exit.
-        await asyncio.sleep(0)
+        log.debug("RPCs successfully completed")
 
-        # Once we get scheduled again, all tasks have exited and we're good to go.
+        # If the RPCs have successfully completed, now await all remaining outstanding tasks.
+        outstanding_tasks = _get_running_tasks()
+        if len(outstanding_tasks) == 0:
+            log.debug("No outstanding tasks to complete, exiting")
+        else:
+            log.debug(f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete")
+
+            done, pending = await asyncio.wait(outstanding_tasks, return_when="FIRST_EXCEPTION")
+
+            if len(pending) == 0:
+                log.debug("All outstanding tasks completed")
+            else:
+                # If there are any pending tasks, it's because an exception was thrown.
+                # Cancel all remaining tasks.
+                log.debug(f"Encountered an exception in a non-RPC future - cancelling {len(pending)} remaining tasks.")
+                for task in pending:
+                    task.cancel()
+                log.debug("Tasks cancelled, exiting.")
+
+        # By now, all tasks have exited and we're good to go.
         log.debug("run_pulumi_func completed")
-
-    if RPC_MANAGER.unhandled_exception is not None:
-        raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
 
 async def run_in_stack(func: Callable):
