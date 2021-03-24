@@ -663,6 +663,7 @@ function defaultProject(projectName: string) {
     return settings;
 }
 
+/** @internal */
 export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
     if (minVersion.major < currentVersion.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
