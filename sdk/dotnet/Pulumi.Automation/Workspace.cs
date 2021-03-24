@@ -39,6 +39,11 @@ namespace Pulumi.Automation
         public abstract string? PulumiHome { get; }
 
         /// <summary>
+        /// The version of the underlying Pulumi CLI/Engine.
+        /// </summary>
+        public abstract string PulumiVersion { get; }
+
+        /// <summary>
         /// The secrets provider to use for encryption and decryption of stack secrets.
         /// <para/>
         /// See: https://www.pulumi.com/docs/intro/concepts/config/#available-encryption-providers

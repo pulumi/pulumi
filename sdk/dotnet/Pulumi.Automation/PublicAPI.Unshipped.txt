@@ -269,6 +269,7 @@ abstract Pulumi.Automation.Workspace.PostCommandCallbackAsync(string stackName, 
 abstract Pulumi.Automation.Workspace.Program.get -> Pulumi.Automation.PulumiFn
 abstract Pulumi.Automation.Workspace.Program.set -> void
 abstract Pulumi.Automation.Workspace.PulumiHome.get -> string
+abstract Pulumi.Automation.Workspace.PulumiVersion.get -> string
 abstract Pulumi.Automation.Workspace.RefreshConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
 abstract Pulumi.Automation.Workspace.RemoveConfigAsync(string stackName, System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.Automation.Workspace.RemoveConfigValueAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
@@ -298,6 +299,7 @@ override Pulumi.Automation.LocalWorkspace.PostCommandCallbackAsync(string stackN
 override Pulumi.Automation.LocalWorkspace.Program.get -> Pulumi.Automation.PulumiFn
 override Pulumi.Automation.LocalWorkspace.Program.set -> void
 override Pulumi.Automation.LocalWorkspace.PulumiHome.get -> string
+override Pulumi.Automation.LocalWorkspace.PulumiVersion.get -> string
 override Pulumi.Automation.LocalWorkspace.RefreshConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
 override Pulumi.Automation.LocalWorkspace.RemoveConfigAsync(string stackName, System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.Automation.LocalWorkspace.RemoveConfigValueAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
