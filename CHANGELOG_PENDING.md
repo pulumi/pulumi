@@ -14,8 +14,12 @@
   - Nodejs: `LocalWorkspace.pulumiVersion` - [#6580](https://github.com/pulumi/pulumi/pull/6580)
   - Python: `LocalWorkspace.pulumi_version` - [#6589](https://github.com/pulumi/pulumi/pull/6589)
   - Dotnet: `LocalWorkspace.PulumiVersion` - [#6590](https://github.com/pulumi/pulumi/pull/6590)
-  
+
+
 ### Bug Fixes
+
+- [sdk/python] Fix automatic venv creation
+  [#6599](https://github.com/pulumi/pulumi/pull/6599)
 
 - [automation/python] Fix Settings file save
   [#6605](https://github.com/pulumi/pulumi/pull/6605)
