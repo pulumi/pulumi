@@ -14,4 +14,4 @@
 
 import * as semver from "semver";
 
-export const minimumVersion = new semver.SemVer("v2.25.0-alpha");
+export const minimumVersion = new semver.SemVer("v3.0.0");
