@@ -20,19 +20,6 @@ import (
 	"reflect"
 )
 
-{{range .Builtins}}
-// Apply{{.Name}} is like ApplyT, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}(applier interface{}) {{.Name}}Output {
-	return o.ApplyT(applier).({{.Name}}Output)
-}
-
-// Apply{{.Name}}WithContext is like ApplyTWithContext, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}WithContext(ctx context.Context, applier interface{}) {{.Name}}Output {
-	return o.ApplyTWithContext(ctx, applier).({{.Name}}Output)
-}
-{{end}}
-
-
 {{with $builtins := .Builtins}}
 {{range $builtins}}
 var {{.Name | Unexported}}Type = reflect.TypeOf((*{{.ElementType}})(nil)).Elem()

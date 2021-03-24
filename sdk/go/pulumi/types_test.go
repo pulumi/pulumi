@@ -400,11 +400,11 @@ func TestToOutputInputAny(t *testing.T) {
 func TestUnsecret(t *testing.T) {
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s.IsSecret())
+	assert.True(t, IsSecret(s))
 
 	unS := Unsecret(s)
 	// assert that we do not have a secret
-	assert.False(t, unS.IsSecret())
+	assert.False(t, IsSecret(unS))
 
 	errChan := make(chan error)
 	resultChan := make(chan string)
@@ -412,7 +412,7 @@ func TestUnsecret(t *testing.T) {
 
 	unS.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- unS.IsSecret()
+		secretChan <- IsSecret(unS)
 		val := v.(string)
 		if val == "foo" {
 			// validate the value
@@ -442,7 +442,7 @@ func TestUnsecret(t *testing.T) {
 func TestSecrets(t *testing.T) {
 	s := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s.IsSecret())
+	assert.True(t, IsSecret(s))
 
 	errChan := make(chan error)
 	resultChan := make(chan string)
@@ -450,7 +450,7 @@ func TestSecrets(t *testing.T) {
 
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.IsSecret()
+		secretChan <- IsSecret(s)
 		val := v.(string)
 		if val == "foo" {
 			// validate the value
@@ -481,7 +481,7 @@ func TestSecrets(t *testing.T) {
 func TestSecretApply(t *testing.T) {
 	s1 := ToSecret(String("foo"))
 	// assert that secret is immediately secret
-	assert.True(t, s1.IsSecret())
+	assert.True(t, IsSecret(s1))
 	s2 := StringInput(String("bar"))
 
 	errChan := make(chan error)
@@ -494,7 +494,7 @@ func TestSecretApply(t *testing.T) {
 	})
 	s.ApplyT(func(v interface{}) (string, error) {
 		// assert secretness after the output resolves
-		secretChan <- s.IsSecret()
+		secretChan <- IsSecret(s)
 		val := v.(string)
 		if val == "foobar" {
 			// validate the value
@@ -556,7 +556,7 @@ func TestNil(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, nil, v)
 
-	bo := ao.ApplyBool(func(x interface{}) bool {
+	bo := ao.ApplyT(func(x interface{}) bool {
 		return x == nil
 	})
 	v, known, secret, deps, err = await(bo)
