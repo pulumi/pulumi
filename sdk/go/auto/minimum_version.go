@@ -17,7 +17,7 @@ package auto
 import "github.com/blang/semver"
 
 var minimumVersion = semver.Version{
-	Major: 2,
-	Minor: 21,
+	Major: 3,
+	Minor: 0,
 	Patch: 0,
 }
