@@ -395,45 +395,51 @@ describe(`checkVersionIsValid`, () => {
     const versionTests = [
         {
             name: "higher_major",
-            minVersion: "100.0.0",
+            currentVersion: "100.0.0",
             expectError: true,
         },
         {
             name: "lower_major",
-            minVersion: "1.0.0",
+            currentVersion: "1.0.0",
             expectError: true,
         },
         {
             name: "higher_minor",
-            minVersion: "v2.22.0",
-            expectError: true,
-        },
-        {
-            name: "lower_minor",
-            minVersion: "v2.1.0",
+            currentVersion: "v2.22.0",
             expectError: false,
         },
         {
-            name: "equal_minor_higher_patch",
-            minVersion: "v2.21.2",
+            name: "lower_minor",
+            currentVersion: "v2.1.0",
             expectError: true,
         },
         {
+            name: "equal_minor_higher_patch",
+            currentVersion: "v2.21.2",
+            expectError: false,
+        },
+        {
             name: "equal_minor_equal_patch",
-            minVersion: "v2.21.1",
+            currentVersion: "v2.21.1",
             expectError: false,
         },
         {
             name: "equal_minor_lower_patch",
-            minVersion: "v2.21.0",
-            expectError: false,
+            currentVersion: "v2.21.0",
+            expectError: true,
+        },
+        {
+            name: "equal_minor_equal_patch_prerelease",
+            // Note that prerelease < release so this case will error
+            currentVersion: "v2.21.1-alpha.1234",
+            expectError: true,
         },
     ];
-    const currentVersion = new semver.SemVer("v2.21.1");
+    const minVersion = new semver.SemVer("v2.21.1");
 
     versionTests.forEach(test => {
-        it(`validates ${test.minVersion}`, () => {
-            const minVersion = new semver.SemVer(test.minVersion);
+        it(`validates ${test.currentVersion}`, () => {
+            const currentVersion = new semver.SemVer(test.currentVersion);
 
             if (test.expectError) {
                 if (minVersion.major < currentVersion.major) {

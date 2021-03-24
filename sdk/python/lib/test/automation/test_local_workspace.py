@@ -41,13 +41,15 @@ extensions = ["json", "yaml", "yml"]
 version_tests = [
     ("100.0.0", True),
     ("1.0.0", True),
-    ("2.22.0", True),
-    ("2.1.0", False),
-    ("2.21.2", True),
+    ("2.22.0", False),
+    ("2.1.0", True),
+    ("2.21.2", False),
     ("2.21.1", False),
-    ("2.21.0", False)
+    ("2.21.0", True),
+    # Note that prerelease < release so this case will error
+    ("2.21.1-alpha.1234", True)
 ]
-test_version = VersionInfo.parse("2.21.1")
+test_min_version = VersionInfo.parse("2.21.1")
 
 
 def test_path(*paths):
@@ -367,21 +369,21 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
 
     def test_validate_pulumi_version(self):
-        for min_version, expect_error in version_tests:
+        for current_version, expect_error in version_tests:
             with self.subTest():
-                min_version = VersionInfo.parse(min_version)
+                current_version = VersionInfo.parse(current_version)
                 if expect_error:
                     error_regex = "Major version mismatch." \
-                        if min_version.major < test_version.major \
+                        if test_min_version.major < current_version.major \
                         else "Minimum version requirement failed."
                     with self.assertRaisesRegex(
                             InvalidVersionError,
                             error_regex,
-                            msg=f"min_version:{min_version}, current_version:{test_version}"
+                            msg=f"min_version:{test_min_version}, current_version:{current_version}"
                     ):
-                        _validate_pulumi_version(min_version, test_version)
+                        _validate_pulumi_version(test_min_version, current_version)
                 else:
-                    self.assertIsNone(_validate_pulumi_version(min_version, test_version))
+                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version))
 
 
 def pulumi_program():
