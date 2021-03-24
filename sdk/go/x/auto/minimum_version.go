@@ -16,8 +16,9 @@ package auto
 
 import "github.com/blang/semver"
 
-var minimumVersion = semver.Version{
-	Major: 2,
-	Minor: 21,
-	Patch: 0,
+var minimumVersion = calculateMinVersion()
+
+func calculateMinVersion() semver.Version {
+	v, _ := semver.ParseTolerant("2.21.0-alpha.0")
+	return v
 }
