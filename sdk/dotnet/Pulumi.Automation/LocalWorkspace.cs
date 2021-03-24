@@ -35,7 +35,7 @@ namespace Pulumi.Automation
         private readonly LocalSerializer _serializer = new LocalSerializer();
         private readonly bool _ownsWorkingDir;
         private readonly Task _readyTask;
-        private static readonly SemVersion _minimumVersion = SemVersion.Parse("2.21.0");
+        private static readonly SemVersion _minimumVersion = SemVersion.Parse("3.0.0-alpha.0");
 
         /// <inheritdoc/>
         public override string WorkDir { get; }

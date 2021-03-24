@@ -228,6 +228,7 @@ jobs:
       - if: github.ref == 'refs/heads/feature-3.0'
         run:
           echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
+        shell: bash
       - name: Install DotNet ${{ matrix.dotnet }}
         uses: actions/setup-dotnet@v1
         with:
