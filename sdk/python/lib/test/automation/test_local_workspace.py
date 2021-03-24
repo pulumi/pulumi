@@ -35,7 +35,7 @@ from pulumi.automation import (
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-from pulumi.x.automation._local_workspace import _validate_pulumi_version
+from pulumi.automation._local_workspace import _validate_pulumi_version
 
 extensions = ["json", "yaml", "yml"]
 
