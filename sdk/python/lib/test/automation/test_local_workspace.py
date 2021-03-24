@@ -364,7 +364,7 @@ class TestLocalWorkspace(unittest.TestCase):
     def test_pulumi_version(self):
         ws = LocalWorkspace()
         self.assertIsNotNone(ws.pulumi_version)
-        self.assertRegex(str(ws.pulumi_version), r"(\d+\.)(\d+\.)(\d+)(-.*)?")
+        self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
 
     def test_validate_pulumi_version(self):
         for min_version, expect_error in version_tests:

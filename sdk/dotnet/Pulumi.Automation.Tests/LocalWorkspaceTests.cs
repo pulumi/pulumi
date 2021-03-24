@@ -1,5 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation
 
+using Semver;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -824,6 +825,37 @@ namespace Pulumi.Automation.Tests
                 Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
                 Assert.Equal(value, expSecretValue!.Value);
                 Assert.True(expSecretValue.IsSecret);
+            }
+        }
+    
+        [Fact]
+        public async Task PulumiVersionTest()
+        {
+            using var workspace = await LocalWorkspace.CreateAsync();
+            Assert.Matches("(\\d+\\.)(\\d+\\.)(\\d+)(-.*)?", workspace.PulumiVersion);
+        }
+
+        [Theory]
+        [InlineData("100.0.0", true)]
+        [InlineData("1.0.0", true)]
+        [InlineData("2.22.0", false)]
+        [InlineData("2.1.0", true)]
+        [InlineData("2.21.2", false)]
+        [InlineData("2.21.1", false)]
+        [InlineData("2.21.0", true)]
+        // Note that prerelease < release so this case should error
+        [InlineData("2.21.1-alpha.1234", true)]
+        public void ValidVersionTheory(string currentVersion, bool errorExpected)
+        {
+            var testMinVersion = SemVersion.Parse("2.21.1");
+            if (errorExpected)
+            {
+                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
+                Assert.Throws<InvalidOperationException>(act);
+            }
+            else
+            {
+                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
             }
         }
     }

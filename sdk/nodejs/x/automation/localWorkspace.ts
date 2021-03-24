@@ -67,8 +67,8 @@ export class LocalWorkspace implements Workspace {
     /**
      * The version of the underlying Pulumi CLI/Engine.
      */
-    public get pulumiVersion(): semver.SemVer {
-        return this._pulumiVersion!;
+    public get pulumiVersion(): string {
+        return this._pulumiVersion!.toString();
     }
     private ready: Promise<any[]>;
     /**
