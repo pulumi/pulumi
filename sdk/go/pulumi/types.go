@@ -32,13 +32,10 @@ import (
 type Output interface {
 	ElementType() reflect.Type
 
-	Apply(applier func(interface{}) (interface{}, error)) AnyOutput
-	ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput
 	ApplyT(applier interface{}) Output
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
 	getState() *OutputState
-	IsSecret() bool
 }
 
 var outputType = reflect.TypeOf((*Output)(nil)).Elem()
@@ -308,22 +305,6 @@ func checkApplier(fn interface{}, elementType reflect.Type) reflect.Value {
 	return fv
 }
 
-// Apply transforms the data of the output property using the applier func. The result remains an output
-// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
-// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
-func (o *OutputState) Apply(applier func(interface{}) (interface{}, error)) AnyOutput {
-	return o.ApplyWithContext(context.Background(), func(_ context.Context, v interface{}) (interface{}, error) {
-		return applier(v)
-	})
-}
-
-// ApplyWithContext transforms the data of the output property using the applier func. The result remains an output
-// property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
-// This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
-func (o *OutputState) ApplyWithContext(ctx context.Context, applier func(context.Context, interface{}) (interface{}, error)) AnyOutput {
-	return o.ApplyTWithContext(ctx, applier).(AnyOutput)
-}
-
 // ApplyT transforms the data of the output property using the applier func. The result remains an output
 // property, and accumulates all implicated dependencies, so that resources can be properly tracked using a DAG.
 // This function does not block awaiting the value; instead, it spawns a Goroutine that will await its availability.
@@ -413,7 +394,7 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 }
 
 // IsSecret returns a bool representing the secretness of the Output
-func (o *OutputState) IsSecret() bool {
+func IsSecret(o Output) bool {
 	return o.getState().secret
 }
 
