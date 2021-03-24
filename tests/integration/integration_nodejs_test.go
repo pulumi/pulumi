@@ -672,6 +672,9 @@ func TestEnumOutputNode(t *testing.T) {
 
 // Test remote component construction in Node.
 func TestConstructNode(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Temporarily skipping test on Windows")
+	}
 	pathEnv, err := testComponentPathEnv()
 	if err != nil {
 		t.Fatalf("failed to build test component PATH: %v", err)
