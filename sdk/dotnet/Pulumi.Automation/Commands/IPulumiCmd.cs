@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using Pulumi.Automation.Events;
 
 namespace Pulumi.Automation.Commands
 {
@@ -15,6 +16,7 @@ namespace Pulumi.Automation.Commands
             IDictionary<string, string> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
+            Action<EngineEvent>? onEngineEvent = null,
             CancellationToken cancellationToken = default);
     }
 }

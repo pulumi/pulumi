@@ -3,11 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands.Exceptions;
+using Pulumi.Automation.Events;
 
 namespace Pulumi.Automation.Commands
 {
@@ -19,6 +21,7 @@ namespace Pulumi.Automation.Commands
             IDictionary<string, string> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
+            Action<EngineEvent>? onEngineEvent = null,
             CancellationToken cancellationToken = default)
         {
             // all commands should be run in non-interactive mode.
@@ -36,6 +39,21 @@ namespace Pulumi.Automation.Commands
 
             foreach (var pair in additionalEnv)
                 env[pair.Key] = pair.Value;
+
+            string? eventLogFile = null;
+            EventLogWatcher? eventLogWatcher = null;
+
+            if (onEngineEvent != null)
+            {
+                // Required for event log
+                // We add it after the provided env vars to ensure it is set to true
+                env["PULUMI_DEBUG_COMMANDS"] = "true";
+
+                eventLogFile = CreateEventLogFile(completeArgs.FirstOrDefault() ?? "event-log");
+                eventLogWatcher = new EventLogWatcher(eventLogFile, onEngineEvent);
+
+                completeArgs = completeArgs.Concat(new[] { "--event-log", eventLogFile });
+            }
 
             using var proc = new Process
             {
@@ -131,7 +149,36 @@ namespace Pulumi.Automation.Commands
             proc.Start();
             proc.BeginOutputReadLine();
             proc.BeginErrorReadLine();
-            return await tcs.Task.ConfigureAwait(false);
+            try
+            {
+                return await tcs.Task.ConfigureAwait(false);
+            }
+            finally
+            {
+                eventLogWatcher?.Dispose();
+
+                if (!string.IsNullOrWhiteSpace(eventLogFile))
+                {
+                    try
+                    {
+                         Directory.Delete(Path.GetDirectoryName(eventLogFile), recursive: true);
+                    }
+                    catch
+                    {
+                        // allow graceful exit if for some reason
+                        // we're not able to delete the directory
+                        // will rely on OS to clean temp directory
+                        // in this case.
+                    }
+                }
+            }
+
+            static string CreateEventLogFile(string command)
+            {
+                var logDir = Path.Combine(Path.GetTempPath(), $"automation-logs-{command}-{Path.GetRandomFileName()}");
+                Directory.CreateDirectory(logDir);
+                return Path.Combine(logDir, "eventlog.txt");
+            }
         }
     }
 }

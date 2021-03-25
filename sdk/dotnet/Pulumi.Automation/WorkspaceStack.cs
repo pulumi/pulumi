@@ -265,8 +265,6 @@ namespace Pulumi.Automation
 
             InlineLanguageHost? inlineHost = null;
 
-            using var watcher = SetupEventLogWatch(args, options?.OnEvent, "up");
-
             try
             {
                 if (program != null)
@@ -281,7 +279,7 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
@@ -367,15 +365,17 @@ namespace Pulumi.Automation
 
             SummaryEvent? summaryEvent = null;
 
-            using var watcher = SetupEventLogWatch(args, @event =>
+            var onEvent = options?.OnEvent;
+
+            void OnPreviewEvent(EngineEvent @event)
             {
                 if (@event.SummaryEvent != null)
                 {
                     summaryEvent = @event.SummaryEvent;
                 }
 
-                options?.OnEvent?.Invoke(@event);
-            }, "preview");
+                onEvent?.Invoke(@event);
+            }
 
             try
             {
@@ -391,7 +391,7 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, OnPreviewEvent, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
@@ -463,9 +463,7 @@ namespace Pulumi.Automation
             args.Add("--exec-kind");
             args.Add(execKind);
 
-            using var watcher = SetupEventLogWatch(args, options?.OnEvent, "refresh");
-
-            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -521,9 +519,7 @@ namespace Pulumi.Automation
             args.Add("--exec-kind");
             args.Add(execKind);
 
-            using var watcher = SetupEventLogWatch(args, options?.OnEvent, "destroy");
-
-            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -539,8 +535,8 @@ namespace Pulumi.Automation
             await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
 
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, cancellationToken).ConfigureAwait(false);
-            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, cancellationToken).ConfigureAwait(false);
+            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, null, cancellationToken).ConfigureAwait(false);
+            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, null, cancellationToken).ConfigureAwait(false);
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
 
             var maskedOutput = string.IsNullOrWhiteSpace(maskedResult.StandardOutput)
@@ -592,7 +588,7 @@ namespace Pulumi.Automation
                 args.Add(page.ToString());
             }
 
-            var result = await this.RunCommandAsync(args, null, null, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, null, null, null, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(result.StandardOutput))
                 return ImmutableList<UpdateSummary>.Empty;
 
@@ -617,69 +613,12 @@ namespace Pulumi.Automation
             IEnumerable<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
+            Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
-            => this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, cancellationToken);
+            => this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
 
         public void Dispose()
             => this.Workspace.Dispose();
-
-        private static EventLogFileWatcher SetupEventLogWatch(
-            List<string> args,
-            Action<EngineEvent>? onEvent,
-            string command)
-        {
-            string? logFile = null;
-            EventLogWatcher? watcher = null;
-
-            if (onEvent != null)
-            {
-                logFile = CreateEventLogFile(command);
-                args.AddRange(new[] { "--event-log", logFile });
-                watcher = new EventLogWatcher(logFile, onEvent);
-            }
-
-            return new EventLogFileWatcher(logFile, watcher);
-
-            static string CreateEventLogFile(string command)
-            {
-                var logDir = Path.Combine(Path.GetTempPath(), $"automation-logs-{command}-{Path.GetRandomFileName()}");
-                Directory.CreateDirectory(logDir);
-                return Path.Combine(logDir, "eventlog.txt");
-            }
-        }
-
-        // Wraps an event-log file and its watcher and ensures they are cleaned up when Dispose is called.
-        private class EventLogFileWatcher : IDisposable
-        {
-            public EventLogFileWatcher(string? logFile, EventLogWatcher? eventLogWatcher)
-            {
-                LogFile = logFile;
-                EventLogWatcher = eventLogWatcher;
-            }
-
-            public string? LogFile { get; }
-            public EventLogWatcher? EventLogWatcher { get; }
-
-            public void Dispose()
-            {
-                EventLogWatcher?.Dispose();
-
-                if (!string.IsNullOrWhiteSpace(LogFile))
-                {
-                    try
-                    {
-                        Directory.Delete(Path.GetDirectoryName(LogFile), recursive: true);
-                    }
-                    catch
-                    {
-                        // allow graceful exit if for some reason
-                        // we're not able to delete the directory
-                        // will rely on OS to clean temp directory
-                        // in this case.
-                    }
-                }
-            }
-        }
 
         private static class ExecKind
         {
