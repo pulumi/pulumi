@@ -477,8 +477,20 @@ func CopyTemplateFiles(
 				result = []byte(transformed)
 			}
 
+			// Originally we just wrote in 0600 mode, but
+			// this does not preserve the executable bit.
+			// With the new logic below, we try to be at
+			// least as permissive as 0600 and whathever
+			// permissions the source file or symlink had.
+			var mode os.FileMode
+			sourceStat, err := os.Lstat(source)
+			if err != nil {
+				return err
+			}
+			mode = sourceStat.Mode().Perm() | 0600
+
 			// Write to the destination file.
-			err = writeAllBytes(dest, result, force)
+			err = writeAllBytes(dest, result, force, mode)
 			if err != nil {
 				// An existing file has shown up in between the dry run and the actual copy operation.
 				if os.IsExist(err) {
@@ -745,7 +757,7 @@ func transform(content string, projectName string, projectDescription string) st
 }
 
 // writeAllBytes writes the bytes to the specified file, with an option to overwrite.
-func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
+func writeAllBytes(filename string, bytes []byte, overwrite bool, mode os.FileMode) error {
 	flag := os.O_WRONLY | os.O_CREATE
 	if overwrite {
 		flag = flag | os.O_TRUNC
@@ -753,7 +765,7 @@ func writeAllBytes(filename string, bytes []byte, overwrite bool) error {
 		flag = flag | os.O_EXCL
 	}
 
-	f, err := os.OpenFile(filename, flag, 0600)
+	f, err := os.OpenFile(filename, flag, mode)
 	if err != nil {
 		return err
 	}
