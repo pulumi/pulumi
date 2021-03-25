@@ -1,6 +1,3 @@
-### Breaking
-
-
 ### Improvements
 
 - [cli] Improve diff displays during `pulumi refresh`
@@ -8,9 +5,6 @@
 
 - [sdk/go] Cache loaded configuration files.
   [#6576](https://github.com/pulumi/pulumi/pull/6576)
-
-- [sdk/go] Support multiple folders in GOPATH.
-  [#6228](https://github.com/pulumi/pulumi/pull/6228
   
 - [sdk/nodejs] Allow `Mocks::newResource` to determine whether the created resource is a `CustomResource`.
   [#6551](https://github.com/pulumi/pulumi/pull/6551)
