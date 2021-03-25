@@ -101,10 +101,22 @@ namespace Pulumi.Automation.Commands
 
             proc.Exited += (_, @event) =>
             {
-                var code = proc.ExitCode;
+                // this seems odd, since the exit event has been triggered, but
+                // the exit event being triggered does not mean that the async
+                // output stream handlers have ran to completion. this method
+                // doesn't exit until they have, at which point we can be sure
+                // we have captured the output in its entirety.
+                // note that if we were to pass an explicit wait time to this
+                // method it would not wait for the stream handlers.
+                // see: https://github.com/dotnet/runtime/issues/18789
+                proc.WaitForExit();
 
-                var result = new CommandResult(code, standardOutputBuilder.ToString(), standardErrorBuilder.ToString());
-                if (code != 0)
+                var result = new CommandResult(
+                    proc.ExitCode,
+                    standardOutputBuilder.ToString(),
+                    standardErrorBuilder.ToString());
+
+                if (proc.ExitCode != 0)
                 {
                     var ex = CommandException.CreateFromResult(result);
                     tcs.TrySetException(ex);

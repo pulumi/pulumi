@@ -38,13 +38,6 @@ type Output interface {
 	ApplyTWithContext(ctx context.Context, applier interface{}) Output
 
 	getState() *OutputState
-	dependencies() []Resource
-	fulfillValue(value reflect.Value, known, secret bool, deps []Resource, err error)
-	resolveValue(value reflect.Value, known, secret bool, deps []Resource)
-	fulfill(value interface{}, known, secret bool, deps []Resource, err error)
-	resolve(value interface{}, known, secret bool, deps []Resource)
-	reject(err error)
-	await(ctx context.Context) (interface{}, bool, bool, []Resource, error)
 	IsSecret() bool
 }
 
@@ -244,7 +237,7 @@ func NewOutput() (Output, func(interface{}), func(error)) {
 		out.resolve(v, true, false, nil)
 	}
 	reject := func(err error) {
-		out.reject(err)
+		out.getState().reject(err)
 	}
 
 	return AnyOutput{out}, resolve, reject
@@ -396,9 +389,9 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 
 	result := newOutput(resultType, o.dependencies()...)
 	go func() {
-		v, known, secret, deps, err := o.await(ctx)
+		v, known, secret, deps, err := o.getState().await(ctx)
 		if err != nil || !known {
-			result.fulfill(nil, known, secret, deps, err)
+			result.getState().fulfill(nil, known, secret, deps, err)
 			return
 		}
 
@@ -409,12 +402,12 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		}
 		results := fn.Call([]reflect.Value{reflect.ValueOf(ctx), val})
 		if len(results) == 2 && !results[1].IsNil() {
-			result.reject(results[1].Interface().(error))
+			result.getState().reject(results[1].Interface().(error))
 			return
 		}
 
 		// Fulfill the result.
-		result.fulfillValue(results[0], true, secret, deps, nil)
+		result.getState().fulfillValue(results[0], true, secret, deps, nil)
 	}()
 	return result
 }
@@ -494,7 +487,7 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 		// Check for an Output that we can pull dependencies off of.
 		if v.Type().Implements(outputType) && v.CanInterface() {
 			output := v.Convert(outputType).Interface().(Output)
-			for _, d := range output.dependencies() {
+			for _, d := range output.getState().dependencies() {
 				deps[d] = struct{}{}
 			}
 			return
@@ -607,7 +600,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 
 		// If the input is an Output, await its value. The returned value is fully resolved.
 		if output, ok := input.(Output); ok {
-			e, known, secret, deps, err := output.await(ctx)
+			e, known, secret, deps, err := output.getState().await(ctx)
 			if err != nil || !known {
 				return known, secret, deps, err
 			}
@@ -770,7 +763,7 @@ func toOutputWithContext(ctx context.Context, v interface{}, forceSecretVal *boo
 	result := newOutput(resultType, gatherDependencies(v)...)
 	go func() {
 		if v == nil {
-			result.fulfill(nil, true, false, nil, nil)
+			result.getState().fulfill(nil, true, false, nil, nil)
 			return
 		}
 
@@ -781,11 +774,11 @@ func toOutputWithContext(ctx context.Context, v interface{}, forceSecretVal *boo
 			secret = *forceSecretVal
 		}
 		if err != nil || !known {
-			result.fulfill(nil, known, secret, deps, err)
+			result.getState().fulfill(nil, known, secret, deps, err)
 			return
 		}
 
-		result.resolveValue(element, true, secret, deps)
+		result.getState().resolveValue(element, true, secret, deps)
 	}()
 	return result
 }
@@ -865,12 +858,12 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	out := newOutput(anyOutputType, gatherDependencies(v)...)
 	go func() {
 		if v == nil {
-			out.fulfill(nil, true, false, nil, nil)
+			out.getState().fulfill(nil, true, false, nil, nil)
 			return
 		}
 		var result interface{}
 		known, secret, deps, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
-		out.fulfill(result, known, secret, deps, err)
+		out.getState().fulfill(result, known, secret, deps, err)
 	}()
 	return out.(AnyOutput)
 }

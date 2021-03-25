@@ -131,6 +131,11 @@ class Workspace(ABC):
     Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
     """
 
+    pulumi_version: str
+    """
+    The version of the underlying Pulumi CLI/Engine.
+    """
+
     @abstractmethod
     def project_settings(self) -> ProjectSettings:
         """

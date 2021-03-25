@@ -43,6 +43,9 @@
         <member name="P:Pulumi.Automation.LocalWorkspace.PulumiHome">
             <inheritdoc/>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.PulumiVersion">
+            <inheritdoc/>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.SecretsProvider">
             <inheritdoc/>
         </member>
@@ -537,6 +540,11 @@
             The directory override for CLI metadata if set.
             <para/>
             This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Workspace.PulumiVersion">
+            <summary>
+            The version of the underlying Pulumi CLI/Engine.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Workspace.SecretsProvider">

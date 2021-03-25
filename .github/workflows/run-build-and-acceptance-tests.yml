@@ -193,6 +193,10 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+      - run: |
+          which pulumi
+          pulumi version
+        shell: bash
       - name: Run Pulumi Tests
         run: |
           cd src\github.com\${{ github.repository }}

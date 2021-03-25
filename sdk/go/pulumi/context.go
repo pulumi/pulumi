@@ -765,7 +765,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 			fieldV.Set(reflect.ValueOf(output))
 
 			if tag == "" && field.Type != mapOutputType {
-				output.reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
+				output.getState().reject(fmt.Errorf("the field %v must be a MapOutput or its tag must be non-empty", field.Name))
 			}
 
 			state.outputs[tag] = output
@@ -821,7 +821,7 @@ func (state *resourceState) resolve(ctx *Context, dryrun bool, err error, inputs
 	if err != nil {
 		// If there was an error, we must reject everything.
 		for _, output := range state.outputs {
-			output.reject(err)
+			output.getState().reject(err)
 		}
 		return
 	}
@@ -866,9 +866,9 @@ func (state *resourceState) resolve(ctx *Context, dryrun bool, err error, inputs
 		dest := reflect.New(output.ElementType()).Elem()
 		secret, err := unmarshalOutput(ctx, v, dest)
 		if err != nil {
-			output.reject(err)
+			output.getState().reject(err)
 		} else {
-			output.resolve(dest.Interface(), known, secret, deps[k])
+			output.getState().resolve(dest.Interface(), known, secret, deps[k])
 		}
 	}
 }

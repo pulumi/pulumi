@@ -15,6 +15,7 @@
 import os
 import unittest
 from random import random
+from semver import VersionInfo
 from typing import List, Optional
 
 from pulumi import Config, export
@@ -24,6 +25,7 @@ from pulumi.x.automation import (
     CommandError,
     ConfigMap,
     ConfigValue,
+    InvalidVersionError,
     LocalWorkspace,
     PluginInfo,
     ProjectSettings,
@@ -32,9 +34,22 @@ from pulumi.x.automation import (
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-
+from pulumi.x.automation._local_workspace import _validate_pulumi_version
 
 extensions = ["json", "yaml", "yml"]
+
+version_tests = [
+    ("100.0.0", True),
+    ("1.0.0", True),
+    ("2.22.0", False),
+    ("2.1.0", True),
+    ("2.21.2", False),
+    ("2.21.1", False),
+    ("2.21.0", True),
+    # Note that prerelease < release so this case will error
+    ("2.21.1-alpha.1234", True)
+]
+test_min_version = VersionInfo.parse("2.21.1")
 
 
 def test_path(*paths):
@@ -347,6 +362,28 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(destroy_res.summary.result, "succeeded")
         finally:
             stack.workspace.remove_stack(stack_name)
+
+    def test_pulumi_version(self):
+        ws = LocalWorkspace()
+        self.assertIsNotNone(ws.pulumi_version)
+        self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
+
+    def test_validate_pulumi_version(self):
+        for current_version, expect_error in version_tests:
+            with self.subTest():
+                current_version = VersionInfo.parse(current_version)
+                if expect_error:
+                    error_regex = "Major version mismatch." \
+                        if test_min_version.major < current_version.major \
+                        else "Minimum version requirement failed."
+                    with self.assertRaisesRegex(
+                            InvalidVersionError,
+                            error_regex,
+                            msg=f"min_version:{test_min_version}, current_version:{current_version}"
+                    ):
+                        _validate_pulumi_version(test_min_version, current_version)
+                else:
+                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version))
 
 
 def pulumi_program():

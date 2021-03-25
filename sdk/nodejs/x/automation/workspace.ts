@@ -39,6 +39,10 @@ export interface Workspace {
      */
     readonly secretsProvider?: string;
     /**
+     * The version of the underlying Pulumi CLI/Engine.
+     */
+    readonly pulumiVersion: string;
+    /**
      *  The inline program `PulumiFn` to be used for Preview/Update operations if any.
      *  If none is specified, the stack will refer to ProjectSettings for this information.
      */
