@@ -82,3 +82,10 @@ travis_pull_request:
 	$(call STEP_MESSAGE)
 	@echo moved to GitHub Actions
 travis_api: install dist all
+
+
+.PHONY: copyright copyright_fixup
+copyright:
+	./scripts/check_copyright.sh
+copyright_fixup:
+	./scripts/check_copyright.sh --fixup
