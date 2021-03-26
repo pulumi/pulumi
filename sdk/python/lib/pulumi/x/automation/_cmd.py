@@ -58,6 +58,7 @@ def _run_pulumi_cmd(args: List[str],
                           stderr=stderr_file,
                           cwd=cwd,
                           env=env) as process:
+        assert process.stdout is not None
         while True:
             output = process.stdout.readline().decode(encoding="utf-8")
             if output == "" and process.poll() is not None:
