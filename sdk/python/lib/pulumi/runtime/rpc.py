@@ -64,25 +64,60 @@ def isLegalProtobufValue(value: Any) -> bool:
     return value is None or isinstance(value, (bool, six.string_types, _INT_OR_FLOAT, dict, list))
 
 
+def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
+    if typ is None:
+        return None
+
+    # If typ is a list, get the type for its values, to pass
+    # along for each item.
+    origin = _types.get_origin(typ)
+    if typ is list or origin in {list, List, Sequence, abc.Sequence}:
+        args = _types.get_args(typ)
+        if len(args) == 1:
+            return args[0]
+
+    raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
+
+
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
-                               input_transformer: Optional[Callable[[str], str]] = None) -> struct_pb2.Struct:
+                               input_transformer: Optional[Callable[[str], str]] = None,
+                               typ: Optional[type] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
     because it awaits any futures that are contained transitively within the input bag.
+
+    When `typ` is an input type, the metadata from the type is used to translate Python snake_case
+    names to Pulumi camelCase names, rather than using the `input_transformer`.
     """
+
+    # Default implementation of get_type that always returns None.
+    get_type: Callable[[str], Optional[type]] = lambda k: None
+    # Key translator.
+    translate = input_transformer
+
+    # If we have type information, we'll use it to do name translations rather than using
+    # any passed-in input_transformer.
+    if typ is not None:
+        py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
+        types = _types.input_type_types(typ)
+        translate = lambda k: py_name_to_pulumi_name.get(k) or k
+        get_type = lambda k: types.get(translate(k))  # type: ignore
+
     struct = struct_pb2.Struct()
-    for k, v in inputs.items():
+    # We're deliberately not using `inputs.items()` here in case inputs is a subclass of `dict` that redefines items.
+    for k in inputs:
+        v = inputs[k]
         deps: List['Resource'] = []
-        result = await serialize_property(v, deps, input_transformer)
+        result = await serialize_property(v, deps, input_transformer, get_type(k))
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
             # While serializing to a pb struct, we must "translate" all key names to be what the
             # engine is going to expect. Resources provide the "transform" function for doing this.
             translated_name = k
-            if input_transformer is not None:
-                translated_name = input_transformer(k)
+            if translate is not None:
+                translated_name = translate(k)
                 log.debug(f"top-level input property translated: {k} -> {translated_name}")
             # pylint: disable=unsupported-assignment-operation
             struct[translated_name] = result
@@ -94,17 +129,31 @@ async def serialize_properties(inputs: 'Inputs',
 # pylint: disable=too-many-return-statements, too-many-branches
 async def serialize_property(value: 'Input[Any]',
                              deps: List['Resource'],
-                             input_transformer: Optional[Callable[[str], str]] = None) -> Any:
+                             input_transformer: Optional[Callable[[str], str]] = None,
+                             typ: Optional[type] = None) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
+
+    When `typ` is specified, the metadata from the type is used to translate Python snake_case
+    names to Pulumi camelCase names, rather than using the `input_transformer`.
     """
+
+    # Set typ to T if it's Optional[T], Input[T], or InputType[T].
+    typ = _types.unwrap_type(typ) if typ else typ
+
+    # If the typ is Any, set it to None to treat it as if we don't have any type information,
+    # to avoid raising errors about unexpected types, since it could be any type.
+    if typ is Any:
+        typ = None
+
     # Exclude some built-in types that are instances of Sequence that we don't want to treat as sequences here.
     # From: https://github.com/python/cpython/blob/master/Lib/_collections_abc.py
     if isinstance(value, abc.Sequence) and not isinstance(value, (tuple, str, range, memoryview, bytes, bytearray)):
+        element_type = _get_list_element_type(typ)
         props = []
         for elem in value:
-            props.append(await serialize_property(elem, deps, input_transformer))
+            props.append(await serialize_property(elem, deps, input_transformer, element_type))
 
         return props
 
@@ -183,7 +232,7 @@ async def serialize_property(value: 'Input[Any]',
         # serializing.
         awaitable = cast('Any', value)
         future_return = await asyncio.ensure_future(awaitable)
-        return await serialize_property(future_return, deps, input_transformer)
+        return await serialize_property(future_return, deps, input_transformer, typ)
 
     if known_types.is_output(value):
         output = cast('Output', value)
@@ -196,7 +245,7 @@ async def serialize_property(value: 'Input[Any]',
         # resolved with known values.
         is_known = await output._is_known
         is_secret = await output._is_secret
-        value = await serialize_property(output.future(), deps, input_transformer)
+        value = await serialize_property(output.future(), deps, input_transformer, typ)
         if not is_known:
             return UNKNOWN
         if is_secret and await settings.monitor_supports_secrets():
@@ -208,23 +257,50 @@ async def serialize_property(value: 'Input[Any]',
             }
         return value
 
-    transform_keys = True
-
-    # If value is an input type, convert it to a dict, and set transform_keys to False to prevent
-    # transforming the keys of the resulting dict as the keys should already be the final names.
+    # If value is an input type, convert it to a dict.
     value_cls = type(value)
     if _types.is_input_type(value_cls):
         value = _types.input_type_to_dict(value)
-        transform_keys = False
+        types = _types.input_type_types(value_cls)
+
+        return {
+            k: await serialize_property(v, deps, input_transformer, types.get(k))
+            for k, v in value.items()
+        }
 
     if isinstance(value, abc.Mapping):
+        # Default implementation of get_type that always returns None.
+        get_type: Callable[[str], Optional[type]] = lambda k: None
+        # Key translator.
+        translate = input_transformer
+
+        # If we have type information, we'll use it to do name translations rather than using
+        # any passed-in input_transformer.
+        if typ is not None:
+            if _types.is_input_type(typ):
+                # If it's intended to be an input type, translate using the type's metadata.
+                py_name_to_pulumi_name = _types.input_type_py_to_pulumi_names(typ)
+                types = _types.input_type_types(typ)
+                translate = lambda k: py_name_to_pulumi_name.get(k) or k
+                get_type = types.get
+            else:
+                # Otherwise, don't do any translation of user-defined dict keys.
+                origin = _types.get_origin(typ)
+                if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
+                    args = _types.get_args(typ)
+                    if len(args) == 2 and args[0] is str:
+                        get_type = lambda k: args[1]
+                        translate = None
+                else:
+                    raise AssertionError(f"Unexpected type. Expected 'dict' got '{typ}'")
+
         obj = {}
         for k, v in value.items():
             transformed_key = k
-            if transform_keys and input_transformer is not None:
-                transformed_key = input_transformer(k)
+            if translate is not None:
+                transformed_key = translate(k)
                 log.debug(f"transforming input property: {k} -> {transformed_key}")
-            obj[transformed_key] = await serialize_property(v, deps, input_transformer)
+            obj[transformed_key] = await serialize_property(v, deps, input_transformer, get_type(transformed_key))
 
         return obj
 
@@ -409,7 +485,8 @@ result in the exception being re-thrown.
 def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]:
     from .. import Output  # pylint: disable=import-outside-toplevel
     resolvers: Dict[str, Resolver] = {}
-    for name in props.keys():
+
+    for name in props:
         if name in ["id", "urn"]:
             # these properties are handled specially elsewhere.
             continue
@@ -448,7 +525,7 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
 
         # Important to note here is that the resolver's future is assigned to the resource object using the
         # name before translation. When properties are returned from the engine, we must first translate the name
-        # using res.translate_output_property and then use *that* name to index into the resolvers table.
+        # from the Pulumi name to the Python name and then use *that* name to index into the resolvers table.
         log.debug(f"adding resolver {name}")
         resolvers[name] = functools.partial(do_resolve, res, resolve_value, resolve_is_known, resolve_is_secret, resolve_deps)
         res.__dict__[name] = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
@@ -458,15 +535,19 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
 
 def translate_output_properties(output: Any,
                                 output_transformer: Callable[[str], str],
-                                typ: Optional[type] = None) -> Any:
+                                typ: Optional[type] = None,
+                                transform_using_type_metadata: bool = False) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
-    convention specified by `output_transformer`.
+    convention specified by `output_transformer`. If `transform_using_type_metadata` is
+    set to True, then the metadata from `typ` is used to do the translation, and `dict`
+    values that are intended to be user-defined dicts aren't translated at all.
 
     Additionally, perform any type conversions as necessary, based on the optional `typ` parameter.
 
-    If output is a `dict`, every key is translated using `translate_output_property` while every value is transformed
-    by recursing.
+    If output is a `dict`, every key is translated (unless `transform_using_type_metadata is True,
+    the dict isn't an output type, and it is intended to be a user-defined dict) while every value is
+    transformed by recursing.
 
     If output is a `list`, every value is recursively transformed.
 
@@ -479,14 +560,18 @@ def translate_output_properties(output: Any,
 
     Otherwise, if output is a primitive (i.e. not a dict or list), the value is returned without modification.
 
+    :param Any output: The output value.
+    :param Callable[[str], str] output_transformer: The function used to translate.
     :param Optional[type] typ: The output's target type.
+    :param bool transform_using_type_metadata: Set to True to use the metadata from `typ` to do name translation instead
+                                               of using `output_transformer`.
     """
 
     # If it's a secret, unwrap the value so the output is in alignment with the expected type, call
     # translate_output_properties with the unwrapped value, and then rewrap the result as a secret.
     if is_rpc_secret(output):
         unwrapped = unwrap_rpc_secret(output)
-        result = translate_output_properties(unwrapped, output_transformer, typ)
+        result = translate_output_properties(unwrapped, output_transformer, typ, transform_using_type_metadata)
         return wrap_rpc_secret(result)
 
     # Unwrap optional types.
@@ -501,53 +586,48 @@ def translate_output_properties(output: Any,
         # Function called to lookup a type for a given key.
         # The default always returns None.
         get_type: Callable[[str], Optional[type]] = lambda k: None
+        translate = output_transformer
 
-        if typ and _types.is_output_type(typ):
-            # If typ is an output type, get its types, so we can pass
-            # the type along for each property.
-            types = _types.output_type_types(typ)
-            get_type = lambda k: types.get(k)  # pylint: disable=unnecessary-lambda
-        elif typ:
-            # If typ is a dict, get the type for its values, to pass
-            # along for each key.
+        if typ is not None:
+            # If typ is an output type, instantiate it. We do not translate the top-level keys,
+            # as the output type will take care of doing that if it has a _translate_property()
+            # method.
+            if _types.is_output_type(typ):
+                # If typ is an output type, get its types, so we can pass the type along for each property.
+                types = _types.output_type_types(typ)
+                get_type = types.get
+
+                translated_values = {
+                    k: translate_output_properties(v, output_transformer, get_type(k), transform_using_type_metadata)
+                    for k, v in output.items()
+                }
+                return _types.output_type_from_dict(typ, translated_values)
+
+            # If typ is a dict, get the type for its values, to pass along for each key.
             origin = _types.get_origin(typ)
             if typ is dict or origin in {dict, Dict, Mapping, abc.Mapping}:
                 args = _types.get_args(typ)
                 if len(args) == 2 and args[0] is str:
                     get_type = lambda k: args[1]
+                    # If transform_using_type_metadata is True, don't translate its keys because
+                    # it is intended to be a user-defined dict.
+                    if transform_using_type_metadata:
+                        translate = lambda k: k
             else:
                 raise AssertionError(f"Unexpected type; expected 'dict' got '{typ}'")
 
-        # If typ is an output type, instantiate it. We do not translate the top-level keys,
-        # as the output type will take care of doing that if it has a _translate_property()
-        # method.
-        if typ and _types.is_output_type(typ):
-            translated_values = {
-                k: translate_output_properties(v, output_transformer, get_type(k))
-                for k, v in output.items()
-            }
-            return _types.output_type_from_dict(typ, translated_values)
-
-        # Otherwise, return the fully translated dict.
         return {
-            output_transformer(k):
-                translate_output_properties(v, output_transformer, get_type(k))
+            translate(k):
+                translate_output_properties(v, output_transformer, get_type(k), transform_using_type_metadata)
             for k, v in output.items()
         }
 
     if isinstance(output, list):
-        element_type: Optional[type] = None
-        if typ:
-            # If typ is a list, get the type for its values, to pass
-            # along for each item.
-            origin = _types.get_origin(typ)
-            if typ is list or origin in {list, List, Sequence, abc.Sequence}:
-                args = _types.get_args(typ)
-                if len(args) == 1:
-                    element_type = args[0]
-            else:
-                raise AssertionError(f"Unexpected type. Expected 'list' got '{typ}'")
-        return [translate_output_properties(v, output_transformer, element_type) for v in output]
+        element_type = _get_list_element_type(typ)
+        return [
+            translate_output_properties(v, output_transformer, element_type, transform_using_type_metadata)
+            for v in output
+        ]
 
     if typ and isinstance(output, (int, float, str)) and inspect.isclass(typ) and issubclass(typ, Enum):
         return typ(output)
@@ -578,29 +658,41 @@ def resolve_outputs(res: 'Resource',
                     serialized_props: struct_pb2.Struct,
                     outputs: struct_pb2.Struct,
                     deps: Mapping[str, Set['Resource']],
-                    resolvers: Dict[str, Resolver]):
+                    resolvers: Dict[str, Resolver],
+                    transform_using_type_metadata: bool = False):
 
     # Produce a combined set of property states, starting with inputs and then applying
     # outputs.  If the same property exists in the inputs and outputs states, the output wins.
     all_properties = {}
     # Get the resource's output types, so we can convert dicts from the engine into actual
     # instantiated output types or primitive types into enums as needed.
-    types = _types.resource_types(type(res))
+    resource_cls = type(res)
+    types = _types.resource_types(resource_cls)
+    translate, translate_to_pass = res.translate_output_property, res.translate_output_property
+    if transform_using_type_metadata:
+        pulumi_to_py_names = _types.resource_pulumi_to_py_names(resource_cls)
+        translate = lambda k: pulumi_to_py_names.get(k) or k
+        translate_to_pass = lambda k: k
+
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
-        translated_key = res.translate_output_property(key)
-        translated_value = translate_output_properties(value, res.translate_output_property, types.get(key))
+        translated_key = translate(key)
+        translated_value = translate_output_properties(value, translate_to_pass, types.get(key),
+                                                       transform_using_type_metadata)
         log.debug(f"incoming output property translated: {key} -> {translated_key}")
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
 
     if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
         for key, value in list(serialized_props.items()):
-            translated_key = res.translate_output_property(key)
+            translated_key = translate(key)
             if translated_key not in all_properties:
                 # input prop the engine didn't give us a final value for.Just use the value passed into the resource by
                 # the user.
-                all_properties[translated_key] = translate_output_properties(deserialize_property(value), res.translate_output_property, types.get(key))
+                all_properties[translated_key] = translate_output_properties(deserialize_property(value),
+                                                                             translate_to_pass,
+                                                                             types.get(key),
+                                                                             transform_using_type_metadata)
 
     resolve_properties(resolvers, all_properties, deps)
 

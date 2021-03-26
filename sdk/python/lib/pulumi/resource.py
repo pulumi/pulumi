@@ -26,6 +26,8 @@ from .runtime.settings import get_root_resource
 
 from .metadata import get_project, get_stack
 
+from . import _types
+
 if TYPE_CHECKING:
     from .output import Input, Inputs, Output
     from .runtime.stack import Stack
@@ -622,7 +624,10 @@ class Resource:
         :param str t: The type of this resource.
         :param str name: The name of this resource.
         :param bool custom: True if this resource is a custom resource.
-        :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
+        :param Optional[Inputs] props: An optional list of input properties to use as inputs for the resource.
+               If props is an input type (decorated with `@input_type`), dict keys will be translated using
+               the type's and resource's type/name metadata rather than using the `translate_input_property`
+               and `translate_output_property` methods.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
         :param bool remote: True if this is a remote component resource.
@@ -648,6 +653,15 @@ class Resource:
             opts = ResourceOptions()
         elif not isinstance(opts, ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')
+
+        # If `props` is an input type, convert it into an untranslated dictionary.
+        # Translation of the keys will happen later using the type's and resource's type/name metadata.
+        # If `props` is not an input type, set `typ` to None to make translation behave as it has previously.
+        typ = type(props)
+        if _types.is_input_type(typ):
+            props = _types.input_type_to_untranslated_dict(props)
+        else:
+            typ = None  # type: ignore
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
@@ -731,15 +745,15 @@ class Resource:
 
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
-            get_resource(self, props, custom, opts.urn)
+            get_resource(self, props, custom, opts.urn, typ)
         elif opts.id is not None:
             # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            read_resource(cast('CustomResource', self), t, name, props, opts)
+            read_resource(cast('CustomResource', self), t, name, props, opts, typ)
         else:
-            register_resource(self, t, name, custom, remote, DependencyResource, props, opts)
+            register_resource(self, t, name, custom, remote, DependencyResource, props, opts, typ)
 
     @property
     def urn(self) -> 'Output[str]':
@@ -770,6 +784,10 @@ class Resource:
         Provides subclasses of Resource an opportunity to translate names of output properties
         into a format of their choosing before writing those properties to the resource object.
 
+        If the `props` passed to `__init__` is an input type (decorated with `@input_type`), the
+        type/name metadata of the resource will be used to translate names instead of calling this
+        method.
+
         :param str prop: A property name.
         :return: A potentially transformed property name.
         :rtype: str
@@ -780,6 +798,10 @@ class Resource:
         """
         Provides subclasses of Resource an opportunity to translate names of input properties into
         a format of their choosing before sending those properties to the Pulumi engine.
+
+        If the `props` passed to `__init__` is an input type (decorated with `@input_type`), the
+        type/name metadata of `props` will be used to translate names instead of calling this
+        method.
 
         :param str prop: A property name.
         :return: A potentially transformed property name.
