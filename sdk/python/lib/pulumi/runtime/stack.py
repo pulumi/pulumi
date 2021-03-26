@@ -52,12 +52,9 @@ async def run_pulumi_func(func: Callable):
             # https://github.com/python/asyncio/issues/284#issuecomment-154180935
             #
             # We await each RPC in turn so that this loop will actually block rather than busy-wait.
-            while True:
+            while len(RPC_MANAGER.rpcs) > 0:
                 await asyncio.sleep(0)
-                rpcs_remaining = len(RPC_MANAGER.rpcs)
-                if rpcs_remaining == 0:
-                    break
-                log.debug(f"waiting for quiescence; {rpcs_remaining} RPCs outstanding")
+                log.debug(f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding")
                 await RPC_MANAGER.rpcs.pop()
 
             if RPC_MANAGER.unhandled_exception is not None:
