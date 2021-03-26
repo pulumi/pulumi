@@ -526,6 +526,28 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	t.Run("CreateWithinApply", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "create_inside_apply"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawUrn := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "pulumi-python:dynamic:Resource::magic_string") {
+							sawUrn = true
+						}
+					}
+				}
+				assert.True(t, sawUrn)
+			},
+		})
+	})
+
 	t.Run("FailureSimple", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"

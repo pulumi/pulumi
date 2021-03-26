@@ -44,46 +44,54 @@ async def run_pulumi_func(func: Callable):
     finally:
         log.debug("Waiting for outstanding RPCs to complete")
 
-        # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
-        # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
-        #
-        # Note that "asyncio.sleep(0)" is the blessed way to do this:
-        # https://github.com/python/asyncio/issues/284#issuecomment-154180935
-        #
-        # We await each RPC in turn so that this loop will actually block rather than busy-wait.
         while True:
-            await asyncio.sleep(0)
-            rpcs_remaining = len(RPC_MANAGER.rpcs)
-            if rpcs_remaining == 0:
+            # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
+            # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
+            #
+            # Note that "asyncio.sleep(0)" is the blessed way to do this:
+            # https://github.com/python/asyncio/issues/284#issuecomment-154180935
+            #
+            # We await each RPC in turn so that this loop will actually block rather than busy-wait.
+            while True:
+                await asyncio.sleep(0)
+                rpcs_remaining = len(RPC_MANAGER.rpcs)
+                if rpcs_remaining == 0:
+                    break
+                log.debug(f"waiting for quiescence; {rpcs_remaining} RPCs outstanding")
+                await RPC_MANAGER.rpcs.pop()
+
+            if RPC_MANAGER.unhandled_exception is not None:
+                raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
+
+            log.debug("RPCs successfully completed")
+
+            # If the RPCs have successfully completed, now await all remaining outstanding tasks.
+            outstanding_tasks = _get_running_tasks()
+            if len(outstanding_tasks) == 0:
+                log.debug("No outstanding tasks to complete, exiting")
+            else:
+                log.debug(f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete")
+
+                done, pending = await asyncio.wait(outstanding_tasks, return_when="FIRST_EXCEPTION")
+
+                if len(pending) > 0:
+                    # If there are any pending tasks, it's because an exception was thrown.
+                    # Cancel any pending tasks.
+                    log.debug(f"Cancelling {len(pending)} remaining tasks.")
+                    for task in pending:
+                        task.cancel()
+
+                for task in done:
+                    if task.exception() is not None:
+                        log.debug("A future resolved in an exception, raising exception.")
+                        raise task.exception()
+
+                log.debug("All outstanding tasks completed.")
+
+            # Check to see if any more RPCs have been scheduled, and repeat the cycle if so.
+            # Break if no RPCs remain.
+            if len(RPC_MANAGER.rpcs) == 0:
                 break
-            log.debug(f"waiting for quiescence; {rpcs_remaining} RPCs outstanding")
-            await RPC_MANAGER.rpcs.pop()
-
-        if RPC_MANAGER.unhandled_exception is not None:
-            raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
-
-        log.debug("RPCs successfully completed")
-
-        # If the RPCs have successfully completed, now await all remaining outstanding tasks.
-        outstanding_tasks = _get_running_tasks()
-        if len(outstanding_tasks) == 0:
-            log.debug("No outstanding tasks to complete, exiting")
-        else:
-            log.debug(f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete")
-
-            done, pending = await asyncio.wait(outstanding_tasks, return_when="FIRST_EXCEPTION")
-
-            if len(pending) > 0:
-                # If there are any pending tasks, it's because an exception was thrown.
-                # Cancel any pending tasks.
-                log.debug(f"Cancelling {len(pending)} remaining tasks.")
-                for task in pending:
-                    task.cancel()
-
-            for task in done:
-                if task.exception() is not None:
-                    log.debug("A future resolved in an exception, raising exception.")
-                    raise task.exception()
 
         # By now, all tasks have exited and we're good to go.
         log.debug("run_pulumi_func completed")
