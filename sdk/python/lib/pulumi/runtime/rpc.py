@@ -32,7 +32,7 @@ from .. import _types
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
-    from ..resource import Resource, ProviderResource
+    from ..resource import CustomResource, Resource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"

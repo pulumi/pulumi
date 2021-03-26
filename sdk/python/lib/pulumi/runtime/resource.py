@@ -510,9 +510,9 @@ class PropertyDependencies:
 
 class RegisterResponse:
     urn: str
-    id: str
+    id: Optional[str]
     object: struct_pb2.Struct
-    propertyDependencies: Dict[str, PropertyDependencies]
+    propertyDependencies: Optional[Dict[str, PropertyDependencies]]
 
     # pylint: disable=redefined-builtin
     def __init__(self,

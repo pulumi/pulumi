@@ -387,10 +387,9 @@ class Output(Generic[T]):
         if args and kwargs:
             raise ValueError("Output.all() was supplied a mix of named and unnamed inputs")
         # First, map all inputs to outputs using `from_input`.
-        if kwargs:
-            all_outputs = {k: from_input(v) for k, v in kwargs.items()}
-        else:
-            all_outputs: Union[list, dict] = [from_input(x) for x in args]
+        all_outputs: Union[list, dict] = (
+            {k: from_input(v) for k, v in kwargs.items()} if kwargs
+            else [from_input(x) for x in args])
 
         # Aggregate the list or dict of futures into a future of list or dict.
         value_futures = asyncio.ensure_future(gather_futures(all_outputs))
