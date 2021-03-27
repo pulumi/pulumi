@@ -21,6 +21,11 @@
             a cloud resource provider while trying to create or update a resource.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.Events.DiagnosticEvent.Severity">
+            <summary>
+            Severity is one of "info", "info#err", "warning", or "error".
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Events.DiffKind">
             <summary>
             DiffKind describes the kind of a particular property diff.
@@ -84,6 +89,11 @@
         <member name="T:Pulumi.Automation.Events.PolicyEvent">
             <summary>
             PolicyEvent is emitted whenever there is Policy violation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Events.PolicyEvent.EnforcementLevel">
+            <summary>
+            EnforcementLevel is one of "warning" or "mandatory"
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.PreludeEvent">

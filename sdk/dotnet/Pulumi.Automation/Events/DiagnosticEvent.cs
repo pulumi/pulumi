@@ -18,6 +18,9 @@ namespace Pulumi.Automation.Events
 
         public string Color { get; }
 
+        /// <summary>
+        /// Severity is one of "info", "info#err", "warning", or "error".
+        /// </summary>
         public string Severity { get; }
 
         public string? StreamId { get; }

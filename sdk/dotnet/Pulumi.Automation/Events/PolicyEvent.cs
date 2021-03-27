@@ -23,6 +23,9 @@ namespace Pulumi.Automation.Events
 
         public string PolicyPackVersionTag { get; }
 
+        /// <summary>
+        /// EnforcementLevel is one of "warning" or "mandatory"
+        /// </summary>
         public string EnforcementLevel { get; }
 
         internal PolicyEvent(
