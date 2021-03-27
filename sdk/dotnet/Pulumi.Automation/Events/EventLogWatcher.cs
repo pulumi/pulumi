@@ -53,9 +53,10 @@ namespace Pulumi.Automation.Events
             {
                 try
                 {
-
-                    ReadEvents();
+                    // NOTE: Waiting before reading so that if ReadEvents throws we will
+                    // wait before attempting it again
                     await Task.Delay(_pollingIntervalMilliseconds, linkedToken).ConfigureAwait(false);
+                    ReadEvents();
                 }
                 catch (TaskCanceledException)
                 {
@@ -106,7 +107,14 @@ namespace Pulumi.Automation.Events
             {
                 var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
 
-                _onEvent.Invoke(@event);
+                try
+                {
+                    _onEvent.Invoke(@event);
+                }
+                catch
+                {
+                    // Don't let the provided event handler cause reading of events to fail
+                }
             }
 
             _previousLength = newLength;
