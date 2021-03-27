@@ -50,7 +50,7 @@ namespace Pulumi.Automation.Commands
                 env["PULUMI_DEBUG_COMMANDS"] = "true";
 
                 eventLogFile = CreateEventLogFile(completeArgs.FirstOrDefault() ?? "event-log");
-                eventLogWatcher = new EventLogWatcher(eventLogFile, onEngineEvent);
+                eventLogWatcher = new EventLogWatcher(eventLogFile, onEngineEvent, cancellationToken);
 
                 completeArgs = completeArgs.Concat(new[] { "--event-log", eventLogFile });
             }
@@ -149,13 +149,26 @@ namespace Pulumi.Automation.Commands
             proc.Start();
             proc.BeginOutputReadLine();
             proc.BeginErrorReadLine();
+
             try
             {
                 return await tcs.Task.ConfigureAwait(false);
             }
             finally
             {
-                eventLogWatcher?.Dispose();
+                // If proc.HasExited is false here, it likely means that cancellation was requested.
+                // We want to do best effort for ensuring the process exits
+                // before removing the event log watcher and the event log file
+                // in case the process was still writing into the event log file
+                if (!proc.HasExited)
+                {
+                    proc.WaitForExit();
+                }
+
+                if (eventLogWatcher != null)
+                {
+                    await eventLogWatcher.DisposeAsync().ConfigureAwait(false);
+                }
 
                 if (!string.IsNullOrWhiteSpace(eventLogFile))
                 {
