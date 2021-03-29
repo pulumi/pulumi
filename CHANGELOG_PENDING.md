@@ -3,8 +3,9 @@
 
 ### Improvements
 
-- [cli] Strip Byte-order Mark (BOM) from YAML configs during load.
-  [#6636](https://github.com/pulumi/pulumi/pull/6636)
+- [cli] Support full fidelity YAML round-tripping
+  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
+  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
 
 ### Bug Fixes
 
@@ -13,4 +14,3 @@
   
 - [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
   [#6504](https://github.com/pulumi/pulumi/pull/6504)
-  
