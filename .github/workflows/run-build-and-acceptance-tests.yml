@@ -45,16 +45,41 @@ jobs:
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
   build_and_test:
     name: Build & Test
+    defaults:
+      run:
+        shell: bash
     strategy:
       matrix:
-        platform: [ ubuntu-latest, macos-latest ]
+        platform: [ ubuntu-latest, macos-latest, windows-latest ]
         go-version: [1.16.x]
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
+        include:
+          - platform: windows-latest
+            node-modules: "D:\\Pulumi\\nuget\\node_modules"
+            local-nuget: "D:\\Pulumi\\nuget"
+            root: "D:\\Pulumi"
+            binary-root: "D:\\Pulumi\\bin"
+          - platform: ubuntu-latest
+            node-modules: $HOME/opt/pulumi/node_modules
+            local-nuget: $HOME/opt/pulumi/nuget
+            root: $HOME/opt/pulumi
+            binary-root: $HOME/opt/pulumi/bin
+          - platform: macos-latest
+            node-modules: $HOME/opt/pulumi/node_modules
+            local-nuget: $HOME/opt/pulumi/nuget
+            root: $HOME/opt/pulumi
+            binary-root: $HOME/opt/pulumi/bin
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: setup job specific env vars
+        run: |
+          echo "PULUMI_NODE_MODULES=${{ matrix.node-modules }}" >> $GITHUB_ENV
+          echo "PULUMI_LOCAL_NUGET=${{ matrix.local-nuget }}" >> $GITHUB_ENV
+          echo "PULUMI_ROOT=${{ matrix.root }}" >> $GITHUB_ENV
+          echo "PULUMI_BINARY_ROOT=${{ matrix.binary- }}" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -67,7 +92,9 @@ jobs:
         uses: actions/setup-dotnet@v1
         with:
           dotnet-version: ${{ matrix.dotnet-version }}
-      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Ensure PULUMI_LOCAL_NUGET exists
+        run: mkdir -p $PULUMI_LOCAL_NUGET
+      - run: dotnet nuget add source $PULUMI_LOCAL_NUGET
       - name: Set up Node ${{ matrix.node-version }}
         uses: actions/setup-node@v1
         with:
@@ -80,7 +107,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "$PULUMI_BINARY_ROOT" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
@@ -93,111 +120,19 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
+      - run: dotnet nuget locals all --clear
+      - if: contains(matrix.platform, 'windows')
+        run: |
+          pip3 install pyenv-win
+          pip3 install pipenv
       - name: Ensure
         run: |
           make ensure
       - name: Dist
         run: |
           make dist
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Install
         run: |
           make install_all
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
         run: make test_all
-        env:
-          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
-          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-  windows-build:
-    name: Windows Build + Test
-    strategy:
-      matrix:
-        go-version: [1.16.x]
-        node-version: [14.x]
-        python-version: [3.9.x]
-        dotnet: [3.1.x]
-    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
-    runs-on: windows-latest
-    env:
-      GOPATH: ${{ github.workspace }}
-      PULUMI_LOCAL_NUGET: "D:\\Pulumi\\nuget"
-      ACTIONS_ALLOW_UNSECURE_COMMANDS: true
-    steps:
-      - name: Install DotNet ${{ matrix.dotnet }}
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ matrix.dotnet }}
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v1
-        with:
-          node-version: ${{ matrix.node-version }}
-      - name: Set up Go ${{ matrix.go-version }}
-        uses: actions/setup-go@v1
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
-        with:
-          python-version: ${{ matrix.python-version }}
-      - name: Install Python Deps
-        run: |
-          pip3 install pyenv-win
-          pip3 install pipenv
-      - run: dotnet nuget add source ${{ env.PULUMI_LOCAL_NUGET }}
-      - name: Set Build Env Vars
-        shell: bash
-        run: |
-          echo "D:\\Pulumi\\bin" >> $GITHUB_PATH
-      - name: Install AWS CLI Tools
-        uses: chrislennon/action-aws-cli@v1.1
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: pulumi/pulumictl
-      - name: Check out code into the Go module directory
-        uses: actions/checkout@v2
-        with:
-          path: ./src/github.com/${{ github.repository }}
-      - name: Fetch Tags
-        run: |
-          cd ./src/github.com/${{ github.repository }} && git fetch --quiet --prune --unshallow --tags
-      - name: Clean
-        run: dotnet nuget locals all --clear
-      - name: Create Local Nuget
-        run: mkdir -p "D:\\Pulumi\\nuget"
-        shell: bash
-      - name: Get dependencies
-        run: |
-          cd src\github.com\${{ github.repository }}
-          pushd .
-          cd sdk
-          go mod download
-          popd
-          pushd .
-          cd pkg
-          go mod download
-          popd
-          pushd .
-          cd tests
-          go mod download
-          popd
-      - name: Build Pulumi
-        run: |
-          cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Build /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
-      - run: |
-          which pulumi
-          pulumi version
-        shell: bash
-      - name: Run Pulumi Tests
-        run: |
-          cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
