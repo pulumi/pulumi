@@ -165,6 +165,8 @@ function serializeProvider(provider: ResourceProvider): Promise<string> {
     return runtime.serializeFunction(() => provider).then(sf => sf.text);
 }
 
+const providerCache = new Map<ResourceProvider, Promise<string>>();
+
 /**
  * Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
  */
@@ -184,7 +186,15 @@ export abstract class Resource extends resource.CustomResource {
         if (props[providerKey]) {
             throw new Error("A dynamic resource must not define the __provider key");
         }
-        props[providerKey] = serializeProvider(provider);
+        let serializedProvider: Promise<string>;
+        if (providerCache.has(provider)) {  
+            serializedProvider = providerCache.get(provider)!;
+        } else {
+            serializedProvider = serializeProvider(provider);
+            providerCache.set(provider, serializedProvider);
+        }
+
+        props[providerKey] = serializedProvider;
 
         super("pulumi-nodejs:dynamic:Resource", name, props, opts);
     }
