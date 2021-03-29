@@ -38,6 +38,7 @@ namespace Pulumi.Automation.Events
         {
             _internalCancellationTokenSource.Cancel();
             await _pollingTask.ConfigureAwait(false);
+            _internalCancellationTokenSource.Dispose();
         }
 
         private async Task PollForEvents()
@@ -68,8 +69,7 @@ namespace Pulumi.Automation.Events
                 }
             }
 
-            // Try reading events one final time in case new events were written
-            // while the task was cancelled during Task.Delay
+            // Try reading events one final time
             try
             {
                 ReadEvents();
