@@ -46,14 +46,14 @@ var policyPackProjectSingleton *policyPackProjectLoader = &policyPackProjectLoad
 	internal: map[string]*PolicyPackProject{},
 }
 
-// readFile wraps os.ReadFile and also strips the Byte-order Mark (BOM) if present.
+// readFile wraps os.ReadFile and also strips the UTF-8 Byte-order Mark (BOM) if present.
 func readFile(path string) ([]byte, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
 	}
 
-	// Strip BOM bytes if present to avoid problems with downstream parsing.
+	// Strip UTF-8 BOM bytes if present to avoid problems with downstream parsing.
 	// References:
 	//   https://github.com/spkg/bom
 	//   https://en.wikipedia.org/wiki/Byte_order_mark
