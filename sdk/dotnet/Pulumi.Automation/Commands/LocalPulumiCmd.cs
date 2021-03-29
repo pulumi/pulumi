@@ -8,6 +8,8 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+
+using CliWrap;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 
@@ -15,6 +17,7 @@ namespace Pulumi.Automation.Commands
 {
     internal class LocalPulumiCmd : IPulumiCmd
     {
+
         public async Task<CommandResult> RunAsync(
             IEnumerable<string> args,
             string workingDir,
@@ -24,10 +27,68 @@ namespace Pulumi.Automation.Commands
             Action<EngineEvent>? onEngineEvent = null,
             CancellationToken cancellationToken = default)
         {
-            // all commands should be run in non-interactive mode.
-            // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
-            var completeArgs = args.Concat(new[] { "--non-interactive" });
+            if (onEngineEvent != null)
+            {
+                using var eventLogFile = new EventLogFile(args.FirstOrDefault() ?? "event-log");
+                await using var eventLogWatcher = new EventLogWatcher(eventLogFile.FilePath, onEngineEvent, cancellationToken);
+                return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken);
+            }
+            else
+            {
+                return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken);
+            }
+        }
 
+        private async Task<CommandResult> RunAsyncInner(
+            IEnumerable<string> args,
+            string workingDir,
+            IDictionary<string, string> additionalEnv,
+            Action<string>? onStandardOutput = null,
+            Action<string>? onStandardError = null,
+            EventLogFile? eventLogFile = null,
+            CancellationToken cancellationToken = default)
+        {
+            var stdOutBuffer = new StringBuilder();
+            var stdOutPipe = PipeTarget.ToStringBuilder(stdOutBuffer);
+            if (onStandardOutput != null)
+            {
+                stdOutPipe = PipeTarget.Merge(stdOutPipe, PipeTarget.ToDelegate(onStandardOutput));
+            }
+
+            var stdErrBuffer = new StringBuilder();
+            var stdErrPipe = PipeTarget.ToStringBuilder(stdErrBuffer);
+            if (onStandardError != null)
+            {
+                stdErrPipe = PipeTarget.Merge(stdErrPipe, PipeTarget.ToDelegate(onStandardError));
+            }
+
+            var pulumiCmd = Cli.Wrap("pulumi")
+                .WithArguments(PulumiArgs(args, eventLogFile), escape: true)
+                .WithWorkingDirectory(workingDir)
+                .WithEnvironmentVariables(PulumiEnvironment(additionalEnv, debugCommands: eventLogFile != null))
+                .WithStandardOutputPipe(stdOutPipe)
+                .WithStandardErrorPipe(stdErrPipe)
+                .WithValidation(CommandResultValidation.None); // we check non-0 exit code ourselves
+
+            var pulumiCmdResult = await pulumiCmd.ExecuteAsync(cancellationToken);
+
+            var result = new CommandResult(
+                pulumiCmdResult.ExitCode,
+                standardOutput: stdOutBuffer.ToString(),
+                standardError: stdErrBuffer.ToString());
+
+            if (pulumiCmdResult.ExitCode != 0)
+            {
+                throw CommandException.CreateFromResult(result);
+            }
+            else
+            {
+                return result;
+            }
+        }
+
+        private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string> additionalEnv, bool debugCommands)
+        {
             var env = new Dictionary<string, string>();
 
             foreach (var element in Environment.GetEnvironmentVariables())
@@ -38,159 +99,85 @@ namespace Pulumi.Automation.Commands
             }
 
             foreach (var pair in additionalEnv)
+            {
                 env[pair.Key] = pair.Value;
+            }
 
-            string? eventLogFile = null;
-            EventLogWatcher? eventLogWatcher = null;
-
-            if (onEngineEvent != null)
+            if (debugCommands)
             {
                 // Required for event log
                 // We add it after the provided env vars to ensure it is set to true
                 env["PULUMI_DEBUG_COMMANDS"] = "true";
-
-                eventLogFile = CreateEventLogFile(completeArgs.FirstOrDefault() ?? "event-log");
-                eventLogWatcher = new EventLogWatcher(eventLogFile, onEngineEvent, cancellationToken);
-
-                completeArgs = completeArgs.Concat(new[] { "--event-log", eventLogFile });
             }
 
-            using var proc = new Process
+            return env;
+        }
+
+        private static IEnumerable<string> PulumiArgs(IEnumerable<string> args, EventLogFile? eventLogFile)
+        {
+            // all commands should be run in non-interactive mode.
+            // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
+            if (!args.Contains("--non-interactive"))
             {
-                EnableRaisingEvents = true,
-                StartInfo = new ProcessStartInfo
-                {
-                    FileName = "pulumi",
-                    WorkingDirectory = workingDir,
-                    CreateNoWindow = true,
-                    UseShellExecute = false,
-                    RedirectStandardError = true,
-                    RedirectStandardOutput = true,
-                },
-            };
-
-            foreach (var arg in completeArgs)
-                proc.StartInfo.ArgumentList.Add(arg);
-
-            foreach (var pair in env)
-                proc.StartInfo.Environment[pair.Key] = pair.Value;
-
-            var standardOutputBuilder = new StringBuilder();
-            proc.OutputDataReceived += (_, @event) =>
-            {
-                if (@event.Data != null)
-                {
-                    standardOutputBuilder.AppendLine(@event.Data);
-                    onStandardOutput?.Invoke(@event.Data);
-                }
-            };
-
-            var standardErrorBuilder = new StringBuilder();
-            proc.ErrorDataReceived += (_, @event) =>
-            {
-                if (@event.Data != null)
-                {
-                    standardErrorBuilder.AppendLine(@event.Data);
-                    onStandardError?.Invoke(@event.Data);
-                }
-            };
-
-            var tcs = new TaskCompletionSource<CommandResult>();
-            using var cancelRegistration = cancellationToken.Register(() =>
-            {
-                // if the process has already exited than let's
-                // just let it set the result on the task
-                if (proc.HasExited || tcs.Task.IsCompleted)
-                    return;
-
-                // setting it cancelled before killing so there
-                // isn't a race condition to the proc.Exited event
-                tcs.TrySetCanceled(cancellationToken);
-
-                try
-                {
-                    proc.Kill();
-                }
-                catch
-                {
-                    // in case the process hasn't started yet
-                    // or has already terminated
-                }
-            });
-
-            proc.Exited += (_, @event) =>
-            {
-                // this seems odd, since the exit event has been triggered, but
-                // the exit event being triggered does not mean that the async
-                // output stream handlers have ran to completion. this method
-                // doesn't exit until they have, at which point we can be sure
-                // we have captured the output in its entirety.
-                // note that if we were to pass an explicit wait time to this
-                // method it would not wait for the stream handlers.
-                // see: https://github.com/dotnet/runtime/issues/18789
-                proc.WaitForExit();
-
-                var result = new CommandResult(
-                    proc.ExitCode,
-                    standardOutputBuilder.ToString(),
-                    standardErrorBuilder.ToString());
-
-                if (proc.ExitCode != 0)
-                {
-                    var ex = CommandException.CreateFromResult(result);
-                    tcs.TrySetException(ex);
-                }
-                else
-                {
-                    tcs.TrySetResult(result);
-                }
-            };
-
-            proc.Start();
-            proc.BeginOutputReadLine();
-            proc.BeginErrorReadLine();
-
-            try
-            {
-                return await tcs.Task.ConfigureAwait(false);
-            }
-            finally
-            {
-                // If proc.HasExited is false here, it likely means that cancellation was requested.
-                // We want to do best effort for ensuring the process exits
-                // before removing the event log watcher and the event log file
-                // in case the process was still writing into the event log file
-                if (!proc.HasExited)
-                {
-                    proc.WaitForExit();
-                }
-
-                if (eventLogWatcher != null)
-                {
-                    await eventLogWatcher.DisposeAsync().ConfigureAwait(false);
-                }
-
-                if (!string.IsNullOrWhiteSpace(eventLogFile))
-                {
-                    try
-                    {
-                         Directory.Delete(Path.GetDirectoryName(eventLogFile), recursive: true);
-                    }
-                    catch
-                    {
-                        // allow graceful exit if for some reason
-                        // we're not able to delete the directory
-                        // will rely on OS to clean temp directory
-                        // in this case.
-                    }
-                }
+                args = args.Concat(new[] { "--non-interactive" });
             }
 
-            static string CreateEventLogFile(string command)
+            if (eventLogFile != null)
+            {
+                args = args.Concat(new[] { "--event-log", eventLogFile.FilePath });
+            }
+
+            return args;
+        }
+
+        private class EventLogFile : IDisposable
+        {
+            private string _eventLogFile;
+            private bool _disposedValue;
+            public EventLogFile(string command)
             {
                 var logDir = Path.Combine(Path.GetTempPath(), $"automation-logs-{command}-{Path.GetRandomFileName()}");
                 Directory.CreateDirectory(logDir);
-                return Path.Combine(logDir, "eventlog.txt");
+                this._eventLogFile = Path.Combine(logDir, "eventlog.txt");
+            }
+
+            public string FilePath
+            {
+                get
+                {
+                    return _eventLogFile;
+                }
+            }
+
+            protected virtual void Dispose(bool disposing)
+            {
+                if (!_disposedValue)
+                {
+                    if (disposing)
+                    {
+                        var dir = Path.GetDirectoryName(this._eventLogFile);
+                        try
+                        {
+                            Directory.Delete(dir, recursive: true);
+                        }
+                        catch (Exception e)
+                        {
+                            // allow graceful exit if for some reason
+                            // we're not able to delete the directory
+                            // will rely on OS to clean temp directory
+                            // in this case.
+                            Trace.TraceWarning("Ignoring exception during cleanup of {0} folder: {1}", dir, e);
+                        }
+                    }
+                    _disposedValue = true;
+                }
+            }
+
+            public void Dispose()
+            {
+                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+                Dispose(disposing: true);
+                GC.SuppressFinalize(this);
             }
         }
     }
