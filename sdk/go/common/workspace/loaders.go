@@ -46,8 +46,8 @@ var policyPackProjectSingleton *policyPackProjectLoader = &policyPackProjectLoad
 	internal: map[string]*PolicyPackProject{},
 }
 
-// readFile wraps os.ReadFile and also strips the UTF-8 Byte-order Mark (BOM) if present.
-func readFile(path string) ([]byte, error) {
+// readFileStripUTF8BOM wraps os.ReadFile and also strips the UTF-8 Byte-order Mark (BOM) if present.
+func readFileStripUTF8BOM(path string) ([]byte, error) {
 	b, err := os.ReadFile(path)
 	if err != nil {
 		return nil, err
@@ -87,7 +87,7 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
-	b, err := readFile(path)
+	b, err := readFileStripUTF8BOM(path)
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (singleton *projectStackLoader) load(path string) (*ProjectStack, error) {
 	}
 
 	var projectStack ProjectStack
-	b, err := readFile(path)
+	b, err := readFileStripUTF8BOM(path)
 	if os.IsNotExist(err) {
 		projectStack = ProjectStack{
 			Config: make(config.Map),
@@ -172,7 +172,7 @@ func (singleton *pluginProjectLoader) load(path string) (*PluginProject, error) 
 		return nil, err
 	}
 
-	b, err := readFile(path)
+	b, err := readFileStripUTF8BOM(path)
 	if err != nil {
 		return nil, err
 	}
@@ -212,7 +212,7 @@ func (singleton *policyPackProjectLoader) load(path string) (*PolicyPackProject,
 		return nil, err
 	}
 
-	b, err := readFile(path)
+	b, err := readFileStripUTF8BOM(path)
 	if err != nil {
 		return nil, err
 	}
