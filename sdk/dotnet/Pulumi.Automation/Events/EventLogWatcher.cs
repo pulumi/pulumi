@@ -8,20 +8,18 @@ using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation.Events
 {
-    internal class EventLogWatcher : IAsyncDisposable
+    internal class EventLogWatcher : IDisposable
     {
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
         private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
-        private readonly CancellationToken _externalCancellationToken;
         private readonly Action<EngineEvent> _onEvent;
-        private readonly Task _pollingTask;
-
         private const int _pollingIntervalMilliseconds = 100;
 
-        // We keep track of the length we have already read from the file
-        private long _previousLength = 0;
-
+        // We keep track of the last position in the file.
+        private long _position = 0;
+        private bool _disposedValue;
         public string LogFile { get; }
+        private Task _pollingTask;
 
         internal EventLogWatcher(
             string logFile
@@ -30,94 +28,71 @@ namespace Pulumi.Automation.Events
         {
             LogFile = logFile;
             _onEvent = onEvent;
-            _externalCancellationToken = externalCancellationToken;
-            _pollingTask = Task.Run(PollForEvents);
+            _pollingTask = ReadEventsRepeatedly(externalCancellationToken);
+            _pollingTask.Start();
         }
 
-        public async ValueTask DisposeAsync()
+        /// Stops the polling loop and awaits the background task. Any exceptions encountered in the background 
+        //  task will be propagated to the caller of this method.
+        internal async Task Stop()
         {
-            _internalCancellationTokenSource.Cancel();
-            await _pollingTask.ConfigureAwait(false);
-            _internalCancellationTokenSource.Dispose();
+
+            this._internalCancellationTokenSource.Cancel();
+            await this._pollingTask;
         }
 
-        private async Task PollForEvents()
+        private async Task ReadEventsRepeatedly(CancellationToken externalToken)
         {
-            var internalToken = _internalCancellationTokenSource.Token;
-            var externalToken = _externalCancellationToken;
-
-            using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(internalToken, externalToken);
-
-            var linkedToken = linkedSource.Token;
-
-            while (!linkedToken.IsCancellationRequested)
+            using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(
+                this._internalCancellationTokenSource.Token,
+                externalToken);
+            var cancellationToken = linkedSource.Token;
+            while (true)
             {
-                try
-                {
-                    // NOTE: Waiting before reading so that if ReadEvents throws we will
-                    // wait before attempting it again
-                    await Task.Delay(_pollingIntervalMilliseconds, linkedToken).ConfigureAwait(false);
-                    ReadEvents();
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-                catch
-                {
-                    // We do our best effort to keep reading until the polling is cancelled
-                }
-            }
-
-            // Try reading events one final time
-            try
-            {
-                ReadEvents();
-            }
-            catch
-            {
-                // ignored
+                await ReadEventsOnce(cancellationToken);
+                await Task.Delay(_pollingIntervalMilliseconds, cancellationToken);
             }
         }
 
-        private void ReadEvents()
+        private async Task ReadEventsOnce(CancellationToken cancellationToken)
         {
-            if (!File.Exists(LogFile))
+            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read)
             {
-                return;
-            }
-
-            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read);
-            var newLength = fs.Length;
-
-            if (newLength == _previousLength)
-            {
-                return;
-            }
-
-            fs.Seek(_previousLength, SeekOrigin.Begin);
-
+                Position = this._position
+            };
             using var reader = new StreamReader(fs);
-
-            var lines = reader
-                .ReadToEnd()
-                .Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var line in lines)
+            string? line;
+            while (reader.Peek() >= 0)
             {
-                var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
-
-                try
+                line = await reader.ReadLineAsync();
+                this._position = fs.Position;
+                if (!String.IsNullOrWhiteSpace(line))
                 {
+                    line = line.Trim();
+                    var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
+                    cancellationToken.ThrowIfCancellationRequested();
                     _onEvent.Invoke(@event);
                 }
-                catch
-                {
-                    // Don't let the provided event handler cause reading of events to fail
-                }
             }
+        }
 
-            _previousLength = newLength;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposedValue)
+            {
+                if (disposing)
+                {
+                    _internalCancellationTokenSource.Dispose();
+                }
+                _disposedValue = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
         }
     }
 }
