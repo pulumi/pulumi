@@ -3,6 +3,9 @@
 
 ### Improvements
 
+- [sdk/nodejs] Improve performance of dynamic providers by caching serlialized/deserialized providers.
+  [#6646](https://github.com/pulumi/pulumi/pull/6646)
+
 - [cli] Support full fidelity YAML round-tripping
   - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
   - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
