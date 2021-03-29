@@ -109,9 +109,9 @@ export interface StepEventMetadata {
     type: string;
 
     // Old is the state of the resource before performing the step.
-    old: StepEventStateMetadata;
+    old?: StepEventStateMetadata;
     // New is the state of the resource after performing the step.
-    new: StepEventStateMetadata;
+    new?: StepEventStateMetadata;
 
     // Keys causing a replacement (only applicable for "create" and "replace" Ops).
     keys?: string[];
