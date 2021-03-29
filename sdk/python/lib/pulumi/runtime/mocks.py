@@ -18,7 +18,7 @@ Mocks for testing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, NamedTuple, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
 from google.protobuf import empty_pb2
 from . import rpc
@@ -44,7 +44,7 @@ class Mocks(ABC):
     return predictable values.
     """
     @abstractmethod
-    def call(self, token: str, args: dict, provider: Optional[str]) -> dict:
+    def call(self, token: str, args: dict, provider: Optional[str]) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -104,11 +104,15 @@ class MockMonitor:
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
 
-        ret = self.mocks.call(request.tok, args, request.provider)
+        tup = self.mocks.call(request.tok, args, request.provider)
+        if isinstance(tup, dict):
+            (ret, failures) = (tup, None)
+        else:
+            (ret, failures) = tup[0], [provider_pb2.CheckFailure(property=failure[0], reason=failure[1]) for failure in tup[1]]
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
-        fields = {"failures": None, "return": ret_proto}
+        fields = {"failures": failures, "return": ret_proto}
         return provider_pb2.InvokeResponse(**fields)
 
     def ReadResource(self, request):
