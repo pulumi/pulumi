@@ -15,7 +15,6 @@
 package workspace
 
 import (
-	"io/ioutil"
 	"os"
 	"sync"
 
@@ -47,6 +46,27 @@ var policyPackProjectSingleton *policyPackProjectLoader = &policyPackProjectLoad
 	internal: map[string]*PolicyPackProject{},
 }
 
+// readFile wraps os.ReadFile and also strips the Byte-order Mark (BOM) if present.
+func readFile(path string) ([]byte, error) {
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	// Strip BOM bytes if present to avoid problems with downstream parsing.
+	// References:
+	//   https://github.com/spkg/bom
+	//   https://en.wikipedia.org/wiki/Byte_order_mark
+	if len(b) >= 3 &&
+		b[0] == 0xef &&
+		b[1] == 0xbb &&
+		b[2] == 0xbf {
+		b = b[3:]
+	}
+
+	return b, nil
+}
+
 // projectLoader is used to load a single global instance of a Project config.
 type projectLoader struct {
 	sync.RWMutex
@@ -67,7 +87,7 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := readFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +128,7 @@ func (singleton *projectStackLoader) load(path string) (*ProjectStack, error) {
 	}
 
 	var projectStack ProjectStack
-	b, err := ioutil.ReadFile(path)
+	b, err := readFile(path)
 	if os.IsNotExist(err) {
 		projectStack = ProjectStack{
 			Config: make(config.Map),
@@ -152,7 +172,7 @@ func (singleton *pluginProjectLoader) load(path string) (*PluginProject, error) 
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := readFile(path)
 	if err != nil {
 		return nil, err
 	}
@@ -192,7 +212,7 @@ func (singleton *policyPackProjectLoader) load(path string) (*PolicyPackProject,
 		return nil, err
 	}
 
-	b, err := ioutil.ReadFile(path)
+	b, err := readFile(path)
 	if err != nil {
 		return nil, err
 	}
