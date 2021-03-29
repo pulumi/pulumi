@@ -86,6 +86,13 @@
             Timestamp is a Unix timestamp (seconds) of when the event was emitted.
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.Events.EventLogWatcher.Stop">
+            Stops the polling loop and awaits the background task. Any exceptions encountered in the background
+            task will be propagated to the caller of this method.
+        </member>
+        <member name="M:Pulumi.Automation.Events.EventLogWatcher.AwaitPollingTask">
+            Exposed for testing; use Stop instead.
+        </member>
         <member name="T:Pulumi.Automation.Events.PolicyEvent">
             <summary>
             PolicyEvent is emitted whenever there is Policy violation.

@@ -11,15 +11,16 @@ namespace Pulumi.Automation.Events
     internal class EventLogWatcher : IDisposable
     {
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
-        private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
         private readonly Action<EngineEvent> _onEvent;
         private const int _pollingIntervalMilliseconds = 100;
 
         // We keep track of the last position in the file.
         private long _position = 0;
-        private bool _disposedValue;
         public string LogFile { get; }
         private Task _pollingTask;
+        private CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
+
+        private CancellationToken? _cancellationToken;
 
         internal EventLogWatcher(
             string logFile
@@ -28,33 +29,51 @@ namespace Pulumi.Automation.Events
         {
             LogFile = logFile;
             _onEvent = onEvent;
-            _pollingTask = ReadEventsRepeatedly(externalCancellationToken);
-            _pollingTask.Start();
+            _pollingTask = PollForEvents(externalCancellationToken);
         }
 
-        /// Stops the polling loop and awaits the background task. Any exceptions encountered in the background 
-        //  task will be propagated to the caller of this method.
+        /// Stops the polling loop and awaits the background task. Any exceptions encountered in the background
+        /// task will be propagated to the caller of this method.
         internal async Task Stop()
         {
-
             this._internalCancellationTokenSource.Cancel();
-            await this._pollingTask;
+            await this.AwaitPollingTask();
         }
 
-        private async Task ReadEventsRepeatedly(CancellationToken externalToken)
+        /// Exposed for testing; use Stop instead.
+        internal async Task AwaitPollingTask() 
         {
-            using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(
-                this._internalCancellationTokenSource.Token,
-                externalToken);
-            var cancellationToken = linkedSource.Token;
-            while (true)
+            try
             {
-                await ReadEventsOnce(cancellationToken);
-                await Task.Delay(_pollingIntervalMilliseconds, cancellationToken);
+                await this._pollingTask;
+            }
+            catch (OperationCanceledException error) when (error.CancellationToken == this._cancellationToken)
+            {
+                // _pollingTask.State == Cancelled
             }
         }
 
-        private async Task ReadEventsOnce(CancellationToken cancellationToken)
+        private async Task PollForEvents(CancellationToken externalCancellationToken)
+        {
+            using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(
+                this._internalCancellationTokenSource.Token,
+                externalCancellationToken);
+            this._cancellationToken = linkedSource.Token;
+
+            await ReadEventsOnce();
+
+            // At least one non-interruptible delay to ensure the thread has a chance
+            // to read just-written data.
+            await Task.Delay(_pollingIntervalMilliseconds); 
+
+            while (true)
+            {
+                await ReadEventsOnce();
+                await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token);
+            }
+        }
+
+        private async Task ReadEventsOnce()
         {
             using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read)
             {
@@ -70,29 +89,14 @@ namespace Pulumi.Automation.Events
                 {
                     line = line.Trim();
                     var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
-                    cancellationToken.ThrowIfCancellationRequested();
                     _onEvent.Invoke(@event);
                 }
             }
         }
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!_disposedValue)
-            {
-                if (disposing)
-                {
-                    _internalCancellationTokenSource.Dispose();
-                }
-                _disposedValue = true;
-            }
-        }
-
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-            Dispose(disposing: true);
-            GC.SuppressFinalize(this);
+            ((IDisposable)_internalCancellationTokenSource).Dispose();
         }
     }
 }
