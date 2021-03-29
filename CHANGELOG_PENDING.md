@@ -8,4 +8,5 @@
 
 ### Bug Fixes
 
-
+- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
+  [#6644](https://github.com/pulumi/pulumi/pull/6644)
