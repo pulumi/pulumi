@@ -46,7 +46,7 @@ def _run_pulumi_cmd(args: List[str],
     # All commands should be run in non-interactive mode.
     # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
     args.append("--non-interactive")
-    env = os.environ.copy().update(additional_env)
+    env = {**os.environ, **additional_env}
     cmd = ["pulumi"]
     cmd.extend(args)
 
