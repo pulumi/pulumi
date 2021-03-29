@@ -25,7 +25,8 @@ namespace Pulumi.Automation.Tests
         public async Task ReceivesManyBasicEvents()
         {
             using var fx = new Fixture();
-            for (var i = 0; i < 10; i++) {
+            for (var i = 0; i < 10; i++)
+            {
                 await fx.Write("{}");
             }
             await fx.Watcher.Stop();
@@ -37,26 +38,28 @@ namespace Pulumi.Automation.Tests
         {
             using var fx = new Fixture();
 
-	    fx.Action = ev => {
-		throw new MyException();
-	    };
+            fx.Action = ev =>
+            {
+                throw new MyException();
+            };
 
-	    await fx.Write("{}");
+            await fx.Write("{}");
 
-	    await Assert.ThrowsAsync<MyException>(async () => {
-		await fx.Watcher.Stop();
-	    });
-	}
+            await Assert.ThrowsAsync<MyException>(async () =>
+            {
+                await fx.Watcher.Stop();
+            });
+        }
 
         [Fact]
         public async Task PermitsUserInitiatedCancellation()
         {
             using var fx = new Fixture();
-	    fx.CancellationTokenSource.Cancel();
-	    await fx.Watcher.AwaitPollingTask();
-	}
+            fx.CancellationTokenSource.Cancel();
+            await fx.Watcher.AwaitPollingTask();
+        }
 
-	private class MyException : Exception {}
+        private class MyException : Exception { }
 
         private class Fixture : IDisposable
         {
@@ -81,8 +84,8 @@ namespace Pulumi.Automation.Tests
 
             public async Task Write(string text)
             {
-		await this.Writer.WriteLineAsync(text);
-		await this.Writer.FlushAsync();
+                await this.Writer.WriteLineAsync(text);
+                await this.Writer.FlushAsync();
             }
 
             public void Dispose()
