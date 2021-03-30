@@ -59,28 +59,14 @@ process.on("exit", (code: number) => {
 
 const providerCache: { [key: string]: dynamic.ResourceProvider} = {};
 
-const hashCode = (str: string) => {
-    let hash = 0;
-    let i: number;
-    let chr: number;
-    if (str.length === 0) return hash;
-    for (i = 0; i < str.length; i++) {
-        chr = str.charCodeAt(i);
-        hash = ((hash << 5) - hash) + chr;
-        hash |= 0; // Convert to 32bit integer
-    }
-    return hash;
-};
-
 function getProvider(props: any): dynamic.ResourceProvider {
     const providerString = props[providerKey];
-    const providerHash = hashCode(providerString);
     let provider: any;
-    if(providerCache[providerHash]) {
-        provider = providerCache[providerHash];
+    if(providerCache[providerString]) {
+        provider = providerCache[providerString];
     } else {
         provider = requireFromString(props[providerKey]).handler();
-        providerCache[providerHash] = provider;
+        providerCache[providerString] = provider;
     }
     
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
