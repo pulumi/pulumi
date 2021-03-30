@@ -3,6 +3,9 @@
 
 ### Improvements
 
+- [sdk/nodejs] Add support for multiple V8 VM contexts in closure serialization.
+  [#6648](https://github.com/pulumi/pulumi/pull/6648)
+
 - [sdk/nodejs] Add provider side caching for dynamic provider deserialization
   [#6657](https://github.com/pulumi/pulumi/pull/6657)
 
