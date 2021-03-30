@@ -96,7 +96,7 @@ namespace Pulumi.Automation.Events
 
         public void Dispose()
         {
-            ((IDisposable)_internalCancellationTokenSource).Dispose();
+            _internalCancellationTokenSource.Dispose();
         }
     }
 }
