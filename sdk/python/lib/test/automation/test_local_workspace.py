@@ -27,6 +27,7 @@ from pulumi.x.automation import (
     ConfigValue,
     InvalidVersionError,
     LocalWorkspace,
+    LocalWorkspaceOptions,
     PluginInfo,
     ProjectSettings,
     StackSummary,
@@ -384,6 +385,17 @@ class TestLocalWorkspace(unittest.TestCase):
                         _validate_pulumi_version(test_min_version, current_version)
                 else:
                     self.assertIsNone(_validate_pulumi_version(test_min_version, current_version))
+
+    def test_project_settings_respected(self):
+        stack_name = stack_namer()
+        project_name = "project_was_overwritten"
+        stack = create_stack(stack_name,
+                             program=pulumi_program,
+                             project_name=project_name,
+                             opts=LocalWorkspaceOptions(work_dir=test_path("data", "correct_project")))
+        project_settings = stack.workspace.project_settings()
+        self.assertEqual(project_settings.name, "correct_project")
+        self.assertEqual(project_settings.description, "This is a description")
 
 
 def pulumi_program():
