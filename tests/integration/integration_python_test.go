@@ -469,3 +469,199 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		check(t, filepath.Join("${root}", "absvenv"))
 	})
 }
+
+func TestPythonAwaitOutputs(t *testing.T) {
+	t.Run("SuccessSimple", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "success"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "magic string") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
+	t.Run("SuccessMultipleOutputs", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "multiple_outputs"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicString := false
+				sawFoo := false
+				sawBar := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "magic string") {
+							sawMagicString = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "bar") {
+							sawBar = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "foo") {
+							sawFoo = true
+						}
+					}
+				}
+				msg := "Did not see printed message from unexported output"
+				assert.True(t, sawMagicString, msg)
+				assert.True(t, sawFoo, msg)
+				assert.True(t, sawBar, msg)
+			},
+		})
+	})
+
+	t.Run("CreateWithinApply", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "create_inside_apply"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawUrn := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "pulumi-python:dynamic:Resource::magic_string") {
+							sawUrn = true
+						}
+					}
+				}
+				assert.True(t, sawUrn)
+			},
+		})
+	})
+
+	t.Run("ErrorHandlingSuccess", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "error_handling"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "oh yeah") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
+	t.Run("FailureSimple", func(t *testing.T) {
+		stderr := &bytes.Buffer{}
+		expectedError := "IndexError: list index out of range"
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "failure"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			ExpectFailure:            true,
+			Quick:                    true,
+			Stderr:                   stderr,
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				output := stderr.String()
+				assert.Contains(t, output, expectedError)
+			},
+		})
+	})
+
+	t.Run("FailureWithExportedOutput", func(t *testing.T) {
+		stderr := &bytes.Buffer{}
+		expectedError := "IndexError: list index out of range"
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "failure_exported_output"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			ExpectFailure:            true,
+			Quick:                    true,
+			Stderr:                   stderr,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				output := stderr.String()
+				assert.Contains(t, output, expectedError)
+				sawFoo := false
+				sawPrinted := false
+				sawNotPrinted := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "not printed") {
+							sawNotPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "printed") {
+							sawPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "foo") {
+							sawFoo = true
+						}
+					}
+				}
+				assert.True(t, sawPrinted)
+				assert.True(t, sawFoo)
+				assert.False(t, sawNotPrinted)
+			},
+		})
+	})
+
+	t.Run("FailureMultipleOutputs", func(t *testing.T) {
+		stderr := &bytes.Buffer{}
+		expectedError := "IndexError: list index out of range"
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "failure_multiple_unexported_outputs"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			ExpectFailure:            true,
+			Quick:                    true,
+			Stderr:                   stderr,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				output := stderr.String()
+				assert.Contains(t, output, expectedError)
+				sawFoo := false
+				sawPrinted := false
+				sawNotPrinted := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "not printed") {
+							sawNotPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "printed") {
+							sawPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "foo") {
+							sawFoo = true
+						}
+					}
+				}
+				assert.True(t, sawPrinted)
+				assert.True(t, sawFoo)
+				assert.False(t, sawNotPrinted)
+			},
+		})
+	})
+}
