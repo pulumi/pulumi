@@ -389,6 +389,17 @@ describe("LocalWorkspace", () => {
         assert(ws.pulumiVersion);
         assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
     }));
+    it(`respects existing project settings`, asyncTest(async () => {
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "project_was_overwritten";
+        const stack = await LocalWorkspace.createStack(
+            {stackName, projectName, program: async() => { return; }},
+            {workDir: upath.joinSafe(__dirname, "data", "correct_project")},
+        );
+        const projectSettings = await stack.workspace.projectSettings();
+        assert.strictEqual(projectSettings.name, "correct_project");
+        assert.strictEqual(projectSettings.description, "This is a description");
+    }));
 });
 
 describe(`checkVersionIsValid`, () => {
