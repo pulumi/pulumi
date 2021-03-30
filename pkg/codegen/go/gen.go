@@ -497,7 +497,7 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 	}
 }
 
-func genInputInterface(w io.Writer, name, argsName string) {
+func genInputInterface(w io.Writer, name string) {
 	printComment(w, getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
@@ -733,7 +733,7 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	details := pkg.detailsForType(enum)
 	// Generate the array input.
 	if details.arrayElement {
-		genInputInterface(w, typeName+"Array", typeName)
+		genInputInterface(w, typeName+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]s\n\n", typeName)
 
@@ -742,7 +742,7 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 
 	// Generate the map input.
 	if details.mapElement {
-		genInputInterface(w, typeName+"Map", typeName)
+		genInputInterface(w, typeName+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]s\n\n", typeName)
 
@@ -792,7 +792,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	name := pkg.tokenToType(t.Token)
 
 	// Generate the plain inputs.
-	genInputInterface(w, name, name)
+	genInputInterface(w, name)
 
 	printComment(w, t.Comment, false)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
@@ -810,7 +810,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the pointer input.
 	if details.ptrElement {
-		genInputInterface(w, name+"Ptr", name)
+		genInputInterface(w, name+"Ptr")
 
 		ptrTypeName := camel(name) + "PtrType"
 
@@ -825,7 +825,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the array input.
 	if details.arrayElement {
-		genInputInterface(w, name+"Array", name)
+		genInputInterface(w, name+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 
@@ -834,7 +834,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the map input.
 	if details.mapElement {
-		genInputInterface(w, name+"Map", name)
+		genInputInterface(w, name+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 
@@ -1279,12 +1279,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 		if !r.IsProvider {
 			// Generate the resource array input.
-			genInputInterface(w, name+"Array", name)
+			genInputInterface(w, name+"Array")
 			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 			genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
 
 			// Generate the resource map input.
-			genInputInterface(w, name+"Map", name)
+			genInputInterface(w, name+"Map")
 			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 			genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
 		}
@@ -1479,7 +1479,7 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 			fmt.Fprintf(w, "\t}).(%sOutput)\n", elementTypeName)
 			fmt.Fprintf(w, "}\n\n")
 		}
-		genInputInterface(w, name, elementTypeName)
+		genInputInterface(w, name)
 	}
 
 	return names
@@ -1488,15 +1488,11 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 	switch t := typ.(type) {
 	case *schema.ArrayType:
-		elem := pkg.nestedTypeToType(t.ElementType)
-		return elem
+		return pkg.nestedTypeToType(t.ElementType)
 	case *schema.MapType:
-		elem := pkg.nestedTypeToType(t.ElementType)
-		return elem
+		return pkg.nestedTypeToType(t.ElementType)
 	}
-
-	tokenType := pkg.tokenToType(typ.String())
-	return tokenType
+	return pkg.tokenToType(typ.String())
 }
 
 func (pkg *pkgContext) tokenToEnum(tok string) string {
