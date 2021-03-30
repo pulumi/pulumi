@@ -8,20 +8,19 @@ using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation.Events
 {
-    internal class EventLogWatcher : IAsyncDisposable
+    internal class EventLogWatcher : IDisposable
     {
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
-        private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
-        private readonly CancellationToken _externalCancellationToken;
         private readonly Action<EngineEvent> _onEvent;
-        private readonly Task _pollingTask;
-
         private const int _pollingIntervalMilliseconds = 100;
 
-        // We keep track of the length we have already read from the file
-        private long _previousLength = 0;
-
+        // We keep track of the last position in the file.
+        private long _position = 0;
         public string LogFile { get; }
+        private readonly Task _pollingTask;
+        private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
+
+        private CancellationToken? _cancellationToken;
 
         internal EventLogWatcher(
             string logFile
@@ -30,94 +29,90 @@ namespace Pulumi.Automation.Events
         {
             LogFile = logFile;
             _onEvent = onEvent;
-            _externalCancellationToken = externalCancellationToken;
-            _pollingTask = Task.Run(PollForEvents);
+            _pollingTask = PollForEvents(externalCancellationToken);
         }
 
-        public async ValueTask DisposeAsync()
+        /// Stops the polling loop and awaits the background task. Any exceptions encountered in the background
+        /// task will be propagated to the caller of this method.
+        internal async Task Stop()
         {
-            _internalCancellationTokenSource.Cancel();
-            await _pollingTask.ConfigureAwait(false);
-            _internalCancellationTokenSource.Dispose();
+            this._internalCancellationTokenSource.Cancel();
+            await this.AwaitPollingTask();
+
+            // Race condition workaround.
+            //
+            // The caller might consider Pulumi CLI sub-process
+            // finished and its writes committed to the file system.
+            // However we do not truly know if the reader thread has
+            // had a chance to consume them yet.
+            //
+            // To work around we do one more non-interruptible delay
+            // and a final read pass here.
+            //
+            // A proper solution would involve having Pulumi CLI emit
+            // a CommandDone or some such EngineEvent, and we would
+            // keep reading until we see one.
+
+            await Task.Delay(_pollingIntervalMilliseconds);
+            await ReadEventsOnce();
         }
 
-        private async Task PollForEvents()
+        /// Exposed for testing; use Stop instead.
+        internal async Task AwaitPollingTask()
         {
-            var internalToken = _internalCancellationTokenSource.Token;
-            var externalToken = _externalCancellationToken;
-
-            using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(internalToken, externalToken);
-
-            var linkedToken = linkedSource.Token;
-
-            while (!linkedToken.IsCancellationRequested)
-            {
-                try
-                {
-                    // NOTE: Waiting before reading so that if ReadEvents throws we will
-                    // wait before attempting it again
-                    await Task.Delay(_pollingIntervalMilliseconds, linkedToken).ConfigureAwait(false);
-                    ReadEvents();
-                }
-                catch (TaskCanceledException)
-                {
-                    break;
-                }
-                catch
-                {
-                    // We do our best effort to keep reading until the polling is cancelled
-                }
-            }
-
-            // Try reading events one final time
             try
             {
-                ReadEvents();
+                await this._pollingTask;
             }
-            catch
+            catch (OperationCanceledException error) when (error.CancellationToken == this._cancellationToken)
             {
-                // ignored
+                // _pollingTask.State == Cancelled
             }
         }
 
-        private void ReadEvents()
+        private async Task PollForEvents(CancellationToken externalCancellationToken)
+        {
+            using var linkedSource = CancellationTokenSource.CreateLinkedTokenSource(
+                this._internalCancellationTokenSource.Token,
+                externalCancellationToken);
+            this._cancellationToken = linkedSource.Token;
+
+            while (true)
+            {
+                await ReadEventsOnce();
+                await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token);
+            }
+        }
+
+        private async Task ReadEventsOnce()
         {
             if (!File.Exists(LogFile))
             {
                 return;
             }
 
-            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read);
-            var newLength = fs.Length;
-
-            if (newLength == _previousLength)
+            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read)
             {
-                return;
-            }
-
-            fs.Seek(_previousLength, SeekOrigin.Begin);
-
+                Position = this._position
+            };
             using var reader = new StreamReader(fs);
-
-            var lines = reader
-                .ReadToEnd()
-                .Split(Environment.NewLine.ToCharArray(), StringSplitOptions.RemoveEmptyEntries);
-
-            foreach (var line in lines)
+            string? line;
+            while (reader.Peek() >= 0)
             {
-                var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
-
-                try
+                line = await reader.ReadLineAsync();
+                this._position = fs.Position;
+                if (!string.IsNullOrWhiteSpace(line))
                 {
+                    line = line.Trim();
+                    var @event = _localSerializer.DeserializeJson<EngineEvent>(line);
                     _onEvent.Invoke(@event);
                 }
-                catch
-                {
-                    // Don't let the provided event handler cause reading of events to fail
-                }
             }
+        }
 
-            _previousLength = newLength;
+        public void Dispose()
+        {
+            _internalCancellationTokenSource.Dispose();
         }
     }
 }

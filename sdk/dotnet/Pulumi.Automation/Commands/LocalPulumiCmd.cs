@@ -167,7 +167,8 @@ namespace Pulumi.Automation.Commands
 
                 if (eventLogWatcher != null)
                 {
-                    await eventLogWatcher.DisposeAsync().ConfigureAwait(false);
+                    await eventLogWatcher.Stop().ConfigureAwait(false);
+                    eventLogWatcher.Dispose();
                 }
 
                 if (!string.IsNullOrWhiteSpace(eventLogFile))
