@@ -17,8 +17,8 @@ namespace Pulumi.Automation.Events
         // We keep track of the last position in the file.
         private long _position = 0;
         public string LogFile { get; }
-        private Task _pollingTask;
-        private CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
+        private readonly Task _pollingTask;
+        private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
 
         private CancellationToken? _cancellationToken;
 
