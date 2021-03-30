@@ -1,6 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation
 
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using System.IO;
@@ -66,7 +65,7 @@ namespace Pulumi.Automation.Tests
         private class Fixture : IDisposable
         {
             public int EventCounter;
-            public String LogFileName { get; }
+            public string LogFileName { get; }
             public StreamWriter Writer { get; }
             public EventLogWatcher Watcher { get; }
             public CancellationTokenSource CancellationTokenSource { get; }
