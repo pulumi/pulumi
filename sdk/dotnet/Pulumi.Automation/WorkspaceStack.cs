@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.ExceptionServices;
@@ -20,6 +21,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
+using Pulumi.Automation.Events;
+using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation
@@ -261,6 +264,7 @@ namespace Pulumi.Automation
             }
 
             InlineLanguageHost? inlineHost = null;
+
             try
             {
                 if (program != null)
@@ -275,7 +279,7 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
@@ -358,6 +362,21 @@ namespace Pulumi.Automation
             }
 
             InlineLanguageHost? inlineHost = null;
+
+            SummaryEvent? summaryEvent = null;
+
+            var onEvent = options?.OnEvent;
+
+            void OnPreviewEvent(EngineEvent @event)
+            {
+                if (@event.SummaryEvent != null)
+                {
+                    summaryEvent = @event.SummaryEvent;
+                }
+
+                onEvent?.Invoke(@event);
+            }
+
             try
             {
                 if (program != null)
@@ -372,13 +391,19 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, OnPreviewEvent, cancellationToken).ConfigureAwait(false);
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
+                if (summaryEvent is null)
+                {
+                    throw new NoSummaryEventException("No summary of changes for 'preview'");
+                }
+
                 return new PreviewResult(
                     result.StandardOutput,
-                    result.StandardError);
+                    result.StandardError,
+                    summaryEvent.ResourceChanges);
             }
             finally
             {
@@ -438,7 +463,7 @@ namespace Pulumi.Automation
             args.Add("--exec-kind");
             args.Add(execKind);
 
-            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -494,7 +519,7 @@ namespace Pulumi.Automation
             args.Add("--exec-kind");
             args.Add(execKind);
 
-            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
             var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
             return new UpdateResult(
                 result.StandardOutput,
@@ -510,8 +535,8 @@ namespace Pulumi.Automation
             await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
 
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, cancellationToken).ConfigureAwait(false);
-            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, cancellationToken).ConfigureAwait(false);
+            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, null, cancellationToken).ConfigureAwait(false);
+            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, null, cancellationToken).ConfigureAwait(false);
             var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
 
             var maskedOutput = string.IsNullOrWhiteSpace(maskedResult.StandardOutput)
@@ -563,7 +588,7 @@ namespace Pulumi.Automation
                 args.Add(page.ToString());
             }
 
-            var result = await this.RunCommandAsync(args, null, null, cancellationToken).ConfigureAwait(false);
+            var result = await this.RunCommandAsync(args, null, null, null, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(result.StandardOutput))
                 return ImmutableList<UpdateSummary>.Empty;
 
@@ -588,8 +613,9 @@ namespace Pulumi.Automation
             IEnumerable<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
+            Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
-            => this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, cancellationToken);
+            => this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
 
         public void Dispose()
             => this.Workspace.Dispose();

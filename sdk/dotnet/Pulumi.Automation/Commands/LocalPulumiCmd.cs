@@ -3,11 +3,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands.Exceptions;
+using Pulumi.Automation.Events;
 
 namespace Pulumi.Automation.Commands
 {
@@ -19,6 +21,7 @@ namespace Pulumi.Automation.Commands
             IDictionary<string, string> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
+            Action<EngineEvent>? onEngineEvent = null,
             CancellationToken cancellationToken = default)
         {
             // all commands should be run in non-interactive mode.
@@ -26,6 +29,7 @@ namespace Pulumi.Automation.Commands
             var completeArgs = args.Concat(new[] { "--non-interactive" });
 
             var env = new Dictionary<string, string>();
+
             foreach (var element in Environment.GetEnvironmentVariables())
             {
                 if (element is KeyValuePair<string, object> pair
@@ -35,6 +39,21 @@ namespace Pulumi.Automation.Commands
 
             foreach (var pair in additionalEnv)
                 env[pair.Key] = pair.Value;
+
+            string? eventLogFile = null;
+            EventLogWatcher? eventLogWatcher = null;
+
+            if (onEngineEvent != null)
+            {
+                // Required for event log
+                // We add it after the provided env vars to ensure it is set to true
+                env["PULUMI_DEBUG_COMMANDS"] = "true";
+
+                eventLogFile = CreateEventLogFile(completeArgs.FirstOrDefault() ?? "event-log");
+                eventLogWatcher = new EventLogWatcher(eventLogFile, onEngineEvent, cancellationToken);
+
+                completeArgs = completeArgs.Concat(new[] { "--event-log", eventLogFile });
+            }
 
             using var proc = new Process
             {
@@ -130,7 +149,50 @@ namespace Pulumi.Automation.Commands
             proc.Start();
             proc.BeginOutputReadLine();
             proc.BeginErrorReadLine();
-            return await tcs.Task.ConfigureAwait(false);
+
+            try
+            {
+                return await tcs.Task.ConfigureAwait(false);
+            }
+            finally
+            {
+                // If proc.HasExited is false here, it likely means that cancellation was requested.
+                // We want to do best effort for ensuring the process exits
+                // before removing the event log watcher and the event log file
+                // in case the process was still writing into the event log file
+                if (!proc.HasExited)
+                {
+                    proc.WaitForExit();
+                }
+
+                if (eventLogWatcher != null)
+                {
+                    await eventLogWatcher.Stop().ConfigureAwait(false);
+                    eventLogWatcher.Dispose();
+                }
+
+                if (!string.IsNullOrWhiteSpace(eventLogFile))
+                {
+                    try
+                    {
+                         Directory.Delete(Path.GetDirectoryName(eventLogFile), recursive: true);
+                    }
+                    catch
+                    {
+                        // allow graceful exit if for some reason
+                        // we're not able to delete the directory
+                        // will rely on OS to clean temp directory
+                        // in this case.
+                    }
+                }
+            }
+
+            static string CreateEventLogFile(string command)
+            {
+                var logDir = Path.Combine(Path.GetTempPath(), $"automation-logs-{command}-{Path.GetRandomFileName()}");
+                Directory.CreateDirectory(logDir);
+                return Path.Combine(logDir, "eventlog.txt");
+            }
         }
     }
 }

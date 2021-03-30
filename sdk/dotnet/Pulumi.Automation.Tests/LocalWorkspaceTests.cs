@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands.Exceptions;
+using Pulumi.Automation.Events;
 using Xunit;
 
 namespace Pulumi.Automation.Tests
@@ -322,8 +323,9 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
 
                 // pulumi preview
-                await stack.PreviewAsync();
-                // TODO: update assertions when we have structured output
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
                 // pulumi refresh
                 var refreshResult = await stack.RefreshAsync();
@@ -396,8 +398,9 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
 
                 // pulumi preview
-                await stack.PreviewAsync();
-                // TODO: update assertions when we have structured output
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
                 // pulumi refresh
                 var refreshResult = await stack.RefreshAsync();
@@ -566,6 +569,77 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        [Fact]
+        public async Task HandlesEvents()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "foo",
+                };
+            });
+            var projectName = "event_test";
+            var stackName = $"inline_events{GetTestSuffix()}";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            try
+            {
+                // pulumi preview
+                var previewResult = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Create, out var createCount));
+                Assert.Equal(1, createCount);
+
+                // pulumi up
+                var upResult = await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+
+                // pulumi preview
+                var previewResultAgain = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                Assert.True(previewResultAgain.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
+
+                // pulumi refresh
+                var refreshResult = await RunCommand<UpdateResult, RefreshOptions>(stack.RefreshAsync, "refresh");
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+
+                // pulumi destroy
+                var destroyResult = await RunCommand<UpdateResult, DestroyOptions>(stack.DestroyAsync, "destroy");
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+                where TOptions: UpdateOptions, new()
+            {
+                var events = new List<EngineEvent>();
+
+                var result = await func(new TOptions() { OnEvent = events.Add }, CancellationToken.None);
+
+                var seenSummaryEvent = events.Any(@event => @event.SummaryEvent != null);
+                var seenCancelEvent = events.Any(@event => @event.CancelEvent != null);
+
+                Assert.True(events.Any(), $"No Events found for '{command}'");
+                Assert.True(events.SequenceEqual(events.OrderBy(@event => @event.Sequence)), $"Events should be received in the sequence order for '{command}'");
+                Assert.True(seenSummaryEvent, $"No SummaryEvent for '{command}'");
+                Assert.True(seenCancelEvent, $"No CancelEvent for '{command}'");
+
+                return result;
+            }
+        }
+
         private class ValidStack : Stack
         {
             [Output("exp_static")]
@@ -632,8 +706,9 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
 
                 // pulumi preview
-                await stack.PreviewAsync();
-                // TODO: update assertions when we have structured output
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
 
                 // pulumi refresh
                 var refreshResult = await stack.RefreshAsync();
