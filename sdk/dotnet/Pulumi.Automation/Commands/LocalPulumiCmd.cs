@@ -30,8 +30,13 @@ namespace Pulumi.Automation.Commands
             if (onEngineEvent != null)
             {
                 using var eventLogFile = new EventLogFile(args.FirstOrDefault() ?? "event-log");
-                await using var eventLogWatcher = new EventLogWatcher(eventLogFile.FilePath, onEngineEvent, cancellationToken);
-                return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken);
+                using var eventLogWatcher = new EventLogWatcher(eventLogFile.FilePath, onEngineEvent, cancellationToken);
+                try
+                {
+                    return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken);
+                } finally {
+                    await eventLogWatcher.Stop();
+                }
             }
             else
             {
