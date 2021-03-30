@@ -132,22 +132,16 @@ namespace Pulumi.Automation.Commands
 
         private class EventLogFile : IDisposable
         {
-            private string _eventLogFile;
             private bool _disposedValue;
+
             public EventLogFile(string command)
             {
                 var logDir = Path.Combine(Path.GetTempPath(), $"automation-logs-{command}-{Path.GetRandomFileName()}");
                 Directory.CreateDirectory(logDir);
-                this._eventLogFile = Path.Combine(logDir, "eventlog.txt");
+                this.FilePath = Path.Combine(logDir, "eventlog.txt");
             }
 
-            public string FilePath
-            {
-                get
-                {
-                    return _eventLogFile;
-                }
-            }
+            public string FilePath { get; }
 
             protected virtual void Dispose(bool disposing)
             {
@@ -155,7 +149,7 @@ namespace Pulumi.Automation.Commands
                 {
                     if (disposing)
                     {
-                        var dir = Path.GetDirectoryName(this._eventLogFile);
+                        var dir = Path.GetDirectoryName(this.FilePath);
                         try
                         {
                             Directory.Delete(dir, recursive: true);
