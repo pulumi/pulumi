@@ -75,6 +75,11 @@ namespace Pulumi.Automation.Events
 
         private async Task ReadEventsOnce()
         {
+            if (!File.Exists(LogFile))
+            {
+                return;
+            }
+
             using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read)
             {
                 Position = this._position
