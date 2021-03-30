@@ -38,10 +38,27 @@ namespace Pulumi.Automation.Events
         {
             this._internalCancellationTokenSource.Cancel();
             await this.AwaitPollingTask();
+
+	    // Race condition workaround.
+	    //
+	    // The caller might consider Pulumi CLI sub-process
+	    // finished and its writes committed to the file system.
+	    // However we do not truly know if the reader thread has
+	    // had a chance to consume them yet.
+	    //
+	    // To work around we do one more non-interruptible delay
+	    // and a final read pass here.
+	    //
+	    // A proper solution would involve having Pulumi CLI emit
+	    // a CommandDone or some such EngineEvent, and we would
+	    // keep reading until we see one.
+
+            await Task.Delay(_pollingIntervalMilliseconds);
+            await ReadEventsOnce();
         }
 
         /// Exposed for testing; use Stop instead.
-        internal async Task AwaitPollingTask() 
+        internal async Task AwaitPollingTask()
         {
             try
             {
@@ -59,12 +76,6 @@ namespace Pulumi.Automation.Events
                 this._internalCancellationTokenSource.Token,
                 externalCancellationToken);
             this._cancellationToken = linkedSource.Token;
-
-            await ReadEventsOnce();
-
-            // At least one non-interruptible delay to ensure the thread has a chance
-            // to read just-written data.
-            await Task.Delay(_pollingIntervalMilliseconds); 
 
             while (true)
             {
