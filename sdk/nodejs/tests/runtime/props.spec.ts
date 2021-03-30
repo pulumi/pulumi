@@ -32,6 +32,12 @@ class TestCustomResource extends CustomResource {
     }
 }
 
+class TestErrorResource extends CustomResource {
+    constructor(name: string) {
+        super("error", name, {});
+    }
+}
+
 class TestResourceModule implements runtime.ResourceModule {
     construct(name: string, type: string, urn: string): Resource {
         switch (type) {
@@ -60,6 +66,7 @@ class TestMocks implements runtime.Mocks {
                     id: runtime.isDryRun() ? undefined : "test-id",
                     state: {},
                 };
+            case "error":
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
@@ -347,6 +354,22 @@ describe("runtime", () => {
             assert.ok((<ComponentResource>deserialized["component"]).__pulumiComponentResource);
             assert.ok((<CustomResource>deserialized["custom"]).__pulumiCustomResource);
             assert.deepEqual(deserialized["unregistered"], unregisteredID);
+        }));
+    });
+
+    describe("resource error handling", () => {
+        it("registerResource errors propagate appropriately", asyncTest(async () => {
+            runtime.setMocks(new TestMocks());
+
+            await assert.rejects(async () => {
+                const errResource = new TestErrorResource("test");
+                const customURN = await errResource.urn.promise();
+                const customID = await errResource.id.promise();
+            }, (err: Error) => {
+                const containsMessage = err.stack!.indexOf("unknown resource type error") >= 0;
+                const containsRegisterResource = err.stack!.indexOf("registerResource") >= 0;
+                return containsMessage && containsRegisterResource;
+            });
         }));
     });
 });
