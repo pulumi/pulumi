@@ -28,6 +28,12 @@ namespace Pulumi.Automation.Tests
             return result.ToString();
         }
 
+        private static string RandomStackName()
+        {
+            const string chars = "abcdefghijklmnopqrstuvwxyz";
+            return new string(Enumerable.Range(1, 8).Select(_ => chars[new Random().Next(chars.Length)]).ToArray());
+        }
+
         private static string GetTestOrg() =>
             Environment.GetEnvironmentVariable("PULUMI_TEST_ORG") ?? "pulumi-test";
 
@@ -124,7 +130,7 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var stackName = $"create_select_remove_stack_test-{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
 
             var stacks = await workspace.ListStacksAsync();
             if (stacks.Any(s => s.Name == stackName))
@@ -161,7 +167,7 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var stackName = $"manipulate_config_test-{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
 
             var config = new Dictionary<string, ConfigValue>()
@@ -258,7 +264,7 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var stackName = $"check_stack_status_test-{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
             try
             {
@@ -276,7 +282,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task StackLifecycleLocalProgram()
         {
-            var stackName = $"int_test{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var workingDir = Path.Combine(_dataDirectory, "testproj");
             using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
@@ -351,7 +357,7 @@ namespace Pulumi.Automation.Tests
                 };
             });
 
-            var stackName = $"int_test{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var projectName = "inline_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
@@ -412,7 +418,7 @@ namespace Pulumi.Automation.Tests
             }
         }
 
-        [Fact(Skip="Breaking builds")]
+        [Fact(Skip = "Breaking builds")]
         public async Task StackReferenceDestroyDiscardsWithTwoInlinePrograms()
         {
             var programA = PulumiFn.Create(() =>
@@ -433,8 +439,8 @@ namespace Pulumi.Automation.Tests
                 };
             });
 
-            var stackNameA = $"int_test{GetTestSuffix()}-a";
-            var stackNameB = $"int_test{GetTestSuffix()}-b";
+            var stackNameA = $"{RandomStackName()}";
+            var stackNameB = $"{RandomStackName()}";
             var projectName = "inline_stack_reference";
 
             var stackA = await SetupStack(projectName, stackNameA, programA, new Dictionary<string, ConfigValue>());
@@ -519,7 +525,7 @@ namespace Pulumi.Automation.Tests
                 };
             });
 
-            var stackName = $"output_test{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var projectName = "inline_output";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
@@ -659,7 +665,7 @@ namespace Pulumi.Automation.Tests
         {
             var program = PulumiFn.Create<ValidStack>();
 
-            var stackName = $"int_test{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var projectName = "inline_tstack_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
@@ -724,7 +730,7 @@ namespace Pulumi.Automation.Tests
         public async Task InlineProgramExceptionPropagatesToCaller()
         {
             const string projectName = "exception_inline_node";
-            var stackName = $"int_test_{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
@@ -752,7 +758,7 @@ namespace Pulumi.Automation.Tests
         public async Task InlineProgramExceptionPropagatesToCallerWithTStack()
         {
             const string projectName = "exception_inline_tstack_node";
-            var stackName = $"int_test_{GetTestSuffix()}";
+            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>();
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
@@ -773,8 +779,8 @@ namespace Pulumi.Automation.Tests
         {
             const string projectNameOne = "parallel_inline_node1";
             const string projectNameTwo = "parallel_inline_node2";
-            var stackNameOne = $"int_test1_{GetTestSuffix()}";
-            var stackNameTwo = $"int_test2_{GetTestSuffix()}";
+            var stackNameOne = $"{RandomStackName()}";
+            var stackNameTwo = $"{RandomStackName()}";
 
             var hasReachedSemaphoreOne = false;
             using var semaphoreOne = new SemaphoreSlim(0, 1);
