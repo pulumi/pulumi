@@ -6,6 +6,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,7 +30,8 @@ namespace Pulumi.Automation.Commands
         {
             if (onEngineEvent != null)
             {
-                using var eventLogFile = new EventLogFile(args.FirstOrDefault() ?? "event-log");
+                var commandName = SanitizeCommandName(args.FirstOrDefault());
+                using var eventLogFile = new EventLogFile(commandName);
                 using var eventLogWatcher = new EventLogWatcher(eventLogFile.FilePath, onEngineEvent, cancellationToken);
                 try
                 {
@@ -133,6 +135,19 @@ namespace Pulumi.Automation.Commands
             }
 
             return args;
+        }
+
+        private static string SanitizeCommandName(string? firstArgument)
+        {
+            var alphaNumWord = new Regex(@"^[-A-Za-z0-9_]{1,20}$");
+            if (firstArgument == null)
+            {
+                return "event-log";
+            }
+            else
+            {
+                return alphaNumWord.IsMatch(firstArgument) ? firstArgument : "event-log";
+            }
         }
 
         private class EventLogFile : IDisposable
