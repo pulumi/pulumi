@@ -11,13 +11,13 @@
         </member>
         <member name="T:Pulumi.Automation.Events.CancelEvent">
             <summary>
-            CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
+            <see cref="T:Pulumi.Automation.Events.CancelEvent"/> is emitted when the user initiates a cancellation of the update in progress, or
             the update successfully completes.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.DiagnosticEvent">
             <summary>
-            DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
+            <see cref="T:Pulumi.Automation.Events.DiagnosticEvent"/> is emitted whenever a diagnostic message is provided, for example errors from
             a cloud resource provider while trying to create or update a resource.
             </summary>
         </member>
@@ -28,7 +28,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.DiffKind">
             <summary>
-            DiffKind describes the kind of a particular property diff.
+            <see cref="T:Pulumi.Automation.Events.DiffKind"/> describes the kind of a particular property diff.
             </summary>
         </member>
         <member name="F:Pulumi.Automation.Events.DiffKind.Add">
@@ -63,7 +63,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.EngineEvent">
             <summary>
-            EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
+            <see cref="T:Pulumi.Automation.Events.EngineEvent"/> describes a Pulumi engine event, such as a change to a resource or diagnostic
             message. EngineEvent is a discriminated union of all possible event types, and exactly one
             field will be non-null.
             </summary>
@@ -95,7 +95,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.PolicyEvent">
             <summary>
-            PolicyEvent is emitted whenever there is Policy violation.
+            <see cref="T:Pulumi.Automation.Events.PolicyEvent"/> is emitted whenever there is Policy violation.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Events.PolicyEvent.EnforcementLevel">
@@ -105,7 +105,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.PreludeEvent">
             <summary>
-            PreludeEvent is emitted at the start of an update.
+            <see cref="T:Pulumi.Automation.Events.PreludeEvent"/> is emitted at the start of an update.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Events.PreludeEvent.Config">
@@ -116,7 +116,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.PropertyDiff">
             <summary>
-            PropertyDiff describes the difference between a single property's old and new values.
+            <see cref="T:Pulumi.Automation.Events.PropertyDiff"/> describes the difference between a single property's old and new values.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Events.PropertyDiff.Kind">
@@ -131,7 +131,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.ResourceOperationFailedEvent">
             <summary>
-            <see cref="T:Pulumi.Automation.Events.ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a DiagnosticEvent is
+            <see cref="T:Pulumi.Automation.Events.ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a <see cref="T:Pulumi.Automation.Events.DiagnosticEvent"/> is
             emitted before this event, indiciating what the root cause of the error.
             </summary>
         </member>
@@ -142,7 +142,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.ResourcePreEvent">
             <summary>
-            ResourcePreEvent is emitted before a resource is modified.
+            <see cref="T:Pulumi.Automation.Events.ResourcePreEvent"/> is emitted before a resource is modified.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.Events.StandardOutputEngineEvent">
@@ -153,7 +153,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.StepEventMetadata">
             <summary>
-            StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
+            <see cref="T:Pulumi.Automation.Events.StepEventMetadata"/> describes a "step" within the Pulumi engine, which is any concrete action
             to migrate a set of cloud resources from one state to another.
             </summary>
         </member>
@@ -199,7 +199,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.StepEventStateMetadata">
             <summary>
-            StepEventStateMetadata is the more detailed state information for a resource as it relates to
+            <see cref="T:Pulumi.Automation.Events.StepEventStateMetadata"/> is the more detailed state information for a resource as it relates to
             a step(s) being performed.
             </summary>
         </member>
@@ -251,7 +251,7 @@
         </member>
         <member name="T:Pulumi.Automation.Events.SummaryEvent">
             <summary>
-            SummaryEvent is emitted at the end of an update, with a summary of the changes made.
+            <see cref="T:Pulumi.Automation.Events.SummaryEvent"/> is emitted at the end of an update, with a summary of the changes made.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt">

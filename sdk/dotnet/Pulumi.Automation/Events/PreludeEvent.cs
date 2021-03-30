@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// PreludeEvent is emitted at the start of an update.
+    /// <see cref="PreludeEvent"/> is emitted at the start of an update.
     /// </summary>
     public class PreludeEvent
     {

@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// CancelEvent is emitted when the user initiates a cancellation of the update in progress, or
+    /// <see cref="CancelEvent"/> is emitted when the user initiates a cancellation of the update in progress, or
     /// the update successfully completes.
     /// </summary>
     public class CancelEvent

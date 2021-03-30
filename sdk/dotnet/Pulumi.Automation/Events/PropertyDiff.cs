@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// PropertyDiff describes the difference between a single property's old and new values.
+    /// <see cref="PropertyDiff"/> describes the difference between a single property's old and new values.
     /// </summary>
     public class PropertyDiff
     {

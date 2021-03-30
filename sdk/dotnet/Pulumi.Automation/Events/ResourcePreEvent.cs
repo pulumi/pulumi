@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// ResourcePreEvent is emitted before a resource is modified.
+    /// <see cref="ResourcePreEvent"/> is emitted before a resource is modified.
     /// </summary>
     public class ResourcePreEvent
     {

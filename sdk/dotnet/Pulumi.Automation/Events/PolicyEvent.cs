@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// PolicyEvent is emitted whenever there is Policy violation.
+    /// <see cref="PolicyEvent"/> is emitted whenever there is Policy violation.
     /// </summary>
     public class PolicyEvent
     {

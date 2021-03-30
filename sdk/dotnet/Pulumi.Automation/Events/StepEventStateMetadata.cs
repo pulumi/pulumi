@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// StepEventStateMetadata is the more detailed state information for a resource as it relates to
+    /// <see cref="StepEventStateMetadata"/> is the more detailed state information for a resource as it relates to
     /// a step(s) being performed.
     /// </summary>
     public class StepEventStateMetadata

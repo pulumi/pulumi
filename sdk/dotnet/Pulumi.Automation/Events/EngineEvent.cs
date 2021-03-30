@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// EngineEvent describes a Pulumi engine event, such as a change to a resource or diagnostic
+    /// <see cref="EngineEvent"/> describes a Pulumi engine event, such as a change to a resource or diagnostic
     /// message. EngineEvent is a discriminated union of all possible event types, and exactly one
     /// field will be non-null.
     /// </summary>

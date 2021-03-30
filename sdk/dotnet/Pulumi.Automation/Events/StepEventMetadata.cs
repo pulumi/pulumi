@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
+    /// <see cref="StepEventMetadata"/> describes a "step" within the Pulumi engine, which is any concrete action
     /// to migrate a set of cloud resources from one state to another.
     /// </summary>
     public class StepEventMetadata

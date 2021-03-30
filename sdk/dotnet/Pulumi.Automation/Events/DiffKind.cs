@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// DiffKind describes the kind of a particular property diff.
+    /// <see cref="DiffKind"/> describes the kind of a particular property diff.
     /// </summary>
     public enum DiffKind
     {

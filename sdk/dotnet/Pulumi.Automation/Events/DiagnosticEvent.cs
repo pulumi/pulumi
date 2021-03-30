@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// DiagnosticEvent is emitted whenever a diagnostic message is provided, for example errors from
+    /// <see cref="DiagnosticEvent"/> is emitted whenever a diagnostic message is provided, for example errors from
     /// a cloud resource provider while trying to create or update a resource.
     /// </summary>
     public class DiagnosticEvent

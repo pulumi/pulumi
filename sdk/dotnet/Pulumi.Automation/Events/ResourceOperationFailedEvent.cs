@@ -5,7 +5,7 @@
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// <see cref="ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a DiagnosticEvent is
+    /// <see cref="ResourceOperationFailedEvent"/> is emitted when a resource operation fails. Typically a <see cref="DiagnosticEvent"/> is
     /// emitted before this event, indiciating what the root cause of the error.
     /// </summary>
     public class ResourceOperationFailedEvent

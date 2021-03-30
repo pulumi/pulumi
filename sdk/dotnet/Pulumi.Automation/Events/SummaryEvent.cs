@@ -8,7 +8,7 @@ using System.Collections.Immutable;
 namespace Pulumi.Automation.Events
 {
     /// <summary>
-    /// SummaryEvent is emitted at the end of an update, with a summary of the changes made.
+    /// <see cref="SummaryEvent"/> is emitted at the end of an update, with a summary of the changes made.
     /// </summary>
     public class SummaryEvent
     {
