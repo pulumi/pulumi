@@ -90,9 +90,9 @@ namespace Pulumi.Automation.Tests
 
             public void Dispose()
             {
-                ((IDisposable)this.Watcher).Dispose();
-                ((IDisposable)this.CancellationTokenSource).Dispose();
-                ((IDisposable)this.Writer).Dispose();
+                this.Watcher.Dispose();
+                this.CancellationTokenSource.Dispose();
+                this.Writer.Dispose();
                 File.Delete(this.LogFileName);
             }
         }
