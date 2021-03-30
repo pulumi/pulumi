@@ -65,7 +65,7 @@ async def run_pulumi_func(func: Callable):
             # If the RPCs have successfully completed, now await all remaining outstanding tasks.
             outstanding_tasks = _get_running_tasks()
             if len(outstanding_tasks) == 0:
-                log.debug("No outstanding tasks to complete, exiting")
+                log.debug("No outstanding tasks to complete")
             else:
                 log.debug(f"Waiting for {len(outstanding_tasks)} outstanding tasks to complete")
 

@@ -548,6 +548,28 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 
+	t.Run("ErrorHandlingSuccess", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "error_handling"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "oh yeah") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
 	t.Run("FailureSimple", func(t *testing.T) {
 		stderr := &bytes.Buffer{}
 		expectedError := "IndexError: list index out of range"
