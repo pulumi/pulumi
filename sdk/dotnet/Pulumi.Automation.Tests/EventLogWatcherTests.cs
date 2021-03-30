@@ -1,13 +1,15 @@
+// Copyright 2016-2021, Pulumi Corporation
+
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using System.IO;
+using System;
+using Pulumi.Automation.Events;
+using Xunit;
+
 namespace Pulumi.Automation.Tests
 {
-    using System.Collections.Generic;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using System.IO;
-    using System;
-    using Pulumi.Automation.Events;
-
-    using Xunit;
 
     public class EventLogWatcherTests
     {
