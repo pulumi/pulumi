@@ -39,19 +39,19 @@ namespace Pulumi.Automation.Events
             this._internalCancellationTokenSource.Cancel();
             await this.AwaitPollingTask();
 
-	    // Race condition workaround.
-	    //
-	    // The caller might consider Pulumi CLI sub-process
-	    // finished and its writes committed to the file system.
-	    // However we do not truly know if the reader thread has
-	    // had a chance to consume them yet.
-	    //
-	    // To work around we do one more non-interruptible delay
-	    // and a final read pass here.
-	    //
-	    // A proper solution would involve having Pulumi CLI emit
-	    // a CommandDone or some such EngineEvent, and we would
-	    // keep reading until we see one.
+            // Race condition workaround.
+            //
+            // The caller might consider Pulumi CLI sub-process
+            // finished and its writes committed to the file system.
+            // However we do not truly know if the reader thread has
+            // had a chance to consume them yet.
+            //
+            // To work around we do one more non-interruptible delay
+            // and a final read pass here.
+            //
+            // A proper solution would involve having Pulumi CLI emit
+            // a CommandDone or some such EngineEvent, and we would
+            // keep reading until we see one.
 
             await Task.Delay(_pollingIntervalMilliseconds);
             await ReadEventsOnce();
