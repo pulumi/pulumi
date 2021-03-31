@@ -358,11 +358,8 @@ namespace Pulumi.Automation
             {
                 if (!projectSettings.IsDefault)
                 {
-                    // TODO we are overwriting settings found on disk
-                    // with settings passed in through code. Seems
-                    // like a good place to emit a warning, but not
-                    // clear which logging facility to use.
-                    await this.SaveProjectSettingsAsync(projectSettings, cancellationToken);
+                    var path = this.FindSettingsFile();
+                    throw new Exceptions.ProjectSettingsConflictException(path);
                 }
             }
         }
@@ -397,41 +394,49 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override async Task<ProjectSettings?> GetProjectSettingsAsync(CancellationToken cancellationToken = default)
         {
-            foreach (var ext in SettingsExtensions)
+            var path = this.FindSettingsFile();
+            var isJson = Path.GetExtension(path) == ".json";
+            if (!File.Exists(path))
             {
-                var isJson = ext == ".json";
-                var path = Path.Combine(this.WorkDir, $"Pulumi{ext}");
-                if (!File.Exists(path))
-                    continue;
-
+                return null;
+            }
+            else
+            {
                 var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
                 if (isJson)
+                {
                     return this._serializer.DeserializeJson<ProjectSettings>(content);
+                }
+                else
+                {
 
-                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
-                return model.Convert();
+                    var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
+                    return model.Convert();
+                }
             }
-
-            return null;
         }
 
         /// <inheritdoc/>
         public override Task SaveProjectSettingsAsync(ProjectSettings settings, CancellationToken cancellationToken = default)
         {
-            var foundExt = ".yaml";
+            var path = this.FindSettingsFile();
+            var ext = Path.GetExtension(path);
+            var content = ext == ".json" ? this._serializer.SerializeJson(settings) : this._serializer.SerializeYaml(settings);
+            return File.WriteAllTextAsync(path, content, cancellationToken);
+        }
+
+        private string FindSettingsFile()
+        {
             foreach (var ext in SettingsExtensions)
             {
                 var testPath = Path.Combine(this.WorkDir, $"Pulumi{ext}");
                 if (File.Exists(testPath))
                 {
-                    foundExt = ext;
-                    break;
+                    return testPath;
                 }
             }
-
-            var path = Path.Combine(this.WorkDir, $"Pulumi{foundExt}");
-            var content = foundExt == ".json" ? this._serializer.SerializeJson(settings) : this._serializer.SerializeYaml(settings);
-            return File.WriteAllTextAsync(path, content, cancellationToken);
+            var defaultPath = Path.Combine(this.WorkDir, "Pulumi.yaml");
+            return defaultPath;
         }
 
         private static string GetStackSettingsName(string stackName)

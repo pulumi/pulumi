@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 using Xunit;
@@ -957,6 +958,29 @@ namespace Pulumi.Automation.Tests
             var settings = await stack.Workspace.GetProjectSettingsAsync();
             Assert.Equal("correct_project", settings!.Name);
             Assert.Equal("This is a description", settings.Description);
+        }
+
+        [Fact]
+        public async Task DetectsProjectSettingConflictTest()
+        {
+            var program = PulumiFn.Create<ValidStack>();
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "project_was_overwritten";
+
+            var workdir = ResourcePath(Path.Combine("Data", "correct_project"));
+
+            var projectSettings = ProjectSettings.Default(projectName);
+            projectSettings.Description = "non-standard description";
+
+            await Assert.ThrowsAsync<ProjectSettingsConflictException>(() =>
+                LocalWorkspace.CreateStackAsync(
+                    new InlineProgramArgs(projectName, stackName, program)
+                    {
+                        WorkDir = workdir,
+                        ProjectSettings = projectSettings
+                    })
+            );
         }
 
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
