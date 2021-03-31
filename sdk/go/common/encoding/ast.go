@@ -103,7 +103,7 @@ func (f *FileAST) SetConfig(rootKey string, key config.Key, value config.Value, 
 			node.SetIsFlowStyle(false)
 			node.GetToken().Position.Column += indentSpaces
 		}
-		node = upsertNode(node, key.String(),
+		upsertNode(node, key.String(),
 			newValueNode(value.RawValue(), value.Secure(), node.GetToken().Position.Column))
 		return nil
 	}
@@ -116,7 +116,7 @@ func (f *FileAST) SetConfig(rootKey string, key config.Key, value config.Value, 
 
 	// If we only have a single path segment, set the value and return.
 	if len(pathSegments) == 1 {
-		node = upsertNode(node, configKey.String(),
+		upsertNode(node, configKey.String(),
 			newValueNode(value.RawValue(), value.Secure(), node.GetToken().Position.Column))
 		return nil
 	}
@@ -163,7 +163,7 @@ func (f *FileAST) SetConfig(rootKey string, key config.Key, value config.Value, 
 		}
 		if newValue != nil {
 			pvalue = newValue
-			cursor, err = setValue(cursorKey, parentKey, cursor, pvalue, parent)
+			err = setValue(cursorKey, parentKey, cursor, pvalue, parent)
 			if err != nil {
 				return err
 			}
@@ -178,7 +178,7 @@ func (f *FileAST) SetConfig(rootKey string, key config.Key, value config.Value, 
 	// Adjust the value (e.g. convert "true"/"false" to booleans and integers to ints) and set it.
 	adjustedValue := newValueNode(
 		config.AdjustObjectValue(value, path), value.Secure(), cursor.GetToken().Position.Column)
-	if _, err = setValue(cursorKey, parentKey, cursor, adjustedValue, parent); err != nil {
+	if err = setValue(cursorKey, parentKey, cursor, adjustedValue, parent); err != nil {
 		return err
 	}
 
@@ -253,7 +253,7 @@ func (f *FileAST) RemoveConfig(rootKey string, k config.Key, path bool) error {
 			} else {
 				parentKey = pathSegments[len(pathSegments)-2].(string)
 			}
-			parent = upsertNode(pt, parentKey, newMappingNode("-", parent.GetToken().Position.Column))
+			upsertNode(pt, parentKey, newMappingNode("-", parent.GetToken().Position.Column))
 		}
 	}
 
@@ -300,24 +300,25 @@ func newMappingValueNode(key string, value ast.Node, column int) *ast.MappingVal
 	}
 }
 
-// upsertNode updates an entry in a MappingNode if it already exists, or appends it to the MappingNode otherwise.
-func upsertNode(root *ast.MappingNode, key string, node ast.Node) *ast.MappingNode {
+// upsertNode updates an entry in a MappingNode if it already exists, or appends it to the MappingNode otherwise. Note
+// that the root MappingNode is mutated by this operation.
+func upsertNode(root *ast.MappingNode, key string, node ast.Node) {
 	// Special case for replacing a secret value.
 	if len(root.Values) == 1 && root.Values[0].Key.String() == "secure" {
 		root.Values[0] = newMappingValueNode(key, node, root.Values[0].GetToken().Position.Column)
-		return root
+		return
 	}
 
 	for i, v := range root.Values {
 		if v.Key.String() == key {
 			root.Values[i].Value = node
-			return root
+			return
 		}
 	}
 
 	column := root.GetToken().Position.Column
 	root.Values = append(root.Values, newMappingValueNode(key, node, column))
-	return root
+	return
 }
 
 // getConfigFromNode retrieves the Node matching the provided key. The return values will be nil if the key does not
@@ -390,19 +391,20 @@ func newValueNode(value interface{}, secure bool, column int) ast.Node {
 	return v
 }
 
-// Set value sets the value in the container for the given key, and returns the container.
-func setValue(key, containerParentKey interface{}, container, value, containerParent ast.Node) (ast.Node, error) {
+// Set value sets the value in the container for the given key, and returns the container. Note that the container Node
+// is mutated by this operation.
+func setValue(key, containerParentKey interface{}, container, value, containerParent ast.Node) error {
 	switch t := container.(type) {
 	case *ast.MappingNode:
 		k, ok := key.(string)
 		contract.Assertf(ok, "key for a map must be a string")
-		t = upsertNode(t, k, value)
+		upsertNode(t, k, value)
 	case *ast.SequenceNode:
 		i, ok := key.(int)
 		contract.Assertf(ok, "key for an array must be an int")
 		// We allow i == len(t), which indicates the value should be appended to the end of the array.
 		if i < 0 || i > len(t.Values) {
-			return nil, errors.New("array index out of range")
+			return errors.New("array index out of range")
 		}
 		// If i == len(t), we need to append to the end of the array, which involves creating a new slice
 		// and saving it in the parent container.
@@ -410,13 +412,13 @@ func setValue(key, containerParentKey interface{}, container, value, containerPa
 			t.Values = append(t.Values, value)
 			contract.Assertf(containerParent != nil, "parent must not be nil")
 			contract.Assertf(containerParentKey != nil, "parentKey must not be nil")
-			return t, nil
+			return nil
 		}
 		t.Values[i] = value
 	default:
 		contract.Failf("unexpected container type: %T", container)
 	}
-	return container, nil
+	return nil
 }
 
 // removeKey deletes the config in a Node matching the provided key if one is present.
