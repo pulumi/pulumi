@@ -295,7 +295,7 @@ func (mod *modContext) genHeader(w io.Writer, needsSDK bool, imports imports) {
 		fmt.Fprintf(w, "import pulumi\n")
 		fmt.Fprintf(w, "import pulumi.runtime\n")
 		fmt.Fprintf(w, "from typing import Any, Mapping, Optional, Sequence, Union, overload\n")
-		fmt.Fprintf(w, "from %s import _utilities, _tables\n", relImport)
+		fmt.Fprintf(w, "from %s import _utilities\n", relImport)
 		for _, imp := range imports.strings() {
 			fmt.Fprintf(w, "%s\n", imp)
 		}
@@ -969,6 +969,20 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		return "", err
 	}
 
+	// Produce an unexported state class. It's currently only used internally inside the `get` method to opt-in to
+	// the type/name metadata based translation behavior.
+	// We can consider making use of it publicly in the future: removing the underscore prefix, exporting it from
+	// `__all__`, and adding a static `get` overload that accepts it as an argument.
+	hasStateInputs := !res.IsProvider && !res.IsComponent && res.StateInputs != nil &&
+		len(res.StateInputs.Properties) > 0
+	if hasStateInputs {
+		stateComment := fmt.Sprintf("Input properties used for looking up and filtering %s resources.", name)
+		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, false, true, true)
+		if err != nil {
+			return "", err
+		}
+	}
+
 	var baseType string
 	switch {
 	case res.IsProvider:
@@ -1075,7 +1089,11 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "            if __props__ is not None:\n")
 	fmt.Fprintf(w, "                raise TypeError(")
 	fmt.Fprintf(w, "'__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')\n")
-	fmt.Fprintf(w, "            __props__ = dict()\n\n")
+
+	// We use an instance of the `<Resource>Args` class for `__props__` to opt-in to the type/name metadata based
+	// translation behavior. The instance is created using `__new__` to avoid any validation in the `__init__` method,
+	// values are set directly on its `__dict__`, including any additional output properties.
+	fmt.Fprintf(w, "            __props__ = %[1]sArgs.__new__(%[1]sArgs)\n\n", name)
 	fmt.Fprintf(w, "")
 
 	ins := codegen.NewStringSet()
@@ -1124,7 +1142,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
 		}
-		fmt.Fprintf(w, "            __props__['%s'] = %s\n", PyName(prop.Name), arg)
+		fmt.Fprintf(w, "            __props__.__dict__['%s'] = %s\n", PyName(prop.Name), arg)
 
 		ins.Add(prop.Name)
 	}
@@ -1134,7 +1152,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins.Has(prop.Name) {
-			fmt.Fprintf(w, "            __props__['%s'] = None\n", PyName(prop.Name))
+			fmt.Fprintf(w, "            __props__.__dict__['%s'] = None\n", PyName(prop.Name))
 		}
 
 		if prop.Secret {
@@ -1193,7 +1211,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "            id: pulumi.Input[str],\n")
 		fmt.Fprintf(w, "            opts: Optional[pulumi.ResourceOptions] = None")
 
-		if res.StateInputs != nil {
+		if hasStateInputs {
 			for _, prop := range res.StateInputs.Properties {
 				pname := PyName(prop.Name)
 				ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
@@ -1205,18 +1223,24 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w,
 			"        opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))\n")
 		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "        __props__ = dict()\n\n")
+		if hasStateInputs {
+			fmt.Fprintf(w, "        __props__ = _%[1]sState.__new__(_%[1]sState)\n\n", name)
+		} else {
+			// If we don't have any state inputs, we'll just instantiate the `<Resource>Args` class,
+			// to opt-in to the improved translation behavior.
+			fmt.Fprintf(w, "        __props__ = %[1]sArgs.__new__(%[1]sArgs)\n\n", name)
+		}
 
 		stateInputs := codegen.NewStringSet()
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
 				stateInputs.Add(prop.Name)
-				fmt.Fprintf(w, "        __props__[%[1]q] = %[1]s\n", PyName(prop.Name))
+				fmt.Fprintf(w, "        __props__.__dict__['%[1]s'] = %[1]s\n", PyName(prop.Name))
 			}
 		}
 		for _, prop := range res.Properties {
 			if !stateInputs.Has(prop.Name) {
-				fmt.Fprintf(w, "        __props__[%[1]q] = None\n", PyName(prop.Name))
+				fmt.Fprintf(w, "        __props__.__dict__['%s'] = None\n", PyName(prop.Name))
 			}
 		}
 
@@ -1228,17 +1252,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	})
-
-	// Override translate_{input|output}_property on each resource to translate between snake case and
-	// camel case when interacting with tfbridge.
-	fmt.Fprintf(w,
-		`    def translate_output_property(self, prop):
-        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
-
-    def translate_input_property(self, prop):
-        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
-
-`)
 
 	return w.String(), nil
 }
@@ -1728,37 +1741,6 @@ func pep440VersionToSemver(v string) (semver.Version, error) {
 	return semver.ParseTolerant(v)
 }
 
-// Emits property conversion tables for all properties recorded using `recordProperty`. The two tables emitted here are
-// used to convert to and from snake case and camel case.
-func (mod *modContext) genPropertyConversionTables() string {
-	w := &bytes.Buffer{}
-	mod.genHeader(w, false /*needsSDK*/, nil)
-
-	var allKeys []string
-	for key := range mod.snakeCaseToCamelCase {
-		allKeys = append(allKeys, key)
-	}
-	sort.Strings(allKeys)
-
-	fmt.Fprintf(w, "SNAKE_TO_CAMEL_CASE_TABLE = {\n")
-	for _, key := range allKeys {
-		value := mod.snakeCaseToCamelCase[key]
-		if key != value {
-			fmt.Fprintf(w, "    %q: %q,\n", key, value)
-		}
-	}
-	fmt.Fprintf(w, "}\n")
-	fmt.Fprintf(w, "\nCAMEL_TO_SNAKE_CASE_TABLE = {\n")
-	for _, value := range allKeys {
-		key := mod.snakeCaseToCamelCase[value]
-		if key != value {
-			fmt.Fprintf(w, "    %q: %q,\n", key, value)
-		}
-	}
-	fmt.Fprintf(w, "}\n")
-	return w.String()
-}
-
 // recordProperty records the given property's name and member names. For each property name contained in the given
 // property, the name is converted to snake case and recorded in the snake case to camel case table.
 //
@@ -2119,6 +2101,46 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		printComment(w, comment, "    ")
 	}
 
+	// To help users migrate to using the properly snake_cased property getters, emit warnings when camelCase keys are
+	// accessed. We emit this at the top of the class in case we have a `get` property that will be redefined later.
+	if !input && !functionType {
+		var needsCaseWarning bool
+		for _, prop := range props {
+			pname := PyName(prop.Name)
+			if pname != prop.Name {
+				needsCaseWarning = true
+				break
+			}
+		}
+		if needsCaseWarning {
+			fmt.Fprintf(w, "    @staticmethod\n")
+			fmt.Fprintf(w, "    def __key_warning(key: str):\n")
+			fmt.Fprintf(w, "        suggest = None\n")
+			prefix := "if"
+			for _, prop := range props {
+				pname := PyName(prop.Name)
+				if pname == prop.Name {
+					continue
+				}
+				fmt.Fprintf(w, "        %s key == \"%s\":\n", prefix, prop.Name)
+				fmt.Fprintf(w, "            suggest = \"%s\"\n", pname)
+				prefix = "elif"
+			}
+			fmt.Fprintf(w, "\n")
+			fmt.Fprintf(w, "        if suggest:\n")
+			fmt.Fprintf(w, "            pulumi.log.warn(f\"Key '{key}' not found in %s. Access the value via the '{suggest}' property getter instead.\")\n", name)
+			fmt.Fprintf(w, "\n")
+			fmt.Fprintf(w, "    def __getitem__(self, key: str) -> Any:\n")
+			fmt.Fprintf(w, "        %s.__key_warning(key)\n", name)
+			fmt.Fprintf(w, "        return super().__getitem__(key)\n")
+			fmt.Fprintf(w, "\n")
+			fmt.Fprintf(w, "    def get(self, key: str, default = None) -> Any:\n")
+			fmt.Fprintf(w, "        %s.__key_warning(key)\n", name)
+			fmt.Fprintf(w, "        return super().get(key, default)\n")
+			fmt.Fprintf(w, "\n")
+		}
+	}
+
 	// Generate an __init__ method.
 	fmt.Fprintf(w, "    def __init__(__self__")
 	// Bare `*` argument to force callers to use named arguments.
@@ -2186,15 +2208,6 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	mod.genProperties(w, props, input /*setters*/, func(prop *schema.Property) string {
 		return mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 	})
-
-	if !input && !functionType {
-		// The generated output class is a subclass of dict and contains translated keys
-		// to maintain backwards compatibility. When this function is present, property
-		// getters will use it to translate the key from the Pulumi name before looking
-		// up the value in the dictionary.
-		fmt.Fprintf(w, "    def _translate_property(self, prop):\n")
-		fmt.Fprintf(w, "        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop\n\n")
-	}
 
 	fmt.Fprintf(w, "\n")
 	return nil
@@ -2490,9 +2503,6 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 			return nil, err
 		}
 	}
-
-	// Emit casing tables.
-	files.add(filepath.Join(pyPack(pkg.Name), "_tables.py"), []byte(modules[""].genPropertyConversionTables()))
 
 	// Generate pulumiplugin.json, if requested.
 	if info.EmitPulumiPluginFile {

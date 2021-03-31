@@ -6,7 +6,7 @@ import warnings
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from . import _utilities, _tables
+from . import _utilities
 from .resource import Resource
 
 __all__ = ['OtherResourceArgs', 'OtherResource']
@@ -89,9 +89,9 @@ class OtherResource(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = dict()
+            __props__ = OtherResourceArgs.__new__(OtherResourceArgs)
 
-            __props__['foo'] = foo
+            __props__.__dict__['foo'] = foo
         super(OtherResource, __self__).__init__(
             'example::OtherResource',
             resource_name,
@@ -103,10 +103,4 @@ class OtherResource(pulumi.ComponentResource):
     @pulumi.getter
     def foo(self) -> pulumi.Output[Optional['Resource']]:
         return pulumi.get(self, "foo")
-
-    def translate_output_property(self, prop):
-        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
-
-    def translate_input_property(self, prop):
-        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 

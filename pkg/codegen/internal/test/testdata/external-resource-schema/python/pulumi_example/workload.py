@@ -6,7 +6,7 @@ import warnings
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from . import _utilities, _tables
+from . import _utilities
 import pulumi_kubernetes
 
 __all__ = ['WorkloadArgs', 'Workload']
@@ -74,9 +74,9 @@ class Workload(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = dict()
+            __props__ = WorkloadArgs.__new__(WorkloadArgs)
 
-            __props__['pod'] = None
+            __props__.__dict__['pod'] = None
         super(Workload, __self__).__init__(
             'example::Workload',
             resource_name,
@@ -97,19 +97,13 @@ class Workload(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = dict()
+        __props__ = WorkloadArgs.__new__(WorkloadArgs)
 
-        __props__["pod"] = None
+        __props__.__dict__['pod'] = None
         return Workload(resource_name, opts=opts, __props__=__props__)
 
     @property
     @pulumi.getter
     def pod(self) -> pulumi.Output[Optional['pulumi_kubernetes.core.v1.outputs.Pod']]:
         return pulumi.get(self, "pod")
-
-    def translate_output_property(self, prop):
-        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
-
-    def translate_input_property(self, prop):
-        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 

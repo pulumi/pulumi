@@ -6,7 +6,7 @@ import warnings
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from . import _utilities, _tables
+from . import _utilities
 from ._inputs import *
 import pulumi_random
 
@@ -102,11 +102,11 @@ class Cat(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = dict()
+            __props__ = CatArgs.__new__(CatArgs)
 
-            __props__['age'] = age
-            __props__['pet'] = pet
-            __props__['name'] = None
+            __props__.__dict__['age'] = age
+            __props__.__dict__['pet'] = pet
+            __props__.__dict__['name'] = None
         super(Cat, __self__).__init__(
             'example::Cat',
             resource_name,
@@ -127,19 +127,13 @@ class Cat(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = dict()
+        __props__ = CatArgs.__new__(CatArgs)
 
-        __props__["name"] = None
+        __props__.__dict__['name'] = None
         return Cat(resource_name, opts=opts, __props__=__props__)
 
     @property
     @pulumi.getter
     def name(self) -> pulumi.Output[Optional[str]]:
         return pulumi.get(self, "name")
-
-    def translate_output_property(self, prop):
-        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
-
-    def translate_input_property(self, prop):
-        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 
