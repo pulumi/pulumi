@@ -48,15 +48,27 @@ func V(level glog.Level) glog.Verbose {
 }
 
 func Errorf(format string, args ...interface{}) {
-	glog.Errorf("%s", FilterString(fmt.Sprintf(format, args...)))
+	ErrorfDepth(1, format, args...)
+}
+
+func ErrorfDepth(depth int, format string, args ...interface{}) {
+	glog.ErrorDepth(depth+1, FilterString(fmt.Sprintf(format, args...)))
 }
 
 func Infof(format string, args ...interface{}) {
-	glog.Infof("%s", FilterString(fmt.Sprintf(format, args...)))
+	InfofDepth(1, format, args...)
+}
+
+func InfofDepth(depth int, format string, args ...interface{}) {
+	glog.InfoDepth(depth+1, FilterString(fmt.Sprintf(format, args...)))
 }
 
 func Warningf(format string, args ...interface{}) {
-	glog.Warningf("%s", FilterString(fmt.Sprintf(format, args...)))
+	WarningfDepth(1, format, args...)
+}
+
+func WarningfDepth(depth int, format string, args ...interface{}) {
+	glog.WarningDepth(depth+1, FilterString(fmt.Sprintf(format, args...)))
 }
 
 func Flush() {

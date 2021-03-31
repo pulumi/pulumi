@@ -41,6 +41,8 @@ func IgnoreError(err error) {
 	// ignored that represents something even more egregious than the eventual failure mode).  If this truly matters, it
 	// probably implies the ignore was not appropriate, but as a safeguard, logging seems useful.
 	if err != nil {
-		logging.V(3).Infof("Explicitly ignoring and discarding error: %v", err)
+		if logging.V(3) {
+			logging.InfofDepth(1, "Explicitly ignoring and discarding error: %v", err)
+		}
 	}
 }

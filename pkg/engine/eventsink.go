@@ -37,63 +37,94 @@ type eventSink struct {
 	statusSink bool         // whether this is an event sink for status messages.
 }
 
-func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
+func (s *eventSink) LogfDepth(
+	depth int,
+	sev diag.Severity,
+	d *diag.Diag,
+	args ...interface{}) {
+
 	switch sev {
 	case diag.Debug:
-		s.Debugf(d, args...)
+		s.DebugfDepth(depth+1, d, args...)
 	case diag.Info:
-		s.Infof(d, args...)
+		s.InfofDepth(depth+1, d, args...)
 	case diag.Infoerr:
-		s.Infoerrf(d, args...)
+		s.InfoerrfDepth(depth+1, d, args...)
 	case diag.Warning:
-		s.Warningf(d, args...)
+		s.WarningfDepth(depth+1, d, args...)
 	case diag.Error:
-		s.Errorf(d, args...)
+		s.ErrorfDepth(depth+1, d, args...)
 	default:
 		contract.Failf("Unrecognized severity: %v", sev)
 	}
 }
 
-func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) DebugfDepth(depth int, d *diag.Diag, args ...interface{}) {
 	// For debug messages, write both to the glogger and a stream, if there is one.
-	logging.V(3).Infof(d.Message, args...)
+	if logging.V(3) {
+		logging.InfofDepth(depth+1, d.Message, args...)
+	}
 	prefix, msg := s.Stringify(diag.Debug, d, args...)
 	if logging.V(9) {
-		logging.V(9).Infof("eventSink::Debug(%v)", msg[:len(msg)-1])
+		logging.InfofDepth(depth+1, "eventSink::Debug(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagDebugEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) InfofDepth(depth int, d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Info, d, args...)
 	if logging.V(5) {
-		logging.V(5).Infof("eventSink::Info(%v)", msg[:len(msg)-1])
+		logging.InfofDepth(depth+1, "eventSink::Info(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagInfoEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) InfoerrfDepth(depth int, d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
 	if logging.V(5) {
-		logging.V(5).Infof("eventSink::Infoerr(%v)", msg[:len(msg)-1])
+		logging.InfofDepth(depth+1, "eventSink::Infoerr(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagInfoerrEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) ErrorfDepth(depth int, d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Error, d, args...)
 	if logging.V(5) {
-		logging.V(5).Infof("eventSink::Error(%v)", msg[:len(msg)-1])
+		logging.InfofDepth(depth+1, "eventSink::Error(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagErrorEvent(d, prefix, msg, s.statusSink)
 }
 
-func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
+func (s *eventSink) WarningfDepth(depth int, d *diag.Diag, args ...interface{}) {
 	prefix, msg := s.Stringify(diag.Warning, d, args...)
 	if logging.V(5) {
-		logging.V(5).Infof("eventSink::Warning(%v)", msg[:len(msg)-1])
+		logging.InfofDepth(depth+1, "eventSink::Warning(%v)", msg[:len(msg)-1])
 	}
 	s.events.diagWarningEvent(d, prefix, msg, s.statusSink)
+}
+
+func (d *eventSink) Logf(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
+	d.LogfDepth(1, sev, diag, args...)
+}
+
+func (d *eventSink) Debugf(diag *diag.Diag, args ...interface{}) {
+	d.DebugfDepth(1, diag, args...)
+}
+
+func (d *eventSink) Infof(diag *diag.Diag, args ...interface{}) {
+	d.InfofDepth(1, diag, args...)
+}
+
+func (d *eventSink) Infoerrf(diag *diag.Diag, args ...interface{}) {
+	d.InfoerrfDepth(1, diag, args...)
+}
+
+func (d *eventSink) Errorf(diag *diag.Diag, args ...interface{}) {
+	d.ErrorfDepth(1, diag, args...)
+}
+
+func (d *eventSink) Warningf(diag *diag.Diag, args ...interface{}) {
+	d.WarningfDepth(1, diag, args...)
 }
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) (string, string) {

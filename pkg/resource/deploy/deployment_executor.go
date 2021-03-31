@@ -98,18 +98,25 @@ func (ex *deploymentExecutor) checkTargets(targets []resource.URN, op StepOp) re
 }
 
 // reportExecResult issues an appropriate diagnostic depending on went wrong.
-func (ex *deploymentExecutor) reportExecResult(message string, preview bool) {
+func (ex *deploymentExecutor) reportExecResult(
+	message string, preview bool) {
+
 	kind := "update"
 	if preview {
 		kind = "preview"
 	}
 
-	ex.reportError("", errors.New(kind+" "+message))
+	ex.reportErrorDepth(1, "", errors.New(kind+" "+message))
 }
 
 // reportError reports a single error to the executor's diag stream with the indicated URN for context.
+func (ex *deploymentExecutor) reportErrorDepth(depth int, urn resource.URN, err error) {
+	ex.deployment.Diag().ErrorfDepth(depth+1,
+		diag.RawMessage(urn, err.Error()))
+}
+
 func (ex *deploymentExecutor) reportError(urn resource.URN, err error) {
-	ex.deployment.Diag().Errorf(diag.RawMessage(urn, err.Error()))
+	ex.reportErrorDepth(1, urn, err)
 }
 
 // Execute executes a deployment to completion, using the given cancellation context and running a preview

@@ -324,7 +324,11 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 func (se *stepExecutor) log(workerID int, msg string, args ...interface{}) {
 	if logging.V(stepExecutorLogLevel) {
 		message := fmt.Sprintf(msg, args...)
-		logging.V(stepExecutorLogLevel).Infof("StepExecutor worker(%d): %s", workerID, message)
+		logging.InfofDepth(
+			1,
+			"StepExecutor worker(%d): %s",
+			workerID,
+			message)
 	}
 }
 
