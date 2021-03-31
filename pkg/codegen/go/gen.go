@@ -90,12 +90,14 @@ type pkgContext struct {
 	types          []*schema.ObjectType
 	resources      []*schema.Resource
 	functions      []*schema.Function
-	names          codegen.StringSet
-	renamed        map[string]string
-	functionNames  map[*schema.Function]string
-	needsUtils     bool
-	tool           string
-	packages       map[string]*pkgContext
+	// schemaNames tracks the names of types/resources as specified in the schema
+	schemaNames   codegen.StringSet
+	names         codegen.StringSet
+	renamed       map[string]string
+	functionNames map[*schema.Function]string
+	needsUtils    bool
+	tool          string
+	packages      map[string]*pkgContext
 
 	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
@@ -497,8 +499,8 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 	}
 }
 
-func genInputInterface(w io.Writer, name string) {
-	printComment(w, getInputUsage(name), false)
+func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
+	printComment(w, pkg.getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
@@ -506,13 +508,10 @@ func genInputInterface(w io.Writer, name string) {
 	fmt.Fprintf(w, "}\n\n")
 }
 
-func getUsageForNestedType(name, baseTypeName string) string {
+func (pkg *pkgContext) getUsageForNestedType(name, baseTypeName string) string {
 	const defaultExampleFormat = "%sArgs{...}"
 	example := fmt.Sprintf(defaultExampleFormat, baseTypeName)
 
-	if !strings.HasSuffix(name, "Array") && !strings.HasSuffix(name, "Map") {
-		return example
-	}
 	trimmer := func(typeName string) string {
 		if strings.HasSuffix(typeName, "Array") {
 			return typeName[:strings.LastIndex(typeName, "Array")]
@@ -523,30 +522,35 @@ func getUsageForNestedType(name, baseTypeName string) string {
 		return typeName
 	}
 
+	// If not a nested collection type, use the default example format
+	if trimmer(name) == name {
+		return example
+	}
+
 	if strings.HasSuffix(name, "Map") {
-		if !strings.HasSuffix(baseTypeName, "Array") && !strings.HasSuffix(baseTypeName, "Map") {
+		if pkg.schemaNames.Has(baseTypeName) {
 			return fmt.Sprintf("%s{ \"key\": %s }", name, example)
 		}
-		return fmt.Sprintf("%s{ \"key\": %s }", name, getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
+		return fmt.Sprintf("%s{ \"key\": %s }", name, pkg.getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
 	}
 
 	if strings.HasSuffix(name, "Array") {
-		if !strings.HasSuffix(baseTypeName, "Array") && !strings.HasSuffix(baseTypeName, "Map") {
+		if pkg.schemaNames.Has(baseTypeName) {
 			return fmt.Sprintf("%s{ %s }", name, example)
 		}
-		return fmt.Sprintf("%s{ %s }", name, getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
+		return fmt.Sprintf("%s{ %s }", name, pkg.getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
 	}
 	return example
 }
 
-func getInputUsage(name string) string {
+func (pkg *pkgContext) getInputUsage(name string) string {
 	if strings.HasSuffix(name, "Array") {
 		baseTypeName := name[:strings.LastIndex(name, "Array")]
 		return strings.Join([]string{
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			"\t\t " + getUsageForNestedType(name, baseTypeName),
+			"\t\t " + pkg.getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
 	}
@@ -557,7 +561,7 @@ func getInputUsage(name string) string {
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			"\t\t " + getUsageForNestedType(name, baseTypeName),
+			"\t\t " + pkg.getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
 	}
@@ -733,7 +737,7 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	details := pkg.detailsForType(enum)
 	// Generate the array input.
 	if details.arrayElement {
-		genInputInterface(w, typeName+"Array")
+		pkg.genInputInterface(w, typeName+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]s\n\n", typeName)
 
@@ -742,7 +746,7 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 
 	// Generate the map input.
 	if details.mapElement {
-		genInputInterface(w, typeName+"Map")
+		pkg.genInputInterface(w, typeName+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]s\n\n", typeName)
 
@@ -792,7 +796,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	name := pkg.tokenToType(t.Token)
 
 	// Generate the plain inputs.
-	genInputInterface(w, name)
+	pkg.genInputInterface(w, name)
 
 	printComment(w, t.Comment, false)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
@@ -810,7 +814,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the pointer input.
 	if details.ptrElement {
-		genInputInterface(w, name+"Ptr")
+		pkg.genInputInterface(w, name+"Ptr")
 
 		ptrTypeName := camel(name) + "PtrType"
 
@@ -825,7 +829,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the array input.
 	if details.arrayElement {
-		genInputInterface(w, name+"Array")
+		pkg.genInputInterface(w, name+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 
@@ -834,7 +838,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the map input.
 	if details.mapElement {
-		genInputInterface(w, name+"Map")
+		pkg.genInputInterface(w, name+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 
@@ -1279,12 +1283,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 		if !r.IsProvider {
 			// Generate the resource array input.
-			genInputInterface(w, name+"Array")
+			pkg.genInputInterface(w, name+"Array")
 			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 			genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
 
 			// Generate the resource map input.
-			genInputInterface(w, name+"Map")
+			pkg.genInputInterface(w, name+"Map")
 			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 			genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
 		}
@@ -1479,7 +1483,7 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 			fmt.Fprintf(w, "\t}).(%sOutput)\n", elementTypeName)
 			fmt.Fprintf(w, "}\n\n")
 		}
-		genInputInterface(w, name)
+		pkg.genInputInterface(w, name)
 	}
 
 	return names
@@ -1902,6 +1906,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				importBasePath:   goInfo.ImportBasePath,
 				typeDetails:      map[schema.Type]*typeDetails{},
 				names:            codegen.NewStringSet(),
+				schemaNames:      codegen.NewStringSet(),
 				renamed:          map[string]string{},
 				functionNames:    map[*schema.Function]string{},
 				tool:             tool,
@@ -1950,30 +1955,32 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, isRequired bool, parentOptional bool) {
 		switch typ := schemaType.(type) {
 		case *schema.ObjectType:
+			pkg := getPkgFromToken(typ.Token)
 			if !isRequired || parentOptional {
 				if seen.Has(typ.Token) {
 					return
 				}
 				seen.Add(typ.Token)
-				getPkgFromToken(typ.Token).detailsForType(typ).ptrElement = true
-				// populateDetailsForPropertyTypes(seen, typ.Properties, parentOptional)
+				pkg.detailsForType(typ).ptrElement = true
 				populateDetailsForPropertyTypes(seen, typ.Properties, true)
 			}
+			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.EnumType:
 			if seen.Has(typ.Token) {
 				return
 			}
+			seen.Add(typ.Token)
+			pkg := getPkgFromToken(typ.Token)
 			if !isRequired || parentOptional {
-				seen.Add(typ.Token)
-				getPkgFromToken(typ.Token).detailsForType(typ).ptrElement = true
+				pkg.detailsForType(typ).ptrElement = true
 			}
+			pkg.schemaNames.Add(tokenToName(typ.Token))
 		case *schema.ArrayType:
 			if seen.Has(typ.String()) {
 				return
 			}
 			seen.Add(typ.String())
 			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).arrayElement = true
-			// populateDetailsForTypes(seen, typ.ElementType, true, parentOptional)
 			populateDetailsForTypes(seen, typ.ElementType, true, false)
 		case *schema.MapType:
 			if seen.Has(typ.String()) {
@@ -1981,7 +1988,6 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			}
 			seen.Add(typ.String())
 			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).mapElement = true
-			// populateDetailsForTypes(seen, typ.ElementType, true, parentOptional)
 			populateDetailsForTypes(seen, typ.ElementType, true, false)
 		}
 	}
@@ -2009,6 +2015,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	scanResource := func(r *schema.Resource) {
 		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
+		pkg.schemaNames.Add(tokenToName(r.Token))
 
 		pkg.names.Add(resourceName(r))
 		pkg.names.Add(resourceName(r) + "Input")

@@ -21,6 +21,13 @@
           },
           "description": "List of lists of other objects"
         },
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/example::ConfigMap"
+          }
+        },
         "stillOthers": {
           "type": "object",
           "additionalProperties": {
@@ -46,6 +53,14 @@
     "example::SomeOtherObject": {
       "properties": {
         "baz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ConfigMap": {
+      "properties": {
+        "config": {
           "type": "string"
         }
       },
