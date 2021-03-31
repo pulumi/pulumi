@@ -428,13 +428,11 @@ def _inline_source_stack_helper(stack_name: str,
         work_dir = workspace_options.work_dir
         if work_dir:
             try:
-                project_settings = _load_project_settings(work_dir)
+                _load_project_settings(work_dir)
             except FileNotFoundError:
-                project_settings = default_project(project_name)
+                workspace_options.project_settings = default_project(project_name)
         else:
-            project_settings = default_project(project_name)
-
-        workspace_options.project_settings = project_settings
+            workspace_options.project_settings = default_project(project_name)
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)

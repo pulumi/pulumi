@@ -876,7 +876,9 @@ func NewStackInlineSource(
 	if err != nil {
 		return stack, err
 	}
-	opts = append(opts, Project(*proj))
+	if proj != nil {
+		opts = append(opts, Project(*proj))
+	}
 
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
@@ -905,7 +907,9 @@ func UpsertStackInlineSource(
 	if err != nil {
 		return stack, err
 	}
-	opts = append(opts, Project(*proj))
+	if proj != nil {
+		opts = append(opts, Project(*proj))
+	}
 
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
@@ -933,7 +937,9 @@ func SelectStackInlineSource(
 	if err != nil {
 		return stack, err
 	}
-	opts = append(opts, Project(*proj))
+	if proj != nil {
+		opts = append(opts, Project(*proj))
+	}
 
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
@@ -998,9 +1004,9 @@ func getProjectSettings(
 	// If WorkDir is specified, try to read any existing project settings before resorting to
 	// creating a default project.
 	if optsBag.WorkDir != "" {
-		proj, err := readProjectSettingsFromDir(ctx, optsBag.WorkDir)
+		_, err := readProjectSettingsFromDir(ctx, optsBag.WorkDir)
 		if err == nil {
-			return proj, nil
+			return nil, nil
 		}
 
 		if err.Error() == "unable to find project settings in workspace" {
