@@ -188,8 +188,10 @@ export class LocalWorkspace implements Workspace {
         if (!wsOpts.projectSettings) {
             if (!!wsOpts.workDir) {
                 try {
-                    wsOpts.projectSettings = loadProjectSettings(wsOpts.workDir);
+                    // Try to load the project settings.
+                    loadProjectSettings(wsOpts.workDir);
                 } catch (e) {
+                    // If it failed to find the project settings file, set a default project.
                     if (e.toString().includes("failed to find project settings")) {
                         wsOpts.projectSettings = defaultProject(args.projectName);
                     } else {

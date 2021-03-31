@@ -399,6 +399,7 @@ describe("LocalWorkspace", () => {
         const projectSettings = await stack.workspace.projectSettings();
         assert.strictEqual(projectSettings.name, "correct_project");
         assert.strictEqual(projectSettings.description, "This is a description");
+        await stack.workspace.removeStack(stackName);
     }));
 });
 

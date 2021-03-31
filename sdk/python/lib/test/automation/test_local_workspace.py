@@ -396,6 +396,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_settings = stack.workspace.project_settings()
         self.assertEqual(project_settings.name, "correct_project")
         self.assertEqual(project_settings.description, "This is a description")
+        stack.workspace.remove_stack(stack_name)
 
 
 def pulumi_program():

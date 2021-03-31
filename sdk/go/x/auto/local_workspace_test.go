@@ -1374,6 +1374,13 @@ func TestProjectSettingsRespected(t *testing.T) {
 	stack, err := NewStackInlineSource(ctx, stackName, badProjectName, func(ctx *pulumi.Context) error {
 		return nil
 	}, WorkDir(filepath.Join(".", "test", pName)))
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = stack.Workspace().RemoveStack(ctx, stack.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
 	assert.Nil(t, err)
 	projectSettings, err := stack.workspace.ProjectSettings(ctx)
 	assert.Nil(t, err)
