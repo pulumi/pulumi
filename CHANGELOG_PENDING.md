@@ -3,6 +3,9 @@
 
 ### Improvements
 
+- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
+  [#6657](https://github.com/pulumi/pulumi/pull/6657)
+
 - [automation/dotnet] Expose structured logging
   [#6572](https://github.com/pulumi/pulumi/pull/6572)
 
