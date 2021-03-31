@@ -908,7 +908,7 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
             }
         }
-    
+
         [Fact]
         public async Task PulumiVersionTest()
         {
@@ -938,6 +938,22 @@ namespace Pulumi.Automation.Tests
             {
                 LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
             }
+        }
+
+        [Fact]
+        public async Task RespectsProjectSettingsTest()
+        {
+            var program = PulumiFn.Create<ValidStack>();
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "project_was_overwritten";
+            var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                WorkDir = Path.Combine(_dataDirectory, "correct_project")
+            });
+            var settings = await stack.Workspace.GetProjectSettingsAsync();
+            Assert.Equal("correct_project", settings!.Name);
+            Assert.Equal("This is a description", settings.Description);
         }
     }
 }
