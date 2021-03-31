@@ -67,6 +67,7 @@ class TestMocks implements runtime.Mocks {
                     state: {},
                 };
             case "error":
+                throw new Error("this is an intentional error");
             default:
                 throw new Error(`unknown resource type ${type}`);
         }
@@ -366,7 +367,7 @@ describe("runtime", () => {
                 const customURN = await errResource.urn.promise();
                 const customID = await errResource.id.promise();
             }, (err: Error) => {
-                const containsMessage = err.stack!.indexOf("unknown resource type error") >= 0;
+                const containsMessage = err.stack!.indexOf("this is an intentional error") >= 0;
                 const containsRegisterResource = err.stack!.indexOf("registerResource") >= 0;
                 return containsMessage && containsRegisterResource;
             });
