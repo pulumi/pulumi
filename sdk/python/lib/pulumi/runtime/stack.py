@@ -79,9 +79,10 @@ async def run_pulumi_func(func: Callable):
                         task.cancel()
 
                 for task in done:
-                    if task.exception() is not None:
+                    exception = task.exception()
+                    if exception is not None:
                         log.debug("A future resolved in an exception, raising exception.")
-                        raise task.exception()
+                        raise exception
 
                 log.debug("All outstanding tasks completed.")
 
