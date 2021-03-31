@@ -52,31 +52,54 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         }
 
         let resolveValue: (v: any) => void;
+        let rejectValue: (err: Error) => void;
         let resolveIsKnown: (v: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
         let resolveIsSecret: (v: boolean) => void;
+        let rejectIsSecret: (err: Error) => void;
         let resolveDeps: (v: Resource[]) => void;
+        let rejectDeps: (err: Error) => void;
 
         resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
-            resolveValue(v);
-            resolveIsKnown(err ? false : isKnown);
-            resolveIsSecret(isSecret);
-            resolveDeps(deps);
+            if (!!err) {
+                rejectValue(err);
+                rejectIsKnown(err);
+                rejectIsSecret(err);
+                rejectDeps(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(isKnown);
+                resolveIsSecret(isSecret);
+                resolveDeps(deps);
+            }
         };
 
         const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
         (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
-                new Promise<any>(resolve => resolveValue = resolve),
+                new Promise<any>((resolve, reject) => {
+                    resolveValue = resolve;
+                    rejectValue = reject;
+                }),
                 `transferProperty(${label}, ${k}, ${propString})`),
             debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsKnown = resolve),
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsKnown = resolve;
+                    rejectIsKnown = reject;
+                }),
                 `transferIsStable(${label}, ${k}, ${propString})`),
             debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsSecret = resolve),
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsSecret = resolve;
+                    rejectIsSecret = reject;
+                }),
                 `transferIsSecret(${label}, ${k}, ${propString})`),
             debuggablePromise(
-                new Promise<Resource[]>(resolve => resolveDeps = resolve),
+                new Promise<Resource[]>((resolve, reject) => {
+                    resolveDeps = resolve;
+                    rejectDeps = reject;
+                }),
                 `transferDeps(${label}, ${k}, ${propString})`));
     }
 
