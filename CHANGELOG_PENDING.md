@@ -29,6 +29,9 @@
 
 - [Automation/python] Moving Python automation API package from pulumi.x.automation -> pulumi.automation
   [#6518](https://github.com/pulumi/pulumi/pull/6518)
+  
+- [sdk/*] Refactor Mocks newResource and call to accept an argument struct for future extensibility rather than individual args
+  [#6672](https://github.com/pulumi/pulumi/pull/6672)
 
 ### Enhancements
 
