@@ -26,3 +26,6 @@
   
 - [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
   [#6504](https://github.com/pulumi/pulumi/pull/6504)
+
+- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
+  [#6655](https://github.com/pulumi/pulumi/pull/6655)

@@ -57,17 +57,7 @@ var settingsExtensions = []string{".yaml", ".yml", ".json"}
 // LocalWorkspace reads settings from the Pulumi.yaml in the workspace.
 // A workspace can contain only a single project at a time.
 func (l *LocalWorkspace) ProjectSettings(ctx context.Context) (*workspace.Project, error) {
-	for _, ext := range settingsExtensions {
-		projectPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi%s", ext))
-		if _, err := os.Stat(projectPath); err == nil {
-			proj, err := workspace.LoadProject(projectPath)
-			if err != nil {
-				return nil, errors.Wrap(err, "found project settings, but failed to load")
-			}
-			return proj, nil
-		}
-	}
-	return nil, errors.New("unable to find project settings in workspace")
+	return readProjectSettingsFromDir(ctx, l.WorkDir())
 }
 
 // SaveProjectSettings overwrites the settings object in the current project.
@@ -881,12 +871,13 @@ func NewStackInlineSource(
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(projectName)
+
+	proj, err := getProjectSettings(ctx, projectName, opts)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, err
 	}
-	// as we implicitly create project on behalf of the user, prepend to opts in case the user specifies one.
-	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	opts = append(opts, Project(*proj))
+
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
@@ -909,12 +900,13 @@ func UpsertStackInlineSource(
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(projectName)
+
+	proj, err := getProjectSettings(ctx, projectName, opts)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, err
 	}
-	// as we implicitly create project on behalf of the user, prepend to opts in case the user specifies one.
-	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	opts = append(opts, Project(*proj))
+
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
@@ -936,12 +928,13 @@ func SelectStackInlineSource(
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(projectName)
+
+	proj, err := getProjectSettings(ctx, projectName, opts)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to select stack")
+		return stack, err
 	}
-	// as we implicitly create project on behalf of the user, prepend to opts in case the user specifies one
-	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	opts = append(opts, Project(*proj))
+
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to select stack")
@@ -972,3 +965,59 @@ func getStackSettingsName(stackName string) string {
 }
 
 const pulumiHomeEnv = "PULUMI_HOME"
+
+func readProjectSettingsFromDir(ctx context.Context, workDir string) (*workspace.Project, error) {
+	for _, ext := range settingsExtensions {
+		projectPath := filepath.Join(workDir, fmt.Sprintf("Pulumi%s", ext))
+		if _, err := os.Stat(projectPath); err == nil {
+			proj, err := workspace.LoadProject(projectPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "found project settings, but failed to load")
+			}
+			return proj, nil
+		}
+	}
+	return nil, errors.New("unable to find project settings in workspace")
+}
+
+func getProjectSettings(
+	ctx context.Context,
+	projectName string,
+	opts []LocalWorkspaceOption,
+) (*workspace.Project, error) {
+	var optsBag localWorkspaceOptions
+	for _, opt := range opts {
+		opt.applyLocalWorkspaceOption(&optsBag)
+	}
+
+	// If the Project is included in the opts, just use that.
+	if optsBag.Project != nil {
+		return optsBag.Project, nil
+	}
+
+	// If WorkDir is specified, try to read any existing project settings before resorting to
+	// creating a default project.
+	if optsBag.WorkDir != "" {
+		proj, err := readProjectSettingsFromDir(ctx, optsBag.WorkDir)
+		if err == nil {
+			return proj, nil
+		}
+
+		if err.Error() == "unable to find project settings in workspace" {
+			proj, err := defaultInlineProject(projectName)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create default project")
+			}
+			return &proj, nil
+		}
+
+		return nil, errors.Wrap(err, "failed to load project settings")
+	}
+
+	// If there was no workdir specified, create the default project.
+	proj, err := defaultInlineProject(projectName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create default project")
+	}
+	return &proj, nil
+}
