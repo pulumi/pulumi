@@ -69,12 +69,12 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
 	modCtx := &modContext{
 		pkg: pkg,
 		mod: moduleName,
 	}
-	typeName := modCtx.typeString(t, input, false, optional, nil)
+	typeName := modCtx.typeString(t, input, args, optional, nil)
 
 	// Remove any package qualifiers from the type name.
 	typeQualifierPackage := "inputs"

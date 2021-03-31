@@ -65,5 +65,5 @@ export class Cat extends pulumi.CustomResource {
  */
 export interface CatArgs {
     readonly age?: pulumi.Input<number>;
-    readonly pet?: pulumi.Input<inputs.Pet>;
+    readonly pet?: pulumi.Input<inputs.PetArgs>;
 }

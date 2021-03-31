@@ -42,6 +42,7 @@ import (
 type typeDetails struct {
 	outputType   bool
 	inputType    bool
+	argsType     bool
 	functionType bool
 }
 
@@ -134,26 +135,37 @@ func (mod *modContext) modNameAndName(tok string, pkg *schema.Package) (modName 
 	return
 }
 
-func (mod *modContext) objectType(t *schema.ObjectType, input, functionType bool) string {
-	modName, name := mod.tokenToModule(t.Token), tokenToName(t.Token)
+func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input, args bool) string {
+	name := tokenToName(t.Token)
+
+	if mod.compatibility != tfbridge20 {
+		if args {
+			return name + "Args"
+		}
+		return name
+	}
+
+	switch {
+	case input:
+		return name + "Args"
+	case mod.details(t).functionType:
+		return name + "Result"
+	}
+	return name
+}
+
+func (mod *modContext) objectType(t *schema.ObjectType, input, args bool) string {
+	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input, args)
 
 	var prefix string
 	if !input {
 		prefix = "outputs."
 	}
 
-	var suffix string
-	switch {
-	case input:
-		suffix = "Args"
-	case functionType:
-		suffix = "Result"
-	}
-
 	// If it's an external type, reference it via fully qualified name.
 	if t.Package != mod.pkg {
 		modName, name := mod.modNameAndName(t.Token, t.Package)
-		return fmt.Sprintf("'%s.%s%s%s%s'", pyPack(t.Package.Name), modName, prefix, name, suffix)
+		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.Package.Name), modName, prefix, name)
 	}
 
 	if modName == "" && modName != mod.mod {
@@ -161,7 +173,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input, functionType bool
 		if input {
 			rootModName = "_root_inputs."
 		}
-		return fmt.Sprintf("'%s%s%s'", rootModName, name, suffix)
+		return fmt.Sprintf("'%s%s'", rootModName, name)
 	}
 
 	if modName == mod.mod {
@@ -171,7 +183,7 @@ func (mod *modContext) objectType(t *schema.ObjectType, input, functionType bool
 		modName = "_" + strings.ReplaceAll(modName, "/", ".") + "."
 	}
 
-	return fmt.Sprintf("'%s%s%s%s'", modName, prefix, name, suffix)
+	return fmt.Sprintf("'%s%s%s'", modName, prefix, name)
 }
 
 func (mod *modContext) tokenToEnum(tok string) string {
@@ -794,38 +806,29 @@ func (mod *modContext) genTypes(dir string, fs fs) error {
 		// Export only the symbols we want exported.
 		fmt.Fprintf(w, "__all__ = [\n")
 		for _, t := range mod.types {
-			if (input && mod.details(t).inputType) || (!input && mod.details(t).outputType) {
-				name := tokenToName(t.Token)
-				if input {
-					name += "Args"
-				} else if mod.details(t).functionType {
-					name += "Result"
+			if input && mod.details(t).inputType {
+				if mod.details(t).argsType {
+					fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, true, true))
 				}
-				fmt.Fprintf(w, "    '%s',\n", name)
+				if mod.details(t).functionType {
+					fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, true, false))
+				}
+			} else if !input && mod.details(t).outputType {
+				fmt.Fprintf(w, "    '%s',\n", mod.unqualifiedObjectTypeName(t, false, false))
 			}
 		}
 		fmt.Fprintf(w, "]\n\n")
 
 		var hasTypes bool
 		for _, t := range mod.types {
-			name := tokenToName(t.Token)
-			functionType := mod.details(t).functionType
-			switch {
-			case input:
-				name += "Args"
-			case functionType:
-				name += "Result"
-			}
-
 			if input && mod.details(t).inputType {
-				wrapInput := !functionType
-				if err := mod.genType(w, name, t.Comment, t.Properties, functionType, true, wrapInput); err != nil {
+				if err := mod.genObjectType(w, t, true); err != nil {
 					return err
 				}
 				hasTypes = true
 			}
 			if !input && mod.details(t).outputType {
-				if err := mod.genType(w, name, t.Comment, t.Properties, functionType, false, false); err != nil {
+				if err := mod.genObjectType(w, t, false); err != nil {
 					return err
 				}
 				hasTypes = true
@@ -886,7 +889,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 
 	// Write out Python property getters for each property.
 	mod.genProperties(w, obj.Properties, false /*setters*/, func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired,
+		return mod.typeString(prop.Type, false /*input*/, false /*args*/, !prop.IsRequired,
 			false /*acceptMapping*/)
 	})
 
@@ -1906,17 +1909,17 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 	}
 }
 
-func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acceptMapping bool) string {
+func (mod *modContext) typeString(t schema.Type, input, args, optional, acceptMapping bool) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
 		typ = mod.tokenToEnum(t.Token)
 	case *schema.ArrayType:
-		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
+		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, args, false, acceptMapping))
 	case *schema.MapType:
-		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, false, acceptMapping))
+		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, args, false, acceptMapping))
 	case *schema.ObjectType:
-		typ = mod.objectType(t, input, mod.details(t).functionType)
+		typ = mod.objectType(t, input, args)
 		if acceptMapping {
 			typ = fmt.Sprintf("pulumi.InputType[%s]", typ)
 		}
@@ -1925,7 +1928,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
-			return mod.typeString(t.UnderlyingType, input, wrapInput, optional, acceptMapping)
+			return mod.typeString(t.UnderlyingType, input, args, optional, acceptMapping)
 		}
 		typ = "Any"
 	case *schema.UnionType:
@@ -1934,18 +1937,18 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 				// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
 				// Eg. Output[str] rather than Output[Any]
 				if typ, ok := e.(*schema.EnumType); ok {
-					return mod.typeString(typ.ElementType, input, wrapInput, optional, acceptMapping)
+					return mod.typeString(typ.ElementType, input, args, optional, acceptMapping)
 				}
 			}
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, wrapInput, optional, acceptMapping)
+				return mod.typeString(t.DefaultType, input, args, optional, acceptMapping)
 			}
 			typ = "Any"
 		} else {
 			elementTypeSet := codegen.NewStringSet()
 			var elementTypes []schema.Type
 			for _, e := range t.ElementTypes {
-				et := mod.typeString(e, input, false, false, acceptMapping)
+				et := mod.typeString(e, input, args, false, acceptMapping)
 				if !elementTypeSet.Has(et) {
 					elementTypeSet.Add(et)
 					elementTypes = append(elementTypes, e)
@@ -1953,13 +1956,13 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 			}
 
 			if len(elementTypes) == 1 {
-				return mod.typeString(elementTypes[0], input, wrapInput, optional, acceptMapping)
+				return mod.typeString(elementTypes[0], input, args, optional, acceptMapping)
 			}
 
 			var elements []string
 			for _, e := range elementTypes {
-				t := mod.typeString(e, input, wrapInput, false, acceptMapping)
-				if wrapInput && strings.HasPrefix(t, "pulumi.Input[") {
+				t := mod.typeString(e, input, args, false, acceptMapping)
+				if args && strings.HasPrefix(t, "pulumi.Input[") {
 					contract.Assert(t[len(t)-1] == ']')
 					// Strip off the leading `pulumi.Input[` and the trailing `]`
 					t = t[len("pulumi.Input[") : len(t)-1]
@@ -1989,7 +1992,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional, acc
 		}
 	}
 
-	if wrapInput && typ != "Any" {
+	if args && typ != "Any" {
 		typ = fmt.Sprintf("pulumi.Input[%s]", typ)
 	}
 	if optional {
@@ -2064,7 +2067,28 @@ func InitParamName(name string) string {
 	}
 }
 
-func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, functionType, input, wrapInput bool) error {
+func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input bool) error {
+	if input {
+		if mod.details(obj).argsType {
+			name := mod.unqualifiedObjectTypeName(obj, input, true)
+			if err := mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).functionType, input, true); err != nil {
+				return err
+			}
+		}
+		if mod.details(obj).functionType {
+			name := mod.unqualifiedObjectTypeName(obj, input, false)
+			if err := mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).functionType, input, false); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	name := mod.unqualifiedObjectTypeName(obj, input, false)
+	return mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).functionType, false, false)
+}
+
+func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, functionType, input, args bool) error {
 	// Sort required props first.
 	props := make([]*schema.Property, len(properties))
 	copy(props, properties)
@@ -2142,7 +2166,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, input, args && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 		var defaultValue string
 		if !prop.IsRequired {
 			defaultValue = " = None"
@@ -2150,7 +2174,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 	}
 	fmt.Fprintf(w, "):\n")
-	mod.genTypeDocstring(w, comment, props, wrapInput)
+	mod.genTypeDocstring(w, comment, props, args)
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
@@ -2199,7 +2223,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	mod.genProperties(w, props, input /*setters*/, func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, input, wrapInput && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, input, args && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 	})
 
 	fmt.Fprintf(w, "\n")
@@ -2351,6 +2375,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 					getModFromToken(T.Token, T.Package).details(T).outputType = true
 				}
 				getModFromToken(T.Token, T.Package).details(T).inputType = true
+				getModFromToken(T.Token, T.Package).details(T).argsType = true
 			}
 		})
 		if r.StateInputs != nil {
@@ -2358,6 +2383,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 				switch T := t.(type) {
 				case *schema.ObjectType:
 					getModFromToken(T.Token, T.Package).details(T).inputType = true
+					getModFromToken(T.Token, T.Package).details(T).argsType = true
 				case *schema.ResourceType:
 					getModFromToken(T.Token, T.Resource.Package)
 				}

@@ -81,5 +81,5 @@ export interface ComponentArgs {
     readonly d?: number;
     readonly e: string;
     readonly f?: string;
-    readonly foo?: pulumi.Input<inputs.Foo>;
+    readonly foo?: pulumi.Input<inputs.FooArgs>;
 }

@@ -347,6 +347,8 @@ func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
 type propertyCharacteristics struct {
 	// input is a flag indicating if the property is an input type.
 	input bool
+	// args is a flag indicating if the property is an args type.
+	args bool
 	// optional is a flag indicating if the property is optional.
 	optional bool
 }
@@ -463,7 +465,7 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 func (mod *modContext) typeString(t schema.Type, lang string, characteristics propertyCharacteristics, insertWordBreaks bool) propertyType {
 	docLanguageHelper := getLanguageDocHelper(lang)
 	modName := mod.getLanguageModuleName(lang)
-	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input, characteristics.optional)
+	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input, characteristics.args, characteristics.optional)
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
@@ -730,7 +732,7 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional boo
 		if p.ConstValue != nil {
 			continue
 		}
-		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, false /*optional*/)
+		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, true /*args*/, false /*optional*/)
 		params = append(params, formalParam{
 			Name:         python.InitParamName(p.Name),
 			DefaultValue: " = None",
@@ -760,7 +762,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
 				for _, lang := range supportedLanguages {
-					props[lang] = mod.getProperties(typ.Properties, lang, true, true, false)
+					props[lang] = mod.getProperties(typ.Properties, lang, true, resourceType, true, false)
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
@@ -816,7 +818,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested, isProvider bool,
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, args, nested, isProvider bool,
 ) []property {
 	if len(properties) == 0 {
 		return nil
@@ -836,6 +838,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 
 		characteristics := propertyCharacteristics{
 			input:    input,
+			args:     args,
 			optional: !prop.IsRequired,
 		}
 
@@ -1134,7 +1137,7 @@ func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam stri
 	docLanguageHelper := getLanguageDocHelper("python")
 	params := make([]formalParam, 0, len(r.StateInputs.Properties))
 	for _, p := range r.StateInputs.Properties {
-		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, false /*optional*/)
+		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, true /*args*/, false /*optional*/)
 		params = append(params, formalParam{
 			Name:         python.PyName(p.Name),
 			DefaultValue: " = None",
@@ -1256,13 +1259,13 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	})
 
 	for _, lang := range supportedLanguages {
-		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
-		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false, r.IsProvider)
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, true, false, r.IsProvider)
+		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false, false, r.IsProvider)
 		if r.IsProvider {
 			continue
 		}
 		if r.StateInputs != nil {
-			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, false, r.IsProvider)
+			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, true, false, r.IsProvider)
 			for i := 0; i < len(stateProps); i++ {
 				id := "state_" + stateProps[i].ID
 				stateProps[i].ID = id

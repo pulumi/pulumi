@@ -40,6 +40,7 @@ import (
 type typeDetails struct {
 	outputType   bool
 	inputType    bool
+	argsType     bool
 	functionType bool
 }
 
@@ -137,7 +138,7 @@ func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext
 	return
 }
 
-func (mod *modContext) objectType(pkg *schema.Package, tok string, input, enum bool) string {
+func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, enum bool) string {
 	root := "outputs."
 	if input {
 		root = "inputs."
@@ -155,6 +156,10 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, enum b
 
 	if enum {
 		return "enums." + modName + title(name)
+	}
+
+	if args && mod.compatibility != tfbridge20 {
+		name += "Args"
 	}
 	return pkgName + root + modName + title(name)
 }
@@ -201,17 +206,17 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool, constValue interface{}) string {
+func (mod *modContext) typeString(t schema.Type, input, args, optional bool, constValue interface{}) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
-		typ = mod.objectType(nil, t.Token, input, true)
+		typ = mod.objectType(nil, t.Token, input, args, true)
 	case *schema.ArrayType:
-		typ = mod.typeString(t.ElementType, input, wrapInput, false, constValue) + "[]"
+		typ = mod.typeString(t.ElementType, input, args, false, constValue) + "[]"
 	case *schema.MapType:
-		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
+		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, args, false, constValue))
 	case *schema.ObjectType:
-		typ = mod.objectType(t.Package, t.Token, input, false)
+		typ = mod.objectType(t.Package, t.Token, input, args, false)
 	case *schema.ResourceType:
 		typ = mod.resourceType(t)
 	case *schema.TokenType:
@@ -219,14 +224,14 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	case *schema.UnionType:
 		if !input && mod.disableUnionOutputTypes {
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
+				return mod.typeString(t.DefaultType, input, args, optional, constValue)
 			}
 			typ = "any"
 		} else {
 			var elements []string
 			for _, e := range t.ElementTypes {
-				t := mod.typeString(e, input, wrapInput, false, constValue)
-				if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
+				t := mod.typeString(e, input, args, false, constValue)
+				if args && strings.HasPrefix(t, "pulumi.Input<") {
 					contract.Assert(t[len(t)-1] == '>')
 					// Strip off the leading `pulumi.Input<` and the trailing `>`
 					t = t[len("pulumi.Input<") : len(t)-1]
@@ -257,7 +262,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool
 	if constValue != nil && typ == "string" {
 		typ = fmt.Sprintf("%q", constValue.(string))
 	}
-	if wrapInput && typ != "any" {
+	if args && typ != "any" {
 		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
 	}
 	if optional {
@@ -304,7 +309,7 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	fmt.Fprintf(w, "%s */\n", indent)
 }
 
-func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, wrapInput, readonly bool, level int) {
+func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, arg, readonly bool, level int) {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
@@ -323,7 +328,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		typ := mod.typeString(p.Type, input, wrapInput && !p.IsPlain, false, p.ConstValue)
+		typ := mod.typeString(p.Type, input, arg && !p.IsPlain, false, p.ConstValue)
 		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
@@ -844,8 +849,24 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 		}
 	}
 
-	wrapInput := input && !mod.details(obj).functionType
-	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, properties, input, wrapInput, false, level)
+	name := tokenToName(obj.Token)
+	if mod.compatibility == tfbridge20 {
+		wrapInput := input && !mod.details(obj).functionType
+		mod.genPlainType(w, name, obj.Comment, properties, input, wrapInput, false, level)
+		return
+	}
+
+	if input {
+		if mod.details(obj).functionType {
+			mod.genPlainType(w, name, obj.Comment, properties, true, false, false, level)
+		}
+		if mod.details(obj).argsType {
+			mod.genPlainType(w, name+"Args", obj.Comment, properties, true, true, false, level)
+		}
+		return
+	}
+
+	mod.genPlainType(w, name, obj.Comment, properties, false, false, false, level)
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set) bool {
@@ -1750,17 +1771,15 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		_ = getMod("config")
 	}
 
-	outputSeen := codegen.Set{}
-	inputSeen := codegen.Set{}
 	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
+		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, codegen.Set{})
 	}
 
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
 		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
+			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, codegen.Set{})
 		}
 		for _, p := range r.InputProperties {
 			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
@@ -1768,10 +1787,14 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 					types.details(t).outputType = true
 				}
 				types.details(t).inputType = true
-			}, inputSeen)
+				types.details(t).argsType = true
+			}, codegen.Set{})
 		}
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true }, inputSeen)
+			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) {
+				types.details(t).inputType = true
+				types.details(t).argsType = true
+			}, codegen.Set{})
 		}
 	}
 
@@ -1780,6 +1803,8 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		scanResource(r)
 	}
 
+	// Clear the input and outputs sets: we want the visitors below to touch the transitive closure of types reachable
+	// from function inputs and outputs, including types that have already been visited.
 	for _, f := range pkg.Functions {
 		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
@@ -1787,13 +1812,13 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
 				types.details(t).functionType = true
-			}, inputSeen)
+			}, codegen.Set{})
 		}
 		if f.Outputs != nil {
 			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
 				types.details(t).outputType = true
 				types.details(t).functionType = true
-			}, outputSeen)
+			}, codegen.Set{})
 		}
 	}
 

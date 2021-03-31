@@ -6,7 +6,7 @@ import { input as inputs, output as outputs } from "../types";
 
 import * as random from "@pulumi/random";
 
-export interface Pet {
+export interface PetArgs {
     age?: pulumi.Input<number>;
     name?: pulumi.Input<random.RandomPet>;
 }
