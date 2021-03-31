@@ -143,18 +143,12 @@ func TestGeneratePackage(t *testing.T) {
 
 type mocks int
 
-func (mocks) NewResource(
-	typeToken string,
-	name string,
-	inputs resource.PropertyMap,
-	provider string,
-	id string,
-) (string, resource.PropertyMap, error) {
-	return name + "_id", inputs, nil
+func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
+	return args.Name + "_id", args.Inputs, nil
 }
 
-func (mocks) Call(token string, args resource.PropertyMap, provider string) (resource.PropertyMap, error) {
-	return args, nil
+func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
+	return args.Args, nil
 }
 
 func TestEnumUsage(t *testing.T) {

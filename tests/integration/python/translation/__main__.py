@@ -502,35 +502,35 @@ class NewBehaviorDict(pulumi.CustomResource):
 
 
 class MyMocks(pulumi.runtime.Mocks):
-    def call(self, token, args, provider):
+    def call(self, args: pulumi.runtime.MockCallArgs):
         return {}
-    def new_resource(self, type_, name, inputs, provider, id_):
-        if name == "o1":
-            assert inputs == {"serviceName": "hello"}
-        elif name == "o2":
-            assert inputs == {"serviceName": "hi", "nestedValue": {"fooBar": "foo bar", "someValue": 42}}
-        elif name == "o3":
-            assert inputs == {"serviceName": "bye", "nestedValue": {"fooBar": "bar foo", "someValue": 24}}
-        elif name == "o4":
+    def new_resource(self, args: pulumi.runtime.MockResourceArgs):
+        if args.name == "o1":
+            assert args.inputs == {"serviceName": "hello"}
+        elif args.name == "o2":
+            assert args.inputs == {"serviceName": "hi", "nestedValue": {"fooBar": "foo bar", "someValue": 42}}
+        elif args.name == "o3":
+            assert args.inputs == {"serviceName": "bye", "nestedValue": {"fooBar": "bar foo", "someValue": 24}}
+        elif args.name == "o4":
             # The "service_name" key in the user-defined tags dict is translated to "serviceName"
             # due to it being in the case tables.
-            assert inputs == {"serviceName": "sn", "tags": {"serviceName": "my-service"}}
-        elif name == "o5":
-            assert inputs == {"serviceName": "o5sn", "listOfNestedValues": [{"fooBar": "f", "someValue": 1}]}
-        elif name == "o6":
-            assert inputs == {"serviceName": "o6sn", "listOfNestedValues": [{"fooBar": "b", "someValue": 2}]}
-        elif name == "n1":
-            assert inputs == {"serviceName": "hi new", "nestedValue": {"fooBar": "noo nar", "someValue": 100}}
-        elif name == "n2":
-            assert inputs == {"serviceName": "hello new", "nestedValue": {"fooBar": "2", "someValue": 3}}
-        elif name == "n3":
+            assert args.inputs == {"serviceName": "sn", "tags": {"serviceName": "my-service"}}
+        elif args.name == "o5":
+            assert args.inputs == {"serviceName": "o5sn", "listOfNestedValues": [{"fooBar": "f", "someValue": 1}]}
+        elif args.name == "o6":
+            assert args.inputs == {"serviceName": "o6sn", "listOfNestedValues": [{"fooBar": "b", "someValue": 2}]}
+        elif args.name == "n1":
+            assert args.inputs == {"serviceName": "hi new", "nestedValue": {"fooBar": "noo nar", "someValue": 100}}
+        elif args.name == "n2":
+            assert args.inputs == {"serviceName": "hello new", "nestedValue": {"fooBar": "2", "someValue": 3}}
+        elif args.name == "n3":
             # service_name correctly isn't translated, because the tags dict is a user-defined dict.
-            assert inputs == {"serviceName": "sn", "tags": {"service_name": "a-service"}}
-        elif name == "n4":
-            assert inputs == {"serviceName": "a", "items": {"foo": "bar"}, "keys": ["foo"], "values": ["bar"], "get": "bar"}
-        elif name == "d1":
-            assert inputs == {"serviceName": "b", "items": {"hello": "world"}, "keys": ["hello"], "values": ["world"], "get": "world"}
-        return [name + '_id', {**inputs, "somethingElse": "hehe"}]
+            assert args.inputs == {"serviceName": "sn", "tags": {"service_name": "a-service"}}
+        elif args.name == "n4":
+            assert args.inputs == {"serviceName": "a", "items": {"foo": "bar"}, "keys": ["foo"], "values": ["bar"], "get": "bar"}
+        elif args.name == "d1":
+            assert args.inputs == {"serviceName": "b", "items": {"hello": "world"}, "keys": ["hello"], "values": ["world"], "get": "world"}
+        return [args.name + '_id', {**args.inputs, "somethingElse": "hehe"}]
 
 pulumi.runtime.set_mocks(MyMocks())
 

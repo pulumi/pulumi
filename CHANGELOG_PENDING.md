@@ -27,6 +27,9 @@
 - [Automation/go] Moving go automation API package from sdk/v2/go/x/auto -> sdk/v2/go/auto
   [#6518](https://github.com/pulumi/pulumi/pull/6518)
 
+- [sdk/*] Refactor Mocks newResource and call to accept an argument struct for future extensibility rather than individual args
+  [#6672](https://github.com/pulumi/pulumi/pull/6672)
+  
 - [sdk/python] Improved dict key translation support (3.0-based providers will opt-in to the improved behavior)
   [#6695](https://github.com/pulumi/pulumi/pull/6695)
 
