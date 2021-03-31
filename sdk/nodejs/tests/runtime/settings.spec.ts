@@ -45,6 +45,7 @@ describe("settings", () => {
         assert.strictEqual(runtime.isDryRun(), isDryRun);
         assert.strictEqual(runtime.isQueryMode(), isQueryMode);
         assert.strictEqual(runtime.getConfig(key), val);
+        assert.strictEqual(runtime.cacheDynamicProviders(), false)
 
         assert.strictEqual(testProject, process.env["PULUMI_NODEJS_PROJECT"])
         assert.strictEqual(testStack, process.env["PULUMI_NODEJS_STACK"])

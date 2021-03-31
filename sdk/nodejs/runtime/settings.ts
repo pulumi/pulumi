@@ -47,6 +47,7 @@ export interface Options {
     readonly testModeEnabled?: boolean; // true if we're in testing mode (allows execution without the CLI).
     readonly queryMode?: boolean; // true if we're in query mode (does not allow resource registration).
     readonly legacyApply?: boolean; // true if we will resolve missing outputs to inputs during preview.
+    readonly cacheDynamicProviders?: boolean; // true if we will cache serialized dynamic providers on the program side.
 
     /**
      * Directory containing the send/receive files for making synchronous invokes to the engine.
@@ -63,6 +64,7 @@ const nodeEnvKeys = {
     monitorAddr: "PULUMI_NODEJS_MONITOR",
     engineAddr: "PULUMI_NODEJS_ENGINE",
     syncDir: "PULUMI_NODEJS_SYNC",
+    cacheDynamicProviders: "PULUMI_NODEJS_CACHE_DYNAMIC_PROVIDERS",
 };
 
 const pulumiEnvKeys = {
@@ -168,6 +170,13 @@ export function isQueryMode(): boolean {
  */
 export function isLegacyApplyEnabled(): boolean {
     return options().legacyApply === true;
+}
+
+/**
+ * Returns true true if we will cache serialized dynamic providers on the program side
+ */
+ export function cacheDynamicProviders(): boolean {
+    return options().cacheDynamicProviders === true;
 }
 
 /**
@@ -343,6 +352,7 @@ function options(): Options {
         monitorAddr: process.env[nodeEnvKeys.monitorAddr],
         engineAddr: process.env[nodeEnvKeys.engineAddr],
         syncDir: process.env[nodeEnvKeys.syncDir],
+        cacheDynamicProviders: (process.env[nodeEnvKeys.cacheDynamicProviders] === "true"),
         // pulumi specific
         testModeEnabled: (process.env[pulumiEnvKeys.testMode] === "true"),
         legacyApply: (process.env[pulumiEnvKeys.legacyApply] === "true"),
