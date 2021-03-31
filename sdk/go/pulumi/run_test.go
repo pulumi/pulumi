@@ -12,25 +12,23 @@ import (
 )
 
 type testMonitor struct {
-	CallF        func(tok string, args resource.PropertyMap, provider string) (resource.PropertyMap, error)
-	NewResourceF func(typeToken, name string, inputs resource.PropertyMap,
-		provider, id string) (string, resource.PropertyMap, error)
+	CallF        func(args MockCallArgs) (resource.PropertyMap, error)
+	NewResourceF func(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
-func (m *testMonitor) Call(tok string, args resource.PropertyMap, provider string) (resource.PropertyMap, error) {
+func (m *testMonitor) Call(args MockCallArgs) (resource.PropertyMap, error) {
 	if m.CallF == nil {
 		return resource.PropertyMap{}, nil
 	}
-	return m.CallF(tok, args, provider)
+	return m.CallF(args)
 }
 
-func (m *testMonitor) NewResource(typeToken, name string, inputs resource.PropertyMap,
-	provider, id string) (string, resource.PropertyMap, error) {
+func (m *testMonitor) NewResource(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
 	if m.NewResourceF == nil {
-		return name, resource.PropertyMap{}, nil
+		return args.Name, resource.PropertyMap{}, nil
 	}
-	return m.NewResourceF(typeToken, name, inputs, provider, id)
+	return m.NewResourceF(args)
 }
 
 type testResource2 struct {
@@ -75,19 +73,18 @@ type invokeResult struct {
 
 func TestRegisterResource(t *testing.T) {
 	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, inputs resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
-			assert.Equal(t, "test:resource:type", typeToken)
-			assert.Equal(t, "resA", name)
-			assert.True(t, inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.Equal(t, "test:resource:type", args.TypeToken)
+			assert.Equal(t, "resA", args.Name)
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo":  "oof",
 				"bar":  "rab",
 				"baz":  "zab",
 				"bang": "gnab",
 			})))
-			assert.Equal(t, "", provider)
-			assert.Equal(t, "", id)
+			assert.Equal(t, "", args.Provider)
+			assert.Equal(t, "", args.ID)
 
 			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
 		},
@@ -163,18 +160,17 @@ func TestRegisterResource(t *testing.T) {
 
 func TestReadResource(t *testing.T) {
 	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, state resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
-			assert.Equal(t, "test:resource:type", typeToken)
-			assert.Equal(t, "resA", name)
-			assert.True(t, state.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.Equal(t, "test:resource:type", args.TypeToken)
+			assert.Equal(t, "resA", args.Name)
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"foo": "oof",
 			})))
-			assert.Equal(t, "", provider)
-			assert.Equal(t, "someID", id)
+			assert.Equal(t, "", args.Provider)
+			assert.Equal(t, "someID", args.ID)
 
-			return id, resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+			return args.ID, resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
 		},
 	}
 
@@ -228,9 +224,9 @@ func TestReadResource(t *testing.T) {
 
 func TestInvoke(t *testing.T) {
 	mocks := &testMonitor{
-		CallF: func(token string, args resource.PropertyMap, provider string) (resource.PropertyMap, error) {
-			assert.Equal(t, "test:index:func", token)
-			assert.True(t, args.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+		CallF: func(args MockCallArgs) (resource.PropertyMap, error) {
+			assert.Equal(t, "test:index:func", args.Token)
+			assert.True(t, args.Args.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"bang": "gnab",
 				"bar":  "rab",
 			})))
@@ -357,16 +353,15 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 	RegisterResourceModule("pkg", "index", module(0))
 
 	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, inputs resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
 
-			switch typeToken {
+			switch args.TypeToken {
 			case "pkg:index:Instance":
 				return "i-1234567890abcdef0", resource.PropertyMap{}, nil
 			case "pkg:index:MyCustom":
-				return name + "_id", inputs, nil
+				return args.Name + "_id", args.Inputs, nil
 			default:
-				return "", nil, errors.Errorf("unknown resource %s", typeToken)
+				return "", nil, errors.Errorf("unknown resource %s", args.TypeToken)
 			}
 		},
 	}

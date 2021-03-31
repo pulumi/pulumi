@@ -16,15 +16,28 @@ import (
 )
 
 type MockResourceMonitor interface {
-	Call(token string, args resource.PropertyMap, provider string) (resource.PropertyMap, error)
-	NewResource(typeToken, name string, inputs resource.PropertyMap,
-		provider, id string) (string, resource.PropertyMap, error)
+	Call(args MockCallArgs) (resource.PropertyMap, error)
+	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
 func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	return func(info *RunInfo) {
 		info.Project, info.Stack, info.Mocks = project, stack, mocks
 	}
+}
+
+type MockCallArgs struct {
+	Token    string
+	Args     resource.PropertyMap
+	Provider string
+}
+
+type MockResourceArgs struct {
+	TypeToken string
+	Name      string
+	Inputs    resource.PropertyMap
+	Provider  string
+	ID        string
 }
 
 type mockMonitor struct {
@@ -81,8 +94,11 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 			Return: result,
 		}, nil
 	}
-
-	resultV, err := m.mocks.Call(in.GetTok(), args, in.GetProvider())
+	resultV, err := m.mocks.Call(MockCallArgs{
+		Token:    in.GetTok(),
+		Args:     args,
+		Provider: in.GetProvider(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +133,13 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 		return nil, err
 	}
 
-	id, state, err := m.mocks.NewResource(in.GetType(), in.GetName(), stateIn, in.GetProvider(), in.GetId())
+	id, state, err := m.mocks.NewResource(MockResourceArgs{
+		TypeToken: in.GetType(),
+		Name:      in.GetName(),
+		Inputs:    stateIn,
+		Provider:  in.GetProvider(),
+		ID:        in.GetId(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +183,13 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		return nil, err
 	}
 
-	id, state, err := m.mocks.NewResource(in.GetType(), in.GetName(), inputs, in.GetProvider(), in.GetImportId())
+	id, state, err := m.mocks.NewResource(MockResourceArgs{
+		TypeToken: in.GetType(),
+		Name:      in.GetName(),
+		Inputs:    inputs,
+		Provider:  in.GetProvider(),
+		ID:        in.GetImportId(),
+	})
 	if err != nil {
 		return nil, err
 	}
