@@ -12,12 +12,69 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { Call } from "@grpc/grpc-js";
 import { deserializeProperties, serializeProperties } from "./rpc";
 import { getProject, getStack, setMockOptions } from "./settings";
 
 const provproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 const structproto = require("google-protobuf/google/protobuf/struct_pb.js");
+
+/**
+ * MockResourceArgs is a data class used to construct a newResource Mock
+ */
+export interface MockResourceArgs {
+    /**
+     * The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
+     */
+    type: string;
+
+    /**
+     * The logical name of the resource instance.
+     */
+    name: string;
+
+    /**
+     * The inputs for the resource.
+     */
+    inputs: any;
+
+    /**
+     * If provided, the identifier of the provider instance being used to manage this resource.
+     */
+    provider?: string;
+
+    /**
+     * Specifies whether or not the resource is Custom (i.e. managed by a resource provider). This is always set, but
+     * marked optional for backwards compatibility.
+     */
+    custom?: boolean;
+
+    /**
+     * If provided, the physical identifier of an existing resource to read or import.
+     */
+    id?: string;
+}
+
+/**
+ * MockResourceArgs is a data class used to construct call Mock
+ */
+export interface MockCallArgs {
+    /**
+     * The token that indicates which function is being called. This token is of the form "package:module:function".
+     */
+    token: string;
+
+    /**
+     * The arguments provided to the function call.
+     */
+    inputs: any;
+
+    /**
+     * If provided, the identifier of the provider instance being used to make the call.
+     */
+    provider?: string;
+}
 
 /**
  * Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
@@ -28,24 +85,17 @@ export interface Mocks {
     /**
      * Mocks provider-implemented function calls (e.g. aws.get_availability_zones).
      *
-     * @param token: The token that indicates which function is being called. This token is of the form "package:module:function".
-     * @param args: The arguments provided to the function call.
-     * @param provider: If provided, the identifier of the provider instance being used to make the call.
+     * @param args: MockCallArgs
      */
-    call(token: string, args: any, provider?: string): Record<string, any>;
+    call(args: MockCallArgs): Record<string, any>;
 
     /**
      * Mocks resource construction calls. This function should return the physical identifier and the output properties
      * for the resource being constructed.
-     *
-     * @param type: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
-     * @param name: The logical name of the resource instance.
-     * @param inputs: The inputs for the resource.
-     * @param provider: If provided, the identifier of the provider instance being used to manage this resource.
-     * @param id: If provided, the physical identifier of an existing resource to read or import.
-     * @param custom: Specifies whether or not the resource is Custom (i.e. managed by a resource provider). This is always set, but marked optional for backwards compatibility.
+
+     * @param args: MockResourceArgs
      */
-    newResource(type: string, name: string, inputs: any, provider?: string, id?: string, custom?: boolean): { id: string | undefined, state: Record<string, any> };
+    newResource(args: MockResourceArgs): { id: string | undefined, state: Record<string, any> };
 }
 
 export class MockMonitor {
@@ -79,7 +129,12 @@ export class MockMonitor {
                 return;
             }
 
-            const result = this.mocks.call(tok, inputs, req.getProvider());
+            const args: MockCallArgs = {
+                token: tok,
+                inputs: inputs,
+                provider: req.getProvider(),
+            };
+            const result = this.mocks.call(args);
             const response = new provproto.InvokeResponse();
             response.setReturn(structproto.Struct.fromJavaScript(await serializeProperties("", result)));
             callback(null, response);
@@ -90,13 +145,14 @@ export class MockMonitor {
 
     public async readResource(req: any, callback: (err: any, innterResponse: any) => void) {
         try {
-            const result = this.mocks.newResource(
-                req.getType(),
-                req.getName(),
-                deserializeProperties(req.getProperties()),
-                req.getProvider(),
-                req.getId(),
-                req.getCustom());
+            const args: MockResourceArgs = {
+                type: req.getType(),
+                name: req.getName(),
+                inputs: deserializeProperties(req.getProperties()),
+                provider: req.getProvider(),
+                custom: req.getCustom(),
+            };
+            const result = this.mocks.newResource(args);
 
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);
@@ -114,13 +170,14 @@ export class MockMonitor {
 
     public async registerResource(req: any, callback: (err: any, innerResponse: any) => void) {
         try {
-            const result = this.mocks.newResource(
-                req.getType(),
-                req.getName(),
-                deserializeProperties(req.getObject()),
-                req.getProvider(),
-                req.getImportid(),
-                req.getCustom());
+            const args: MockResourceArgs = {
+                type: req.getType(),
+                name: req.getName(),
+                inputs: deserializeProperties(req.getProperties()),
+                provider: req.getProvider(),
+                custom: req.getCustom(),
+            };
+            const result = this.mocks.newResource(args);
 
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);

@@ -15,20 +15,21 @@
 import * as assert from "assert";
 import * as pulumi from "../index";
 import { CustomResourceOptions } from "../resource";
+import { MockCallArgs, MockResourceArgs } from "../runtime";
 
 pulumi.runtime.setMocks({
-    call: (token: string, args: any, provider?: string) => {
-        switch (token) {
+    call: (args: MockCallArgs) => {
+        switch (args.token) {
             case "test:index:MyFunction":
                 return { out_value: 59 };
             default:
                 return {};
         }
     },
-    newResource: (type: string, name: string, inputs: any, provider?: string, id?: string, custom?: boolean): {id: string, state: any} => {
-        switch (type) {
+    newResource: (args: MockResourceArgs): {id: string, state: any} => {
+        switch (args.type) {
             case "aws:ec2/instance:Instance":
-                assert.strictEqual(custom, true);
+                assert.strictEqual(args.custom, true);
                 const state = {
                     arn: "arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0",
                     instanceState: "running",
@@ -37,12 +38,12 @@ pulumi.runtime.setMocks({
                     publicDns: "ec2-203-0-113-12.compute-1.amazonaws.com",
                     publicIP: "203.0.113.12",
                 };
-                return { id: "i-1234567890abcdef0", state: { ...inputs, ...state } };
+                return { id: "i-1234567890abcdef0", state: { ...args.inputs, ...state } };
             case "pkg:index:MyCustom":
-                assert.strictEqual(custom, true);
-                return { id: name + "_id", state: inputs };
+                assert.strictEqual(args.custom, true);
+                return { id: name + "_id", state: args.inputs };
             default:
-                assert.strictEqual(custom, false);
+                assert.strictEqual(args.custom, false);
                 return { id: "", state: {} };
         }
     },
