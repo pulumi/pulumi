@@ -1,5 +1,8 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
+using System.Collections.Generic;
+
 namespace Pulumi.Automation
 {
     /// <summary>
@@ -15,5 +18,37 @@ namespace Pulumi.Automation
         {
             this.Name = name;
         }
+
+        internal static IEqualityComparer<ProjectRuntime> Comparer { get; } = new ProjectRuntimeComparer();
+
+        private sealed class ProjectRuntimeComparer : IEqualityComparer<ProjectRuntime>
+        {
+            bool IEqualityComparer<ProjectRuntime>.Equals(ProjectRuntime? x, ProjectRuntime? y)
+            {
+                if (x == null)
+                {
+                    return y == null;
+                }
+
+                if (y == null)
+                {
+                    return x == null;
+                }
+
+                return x.Name == y.Name && ProjectRuntimeOptions.Comparer.Equals(x.Options, y.Options);
+            }
+
+            int IEqualityComparer<ProjectRuntime>.GetHashCode(ProjectRuntime obj)
+            {
+                var hash = new HashCode();
+                hash.Add(obj.Name);                
+                if (obj.Options != null)
+                {
+                    hash.Add(ProjectRuntimeOptions.Comparer.GetHashCode(obj.Options));
+                }
+                return hash.ToHashCode();
+            }
+        }
     }
 }
+

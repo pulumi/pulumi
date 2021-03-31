@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands.Exceptions;
@@ -16,9 +17,6 @@ namespace Pulumi.Automation.Tests
 {
     public class LocalWorkspaceTests
     {
-        private static readonly string _dataDirectory =
-            Path.Combine(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "Data");
-
         private static readonly string _pulumiOrg = GetTestOrg();
 
         private static string GetTestSuffix()
@@ -55,7 +53,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("json")]
         public async Task GetProjectSettings(string extension)
         {
-            var workingDir = Path.Combine(_dataDirectory, extension);
+            var workingDir = ResourcePath(Path.Combine("Data", extension));
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
@@ -74,7 +72,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("json")]
         public async Task GetStackSettings(string extension)
         {
-            var workingDir = Path.Combine(_dataDirectory, extension);
+            var workingDir = ResourcePath(Path.Combine("Data", extension));
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
@@ -283,7 +281,7 @@ namespace Pulumi.Automation.Tests
         public async Task StackLifecycleLocalProgram()
         {
             var stackName = $"{RandomStackName()}";
-            var workingDir = Path.Combine(_dataDirectory, "testproj");
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
             using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
                 EnvironmentVariables = new Dictionary<string, string>()
@@ -622,7 +620,7 @@ namespace Pulumi.Automation.Tests
             }
 
             static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
-                where TOptions: UpdateOptions, new()
+                where TOptions : UpdateOptions, new()
             {
                 var events = new List<EngineEvent>();
 
@@ -947,13 +945,24 @@ namespace Pulumi.Automation.Tests
 
             var stackName = $"{RandomStackName()}";
             var projectName = "project_was_overwritten";
-            var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
-            {
-                WorkDir = Path.Combine(_dataDirectory, "correct_project")
-            });
+
+            var workdir = ResourcePath(Path.Combine("Data", "correct_project"));
+
+            var stack = await LocalWorkspace.CreateStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    WorkDir = workdir
+                });
+
             var settings = await stack.Workspace.GetProjectSettingsAsync();
             Assert.Equal("correct_project", settings!.Name);
             Assert.Equal("This is a description", settings.Description);
+        }
+
+        private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
+        {
+            var dir = Path.GetDirectoryName(pathBase) ?? ".";
+            return Path.Combine(dir, path);
         }
     }
 }

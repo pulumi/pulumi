@@ -1,5 +1,8 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
+using System.Collections.Generic;
+
 namespace Pulumi.Automation
 {
     /// <summary>
@@ -29,5 +32,34 @@ namespace Pulumi.Automation
         /// A string that specifies the path to a virtual environment to use when running the program.
         /// </summary>
         public string? VirtualEnv { get; set; }
+
+        internal static IEqualityComparer<ProjectRuntimeOptions> Comparer { get; } = new ProjectRuntimeOptionsComparer();
+
+        private sealed class ProjectRuntimeOptionsComparer : IEqualityComparer<ProjectRuntimeOptions>
+        {
+            bool IEqualityComparer<ProjectRuntimeOptions>.Equals(ProjectRuntimeOptions? x, ProjectRuntimeOptions? y)
+            {
+                if (x == null)
+                {
+                    return y == null;
+                }
+
+                if (y == null)
+                {
+                    return x == null;
+                }
+
+                return x.TypeScript == y.TypeScript && x.Binary == y.Binary && x.VirtualEnv == y.VirtualEnv;
+            }
+
+            int IEqualityComparer<ProjectRuntimeOptions>.GetHashCode(ProjectRuntimeOptions obj)
+            {
+                var hash = new HashCode();
+                hash.Add(obj.TypeScript);
+                hash.Add(obj.Binary);
+                hash.Add(obj.VirtualEnv);
+                return hash.ToHashCode();
+            }
+        }
     }
 }
