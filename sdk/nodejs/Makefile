@@ -16,7 +16,7 @@ lint::
 	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
 
 build_package::
-	./node_modules/.bin/tsc
+	yarn run tsc
 	cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
 	cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
 	cp -R tests/automation/data/. bin/tests/automation/data/
