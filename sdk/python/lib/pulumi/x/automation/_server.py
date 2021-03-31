@@ -13,10 +13,10 @@
 # limitations under the License.
 
 import asyncio
-import grpc
 import sys
 import traceback
 from contextlib import suppress
+import grpc
 
 from ._workspace import PulumiFn
 from ... import log
@@ -70,6 +70,7 @@ class LanguageServer(LanguageRuntimeServicer):
         except grpc.RpcError as exn:
             # If the monitor is unavailable, it is in the process of shutting down or has already
             # shut down. Don't emit an error if this is the case.
+            # pylint: disable=no-member
             if exn.code() == grpc.StatusCode.UNAVAILABLE:
                 log.debug("Resource monitor has terminated, shutting down.")
             else:

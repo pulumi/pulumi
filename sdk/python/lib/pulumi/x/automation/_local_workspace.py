@@ -15,10 +15,10 @@
 import os
 import tempfile
 import json
-import yaml
 from datetime import datetime
-from semver import VersionInfo
 from typing import Optional, List, Mapping, Callable
+from semver import VersionInfo
+import yaml
 
 from ._config import ConfigMap, ConfigValue
 from ._project_settings import ProjectSettings
@@ -112,8 +112,10 @@ class LocalWorkspace(Workspace):
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
         writable_settings = {key: settings.__dict__[key] for key in settings.__dict__ if settings.__dict__[key] is not None}
         with open(path, "w") as file:
-            json.dump(writable_settings, file, indent=4) if found_ext == ".json" else yaml.dump(
-                writable_settings, stream=file)
+            if found_ext == ".json":
+                json.dump(writable_settings, file, indent=4)
+            else:
+                yaml.dump(writable_settings, stream=file)
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
@@ -140,8 +142,10 @@ class LocalWorkspace(Workspace):
                 break
         path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{found_ext}")
         with open(path, "w") as file:
-            json.dump(settings.__dict__, file, indent=4) if found_ext == ".json" else yaml.dump(
-                settings.__dict__, stream=file)
+            if found_ext == ".json":
+                json.dump(settings.__dict__, file, indent=4)
+            else:
+                yaml.dump(settings.__dict__, stream=file)
 
     def serialize_args_for_op(self, stack_name: str) -> List[str]:
         # Not used by LocalWorkspace
@@ -335,7 +339,7 @@ def create_stack(stack_name: str,
     if _is_inline_program(**args):
         # Type checks are ignored because we have already asserted that the correct args are present.
         return _inline_source_stack_helper(stack_name, program, project_name, Stack.create, opts)  # type: ignore
-    elif _is_local_program(**args):
+    if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
@@ -373,7 +377,7 @@ def select_stack(stack_name: str,
     args = locals()
     if _is_inline_program(**args):
         return _inline_source_stack_helper(stack_name, program, project_name, Stack.select, opts)  # type: ignore
-    elif _is_local_program(**args):
+    if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
@@ -411,7 +415,7 @@ def create_or_select_stack(stack_name: str,
     args = locals()
     if _is_inline_program(**args):
         return _inline_source_stack_helper(stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
-    elif _is_local_program(**args):
+    if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create_or_select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
 

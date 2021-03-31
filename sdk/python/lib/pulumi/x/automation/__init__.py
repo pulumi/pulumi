@@ -99,6 +99,7 @@ from ._config import (
     ConfigValue
 )
 
+# pylint: disable=redefined-builtin
 from .errors import (
     StackNotFoundError,
     StackAlreadyExistsError,

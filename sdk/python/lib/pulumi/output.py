@@ -256,7 +256,9 @@ class Output(Generic[T]):
             # Since Output.all works on lists early, serialize the class's __dict__ into a list of lists first.
             # Once we have a output of the list of properties, we can use an apply to re-hydrate it back as an instance.
             items = [[k, Output.from_input(v)] for k, v in val.__dict__.items()]
-            fn = cast(Callable[[List[Any]], T], lambda props: typ(**{k: v for k, v in props}))  # type: ignore
+
+            # pylint: disable=unnecessary-comprehension
+            fn = cast(Callable[[List[Any]], T], lambda props: typ(**{k: v for k, v in props})) # type: ignore
             return Output.all(*items).apply(fn, True)
 
         # Is a dict or list? Recurse into the values within them.

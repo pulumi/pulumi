@@ -642,7 +642,7 @@ export function register<T extends { readonly version?: string }>(source: Map<st
 
     log.debug(`registering ${registrationType} ${key}@${item.version}`);
     items.push(item);
-    return true
+    return true;
 }
 
 /** @internal */

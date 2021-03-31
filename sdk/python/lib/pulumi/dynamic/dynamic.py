@@ -253,4 +253,4 @@ class Resource(CustomResource):
         props = cast(dict, props)
         props[PROVIDER_KEY] = serialize_provider(provider)
 
-        super(Resource, self).__init__("pulumi-python:dynamic:Resource", name, props, opts)
+        super().__init__("pulumi-python:dynamic:Resource", name, props, opts)

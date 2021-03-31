@@ -122,8 +122,8 @@ class Config:
             return None
         try:
             return int(v)
-        except:
-            raise ConfigTypeError(self.full_key(key), v, 'int')
+        except Exception as e:
+            raise ConfigTypeError(self.full_key(key), v, 'int') from e
 
     def get_secret_int(self, key: str) -> Optional[Output[int]]:
         """
@@ -156,8 +156,8 @@ class Config:
             return None
         try:
             return float(v)
-        except:
-            raise ConfigTypeError(self.full_key(key), v, 'float')
+        except Exception as e:
+            raise ConfigTypeError(self.full_key(key), v, 'float') from e
 
     def get_secret_float(self, key: str) -> Optional[Output[float]]:
         """
@@ -186,8 +186,8 @@ class Config:
             return None
         try:
             return json.loads(v)
-        except:
-            raise ConfigTypeError(self.full_key(key), v, "JSON object")
+        except Exception as e:
+            raise ConfigTypeError(self.full_key(key), v, "JSON object") from e
 
     def get_secret_object(self, key: str) -> Optional[Output[Any]]:
         """
@@ -366,7 +366,7 @@ class ConfigTypeError(errors.RunError):
         self.key = key
         self.value = value
         self.expect_type = expect_type
-        super(ConfigTypeError, self).__init__(
+        super().__init__(
             "Configuration '%s' value '%s' is not a valid '%s'" % (key, value, expect_type))
 
 
@@ -382,6 +382,6 @@ class ConfigMissingError(errors.RunError):
 
     def __init__(self, key: str) -> None:
         self.key = key
-        super(ConfigMissingError, self).__init__(
+        super().__init__(
             "Missing required configuration variable '%s'\n" % key +
             "    please set a value using the command `pulumi config set %s <value>`" % key)
