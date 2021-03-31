@@ -27,26 +27,26 @@ class GrpcError(grpc.RpcError):
         return self._details
 
 class MyMocks(pulumi.runtime.Mocks):
-    def call(self, token, args, provider):
-        if token == 'test:index:MyFunction':
+    def call(self, args: pulumi.runtime.MockCallArgs):
+        if args.token == 'test:index:MyFunction':
             return {
                 'out_value': 59,
             }
-        elif token == 'test:index:FailFunction':
+        elif args.token == 'test:index:FailFunction':
             return ({}, [('none', 'this function fails!')])
-        elif token == 'test:index:ThrowFunction':
+        elif args.token == 'test:index:ThrowFunction':
             raise GrpcError(42, 'this function throws!')
         else:
             return {}
 
-    def new_resource(self, type_, name, inputs, provider, id_):
-        if type_ == 'aws:ec2/securityGroup:SecurityGroup':
+    def new_resource(self, args: pulumi.runtime.MockResourceArgs):
+        if args.type_ == 'aws:ec2/securityGroup:SecurityGroup':
             state = {
                 'arn': 'arn:aws:ec2:us-west-2:123456789012:security-group/sg-12345678',
-                'name': inputs['name'] if 'name' in inputs else name + '-sg',
+                'name': args.inputs['name'] if 'name' in args.inputs else args.name + '-sg',
             }
-            return ['sg-12345678', dict(inputs, **state)]
-        elif type_ == 'aws:ec2/instance:Instance':
+            return ['sg-12345678', dict(args.inputs, **state)]
+        elif args.type_ == 'aws:ec2/instance:Instance':
             state = {
                 'arn': 'arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0',
                 'instanceState': 'running',
@@ -55,9 +55,9 @@ class MyMocks(pulumi.runtime.Mocks):
                 'public_dns': 'ec2-203-0-113-12.compute-1.amazonaws.com',
                 'public_ip': '203.0.113.12',
             }
-            return ['i-1234567890abcdef0', dict(inputs, **state)]
-        elif type_ == 'pkg:index:MyCustom':
-            return [name + '_id', inputs]
+            return ['i-1234567890abcdef0', dict(args.inputs, **state)]
+        elif args.type_ == 'pkg:index:MyCustom':
+            return [args.name + '_id', args.inputs]
         else:
             return ['', {}]
 

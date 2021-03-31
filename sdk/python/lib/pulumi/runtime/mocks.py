@@ -18,6 +18,7 @@ Mocks for testing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
 from google.protobuf import empty_pb2
@@ -38,6 +39,22 @@ def test(fn):
     return wrapper
 
 
+@dataclass
+class MockResourceArgs:
+    type: str
+    name: str
+    inputs: dict
+    provider: str
+    id: str
+
+
+@dataclass
+class MockCallArgs:
+    token: str
+    args: dict
+    provider: str
+
+
 class Mocks(ABC):
     """
     Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
@@ -45,7 +62,7 @@ class Mocks(ABC):
     return predictable values.
     """
     @abstractmethod
-    def call(self, token: str, args: dict, provider: Optional[str]) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
+    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -56,7 +73,7 @@ class Mocks(ABC):
         return {}, None
 
     @abstractmethod
-    def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[Optional[str], dict]:
+    def new_resource(self, args: MockResourceArgs) -> Tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
@@ -105,7 +122,8 @@ class MockMonitor:
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
 
-        tup = self.mocks.call(request.tok, args, request.provider)
+        call_args = MockCallArgs(token=request.tok, args=args, provider=request.provider)
+        tup = self.mocks.call(call_args)
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
@@ -122,7 +140,12 @@ class MockMonitor:
 
         state = rpc.deserialize_properties(request.properties)
 
-        id_, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
+        resource_args = MockResourceArgs(type=request.type,
+                                         name=request.name,
+                                         inputs=state,
+                                         provider=request.provider,
+                                         id=request.id)
+        id_, state = self.mocks.new_resource(resource_args)
 
         props_proto = _sync_await(rpc.serialize_properties(state, {}))
 
@@ -143,7 +166,12 @@ class MockMonitor:
 
         inputs = rpc.deserialize_properties(request.object)
 
-        id_, state = self.mocks.new_resource(request.type, request.name, inputs, request.provider, request.importId)
+        resource_args = MockResourceArgs(type=request.type,
+                                         name=request.name,
+                                         inputs=inputs,
+                                         provider=request.provider,
+                                         id=request.importId)
+        id_, state = self.mocks.new_resource(resource_args)
 
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
 
