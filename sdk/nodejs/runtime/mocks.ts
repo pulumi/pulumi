@@ -43,8 +43,9 @@ export interface Mocks {
      * @param inputs: The inputs for the resource.
      * @param provider: If provided, the identifier of the provider instance being used to manage this resource.
      * @param id: If provided, the physical identifier of an existing resource to read or import.
+     * @param custom: Specifies whether or not the resource is Custom (i.e. managed by a resource provider). This is always set, but marked optional for backwards compatibility.
      */
-    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string | undefined, state: Record<string, any> };
+    newResource(type: string, name: string, inputs: any, provider?: string, id?: string, custom?: boolean): { id: string | undefined, state: Record<string, any> };
 }
 
 export class MockMonitor {
@@ -94,7 +95,8 @@ export class MockMonitor {
                 req.getName(),
                 deserializeProperties(req.getProperties()),
                 req.getProvider(),
-                req.getId());
+                req.getId(),
+                req.getCustom());
 
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);
@@ -117,7 +119,8 @@ export class MockMonitor {
                 req.getName(),
                 deserializeProperties(req.getObject()),
                 req.getProvider(),
-                req.getImportid());
+                req.getImportid(),
+                req.getCustom());
 
             const urn = this.newUrn(req.getParent(), req.getType(), req.getName());
             const serializedState = await serializeProperties("", result.state);

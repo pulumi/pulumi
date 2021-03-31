@@ -68,10 +68,11 @@ test_all:: dotnet_test
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
-brew:: dist
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
+brew::
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"

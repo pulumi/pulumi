@@ -1,0 +1,6 @@
+name: pulumi-python-venv
+description: A simple Python Pulumi program that needs a venv to run.
+runtime:
+  name: python
+  options:
+    virtualenv: venv

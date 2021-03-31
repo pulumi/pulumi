@@ -31,7 +31,6 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
-	"path"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -191,7 +190,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 	}
 
 	// Make sure it's an absolute path.
-	if !path.IsAbs(virtualenv) {
+	if !filepath.IsAbs(virtualenv) {
 		virtualenv = filepath.Join(cwd, virtualenv)
 	}
 
@@ -520,7 +519,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	var virtualenv string
 	if host.virtualenv != "" {
 		virtualenv = host.virtualenv
-		if !path.IsAbs(virtualenv) {
+		if !filepath.IsAbs(virtualenv) {
 			cwd, err := os.Getwd()
 			if err != nil {
 				return nil, errors.Wrap(err, "getting the working directory")

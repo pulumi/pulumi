@@ -61,6 +61,10 @@ class CompilationError(CommandError):
         self.name = "CompilationError"
 
 
+class InvalidVersionError(Exception):
+    pass
+
+
 not_found_regex = re.compile("no stack named.*found")
 already_exists_regex = re.compile("stack.*already exists")
 conflict_text = "[409] Conflict: Another update is currently in progress."

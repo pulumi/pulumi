@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import { Config } from "../../index";
@@ -23,8 +24,11 @@ import {
     LocalWorkspace,
     ProjectSettings,
     Stack,
+    validatePulumiVersion,
 } from "../../x/automation";
 import { asyncTest } from "../util";
+
+const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
@@ -380,7 +384,88 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
+    it(`sets pulumi version`, asyncTest(async () => {
+        const ws = await LocalWorkspace.create({});
+        assert(ws.pulumiVersion);
+        assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
+    }));
+    it(`respects existing project settings`, asyncTest(async () => {
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "project_was_overwritten";
+        const stack = await LocalWorkspace.createStack(
+            {stackName, projectName, program: async() => { return; }},
+            {workDir: upath.joinSafe(__dirname, "data", "correct_project")},
+        );
+        const projectSettings = await stack.workspace.projectSettings();
+        assert.strictEqual(projectSettings.name, "correct_project");
+        assert.strictEqual(projectSettings.description, "This is a description");
+        await stack.workspace.removeStack(stackName);
+    }));
 });
+
+describe(`checkVersionIsValid`, () => {
+    const versionTests = [
+        {
+            name: "higher_major",
+            currentVersion: "100.0.0",
+            expectError: true,
+        },
+        {
+            name: "lower_major",
+            currentVersion: "1.0.0",
+            expectError: true,
+        },
+        {
+            name: "higher_minor",
+            currentVersion: "v2.22.0",
+            expectError: false,
+        },
+        {
+            name: "lower_minor",
+            currentVersion: "v2.1.0",
+            expectError: true,
+        },
+        {
+            name: "equal_minor_higher_patch",
+            currentVersion: "v2.21.2",
+            expectError: false,
+        },
+        {
+            name: "equal_minor_equal_patch",
+            currentVersion: "v2.21.1",
+            expectError: false,
+        },
+        {
+            name: "equal_minor_lower_patch",
+            currentVersion: "v2.21.0",
+            expectError: true,
+        },
+        {
+            name: "equal_minor_equal_patch_prerelease",
+            // Note that prerelease < release so this case will error
+            currentVersion: "v2.21.1-alpha.1234",
+            expectError: true,
+        },
+    ];
+    const minVersion = new semver.SemVer("v2.21.1");
+
+    versionTests.forEach(test => {
+        it(`validates ${test.currentVersion}`, () => {
+            const currentVersion = new semver.SemVer(test.currentVersion);
+
+            if (test.expectError) {
+                if (minVersion.major < currentVersion.major) {
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Major version mismatch./);
+                } else {
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Minimum version requirement failed./);
+                }
+            } else {
+                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion));
+            }
+        });
+    });
+});
+
 
 const getTestSuffix = () => {
     return Math.floor(100000 + Math.random() * 900000);

@@ -624,7 +624,7 @@ func (UntypedArgs) ElementType() reflect.Type {
 func TestMapInputMarhsalling(t *testing.T) {
 	var theResource simpleCustomResource
 	out := newOutput(reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
-	out.resolve("outputty", true, false, nil)
+	out.getState().resolve("outputty", true, false, nil)
 
 	inputs1 := Map(map[string]Input{
 		"prop": out,

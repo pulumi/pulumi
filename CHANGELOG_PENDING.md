@@ -1,63 +1,34 @@
 ### Breaking
-  
-- [automation/go] - Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
-  [#6436](https://github.com/pulumi/pulumi/pull/6436)
 
-This change is marked breaking because it changes the shape of the `PreviewResult` struct.
-
-**Before**
-
-```go
-type PreviewResult struct {
-  Steps         []PreviewStep  `json:"steps"`
-  ChangeSummary map[string]int `json:"changeSummary"`
-}
-```
-
-**After**
-
-```go
-type PreviewResult struct {
-  StdOut        string
-  StdErr        string
-  ChangeSummary map[apitype.OpType]int
-}
-```
 
 ### Improvements
+
+- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
+  [#6657](https://github.com/pulumi/pulumi/pull/6657)
+
+- [automation/dotnet] Expose structured logging
+  [#6572](https://github.com/pulumi/pulumi/pull/6572)
+
+- [cli] Support full fidelity YAML round-tripping
+  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
+  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
+
+- [sdk/python] Ensure all async tasks are awaited prior to exit.
+  [#6606](https://github.com/pulumi/pulumi/pull/6606)
 
 - [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
-- [sdk/go] Add helpers to convert raw Go maps and arrays to Pulumi `Map` and `Array` inputs.
-  [#6337](https://github.com/pulumi/pulumi/pull/6337)
-
-- [sdk/go] Return zero values instead of panicing in `Index` and `Elem` methods.
-  [#6338](https://github.com/pulumi/pulumi/pull/6338)
-
-- [sdk/go] Support multiple folders in GOPATH.
-  [#6228](https://github.com/pulumi/pulumi/pull/6228
-
-- [cli] Add ability to download arm64 provider plugins
-  [#6492](https://github.com/pulumi/pulumi/pull/6492)
-
-- [build] Updating Pulumi to use Go 1.16
-  [#6470](https://github.com/pulumi/pulumi/pull/6470)
-
-- [build] Adding a Pulumi arm64 binary for use on new macOS hardware.  
-  Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
-  [#6492](https://github.com/pulumi/pulumi/pull/6492)
-
-- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
-  [#6454](https://github.com/pulumi/pulumi/pull/6454)
-  
-- [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
-  [#6507](https://github.com/pulumi/pulumi/pull/6507)
-
 ### Bug Fixes
 
-- [sdk/python] Fix mocks issue when passing a resource more than once.
-  [#6479](https://github.com/pulumi/pulumi/pull/6479)
+- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
+  [#6644](https://github.com/pulumi/pulumi/pull/6644)
 
-- [automation/dotnet] Add ReadDiscard OperationType
-  [#6493](https://github.com/pulumi/pulumi/pull/6493)
+- [automation/python] Fix passing of additional environment variables.
+  [#6639](https://github.com/pulumi/pulumi/pull/6639)
+
+- [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
+  [#6504](https://github.com/pulumi/pulumi/pull/6504)
+
+- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
+  [#6655](https://github.com/pulumi/pulumi/pull/6655)

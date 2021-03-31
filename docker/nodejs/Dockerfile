@@ -2,12 +2,11 @@
 # Interim container so we can copy pulumi binaries
 # Must be defined first
 ARG PULUMI_VERSION=latest
-ARG RUNTIME_VERSION=13.14.0
 ARG PULUMI_IMAGE=pulumi/pulumi-base
 FROM ${PULUMI_IMAGE}:${PULUMI_VERSION} as pulumi
 
 # The runtime container
-FROM node:${RUNTIME_VERSION}-buster-slim
+FROM node:lts-buster-slim
 WORKDIR /pulumi/projects
 
 # Install needed tools, like git

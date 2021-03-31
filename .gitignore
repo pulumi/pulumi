@@ -6,6 +6,7 @@
 **/.vs/
 **/.ionide/
 **/.idea/
+**/.DS_Store
 coverage.cov
 *.coverprofile
 

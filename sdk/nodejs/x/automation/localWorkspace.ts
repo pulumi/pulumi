@@ -15,10 +15,12 @@
 import * as fs from "fs";
 import * as yaml from "js-yaml";
 import * as os from "os";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
+import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
 import { StackSettings } from "./stackSettings";
@@ -61,6 +63,13 @@ export class LocalWorkspace implements Workspace {
      * Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
      */
     envVars: { [key: string]: string };
+    private _pulumiVersion?: semver.SemVer;
+    /**
+     * The version of the underlying Pulumi CLI/Engine.
+     */
+    public get pulumiVersion(): string {
+        return this._pulumiVersion!.toString();
+    }
     private ready: Promise<any[]>;
     /**
      * Creates a workspace using the specified options. Used for maximal control and customization
@@ -177,7 +186,21 @@ export class LocalWorkspace implements Workspace {
         }
 
         if (!wsOpts.projectSettings) {
-            wsOpts.projectSettings = defaultProject(args.projectName);
+            if (!!wsOpts.workDir) {
+                try {
+                    // Try to load the project settings.
+                    loadProjectSettings(wsOpts.workDir);
+                } catch (e) {
+                    // If it failed to find the project settings file, set a default project.
+                    if (e.toString().includes("failed to find project settings")) {
+                        wsOpts.projectSettings = defaultProject(args.projectName);
+                    } else {
+                        throw e;
+                    }
+                }
+            } else {
+                wsOpts.projectSettings = defaultProject(args.projectName);
+            }
         }
 
         const ws = new LocalWorkspace(wsOpts);
@@ -206,7 +229,7 @@ export class LocalWorkspace implements Workspace {
         this.workDir = dir;
         this.envVars = envs;
 
-        const readinessPromises: Promise<any>[] = [];
+        const readinessPromises: Promise<any>[] = [this.getPulumiVersion(minimumVersion)];
 
         if (opts && opts.projectSettings) {
             readinessPromises.push(this.saveProjectSettings(opts.projectSettings));
@@ -225,17 +248,7 @@ export class LocalWorkspace implements Workspace {
      * A workspace can contain only a single project at a time.
      */
     async projectSettings(): Promise<ProjectSettings> {
-        for (const ext of settingsExtensions) {
-            const isJSON = ext === ".json";
-            const path = upath.joinSafe(this.workDir, `Pulumi${ext}`);
-            if (!fs.existsSync(path)) { continue; }
-            const contents = fs.readFileSync(path).toString();
-            if (isJSON) {
-                return JSON.parse(contents);
-            }
-            return yaml.safeLoad(contents) as ProjectSettings;
-        }
-        throw new Error(`failed to find project settings file in workdir: ${this.workDir}`);
+        return loadProjectSettings(this.workDir);
     }
     /**
      * Overwrites the settings object in the current project.
@@ -537,6 +550,12 @@ export class LocalWorkspace implements Workspace {
         // LocalWorkspace does not utilize this extensibility point.
         return;
     }
+    private async getPulumiVersion(minVersion: semver.SemVer) {
+        const result = await this.runPulumiCmd(["version"]);
+        const version = new semver.SemVer(result.stdout.trim());
+        validatePulumiVersion(minVersion, version);
+        this._pulumiVersion = version;
+    }
     private async runPulumiCmd(
         args: string[],
     ): Promise<CommandResult> {
@@ -646,4 +665,28 @@ type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 function defaultProject(projectName: string) {
     const settings: ProjectSettings = { name: projectName, runtime: "nodejs" };
     return settings;
+}
+
+function loadProjectSettings(workDir: string) {
+    for (const ext of settingsExtensions) {
+        const isJSON = ext === ".json";
+        const path = upath.joinSafe(workDir, `Pulumi${ext}`);
+        if (!fs.existsSync(path)) { continue; }
+        const contents = fs.readFileSync(path).toString();
+        if (isJSON) {
+            return JSON.parse(contents);
+        }
+        return yaml.safeLoad(contents) as ProjectSettings;
+    }
+    throw new Error(`failed to find project settings file in workdir: ${workDir}`);
+}
+
+/** @internal */
+export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
+    if (minVersion.major < currentVersion.major) {
+        throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
+    }
+    if (minVersion.compare(currentVersion) === 1) {
+        throw new Error(`Minimum version requirement failed. The minimum CLI version requirement is ${minVersion.toString()}, your current CLI version is ${currentVersion.toString()}. Please update the Pulumi CLI.`);
+    }
 }

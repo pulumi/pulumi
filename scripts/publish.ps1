@@ -16,5 +16,5 @@ $PublishTargets=${ReleaseInfo}.Targets
 
 Remove-Item -Force $ReleaseInfo.ArchivePath
 
-$Version = $(pulumictl get version)
+$Version = "v" + $(pulumictl get version)
 & $BuildSdkScript $Version "$(git rev-parse HEAD)"
