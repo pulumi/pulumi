@@ -111,7 +111,8 @@ func (ex *deploymentExecutor) reportExecResult(
 
 // reportError reports a single error to the executor's diag stream with the indicated URN for context.
 func (ex *deploymentExecutor) reportErrorDepth(depth int, urn resource.URN, err error) {
-	ex.deployment.Diag().ErrorfDepth(depth+1,
+	ex.deployment.Diag().LogfDepth(depth+1,
+		diag.Error,
 		diag.RawMessage(urn, err.Error()))
 }
 

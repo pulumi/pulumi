@@ -20,6 +20,8 @@ import (
 	"io"
 	"io/ioutil"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
@@ -41,18 +43,10 @@ type Sink interface {
 	// Warningf issues a new warning diagnostic.
 	Warningf(diag *Diag, args ...interface{})
 
-	// Logf issues a log message.
+	// LogfDepth acts as Logf but uses depth to determine which
+	// call frame to log. LogfDepth(0, sev, diag, args...) is the
+	// same as Logf(sev, diag, args...).
 	LogfDepth(depth int, sev Severity, diag *Diag, args ...interface{})
-	// Debugf issues a debugging message.
-	DebugfDepth(depth int, diag *Diag, args ...interface{})
-	// Infof issues an informational message (to stdout).
-	InfofDepth(depth int, diag *Diag, args ...interface{})
-	// Infoerrf issues an informational message (to stderr).
-	InfoerrfDepth(depth int, diag *Diag, args ...interface{})
-	// Errorf issues a new error diagnostic.
-	ErrorfDepth(depth int, diag *Diag, args ...interface{})
-	// Warningf issues a new warning diagnostic.
-	WarningfDepth(depth int, diag *Diag, args ...interface{})
 
 	// Stringify stringifies a diagnostic into a prefix and message that is appropriate for printing.
 	Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string)
@@ -115,20 +109,49 @@ type defaultSink struct {
 }
 
 func (d *defaultSink) LogfDepth(depth int, sev Severity, diag *Diag, args ...interface{}) {
+	var messageSeverity Severity
+	var glogLevel glog.Level = 5
+	var format string
+	var writer io.Writer
+
 	switch sev {
 	case Debug:
-		d.DebugfDepth(depth+1, diag, args...)
+		messageSeverity = Debug
+		glogLevel = 9
+		format = "defaultSink::Debug(%v)"
+		writer = d.writers[Debug]
+
+		// For debug messages, write both to the glogger and a
+		// stream, if there is one.
+		if logging.V(3) {
+			logging.InfofDepth(depth+1, diag.Message, args...)
+		}
+
 	case Info:
-		d.InfofDepth(depth+1, diag, args...)
+		messageSeverity = Info
+		format = "defaultSink::Info(%v)"
+		writer = d.writers[Info]
 	case Infoerr:
-		d.InfoerrfDepth(depth+1, diag, args...)
+		messageSeverity = Info /* not Infoerr, just "info: "*/
+		format = "defaultSink::Infoerr(%v)"
+		writer = d.writers[Infoerr]
 	case Warning:
-		d.WarningfDepth(depth+1, diag, args...)
+		messageSeverity = Warning
+		format = "defaultSink::Warning(%v)"
+		writer = d.writers[Warning]
 	case Error:
-		d.ErrorfDepth(depth+1, diag, args...)
+		format = "defaultSink::Error(%v)"
+		messageSeverity = Error
+		writer = d.writers[Error]
 	default:
 		contract.Failf("Unrecognized severity: %v", sev)
 	}
+
+	msg := d.createMessage(messageSeverity, diag, args...)
+	if logging.V(glogLevel) {
+		logging.InfofDepth(depth+1, format, msg[:len(msg)-1])
+	}
+	fmt.Fprint(writer, msg)
 }
 
 func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{}) string {
@@ -136,70 +159,28 @@ func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{
 	return prefix + msg
 }
 
-func (d *defaultSink) DebugfDepth(depth int, diag *Diag, args ...interface{}) {
-	// For debug messages, write both to the glogger and a stream, if there is one.
-	logging.V(3).Infof(diag.Message, args...)
-	msg := d.createMessage(Debug, diag, args...)
-	if logging.V(9) {
-		logging.InfofDepth(depth+1, "defaultSink::Debug(%v)", msg[:len(msg)-1])
-	}
-	fmt.Fprint(d.writers[Debug], msg)
-}
-
-func (d *defaultSink) InfofDepth(depth int, diag *Diag, args ...interface{}) {
-	msg := d.createMessage(Info, diag, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "defaultSink::Info(%v)", msg[:len(msg)-1])
-	}
-	fmt.Fprint(d.writers[Info], msg)
-}
-
-func (d *defaultSink) InfoerrfDepth(depth int, diag *Diag, args ...interface{}) {
-	msg := d.createMessage(Info /* not Infoerr, just "info: "*/, diag, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "defaultSink::Infoerr(%v)", msg[:len(msg)-1])
-	}
-	fmt.Fprint(d.writers[Infoerr], msg)
-}
-
-func (d *defaultSink) ErrorfDepth(depth int, diag *Diag, args ...interface{}) {
-	msg := d.createMessage(Error, diag, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "defaultSink::Error(%v)", msg[:len(msg)-1])
-	}
-	fmt.Fprint(d.writers[Error], msg)
-}
-
-func (d *defaultSink) WarningfDepth(depth int, diag *Diag, args ...interface{}) {
-	msg := d.createMessage(Warning, diag, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "defaultSink::Warning(%v)", msg[:len(msg)-1])
-	}
-	fmt.Fprint(d.writers[Warning], msg)
-}
-
 func (d *defaultSink) Logf(sev Severity, diag *Diag, args ...interface{}) {
 	d.LogfDepth(1, sev, diag, args...)
 }
 
 func (d *defaultSink) Debugf(diag *Diag, args ...interface{}) {
-	d.DebugfDepth(1, diag, args...)
+	d.LogfDepth(1, Debug, diag, args...)
 }
 
 func (d *defaultSink) Infof(diag *Diag, args ...interface{}) {
-	d.InfofDepth(1, diag, args...)
+	d.LogfDepth(1, Info, diag, args...)
 }
 
 func (d *defaultSink) Infoerrf(diag *Diag, args ...interface{}) {
-	d.InfoerrfDepth(1, diag, args...)
+	d.LogfDepth(1, Infoerr, diag, args...)
 }
 
 func (d *defaultSink) Errorf(diag *Diag, args ...interface{}) {
-	d.ErrorfDepth(1, diag, args...)
+	d.LogfDepth(1, Error, diag, args...)
 }
 
 func (d *defaultSink) Warningf(diag *Diag, args ...interface{}) {
-	d.WarningfDepth(1, diag, args...)
+	d.LogfDepth(1, Warning, diag, args...)
 }
 
 func (d *defaultSink) Stringify(sev Severity, diag *Diag, args ...interface{}) (string, string) {
