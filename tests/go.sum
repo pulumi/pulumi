@@ -585,6 +585,8 @@ github.com/prometheus/tsdb v0.7.1 h1:YZcsG11NqnK4czYLrWd9mpEuAJIHVQLwdrleYfszMAA
 github.com/prometheus/tsdb v0.7.1/go.mod h1:qhTCs0VvXwvX/y3TZrWD7rabWM+ijKTux40TwIPHuXU=
 github.com/pulumi/go-yaml v1.8.10-0.20210311214047-95da20da6e94 h1:Htsu46DUlRauQVuY0qXQWwGMkuGvc9PReS60kNYPuzE=
 github.com/pulumi/go-yaml v1.8.10-0.20210311214047-95da20da6e94/go.mod h1:gY5v736YyqzhcB0WcDSX4ePCUM90DU88xiH4gQ/ZcXo=
+github.com/pulumi/go-yaml v1.8.10-0.20210324191824-ab3fac7774fd h1:+HKDP2rMBF696ioSiYwnvzkSJ384oPjAKriIqJjmZ6Y=
+github.com/pulumi/go-yaml v1.8.10-0.20210324191824-ab3fac7774fd/go.mod h1:gY5v736YyqzhcB0WcDSX4ePCUM90DU88xiH4gQ/ZcXo=
 github.com/pulumi/pulumi-random/sdk/v2 v2.4.2 h1:c6UyC/SIx0vV1tVdJKjBYM89wLj1BWARIFEQlSrmtBU=
 github.com/pulumi/pulumi-random/sdk/v2 v2.4.2/go.mod h1:PPzzdlKYXLuBjcl6T4FvvQgKBntKa9gMbZtgslBlVHc=
 github.com/rjeczalik/notify v0.9.2 h1:MiTWrPj55mNDHEiIX5YUSKefw/+lCQVoAFmD6oQm5w8=

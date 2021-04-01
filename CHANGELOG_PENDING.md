@@ -9,7 +9,7 @@
 - [automation/dotnet] Expose structured logging
   [#6572](https://github.com/pulumi/pulumi/pull/6572)
 
-- [cli] Support full fidelity YAML round-tripping
+- [cli] Support full fidelity YAML round-tripping - [#6489](https://github.com/pulumi/pulumi/pull/6489)
   - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
   - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
 

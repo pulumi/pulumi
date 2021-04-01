@@ -24,7 +24,7 @@ require (
 	github.com/opentracing/basictracer-go v1.0.0 // indirect
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/go-yaml v1.8.10-0.20210311214047-95da20da6e94
+	github.com/pulumi/go-yaml v1.8.10-0.20210324191824-ab3fac7774fd
 	github.com/sabhiram/go-gitignore v0.0.0-20180611051255-d3107576ba94
 	github.com/sergi/go-diff v1.1.0 // indirect
 	github.com/spf13/cast v1.3.1

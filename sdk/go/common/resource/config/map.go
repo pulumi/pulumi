@@ -77,7 +77,7 @@ func (m Map) Get(k Key, path bool) (Value, bool, error) {
 	}
 
 	// Otherwise, parse the path and get the new config key.
-	p, configKey, err := parseKeyPath(k)
+	p, configKey, err := ParseKeyPath(k)
 	if err != nil {
 		return Value{}, false, err
 	}
@@ -226,7 +226,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	// Otherwise, parse the path and get the new config key.
-	p, configKey, err := parseKeyPath(k)
+	p, configKey, err := ParseKeyPath(k)
 	if err != nil {
 		return err
 	}
@@ -303,7 +303,7 @@ func (m Map) Set(k Key, v Value, path bool) error {
 	}
 
 	// Adjust the value (e.g. convert "true"/"false" to booleans and integers to ints) and set it.
-	adjustedValue := adjustObjectValue(v, path)
+	adjustedValue := AdjustObjectValue(v, path)
 	if _, err = setValue(cursor, cursorKey, adjustedValue, parent, parentKey); err != nil {
 		return err
 	}
@@ -385,9 +385,8 @@ func (m *Map) UnmarshalYAML(unmarshal func(interface{}) error) error {
 	return nil
 }
 
-// parseKeyPath returns the property paths in the key and a new config key with the first
-// path segment as the name.
-func parseKeyPath(k Key) (resource.PropertyPath, Key, error) {
+// ParseKeyPath returns the property paths in the key and a new config key with the first path segment as the name.
+func ParseKeyPath(k Key) (resource.PropertyPath, Key, error) {
 	// Parse the path, which will be in the name portion of the key.
 	p, err := resource.ParsePropertyPath(k.Name())
 	if err != nil {
@@ -504,8 +503,8 @@ func setValue(container, key, value, containerParent, containerParentKey interfa
 	return container, nil
 }
 
-// adjustObjectValue returns a more suitable value for objects:
-func adjustObjectValue(v Value, path bool) interface{} {
+// AdjustObjectValue returns a more suitable value for objects:
+func AdjustObjectValue(v Value, path bool) interface{} {
 	contract.Assertf(!v.Object(), "v must not be an Object")
 
 	// If the path flag isn't set, just return the value as-is.

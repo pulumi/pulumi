@@ -318,6 +318,11 @@ func newConfigRmCmd(stack *string) *cobra.Command {
 				return err
 			}
 
+			err = ps.FileAST.RemoveConfig("config", key, path)
+			if err != nil {
+				return err
+			}
+
 			return saveProjectStack(s, ps)
 		}),
 	}
@@ -363,6 +368,11 @@ func newConfigRmAllCmd(stack *string) *cobra.Command {
 				}
 
 				err = ps.Config.Remove(key, path)
+				if err != nil {
+					return err
+				}
+
+				err = ps.FileAST.RemoveConfig("config", key, path)
 				if err != nil {
 					return err
 				}
@@ -542,6 +552,14 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				return err
 			}
 
+			// For a new config, the file is not yet populated, so just use the default struct marshalling.
+			if ps.FileAST.HasKey("config") {
+				err = ps.FileAST.SetConfig("config", key, v, path)
+				if err != nil {
+					return err
+				}
+			}
+
 			return saveProjectStack(s, ps)
 		}),
 	}
@@ -606,6 +624,14 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				if err != nil {
 					return err
 				}
+
+				// For a new config, the file is not yet populated, so just use the default struct marshalling.
+				if ps.FileAST.HasKey("config") {
+					err = ps.FileAST.SetConfig("config", key, v, path)
+					if err != nil {
+						return err
+					}
+				}
 			}
 
 			for _, sArg := range secretArgs {
@@ -626,6 +652,14 @@ func newConfigSetAllCmd(stack *string) *cobra.Command {
 				err = ps.Config.Set(key, v, path)
 				if err != nil {
 					return err
+				}
+
+				// For a new config, the file is not yet populated, so just use the default struct marshalling.
+				if ps.FileAST.HasKey("config") {
+					err = ps.FileAST.SetConfig("config", key, v, path)
+					if err != nil {
+						return err
+					}
 				}
 			}
 

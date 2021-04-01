@@ -1,0 +1,4 @@
+# This config is for the simple-dev stack.
+config:
+  # This config specifies the region for the AWS provider.
+  aws:region: us-west-2 # Oregon
