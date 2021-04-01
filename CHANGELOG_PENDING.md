@@ -1,34 +1,7 @@
-### Breaking
-
-
-### Improvements
-
-- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
-  [#6657](https://github.com/pulumi/pulumi/pull/6657)
-
-- [automation/dotnet] Expose structured logging
-  [#6572](https://github.com/pulumi/pulumi/pull/6572)
-
-- [cli] Support full fidelity YAML round-tripping
-  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
-
-- [sdk/python] Ensure all async tasks are awaited prior to exit.
-  [#6606](https://github.com/pulumi/pulumi/pull/6606)
-
 ### Bug Fixes
 
-- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
-  [#6644](https://github.com/pulumi/pulumi/pull/6644)
-
-- [automation/python] Fix passing of additional environment variables.
-  [#6639](https://github.com/pulumi/pulumi/pull/6639)
-
-- [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
-  [#6504](https://github.com/pulumi/pulumi/pull/6504)
+- [cli] Revert the swapping out of the YAML parser library
+  [#6681](https://github.com/pulumi/pulumi/pull/6681)
 
 - [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
   [#6655](https://github.com/pulumi/pulumi/pull/6655)
-
-- [sdk/dotnet] Respect pre-existing Pulumi.yaml for inline programs,
-  introduce ProjectSettingsConflictException.
-  [6670](https://github.com/pulumi/pulumi/pull/6670)

@@ -1,6 +1,17 @@
 CHANGELOG
 =========
 
+## 2.24.1 (2021-04-01)
+
+### Bug Fixes
+
+- [cli] Revert the swapping out of the YAML parser library
+  [#6681](https://github.com/pulumi/pulumi/pull/6681)
+
+- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
+  [#6655](https://github.com/pulumi/pulumi/pull/6655)
+
+
 ## 2.24.0 (2021-03-31)
 
 ### Improvements
