@@ -61,7 +61,7 @@ namespace Pulumi.Automation
         /// <summary>
         /// Environment values scoped to the current workspace. These will be supplied to every Pulumi command.
         /// </summary>
-        public abstract IDictionary<string, string?>? EnvironmentVariables { get; set; }
+        public abstract IDictionary<string, string>? EnvironmentVariables { get; set; }
 
         /// <summary>
         /// Returns project settings for the current project if any.
@@ -279,7 +279,7 @@ namespace Pulumi.Automation
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
         {
-            var env = new Dictionary<string, string?>();
+            var env = new Dictionary<string, string>();
             if (!string.IsNullOrWhiteSpace(this.PulumiHome))
                 env["PULUMI_HOME"] = this.PulumiHome;
 
