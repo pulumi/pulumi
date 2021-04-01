@@ -11,7 +11,6 @@
 
 - [cli] Support full fidelity YAML round-tripping
   - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
-  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
 
 - [sdk/python] Ensure all async tasks are awaited prior to exit.
   [#6606](https://github.com/pulumi/pulumi/pull/6606)
