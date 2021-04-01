@@ -103,7 +103,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         } catch (e) {
             const err = e instanceof Error ? e : new Error(`unknown error ${e}`);
             resp.setError(err.message);
-            callback(err, undefined)
+            callback(err, undefined);
         }
 
         callback(undefined, resp);
@@ -133,7 +133,7 @@ function newUncaughtHandler(errorSet: Set<Error>): (err: Error) => void {
         //
         // If both the stack and message are empty, then just stringify the err object itself. This
         // is also necessary as users can throw arbitrary things in JS (including non-Errors).
-        let defaultMessage = ""
+        let defaultMessage = "";
         if (!!err) {
             defaultMessage = err.stack || err.message || ("" + err);
         }
