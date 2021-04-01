@@ -124,7 +124,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -161,7 +161,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -220,7 +220,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -258,7 +258,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -286,7 +286,7 @@ namespace Pulumi.Automation.Tests
             var workingDir = Path.Combine(_dataDirectory, "testproj");
             using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -361,7 +361,7 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -529,7 +529,7 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_output";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -669,7 +669,7 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_tstack_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -735,7 +735,7 @@ namespace Pulumi.Automation.Tests
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -763,7 +763,7 @@ namespace Pulumi.Automation.Tests
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -828,7 +828,7 @@ namespace Pulumi.Automation.Tests
 
             using var stackOne = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameOne, stackNameOne, programOne)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -836,7 +836,7 @@ namespace Pulumi.Automation.Tests
 
             using var stackTwo = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameTwo, stackNameTwo, programTwo)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
