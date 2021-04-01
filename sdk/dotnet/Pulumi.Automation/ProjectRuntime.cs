@@ -35,6 +35,11 @@ namespace Pulumi.Automation
                     return x == null;
                 }
 
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
                 return x.Name == y.Name && ProjectRuntimeOptions.Comparer.Equals(x.Options, y.Options);
             }
 

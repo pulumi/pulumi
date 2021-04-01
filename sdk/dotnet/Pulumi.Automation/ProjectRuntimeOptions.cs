@@ -49,6 +49,11 @@ namespace Pulumi.Automation
                     return x == null;
                 }
 
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
                 return x.TypeScript == y.TypeScript && x.Binary == y.Binary && x.VirtualEnv == y.VirtualEnv;
             }
 

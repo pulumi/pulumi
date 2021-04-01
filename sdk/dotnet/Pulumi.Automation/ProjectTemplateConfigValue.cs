@@ -32,6 +32,11 @@ namespace Pulumi.Automation
                     return x == null;
                 }
 
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
                 return x.Description == y.Description && x.Default == y.Default && x.Secret == y.Secret;
             }
 

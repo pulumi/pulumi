@@ -28,6 +28,11 @@ namespace Pulumi.Automation
                     return x == null;
                 }
 
+                if (ReferenceEquals(x, y))
+                {
+                    return true;
+                }
+
                 return x.Url == y.Url;
             }
 
