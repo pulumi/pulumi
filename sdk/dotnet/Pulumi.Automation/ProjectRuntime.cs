@@ -40,15 +40,11 @@ namespace Pulumi.Automation
 
             int IEqualityComparer<ProjectRuntime>.GetHashCode(ProjectRuntime obj)
             {
-                var hash = new HashCode();
-                hash.Add(obj.Name);                
-                if (obj.Options != null)
-                {
-                    hash.Add(ProjectRuntimeOptions.Comparer.GetHashCode(obj.Options));
-                }
-                return hash.ToHashCode();
+                return HashCode.Combine(
+                    obj.Name,
+                    obj.Options != null ? ProjectRuntimeOptions.Comparer.GetHashCode(obj.Options) : 0
+                );
             }
         }
     }
 }
-
