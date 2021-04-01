@@ -86,17 +86,17 @@ namespace Pulumi.Automation
 
             int IEqualityComparer<ProjectSettings>.GetHashCode(ProjectSettings obj)
             {
-                var hash = new HashCode();
-                hash.Add(obj.Name);
-                hash.Add(obj.Main);
-                hash.Add(obj.Description);
-                hash.Add(obj.Author);
-                hash.Add(obj.Website);
-                hash.Add(obj.License);
-                hash.Add(obj.Config);
-                hash.Add(obj.Backend);
                 // fields with custom Comparer skipped for efficiency
-                return hash.ToHashCode();
+                return HashCode.Combine(
+                    obj.Name,
+                    obj.Main,
+                    obj.Description,
+                    obj.Author,
+                    obj.Website,
+                    obj.License,
+                    obj.Config,
+                    obj.Backend
+                );
             }
         }
     }
