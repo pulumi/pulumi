@@ -530,6 +530,16 @@ func (o *OutputState) ApplyArrayArrayWithContext(ctx context.Context, applier in
 	return o.ApplyTWithContext(ctx, applier).(ArrayArrayOutput)
 }
 
+// ApplyArrayArrayMap is like ApplyT, but returns a ArrayArrayMapOutput.
+func (o *OutputState) ApplyArrayArrayMap(applier interface{}) ArrayArrayMapOutput {
+	return o.ApplyT(applier).(ArrayArrayMapOutput)
+}
+
+// ApplyArrayArrayMapWithContext is like ApplyTWithContext, but returns a ArrayArrayMapOutput.
+func (o *OutputState) ApplyArrayArrayMapWithContext(ctx context.Context, applier interface{}) ArrayArrayMapOutput {
+	return o.ApplyTWithContext(ctx, applier).(ArrayArrayMapOutput)
+}
+
 // ApplyInt is like ApplyT, but returns a IntOutput.
 func (o *OutputState) ApplyInt(applier interface{}) IntOutput {
 	return o.ApplyT(applier).(IntOutput)
@@ -4066,6 +4076,71 @@ func ToArrayArrayOutput(in []ArrayOutput) ArrayArrayOutput {
 	return a.ToArrayArrayOutput()
 }
 
+var arrayArrayMapType = reflect.TypeOf((*map[string][][]interface{})(nil)).Elem()
+
+// ArrayArrayMapInput is an input type that accepts ArrayArrayMap and ArrayArrayMapOutput values.
+type ArrayArrayMapInput interface {
+	Input
+
+	ToArrayArrayMapOutput() ArrayArrayMapOutput
+	ToArrayArrayMapOutputWithContext(ctx context.Context) ArrayArrayMapOutput
+}
+
+// ArrayArrayMap is an input type for map[string]ArrayArrayInput values.
+type ArrayArrayMap map[string]ArrayArrayInput
+
+// ElementType returns the element type of this Input (map[string][][]interface{}).
+func (ArrayArrayMap) ElementType() reflect.Type {
+	return arrayArrayMapType
+}
+
+func (in ArrayArrayMap) ToArrayArrayMapOutput() ArrayArrayMapOutput {
+	return ToOutput(in).(ArrayArrayMapOutput)
+}
+
+func (in ArrayArrayMap) ToArrayArrayMapOutputWithContext(ctx context.Context) ArrayArrayMapOutput {
+	return ToOutputWithContext(ctx, in).(ArrayArrayMapOutput)
+}
+
+// ArrayArrayMapOutput is an Output that returns map[string][][]interface{} values.
+type ArrayArrayMapOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (map[string][][]interface{}).
+func (ArrayArrayMapOutput) ElementType() reflect.Type {
+	return arrayArrayMapType
+}
+
+func (o ArrayArrayMapOutput) ToArrayArrayMapOutput() ArrayArrayMapOutput {
+	return o
+}
+
+func (o ArrayArrayMapOutput) ToArrayArrayMapOutputWithContext(ctx context.Context) ArrayArrayMapOutput {
+	return o
+}
+
+// MapIndex looks up the key k in the map.
+func (o ArrayArrayMapOutput) MapIndex(k StringInput) ArrayArrayOutput {
+	return All(o, k).ApplyT(func(vs []interface{}) [][]interface{} {
+		return vs[0].(map[string][][]interface{})[vs[1].(string)]
+	}).(ArrayArrayOutput)
+}
+
+func ToArrayArrayMap(in map[string][][]interface{}) ArrayArrayMap {
+	m := make(ArrayArrayMap)
+	for k, v := range in {
+		m[k] = ToArrayArray(v)
+	}
+	return m
+}
+
+func ToArrayArrayMapOutput(in map[string]ArrayArrayOutput) ArrayArrayMapOutput {
+	m := make(ArrayArrayMap)
+	for k, v := range in {
+		m[k] = v
+	}
+	return m.ToArrayArrayMapOutput()
+}
+
 var intType = reflect.TypeOf((*int)(nil)).Elem()
 
 // IntInput is an input type that accepts Int and IntOutput values.
@@ -5735,6 +5810,7 @@ func init() {
 	RegisterOutputType(MapArrayOutput{})
 	RegisterOutputType(MapMapOutput{})
 	RegisterOutputType(ArrayArrayOutput{})
+	RegisterOutputType(ArrayArrayMapOutput{})
 	RegisterOutputType(IntOutput{})
 	RegisterOutputType(IntPtrOutput{})
 	RegisterOutputType(IntArrayOutput{})

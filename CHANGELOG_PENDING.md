@@ -32,3 +32,7 @@
 
 - [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
   [#6655](https://github.com/pulumi/pulumi/pull/6655)
+
+- [sdk/dotnet] Respect pre-existing Pulumi.yaml for inline programs,
+  introduce ProjectSettingsConflictException.
+  [6670](https://github.com/pulumi/pulumi/pull/6670)
