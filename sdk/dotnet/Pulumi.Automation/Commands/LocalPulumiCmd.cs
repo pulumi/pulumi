@@ -96,7 +96,7 @@ namespace Pulumi.Automation.Commands
 
         private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string> additionalEnv, bool debugCommands)
         {
-            var env = new Dictionary<string, string>(additonalEnv);
+            var env = new Dictionary<string, string>(additionalEnv);
 
             if (debugCommands)
             {
