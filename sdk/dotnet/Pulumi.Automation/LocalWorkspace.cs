@@ -354,13 +354,11 @@ namespace Pulumi.Automation
             {
                 await this.SaveProjectSettingsAsync(projectSettings, cancellationToken);
             }
-            else
+            else if (!projectSettings.IsDefault &&
+                     !ProjectSettings.Comparer.Equals(projectSettings, existingSettings))
             {
-                if (!projectSettings.IsDefault)
-                {
-                    var path = this.FindSettingsFile();
-                    throw new Exceptions.ProjectSettingsConflictException(path);
-                }
+                var path = this.FindSettingsFile();
+                throw new Exceptions.ProjectSettingsConflictException(path);
             }
         }
 
