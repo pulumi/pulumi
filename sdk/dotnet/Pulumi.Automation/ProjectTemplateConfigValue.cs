@@ -37,11 +37,7 @@ namespace Pulumi.Automation
 
             int IEqualityComparer<ProjectTemplateConfigValue>.GetHashCode(ProjectTemplateConfigValue obj)
             {
-                var hash = new HashCode();
-                hash.Add(obj.Description);
-                hash.Add(obj.Default);
-                hash.Add(obj.Secret);
-                return hash.ToHashCode();
+                return HashCode.Combine(obj.Description, obj.Default, obj.Secret);
             }
         }
     }
