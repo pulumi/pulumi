@@ -33,9 +33,7 @@ namespace Pulumi.Automation
 
             int IEqualityComparer<ProjectBackend>.GetHashCode(ProjectBackend obj)
             {
-                var hash = new HashCode();
-                hash.Add(obj.Url);
-                return hash.ToHashCode();
+                return HashCode.Combine(obj.Url);
             }
         }
     }
