@@ -54,7 +54,7 @@ namespace Pulumi.Automation
         public override PulumiFn? Program { get; set; }
 
         /// <inheritdoc/>
-        public override IDictionary<string, string?>? EnvironmentVariables { get; set; }
+        public override IDictionary<string, string>? EnvironmentVariables { get; set; }
 
         /// <summary>
         /// Creates a workspace using the specified options. Used for maximal control and
@@ -310,7 +310,7 @@ namespace Pulumi.Automation
                 this.SecretsProvider = options.SecretsProvider;
 
                 if (options.EnvironmentVariables != null)
-                    this.EnvironmentVariables = new Dictionary<string, string?>(options.EnvironmentVariables);
+                    this.EnvironmentVariables = new Dictionary<string, string>(options.EnvironmentVariables);
             }
 
             if (string.IsNullOrWhiteSpace(dir))

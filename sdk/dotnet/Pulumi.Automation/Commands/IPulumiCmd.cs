@@ -13,7 +13,7 @@ namespace Pulumi.Automation.Commands
         Task<CommandResult> RunAsync(
             IEnumerable<string> args,
             string workingDir,
-            IDictionary<string, string?> additionalEnv,
+            IDictionary<string, string> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
             Action<EngineEvent>? onEngineEvent = null,
