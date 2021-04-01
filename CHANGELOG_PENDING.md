@@ -23,9 +23,13 @@
 
 - [automation/python] Fix passing of additional environment variables.
   [#6639](https://github.com/pulumi/pulumi/pull/6639)
-  
+
 - [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
   [#6504](https://github.com/pulumi/pulumi/pull/6504)
 
 - [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
   [#6655](https://github.com/pulumi/pulumi/pull/6655)
+
+- [sdk/dotnet] Respect pre-existing Pulumi.yaml for inline programs,
+  introduce ProjectSettingsConflictException.
+  [6670](https://github.com/pulumi/pulumi/pull/6670)
