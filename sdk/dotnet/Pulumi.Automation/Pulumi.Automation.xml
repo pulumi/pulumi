@@ -294,6 +294,14 @@
             
              </summary>
         </member>
+        <member name="P:Pulumi.Automation.Exceptions.ProjectSettingsConflictException.SettingsFileLocation">
+             <summary>
+            
+             FullPath of the Pulumi.yaml (or Pulumi.yml, Pulumi.json)
+             settings file found on disk.
+            
+             </summary>
+        </member>
         <member name="T:Pulumi.Automation.HistoryOptions">
             <summary>
             Options controlling the behavior of a <see cref="M:Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions,System.Threading.CancellationToken)"/> operation.

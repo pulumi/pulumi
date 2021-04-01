@@ -10,6 +10,8 @@ namespace Pulumi.Automation
     /// </summary>
     public class ProjectTemplate
     {
+        internal static IEqualityComparer<ProjectTemplate> Comparer { get; } = new ProjectTemplateComparer();
+
         public string? Description { get; set; }
 
         public string? QuickStart { get; set; }
@@ -17,8 +19,6 @@ namespace Pulumi.Automation
         public IDictionary<string, ProjectTemplateConfigValue>? Config { get; set; }
 
         public bool? Important { get; set; }
-
-        internal static IEqualityComparer<ProjectTemplate> Comparer { get; } = new ProjectTemplateComparer();
 
         private sealed class ProjectTemplateComparer : IEqualityComparer<ProjectTemplate>
         {

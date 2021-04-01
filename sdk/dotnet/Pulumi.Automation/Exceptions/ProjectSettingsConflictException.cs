@@ -21,19 +21,19 @@ namespace Pulumi.Automation.Exceptions
     /// </summary>
     public class ProjectSettingsConflictException : Exception
     {
-        internal string SettingsFileLocation { get; }
+
+        /// <summary>
+        ///
+        /// FullPath of the Pulumi.yaml (or Pulumi.yml, Pulumi.json)
+        /// settings file found on disk.
+        ///
+        /// </summary>
+        public string SettingsFileLocation { get; }
 
         internal ProjectSettingsConflictException(string settingsFileLocation)
-            : base(ErrMsg(settingsFileLocation))
+            : base($"Custom {nameof(ProjectSettings)} passed in code conflict with settings found on disk: {settingsFileLocation}")
         {
             SettingsFileLocation = settingsFileLocation;
-        }
-
-        private static string ErrMsg(string settingsFileLocation)
-        {
-            return String.Format(
-                "Custom ProjectSettings passed in code conflict with settings found on disk: {0}",
-                settingsFileLocation);
         }
     }
 }

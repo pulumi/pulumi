@@ -10,9 +10,9 @@ namespace Pulumi.Automation
     /// </summary>
     public class ProjectBackend
     {
-        public string? Url { get; set; }
-
         internal static IEqualityComparer<ProjectBackend> Comparer { get; } = new ProjectBackendComparer();
+
+        public string? Url { get; set; }
 
         private sealed class ProjectBackendComparer : IEqualityComparer<ProjectBackend>
         {

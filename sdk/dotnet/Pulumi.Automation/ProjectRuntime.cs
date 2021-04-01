@@ -10,6 +10,8 @@ namespace Pulumi.Automation
     /// </summary>
     public class ProjectRuntime
     {
+        internal static IEqualityComparer<ProjectRuntime> Comparer { get; } = new ProjectRuntimeComparer();
+
         public ProjectRuntimeName Name { get; set; }
 
         public ProjectRuntimeOptions? Options { get; set; }
@@ -18,8 +20,6 @@ namespace Pulumi.Automation
         {
             this.Name = name;
         }
-
-        internal static IEqualityComparer<ProjectRuntime> Comparer { get; } = new ProjectRuntimeComparer();
 
         private sealed class ProjectRuntimeComparer : IEqualityComparer<ProjectRuntime>
         {

@@ -10,6 +10,8 @@ namespace Pulumi.Automation
     /// </summary>
     public class ProjectRuntimeOptions
     {
+        internal static IEqualityComparer<ProjectRuntimeOptions> Comparer { get; } = new ProjectRuntimeOptionsComparer();
+
         /// <summary>
         /// Applies to NodeJS projects only.
         /// <para/>
@@ -32,8 +34,6 @@ namespace Pulumi.Automation
         /// A string that specifies the path to a virtual environment to use when running the program.
         /// </summary>
         public string? VirtualEnv { get; set; }
-
-        internal static IEqualityComparer<ProjectRuntimeOptions> Comparer { get; } = new ProjectRuntimeOptionsComparer();
 
         private sealed class ProjectRuntimeOptionsComparer : IEqualityComparer<ProjectRuntimeOptions>
         {

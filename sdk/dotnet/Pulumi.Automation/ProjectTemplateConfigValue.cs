@@ -10,13 +10,13 @@ namespace Pulumi.Automation
     /// </summary>
     public class ProjectTemplateConfigValue
     {
+        internal static IEqualityComparer<ProjectTemplateConfigValue> Comparer { get; } = new ProjectTemplateConfigValueComparer();
+
         public string? Description { get; set; }
 
         public string? Default { get; set; }
 
         public bool? Secret { get; set; }
-
-        internal static IEqualityComparer<ProjectTemplateConfigValue> Comparer { get; } = new ProjectTemplateConfigValueComparer();
 
         private sealed class ProjectTemplateConfigValueComparer : IEqualityComparer<ProjectTemplateConfigValue>
         {

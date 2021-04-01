@@ -26,6 +26,10 @@ namespace Pulumi.Automation
             {
                 return x == null;
             }
+            if (ReferenceEquals(x, y))
+            {
+                return true;
+            }
             if (x.Count != y.Count)
             {
                 return false;
