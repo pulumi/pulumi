@@ -400,19 +400,16 @@ namespace Pulumi.Automation
             {
                 return null;
             }
+            var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
+            if (isJson)
+            {
+                return this._serializer.DeserializeJson<ProjectSettings>(content);
+            }
             else
             {
-                var content = await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false);
-                if (isJson)
-                {
-                    return this._serializer.DeserializeJson<ProjectSettings>(content);
-                }
-                else
-                {
 
-                    var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
-                    return model.Convert();
-                }
+                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
+                return model.Convert();
             }
         }
 
