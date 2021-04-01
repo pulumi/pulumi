@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -97,12 +98,14 @@ namespace Pulumi.Automation.Commands
         private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string> additionalEnv, bool debugCommands)
         {
             var env = new Dictionary<string, string>();
-
-            foreach (var element in Environment.GetEnvironmentVariables())
+            foreach (DictionaryEntry? element in Environment.GetEnvironmentVariables())
             {
-                if (element is KeyValuePair<string, object> pair
-                    && pair.Value is string valueStr)
-                    env[pair.Key] = valueStr;
+                if (element is null || !element.HasValue)
+                    continue;
+
+                if (element.Value.Key is string keyStr
+                    && element.Value.Value is string valueStr)
+                    env[keyStr] = valueStr;
             }
 
             foreach (var pair in additionalEnv)
