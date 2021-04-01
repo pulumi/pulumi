@@ -33,7 +33,7 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
 	github.com/pkg/errors v0.9.1
-	github.com/pulumi/pulumi/sdk/v3 v3.0.0-20210317132005-b866c3cc620e
+	github.com/pulumi/pulumi/sdk/v3 v3.0.0-beta.1
 	github.com/rjeczalik/notify v0.9.2
 	github.com/sergi/go-diff v1.1.0
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
