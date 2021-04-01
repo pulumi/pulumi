@@ -13,10 +13,8 @@ blobs:
     - pulumi-windows
   provider: s3
   region: us-west-2
-changelog:
-  skip: true
 release:
-  disable: true
+  prerelease: auto
 builds:
 # UNIX builds
 - id: pulumi-unix
