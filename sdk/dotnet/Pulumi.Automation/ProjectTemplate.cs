@@ -48,12 +48,8 @@ namespace Pulumi.Automation
 
             int IEqualityComparer<ProjectTemplate>.GetHashCode(ProjectTemplate obj)
             {
-                var hash = new HashCode();
-                hash.Add(obj.Description);
-                hash.Add(obj.QuickStart);
-                hash.Add(obj.Important);
                 // omit hashing Config dict for efficiency
-                return hash.ToHashCode();
+                return HashCode.Combine(obj.Description, obj.QuickStart, obj.Important);
             }
         }
     }
