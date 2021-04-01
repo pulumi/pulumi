@@ -282,7 +282,7 @@ jobs:
       - name: Publish Binary
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Publish /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+          dotnet msbuild /t:ReleaseProcess /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
