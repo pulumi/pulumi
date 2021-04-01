@@ -14,7 +14,7 @@ namespace Pulumi.Automation.Tests
         public async Task CheckVersionCommand()
         {
             var localCmd = new LocalPulumiCmd();
-            IDictionary<string,string> extraEnv = new Dictionary<string,string>();
+            IDictionary<string,string?> extraEnv = new Dictionary<string,string?>();
             IEnumerable<string> args = new string[]{ "version" };
 
             var stdoutLines = new List<string>();

@@ -22,7 +22,7 @@ namespace Pulumi.Automation.Commands
         public async Task<CommandResult> RunAsync(
             IEnumerable<string> args,
             string workingDir,
-            IDictionary<string, string> additionalEnv,
+            IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
             Action<EngineEvent>? onEngineEvent = null,
@@ -49,7 +49,7 @@ namespace Pulumi.Automation.Commands
         private async Task<CommandResult> RunAsyncInner(
             IEnumerable<string> args,
             string workingDir,
-            IDictionary<string, string> additionalEnv,
+            IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
             EventLogFile? eventLogFile = null,
@@ -94,9 +94,9 @@ namespace Pulumi.Automation.Commands
             }
         }
 
-        private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string> additionalEnv, bool debugCommands)
+        private static IReadOnlyDictionary<string, string?> PulumiEnvironment(IDictionary<string, string?> additionalEnv, bool debugCommands)
         {
-            var env = new Dictionary<string, string>(additionalEnv);
+            var env = new Dictionary<string, string?>(additionalEnv);
 
             if (debugCommands)
             {
