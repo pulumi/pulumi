@@ -446,12 +446,13 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     return result;
 
     function isBuiltIn(ident: string): boolean {
-        // The __awaiter is never considered built-in.  We do this as async/await code will generate
-        // this (so we will need it), but some libraries (like tslib) will add this to the 'global'
-        // object.  If we think this is built-in, we won't serialize it, and the function may not
+        // __awaiter and __rest are never considered built-in.  We do this as async/await code will generate
+        // an __awaiter (so we will need it), but some libraries (like tslib) will add this to the 'global'
+        // object.  The same is true for __rest when destructuring.
+        // If we think these are built-in, we won't serialize them, and the functions may not
         // actually be available if the import that caused it to get attached isn't included in the
         // final serialized code.
-        if (ident === "__awaiter") {
+        if (ident === "__awaiter" || ident === "__rest") {
             return false;
         }
 
