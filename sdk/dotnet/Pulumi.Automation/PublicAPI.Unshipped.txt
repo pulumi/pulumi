@@ -429,3 +429,4 @@ static Pulumi.Automation.WorkspaceStack.CreateOrSelectAsync(string name, Pulumi.
 static Pulumi.Automation.WorkspaceStack.SelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
 virtual Pulumi.Automation.Workspace.Dispose() -> void
 virtual Pulumi.Automation.Workspace.GetStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSummary>
+Pulumi.Automation.Exceptions.ProjectSettingsConflictException
