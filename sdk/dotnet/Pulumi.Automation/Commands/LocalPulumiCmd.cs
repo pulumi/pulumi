@@ -22,7 +22,7 @@ namespace Pulumi.Automation.Commands
         public async Task<CommandResult> RunAsync(
             IEnumerable<string> args,
             string workingDir,
-            IDictionary<string, string> additionalEnv,
+            IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
             Action<EngineEvent>? onEngineEvent = null,
@@ -49,7 +49,7 @@ namespace Pulumi.Automation.Commands
         private async Task<CommandResult> RunAsyncInner(
             IEnumerable<string> args,
             string workingDir,
-            IDictionary<string, string> additionalEnv,
+            IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
             Action<string>? onStandardError = null,
             EventLogFile? eventLogFile = null,
@@ -94,7 +94,7 @@ namespace Pulumi.Automation.Commands
             }
         }
 
-        private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string> additionalEnv, bool debugCommands)
+        private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string?> additionalEnv, bool debugCommands)
         {
             var env = new Dictionary<string, string>();
 
@@ -107,7 +107,20 @@ namespace Pulumi.Automation.Commands
 
             foreach (var pair in additionalEnv)
             {
-                env[pair.Key] = pair.Value;
+                // For consistency with System.SetEnvironmentVaraible,
+                // we treat null and empty strings as instructions to
+                // delete the env var from the sub-process
+                // environment.
+                //
+                // https://docs.microsoft.com/en-us/dotnet/api/system.environment.setenvironmentvariable
+                if (String.IsNullOrEmpty(pair.Value))
+                {
+                    env.Remove(pair.Key);
+                }
+                else
+                {
+                    env[pair.Key] = pair.Value;
+                }
             }
 
             if (debugCommands)

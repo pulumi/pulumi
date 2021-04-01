@@ -54,7 +54,7 @@ namespace Pulumi.Automation
         public override PulumiFn? Program { get; set; }
 
         /// <inheritdoc/>
-        public override IDictionary<string, string>? EnvironmentVariables { get; set; }
+        public override IDictionary<string, string?>? EnvironmentVariables { get; set; }
 
         /// <summary>
         /// Creates a workspace using the specified options. Used for maximal control and
@@ -310,7 +310,7 @@ namespace Pulumi.Automation
                 this.SecretsProvider = options.SecretsProvider;
 
                 if (options.EnvironmentVariables != null)
-                    this.EnvironmentVariables = new Dictionary<string, string>(options.EnvironmentVariables);
+                    this.EnvironmentVariables = new Dictionary<string, string?>(options.EnvironmentVariables);
             }
 
             if (string.IsNullOrWhiteSpace(dir))
@@ -499,7 +499,7 @@ namespace Pulumi.Automation
         public override async Task SetConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
         {
             var args = new List<string>{"config", "set-all", "--stack", stackName};
-            foreach (var (key, value) in configMap) 
+            foreach (var (key, value) in configMap)
             {
                 var secretArg = value.IsSecret ? "--secret" : "--plaintext";
                 args.Add(secretArg);
@@ -574,7 +574,7 @@ namespace Pulumi.Automation
             var result = await this.RunCommandAsync(new[] { "stack", "ls", "--json" }, cancellationToken).ConfigureAwait(false);
             if (string.IsNullOrWhiteSpace(result.StandardOutput))
                 return ImmutableList<StackSummary>.Empty;
-            
+
             var stacks = this._serializer.DeserializeJson<List<StackSummary>>(result.StandardOutput);
             return stacks.ToImmutableList();
         }
