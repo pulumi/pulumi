@@ -7,8 +7,8 @@ namespace Pulumi.Automation
     /// Compares two dictionaries for equality by content, as F# maps would.
     internal sealed class DictionaryContentsComparer<K, V> : IEqualityComparer<IDictionary<K, V>> where K : notnull
     {
-        private IEqualityComparer<K> _keyComparer;
-        private IEqualityComparer<V> _valueComparer;
+        private readonly IEqualityComparer<K> _keyComparer;
+        private readonly IEqualityComparer<V> _valueComparer;
 
         public DictionaryContentsComparer(IEqualityComparer<K> keyComparer, IEqualityComparer<V> valueComparer)
         {
