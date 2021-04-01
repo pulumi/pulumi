@@ -13,7 +13,7 @@ $PublishTargets = @($GitHash, $Version, $Branch)
 function RunGoBuild($goPackage, $dir, $outputName) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
     Push-Location $dir
-    go build -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=$Version" -o "$binRoot\$outputName" $goPackage
+    go build -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=v$Version" -o "$binRoot\$outputName" $goPackage
     Pop-Location
 }
 

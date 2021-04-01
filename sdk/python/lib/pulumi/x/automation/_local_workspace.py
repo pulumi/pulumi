@@ -100,14 +100,7 @@ class LocalWorkspace(Workspace):
                f"secrets_provider={self.secrets_provider})"
 
     def project_settings(self) -> ProjectSettings:
-        for ext in _setting_extensions:
-            project_path = os.path.join(self.work_dir, f"Pulumi{ext}")
-            if not os.path.exists(project_path):
-                continue
-            with open(project_path, "r") as file:
-                settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
-                return ProjectSettings(**settings)
-        raise FileNotFoundError(f"failed to find project settings file in workdir: {self.work_dir}")
+        return _load_project_settings(self.work_dir)
 
     def save_project_settings(self, settings: ProjectSettings) -> None:
         found_ext = ".yaml"
@@ -117,9 +110,10 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
+        writable_settings = {key: settings.__dict__[key] for key in settings.__dict__ if settings.__dict__[key] is not None}
         with open(path, "w") as file:
-            json.dump(settings.__dict__, file, indent=4) if found_ext == ".json" else yaml.dump(
-                settings.__dict__, stream=file)
+            json.dump(writable_settings, file, indent=4) if found_ext == ".json" else yaml.dump(
+                writable_settings, stream=file)
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
@@ -431,7 +425,14 @@ def _inline_source_stack_helper(stack_name: str,
     workspace_options.program = program
 
     if not workspace_options.project_settings:
-        workspace_options.project_settings = default_project(project_name)
+        work_dir = workspace_options.work_dir
+        if work_dir:
+            try:
+                _load_project_settings(work_dir)
+            except FileNotFoundError:
+                workspace_options.project_settings = default_project(project_name)
+        else:
+            workspace_options.project_settings = default_project(project_name)
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)
@@ -471,3 +472,14 @@ def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionI
         raise InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
                                   f"{min_version}, your current CLI version is {current_version}. "
                                   f"Please update the Pulumi CLI.")
+
+
+def _load_project_settings(work_dir: str) -> ProjectSettings:
+    for ext in _setting_extensions:
+        project_path = os.path.join(work_dir, f"Pulumi{ext}")
+        if not os.path.exists(project_path):
+            continue
+        with open(project_path, "r") as file:
+            settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
+            return ProjectSettings(**settings)
+    raise FileNotFoundError(f"failed to find project settings file in workdir: {work_dir}")

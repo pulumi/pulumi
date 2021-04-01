@@ -201,6 +201,7 @@ jobs:
     name: scan container images
     runs-on: ubuntu-latest
     needs: os_sdk
+    continue-on-error: true
     strategy:
       matrix:
         image: [ "base", "nodejs", "python", "go" ]

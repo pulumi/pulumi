@@ -27,6 +27,9 @@
 - [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
   [#6504](https://github.com/pulumi/pulumi/pull/6504)
 
-- [sdk/dotnet] Avoid overwriting existing Pulumi.yaml, introduce
-  ProjectSettingsConflictException.
+- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
+  [#6655](https://github.com/pulumi/pulumi/pull/6655)
+
+- [sdk/dotnet] Respect pre-existing Pulumi.yaml for inline programs,
+  introduce ProjectSettingsConflictException.
   [6670](https://github.com/pulumi/pulumi/pull/6670)

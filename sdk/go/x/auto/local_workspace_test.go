@@ -1365,6 +1365,29 @@ func TestMinimumVersion(t *testing.T) {
 	}
 }
 
+func TestProjectSettingsRespected(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	pName := "correct_project"
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	badProjectName := "project_was_overwritten"
+	stack, err := NewStackInlineSource(ctx, stackName, badProjectName, func(ctx *pulumi.Context) error {
+		return nil
+	}, WorkDir(filepath.Join(".", "test", pName)))
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = stack.Workspace().RemoveStack(ctx, stack.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	assert.Nil(t, err)
+	projectSettings, err := stack.workspace.ProjectSettings(ctx)
+	assert.Nil(t, err)
+	assert.Equal(t, projectSettings.Name, tokens.PackageName("correct_project"))
+	assert.Equal(t, *projectSettings.Description, "This is a description")
+}
+
 func BenchmarkBulkSetConfigMixed(b *testing.B) {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "set_config_mixed", "dev")
