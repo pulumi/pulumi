@@ -2,7 +2,7 @@
 
 using System.Collections.Generic;
 
-namespace Pulumi.Automation
+namespace Pulumi.Automation.Collections
 {
     /// Compares two dictionaries for equality by content, as F# maps would.
     internal sealed class DictionaryContentsComparer<K, V> : IEqualityComparer<IDictionary<K, V>> where K : notnull

@@ -4,13 +4,13 @@
         <name>Pulumi.Automation</name>
     </assembly>
     <members>
+        <member name="T:Pulumi.Automation.Collections.DictionaryContentsComparer`2">
+            Compares two dictionaries for equality by content, as F# maps would.
+        </member>
         <member name="T:Pulumi.Automation.DestroyOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
-        </member>
-        <member name="T:Pulumi.Automation.DictionaryContentsComparer`2">
-            Compares two dictionaries for equality by content, as F# maps would.
         </member>
         <member name="T:Pulumi.Automation.Events.CancelEvent">
             <summary>

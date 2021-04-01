@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using Pulumi.Automation.Collections;
 
 namespace Pulumi.Automation
 {
