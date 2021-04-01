@@ -54,11 +54,7 @@ namespace Pulumi.Automation
 
             int IEqualityComparer<ProjectRuntimeOptions>.GetHashCode(ProjectRuntimeOptions obj)
             {
-                var hash = new HashCode();
-                hash.Add(obj.TypeScript);
-                hash.Add(obj.Binary);
-                hash.Add(obj.VirtualEnv);
-                return hash.ToHashCode();
+                return HashCode.Combine(obj.TypeScript, obj.Binary, obj.VirtualEnv);
             }
         }
     }
