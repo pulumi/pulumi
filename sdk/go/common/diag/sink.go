@@ -109,17 +109,14 @@ type defaultSink struct {
 }
 
 func (d *defaultSink) LogfDepth(depth int, sev Severity, diag *Diag, args ...interface{}) {
-	var messageSeverity Severity
+	var messageSeverity Severity = sev
 	var glogLevel glog.Level = 5
 	var format string
-	var writer io.Writer
 
 	switch sev {
 	case Debug:
-		messageSeverity = Debug
-		glogLevel = 9
 		format = "defaultSink::Debug(%v)"
-		writer = d.writers[Debug]
+		glogLevel = 9
 
 		// For debug messages, write both to the glogger and a
 		// stream, if there is one.
@@ -128,21 +125,14 @@ func (d *defaultSink) LogfDepth(depth int, sev Severity, diag *Diag, args ...int
 		}
 
 	case Info:
-		messageSeverity = Info
 		format = "defaultSink::Info(%v)"
-		writer = d.writers[Info]
 	case Infoerr:
-		messageSeverity = Info /* not Infoerr, just "info: "*/
 		format = "defaultSink::Infoerr(%v)"
-		writer = d.writers[Infoerr]
+		messageSeverity = Info /* not Infoerr, just "info: "*/
 	case Warning:
-		messageSeverity = Warning
 		format = "defaultSink::Warning(%v)"
-		writer = d.writers[Warning]
 	case Error:
 		format = "defaultSink::Error(%v)"
-		messageSeverity = Error
-		writer = d.writers[Error]
 	default:
 		contract.Failf("Unrecognized severity: %v", sev)
 	}
@@ -151,7 +141,7 @@ func (d *defaultSink) LogfDepth(depth int, sev Severity, diag *Diag, args ...int
 	if logging.V(glogLevel) {
 		logging.InfofDepth(depth+1, format, msg[:len(msg)-1])
 	}
-	fmt.Fprint(writer, msg)
+	fmt.Fprint(d.writers[sev], msg)
 }
 
 func (d *defaultSink) createMessage(sev Severity, diag *Diag, args ...interface{}) string {

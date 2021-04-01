@@ -18,6 +18,8 @@ import (
 	"bytes"
 	"fmt"
 
+	"github.com/golang/glog"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -43,88 +45,63 @@ func (s *eventSink) LogfDepth(
 	d *diag.Diag,
 	args ...interface{}) {
 
+	var messageSeverity diag.Severity = sev
+	var glogLevel glog.Level = 5
+	var format string
+
 	switch sev {
 	case diag.Debug:
-		s.DebugfDepth(depth+1, d, args...)
+		glogLevel = 9
+		format = "eventSink::Debug(%v)"
+
+		// For debug messages, write both to the glogger and a
+		// stream, if there is one.
+		if logging.V(3) {
+			logging.InfofDepth(depth+1, d.Message, args...)
+		}
+
 	case diag.Info:
-		s.InfofDepth(depth+1, d, args...)
+		format = "eventSink::Info(%v)"
 	case diag.Infoerr:
-		s.InfoerrfDepth(depth+1, d, args...)
+		messageSeverity = diag.Info /* not Infoerr, just "info: "*/
+		format = "eventSink::Infoerr(%v)"
 	case diag.Warning:
-		s.WarningfDepth(depth+1, d, args...)
+		format = "eventSink::Warning(%v)"
 	case diag.Error:
-		s.ErrorfDepth(depth+1, d, args...)
+		format = "eventSink::Error(%v)"
 	default:
 		contract.Failf("Unrecognized severity: %v", sev)
 	}
-}
 
-func (s *eventSink) DebugfDepth(depth int, d *diag.Diag, args ...interface{}) {
-	// For debug messages, write both to the glogger and a stream, if there is one.
-	if logging.V(3) {
-		logging.InfofDepth(depth+1, d.Message, args...)
+	prefix, msg := s.Stringify(messageSeverity, d, args...)
+	if logging.V(glogLevel) {
+		logging.InfofDepth(depth+1, format, msg[:len(msg)-1])
 	}
-	prefix, msg := s.Stringify(diag.Debug, d, args...)
-	if logging.V(9) {
-		logging.InfofDepth(depth+1, "eventSink::Debug(%v)", msg[:len(msg)-1])
-	}
-	s.events.diagDebugEvent(d, prefix, msg, s.statusSink)
+	diagEvent(&s.events, d, prefix, msg, sev, s.statusSink)
 }
 
-func (s *eventSink) InfofDepth(depth int, d *diag.Diag, args ...interface{}) {
-	prefix, msg := s.Stringify(diag.Info, d, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "eventSink::Info(%v)", msg[:len(msg)-1])
-	}
-	s.events.diagInfoEvent(d, prefix, msg, s.statusSink)
+func (s *eventSink) Logf(sev diag.Severity, d *diag.Diag, args ...interface{}) {
+	s.LogfDepth(1, sev, d, args...)
 }
 
-func (s *eventSink) InfoerrfDepth(depth int, d *diag.Diag, args ...interface{}) {
-	prefix, msg := s.Stringify(diag.Info /* not Infoerr, just "info: "*/, d, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "eventSink::Infoerr(%v)", msg[:len(msg)-1])
-	}
-	s.events.diagInfoerrEvent(d, prefix, msg, s.statusSink)
+func (s *eventSink) Debugf(d *diag.Diag, args ...interface{}) {
+	s.LogfDepth(1, diag.Debug, d, args...)
 }
 
-func (s *eventSink) ErrorfDepth(depth int, d *diag.Diag, args ...interface{}) {
-	prefix, msg := s.Stringify(diag.Error, d, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "eventSink::Error(%v)", msg[:len(msg)-1])
-	}
-	s.events.diagErrorEvent(d, prefix, msg, s.statusSink)
+func (s *eventSink) Infof(d *diag.Diag, args ...interface{}) {
+	s.LogfDepth(1, diag.Info, d, args...)
 }
 
-func (s *eventSink) WarningfDepth(depth int, d *diag.Diag, args ...interface{}) {
-	prefix, msg := s.Stringify(diag.Warning, d, args...)
-	if logging.V(5) {
-		logging.InfofDepth(depth+1, "eventSink::Warning(%v)", msg[:len(msg)-1])
-	}
-	s.events.diagWarningEvent(d, prefix, msg, s.statusSink)
+func (s *eventSink) Infoerrf(d *diag.Diag, args ...interface{}) {
+	s.LogfDepth(1, diag.Infoerr, d, args...)
 }
 
-func (d *eventSink) Logf(sev diag.Severity, diag *diag.Diag, args ...interface{}) {
-	d.LogfDepth(1, sev, diag, args...)
+func (s *eventSink) Errorf(d *diag.Diag, args ...interface{}) {
+	s.LogfDepth(1, diag.Error, d, args...)
 }
 
-func (d *eventSink) Debugf(diag *diag.Diag, args ...interface{}) {
-	d.DebugfDepth(1, diag, args...)
-}
-
-func (d *eventSink) Infof(diag *diag.Diag, args ...interface{}) {
-	d.InfofDepth(1, diag, args...)
-}
-
-func (d *eventSink) Infoerrf(diag *diag.Diag, args ...interface{}) {
-	d.InfoerrfDepth(1, diag, args...)
-}
-
-func (d *eventSink) Errorf(diag *diag.Diag, args ...interface{}) {
-	d.ErrorfDepth(1, diag, args...)
-}
-
-func (d *eventSink) Warningf(diag *diag.Diag, args ...interface{}) {
-	d.WarningfDepth(1, diag, args...)
+func (s *eventSink) Warningf(d *diag.Diag, args ...interface{}) {
+	s.LogfDepth(1, diag.Warning, d, args...)
 }
 
 func (s *eventSink) Stringify(sev diag.Severity, d *diag.Diag, args ...interface{}) (string, string) {
