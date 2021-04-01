@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/external-resource-schema/go
+module github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/external-resource-schema/go
 
 go 1.16
 

@@ -195,7 +195,7 @@ func TestConstructSlowGo(t *testing.T) {
 		Env: []string{pathEnv, testYarnLinkPulumiEnv},
 		Dir: filepath.Join("construct_component_slow", "go"),
 		Dependencies: []string{
-			"github.com/pulumi/pulumi/sdk/v2",
+			"github.com/pulumi/pulumi/sdk/v3",
 		},
 		Quick: true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
