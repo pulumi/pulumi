@@ -13,7 +13,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-random/sdk/v2 v2.4.2
-	github.com/pulumi/pulumi/pkg/v2 v2.22.0
+	github.com/pulumi/pulumi/pkg/v2 v2.0.0
 	github.com/pulumi/pulumi/sdk/v2 v2.24.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.6.1
 )
