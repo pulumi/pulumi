@@ -5,14 +5,34 @@
 import warnings
 import pulumi
 import pulumi.runtime
-from typing import Any, Mapping, Optional, Sequence, Union
+from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities, _tables
 from .resource import Resource
 
-__all__ = ['OtherResource']
+__all__ = ['OtherResourceArgs', 'OtherResource']
+
+@pulumi.input_type
+class OtherResourceArgs:
+    def __init__(__self__, *,
+                 foo: Optional[pulumi.Input['Resource']] = None):
+        """
+        The set of arguments for constructing a OtherResource resource.
+        """
+        if foo is not None:
+            pulumi.set(__self__, "foo", foo)
+
+    @property
+    @pulumi.getter
+    def foo(self) -> Optional[pulumi.Input['Resource']]:
+        return pulumi.get(self, "foo")
+
+    @foo.setter
+    def foo(self, value: Optional[pulumi.Input['Resource']]):
+        pulumi.set(self, "foo", value)
 
 
 class OtherResource(pulumi.ComponentResource):
+    @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
@@ -25,6 +45,33 @@ class OtherResource(pulumi.ComponentResource):
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
+        ...
+    @overload
+    def __init__(__self__,
+                 resource_name: str,
+                 args: Optional[OtherResourceArgs] = None,
+                 opts: Optional[pulumi.ResourceOptions] = None):
+        """
+        Create a OtherResource resource with the given unique name, props, and options.
+        :param str resource_name: The name of the resource.
+        :param OtherResourceArgs args: The arguments to use to populate this resource's properties.
+        :param pulumi.ResourceOptions opts: Options for the resource.
+        """
+        ...
+    def __init__(__self__, resource_name: str, *args, **kwargs):
+        resource_args, opts = _utilities.get_resource_args_opts(OtherResourceArgs, pulumi.ResourceOptions, *args, **kwargs)
+        if resource_args is not None:
+            __self__._internal_init(resource_name, opts, **resource_args.__dict__)
+        else:
+            __self__._internal_init(resource_name, *args, **kwargs)
+
+    def _internal_init(__self__,
+                 resource_name: str,
+                 opts: Optional[pulumi.ResourceOptions] = None,
+                 foo: Optional[pulumi.Input['Resource']] = None,
+                 __props__=None,
+                 __name__=None,
+                 __opts__=None):
         if __name__ is not None:
             warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)
             resource_name = __name__
