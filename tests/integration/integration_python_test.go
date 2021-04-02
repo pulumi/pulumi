@@ -5,6 +5,7 @@ package ints
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
@@ -335,6 +338,42 @@ func TestPythonPylint(t *testing.T) {
 		Quick: true,
 	}
 	integration.ProgramTest(t, opts)
+}
+
+// Test Python SDK codegen to ensure <Resource>Args and traditional keyword args work.
+func TestPythonResourceArgs(t *testing.T) {
+	testdir := filepath.Join("python", "resource_args")
+
+	// Generate example library from schema.
+	schemaBytes, err := os.ReadFile(filepath.Join(testdir, "schema.json"))
+	assert.NoError(t, err)
+	var spec schema.PackageSpec
+	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
+	pkg, err := schema.ImportSpec(spec, nil)
+	assert.NoError(t, err)
+	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{})
+	assert.NoError(t, err)
+	outdir := filepath.Join(testdir, "lib")
+	assert.NoError(t, os.RemoveAll(outdir))
+	for f, contents := range files {
+		outfile := filepath.Join(outdir, f)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0755))
+		if outfile == filepath.Join(outdir, "setup.py") {
+			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
+		}
+		assert.NoError(t, os.WriteFile(outfile, contents, 0600))
+	}
+	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0600))
+
+	// Test the program.
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: testdir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join(testdir, "lib"),
+		},
+		Quick: true,
+	})
 }
 
 // Test remote component construction in Python.
