@@ -175,7 +175,7 @@ export function isLegacyApplyEnabled(): boolean {
 /**
  * Returns true true if we will cache serialized dynamic providers on the program side
  */
- export function cacheDynamicProviders(): boolean {
+export function cacheDynamicProviders(): boolean {
     return options().cacheDynamicProviders === true;
 }
 

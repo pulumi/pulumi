@@ -165,7 +165,7 @@ const providerCache = new Map<ResourceProvider, Promise<string>>();
 
 function serializeProvider(provider: ResourceProvider): Promise<string> {
     let result: Promise<string>;
-    if (runtime.cacheDynamicProviders()){
+    if (runtime.cacheDynamicProviders()) {
         const cachedProvider = providerCache.get(provider);
         if (cachedProvider) {
             result = cachedProvider;
