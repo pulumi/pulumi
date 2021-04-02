@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import json
-import grpc
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
 from typing import List, Any, Mapping, MutableMapping, Optional
+import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
@@ -155,6 +155,8 @@ class DestroyResult(BaseResult):
 
 
 class Stack:
+    # pylint: disable=unused-argument
+
     name: str
     """The name identifying the Stack."""
 
@@ -278,9 +280,11 @@ class Stack:
             port = server.add_insecure_port(address="0.0.0.0:0")
             server.start()
 
-            def on_exit():
+            def on_exit_fn():
                 language_server.on_pulumi_exit()
                 server.stop(0)
+            on_exit = on_exit_fn
+
             args.append(f"--client=127.0.0.1:{port}")
 
         args.extend(["--exec-kind", kind])
@@ -289,7 +293,7 @@ class Stack:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
             summary = self.info()
-            assert (summary is not None)
+            assert summary is not None
             return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
         finally:
             if on_exit is not None:
@@ -340,9 +344,11 @@ class Stack:
             port = server.add_insecure_port(address="0.0.0.0:0")
             server.start()
 
-            def on_exit():
+            def on_exit_fn():
                 language_server.on_pulumi_exit()
                 server.stop(0)
+            on_exit = on_exit_fn
+
             args.append(f"--client=127.0.0.1:{port}")
         args.extend(["--exec-kind", kind])
 
@@ -381,7 +387,7 @@ class Stack:
         self.workspace.select_stack(self.name)
         refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
-        assert(summary is not None)
+        assert summary is not None
         return RefreshResult(stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary)
 
     def destroy(self,
@@ -411,7 +417,7 @@ class Stack:
         self.workspace.select_stack(self.name)
         destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
-        assert(summary is not None)
+        assert summary is not None
         return DestroyResult(stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary)
 
     def get_config(self, key: str) -> ConfigValue:
@@ -529,7 +535,7 @@ class Stack:
         :returns: Optional[UpdateSummary]
         """
         history = self.history(page_size=1)
-        if not len(history):
+        if not history:
             return None
         return history[0]
 

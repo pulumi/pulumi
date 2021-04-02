@@ -143,7 +143,6 @@ class Workspace(ABC):
 
         :returns: ProjectSettings
         """
-        pass
 
     @abstractmethod
     def save_project_settings(self, settings: ProjectSettings) -> None:
@@ -153,7 +152,6 @@ class Workspace(ABC):
 
         :param settings: The project settings to save.
         """
-        pass
 
     @abstractmethod
     def stack_settings(self, stack_name: str) -> StackSettings:
@@ -163,7 +161,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :return: StackSettings
         """
-        pass
 
     @abstractmethod
     def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
@@ -173,7 +170,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param settings: The stack settings to save.
         """
-        pass
 
     @abstractmethod
     def serialize_args_for_op(self, stack_name: str) -> List[str]:
@@ -184,7 +180,6 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack.
         """
-        pass
 
     @abstractmethod
     def post_command_callback(self, stack_name: str) -> None:
@@ -195,7 +190,6 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack.
         """
-        pass
 
     @abstractmethod
     def get_config(self, stack_name: str, key: str) -> ConfigValue:
@@ -207,7 +201,6 @@ class Workspace(ABC):
         :param key: The key for the config item to get.
         :returns: ConfigValue
         """
-        pass
 
     @abstractmethod
     def get_all_config(self, stack_name: str) -> ConfigMap:
@@ -217,7 +210,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :returns: ConfigMap
         """
-        pass
 
     @abstractmethod
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
@@ -228,7 +220,6 @@ class Workspace(ABC):
         :param key: The config key to add.
         :param value: The config value to add.
         """
-        pass
 
     @abstractmethod
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
@@ -238,7 +229,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param config: A mapping of key to ConfigValue to set to config.
         """
-        pass
 
     @abstractmethod
     def remove_config(self, stack_name: str, key: str) -> None:
@@ -248,7 +238,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param key: The key to remove from config.
         """
-        pass
 
     @abstractmethod
     def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
@@ -258,7 +247,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack.
         :param keys: The keys to remove from config.
         """
-        pass
 
     @abstractmethod
     def refresh_config(self, stack_name: str) -> None:
@@ -267,7 +255,6 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack.
         """
-        pass
 
     @abstractmethod
     def who_am_i(self) -> WhoAmIResult:
@@ -276,7 +263,6 @@ class Workspace(ABC):
 
         :returns: WhoAmIResult
         """
-        pass
 
     @abstractmethod
     def stack(self) -> Optional[StackSummary]:
@@ -285,7 +271,6 @@ class Workspace(ABC):
 
         :returns: Optional[StackSummary]
         """
-        pass
 
     @abstractmethod
     def create_stack(self, stack_name: str) -> None:
@@ -296,7 +281,6 @@ class Workspace(ABC):
         :returns: None
         :raises CommandError Raised if a stack with the same name exists.
         """
-        pass
 
     @abstractmethod
     def select_stack(self, stack_name: str) -> None:
@@ -307,7 +291,6 @@ class Workspace(ABC):
         :returns: None
         :raises CommandError Raised if no matching stack exists.
         """
-        pass
 
     @abstractmethod
     def remove_stack(self, stack_name: str) -> None:
@@ -316,7 +299,6 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack to remove
         """
-        pass
 
     @abstractmethod
     def list_stacks(self) -> List[StackSummary]:
@@ -327,7 +309,6 @@ class Workspace(ABC):
 
         :returns: List[StackSummary]
         """
-        pass
 
     @abstractmethod
     def install_plugin(self, name: str, version: str, kind: str = "resource") -> None:
@@ -338,7 +319,6 @@ class Workspace(ABC):
         :param version: The version to install.
         :param kind: The kind of plugin.
         """
-        pass
 
     @abstractmethod
     def remove_plugin(self,
@@ -352,7 +332,6 @@ class Workspace(ABC):
         :param version_range: The version range to remove.
         :param kind: The kind of plugin.
         """
-        pass
 
     @abstractmethod
     def list_plugins(self) -> List[PluginInfo]:
@@ -361,7 +340,6 @@ class Workspace(ABC):
 
         :returns: List[PluginInfo]
         """
-        pass
 
     @abstractmethod
     def export_stack(self, stack_name: str) -> Deployment:
@@ -372,7 +350,6 @@ class Workspace(ABC):
         :param stack_name: The name of the stack to export.
         :returns: Deployment
         """
-        pass
 
     @abstractmethod
     def import_stack(self, stack_name: str, state: Deployment) -> None:
@@ -383,4 +360,3 @@ class Workspace(ABC):
         :param stack_name: The name of the stack to import.
         :param state: The deployment state to import.
         """
-        pass

@@ -751,6 +751,18 @@ func TestOutputApply(t *testing.T) {
 			assert.NoError(t, err)
 		})
 
+		t.Run("ApplyArrayArrayMap", func(t *testing.T) {
+			o2 := out.ApplyArrayArrayMap(func(v int) map[string][][]interface{} { return *new(map[string][][]interface{}) })
+			_, known, _, _, err := await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+
+			o2 = out.ApplyArrayArrayMapWithContext(context.Background(), func(_ context.Context, v int) map[string][][]interface{} { return *new(map[string][][]interface{}) })
+			_, known, _, _, err = await(o2)
+			assert.True(t, known)
+			assert.NoError(t, err)
+		})
+
 		t.Run("ApplyInt", func(t *testing.T) {
 			o2 := out.ApplyInt(func(v int) int { return *new(int) })
 			_, known, _, _, err := await(o2)
@@ -1297,6 +1309,11 @@ func TestOutputApply(t *testing.T) {
 
 		t.Run("ApplyT::ArrayArrayOutput", func(t *testing.T) {
 			_, ok := out.ApplyT(func(v int) [][]interface{} { return *new([][]interface{}) }).(ArrayArrayOutput)
+			assert.True(t, ok)
+		})
+
+		t.Run("ApplyT::ArrayArrayMapOutput", func(t *testing.T) {
+			_, ok := out.ApplyT(func(v int) map[string][][]interface{} { return *new(map[string][][]interface{}) }).(ArrayArrayMapOutput)
 			assert.True(t, ok)
 		})
 
@@ -2443,6 +2460,24 @@ func TestToOutputArrayArray(t *testing.T) {
 
 	out = ToOutput(out)
 	_, ok = out.(ArrayArrayInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToOutputArrayArrayMap(t *testing.T) {
+	out := ToOutput(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
+	_, ok := out.(ArrayArrayMapInput)
+	assert.True(t, ok)
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = ToOutput(out)
+	_, ok = out.(ArrayArrayMapInput)
 	assert.True(t, ok)
 
 	_, known, _, _, err = await(out)
@@ -4306,6 +4341,34 @@ func TestToArrayArrayOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	out = out.ToArrayArrayOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+}
+
+func TestToArrayArrayMapOutput(t *testing.T) {
+	in := ArrayArrayMapInput(ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}})
+
+	out := in.ToArrayArrayMapOutput()
+
+	_, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArrayArrayMapOutput()
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = in.ToArrayArrayMapOutputWithContext(context.Background())
+
+	_, known, _, _, err = await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	out = out.ToArrayArrayMapOutputWithContext(context.Background())
 
 	_, known, _, _, err = await(out)
 	assert.True(t, known)
@@ -7309,6 +7372,52 @@ func TestTopLevelToMapMapOutput(t *testing.T) {
 	assert.NoError(t, err)
 
 	assert.EqualValues(t, av.(map[string]map[string]interface{})["baz"], iv)
+}
+
+func TestArrayArrayMapIndex(t *testing.T) {
+	out := (ArrayArrayMap{"baz": ArrayArray{Array{String("any")}}}).ToArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
+
+	iv, known, _, _, err = await(out.MapIndex(String("notfound")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+	assert.Zero(t, iv)
+}
+
+func TestToArrayArrayMap(t *testing.T) {
+	out := ToArrayArrayMap(map[string][][]interface{}{"baz": {{String("any")}}}).ToArrayArrayMapOutput()
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
+}
+
+func TestTopLevelToArrayArrayMapOutput(t *testing.T) {
+	out := ToArrayArrayMapOutput(map[string]ArrayArrayOutput{"baz": ToOutput(ArrayArray{Array{String("any")}}).(ArrayArrayOutput)})
+
+	av, known, _, _, err := await(out)
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	iv, known, _, _, err := await(out.MapIndex(String("baz")))
+	assert.True(t, known)
+	assert.NoError(t, err)
+
+	assert.EqualValues(t, av.(map[string][][]interface{})["baz"], iv)
 }
 
 func TestIntMapIndex(t *testing.T) {

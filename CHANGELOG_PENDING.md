@@ -3,32 +3,11 @@
 
 ### Improvements
 
-- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
-  [#6657](https://github.com/pulumi/pulumi/pull/6657)
 
-- [automation/dotnet] Expose structured logging
-  [#6572](https://github.com/pulumi/pulumi/pull/6572)
-
-- [cli] Support full fidelity YAML round-tripping
-  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
-  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
-
-- [sdk/python] Ensure all async tasks are awaited prior to exit.
-  [#6606](https://github.com/pulumi/pulumi/pull/6606)
-
-- [sdk/dotnet] Thread-safe concurrency-friendly global state
-  [#6139](https://github.com/pulumi/pulumi/pull/6139)
+- [automation/dotnet] Allow null environment variables
+  [#6687](https://github.com/pulumi/pulumi/pull/6687)
 
 ### Bug Fixes
 
-- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
-  [#6644](https://github.com/pulumi/pulumi/pull/6644)
-
-- [automation/python] Fix passing of additional environment variables.
-  [#6639](https://github.com/pulumi/pulumi/pull/6639)
-
-- [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
-  [#6504](https://github.com/pulumi/pulumi/pull/6504)
-
-- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
-  [#6655](https://github.com/pulumi/pulumi/pull/6655)
+- [automation/dotnet] Environment variable value type is now nullable.
+  [#6520](https://github.com/pulumi/pulumi/pull/6520)

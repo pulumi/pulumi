@@ -85,38 +85,30 @@ type pkgContext struct {
 	pkg            *schema.Package
 	mod            string
 	importBasePath string
-	typeDetails    map[*schema.ObjectType]*typeDetails
-	enumDetails    map[*schema.EnumType]*typeDetails
+	typeDetails    map[schema.Type]*typeDetails
 	enums          []*schema.EnumType
 	types          []*schema.ObjectType
 	resources      []*schema.Resource
 	functions      []*schema.Function
-	names          codegen.StringSet
-	renamed        map[string]string
-	functionNames  map[*schema.Function]string
-	needsUtils     bool
-	tool           string
-	packages       map[string]*pkgContext
+	// schemaNames tracks the names of types/resources as specified in the schema
+	schemaNames   codegen.StringSet
+	names         codegen.StringSet
+	renamed       map[string]string
+	functionNames map[*schema.Function]string
+	needsUtils    bool
+	tool          string
+	packages      map[string]*pkgContext
 
 	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
 	pkgImportAliases map[string]string // Package name -> import alias
 }
 
-func (pkg *pkgContext) detailsForType(t *schema.ObjectType) *typeDetails {
+func (pkg *pkgContext) detailsForType(t schema.Type) *typeDetails {
 	details, ok := pkg.typeDetails[t]
 	if !ok {
 		details = &typeDetails{}
 		pkg.typeDetails[t] = details
-	}
-	return details
-}
-
-func (pkg *pkgContext) detailsForEnum(e *schema.EnumType) *typeDetails {
-	details, ok := pkg.enumDetails[e]
-	if !ok {
-		details = &typeDetails{}
-		pkg.enumDetails[e] = details
 	}
 	return details
 }
@@ -130,7 +122,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 	// module := path/to/module
 
 	components := strings.Split(tok, ":")
-	contract.Assert(len(components) == 3)
+	contract.Assertf(len(components) == 3, "tok: %s", tok)
 	if pkg == nil {
 		panic(fmt.Errorf("pkg is nil. token %s", tok))
 	}
@@ -507,8 +499,8 @@ func printCommentWithDeprecationMessage(w io.Writer, comment, deprecationMessage
 	}
 }
 
-func genInputInterface(w io.Writer, name string) {
-	printComment(w, getInputUsage(name), false)
+func (pkg *pkgContext) genInputInterface(w io.Writer, name string) {
+	printComment(w, pkg.getInputUsage(name), false)
 	fmt.Fprintf(w, "type %sInput interface {\n", name)
 	fmt.Fprintf(w, "\tpulumi.Input\n\n")
 	fmt.Fprintf(w, "\tTo%sOutput() %sOutput\n", Title(name), name)
@@ -516,17 +508,51 @@ func genInputInterface(w io.Writer, name string) {
 	fmt.Fprintf(w, "}\n\n")
 }
 
-func getInputUsage(name string) string {
+func (pkg *pkgContext) getUsageForNestedType(name, baseTypeName string) string {
+	const defaultExampleFormat = "%sArgs{...}"
+	example := fmt.Sprintf(defaultExampleFormat, baseTypeName)
+
+	trimmer := func(typeName string) string {
+		if strings.HasSuffix(typeName, "Array") {
+			return typeName[:strings.LastIndex(typeName, "Array")]
+		}
+		if strings.HasSuffix(typeName, "Map") {
+			return typeName[:strings.LastIndex(typeName, "Map")]
+		}
+		return typeName
+	}
+
+	// If not a nested collection type, use the default example format
+	if trimmer(name) == name {
+		return example
+	}
+
+	if strings.HasSuffix(name, "Map") {
+		if pkg.schemaNames.Has(baseTypeName) {
+			return fmt.Sprintf("%s{ \"key\": %s }", name, example)
+		}
+		return fmt.Sprintf("%s{ \"key\": %s }", name, pkg.getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
+	}
+
+	if strings.HasSuffix(name, "Array") {
+		if pkg.schemaNames.Has(baseTypeName) {
+			return fmt.Sprintf("%s{ %s }", name, example)
+		}
+		return fmt.Sprintf("%s{ %s }", name, pkg.getUsageForNestedType(baseTypeName, trimmer(baseTypeName)))
+	}
+	return example
+}
+
+func (pkg *pkgContext) getInputUsage(name string) string {
 	if strings.HasSuffix(name, "Array") {
 		baseTypeName := name[:strings.LastIndex(name, "Array")]
 		return strings.Join([]string{
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			fmt.Sprintf("\t\t %s{ %sArgs{...} }", name, baseTypeName),
+			"\t\t " + pkg.getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
-
 	}
 
 	if strings.HasSuffix(name, "Map") {
@@ -535,7 +561,7 @@ func getInputUsage(name string) string {
 			fmt.Sprintf("%sInput is an input type that accepts %s and %sOutput values.", name, name, name),
 			fmt.Sprintf("You can construct a concrete instance of `%sInput` via:", name),
 			"",
-			fmt.Sprintf("\t\t %s{ \"key\": %sArgs{...} }", name, baseTypeName),
+			"\t\t " + pkg.getUsageForNestedType(name, baseTypeName),
 			" ",
 		}, "\n")
 	}
@@ -708,10 +734,10 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
-	details := pkg.detailsForEnum(enum)
+	details := pkg.detailsForType(enum)
 	// Generate the array input.
 	if details.arrayElement {
-		genInputInterface(w, typeName+"Array")
+		pkg.genInputInterface(w, typeName+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]s\n\n", typeName)
 
@@ -720,7 +746,7 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 
 	// Generate the map input.
 	if details.mapElement {
-		genInputInterface(w, typeName+"Map")
+		pkg.genInputInterface(w, typeName+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]s\n\n", typeName)
 
@@ -770,7 +796,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	name := pkg.tokenToType(t.Token)
 
 	// Generate the plain inputs.
-	genInputInterface(w, name)
+	pkg.genInputInterface(w, name)
 
 	printComment(w, t.Comment, false)
 	fmt.Fprintf(w, "type %sArgs struct {\n", name)
@@ -788,7 +814,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the pointer input.
 	if details.ptrElement {
-		genInputInterface(w, name+"Ptr")
+		pkg.genInputInterface(w, name+"Ptr")
 
 		ptrTypeName := camel(name) + "PtrType"
 
@@ -803,7 +829,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the array input.
 	if details.arrayElement {
-		genInputInterface(w, name+"Array")
+		pkg.genInputInterface(w, name+"Array")
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 
@@ -812,7 +838,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 	// Generate the map input.
 	if details.mapElement {
-		genInputInterface(w, name+"Map")
+		pkg.genInputInterface(w, name+"Map")
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 
@@ -891,7 +917,14 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 				deref = "&"
 			}
 
-			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, Title(p.Name), outputType)
+			funcName := Title(p.Name)
+			// Avoid conflicts with Output interface for lifted attributes.
+			switch funcName {
+			case "IsSecret", "ElementType":
+				funcName = funcName + "Prop"
+			}
+
+			fmt.Fprintf(w, "func (o %sPtrOutput) %s() %s {\n", name, funcName, outputType)
 			fmt.Fprintf(w, "\treturn o.ApplyT(func (v *%s) %s {\n", name, applyType)
 			fmt.Fprintf(w, "\t\tif v == nil {\n")
 			fmt.Fprintf(w, "\t\t\treturn nil\n")
@@ -1250,12 +1283,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 		if !r.IsProvider {
 			// Generate the resource array input.
-			genInputInterface(w, name+"Array")
+			pkg.genInputInterface(w, name+"Array")
 			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 			genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
 
 			// Generate the resource map input.
-			genInputInterface(w, name+"Map")
+			pkg.genInputInterface(w, name+"Map")
 			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 			genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
 		}
@@ -1387,6 +1420,85 @@ func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
 	pkg.genOutputTypes(w, obj, pkg.detailsForType(obj))
 }
 
+func (pkg *pkgContext) addSuffixesToName(typ schema.Type, name string) []string {
+	var names []string
+	details := pkg.detailsForType(typ)
+	if details.arrayElement {
+		names = append(names, name+"Array")
+	}
+	if details.mapElement {
+		names = append(names, name+"Map")
+	}
+	return names
+}
+
+func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []string {
+	var elementTypeName string
+	var names []string
+	switch t := typ.(type) {
+	case *schema.ArrayType:
+		// Builtins already cater to primitive arrays
+		if schema.IsPrimitiveType(t.ElementType) {
+			return nil
+		}
+		elementTypeName = pkg.nestedTypeToType(t.ElementType)
+		elementTypeName += "Array"
+		names = pkg.addSuffixesToName(t, elementTypeName)
+	case *schema.MapType:
+		// Builtins already cater to primitive maps
+		if schema.IsPrimitiveType(t.ElementType) {
+			return nil
+		}
+		elementTypeName = pkg.nestedTypeToType(t.ElementType)
+		elementTypeName += "Map"
+		names = pkg.addSuffixesToName(t, elementTypeName)
+	}
+
+	for _, name := range names {
+		if strings.HasSuffix(name, "Array") {
+			fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
+			genInputMethods(w, name, name, elementTypeName, false, false)
+
+			fmt.Fprintf(w, "type %sOutput struct { *pulumi.OutputState }\n\n", name)
+			genOutputMethods(w, name, elementTypeName, false)
+
+			fmt.Fprintf(w, "func (o %sOutput) Index(i pulumi.IntInput) %sOutput {\n", name, elementTypeName)
+			fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %s {\n", elementTypeName)
+			fmt.Fprintf(w, "\t\treturn vs[0].([]%s)[vs[1].(int)]\n", elementTypeName)
+			fmt.Fprintf(w, "\t}).(%sOutput)\n", elementTypeName)
+			fmt.Fprintf(w, "}\n\n")
+		}
+
+		if strings.HasSuffix(name, "Map") {
+			fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
+			genInputMethods(w, name, name, elementTypeName, false, false)
+
+			fmt.Fprintf(w, "type %sOutput struct { *pulumi.OutputState }\n\n", name)
+			genOutputMethods(w, name, elementTypeName, false)
+
+			// Emit the map output type
+			fmt.Fprintf(w, "func (o %sOutput) MapIndex(k pulumi.StringInput) %sOutput {\n", name, elementTypeName)
+			fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %s {\n", elementTypeName)
+			fmt.Fprintf(w, "\t\treturn vs[0].(map[string]%s)[vs[1].(string)]\n", elementTypeName)
+			fmt.Fprintf(w, "\t}).(%sOutput)\n", elementTypeName)
+			fmt.Fprintf(w, "}\n\n")
+		}
+		pkg.genInputInterface(w, name)
+	}
+
+	return names
+}
+
+func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
+	switch t := typ.(type) {
+	case *schema.ArrayType:
+		return pkg.nestedTypeToType(t.ElementType)
+	case *schema.MapType:
+		return pkg.nestedTypeToType(t.ElementType)
+	}
+	return pkg.tokenToType(typ.String())
+}
+
 func (pkg *pkgContext) tokenToEnum(tok string) string {
 	// token := pkg : module : member
 	// module := path/to/module
@@ -1428,11 +1540,10 @@ func (pkg *pkgContext) tokenToEnum(tok string) string {
 	return strings.Replace(mod, "/", "", -1) + "." + name
 }
 
-func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectType) {
+func (pkg *pkgContext) genTypeRegistrations(w io.Writer, objTypes []*schema.ObjectType, types ...string) {
 	fmt.Fprintf(w, "func init() {\n")
-	for _, obj := range types {
+	for _, obj := range objTypes {
 		name, details := pkg.tokenToType(obj.Token), pkg.detailsForType(obj)
-
 		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
 		if details.ptrElement {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
@@ -1443,6 +1554,10 @@ func (pkg *pkgContext) genTypeRegistrations(w io.Writer, types []*schema.ObjectT
 		if details.mapElement {
 			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
 		}
+	}
+
+	for _, t := range types {
+		fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%sOutput{})\n", t)
 	}
 	fmt.Fprintf(w, "}\n")
 }
@@ -1724,11 +1839,12 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 			registrations.Add(tokenToModule(r.Token))
 			fmt.Fprintf(w, "\tcase %q:\n", r.Token)
-			fmt.Fprintf(w, "\t\tr, err = New%s(ctx, name, nil, pulumi.URN_(urn))\n", resourceName(r))
+			fmt.Fprintf(w, "\t\tr = &%s{}\n", resourceName(r))
 		}
 		fmt.Fprintf(w, "\tdefault:\n")
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown resource type: %%s\", typ)\n")
 		fmt.Fprintf(w, "\t}\n\n")
+		fmt.Fprintf(w, "\terr = ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))\n")
 		fmt.Fprintf(w, "\treturn\n")
 		fmt.Fprintf(w, "}\n\n")
 	}
@@ -1746,7 +1862,9 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "\tif typ != \"pulumi:providers:%s\" {\n", pkg.pkg.Name)
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown provider type: %%s\", typ)\n")
 		fmt.Fprintf(w, "\t}\n\n")
-		fmt.Fprintf(w, "\treturn NewProvider(ctx, name, nil, pulumi.URN_(urn))\n")
+		fmt.Fprintf(w, "\tr := &Provider{}\n")
+		fmt.Fprintf(w, "\terr := ctx.RegisterResource(typ, name, nil, r, pulumi.URN_(urn))\n")
+		fmt.Fprintf(w, "\treturn r, err\n")
 		fmt.Fprintf(w, "}\n\n")
 	}
 
@@ -1789,9 +1907,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				pkg:              pkg,
 				mod:              mod,
 				importBasePath:   goInfo.ImportBasePath,
-				typeDetails:      map[*schema.ObjectType]*typeDetails{},
-				enumDetails:      map[*schema.EnumType]*typeDetails{},
+				typeDetails:      map[schema.Type]*typeDetails{},
 				names:            codegen.NewStringSet(),
+				schemaNames:      codegen.NewStringSet(),
 				renamed:          map[string]string{},
 				functionNames:    map[*schema.Function]string{},
 				tool:             tool,
@@ -1808,6 +1926,18 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		return getPkg(tokenToPackage(pkg, goInfo.ModuleToPackage, token))
 	}
 
+	var getPkgFromType func(schema.Type) *pkgContext
+	getPkgFromType = func(typ schema.Type) *pkgContext {
+		switch t := typ.(type) {
+		case *schema.ArrayType:
+			return getPkgFromType(t.ElementType)
+		case *schema.MapType:
+			return getPkgFromType(t.ElementType)
+		default:
+			return getPkgFromToken(t.String())
+		}
+	}
+
 	if len(pkg.Config) > 0 {
 		_ = getPkg("config")
 	}
@@ -1817,44 +1947,51 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	// types corresponding to all of it's nested properties, as our accessor methods will lift `nil` into
 	// those nested types.
 	var populateDetailsForPropertyTypes func(seen codegen.StringSet, props []*schema.Property, parentOptional bool)
+	var populateDetailsForTypes func(seen codegen.StringSet, schemaType schema.Type, isRequired bool, parentOptional bool)
+
 	populateDetailsForPropertyTypes = func(seen codegen.StringSet, props []*schema.Property, parentOptional bool) {
 		for _, p := range props {
-			switch typ := p.Type.(type) {
-			case *schema.ObjectType:
-				if !p.IsRequired || parentOptional {
-					if seen.Has(typ.Token) {
-						continue
-					}
+			populateDetailsForTypes(seen, p.Type, p.IsRequired, parentOptional)
+		}
+	}
 
-					seen.Add(typ.Token)
-					getPkgFromToken(typ.Token).detailsForType(typ).ptrElement = true
-					populateDetailsForPropertyTypes(seen, typ.Properties, true)
-				}
-			case *schema.EnumType:
+	populateDetailsForTypes = func(seen codegen.StringSet, schemaType schema.Type, isRequired bool, parentOptional bool) {
+		switch typ := schemaType.(type) {
+		case *schema.ObjectType:
+			pkg := getPkgFromToken(typ.Token)
+			if !isRequired || parentOptional {
 				if seen.Has(typ.Token) {
-					continue
+					return
 				}
-				if !p.IsRequired || parentOptional {
-					seen.Add(typ.Token)
-					getPkgFromToken(typ.Token).detailsForEnum(typ).ptrElement = true
-				}
-			case *schema.ArrayType:
-				if seen.Has(typ.String()) {
-					continue
-				}
-				seen.Add(typ.String())
-				if enum, ok := typ.ElementType.(*schema.EnumType); ok {
-					getPkgFromToken(enum.Token).detailsForEnum(enum).arrayElement = true
-				}
-			case *schema.MapType:
-				if seen.Has(typ.String()) {
-					continue
-				}
-				seen.Add(typ.String())
-				if enum, ok := typ.ElementType.(*schema.EnumType); ok {
-					getPkgFromToken(enum.Token).detailsForEnum(enum).mapElement = true
-				}
+				seen.Add(typ.Token)
+				pkg.detailsForType(typ).ptrElement = true
+				populateDetailsForPropertyTypes(seen, typ.Properties, true)
 			}
+			pkg.schemaNames.Add(tokenToName(typ.Token))
+		case *schema.EnumType:
+			if seen.Has(typ.Token) {
+				return
+			}
+			seen.Add(typ.Token)
+			pkg := getPkgFromToken(typ.Token)
+			if !isRequired || parentOptional {
+				pkg.detailsForType(typ).ptrElement = true
+			}
+			pkg.schemaNames.Add(tokenToName(typ.Token))
+		case *schema.ArrayType:
+			if seen.Has(typ.String()) {
+				return
+			}
+			seen.Add(typ.String())
+			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).arrayElement = true
+			populateDetailsForTypes(seen, typ.ElementType, true, false)
+		case *schema.MapType:
+			if seen.Has(typ.String()) {
+				return
+			}
+			seen.Add(typ.String())
+			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).mapElement = true
+			populateDetailsForTypes(seen, typ.ElementType, true, false)
 		}
 	}
 
@@ -1865,19 +2002,9 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	for _, t := range pkg.Types {
 		switch typ := t.(type) {
 		case *schema.ArrayType:
-			if obj, ok := typ.ElementType.(*schema.ObjectType); ok {
-				getPkgFromToken(obj.Token).detailsForType(obj).arrayElement = true
-			}
-			if enum, ok := typ.ElementType.(*schema.EnumType); ok {
-				getPkgFromToken(enum.Token).detailsForEnum(enum).arrayElement = true
-			}
+			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).arrayElement = true
 		case *schema.MapType:
-			if obj, ok := typ.ElementType.(*schema.ObjectType); ok {
-				getPkgFromToken(obj.Token).detailsForType(obj).mapElement = true
-			}
-			if enum, ok := typ.ElementType.(*schema.EnumType); ok {
-				getPkgFromToken(enum.Token).detailsForEnum(enum).mapElement = true
-			}
+			getPkgFromType(typ.ElementType).detailsForType(typ.ElementType).mapElement = true
 		case *schema.ObjectType:
 			pkg := getPkgFromToken(typ.Token)
 			pkg.types = append(pkg.types, typ)
@@ -1891,6 +2018,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	scanResource := func(r *schema.Resource) {
 		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
+		pkg.schemaNames.Add(tokenToName(r.Token))
 
 		pkg.names.Add(resourceName(r))
 		pkg.names.Add(resourceName(r) + "Input")
@@ -2084,23 +2212,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			setFile(path.Join(mod, camel(tokenToName(f.Token))+".go"), buffer.String())
 		}
 
-		// Types
-		if len(pkg.types) > 0 {
-			importsAndAliases := map[string]string{}
-			for _, t := range pkg.types {
-				pkg.getImports(t, importsAndAliases)
-			}
-
-			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
-
-			for _, t := range pkg.types {
-				pkg.genType(buffer, t)
-			}
-
-			pkg.genTypeRegistrations(buffer, pkg.types)
-
-			setFile(path.Join(mod, "pulumiTypes.go"), buffer.String())
+		knownTypes := make(map[schema.Type]struct{}, len(pkg.typeDetails))
+		for t := range pkg.typeDetails {
+			knownTypes[t] = struct{}{}
 		}
 
 		// Enums
@@ -2117,8 +2231,45 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				if err := pkg.genEnum(buffer, e); err != nil {
 					return nil, err
 				}
+				delete(knownTypes, e)
 			}
 			setFile(path.Join(mod, "pulumiEnums.go"), buffer.String())
+		}
+
+		// Types
+		if len(pkg.types) > 0 {
+			importsAndAliases := map[string]string{}
+			for _, t := range pkg.types {
+				pkg.getImports(t, importsAndAliases)
+			}
+
+			buffer := &bytes.Buffer{}
+			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
+
+			for _, t := range pkg.types {
+				pkg.genType(buffer, t)
+				delete(knownTypes, t)
+			}
+
+			sortedKnownTypes := make([]schema.Type, 0, len(knownTypes))
+			for k := range knownTypes {
+				sortedKnownTypes = append(sortedKnownTypes, k)
+			}
+			sort.Slice(sortedKnownTypes, func(i, j int) bool {
+				return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
+			})
+
+			var types []string
+			for _, t := range sortedKnownTypes {
+				switch typ := t.(type) {
+				case *schema.ArrayType, *schema.MapType:
+					types = pkg.genNestedCollectionType(buffer, typ)
+				}
+			}
+
+			pkg.genTypeRegistrations(buffer, pkg.types, types...)
+
+			setFile(path.Join(mod, "pulumiTypes.go"), buffer.String())
 		}
 
 		// Utilities
