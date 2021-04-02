@@ -42,7 +42,7 @@ export function setAllConfig(c: {[key: string]: string}) {
 export function setConfig(k: string, v: string): void {
     const config = parseConfig();
     config[cleanKey(k)] = v;
-    persistConfig(config)
+    persistConfig(config);
 }
 
 /**

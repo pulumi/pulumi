@@ -4,6 +4,9 @@
         <name>Pulumi.Automation</name>
     </assembly>
     <members>
+        <member name="T:Pulumi.Automation.Collections.DictionaryContentsComparer`2">
+            Compares two dictionaries for equality by content, as F# maps would.
+        </member>
         <member name="T:Pulumi.Automation.DestroyOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions,System.Threading.CancellationToken)"/> operation.
@@ -273,6 +276,31 @@
             <summary>
             PolicyPacks run during update. Maps PolicyPackName -> version.
             </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Exceptions.ProjectSettingsConflictException">
+             <summary>
+            
+             Thrown when creating a Workspace detects a conflict between
+             project settings found on disk (such as Pulumi.yaml) and a
+             ProjectSettings object passed to the Create API.
+            
+             There are two resolutions:
+            
+             (A) to use the ProjectSettings, delete the Pulumi.yaml file
+                 from WorkDir or use a different WorkDir
+            
+             (B) to use the exiting Pulumi.yaml from WorkDir, avoid
+                 customizing the ProjectSettings
+            
+             </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Exceptions.ProjectSettingsConflictException.SettingsFileLocation">
+             <summary>
+            
+             FullPath of the Pulumi.yaml (or Pulumi.yml, Pulumi.json)
+             settings file found on disk.
+            
+             </summary>
         </member>
         <member name="T:Pulumi.Automation.HistoryOptions">
             <summary>

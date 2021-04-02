@@ -219,9 +219,9 @@ async def monitor_supports_feature(feature: str) -> bool:
                 resp = monitor.SupportsFeature(req)
                 return resp.hasSupport
             except grpc.RpcError as exn:
-                if exn.code() == grpc.StatusCode.UNIMPLEMENTED:
-                    return False
-                handle_grpc_error(exn)
+                if exn.code() != grpc.StatusCode.UNIMPLEMENTED: # pylint: disable=no-member
+                    handle_grpc_error(exn)
+                return False
 
         result = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         SETTINGS.feature_support[feature] = result
