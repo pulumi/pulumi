@@ -96,19 +96,7 @@ namespace Pulumi.Automation.Commands
 
         private static IReadOnlyDictionary<string, string> PulumiEnvironment(IDictionary<string, string> additionalEnv, bool debugCommands)
         {
-            var env = new Dictionary<string, string>();
-
-            foreach (var element in Environment.GetEnvironmentVariables())
-            {
-                if (element is KeyValuePair<string, object> pair
-                    && pair.Value is string valueStr)
-                    env[pair.Key] = valueStr;
-            }
-
-            foreach (var pair in additionalEnv)
-            {
-                env[pair.Key] = pair.Value;
-            }
+            var env = new Dictionary<string, string>(additionalEnv);
 
             if (debugCommands)
             {
