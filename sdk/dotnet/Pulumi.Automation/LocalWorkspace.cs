@@ -496,7 +496,7 @@ namespace Pulumi.Automation
         {
             await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
             var result = await this.RunCommandAsync(new[] { "config", "get", key, "--json" }, cancellationToken).ConfigureAwait(false);
-            return JsonSerializer.Deserialize<ConfigValue>(result.StandardOutput);
+            return this._serializer.DeserializeJson<ConfigValue>(result.StandardOutput);
         }
 
         /// <inheritdoc/>
