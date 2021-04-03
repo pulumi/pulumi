@@ -530,7 +530,7 @@ namespace Pulumi.Automation
         /// <summary>
         /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
         /// </summary>
-        private async Task<ImmutableDictionary<string, OutputValue>> GetOutputAsync(CancellationToken cancellationToken)
+        public async Task<ImmutableDictionary<string, OutputValue>> GetOutputAsync(CancellationToken cancellationToken = default)
         {
             await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
 
