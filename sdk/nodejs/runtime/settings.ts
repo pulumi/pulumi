@@ -174,7 +174,7 @@ export function isLegacyApplyEnabled(): boolean {
 }
 
 /**
- * Returns true true if we will cache serialized dynamic providers on the program side
+ * Returns true (default) if we will cache serialized dynamic providers on the program side
  */
 export function cacheDynamicProviders(): boolean {
     return options().cacheDynamicProviders === true;
@@ -353,7 +353,7 @@ function options(): Options {
         monitorAddr: process.env[nodeEnvKeys.monitorAddr],
         engineAddr: process.env[nodeEnvKeys.engineAddr],
         syncDir: process.env[nodeEnvKeys.syncDir],
-        cacheDynamicProviders: (process.env[nodeEnvKeys.cacheDynamicProviders] === "true"),
+        cacheDynamicProviders: process.env[nodeEnvKeys.cacheDynamicProviders] !== "false", // true by default
         // pulumi specific
         testModeEnabled: (process.env[pulumiEnvKeys.testMode] === "true"),
         legacyApply: (process.env[pulumiEnvKeys.legacyApply] === "true"),
