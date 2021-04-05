@@ -16,7 +16,6 @@ import * as assert from "assert";
 import * as semver from "semver";
 import * as upath from "upath";
 
-import { Config } from "../../index";
 import {
     ConfigMap,
     EngineEvent,
@@ -26,6 +25,7 @@ import {
     Stack,
     validatePulumiVersion,
 } from "../../automation";
+import { Config } from "../../index";
 import { asyncTest } from "../util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
