@@ -277,13 +277,18 @@
 
   <Target Name="TestDependencies">
     <Exec Command="yarn install"
-		  WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
-	<Exec Command="yarn link @pulumi/pulumi"
-		  WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
   </Target>
 
   <Target Name="TestBuild">
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
   </Target>
 
   <!-- Tests -->
