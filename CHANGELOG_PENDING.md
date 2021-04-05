@@ -1,5 +1,8 @@
 ### Breaking Changes
 
+- [sdk/nodejs] Enable nodejs dynamic provider caching by default on program side.
+  [#6704](https://github.com/pulumi/pulumi/pull/6704)
+
 - [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
   [#6300](https://github.com/pulumi/pulumi/pull/6300)
 
