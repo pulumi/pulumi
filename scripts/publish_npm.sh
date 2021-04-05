@@ -33,6 +33,15 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
         NPM_TAG="latest"
     fi
 
+    # we need to set explicit beta and rc tags to ensure that we don't mutate to use the latest tag
+    if [[ "${PKG_VERSION}" == *-beta* ]]; then
+        NPM_TAG="beta"
+    fi
+
+    if [[ "${PKG_VERSION}" == *-rc* ]]; then
+        NPM_TAG="rc"
+    fi
+
     # Now, perform the publish. The logic here is a little goofy because npm provides
     # no way to say "if the package already exists, don't fail" but we want these
     # semantics (so, for example, we can restart builds which may have failed after
