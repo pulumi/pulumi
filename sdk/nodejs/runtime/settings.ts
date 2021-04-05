@@ -64,6 +64,7 @@ const nodeEnvKeys = {
     monitorAddr: "PULUMI_NODEJS_MONITOR",
     engineAddr: "PULUMI_NODEJS_ENGINE",
     syncDir: "PULUMI_NODEJS_SYNC",
+    // this value is not set by the CLI and is controlled via a user set env var unlike the values above
     cacheDynamicProviders: "PULUMI_NODEJS_CACHE_DYNAMIC_PROVIDERS",
 };
 

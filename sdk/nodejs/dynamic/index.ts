@@ -161,7 +161,7 @@ export interface ResourceProvider {
     delete?: (id: resource.ID, props: any) => Promise<void>;
 }
 
-const providerCache = new Map<ResourceProvider, Promise<string>>();
+const providerCache = new WeakMap<ResourceProvider, Promise<string>>();
 
 function serializeProvider(provider: ResourceProvider): Promise<string> {
     let result: Promise<string>;
