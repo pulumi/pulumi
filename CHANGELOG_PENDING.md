@@ -16,3 +16,6 @@
 
 - [sdk/python] Fix serialization bug if output contains 'items' property.
   [#6701](https://github.com/pulumi/pulumi/pull/6701)
+  
+- [sdk/go] Use ioutil.ReadFile to avoid forcing 1.16 upgrade.
+  [#6703](https://github.com/pulumi/pulumi/pull/6703)
