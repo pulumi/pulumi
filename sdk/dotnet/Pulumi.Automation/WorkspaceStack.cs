@@ -283,7 +283,7 @@ namespace Pulumi.Automation
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
-                var output = await this.GetOutputAsync(cancellationToken).ConfigureAwait(false);
+                var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
                 var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
                 return new UpResult(
                     upResult.StandardOutput,
@@ -530,7 +530,7 @@ namespace Pulumi.Automation
         /// <summary>
         /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
         /// </summary>
-        public async Task<ImmutableDictionary<string, OutputValue>> GetOutputAsync(CancellationToken cancellationToken = default)
+        public async Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
         {
             await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
 

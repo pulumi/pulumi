@@ -452,7 +452,7 @@ namespace Pulumi.Automation.Tests
             {
                 await stack.SetConfigAsync(config);
 
-                var initialOutputs = await stack.GetOutputAsync();
+                var initialOutputs = await stack.GetOutputsAsync();
                 Assert.Empty(initialOutputs);
 
                 // pulumi up
@@ -461,7 +461,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
                 AssertOutputs(upResult.Outputs);
 
-                var outputsAfterUp = await stack.GetOutputAsync();
+                var outputsAfterUp = await stack.GetOutputsAsync();
                 AssertOutputs(outputsAfterUp);
 
                 // pulumi destroy
@@ -469,7 +469,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
 
-                var outputsAfterDestroy = await stack.GetOutputAsync();
+                var outputsAfterDestroy = await stack.GetOutputsAsync();
                 Assert.Empty(outputsAfterDestroy);
             }
             finally
