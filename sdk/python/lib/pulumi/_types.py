@@ -266,10 +266,11 @@
 #           return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
 
 import builtins
+import collections.abc
 import functools
 import sys
 import typing
-from typing import Any, Callable, Dict, Iterator, Optional, Tuple, Type, TypeVar, Union, cast, get_type_hints
+from typing import Any, Callable, Dict, Iterator, Mapping, Optional, Tuple, Type, TypeVar, Union, cast, get_type_hints
 
 from . import _utils
 
@@ -444,6 +445,22 @@ def input_type(cls: Type[T]) -> Type[T]:
     return cls
 
 
+def input_type_py_to_pulumi_names(input_type_cls: Type) -> Dict[str, str]:
+    """
+    Returns a dict of Python names to Pulumi names for the input type.
+    """
+    assert is_input_type(input_type_cls)
+    return {python_name: pulumi_name for python_name, pulumi_name, _ in _py_properties(input_type_cls)}
+
+
+def input_type_types(input_type_cls: type) -> Dict[str, type]:
+    """
+    Returns a dict of Pulumi names to types for the input type.
+    """
+    assert is_input_type(input_type_cls)
+    return _types_from_py_properties(input_type_cls)
+
+
 def input_type_to_dict(obj: Any) -> Dict[str, Any]:
     """
     Returns a dict for the input type.
@@ -461,6 +478,15 @@ def input_type_to_dict(obj: Any) -> Dict[str, Any]:
         if value is not None:
             result[pulumi_name] = value
     return result
+
+
+def input_type_to_untranslated_dict(obj: Any) -> Dict[str, Any]:
+    """
+    Returns an untranslated dict for the input type.
+    """
+    cls = type(obj)
+    assert is_input_type(cls)
+    return obj if issubclass(cls, dict) else obj.__dict__
 
 
 def output_type(cls: Type[T]) -> Type[T]:
@@ -566,11 +592,9 @@ def get(self, name: str) -> Any:
 
     cls = type(self)
 
-    if hasattr(cls, _PULUMI_INPUT_TYPE):
-        return self.__dict__.get(name)
-
-    if hasattr(cls, _PULUMI_OUTPUT_TYPE):
-        name = _translate_name(self, name)
+    if hasattr(cls, _PULUMI_INPUT_TYPE) or hasattr(cls, _PULUMI_OUTPUT_TYPE):
+        if hasattr(cls, _PULUMI_OUTPUT_TYPE):
+            name = _translate_name(self, name)
         if issubclass(cls, dict):
             # Grab dict's `get` method instead of calling `self.get` directly
             # in case the type has a `get` property.
@@ -597,12 +621,9 @@ def set(self, name: str, value: Any) -> None:
 
     cls = type(self)
 
-    if hasattr(cls, _PULUMI_INPUT_TYPE):
-        self.__dict__[name] = value
-        return
-
-    if hasattr(cls, _PULUMI_OUTPUT_TYPE):
-        name = _translate_name(self, name)
+    if hasattr(cls, _PULUMI_INPUT_TYPE) or hasattr(cls, _PULUMI_OUTPUT_TYPE):
+        if hasattr(cls, _PULUMI_OUTPUT_TYPE):
+            name = _translate_name(self, name)
         if issubclass(cls, dict):
             self[name] = value
         else:
@@ -679,25 +700,44 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     if cls.__module__ in sys.modules:
         globalns = dict(sys.modules[cls.__module__].__dict__)
 
+    # Pass along Output as a local, as it is a forward reference type annotation on the base
+    # CustomResource class that can be instantiated directly (which our tests do).
+    # Additionally, include the `T` TypeVar, which is needed for Input and InputType.
+    localns = {"Output": Output, "T": TypeVar("T")}  # type: ignore
+
     # Build-up a dictionary of Pulumi property names to types by looping through all the
     # Python properties on the class that have a getter marked as a Pulumi property getter,
     # and looking at the getter function's return type annotation.
     # Types that are Output[T] and Optional[T] are unwrapped to just T.
     result: Dict[str, type] = {}
     for _, pulumi_name, prop in _py_properties(cls):
-        cls_hints = get_type_hints(prop.fget, globalns=globalns)
+        cls_hints = get_type_hints(prop.fget, globalns=globalns, localns=localns)
         # Get the function's return type hint.
         return_hint = cls_hints.get("return")
         if return_hint is not None:
-            typ = _unwrap_type(return_hint)
+            typ = unwrap_type(return_hint)
             # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
-            # because _unwrap_type would have returned the T in Output[T] if it was specified
+            # because unwrap_type would have returned the T in Output[T] if it was specified
             # generically. To avoid raising a type mismatch error when the deserialized output type
             # doesn't match Output, we exclude it from the results.
             if typ is Output:
                 continue
             result[pulumi_name] = typ
     return result
+
+
+def _pulumi_to_py_names_from_py_properties(cls: type) -> Dict[str, str]:
+    return {
+        pulumi_name: python_name
+        for python_name, pulumi_name, _ in _py_properties(cls)
+    }
+
+
+def _py_to_pulumi_names_from_py_properties(cls: type) -> Dict[str, str]:
+    return {
+        python_name: pulumi_name
+        for python_name, pulumi_name, _ in _py_properties(cls)
+    }
 
 
 def _types_from_annotations(cls: type) -> Dict[str, type]:
@@ -726,7 +766,8 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
-    localns = {"Output": Output}  # type: ignore
+    # Additionally, include the `T` TypeVar, which is needed for Input and InputType.
+    localns = {"Output": Output, "T": TypeVar("T")}  # type: ignore
 
     # Get the type hints, resolving any forward references.
     cls_hints = get_type_hints(dynamic_cls, globalns=globalns, localns=localns)
@@ -735,15 +776,39 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     # Optional[T] are unwrapped to just T.
     result: Dict[str, type] = {}
     for name, prop in props.items():
-        typ = _unwrap_type(cls_hints[name])
+        typ = unwrap_type(cls_hints[name])
         # If typ is Output, it was specified non-generically (as Output rather than Output[T]),
-        # because _unwrap_type would have returned the T in Output[T] if it was specified
+        # because unwrap_type would have returned the T in Output[T] if it was specified
         # generically. To avoid raising a type mismatch error when the deserialized output type
         # doesn't match Output, we exclude it from the results.
         if typ is Output:
             continue
         result[prop.name] = typ
     return result
+
+
+def _names_from_annotations(cls: type) -> Iterator[Tuple[str, str]]:
+    # Get annotations that are defined on this class (not base classes).
+    # These are returned in the order declared on Python 3.6+.
+    cls_annotations = cls.__dict__.get('__annotations__', {})
+
+    def get_pulumi_name(a_name: str) -> str:
+        default = getattr(cls, a_name, MISSING)
+        return default.name if isinstance(default, _Property) else a_name
+
+    for python_name in cls_annotations.keys():
+        yield (python_name, get_pulumi_name(python_name))
+
+
+def _pulumi_to_py_names_from_annotations(cls: type) -> Dict[str, str]:
+    return {
+        pulumi_name: python_name
+        for python_name, pulumi_name in _names_from_annotations(cls)
+    }
+
+
+def _py_to_pulumi_names_from_annotations(cls: type) -> Dict[str, str]:
+    return dict(_names_from_annotations(cls))
 
 
 def output_type_types(output_type_cls: type) -> Dict[str, type]:
@@ -758,7 +823,7 @@ def resource_types(resource_cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for the resource.
     """
-    # First, get the "Pulumi properties" from the class's type annotations.
+    # First, get the types from the class's type annotations.
     types_from_annotations = _types_from_annotations(resource_cls)
 
     # Next, get the types from the class's Python properties.
@@ -766,6 +831,34 @@ def resource_types(resource_cls: type) -> Dict[str, type]:
 
     # Return the merged dictionaries.
     return {**types_from_annotations, **types_from_py_properties}
+
+
+def resource_pulumi_to_py_names(resource_cls: type) -> Dict[str, str]:
+    """
+    Returns a dict of Pulumi names to types for the resource.
+    """
+    # First, get the names from the class's type annotations.
+    names_from_annotations = _pulumi_to_py_names_from_annotations(resource_cls)
+
+    # Next, get the names from the class's Python properties.
+    names_from_py_properties = _pulumi_to_py_names_from_py_properties(resource_cls)
+
+    # Return the merged dictionaries.
+    return {**names_from_annotations, **names_from_py_properties}
+
+
+def resource_py_to_pulumi_names(resource_cls: type) -> Dict[str, str]:
+    """
+    Returns a dict of Pulumi names to types for the resource.
+    """
+    # First, get the names from the class's type annotations.
+    names_from_annotations = _py_to_pulumi_names_from_annotations(resource_cls)
+
+    # Next, get the names from the class's Python properties.
+    names_from_py_properties = _py_to_pulumi_names_from_py_properties(resource_cls)
+
+    # Return the merged dictionaries.
+    return {**names_from_annotations, **names_from_py_properties}
 
 
 def unwrap_optional_type(val: type) -> type:
@@ -784,9 +877,9 @@ def unwrap_optional_type(val: type) -> type:
     return val
 
 
-def _unwrap_type(val: type) -> type:
+def unwrap_type(val: type) -> type:
     """
-    Unwraps the type T in Output[T] and Optional[T].
+    Unwraps the type T in Output[T], Input[T], InputType[T], and Optional[T].
     """
     # pylint: disable=import-outside-toplevel
     from . import Output
@@ -798,6 +891,35 @@ def _unwrap_type(val: type) -> type:
         args = get_args(val)
         assert len(args) == 1
         val = args[0]
+
+    # If it looks like Input[T] or InputType[T], extract the T arg.
+    if _is_union_type(val):
+        def isInputType(args):
+            assert len(args) > 1
+            return (is_input_type(args[0]) and
+                args[1] is dict or get_origin(args[1]) in {dict, Dict, Mapping, collections.abc.Mapping})
+
+        def isInput(args, i = 1):
+            assert len(args) > i + 1
+            return get_origin(args[i]) is collections.abc.Awaitable and get_origin(args[i + 1]) is Output
+
+        args = get_args(val)
+        if len(args) == 2:
+            if isInputType(args): # InputType[T]
+                return args[0]
+        elif len(args) == 3:
+            if isInput(args): # Input[T]
+                return args[0]
+            if isInputType(args) and args[2] is type(None): # Optiona[InputType[T]]
+                return args[0]
+        elif len(args) == 4:
+            if isInput(args) and args[3] is type(None): # Optional[Input[T]]
+                return args[0]
+            if isInputType(args) and isInput(args, 2): # Input[InputType[T]]
+                return args[0]
+        elif len(args) == 5:
+            if isInputType(args) and isInput(args, 2) and args[4] is type(None): # Optional[Input[InputType[T]]]
+                return args[0]
 
     return unwrap_optional_type(val)
 

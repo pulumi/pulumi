@@ -771,3 +771,14 @@ func TestPythonAwaitOutputs(t *testing.T) {
 		})
 	})
 }
+
+// Test dict key translations.
+func TestPythonTranslation(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "translation"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+	})
+}
