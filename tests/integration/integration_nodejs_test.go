@@ -656,13 +656,20 @@ func TestEnumOutputNode(t *testing.T) {
 
 // Test remote component construction in Node.
 func TestConstructNode(t *testing.T) {
-	pathEnv, err := testComponentPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
+	builders := []string{"testcomponent", "testcomponent-python"}
+	for _, builder := range builders {
+		t.Run(fmt.Sprintf("builder:%s", builder), func(t *testing.T) {
+			pathEnv, err := testComponentPathEnvByBuilder(builder)
+			if err != nil {
+				t.Fatalf("failed to build test component PATH: %v", err)
+			}
+			integration.ProgramTest(t, optsForConstructChecks(pathEnv))
+		})
 	}
+}
 
-	var opts *integration.ProgramTestOptions
-	opts = &integration.ProgramTestOptions{
+func optsForConstructChecks(pathEnv string) *integration.ProgramTestOptions {
+	return &integration.ProgramTestOptions{
 		Env:          []string{pathEnv},
 		Dir:          filepath.Join("construct_component", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
@@ -694,7 +701,6 @@ func TestConstructNode(t *testing.T) {
 			}
 		},
 	}
-	integration.ProgramTest(t, opts)
 }
 
 func TestGetResourceNode(t *testing.T) {

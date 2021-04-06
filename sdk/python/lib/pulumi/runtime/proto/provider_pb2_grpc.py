@@ -103,44 +103,44 @@ class ResourceProviderServicer(object):
     """GetSchema fetches the schema for this resource provider.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: GetSchema!')
+    raise NotImplementedError('Method not implemented: GetSchema!')
 
   def CheckConfig(self, request, context):
     """CheckConfig validates the configuration for this resource provider.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: CheckConfig!')
+    raise NotImplementedError('Method not implemented: CheckConfig!')
 
   def DiffConfig(self, request, context):
     """DiffConfig checks the impact a hypothetical change to this provider's configuration will have on the provider.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: DiffConfig!')
+    raise NotImplementedError('Method not implemented: DiffConfig!')
 
   def Configure(self, request, context):
     """Configure configures the resource provider with "globals" that control its behavior.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Configure!')
+    raise NotImplementedError('Method not implemented: Configure!')
 
   def Invoke(self, request, context):
     """Invoke dynamically executes a built-in function in the provider.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    raise NotImplementedError('Method not implemented: Invoke!')
 
   def StreamInvoke(self, request, context):
     """StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
     of responses.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: StreamInvoke!')
+    raise NotImplementedError('Method not implemented: StreamInvoke!')
 
   def Check(self, request, context):
     """Check validates that the given property bag is valid for a resource of the given type and returns the inputs
@@ -150,66 +150,66 @@ class ResourceProviderServicer(object):
     the end-user experience, as the provider inputs are using for detecting and rendering diffs.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Check!')
+    raise NotImplementedError('Method not implemented: Check!')
 
   def Diff(self, request, context):
     """Diff checks what impacts a hypothetical update will have on the resource's properties.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Diff!')
+    raise NotImplementedError('Method not implemented: Diff!')
 
   def Create(self, request, context):
     """Create allocates a new instance of the provided resource and returns its unique ID afterwards.  (The input ID
     must be blank.)  If this call fails, the resource must not have been created (i.e., it is "transactional").
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Create!')
+    raise NotImplementedError('Method not implemented: Create!')
 
   def Read(self, request, context):
     """Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
     identify the resource; this is typically just the resource ID, but may also include some properties.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Read!')
+    raise NotImplementedError('Method not implemented: Read!')
 
   def Update(self, request, context):
     """Update updates an existing resource with new values.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Update!')
+    raise NotImplementedError('Method not implemented: Update!')
 
   def Delete(self, request, context):
     """Delete tears down an existing resource with the given ID.  If it fails, the resource is assumed to still exist.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Delete!')
+    raise NotImplementedError('Method not implemented: Delete!')
 
   def Construct(self, request, context):
     """Construct creates a new instance of the provided component resource and returns its state.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Construct!')
+    raise NotImplementedError('Method not implemented: Construct!')
 
   def Cancel(self, request, context):
     """Cancel signals the provider to abort all outstanding resource operations.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: Cancel!')
+    raise NotImplementedError('Method not implemented: Cancel!')
 
   def GetPluginInfo(self, request, context):
     """GetPluginInfo returns generic information about this plugin, like its version.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-    context.set_details('Method not implemented!')
-    raise NotImplementedError('Method not implemented!')
+    context.set_details('Method not implemented: GetPluginInfo!')
+    raise NotImplementedError('Method not implemented: GetPluginInfo!')
 
 
 def add_ResourceProviderServicer_to_server(servicer, server):

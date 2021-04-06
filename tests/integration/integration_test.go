@@ -567,6 +567,13 @@ func TestConfigPaths(t *testing.T) {
 
 //nolint:golint,deadcode
 func testComponentPathEnv() (string, error) {
+	return testComponentPathEnvByBuilder("testcomponent")
+}
+
+// Computes "PATH=..." env var setup string that includes
+// `construct_component/$builderDir` - this is needed for tests that
+// exercise ComiponentResource providers.
+func testComponentPathEnvByBuilder(builderDir string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		return "", err
@@ -575,8 +582,7 @@ func testComponentPathEnv() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	pluginDir := filepath.Join(absCwd, "construct_component", "testcomponent")
-
+	pluginDir := filepath.Join(absCwd, "construct_component", builderDir)
 	pathSeparator := ":"
 	if runtime.GOOS == "windows" {
 		pathSeparator = ";"
