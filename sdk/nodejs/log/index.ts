@@ -129,7 +129,7 @@ function log(
         // debug messages never go to stdout/err
         if (sev !== engproto.LogSeverity.DEBUG) {
             // if we're unable to deliver the log message, deliver to stderr instead
-            console.error(`failed to deliver log message. \nerror: ${err} \noriginal message: ${msg}\n message severity: ${messageLevels[sev]}`)
+            console.error(`failed to deliver log message. \nerror: ${err} \noriginal message: ${msg}\n message severity: ${messageLevels[sev]}`);
         }
         // we still need to free up the outstanding promise chain, whether or not delivery succeeded.
         keepAlive();
