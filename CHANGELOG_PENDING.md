@@ -22,3 +22,6 @@
   
 - [sdk/go] Use ioutil.ReadFile to avoid forcing 1.16 upgrade.
   [#6703](https://github.com/pulumi/pulumi/pull/6703)
+
+- [automation/dotnet] Fix GetConfigValueAsync failing to deserialize
+  [#6698](https://github.com/pulumi/pulumi/pull/6698)

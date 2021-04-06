@@ -195,6 +195,15 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal("def", secretValue!.Value);
                 Assert.True(secretValue.IsSecret);
 
+                // Get individual configuration values
+                plainValue = await stack.GetConfigValueAsync(plainKey);
+                Assert.Equal("abc", plainValue!.Value);
+                Assert.False(plainValue.IsSecret);
+
+                secretValue = await stack.GetConfigValueAsync(secretKey);
+                Assert.Equal("def", secretValue!.Value);
+                Assert.True(secretValue.IsSecret);
+
                 await stack.RemoveConfigValueAsync("plain");
                 values = await stack.GetConfigAsync();
                 Assert.Single(values);
