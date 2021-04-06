@@ -15,18 +15,13 @@
 """The Resource module, containing all resource-related definitions."""
 
 import asyncio
-
-from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
-
 import copy
-
+from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
+from . import _types
+from .metadata import get_project, get_stack
 from .runtime import known_types
 from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource
 from .runtime.settings import get_root_resource
-
-from .metadata import get_project, get_stack
-
-from . import _types
 
 if TYPE_CHECKING:
     from .output import Input, Inputs, Output
