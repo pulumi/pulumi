@@ -21,6 +21,13 @@ const engproto = require("../proto/engine_pb.js");
 let errcnt = 0;
 let lastLog: Promise<any> = Promise.resolve();
 
+const messageLevels = {
+    [engproto.LogSeverity.DEBUG]: "debug",
+    [engproto.LogSeverity.INFO]: "info",
+    [engproto.LogSeverity.WARNING]: "warn",
+    [engproto.LogSeverity.ERROR]: "error",
+};
+
 /**
  * hasErrors returns true if any errors have occurred in the program.
  */
@@ -118,5 +125,13 @@ function log(
         });
     });
 
-    return lastLog.catch(() => undefined);
+    return lastLog.catch((err) => {
+        // debug messages never go to stdout/err
+        if (sev !== engproto.LogSeverity.DEBUG) {
+            // if we're unable to deliver the log message, deliver to stderr instead
+            console.error(`failed to deliver log message. \nerror: ${err} \noriginal message: ${msg}\n message severity: ${messageLevels[sev]}`)
+        }
+        // we still need to free up the outstanding promise chain, whether or not delivery succeeded.
+        keepAlive();
+    });
 }
