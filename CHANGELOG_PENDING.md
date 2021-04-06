@@ -27,6 +27,9 @@
 - [Automation/go] Moving go automation API package from sdk/v2/go/x/auto -> sdk/v2/go/auto
   [#6518](https://github.com/pulumi/pulumi/pull/6518)
 
+- [sdk/python] Improved dict key translation support (3.0-based providers will opt-in to the improved behavior)
+  [#6695](https://github.com/pulumi/pulumi/pull/6695)
+
 ### Enhancements
 
 
