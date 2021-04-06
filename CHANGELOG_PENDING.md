@@ -3,6 +3,9 @@
 
 ### Improvements
 
+- [automation/python] Update pulumi python docker image to python 3.9
+  [#6706](https://github.com/pulumi/pulumi/pull/6706)
+
 - [sdk/nodejs] Add program side caching for dynamic provider serialization behind env var
   [#6673](https://github.com/pulumi/pulumi/pull/6673)
 
