@@ -219,12 +219,13 @@ async def serialize_property(value: 'Input[Any]',
 
     if isinstance(value, abc.Mapping):
         obj = {}
-        for k, v in value.items():
+        # Don't use value.items() here, as it will error in the case of outputs with an `items` property.
+        for k in value:
             transformed_key = k
             if transform_keys and input_transformer is not None:
                 transformed_key = input_transformer(k)
                 log.debug(f"transforming input property: {k} -> {transformed_key}")
-            obj[transformed_key] = await serialize_property(v, deps, input_transformer)
+            obj[transformed_key] = await serialize_property(value[k], deps, input_transformer)
 
         return obj
 
