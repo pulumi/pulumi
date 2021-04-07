@@ -11,6 +11,9 @@
 
 ### Bug Fixes
 
+- [sdk/nodejs] Fix error handling for failed logging statements
+  [#6714](https://github.com/pulumi/pulumi/pull/6714)
+
 - [automation/dotnet] Environment variable value type is now nullable.
   [#6520](https://github.com/pulumi/pulumi/pull/6520)
 
