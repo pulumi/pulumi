@@ -175,17 +175,17 @@ class Component(pulumi.ComponentResource):
 
             if a is None and not opts.urn:
                 raise TypeError("Missing required property 'a'")
-            __props__.__dict__['a'] = a
-            __props__.__dict__['b'] = b
+            __props__.__dict__["a"] = a
+            __props__.__dict__["b"] = b
             if c is None and not opts.urn:
                 raise TypeError("Missing required property 'c'")
-            __props__.__dict__['c'] = c
-            __props__.__dict__['d'] = d
+            __props__.__dict__["c"] = c
+            __props__.__dict__["d"] = d
             if e is None and not opts.urn:
                 raise TypeError("Missing required property 'e'")
-            __props__.__dict__['e'] = e
-            __props__.__dict__['f'] = f
-            __props__.__dict__['foo'] = foo
+            __props__.__dict__["e"] = e
+            __props__.__dict__["f"] = f
+            __props__.__dict__["foo"] = foo
         super(Component, __self__).__init__(
             'example::Component',
             resource_name,

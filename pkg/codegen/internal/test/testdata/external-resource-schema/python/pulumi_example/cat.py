@@ -104,9 +104,9 @@ class Cat(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = CatArgs.__new__(CatArgs)
 
-            __props__.__dict__['age'] = age
-            __props__.__dict__['pet'] = pet
-            __props__.__dict__['name'] = None
+            __props__.__dict__["age"] = age
+            __props__.__dict__["pet"] = pet
+            __props__.__dict__["name"] = None
         super(Cat, __self__).__init__(
             'example::Cat',
             resource_name,
@@ -129,7 +129,7 @@ class Cat(pulumi.CustomResource):
 
         __props__ = CatArgs.__new__(CatArgs)
 
-        __props__.__dict__['name'] = None
+        __props__.__dict__["name"] = None
         return Cat(resource_name, opts=opts, __props__=__props__)
 
     @property

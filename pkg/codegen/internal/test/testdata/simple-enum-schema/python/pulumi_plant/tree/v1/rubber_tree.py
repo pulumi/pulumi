@@ -176,23 +176,23 @@ class RubberTree(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = RubberTreeArgs.__new__(RubberTreeArgs)
 
-            __props__.__dict__['container'] = container
+            __props__.__dict__["container"] = container
             if diameter is None:
                 diameter = 6
             if diameter is None and not opts.urn:
                 raise TypeError("Missing required property 'diameter'")
-            __props__.__dict__['diameter'] = diameter
+            __props__.__dict__["diameter"] = diameter
             if farm is None:
                 farm = '(unknown)'
-            __props__.__dict__['farm'] = farm
+            __props__.__dict__["farm"] = farm
             if size is None:
                 size = 'medium'
-            __props__.__dict__['size'] = size
+            __props__.__dict__["size"] = size
             if type is None:
                 type = 'Burgundy'
             if type is None and not opts.urn:
                 raise TypeError("Missing required property 'type'")
-            __props__.__dict__['type'] = type
+            __props__.__dict__["type"] = type
         super(RubberTree, __self__).__init__(
             'plant:tree/v1:RubberTree',
             resource_name,
@@ -216,11 +216,11 @@ class RubberTree(pulumi.CustomResource):
 
         __props__ = _RubberTreeState.__new__(_RubberTreeState)
 
-        __props__.__dict__['farm'] = farm
-        __props__.__dict__['container'] = None
-        __props__.__dict__['diameter'] = None
-        __props__.__dict__['size'] = None
-        __props__.__dict__['type'] = None
+        __props__.__dict__["farm"] = farm
+        __props__.__dict__["container"] = None
+        __props__.__dict__["diameter"] = None
+        __props__.__dict__["size"] = None
+        __props__.__dict__["type"] = None
         return RubberTree(resource_name, opts=opts, __props__=__props__)
 
     @property

@@ -91,7 +91,7 @@ class OtherResource(pulumi.ComponentResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = OtherResourceArgs.__new__(OtherResourceArgs)
 
-            __props__.__dict__['foo'] = foo
+            __props__.__dict__["foo"] = foo
         super(OtherResource, __self__).__init__(
             'example::OtherResource',
             resource_name,

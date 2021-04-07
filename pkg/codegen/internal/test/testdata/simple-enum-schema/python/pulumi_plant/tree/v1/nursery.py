@@ -112,10 +112,10 @@ class Nursery(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = NurseryArgs.__new__(NurseryArgs)
 
-            __props__.__dict__['sizes'] = sizes
+            __props__.__dict__["sizes"] = sizes
             if varieties is None and not opts.urn:
                 raise TypeError("Missing required property 'varieties'")
-            __props__.__dict__['varieties'] = varieties
+            __props__.__dict__["varieties"] = varieties
         super(Nursery, __self__).__init__(
             'plant:tree/v1:Nursery',
             resource_name,

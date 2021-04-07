@@ -1142,7 +1142,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
 		}
-		fmt.Fprintf(w, "            __props__.__dict__['%s'] = %s\n", PyName(prop.Name), arg)
+		fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", PyName(prop.Name), arg)
 
 		ins.Add(prop.Name)
 	}
@@ -1152,7 +1152,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
 		if !ins.Has(prop.Name) {
-			fmt.Fprintf(w, "            __props__.__dict__['%s'] = None\n", PyName(prop.Name))
+			fmt.Fprintf(w, "            __props__.__dict__[%q] = None\n", PyName(prop.Name))
 		}
 
 		if prop.Secret {
@@ -1235,12 +1235,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
 				stateInputs.Add(prop.Name)
-				fmt.Fprintf(w, "        __props__.__dict__['%[1]s'] = %[1]s\n", PyName(prop.Name))
+				fmt.Fprintf(w, "        __props__.__dict__[%[1]q] = %[1]s\n", PyName(prop.Name))
 			}
 		}
 		for _, prop := range res.Properties {
 			if !stateInputs.Has(prop.Name) {
-				fmt.Fprintf(w, "        __props__.__dict__['%s'] = None\n", PyName(prop.Name))
+				fmt.Fprintf(w, "        __props__.__dict__[%q] = None\n", PyName(prop.Name))
 			}
 		}
 
@@ -2122,8 +2122,8 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 				if pname == prop.Name {
 					continue
 				}
-				fmt.Fprintf(w, "        %s key == \"%s\":\n", prefix, prop.Name)
-				fmt.Fprintf(w, "            suggest = \"%s\"\n", pname)
+				fmt.Fprintf(w, "        %s key == %q:\n", prefix, prop.Name)
+				fmt.Fprintf(w, "            suggest = %q\n", pname)
 				prefix = "elif"
 			}
 			fmt.Fprintf(w, "\n")

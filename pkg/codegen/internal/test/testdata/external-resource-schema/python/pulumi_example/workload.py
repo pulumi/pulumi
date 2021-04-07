@@ -76,7 +76,7 @@ class Workload(pulumi.CustomResource):
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
             __props__ = WorkloadArgs.__new__(WorkloadArgs)
 
-            __props__.__dict__['pod'] = None
+            __props__.__dict__["pod"] = None
         super(Workload, __self__).__init__(
             'example::Workload',
             resource_name,
@@ -99,7 +99,7 @@ class Workload(pulumi.CustomResource):
 
         __props__ = WorkloadArgs.__new__(WorkloadArgs)
 
-        __props__.__dict__['pod'] = None
+        __props__.__dict__["pod"] = None
         return Workload(resource_name, opts=opts, __props__=__props__)
 
     @property
