@@ -107,7 +107,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         result = provider.create(props)
-        outs = result.outs
+        outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()

@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 import sys
 
 from pulumi import Input, Inputs, ComponentResource, ResourceOptions
@@ -7,57 +7,51 @@ import pulumi.dynamic as dynamic
 import pulumi.provider as provider
 
 
-_current_id = 0
+_ID = 0
+
+
+class MyDynamicProvider(dynamic.ResourceProvider):
+
+    def create(self, props: Any) -> dynamic.CreateResult:
+        global _ID
+        _ID = _ID + 1
+        return dynamic.CreateResult(id_=str(_ID))
 
 
 class Resource(dynamic.Resource):
-    def __init__(elf, anem: str, echo: Input[any], opts: Optional[ResourceOptions]=None):
-
-        class Provider:
-            def create(self, inputs: any):
-                current_id = current_id + 1
-                id = current_id
-                return {
-                    'id': id,
-                    'outs': None
-                }
-
-        provier = Provider()
-        super(Resource, self).__init__(provider, name, {'echo': echo}, opts)
+    def __init__(self, name: str, echo: Input[any], opts: Optional[ResourceOptions]=None):
+        super().__init__(MyDynamicProvider(), name, {'echo': echo}, opts)
 
 
 class Component(ComponentResource):
     def __init__(self, name: str, echo: Input[any], opts: Optional[ResourceOptions]=None):
-        super(Component, self).__init__('testcomponent:index:Component4', name, {}, opts)
-        self.echo = pulumi.output(echo)
-        resource = Resource('child-{}'.format(name), echo, parent=self)
-        self.childId = resource.id
+        super().__init__('testcomponent:index:Component', name, {}, opts)
+        self.echo = pulumi.Output.from_input(echo)
+        resource = Resource('child-{}'.format(name), echo, ResourceOptions(parent=self))
+        self.child_id = resource.id
 
 
 class Provider(provider.Provider):
     VERSION = "0.0.1"
 
     def __init__(self):
-        super(Provider, self).__init__(Provider.VERSION)
+        super().__init__(Provider.VERSION)
 
-    def construct(self, name: str, type: str, inputs: Inputs,
+    def construct(self, name: str, resource_type: str, inputs: Inputs,
                   options: Optional[ResourceOptions]=None) -> provider.ConstructResult:
 
-        raise Exception('FAILING IN USER-DEFINED testcomponent.py class Provider def construct')
-
-        if type != 'testcomponent:index:Component':
-            raise Exception('unknown resource type {}'.format(type))
+        if resource_type != 'testcomponent:index:Component':
+            raise Exception('unknown resource type {}'.format(resource_type))
 
         component = Component(name, inputs['echo'], options)
 
-        return provider.ConstructResult(**{
-            'urn': component.urn,
-            'state': {
+        return provider.ConstructResult(
+            urn=component.urn,
+            state={
                 'echo': component.echo,
-                'childId': component.childId
-            }
-        })
+                'childId': component.child_id
+            })
 
 
 if __name__ == '__main__':
-    provider.main(Provider(), sys.argv[2:])
+    provider.main(Provider(), sys.argv[1:])

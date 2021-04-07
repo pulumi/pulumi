@@ -71,6 +71,14 @@ async def serialize_properties(inputs: 'Inputs',
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
     because it awaits any futures that are contained transitively within the input bag.
+
+    Modifies given property_deps dict to collect discovered dependencies by property name.
+
+    :param Inputs inputs: The bag to serialize.
+
+    :param Dict[str, List[Resource]] property_deps: Dependencies are set here.
+
+    :param input_transfomer: Optional name translator.
     """
     struct = struct_pb2.Struct()
     for k, v in inputs.items():

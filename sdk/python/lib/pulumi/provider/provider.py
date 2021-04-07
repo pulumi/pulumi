@@ -30,12 +30,12 @@ class Provider:
     def __init__(self, version: str) -> None:
         self.version = version
 
-    def construct(self, name: str, type: str, inputs: Inputs,
+    def construct(self, name: str, resource_type: str, inputs: Inputs,
                   options: Optional[ResourceOptions]=None) -> ConstructResult:
         """Construct creates a new component resource.
 
         :param name str: The name of the resource to create.
-        :param type str: The type of the resource to create.
+        :param resource_type str: The type of the resource to create.
         :param inputs Inputs: The inputs to the resource.
         :param options Optional[ResourceOptions] The options for the resource.
         """
