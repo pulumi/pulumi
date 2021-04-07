@@ -364,6 +364,50 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    def test_supports_stack_outputs(self):
+        stack_name = stack_namer()
+        project_name = "inline_python"
+        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True)
+        }
+
+        def assertOutputs(outputs):
+            self.assertEqual(len(outputs), 3)
+            self.assertEqual(outputs["exp_static"].value, "foo")
+            self.assertFalse(outputs["exp_static"].secret)
+            self.assertEqual(outputs["exp_cfg"].value, "abc")
+            self.assertFalse(outputs["exp_cfg"].secret)
+            self.assertEqual(outputs["exp_secret"].value, "secret")
+            self.assertTrue(outputs["exp_secret"].secret)
+
+        try:
+            stack.set_all_config(stack_config)
+
+            initial_outputs = stack.outputs()
+            self.assertEqual(len(initial_outputs), 0)
+
+            # pulumi up
+            up_res = stack.up()
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+            assertOutputs(up_res.outputs)
+
+            outputs_after_up = stack.outputs()
+            assertOutputs(outputs_after_up)
+
+            # pulumi destroy
+            destroy_res = stack.destroy()
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+
+            outputs_after_destroy = stack.outputs()
+            self.assertEqual(len(outputs_after_destroy), 0)
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
     def test_pulumi_version(self):
         ws = LocalWorkspace()
         self.assertIsNotNone(ws.pulumi_version)

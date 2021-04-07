@@ -12,6 +12,9 @@
 - [automation/dotnet] Allow null environment variables
   [#6687](https://github.com/pulumi/pulumi/pull/6687)
 
+- [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
+  [#6699](https://github.com/pulumi/pulumi/pull/6699)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix error handling for failed logging statements

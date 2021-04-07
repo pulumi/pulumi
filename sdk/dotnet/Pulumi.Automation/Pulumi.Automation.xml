@@ -1181,7 +1181,7 @@
             <param name="options">Options to customize the behavior of the destroy.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetOutputAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetOutputsAsync(System.Threading.CancellationToken)">
             <summary>
             Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>
