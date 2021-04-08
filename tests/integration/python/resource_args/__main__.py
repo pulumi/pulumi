@@ -3,34 +3,37 @@
 import pulumi
 from pulumi_example import Foo, FooArgs, Provider
 
+
 class MyMocks(pulumi.runtime.Mocks):
     resources = {}
-    def call(self, token, args, provider):
+
+    def call(self, args: pulumi.runtime.MockCallArgs):
         return {}
-    def new_resource(self, type_, name, inputs, provider, id_):
-        self.resources[name] = inputs
-        if name == "f1":
-            assert inputs == {"first": 1, "second": "second", "third": "third"}
-        elif name == "f2":
-            assert inputs == {"args": "args", "first": 2, "second": "s", "third": "t"}
-        elif name == "f3":
-            assert len(inputs) == 0
-            assert provider.endswith("f3provider_id")
-        elif name == "f4":
-            assert inputs == {"args": "hi"}
-        elif name == "f5":
-            assert inputs == {"first": 100, "second": "200", "third": "300"}
-            assert provider.endswith("f5provider_id")
-        elif name == "a1":
-            assert inputs == {"first": 10, "second": "asecond", "third": "athird"}
-        elif name == "a2":
-            assert inputs == {"first": 42, "second": "2nd", "third": "3rd"}
-        elif name == "a3":
-            assert inputs == {"args": "someargs", "first": 50, "second": "2", "third": "3"}
-        elif name == "a4":
-            assert inputs == {"first": 11, "second": "12", "third": "13"}
-            assert provider.endswith("a4provider_id")
-        return [name + '_id', inputs]
+
+    def new_resource(self, args: pulumi.runtime.MockResourceArgs):
+        if args.name == "f1":
+            assert args.inputs == {"first": 1, "second": "second", "third": "third"}
+        elif args.name == "f2":
+            assert args.inputs == {"args": "args", "first": 2, "second": "s", "third": "t"}
+        elif args.name == "f3":
+            assert len(args.inputs) == 0
+            assert args.provider.endswith("f3provider_id")
+        elif args.name == "f4":
+            assert args.inputs == {"args": "hi"}
+        elif args.name == "f5":
+            assert args.inputs == {"first": 100, "second": "200", "third": "300"}
+            assert args.provider.endswith("f5provider_id")
+        elif args.name == "a1":
+            assert args.inputs == {"first": 10, "second": "asecond", "third": "athird"}
+        elif args.name == "a2":
+            assert args.inputs == {"first": 42, "second": "2nd", "third": "3rd"}
+        elif args.name == "a3":
+            assert args.inputs == {"args": "someargs", "first": 50, "second": "2", "third": "3"}
+        elif args.name == "a4":
+            assert args.inputs == {"first": 11, "second": "12", "third": "13"}
+            assert args.provider.endswith("a4provider_id")
+        return [args.name + '_id', args.inputs]
+
 
 pulumi.runtime.set_mocks(MyMocks())
 
