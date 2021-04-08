@@ -548,22 +548,22 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.PostCommandCallbackAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.GetConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.GetConfigAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetAllConfigAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.SetConfigValueAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.SetConfigAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.SetConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.SetAllConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.RemoveAllConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.RefreshConfigAsync(System.String,System.Threading.CancellationToken)">
@@ -915,7 +915,7 @@
             <param name="stackName">The name of the stack.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.GetConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.GetConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the value associated with the specified stack name and key, scoped
             to the Workspace.
@@ -924,14 +924,14 @@
             <param name="key">The key to use for the config lookup.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.GetConfigAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.GetAllConfigAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the config map for the specified stack name, scoped to the current Workspace.
             </summary>
             <param name="stackName">The name of the stack to read config from.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.SetConfigValueAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.SetConfigAsync(System.String,System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <summary>
             Sets the specified key-value pair in the provided stack's config.
             </summary>
@@ -940,7 +940,7 @@
             <param name="value">The config value to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.SetConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.SetAllConfigAsync(System.String,System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <summary>
             Sets all values in the provided config map for the specified stack name.
             </summary>
@@ -948,7 +948,7 @@
             <param name="configMap">The config map to upsert against the existing config.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.RemoveConfigValueAsync(System.String,System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.RemoveConfigAsync(System.String,System.String,System.Threading.CancellationToken)">
             <summary>
             Removes the specified key-value pair from the provided stack's config.
             </summary>
@@ -956,7 +956,7 @@
             <param name="key">The config key to remove.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.RemoveConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.RemoveAllConfigAsync(System.String,System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <summary>
             Removes all values in the provided key collection from the config map for the specified stack name.
             </summary>
@@ -1100,20 +1100,20 @@
             <param name="workspace">The Workspace the Stack was created from.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigValueAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Returns the config value associated with the specified key.
             </summary>
             <param name="key">The key to use for the config lookup.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.GetConfigAsync(System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.GetAllConfigAsync(System.Threading.CancellationToken)">
             <summary>
             Returns the full config map associated with the stack in the Workspace.
             </summary>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigValueAsync(System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigAsync(System.String,Pulumi.Automation.ConfigValue,System.Threading.CancellationToken)">
             <summary>
             Sets the config key-value pair on the Stack in the associated Workspace.
             </summary>
@@ -1121,21 +1121,21 @@
             <param name="value">The config value to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.SetConfigAsync(System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.SetAllConfigAsync(System.Collections.Generic.IDictionary{System.String,Pulumi.Automation.ConfigValue},System.Threading.CancellationToken)">
             <summary>
             Sets all specified config values on the stack in the associated Workspace.
             </summary>
             <param name="configMap">The map of config key-value pairs to set.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigValueAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Removes the specified config key from the Stack in the associated Workspace.
             </summary>
             <param name="key">The config key to remove.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
-        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.WorkspaceStack.RemoveAllConfigAsync(System.Collections.Generic.IEnumerable{System.String},System.Threading.CancellationToken)">
             <summary>
             Removes the specified config keys from the Stack in the associated Workspace.
             </summary>

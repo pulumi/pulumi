@@ -492,7 +492,7 @@ namespace Pulumi.Automation
             => Task.CompletedTask;
 
         /// <inheritdoc/>
-        public override async Task<ConfigValue> GetConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default)
+        public override async Task<ConfigValue> GetConfigAsync(string stackName, string key, CancellationToken cancellationToken = default)
         {
             await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
             var result = await this.RunCommandAsync(new[] { "config", "get", key, "--json" }, cancellationToken).ConfigureAwait(false);
@@ -500,7 +500,7 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
-        public override async Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(string stackName, CancellationToken cancellationToken = default)
+        public override async Task<ImmutableDictionary<string, ConfigValue>> GetAllConfigAsync(string stackName, CancellationToken cancellationToken = default)
         {
             await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
             return await this.GetConfigAsync(cancellationToken).ConfigureAwait(false);
@@ -517,14 +517,14 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
-        public override async Task SetConfigValueAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default)
+        public override async Task SetConfigAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default)
         {
             await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
             await this.SetConfigValueAsync(key, value, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
-        public override async Task SetConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
+        public override async Task SetAllConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
         {
             var args = new List<string> { "config", "set-all", "--stack", stackName };
             foreach (var (key, value) in configMap)
@@ -543,14 +543,14 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
-        public override async Task RemoveConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default)
+        public override async Task RemoveConfigAsync(string stackName, string key, CancellationToken cancellationToken = default)
         {
             await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
             await this.RunCommandAsync(new[] { "config", "rm", key }, cancellationToken).ConfigureAwait(false);
         }
 
         /// <inheritdoc/>
-        public override async Task RemoveConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
+        public override async Task RemoveAllConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
         {
             var args = new List<string> { "config", "rm-all", "--stack", stackName };
             args.AddRange(keys);

@@ -182,13 +182,13 @@ namespace Pulumi.Automation.Tests
             try
             {
                 await Assert.ThrowsAsync<CommandException>(
-                    () => stack.GetConfigValueAsync(plainKey));
+                    () => stack.GetConfigAsync(plainKey));
 
-                var values = await stack.GetConfigAsync();
+                var values = await stack.GetAllConfigAsync();
                 Assert.Empty(values);
 
-                await stack.SetConfigAsync(config);
-                values = await stack.GetConfigAsync();
+                await stack.SetAllConfigAsync(config);
+                values = await stack.GetAllConfigAsync();
                 Assert.True(values.TryGetValue(plainKey, out var plainValue));
                 Assert.Equal("abc", plainValue!.Value);
                 Assert.False(plainValue.IsSecret);
@@ -197,20 +197,20 @@ namespace Pulumi.Automation.Tests
                 Assert.True(secretValue.IsSecret);
 
                 // Get individual configuration values
-                plainValue = await stack.GetConfigValueAsync(plainKey);
+                plainValue = await stack.GetConfigAsync(plainKey);
                 Assert.Equal("abc", plainValue!.Value);
                 Assert.False(plainValue.IsSecret);
 
-                secretValue = await stack.GetConfigValueAsync(secretKey);
+                secretValue = await stack.GetConfigAsync(secretKey);
                 Assert.Equal("def", secretValue!.Value);
                 Assert.True(secretValue.IsSecret);
 
-                await stack.RemoveConfigValueAsync("plain");
-                values = await stack.GetConfigAsync();
+                await stack.RemoveConfigAsync("plain");
+                values = await stack.GetAllConfigAsync();
                 Assert.Single(values);
 
-                await stack.SetConfigValueAsync("foo", new ConfigValue("bar"));
-                values = await stack.GetConfigAsync();
+                await stack.SetConfigAsync("foo", new ConfigValue("bar"));
+                values = await stack.GetAllConfigAsync();
                 Assert.Equal(2, values.Count);
             }
             finally
@@ -308,7 +308,7 @@ namespace Pulumi.Automation.Tests
             };
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 // pulumi up
                 var upResult = await stack.UpAsync();
@@ -383,7 +383,7 @@ namespace Pulumi.Automation.Tests
             };
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 // pulumi up
                 var upResult = await stack.UpAsync();
@@ -459,7 +459,7 @@ namespace Pulumi.Automation.Tests
 
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 var initialOutputs = await stack.GetOutputsAsync();
                 Assert.Empty(initialOutputs);
@@ -597,7 +597,7 @@ namespace Pulumi.Automation.Tests
                     }
                 });
 
-                await stack.SetConfigAsync(configMap);
+                await stack.SetAllConfigAsync(configMap);
 
                 return stack;
             }
@@ -771,7 +771,7 @@ namespace Pulumi.Automation.Tests
             };
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 // pulumi up
                 var upResult = await stack.UpAsync();
@@ -931,13 +931,13 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            await stackOne.SetConfigAsync(new Dictionary<string, ConfigValue>()
+            await stackOne.SetAllConfigAsync(new Dictionary<string, ConfigValue>()
             {
                 ["bar"] = new ConfigValue("1"),
                 ["buzz"] = new ConfigValue("1", isSecret: true),
             });
 
-            await stackTwo.SetConfigAsync(new Dictionary<string, ConfigValue>()
+            await stackTwo.SetAllConfigAsync(new Dictionary<string, ConfigValue>()
             {
                 ["bar"] = new ConfigValue("2"),
                 ["buzz"] = new ConfigValue("2", isSecret: true),
