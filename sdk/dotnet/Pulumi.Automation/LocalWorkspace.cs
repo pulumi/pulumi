@@ -610,12 +610,9 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override async Task<StackDeployment> ExportStackAsync(string stackName, CancellationToken cancellationToken = default)
         {
-            // TODO: should this revert stack selection when done?
-            // Mirroring node behaivor now.
-            await this.SelectStackAsync(stackName, cancellationToken);
-            // TODO: make a parm for show-secrets option?
-            var commandResult = await this.RunCommandAsync(new [] { "stack", "export", "--show-secrets" }, cancellationToken);
-
+            var commandResult = await this.RunCommandAsync(
+                new [] { "stack", "export", "--stack", stackName, "--show-secrets" },
+                cancellationToken);
             return StackDeployment.FromJsonString(commandResult.StandardOutput);
         }
 
