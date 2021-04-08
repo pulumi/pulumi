@@ -17,6 +17,9 @@
 
 ### Bug Fixes
 
+- [sdk/nodejs] Explicitly create event log file for NodeJS Automation API.
+  [#6730](https://github.com/pulumi/pulumi/pull/6730)
+
 - [sdk/nodejs] Fix error handling for failed logging statements
   [#6714](https://github.com/pulumi/pulumi/pull/6714)
 
