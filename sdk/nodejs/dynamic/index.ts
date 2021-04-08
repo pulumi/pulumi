@@ -161,8 +161,22 @@ export interface ResourceProvider {
     delete?: (id: resource.ID, props: any) => Promise<void>;
 }
 
+const providerCache = new WeakMap<ResourceProvider, Promise<string>>();
+
 function serializeProvider(provider: ResourceProvider): Promise<string> {
-    return runtime.serializeFunction(() => provider).then(sf => sf.text);
+    let result: Promise<string>;
+    if (runtime.cacheDynamicProviders()) {
+        const cachedProvider = providerCache.get(provider);
+        if (cachedProvider) {
+            result = cachedProvider;
+        } else {
+            result = runtime.serializeFunction(() => provider).then(sf => sf.text);
+            providerCache.set(provider, result);
+        }
+    } else {
+        result = runtime.serializeFunction(() => provider).then(sf => sf.text);
+    }
+    return result;
 }
 
 /**

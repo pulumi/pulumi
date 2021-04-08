@@ -1,0 +1,3 @@
+name: construct_component_slow_dotnet
+description: A program that constructs a remote component resource with a child resource that takes a long time to be created.
+runtime: dotnet

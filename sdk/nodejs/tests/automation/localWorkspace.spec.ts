@@ -22,6 +22,7 @@ import {
     EngineEvent,
     fullyQualifiedStackName,
     LocalWorkspace,
+    OutputMap,
     ProjectSettings,
     Stack,
     validatePulumiVersion,
@@ -362,6 +363,57 @@ describe("LocalWorkspace", () => {
             const destroyRes = await stack.destroy();
             assert.strictEqual(destroyRes.summary.kind, "destroy");
             assert.strictEqual(destroyRes.summary.result, "succeeded");
+            await stack.workspace.removeStack(stackName);
+        }
+    }));
+    it(`supports stack outputs`, asyncTest(async () => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "import_export_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        const assertOutputs = (outputs: OutputMap) => {
+            assert.strictEqual(Object.keys(outputs).length, 3, "expected to have 3 outputs");
+            assert.strictEqual(outputs["exp_static"].value, "foo");
+            assert.strictEqual(outputs["exp_static"].secret, false);
+            assert.strictEqual(outputs["exp_cfg"].value, "abc");
+            assert.strictEqual(outputs["exp_cfg"].secret, false);
+            assert.strictEqual(outputs["exp_secret"].value, "secret");
+            assert.strictEqual(outputs["exp_secret"].secret, true);
+        };
+
+        try {
+            await stack.setAllConfig({
+                "bar": { value: "abc" },
+                "buzz": { value: "secret", secret: true },
+            });
+
+            const initialOutputs = await stack.outputs();
+            assert.strictEqual(Object.keys(initialOutputs).length, 0, "expected initialOutputs to be empty");
+
+            // pulumi up
+            const upRes = await stack.up();
+            assert.strictEqual(upRes.summary.kind, "update");
+            assert.strictEqual(upRes.summary.result, "succeeded");
+            assertOutputs(upRes.outputs);
+
+            const outputsAfterUp = await stack.outputs();
+            assertOutputs(outputsAfterUp);
+
+            const destroyRes = await stack.destroy();
+            assert.strictEqual(destroyRes.summary.kind, "destroy");
+            assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+            const outputsAfterDestroy = await stack.outputs();
+            assert.strictEqual(Object.keys(outputsAfterDestroy).length, 0, "expected outputsAfterDestroy to be empty");
+        } finally {
             await stack.workspace.removeStack(stackName);
         }
     }));
