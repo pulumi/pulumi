@@ -609,6 +609,20 @@ namespace Pulumi.Automation
             return history.FirstOrDefault();
         }
 
+        /// <summary>
+        /// Cancel stops a stack's currently running update. It throws
+        /// an exception if no update is currently running. Note that
+        /// this operation is _very dangerous_, and may leave the
+        /// stack in an inconsistent state if a resource operation was
+        /// pending when the update was canceled. This command is not
+        /// supported for local backends.
+        /// </summary>
+        public async Task CancelAsync(CancellationToken cancellationToken = default)
+        {
+            await this.Workspace.RunCommandAsync(new[] { "cancel", "--stack", this.Name, "--yes" }, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
         private Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             Action<string>? onStandardOutput,

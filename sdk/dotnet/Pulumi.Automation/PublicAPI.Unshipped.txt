@@ -432,3 +432,4 @@ virtual Pulumi.Automation.Workspace.Dispose() -> void
 virtual Pulumi.Automation.Workspace.GetStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSummary>
 Pulumi.Automation.Exceptions.ProjectSettingsConflictException
 Pulumi.Automation.Exceptions.ProjectSettingsConflictException.SettingsFileLocation.get -> string
+Pulumi.Automation.WorkspaceStack.CancelAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
