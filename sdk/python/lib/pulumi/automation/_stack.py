@@ -545,7 +545,7 @@ class Stack:
 
         :returns: List[UpdateSummary]
         """
-        args = ["history", "--json", "--show-secrets"]
+        args = ["stack", "history", "--json", "--show-secrets"]
         if page_size is not None:
             # default page=1 when page_size is set
             if page is None:

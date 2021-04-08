@@ -33,7 +33,7 @@ func deleteIfNotFailed(e *ptesting.Environment) {
 // ever been updated.
 func assertHasNoHistory(e *ptesting.Environment) {
 	// NOTE: pulumi returns with exit code 0 in this scenario.
-	out, err := e.RunCommand("pulumi", "history")
+	out, err := e.RunCommand("pulumi", "stack", "history")
 	assert.Equal(e.T, "", err)
 	assert.Equal(e.T, "Stack has never been updated\n", out)
 }
@@ -42,7 +42,7 @@ func assertHasNoHistory(e *ptesting.Environment) {
 // updates in the given pagination window
 func assertNoResultsOnPage(e *ptesting.Environment) {
 	// NOTE: pulumi returns with exit code 0 in this scenario.
-	out, err := e.RunCommand("pulumi", "history", "--page-size", "1", "--page", "10000000")
+	out, err := e.RunCommand("pulumi", "stack", "history", "--page-size", "1", "--page", "10000000")
 	assert.Equal(e.T, "", err)
 	assert.Equal(e.T, "No stack updates found on page '10000000'\n", out)
 }
@@ -53,7 +53,7 @@ func TestHistoryCommand(t *testing.T) {
 		defer deleteIfNotFailed(e)
 		integration.CreateBasicPulumiRepo(e)
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-		out, err := e.RunCommandExpectError("pulumi", "history")
+		out, err := e.RunCommandExpectError("pulumi", "stack", "history")
 		assert.Equal(t, "", out)
 		assert.Contains(t, err, "error: no stack selected")
 	})
@@ -83,11 +83,11 @@ func TestHistoryCommand(t *testing.T) {
 		// Update the history-test stack.
 		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview", "-m", "this is an updated stack")
 		// Confirm we see the update message in thie history output.
-		out, err := e.RunCommand("pulumi", "history")
+		out, err := e.RunCommand("pulumi", "stack", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "this is an updated stack")
 		// Confirm we see the update message in thie history output, with pagination.
-		out, err = e.RunCommand("pulumi", "history", "--page-size", "1")
+		out, err = e.RunCommand("pulumi", "stack", "history", "--page-size", "1")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "this is an updated stack")
 		// Get an error message when we page too far
@@ -97,7 +97,7 @@ func TestHistoryCommand(t *testing.T) {
 		assertHasNoHistory(e)
 		// Change stack back, and confirm still has history.
 		e.RunCommand("pulumi", "stack", "select", "history-test")
-		out, err = e.RunCommand("pulumi", "history")
+		out, err = e.RunCommand("pulumi", "stack", "history")
 		assert.Equal(t, "", err)
 		assert.Contains(t, out, "this is an updated stack")
 	})

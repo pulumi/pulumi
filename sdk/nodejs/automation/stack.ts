@@ -529,7 +529,7 @@ export class Stack {
      * (up/preview/refresh/destroy).
      */
     async history(pageSize?: number, page?: number): Promise<UpdateSummary[]> {
-        const args = ["history", "--json", "--show-secrets"];
+        const args = ["stack", "history", "--json", "--show-secrets"];
         if (pageSize) {
             if (!page || page < 1) {
                 page = 1;
