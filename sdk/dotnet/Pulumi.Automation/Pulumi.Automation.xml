@@ -584,6 +584,12 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ListStacksAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.ExportStackAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
@@ -770,6 +776,24 @@
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.StackDeployment">
+             <summary>
+            
+              Represents the state of a stack depoyment ExportStackAsync
+              and ImportStackAsync.
+            
+             </summary>
+        </member>
+        <member name="P:Pulumi.Automation.StackDeployment.Version">
+            <summary>
+            Version indicates the schema of the encoded deployment.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.StackDeployment.Json">
+            <summary>
+            JSON repsresentation of the deployment.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackSettings.SecretsProvider">
@@ -1021,6 +1045,22 @@
             Returns all stacks created under the current project.
             <para/>
             This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.{stack}.yaml files).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.ExportStackAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Exports the deployment state of the stack.
+            <para/>
+            This can be combined with ImportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <summary>
+            Imports the specified deployment state into a pre-existing stack.
+            <para/>
+            This can be combined with ExportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
             </summary>
         </member>
         <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">

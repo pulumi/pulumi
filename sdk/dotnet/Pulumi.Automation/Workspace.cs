@@ -229,6 +229,22 @@ namespace Pulumi.Automation
         public abstract Task<ImmutableList<StackSummary>> ListStacksAsync(CancellationToken cancellationToken = default);
 
         /// <summary>
+        /// Exports the deployment state of the stack.
+        /// <para/>
+        /// This can be combined with ImportStackAsync to edit a
+        /// stack's state (such as recovery from failed deployments).
+        /// </summary>
+        public abstract Task<StackDeployment> ExportStackAsync(string stackName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Imports the specified deployment state into a pre-existing stack.
+        /// <para/>
+        /// This can be combined with ExportStackAsync to edit a
+        /// stack's state (such as recovery from failed deployments).
+        /// </summary>
+        public abstract Task ImportStackAsync(string stackName, StackDeployment state, CancellationToken cancellationToken = default);
+
+        /// <summary>
         /// Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
         /// </summary>
         /// <param name="name">The name of the plugin.</param>

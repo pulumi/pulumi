@@ -608,6 +608,34 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
+        public override async Task<StackDeployment> ExportStackAsync(string stackName, CancellationToken cancellationToken = default)
+        {
+            // TODO: should this revert stack selection when done?
+            // Mirroring node behaivor now.
+            await this.SelectStackAsync(stackName, cancellationToken);
+            // TODO: make a parm for show-secrets option?
+            var commandResult = await this.RunCommandAsync(new [] { "stack", "export", "--show-secrets" }, cancellationToken);
+
+            return StackDeployment.FromJsonString(commandResult.StandardOutput);
+        }
+
+        /// <inheritdoc/>
+        public override async Task ImportStackAsync(string stackName, StackDeployment state, CancellationToken cancellationToken = default)
+        {
+            var tempFileName = Path.GetTempFileName();
+            try
+            {
+                File.WriteAllText(tempFileName, state.JsonString);
+                await this.RunCommandAsync(new [] { "stack", "import", "--file", tempFileName },
+                                           cancellationToken);
+            }
+            finally
+            {
+                File.Delete(tempFileName);
+            }
+        }
+
+        /// <inheritdoc/>
         public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
             => this.RunCommandAsync(new[] { "plugin", "install", kind.ToString().ToLower(), name, version }, cancellationToken);
 
