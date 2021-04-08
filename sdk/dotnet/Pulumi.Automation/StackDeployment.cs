@@ -6,10 +6,13 @@ using System.Text.Json;
 namespace Pulumi.Automation
 {
     /// <summary>
-    ///
-    ///  Represents the state of a stack depoyment ExportStackAsync
-    ///  and ImportStackAsync.
-    ///
+    /// Represents the state of a stack deployment as used by
+    /// ExportStackAsync and ImportStackAsync.
+    /// <para/>
+    /// There is no strongly typed model for the contents yet, but you
+    /// can access the raw representation via the Json property.
+    /// <para/>
+    /// NOTE: instances may contain sensitive data (secrets).
     /// </summary>
     public sealed class StackDeployment
     {
@@ -17,7 +20,7 @@ namespace Pulumi.Automation
         {
             var json = JsonSerializer.Deserialize<JsonElement>(jsonString);
             var version = json.GetProperty("version").GetInt32();
-            return new StackDeployment(version, json, jsonString);
+            return new StackDeployment(version, json);
         }
 
         /// <summary>
@@ -26,17 +29,14 @@ namespace Pulumi.Automation
         public int Version { get; }
 
         /// <summary>
-        /// JSON repsresentation of the deployment.
+        /// JSON representation of the deployment.
         /// </summary>
         public JsonElement Json { get; }
 
-        internal string JsonString { get; }
-
-        private StackDeployment(int version, JsonElement json, string jsonString)
+        private StackDeployment(int version, JsonElement json)
         {
             this.Version = version;
             this.Json = json;
-            this.JsonString = jsonString;
         }
     }
 }

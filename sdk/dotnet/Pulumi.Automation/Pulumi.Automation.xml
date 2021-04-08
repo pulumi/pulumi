@@ -779,12 +779,15 @@
             </summary>
         </member>
         <member name="T:Pulumi.Automation.StackDeployment">
-             <summary>
-            
-              Represents the state of a stack depoyment ExportStackAsync
-              and ImportStackAsync.
-            
-             </summary>
+            <summary>
+            Represents the state of a stack deployment as used by
+            ExportStackAsync and ImportStackAsync.
+            <para/>
+            There is no strongly typed model for the contents yet, but you
+            can access the raw representation via the Json property.
+            <para/>
+            NOTE: instances may contain sensitive data (secrets).
+            </summary>
         </member>
         <member name="P:Pulumi.Automation.StackDeployment.Version">
             <summary>
@@ -793,7 +796,7 @@
         </member>
         <member name="P:Pulumi.Automation.StackDeployment.Json">
             <summary>
-            JSON repsresentation of the deployment.
+            JSON representation of the deployment.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackSettings.SecretsProvider">
