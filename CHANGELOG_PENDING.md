@@ -30,6 +30,9 @@
 - [sdk/python] Improved dict key translation support (3.0-based providers will opt-in to the improved behavior)
   [#6695](https://github.com/pulumi/pulumi/pull/6695)
 
+- [CLI] Remove `pulumi history` command. This was previously deprecated and replaced by `pulumi stack history`
+  [#6724](https://github.com/pulumi/pulumi/pull/6724)
+
 ### Enhancements
 
 

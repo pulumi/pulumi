@@ -207,7 +207,6 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newLogsCmd())
 	cmd.AddCommand(newPluginCmd())
 	cmd.AddCommand(newVersionCmd())
-	cmd.AddCommand(newHistoryCmd())
 	cmd.AddCommand(newConsoleCmd())
 
 	// Less common, and thus hidden, commands:
