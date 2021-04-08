@@ -38,6 +38,52 @@ def test(fn):
     return wrapper
 
 
+class MockResourceArgs:
+    """
+    MockResourceArgs is used to construct a newResource Mock
+    """
+    typ: str
+    name: str
+    inputs: dict
+    provider: str
+    resource_id: str
+    custom: bool
+
+    def __init__(self, typ: str, name: str, inputs: dict, provider: str, resource_id: str, custom: bool) -> None:
+        """
+        :param str typ: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
+        :param str name: The logical name of the resource instance.
+        :param dict inputs: The inputs for the resource.
+        :param str provider: The identifier of the provider instance being used to manage this resource.
+        :param str resource_id: The physical identifier of an existing resource to read or import.
+        :param bool custom: Specifies whether or not the resource is Custom (i.e. managed by a resource provider).
+        """
+        self.typ = typ
+        self.name = name
+        self.inputs = inputs
+        self.provider = provider
+        self.resource_id = resource_id
+        self.custom = custom
+
+class MockCallArgs:
+    """
+    MockCallArgs is used to construct a call Mock
+    """
+    token: str
+    args: dict
+    provider: str
+
+    def __init__(self, token: str, args: dict, provider: str) -> None:
+        """
+        :param str token: The token that indicates which function is being called. This token is of the form "package:module:function".
+        :param dict args: The arguments provided to the function call.
+        :param str provider: The identifier of the provider instance being used to make the call
+        """
+        self.token = token
+        self.args = args
+        self.provider = provider
+
+
 class Mocks(ABC):
     """
     Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
@@ -45,27 +91,21 @@ class Mocks(ABC):
     return predictable values.
     """
     @abstractmethod
-    def call(self, token: str, args: dict, provider: Optional[str]) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
+    def call(self, args: MockCallArgs) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
-        :param str token: The token that indicates which function is being called. This token is of the form "package:module:function".
-        :param dict args: The arguments provided to the function call.
-        :param Optional[str] provider: If provided, the identifier of the provider instance being used to make the call.
+        :param MockCallArgs args.
         """
         return {}, None
 
     @abstractmethod
-    def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[Optional[str], dict]:
+    def new_resource(self, args: MockResourceArgs) -> Tuple[Optional[str], dict]:
         """
         new_resource mocks resource construction calls. This function should return the physical identifier and the output properties
         for the resource being constructed.
 
-        :param str type_: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
-        :param str name: The logical name of the resource instance.
-        :param dict inputs: The inputs for the resource.
-        :param Optional[str] provider: If provided, the identifier of the provider instance being used to manage this resource.
-        :param Optional[str] id_: If provided, the physical identifier of an existing resource to read or import.
+        :param MockResourceArgs args.
         """
         return "", {}
 
@@ -105,7 +145,8 @@ class MockMonitor:
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
 
-        tup = self.mocks.call(request.tok, args, request.provider)
+        call_args = MockCallArgs(token=request.tok, args=args, provider=request.provider)
+        tup = self.mocks.call(call_args)
         if isinstance(tup, dict):
             (ret, failures) = (tup, None)
         else:
@@ -122,7 +163,13 @@ class MockMonitor:
 
         state = rpc.deserialize_properties(request.properties)
 
-        id_, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
+        resource_args = MockResourceArgs(typ=request.type,
+                                         name=request.name,
+                                         inputs=state,
+                                         provider=request.provider,
+                                         resource_id=request.id,
+                                         custom=request.custom or False)
+        id_, state = self.mocks.new_resource(resource_args)
 
         props_proto = _sync_await(rpc.serialize_properties(state, {}))
 
@@ -143,7 +190,13 @@ class MockMonitor:
 
         inputs = rpc.deserialize_properties(request.object)
 
-        id_, state = self.mocks.new_resource(request.type, request.name, inputs, request.provider, request.importId)
+        resource_args = MockResourceArgs(typ=request.type,
+                                         name=request.name,
+                                         inputs=inputs,
+                                         provider=request.provider,
+                                         resource_id=request.importId,
+                                         custom=request.custom or False)
+        id_, state = self.mocks.new_resource(resource_args)
 
         obj_proto = _sync_await(rpc.serialize_properties(state, {}))
 

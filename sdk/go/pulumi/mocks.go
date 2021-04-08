@@ -16,15 +16,41 @@ import (
 )
 
 type MockResourceMonitor interface {
-	Call(token string, args resource.PropertyMap, provider string) (resource.PropertyMap, error)
-	NewResource(typeToken, name string, inputs resource.PropertyMap,
-		provider, id string) (string, resource.PropertyMap, error)
+	Call(args MockCallArgs) (resource.PropertyMap, error)
+	NewResource(args MockResourceArgs) (string, resource.PropertyMap, error)
 }
 
 func WithMocks(project, stack string, mocks MockResourceMonitor) RunOption {
 	return func(info *RunInfo) {
 		info.Project, info.Stack, info.Mocks = project, stack, mocks
 	}
+}
+
+// MockResourceArgs is used to construct call Mock
+type MockCallArgs struct {
+	// Token indicates which function is being called. This token is of the form "package:module:function".
+	Token string
+	// Args are the arguments provided to the function call.
+	Args resource.PropertyMap
+	// Provider is the identifier of the provider instance being used to make the call.
+	Provider string
+}
+
+// MockResourceArgs is a used to construct a newResource Mock
+type MockResourceArgs struct {
+	// TypeToken is the token that indicates which resource type is being constructed. This token
+	// is of the form "package:module:type".
+	TypeToken string
+	// Name is the logical name of the resource instance.
+	Name string
+	// Inputs are the inputs for the resource.
+	Inputs resource.PropertyMap
+	// Provider is the identifier of the provider instance being used to manage this resource.
+	Provider string
+	// ID is the physical identifier of an existing resource to read or import.
+	ID string
+	// Custom specifies whether or not the resource is Custom (i.e. managed by a resource provider).
+	Custom bool
 }
 
 type mockMonitor struct {
@@ -81,8 +107,11 @@ func (m *mockMonitor) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest,
 			Return: result,
 		}, nil
 	}
-
-	resultV, err := m.mocks.Call(in.GetTok(), args, in.GetProvider())
+	resultV, err := m.mocks.Call(MockCallArgs{
+		Token:    in.GetTok(),
+		Args:     args,
+		Provider: in.GetProvider(),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +146,14 @@ func (m *mockMonitor) ReadResource(ctx context.Context, in *pulumirpc.ReadResour
 		return nil, err
 	}
 
-	id, state, err := m.mocks.NewResource(in.GetType(), in.GetName(), stateIn, in.GetProvider(), in.GetId())
+	id, state, err := m.mocks.NewResource(MockResourceArgs{
+		TypeToken: in.GetType(),
+		Name:      in.GetName(),
+		Inputs:    stateIn,
+		Provider:  in.GetProvider(),
+		ID:        in.GetId(),
+		Custom:    false,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -161,7 +197,14 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		return nil, err
 	}
 
-	id, state, err := m.mocks.NewResource(in.GetType(), in.GetName(), inputs, in.GetProvider(), in.GetImportId())
+	id, state, err := m.mocks.NewResource(MockResourceArgs{
+		TypeToken: in.GetType(),
+		Name:      in.GetName(),
+		Inputs:    inputs,
+		Provider:  in.GetProvider(),
+		ID:        in.GetImportId(),
+		Custom:    in.GetCustom(),
+	})
 	if err != nil {
 		return nil, err
 	}
