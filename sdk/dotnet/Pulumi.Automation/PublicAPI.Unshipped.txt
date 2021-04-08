@@ -437,5 +437,5 @@ abstract Pulumi.Automation.Workspace.ExportStackAsync(string stackName, System.T
 override Pulumi.Automation.LocalWorkspace.ImportStackAsync(string stackName, Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.Automation.LocalWorkspace.ExportStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
 Pulumi.Automation.StackDeployment
-Pulumi.Automation.StackDeployment.Version.get -> string
+Pulumi.Automation.StackDeployment.Version.get -> int
 Pulumi.Automation.StackDeployment.Json.get -> System.Text.Json.JsonElement

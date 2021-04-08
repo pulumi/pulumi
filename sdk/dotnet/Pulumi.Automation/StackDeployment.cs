@@ -16,14 +16,14 @@ namespace Pulumi.Automation
         internal static StackDeployment FromJsonString(string jsonString)
         {
             var json = JsonSerializer.Deserialize<JsonElement>(jsonString);
-            var version = json.GetProperty("version").GetString();
+            var version = json.GetProperty("version").GetInt32();
             return new StackDeployment(version, json, jsonString);
         }
 
         /// <summary>
         /// Version indicates the schema of the encoded deployment.
         /// </summary>
-        public string Version { get; }
+        public int Version { get; }
 
         /// <summary>
         /// JSON repsresentation of the deployment.
@@ -32,7 +32,7 @@ namespace Pulumi.Automation
 
         internal string JsonString { get; }
 
-        private StackDeployment(string version, JsonElement json, string jsonString)
+        private StackDeployment(int version, JsonElement json, string jsonString)
         {
             this.Version = version;
             this.Json = json;
