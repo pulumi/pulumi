@@ -18,7 +18,7 @@ from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
 
 from google.protobuf import struct_pb2
 from pulumi.resource import ComponentResource, CustomResource, ResourceOptions
-from pulumi.runtime import Mocks, ResourceModule, rpc, rpc_manager, known_types, set_mocks, settings
+from pulumi.runtime import Mocks, MockCallArgs, MockResourceArgs, ResourceModule, rpc, rpc_manager, known_types, set_mocks, settings
 from pulumi import Input, Output, UNKNOWN, input_type
 from pulumi.asset import (
     FileAsset,
@@ -66,16 +66,16 @@ class MyResourceModule(ResourceModule):
 
 
 class MyMocks(Mocks):
-    def call(self, token, args, provider):
-        raise Exception(f"unknown function {token}")
+    def call(self, args: MockCallArgs):
+        raise Exception(f"unknown function {args.token}")
 
-    def new_resource(self, typ, name, inputs, provider, id):
-        if typ == "test:index:resource":
+    def new_resource(self, args: MockResourceArgs):
+        if args.typ == "test:index:resource":
             return [None if settings.is_dry_run() else "id", {}]
-        elif typ == "test:index:component":
+        elif args.typ == "test:index:component":
             return [None, {}]
         else:
-            raise Exception(f"unknown resource type {typ}")
+            raise Exception(f"unknown resource type {args.typ}")
 
 
 @pulumi.output_type
