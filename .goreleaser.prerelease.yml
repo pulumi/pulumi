@@ -14,7 +14,9 @@ blobs:
   provider: s3
   region: us-west-2
 release:
-  prerelease: auto
+  disable: true
+changelog:
+  skip: true
 builds:
 # UNIX builds
 - id: pulumi-unix
