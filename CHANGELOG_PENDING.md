@@ -15,6 +15,9 @@
 - [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
   [#6699](https://github.com/pulumi/pulumi/pull/6699)
 
+- [automation/dotnet] Expose WorkspaceStack.(Import,Export)StackAsync and StackDeployment helper class
+  [#6728](https://github.com/pulumi/pulumi/pull/6728)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix error handling for failed logging statements
@@ -28,7 +31,7 @@
 
 - [sdk/python] Fix serialization bug if output contains 'items' property.
   [#6701](https://github.com/pulumi/pulumi/pull/6701)
-  
+
 - [sdk/go] Use ioutil.ReadFile to avoid forcing 1.16 upgrade.
   [#6703](https://github.com/pulumi/pulumi/pull/6703)
 
