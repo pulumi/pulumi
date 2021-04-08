@@ -1073,6 +1073,87 @@ namespace Pulumi.Automation.Tests
             );
         }
 
+        [Fact]
+        public async Task ImportsAndExportsStacks()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "foo",
+                    ["exp_cfg"] = config.Get("bar"),
+                    ["exp_secret"] = config.GetSecret("buzz"),
+                };
+            });
+
+            var projectName = "import_export_test";
+            var stackName = $"{RandomStackName()}";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            try
+            {
+                await stack.SetConfigAsync(new Dictionary<string, ConfigValue>()
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                });
+
+                await stack.UpAsync();
+
+                AssertOutputs(await stack.GetOutputsAsync());
+
+                // export stack
+                var state = await stack.ExportStackAsync();
+
+                // import stack
+                await stack.ImportStackAsync(state);
+
+                var barValue = await stack.GetConfigValueAsync("bar");
+                Assert.Equal("abc", barValue.Value);
+
+                var secretValue = await stack.GetConfigValueAsync("buzz");
+                Assert.Equal("secret", secretValue.Value);
+                Assert.True(secretValue.IsSecret);
+
+                AssertOutputs(await stack.GetOutputsAsync());
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+
+                await stack.Workspace.RemoveStackAsync(stack.Name);
+            }
+
+            static void AssertOutputs(IImmutableDictionary<string, OutputValue> outputs)
+            {
+                Assert.Equal(3, outputs.Count);
+
+                // exp_static
+                Assert.True(outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
+
+                // exp_cfg
+                Assert.True(outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
+
+                // exp_secret
+                Assert.True(outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
+            }
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";

@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2021, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,7 @@ using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Serialization;
+using Pulumi.Automation.Types;
 
 namespace Pulumi.Automation
 {
@@ -196,6 +197,25 @@ namespace Pulumi.Automation
         /// <param name="cancellationToken">A cancellation token.</param>
         public Task<ImmutableDictionary<string, ConfigValue>> RefreshConfigAsync(CancellationToken cancellationToken = default)
             => this.Workspace.RefreshConfigAsync(this.Name, cancellationToken);
+
+        /// <summary>
+        /// <see cref="ExportStackAsync(CancellationToken)"/> exports the deployment state of the stack.
+        /// This can be combined with <see cref="ImportStackAsync(VersionedDeployment, CancellationToken)"/> to edit a stack's state (such as recovery from failed deployments).
+        /// </summary>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        // TODO(vipentti): internal -> public
+        internal Task<VersionedDeployment> ExportStackAsync(CancellationToken cancellationToken = default)
+            => this.Workspace.ExportStackAsync(this.Name, cancellationToken);
+
+        /// <summary>
+        /// <see cref="ImportStackAsync(VersionedDeployment, CancellationToken)"/> imports the specified deployment state into a pre-existing stack.
+        /// This can be combined with <see cref="ExportStackAsync(CancellationToken)"/> to edit a stack's state (such as recovery from failed deployments).
+        /// </summary>
+        /// <param name="state">The stack state to import.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        // TODO(vipentti): internal -> public
+        internal Task ImportStackAsync(VersionedDeployment state, CancellationToken cancellationToken = default)
+            => this.Workspace.ImportStackAsync(this.Name, state, cancellationToken);
 
         /// <summary>
         /// Creates or updates the resources in a stack by executing the program in the Workspace.

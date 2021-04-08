@@ -9,6 +9,7 @@ using System.Threading.Tasks;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
+using Pulumi.Automation.Types;
 
 namespace Pulumi.Automation
 {
@@ -220,6 +221,25 @@ namespace Pulumi.Automation
         /// <param name="stackName">The stack to remove.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
         public abstract Task RemoveStackAsync(string stackName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// <see cref="ExportStackAsync"/> exports the deployment state of the stack.
+        /// This can be combined with <see cref="ImportStackAsync(string, VersionedDeployment, CancellationToken)"/> to edit a stack's state (such as recovery from failed deployments).
+        /// </summary>
+        /// <param name="stackName">The stack to export.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        // TODO(vipentti): internal -> public
+        internal abstract Task<VersionedDeployment> ExportStackAsync(string stackName, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// <see cref="ImportStackAsync(string, VersionedDeployment, CancellationToken)"/> imports the specified deployment state into a pre-existing stack.
+        /// This can be combined with <see cref="ExportStackAsync(string, CancellationToken)"/> to edit a stack's state (such as recovery from failed deployments).
+        /// </summary>
+        /// <param name="stackName">The stack to import to.</param>
+        /// <param name="state">The stack state to import.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        // TODO(vipentti): internal -> public
+        internal abstract Task ImportStackAsync(string stackName, VersionedDeployment state, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns all stacks created under the current project.

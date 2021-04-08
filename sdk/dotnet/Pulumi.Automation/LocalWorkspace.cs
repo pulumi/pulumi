@@ -11,6 +11,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Serialization;
+using Pulumi.Automation.Types;
 
 namespace Pulumi.Automation
 {
@@ -605,6 +606,56 @@ namespace Pulumi.Automation
 
             var stacks = this._serializer.DeserializeJson<List<StackSummary>>(result.StandardOutput);
             return stacks.ToImmutableList();
+        }
+
+        /// <inheritdoc/>
+        internal override async Task<VersionedDeployment> ExportStackAsync(string stackName, CancellationToken cancellationToken = default)
+        {
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+
+            var result = await this.RunCommandAsync(new[] { "stack", "export", "--show-secrets"}, cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrWhiteSpace(result.StandardOutput))
+            {
+                // TODO(vipentti): More specifc exception?
+                throw new Commands.Exceptions.CommandException(result);
+            }
+
+            return this._serializer.DeserializeJson<VersionedDeployment>(result.StandardOutput);
+        }
+
+        /// <inheritdoc/>
+        internal override async Task ImportStackAsync(string stackName, VersionedDeployment state, CancellationToken cancellationToken = default)
+        {
+            await this.SelectStackAsync(stackName, cancellationToken).ConfigureAwait(false);
+
+            var filePath = Path.Combine(Path.GetTempPath(), $"automation-import-{Path.GetRandomFileName()}.json");
+
+            try
+            {
+                var serialized = this._serializer.SerializeJson(state);
+
+                await File.WriteAllTextAsync(filePath, serialized, cancellationToken).ConfigureAwait(false);
+
+                await this.RunCommandAsync(new[] { "stack", "import", "--file", filePath }, cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                if (File.Exists(filePath))
+                {
+                    try
+                    {
+                        File.Delete(filePath);
+                    }
+                    catch
+                    {
+                        // allow graceful exit if for some reason
+                        // we're not able to delete the file
+                        // will rely on OS to clean temp file
+                        // in this case.
+                    }
+                }
+            }
         }
 
         /// <inheritdoc/>
