@@ -190,6 +190,7 @@ def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> No
                     return monitor.Invoke(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
+                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_invoke)
 
@@ -298,6 +299,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
                     return monitor.ReadResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
+                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
 
@@ -437,6 +439,7 @@ def register_resource(res: 'Resource',
                     return monitor.RegisterResource(req)
                 except grpc.RpcError as exn:
                     handle_grpc_error(exn)
+                    return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         except Exception as exn:
@@ -492,6 +495,7 @@ def register_resource_outputs(res: 'Resource', outputs: 'Union[Inputs, Output[In
                 return monitor.RegisterResourceOutputs(req)
             except grpc.RpcError as exn:
                 handle_grpc_error(exn)
+                return None
 
         await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
         log.debug(
@@ -510,9 +514,9 @@ class PropertyDependencies:
 
 class RegisterResponse:
     urn: str
-    id: str
+    id: Optional[str]
     object: struct_pb2.Struct
-    propertyDependencies: Dict[str, PropertyDependencies]
+    propertyDependencies: Optional[Dict[str, PropertyDependencies]]
 
     # pylint: disable=redefined-builtin
     def __init__(self,

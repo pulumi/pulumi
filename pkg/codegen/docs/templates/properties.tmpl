@@ -4,7 +4,7 @@
 
 {{ print "{{% choosable language" }} {{ print $lang }} {{ print "%}}" }}
 <dl class="resources-properties">
-{{ range . }}
+{{- range . -}}
     <dt class="property-{{- if .IsInput -}}{{- if .IsRequired -}}required{{- else -}}optional{{- end -}}{{- end -}}{{ if .DeprecationMessage }} property-deprecated{{- end -}}"
             title="{{ if .IsInput -}}{{- if .IsRequired -}}Required{{- else -}}Optional{{- end -}}{{- end -}}{{- if .DeprecationMessage -}}, Deprecated{{- end -}}">
         <span id="{{ htmlSafe .ID }}">{{ template "linkify_wo_style" . }}</span>
@@ -20,7 +20,7 @@
         {{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}
         {{- if .DeprecationMessage -}}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
     </dd>
-{{- end }}
+{{- end -}}
 </dl>
 {{ print "{{% /choosable %}}" }}
 

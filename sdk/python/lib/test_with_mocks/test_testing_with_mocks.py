@@ -13,6 +13,18 @@
 # limitations under the License.
 import unittest
 import pulumi
+import grpc
+
+class GrpcError(grpc.RpcError):
+    def __init__(self, code, details):
+        self._code = code
+        self._details = details
+
+    def code(self):
+        return self._code
+
+    def details(self):
+        return self._details
 
 class MyMocks(pulumi.runtime.Mocks):
     def call(self, token, args, provider):
@@ -20,6 +32,10 @@ class MyMocks(pulumi.runtime.Mocks):
             return {
                 'out_value': 59,
             }
+        elif token == 'test:index:FailFunction':
+            return ({}, [('none', 'this function fails!')])
+        elif token == 'test:index:ThrowFunction':
+            raise GrpcError(42, 'this function throws!')
         else:
             return {}
 
@@ -67,8 +83,30 @@ class TestingWithMocks(unittest.TestCase):
     def test_custom_resource_reference(self):
         def check_instance(instance):
             self.assertIsInstance(instance, resources.Instance)
+            def check_ip(ip):
+                self.assertEqual(ip, '203.0.113.12')
+            instance.public_ip.apply(check_ip)
         return resources.mycustom.instance.apply(check_instance)
 
     @pulumi.runtime.test
     def test_invoke(self):
         return self.assertEqual(resources.invoke_result, 59)
+
+    @pulumi.runtime.test
+    def test_invoke_failures(self):
+        caught = False
+        try:
+            pulumi.runtime.invoke("test:index:FailFunction", props={})
+        except Exception:
+            caught = True
+        self.assertTrue(caught)
+
+    @pulumi.runtime.test
+    def test_invoke_throws(self):
+        caught = False
+        try:
+            pulumi.runtime.invoke("test:index:ThrowFunction", props={})
+        except Exception:
+            caught = True
+        self.assertTrue(caught)
+

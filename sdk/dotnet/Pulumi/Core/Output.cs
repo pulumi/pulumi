@@ -3,7 +3,6 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
@@ -15,13 +14,13 @@ namespace Pulumi
     /// </summary>
     public static partial class Output
     {
-        public static Output<T> Create<T>([MaybeNull]T value)
+        public static Output<T> Create<T>(T value)
             => Create(Task.FromResult(value));
 
         public static Output<T> Create<T>(Task<T> value)
             => Output<T>.Create(value);
 
-        public static Output<T> CreateSecret<T>([MaybeNull]T value)
+        public static Output<T> CreateSecret<T>(T value)
             => CreateSecret(Task.FromResult(value));
 
         public static Output<T> CreateSecret<T>(Task<T> value)
@@ -58,7 +57,7 @@ namespace Pulumi
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(IEnumerable<Input<T>> inputs)
             => Output<T>.All(ImmutableArray.CreateRange(inputs));
-        
+
         /// <summary>
         /// Combines all the <see cref="Output{T}"/> values in <paramref name="outputs"/>
         /// into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>

@@ -10,7 +10,5 @@ namespace Pulumi.Automation
     public sealed class DestroyOptions : UpdateOptions
     {
         public bool? TargetDependents { get; set; }
-
-        public Action<string>? OnOutput { get; set; }
     }
 }

@@ -46,6 +46,8 @@ type Environment struct {
 	CWD string
 	// Backend to use for commands
 	Backend string
+	// Environment variables to add to the environment for commands (`key=value`).
+	Env []string
 }
 
 // WriteYarnRCForTest writes a .yarnrc file which sets global configuration for every yarn inovcation. We use this
@@ -95,6 +97,11 @@ func (e *Environment) SetBackend(backend string) {
 	e.Backend = backend
 }
 
+// SetBackend sets the backend to use for commands in this environment.
+func (e *Environment) SetEnvVars(env []string) {
+	e.Env = env
+}
+
 // ImportDirectory copies a folder into the test environment.
 func (e *Environment) ImportDirectory(path string) {
 	err := fsutil.CopyFile(e.RootPath, path, nil)
@@ -128,7 +135,7 @@ func (e *Environment) PathExists(p string) bool {
 // RunCommand runs the command expecting a zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 	e.Helper()
-	stdout, stderr, err := e.GetCommandResults(e.T, cmd, args...)
+	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err != nil {
 		e.Errorf("Ran command %v args %v and expected success. Instead got failure.", cmd, args)
 		e.Logf("Run Error: %v", err)
@@ -141,7 +148,7 @@ func (e *Environment) RunCommand(cmd string, args ...string) (string, string) {
 // RunCommandExpectError runs the command expecting a non-zero exit code, returning stdout and stderr.
 func (e *Environment) RunCommandExpectError(cmd string, args ...string) (string, string) {
 	e.Helper()
-	stdout, stderr, err := e.GetCommandResults(e.T, cmd, args...)
+	stdout, stderr, err := e.GetCommandResults(cmd, args...)
 	if err == nil {
 		e.Errorf("Ran command %v args %v and expected failure. Instead got success.", cmd, args)
 		e.Logf("STDOUT: %v", stdout)
@@ -158,9 +165,9 @@ func (e *Environment) LocalURL() string {
 
 // GetCommandResults runs the given command and args in the Environments CWD, returning
 // STDOUT, STDERR, and the result of os/exec.Command{}.Run.
-func (e *Environment) GetCommandResults(t *testing.T, command string, args ...string) (string, string, error) {
-	t.Helper()
-	t.Logf("Running command %v %v", command, strings.Join(args, " "))
+func (e *Environment) GetCommandResults(command string, args ...string) (string, string, error) {
+	e.T.Helper()
+	e.T.Logf("Running command %v %v", command, strings.Join(args, " "))
 
 	// Buffer STDOUT and STDERR so we can return them later.
 	var outBuffer bytes.Buffer
@@ -171,7 +178,9 @@ func (e *Environment) GetCommandResults(t *testing.T, command string, args ...st
 	cmd.Dir = e.CWD
 	cmd.Stdout = &outBuffer
 	cmd.Stderr = &errBuffer
-	cmd.Env = append(os.Environ(), fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, e.Env...)
+	cmd.Env = append(cmd.Env, fmt.Sprintf("%s=%s", pulumiCredentialsPathEnvVar, e.RootPath))
 	cmd.Env = append(cmd.Env, "PULUMI_DEBUG_COMMANDS=true")
 	cmd.Env = append(cmd.Env, "PULUMI_CONFIG_PASSPHRASE=correct horse battery staple")
 	if e.Backend != "" {

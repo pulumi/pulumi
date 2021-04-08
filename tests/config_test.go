@@ -15,6 +15,9 @@
 package tests
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -111,6 +114,156 @@ func TestConfigCommands(t *testing.T) {
 		// check config is empty again
 		stdout, _ = e.RunCommand("pulumi", "config")
 		assert.Equal(t, "KEY  VALUE", strings.Trim(stdout, "\r\n"))
+
+		e.RunCommand("pulumi", "stack", "rm", "--yes")
+	})
+
+	t.Run("YAMLTest", func(t *testing.T) {
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		integration.CreateBasicPulumiRepo(e)
+		e.SetBackend(e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "test")
+
+		// check config is empty
+		stdout, _ := e.RunCommand("pulumi", "config")
+		assert.Equal(t, "KEY  VALUE", strings.Trim(stdout, "\r\n"))
+
+		// set a config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"a", "A",
+		)
+		expected := `^encryptionsalt: \S*
+config:
+  pulumi-test:a: A
+$`
+		b, err := os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// set an additional secret config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"b", "B", "--secret",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: A
+  pulumi-test:b:
+    secure: \S*
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// update a config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"a", "AA",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: AA
+  pulumi-test:b:
+    secure: \S*
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// update the secret config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"b", "BB", "--secret",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: AA
+  pulumi-test:b:
+    secure: \S*
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// set a config with path=true and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"--path",
+			"c", "C",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: AA
+  pulumi-test:b:
+    secure: \S*
+  pulumi-test:c: C
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// set a nested config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"--path",
+			"d.a", "D",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: AA
+  pulumi-test:b:
+    secure: \S*
+  pulumi-test:c: C
+  pulumi-test:d:
+    a: D
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// set an array config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"--path",
+			"e[0]", "E",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: AA
+  pulumi-test:b:
+    secure: \S*
+  pulumi-test:c: C
+  pulumi-test:d:
+    a: D
+  pulumi-test:e:
+  - E
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
+
+		// set a nested array config and verify that the generated config file matches the expected values
+		e.RunCommand("pulumi", "config", "set",
+			"--path",
+			"f.g[0]", "F",
+		)
+		expected = `^encryptionsalt: \S*
+config:
+  pulumi-test:a: AA
+  pulumi-test:b:
+    secure: \S*
+  pulumi-test:c: C
+  pulumi-test:d:
+    a: D
+  pulumi-test:e:
+  - E
+  pulumi-test:f:
+    g:
+    - F
+$`
+		b, err = os.ReadFile(filepath.Join(e.CWD, "Pulumi.test.yaml"))
+		assert.NoError(t, err)
+		assert.Regexp(t, regexp.MustCompile(expected), string(b))
 
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})

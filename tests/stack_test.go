@@ -405,6 +405,50 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 	assert.Equal(t, "abc", strings.Trim(stdoutXyz2, "\r\n"))
 }
 
+func TestLocalStateLocking(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("integration/single_resource")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "foo")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+
+	// Enable self-managed backend locking
+	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
+
+	// Run 10 concurrent updates
+	count := 10
+	stderrs := make(chan string, count)
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, _ := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+			stderrs <- stderr
+		}()
+	}
+
+	// Ensure that only one of the concurrent updates succeeded, and that failures
+	// were due to locking (and not state file corruption)
+	numsuccess := 0
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		if stderr == "" {
+			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
+			numsuccess++
+		} else {
+			assert.Contains(t, stderr, "the stack is currently locked by 1 lock(s)")
+			t.Log(stderr)
+		}
+	}
+
+}
+
 func getFileNames(infos []os.FileInfo) []string {
 	var result []string
 	for _, i := range infos {

@@ -40,8 +40,8 @@ namespace Pulumi.Plant.Tree.V1
         {
         }
 
-        private RubberTree(string name, Input<string> id, CustomResourceOptions? options = null)
-            : base("plant:tree/v1:RubberTree", name, null, MakeResourceOptions(options, id))
+        private RubberTree(string name, Input<string> id, RubberTreeState? state = null, CustomResourceOptions? options = null)
+            : base("plant:tree/v1:RubberTree", name, state, MakeResourceOptions(options, id))
         {
         }
 
@@ -63,10 +63,11 @@ namespace Pulumi.Plant.Tree.V1
         ///
         /// <param name="name">The unique name of the resulting resource.</param>
         /// <param name="id">The unique provider ID of the resource to lookup.</param>
+        /// <param name="state">Any extra arguments used during the lookup.</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public static RubberTree Get(string name, Input<string> id, CustomResourceOptions? options = null)
+        public static RubberTree Get(string name, Input<string> id, RubberTreeState? state = null, CustomResourceOptions? options = null)
         {
-            return new RubberTree(name, id, options);
+            return new RubberTree(name, id, state, options);
         }
     }
 
@@ -93,6 +94,17 @@ namespace Pulumi.Plant.Tree.V1
             Farm = "(unknown)";
             Size = Pulumi.Plant.Tree.V1.TreeSize.Medium;
             Type = Pulumi.Plant.Tree.V1.RubberTreeVariety.Burgundy;
+        }
+    }
+
+    public sealed class RubberTreeState : Pulumi.ResourceArgs
+    {
+        [Input("farm")]
+        public InputUnion<Pulumi.Plant.Tree.V1.Farm, string>? Farm { get; set; }
+
+        public RubberTreeState()
+        {
+            Farm = "(unknown)";
         }
     }
 }

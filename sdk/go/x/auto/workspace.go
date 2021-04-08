@@ -73,6 +73,8 @@ type Workspace interface {
 	// PulumiHome returns the directory override for CLI metadata if set.
 	// This customizes the location of $PULUMI_HOME where metadata is stored and plugins are installed.
 	PulumiHome() string
+	// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
+	PulumiVersion() string
 	// WhoAmI returns the currently authenticated user.
 	WhoAmI(context.Context) (string, error)
 	// Stack returns a summary of the currently selected stack, if any.
@@ -88,7 +90,7 @@ type Workspace interface {
 	ListStacks(context.Context) ([]StackSummary, error)
 	// InstallPlugin acquires the plugin matching the specified name and version.
 	InstallPlugin(context.Context, string, string) error
-	// RemovePlugin deletes the plugin matching the specified name and verision.
+	// RemovePlugin deletes the plugin matching the specified name and version.
 	RemovePlugin(context.Context, string, string) error
 	// ListPlugins lists all installed plugins.
 	ListPlugins(context.Context) ([]workspace.PluginInfo, error)

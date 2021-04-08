@@ -416,21 +416,34 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     let resolveURN: (urn: URN, err?: Error) => void;
     {
         let resolveValue: (urn: URN) => void;
+        let rejectValue: (err: Error) => void;
         let resolveIsKnown: (isKnown: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
         (res as any).urn = new Output(
             res,
             debuggablePromise(
-                new Promise<URN>(resolve => resolveValue = resolve),
+                new Promise<URN>((resolve, reject) => {
+                    resolveValue = resolve;
+                    rejectValue = reject;
+                }),
                 `resolveURN(${label})`),
             debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsKnown = resolve),
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsKnown = resolve;
+                    rejectIsKnown = reject;
+                }),
                 `resolveURNIsKnown(${label})`),
             /*isSecret:*/ Promise.resolve(false),
             Promise.resolve(res));
 
         resolveURN = (v, err) => {
-            resolveValue(v);
-            resolveIsKnown(err === undefined);
+            if (!!err) {
+                rejectValue(err);
+                rejectIsKnown(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(true);
+            }
         };
     }
 
@@ -438,19 +451,32 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     let resolveID: ((v: any, performApply: boolean, err?: Error) => void) | undefined;
     if (custom) {
         let resolveValue: (v: ID) => void;
+        let rejectValue: (err: Error) => void;
         let resolveIsKnown: (v: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
+
         (res as any).id = new Output(
             res,
-            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve),
+            debuggablePromise(new Promise<ID>((resolve, reject) => {
+                resolveValue = resolve;
+                rejectValue = reject;
+            }),
                 `resolveID(${label})`),
-            debuggablePromise(new Promise<boolean>(
-                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${label})`),
+            debuggablePromise(new Promise<boolean>((resolve, reject) => {
+                resolveIsKnown = resolve;
+                rejectIsKnown = reject;
+            }), `resolveIDIsKnown(${label})`),
             Promise.resolve(false),
             Promise.resolve(res));
 
         resolveID = (v, isKnown, err) => {
-            resolveValue(v);
-            resolveIsKnown(err ? false : isKnown);
+            if (!!err) {
+                rejectValue(err);
+                rejectIsKnown(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(isKnown);
+            }
         };
     }
 

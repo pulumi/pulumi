@@ -96,6 +96,51 @@ func (e RubberTreeVariety) ToStringPtrOutputWithContext(ctx context.Context) pul
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
+// RubberTreeVarietyArrayInput is an input type that accepts RubberTreeVarietyArray and RubberTreeVarietyArrayOutput values.
+// You can construct a concrete instance of `RubberTreeVarietyArrayInput` via:
+//
+//          RubberTreeVarietyArray{ RubberTreeVarietyArgs{...} }
+type RubberTreeVarietyArrayInput interface {
+	pulumi.Input
+
+	ToRubberTreeVarietyArrayOutput() RubberTreeVarietyArrayOutput
+	ToRubberTreeVarietyArrayOutputWithContext(context.Context) RubberTreeVarietyArrayOutput
+}
+
+type RubberTreeVarietyArray []RubberTreeVariety
+
+func (RubberTreeVarietyArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]RubberTreeVariety)(nil)).Elem()
+}
+
+func (i RubberTreeVarietyArray) ToRubberTreeVarietyArrayOutput() RubberTreeVarietyArrayOutput {
+	return i.ToRubberTreeVarietyArrayOutputWithContext(context.Background())
+}
+
+func (i RubberTreeVarietyArray) ToRubberTreeVarietyArrayOutputWithContext(ctx context.Context) RubberTreeVarietyArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeVarietyArrayOutput)
+}
+
+type RubberTreeVarietyArrayOutput struct{ *pulumi.OutputState }
+
+func (RubberTreeVarietyArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]RubberTreeVariety)(nil)).Elem()
+}
+
+func (o RubberTreeVarietyArrayOutput) ToRubberTreeVarietyArrayOutput() RubberTreeVarietyArrayOutput {
+	return o
+}
+
+func (o RubberTreeVarietyArrayOutput) ToRubberTreeVarietyArrayOutputWithContext(ctx context.Context) RubberTreeVarietyArrayOutput {
+	return o
+}
+
+func (o RubberTreeVarietyArrayOutput) Index(i pulumi.IntInput) pulumi.StringOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) pulumi.StringOutput {
+		return vs[0].([]RubberTreeVariety)[vs[1].(int)].ToStringOutput()
+	}).(pulumi.StringOutput)
+}
+
 type TreeSize pulumi.String
 
 const (
@@ -122,4 +167,49 @@ func (e TreeSize) ToStringPtrOutput() pulumi.StringPtrOutput {
 
 func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
+// TreeSizeMapInput is an input type that accepts TreeSizeMap and TreeSizeMapOutput values.
+// You can construct a concrete instance of `TreeSizeMapInput` via:
+//
+//          TreeSizeMap{ "key": TreeSizeArgs{...} }
+type TreeSizeMapInput interface {
+	pulumi.Input
+
+	ToTreeSizeMapOutput() TreeSizeMapOutput
+	ToTreeSizeMapOutputWithContext(context.Context) TreeSizeMapOutput
+}
+
+type TreeSizeMap map[string]TreeSize
+
+func (TreeSizeMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return i.ToTreeSizeMapOutputWithContext(context.Background())
+}
+
+func (i TreeSizeMap) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(TreeSizeMapOutput)
+}
+
+type TreeSizeMapOutput struct{ *pulumi.OutputState }
+
+func (TreeSizeMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]TreeSize)(nil)).Elem()
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutput() TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) TreeSizeMapOutput {
+	return o
+}
+
+func (o TreeSizeMapOutput) MapIndex(k pulumi.StringInput) pulumi.StringOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) pulumi.StringOutput {
+		return vs[0].(map[string]TreeSize)[vs[1].(string)].ToStringOutput()
+	}).(pulumi.StringOutput)
 }

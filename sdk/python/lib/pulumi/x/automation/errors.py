@@ -49,7 +49,7 @@ class InlineSourceRuntimeError(CommandError):
         self.name = "InlineSourceRuntimeError"
 
 
-class RuntimeError(CommandError):
+class RuntimeError(CommandError): # pylint: disable=redefined-builtin
     def __init__(self, command_result: 'CommandResult'):
         super().__init__(command_result)
         self.name = "RuntimeError"
@@ -59,6 +59,10 @@ class CompilationError(CommandError):
     def __init__(self, command_result: 'CommandResult'):
         super().__init__(command_result)
         self.name = "CompilationError"
+
+
+class InvalidVersionError(Exception):
+    pass
 
 
 not_found_regex = re.compile("no stack named.*found")

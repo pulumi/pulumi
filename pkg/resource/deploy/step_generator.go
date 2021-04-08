@@ -965,6 +965,12 @@ func (sg *stepGenerator) providerChanged(urn resource.URN, old, new *resource.St
 		return false, err
 	}
 
+	if alias, ok := sg.aliased[oldRef.URN()]; ok && alias == newRef.URN() {
+		logging.V(stepExecutorLogLevel).Infof(
+			"sg.diffProvider(%s, ...): observed an aliased provider from %q to %q", urn, oldRef.URN(), newRef.URN())
+		return false, nil
+	}
+
 	// If one or both of these providers are not default providers, we will need to accept the diff and replace
 	// everything. This might not be strictly necessary, but it is conservatively correct.
 	if !providers.IsDefaultProvider(oldRef.URN()) || !providers.IsDefaultProvider(newRef.URN()) {

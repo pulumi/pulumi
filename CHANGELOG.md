@@ -1,6 +1,185 @@
 CHANGELOG
 =========
 
+## 2.24.1 (2021-04-01)
+
+### Bug Fixes
+
+- [cli] Revert the swapping out of the YAML parser library
+  [#6681](https://github.com/pulumi/pulumi/pull/6681)
+
+- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
+  [#6655](https://github.com/pulumi/pulumi/pull/6655)
+
+## 2.24.0 (2021-03-31)
+
+### Improvements
+
+- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
+  [#6657](https://github.com/pulumi/pulumi/pull/6657)
+
+- [automation/dotnet] Expose structured logging
+  [#6572](https://github.com/pulumi/pulumi/pull/6572)
+
+- [cli] Support full fidelity YAML round-tripping
+  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
+  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
+
+- [sdk/python] Ensure all async tasks are awaited prior to exit.
+  [#6606](https://github.com/pulumi/pulumi/pull/6606)
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
+  [#6644](https://github.com/pulumi/pulumi/pull/6644)
+
+- [automation/python] Fix passing of additional environment variables.
+  [#6639](https://github.com/pulumi/pulumi/pull/6639)
+
+- [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
+  [#6504](https://github.com/pulumi/pulumi/pull/6504)
+
+- [automation/go,python,nodejs] Respect pre-existing Pulumi.yaml for inline programs.
+  [#6655](https://github.com/pulumi/pulumi/pull/6655)
+
+## 2.23.2 (2021-03-25)
+
+### Improvements
+
+- [cli] Improve diff displays during `pulumi refresh`
+  [#6568](https://github.com/pulumi/pulumi/pull/6568)
+
+- [sdk/go] Cache loaded configuration files.
+  [#6576](https://github.com/pulumi/pulumi/pull/6576)
+
+- [sdk/nodejs] Allow `Mocks::newResource` to determine whether the created resource is a `CustomResource`.
+  [#6551](https://github.com/pulumi/pulumi/pull/6551)
+
+- [automation/*] Implement minimum version checking and add:
+  - Go: `LocalWorkspace.PulumiVersion()` - [#6577](https://github.com/pulumi/pulumi/pull/6577)
+  - Nodejs: `LocalWorkspace.pulumiVersion` - [#6580](https://github.com/pulumi/pulumi/pull/6580)
+  - Python: `LocalWorkspace.pulumi_version` - [#6589](https://github.com/pulumi/pulumi/pull/6589)
+  - Dotnet: `LocalWorkspace.PulumiVersion` - [#6590](https://github.com/pulumi/pulumi/pull/6590)
+
+### Bug Fixes
+
+- [sdk/python] Fix automatic venv creation
+  [#6599](https://github.com/pulumi/pulumi/pull/6599)
+
+- [automation/python] Fix Settings file save
+  [#6605](https://github.com/pulumi/pulumi/pull/6605)
+
+- [sdk/dotnet] Remove MaybeNull from Output/Input.Create to avoid spurious warnings
+  [#6600](https://github.com/pulumi/pulumi/pull/6600)
+
+## 2.23.1 (2021-03-17)
+
+### Bug Fixes
+
+- [cli] Fix a bug where a version wasn't passed to go install commands as part of `make brew` installs from homebrew
+  [#6566](https://github.com/pulumi/pulumi/pull/6566)
+
+## 2.23.0 (2021-03-17)
+
+### Breaking
+
+- [automation/go] - Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
+  [#6436](https://github.com/pulumi/pulumi/pull/6436)
+
+This change is marked breaking because it changes the shape of the `PreviewResult` struct.
+
+**Before**
+
+```go
+type PreviewResult struct {
+  Steps         []PreviewStep  `json:"steps"`
+  ChangeSummary map[string]int `json:"changeSummary"`
+}
+```
+
+**After**
+
+```go
+type PreviewResult struct {
+  StdOut        string
+  StdErr        string
+  ChangeSummary map[apitype.OpType]int
+}
+```
+
+- [automation/dotnet] Add ability to capture stderr
+  [#6513](https://github.com/pulumi/pulumi/pull/6513)
+
+This change is marked breaking because it also renames `OnOutput` to `OnStandardOutput`.
+
+### Improvements
+
+- [sdk/go] Add helpers to convert raw Go maps and arrays to Pulumi `Map` and `Array` inputs.
+  [#6337](https://github.com/pulumi/pulumi/pull/6337)
+
+- [sdk/go] Return zero values instead of panicing in `Index` and `Elem` methods.
+  [#6338](https://github.com/pulumi/pulumi/pull/6338)
+
+- [sdk/go] Support multiple folders in GOPATH.
+  [#6228](https://github.com/pulumi/pulumi/pull/6228
+
+- [cli] Add ability to download arm64 provider plugins
+  [#6492](https://github.com/pulumi/pulumi/pull/6492)
+
+- [build] Updating Pulumi to use Go 1.16
+  [#6470](https://github.com/pulumi/pulumi/pull/6470)
+
+- [build] Adding a Pulumi arm64 binary for use on new macOS hardware.
+  Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
+  [#6492](https://github.com/pulumi/pulumi/pull/6492)
+
+- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
+  [#6454](https://github.com/pulumi/pulumi/pull/6454)
+
+- [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
+  [#6507](https://github.com/pulumi/pulumi/pull/6507)
+
+- [cli] Add locking support to the self-managed backends using the `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
+  [#2697](https://github.com/pulumi/pulumi/pull/2697)
+
+### Bug Fixes
+
+- [sdk/python] Fix mocks issue when passing a resource more than once.
+  [#6479](https://github.com/pulumi/pulumi/pull/6479)
+
+- [automation/dotnet] Add ReadDiscard OperationType
+  [#6493](https://github.com/pulumi/pulumi/pull/6493)
+
+- [cli] Ensure the user has the correct access to the secrets manager before using it as part of
+  `pulumi stack export --show-secrets`.
+  [#6215](https://github.com/pulumi/pulumi/pull/6210)
+
+- [sdk/go] Implement getResource in the mock monitor.
+  [#5923](https://github.com/pulumi/pulumi/pull/5923)
+
+## 2.22.0 (2021-03-03)
+
+### Improvements
+
+- [#6410](https://github.com/pulumi/pulumi/pull/6410) Add `diff` option to Automation API's `preview` and `up`
+
+### Bug Fixes
+
+- [automation/dotnet] - resolve issue with OnOutput delegate not being called properly during pulumi process execution.
+  [#6435](https://github.com/pulumi/pulumi/pull/6435)
+
+- [automation/python,nodejs,dotnet] - BREAKING - Remove `summary` property from `PreviewResult`.
+  The `summary` property on `PreviewResult` returns a result that is always incorrect and is being removed.
+  [#6405](https://github.com/pulumi/pulumi/pull/6405)
+
+- [automation/python] - Fix Windows error caused by use of NamedTemporaryFile in automation api.
+  [#6421](https://github.com/pulumi/pulumi/pull/6421)
+
+- [sdk/nodejs] Serialize default parameters correctly. [#6397](https://github.com/pulumi/pulumi/pull/6397)
+
+- [cli] Respect provider aliases while diffing resources.
+  [#6453](https://github.com/pulumi/pulumi/pull/6453)
+
 ## 2.21.2 (2021-02-22)
 
 ### Improvements
@@ -13,10 +192,10 @@ CHANGELOG
   [#6251](https://github.com/pulumi/pulumi/pull/6251)
 
 - [cli] Added commands `config set-all` and `config rm-all` to set and remove multiple configuration keys.
-  [#6373](https://github.com/pulumi/pulumi/pulls/6373)
+  [#6373](https://github.com/pulumi/pulumi/pull/6373)
 
 - [automation/*] Consume `config set-all` and `config rm-all` from automation API.
-  [#6388](https://github.com/pulumi/pulumi/pulls/6388)
+  [#6388](https://github.com/pulumi/pulumi/pull/6388)
 
 - [sdk/dotnet] C# Automation API.
   [#5761](https://github.com/pulumi/pulumi/pull/5761)
@@ -30,7 +209,7 @@ CHANGELOG
   component package. [#6387](https://github.com/pulumi/pulumi/pull/6387)
 
 - [cli] Skip unnecessary state file writes to address performance regression introduced in 2.16.2.
-  [#6396](https://github.com/pulumi/pulumi/pulls/6396)
+  [#6396](https://github.com/pulumi/pulumi/pull/6396)
 
 ## 2.21.1 (2021-02-18)
 

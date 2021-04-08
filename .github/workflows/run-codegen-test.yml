@@ -4,7 +4,7 @@ on:
     paths:
     - 'pkg/codegen/**'
     - '!pkg/codegen/docs/**'
-    - '.github/workflows/codegen-test.yml'
+    - '.github/workflows/run-codegen-test.yml'
 
 env:
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -16,12 +16,12 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes"]
+        provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes", "azure-native"]
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.15.x
+          go-version: 1.16.x
       - name: Install Node.js
         uses: actions/setup-node@v1
         with:
@@ -33,7 +33,7 @@ jobs:
       - name: Install Pulumi CLI
         uses: pulumi/action-install-pulumi-cli@v1.0.1
       - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.1.0
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
 

@@ -2,39 +2,19 @@ PROJECT_NAME := Pulumi SDK
 SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
 include build/common.mk
 
+
 PROJECT         := github.com/pulumi/pulumi/pkg/v2/cmd/pulumi
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
 TESTS_PKGS      := $(shell cd ./tests && go list ./... | grep -v tests/templates | grep -v /vendor/)
-VERSION         := $(shell scripts/get-version HEAD)
+VERSION         := $(shell pulumictl get version)
 
 TESTPARALLELISM := 10
 
 ensure::
 	$(call STEP_MESSAGE)
-ifeq ($(NOPROXY), true)
-	@echo "cd sdk && GO111MODULE=on go mod tidy"; cd sdk && GO111MODULE=on go mod tidy
-	@echo "cd sdk && GO111MODULE=on go mod download"; cd sdk && GO111MODULE=on go mod download
-	@echo "cd pkg && GO111MODULE=on go mod tidy"; cd pkg && GO111MODULE=on go mod tidy
-	@echo "cd pkg && GO111MODULE=on go mod download"; cd pkg && GO111MODULE=on go mod download
-	@echo "cd scripts && GO111MODULE=on go mod tidy"; cd scripts && GO111MODULE=on go mod tidy
-	@echo "cd scripts && GO111MODULE=on go mod download"; cd scripts && GO111MODULE=on go mod download
-	@echo "cd tests && GO111MODULE=on go mod tidy"; cd tests && GO111MODULE=on go mod tidy
-	@echo "cd tests && GO111MODULE=on go mod download"; cd tests && GO111MODULE=on go mod download
-	@echo "cd scripts && GO111MODULE=on go mod tidy"; cd scripts && GO111MODULE=on go mod tidy
-	@echo "cd scripts && GO111MODULE=on go mod download"; cd scripts && GO111MODULE=on go mod download
-else
-	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd sdk && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
-	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd pkg && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
-	@echo "cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
-	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd tests && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
-	@echo "cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy"; cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod tidy
-	@echo "cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download"; cd scripts && GO111MODULE=on GOPROXY=$(GOPROXY) go mod download
-endif
-
+	@echo "cd sdk && go mod download"; cd sdk && go mod download
+	@echo "cd pkg && go mod download"; cd pkg && go mod download
+	@echo "cd tests && go mod download"; cd tests && go mod download
 
 build-proto::
 	cd sdk/proto && ./generate.sh
@@ -60,8 +40,9 @@ dist:: build
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
 
 # NOTE: the brew target intentionally avoids the dependency on `build`, as it does not require the language SDKs.
+brew:: BREW_VERSION := $(shell scripts/get-version HEAD)
 brew::
-	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" ${PROJECT}
+	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${BREW_VERSION}" ${PROJECT}
 
 lint::
 	for DIR in "pkg" "sdk" "tests" ; do \
@@ -73,6 +54,7 @@ test_fast:: build
 
 test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}

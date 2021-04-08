@@ -16,6 +16,8 @@ import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
 
+/*tslint:disable:no-shadowed-variable*/
+
 /**
  * Output helps encode the relationship between Resources in a Pulumi application. Specifically an
  * Output holds onto a piece of Data and the Resource it was generated from. An Output value can

@@ -46,11 +46,11 @@ def _run_pulumi_cmd(args: List[str],
     # All commands should be run in non-interactive mode.
     # This causes commands to fail rather than prompting for input (and thus hanging indefinitely).
     args.append("--non-interactive")
-    env = os.environ.copy().update(additional_env)
+    env = {**os.environ, **additional_env}
     cmd = ["pulumi"]
     cmd.extend(args)
 
-    stderr_file = tempfile.NamedTemporaryFile(delete=False)
+    stderr_file = tempfile.TemporaryFile()
     stdout_chunks: List[str] = []
 
     with subprocess.Popen(cmd,
@@ -58,6 +58,7 @@ def _run_pulumi_cmd(args: List[str],
                           stderr=stderr_file,
                           cwd=cwd,
                           env=env) as process:
+        assert process.stdout is not None
         while True:
             output = process.stdout.readline().decode(encoding="utf-8")
             if output == "" and process.poll() is not None:
@@ -70,9 +71,9 @@ def _run_pulumi_cmd(args: List[str],
 
         code = process.returncode
 
-    with open(stderr_file.name) as stderr:
-        stderr_contents = stderr.read()
-    os.remove(stderr_file.name)
+    stderr_file.seek(0)
+    stderr_contents = stderr_file.read().decode("utf-8")
+    stderr_file.close()
 
     result = CommandResult(stderr=stderr_contents, stdout='\n'.join(stdout_chunks), code=code)
     if code != 0:

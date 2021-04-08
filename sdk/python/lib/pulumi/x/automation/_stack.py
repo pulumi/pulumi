@@ -13,11 +13,11 @@
 # limitations under the License.
 
 import json
-import grpc
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
 from typing import List, Any, Mapping, MutableMapping, Optional
+import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
@@ -155,6 +155,8 @@ class DestroyResult(BaseResult):
 
 
 class Stack:
+    # pylint: disable=unused-argument
+
     name: str
     """The name identifying the Stack."""
 
@@ -238,6 +240,7 @@ class Stack:
            message: Optional[str] = None,
            target: Optional[List[str]] = None,
            expect_no_changes: Optional[bool] = None,
+           diff: Optional[bool] = None,
            target_dependents: Optional[bool] = None,
            replace: Optional[List[str]] = None,
            on_output: Optional[OnOutput] = None,
@@ -251,6 +254,7 @@ class Stack:
         :param message: Message (optional) to associate with the update operation.
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param expect_no_changes: Return an error if any changes occur during this update.
+        :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
@@ -276,9 +280,11 @@ class Stack:
             port = server.add_insecure_port(address="0.0.0.0:0")
             server.start()
 
-            def on_exit():
+            def on_exit_fn():
                 language_server.on_pulumi_exit()
                 server.stop(0)
+            on_exit = on_exit_fn
+
             args.append(f"--client=127.0.0.1:{port}")
 
         args.extend(["--exec-kind", kind])
@@ -287,7 +293,7 @@ class Stack:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
             summary = self.info()
-            assert (summary is not None)
+            assert summary is not None
             return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
         finally:
             if on_exit is not None:
@@ -301,6 +307,7 @@ class Stack:
                 diff: Optional[bool] = None,
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
+                on_output: Optional[OnOutput] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -311,9 +318,10 @@ class Stack:
         :param message: Message to associate with the preview operation.
         :param target: Specify an exclusive list of resource URNs to update.
         :param expect_no_changes: Return an error if any changes occur during this update.
-        :param diff: Display operation as a rich diff showing the overall change
+        :param diff: Display operation as a rich diff showing the overall change.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
+        :param on_output: A function to process the stdout stream.
         :param program: The inline program.
         :returns: PreviewResult
         """
@@ -336,14 +344,16 @@ class Stack:
             port = server.add_insecure_port(address="0.0.0.0:0")
             server.start()
 
-            def on_exit():
+            def on_exit_fn():
                 language_server.on_pulumi_exit()
                 server.stop(0)
+            on_exit = on_exit_fn
+
             args.append(f"--client=127.0.0.1:{port}")
         args.extend(["--exec-kind", kind])
 
         try:
-            preview_result = self._run_pulumi_cmd_sync(args)
+            preview_result = self._run_pulumi_cmd_sync(args, on_output)
             return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr)
         finally:
             if on_exit is not None:
@@ -371,10 +381,13 @@ class Stack:
         args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
+
         self.workspace.select_stack(self.name)
         refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
-        assert(summary is not None)
+        assert summary is not None
         return RefreshResult(stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary)
 
     def destroy(self,
@@ -398,10 +411,13 @@ class Stack:
         args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
+        kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
+        args.extend(["--exec-kind", kind])
+
         self.workspace.select_stack(self.name)
         destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         summary = self.info()
-        assert(summary is not None)
+        assert summary is not None
         return DestroyResult(stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary)
 
     def get_config(self, key: str) -> ConfigValue:
@@ -519,7 +535,7 @@ class Stack:
         :returns: Optional[UpdateSummary]
         """
         history = self.history(page_size=1)
-        if not len(history):
+        if not history:
             return None
         return history[0]
 

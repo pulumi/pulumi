@@ -23,7 +23,9 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/blang/semver"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
@@ -46,6 +48,7 @@ type LocalWorkspace struct {
 	program         pulumi.RunFunc
 	envvars         map[string]string
 	secretsProvider string
+	pulumiVersion   semver.Version
 }
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
@@ -54,17 +57,7 @@ var settingsExtensions = []string{".yaml", ".yml", ".json"}
 // LocalWorkspace reads settings from the Pulumi.yaml in the workspace.
 // A workspace can contain only a single project at a time.
 func (l *LocalWorkspace) ProjectSettings(ctx context.Context) (*workspace.Project, error) {
-	for _, ext := range settingsExtensions {
-		projectPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi%s", ext))
-		if _, err := os.Stat(projectPath); err == nil {
-			proj, err := workspace.LoadProject(projectPath)
-			if err != nil {
-				return nil, errors.Wrap(err, "found project settings, but failed to load")
-			}
-			return proj, nil
-		}
-	}
-	return nil, errors.New("unable to find project settings in workspace")
+	return readProjectSettingsFromDir(ctx, l.WorkDir())
 }
 
 // SaveProjectSettings overwrites the settings object in the current project.
@@ -309,6 +302,11 @@ func (l *LocalWorkspace) PulumiHome() string {
 	return l.pulumiHome
 }
 
+// PulumiVersion returns the version of the underlying Pulumi CLI/Engine.
+func (l *LocalWorkspace) PulumiVersion() string {
+	return l.pulumiVersion.String()
+}
+
 // WhoAmI returns the currently authenticated user
 func (l *LocalWorkspace) WhoAmI(ctx context.Context) (string, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "whoami")
@@ -479,6 +477,29 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	return nil
 }
 
+func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, error) {
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
+	if err != nil {
+		return semver.Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+	}
+	version, err := semver.ParseTolerant(stdout)
+	if err != nil {
+		return semver.Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+	}
+	return version, nil
+}
+
+//nolint:lll
+func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version) error {
+	if minVersion.Major < currentVersion.Major {
+		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major))
+	}
+	if minVersion.GT(currentVersion) {
+		return errors.New(fmt.Sprintf("Minimum version requirement failed. The minimum CLI version requirement is %s, your current CLI version is %s. Please update the Pulumi CLI.", minimumVersion, currentVersion))
+	}
+	return nil
+}
+
 func (l *LocalWorkspace) runPulumiCmdSync(
 	ctx context.Context,
 	args ...string,
@@ -537,6 +558,16 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		workDir:    workDir,
 		program:    program,
 		pulumiHome: lwOpts.PulumiHome,
+	}
+
+	v, err := l.getPulumiVersion(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create workspace, unable to get pulumi version")
+	}
+	l.pulumiVersion = v
+
+	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion); err != nil {
+		return nil, err
 	}
 
 	if lwOpts.Project != nil {
@@ -617,7 +648,7 @@ type GitRepo struct {
 	// URL to clone git repo
 	URL string
 	// Optional path relative to the repo root specifying location of the pulumi program.
-	// Specifying this option will update the Worspace's WorkDir accordingly.
+	// Specifying this option will update the Workspace's WorkDir accordingly.
 	ProjectPath string
 	// Optional branch to checkout.
 	Branch string
@@ -840,12 +871,15 @@ func NewStackInlineSource(
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(projectName)
+
+	proj, err := getProjectSettings(ctx, projectName, opts)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, err
 	}
-	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one.
-	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	if proj != nil {
+		opts = append(opts, Project(*proj))
+	}
+
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
@@ -868,12 +902,15 @@ func UpsertStackInlineSource(
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(projectName)
+
+	proj, err := getProjectSettings(ctx, projectName, opts)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to create stack")
+		return stack, err
 	}
-	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one.
-	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	if proj != nil {
+		opts = append(opts, Project(*proj))
+	}
+
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to create stack")
@@ -895,12 +932,15 @@ func SelectStackInlineSource(
 ) (Stack, error) {
 	var stack Stack
 	opts = append(opts, Program(program))
-	proj, err := defaultInlineProject(projectName)
+
+	proj, err := getProjectSettings(ctx, projectName, opts)
 	if err != nil {
-		return stack, errors.Wrap(err, "failed to select stack")
+		return stack, err
 	}
-	// as we implictly create project on behalf of the user, prepend to opts in case the user specifies one
-	opts = append([]LocalWorkspaceOption{Project(proj)}, opts...)
+	if proj != nil {
+		opts = append(opts, Project(*proj))
+	}
+
 	w, err := NewLocalWorkspace(ctx, opts...)
 	if err != nil {
 		return stack, errors.Wrap(err, "failed to select stack")
@@ -931,3 +971,59 @@ func getStackSettingsName(stackName string) string {
 }
 
 const pulumiHomeEnv = "PULUMI_HOME"
+
+func readProjectSettingsFromDir(ctx context.Context, workDir string) (*workspace.Project, error) {
+	for _, ext := range settingsExtensions {
+		projectPath := filepath.Join(workDir, fmt.Sprintf("Pulumi%s", ext))
+		if _, err := os.Stat(projectPath); err == nil {
+			proj, err := workspace.LoadProject(projectPath)
+			if err != nil {
+				return nil, errors.Wrap(err, "found project settings, but failed to load")
+			}
+			return proj, nil
+		}
+	}
+	return nil, errors.New("unable to find project settings in workspace")
+}
+
+func getProjectSettings(
+	ctx context.Context,
+	projectName string,
+	opts []LocalWorkspaceOption,
+) (*workspace.Project, error) {
+	var optsBag localWorkspaceOptions
+	for _, opt := range opts {
+		opt.applyLocalWorkspaceOption(&optsBag)
+	}
+
+	// If the Project is included in the opts, just use that.
+	if optsBag.Project != nil {
+		return optsBag.Project, nil
+	}
+
+	// If WorkDir is specified, try to read any existing project settings before resorting to
+	// creating a default project.
+	if optsBag.WorkDir != "" {
+		_, err := readProjectSettingsFromDir(ctx, optsBag.WorkDir)
+		if err == nil {
+			return nil, nil
+		}
+
+		if err.Error() == "unable to find project settings in workspace" {
+			proj, err := defaultInlineProject(projectName)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to create default project")
+			}
+			return &proj, nil
+		}
+
+		return nil, errors.Wrap(err, "failed to load project settings")
+	}
+
+	// If there was no workdir specified, create the default project.
+	proj, err := defaultInlineProject(projectName)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to create default project")
+	}
+	return &proj, nil
+}

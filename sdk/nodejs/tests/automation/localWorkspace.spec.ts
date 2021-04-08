@@ -13,11 +13,23 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import * as semver from "semver";
 import * as upath from "upath";
 
 import { Config } from "../../index";
-import { ConfigMap, fullyQualifiedStackName, LocalWorkspace, ProjectSettings, Stack } from "../../x/automation";
+import {
+    ConfigMap,
+    EngineEvent,
+    fullyQualifiedStackName,
+    LocalWorkspace,
+    OutputMap,
+    ProjectSettings,
+    Stack,
+    validatePulumiVersion,
+} from "../../x/automation";
 import { asyncTest } from "../util";
+
+const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
@@ -198,8 +210,8 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
-        await stack.preview();
-        // TODO: update assertions when we have structured output
+        const preRes = await stack.preview();
+        assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
         const refRes = await stack.refresh();
@@ -245,8 +257,8 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
-        await stack.preview();
-        // TODO: update assertions when we have structured output
+        const preRes = await stack.preview();
+        assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
         const refRes = await stack.refresh();
@@ -255,6 +267,66 @@ describe("LocalWorkspace", () => {
 
         // pulumi destroy
         const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
+    it(`handles events`, asyncTest(async () => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "inline_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        const stackConfig: ConfigMap = {
+            "bar": { value: "abc" },
+            "buzz": { value: "secret", secret: true },
+        };
+        await stack.setAllConfig(stackConfig);
+
+        let seenSummaryEvent = false;
+        const findSummaryEvent = (event: EngineEvent) => {
+            if (event.summaryEvent) {
+                seenSummaryEvent = true;
+            }
+        };
+
+        // pulumi preview
+        const preRes = await stack.preview({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `preview`");
+        assert.strictEqual(preRes.changeSummary.create, 1);
+
+        // pulumi up
+        seenSummaryEvent = false;
+        const upRes = await stack.up({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `up`");
+        assert.strictEqual(upRes.summary.kind, "update");
+        assert.strictEqual(upRes.summary.result, "succeeded");
+
+        // pulumi preview
+        seenSummaryEvent = false;
+        const preResAgain = await stack.preview({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `preview`");
+        assert.strictEqual(preResAgain.changeSummary.same, 1);
+
+        // pulumi refresh
+        seenSummaryEvent = false;
+        const refRes = await stack.refresh({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `refresh`");
+        assert.strictEqual(refRes.summary.kind, "refresh");
+        assert.strictEqual(refRes.summary.result, "succeeded");
+
+        // pulumi destroy
+        seenSummaryEvent = false;
+        const destroyRes = await stack.destroy({ onEvent: findSummaryEvent });
+        assert.strictEqual(seenSummaryEvent, true, "No SummaryEvent for `destroy`");
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
@@ -275,9 +347,9 @@ describe("LocalWorkspace", () => {
 
         try {
             await stack.setAllConfig({
-                                         "bar": { value: "abc" },
-                                         "buzz": { value: "secret", secret: true },
-                                     });
+                "bar": { value: "abc" },
+                "buzz": { value: "secret", secret: true },
+            });
             await stack.up();
 
             // export stack
@@ -291,6 +363,57 @@ describe("LocalWorkspace", () => {
             const destroyRes = await stack.destroy();
             assert.strictEqual(destroyRes.summary.kind, "destroy");
             assert.strictEqual(destroyRes.summary.result, "succeeded");
+            await stack.workspace.removeStack(stackName);
+        }
+    }));
+    it(`supports stack outputs`, asyncTest(async () => {
+        const program = async () => {
+            const config = new Config();
+            return {
+                exp_static: "foo",
+                exp_cfg: config.get("bar"),
+                exp_secret: config.getSecret("buzz"),
+            };
+        };
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "import_export_node";
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        const assertOutputs = (outputs: OutputMap) => {
+            assert.strictEqual(Object.keys(outputs).length, 3, "expected to have 3 outputs");
+            assert.strictEqual(outputs["exp_static"].value, "foo");
+            assert.strictEqual(outputs["exp_static"].secret, false);
+            assert.strictEqual(outputs["exp_cfg"].value, "abc");
+            assert.strictEqual(outputs["exp_cfg"].secret, false);
+            assert.strictEqual(outputs["exp_secret"].value, "secret");
+            assert.strictEqual(outputs["exp_secret"].secret, true);
+        };
+
+        try {
+            await stack.setAllConfig({
+                "bar": { value: "abc" },
+                "buzz": { value: "secret", secret: true },
+            });
+
+            const initialOutputs = await stack.outputs();
+            assert.strictEqual(Object.keys(initialOutputs).length, 0, "expected initialOutputs to be empty");
+
+            // pulumi up
+            const upRes = await stack.up();
+            assert.strictEqual(upRes.summary.kind, "update");
+            assert.strictEqual(upRes.summary.result, "succeeded");
+            assertOutputs(upRes.outputs);
+
+            const outputsAfterUp = await stack.outputs();
+            assertOutputs(outputsAfterUp);
+
+            const destroyRes = await stack.destroy();
+            assert.strictEqual(destroyRes.summary.kind, "destroy");
+            assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+            const outputsAfterDestroy = await stack.outputs();
+            assert.strictEqual(Object.keys(outputsAfterDestroy).length, 0, "expected outputsAfterDestroy to be empty");
+        } finally {
             await stack.workspace.removeStack(stackName);
         }
     }));
@@ -313,7 +436,88 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
+    it(`sets pulumi version`, asyncTest(async () => {
+        const ws = await LocalWorkspace.create({});
+        assert(ws.pulumiVersion);
+        assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
+    }));
+    it(`respects existing project settings`, asyncTest(async () => {
+        const stackName = `int_test${getTestSuffix()}`;
+        const projectName = "project_was_overwritten";
+        const stack = await LocalWorkspace.createStack(
+            {stackName, projectName, program: async() => { return; }},
+            {workDir: upath.joinSafe(__dirname, "data", "correct_project")},
+        );
+        const projectSettings = await stack.workspace.projectSettings();
+        assert.strictEqual(projectSettings.name, "correct_project");
+        assert.strictEqual(projectSettings.description, "This is a description");
+        await stack.workspace.removeStack(stackName);
+    }));
 });
+
+describe(`checkVersionIsValid`, () => {
+    const versionTests = [
+        {
+            name: "higher_major",
+            currentVersion: "100.0.0",
+            expectError: true,
+        },
+        {
+            name: "lower_major",
+            currentVersion: "1.0.0",
+            expectError: true,
+        },
+        {
+            name: "higher_minor",
+            currentVersion: "v2.22.0",
+            expectError: false,
+        },
+        {
+            name: "lower_minor",
+            currentVersion: "v2.1.0",
+            expectError: true,
+        },
+        {
+            name: "equal_minor_higher_patch",
+            currentVersion: "v2.21.2",
+            expectError: false,
+        },
+        {
+            name: "equal_minor_equal_patch",
+            currentVersion: "v2.21.1",
+            expectError: false,
+        },
+        {
+            name: "equal_minor_lower_patch",
+            currentVersion: "v2.21.0",
+            expectError: true,
+        },
+        {
+            name: "equal_minor_equal_patch_prerelease",
+            // Note that prerelease < release so this case will error
+            currentVersion: "v2.21.1-alpha.1234",
+            expectError: true,
+        },
+    ];
+    const minVersion = new semver.SemVer("v2.21.1");
+
+    versionTests.forEach(test => {
+        it(`validates ${test.currentVersion}`, () => {
+            const currentVersion = new semver.SemVer(test.currentVersion);
+
+            if (test.expectError) {
+                if (minVersion.major < currentVersion.major) {
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Major version mismatch./);
+                } else {
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Minimum version requirement failed./);
+                }
+            } else {
+                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion));
+            }
+        });
+    });
+});
+
 
 const getTestSuffix = () => {
     return Math.floor(100000 + Math.random() * 900000);

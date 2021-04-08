@@ -25,9 +25,10 @@ pulumi.runtime.setMocks({
                 return {};
         }
     },
-    newResource: (type: string, name: string, inputs: any): {id: string, state: any} => {
+    newResource: (type: string, name: string, inputs: any, provider?: string, id?: string, custom?: boolean): {id: string, state: any} => {
         switch (type) {
             case "aws:ec2/instance:Instance":
+                assert.strictEqual(custom, true);
                 const state = {
                     arn: "arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0",
                     instanceState: "running",
@@ -38,8 +39,10 @@ pulumi.runtime.setMocks({
                 };
                 return { id: "i-1234567890abcdef0", state: { ...inputs, ...state } };
             case "pkg:index:MyCustom":
+                assert.strictEqual(custom, true);
                 return { id: name + "_id", state: inputs };
             default:
+                assert.strictEqual(custom, false);
                 return { id: "", state: {} };
         }
     },

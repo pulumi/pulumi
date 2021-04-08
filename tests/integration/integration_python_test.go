@@ -5,15 +5,23 @@ package ints
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+
+	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/stretchr/testify/assert"
+	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v2/python"
 )
 
 // TestEmptyPython simply tests that we can run an empty Python project.
@@ -332,6 +340,42 @@ func TestPythonPylint(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Test Python SDK codegen to ensure <Resource>Args and traditional keyword args work.
+func TestPythonResourceArgs(t *testing.T) {
+	testdir := filepath.Join("python", "resource_args")
+
+	// Generate example library from schema.
+	schemaBytes, err := os.ReadFile(filepath.Join(testdir, "schema.json"))
+	assert.NoError(t, err)
+	var spec schema.PackageSpec
+	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
+	pkg, err := schema.ImportSpec(spec, nil)
+	assert.NoError(t, err)
+	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{})
+	assert.NoError(t, err)
+	outdir := filepath.Join(testdir, "lib")
+	assert.NoError(t, os.RemoveAll(outdir))
+	for f, contents := range files {
+		outfile := filepath.Join(outdir, f)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0755))
+		if outfile == filepath.Join(outdir, "setup.py") {
+			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
+		}
+		assert.NoError(t, os.WriteFile(outfile, contents, 0600))
+	}
+	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0600))
+
+	// Test the program.
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: testdir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join(testdir, "lib"),
+		},
+		Quick: true,
+	})
+}
+
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
 	pathEnv, err := testComponentPathEnv()
@@ -388,6 +432,42 @@ func TestConstructPython(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
+func TestConstructSlowPython(t *testing.T) {
+	pathEnv, err := testComponentSlowPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
+	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
+	// the Node.js dynamic provider plugin to load.
+	// When the underlying issue has been fixed, the use of this environment variable inside the integration
+	// test module should be removed.
+	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir: filepath.Join("construct_component_slow", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.Type)
+				assert.Equal(t, "", string(stackRes.Parent))
+			}
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
 func TestGetResourcePython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
@@ -398,5 +478,265 @@ func TestGetResourcePython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		AllowEmptyPreviewChanges: true,
+	})
+}
+
+// Regresses https://github.com/pulumi/pulumi/issues/6471
+func TestAutomaticVenvCreation(t *testing.T) {
+	// Do not use integration.ProgramTest to avoid automatic venv
+	// handling by test harness; we actually are testing venv
+	// handling by the pulumi CLI itself.
+
+	check := func(t *testing.T, venvPathTemplate string) {
+
+		e := ptesting.NewEnvironment(t)
+		defer func() {
+			if !t.Failed() {
+				e.DeleteEnvironment()
+			}
+		}()
+
+		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
+		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
+
+		e.ImportDirectory(filepath.Join("python", "venv"))
+
+		// replace "virtualenv: venv" with "virtualenv: ${venvPath}" in Pulumi.yaml
+		pulumiYaml := filepath.Join(e.RootPath, "Pulumi.yaml")
+
+		oldYaml, err := ioutil.ReadFile(pulumiYaml)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
+			"virtualenv: venv",
+			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
+		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
+			t.Error(err)
+			return
+		}
+
+		t.Logf("Wrote Pulumi.yaml:\n%s\n", string(newYaml))
+
+		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+		e.RunCommand("pulumi", "stack", "init", "teststack")
+		e.RunCommand("pulumi", "preview")
+
+		var absVenvPath string
+		if filepath.IsAbs(venvPath) {
+			absVenvPath = venvPath
+		} else {
+			absVenvPath = filepath.Join(e.RootPath, venvPath)
+		}
+
+		if !python.IsVirtualEnv(absVenvPath) {
+			t.Errorf("Expected a virtual environment to be created at %s but it is not there",
+				absVenvPath)
+		}
+	}
+
+	t.Run("RelativePath", func(t *testing.T) {
+		check(t, "venv")
+	})
+
+	t.Run("AbsolutePath", func(t *testing.T) {
+		check(t, filepath.Join("${root}", "absvenv"))
+	})
+}
+
+func TestPythonAwaitOutputs(t *testing.T) {
+	t.Run("SuccessSimple", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "success"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "magic string") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
+	t.Run("SuccessMultipleOutputs", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "multiple_outputs"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicString := false
+				sawFoo := false
+				sawBar := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "magic string") {
+							sawMagicString = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "bar") {
+							sawBar = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "foo") {
+							sawFoo = true
+						}
+					}
+				}
+				msg := "Did not see printed message from unexported output"
+				assert.True(t, sawMagicString, msg)
+				assert.True(t, sawFoo, msg)
+				assert.True(t, sawBar, msg)
+			},
+		})
+	})
+
+	t.Run("CreateWithinApply", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "create_inside_apply"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawUrn := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "pulumi-python:dynamic:Resource::magic_string") {
+							sawUrn = true
+						}
+					}
+				}
+				assert.True(t, sawUrn)
+			},
+		})
+	})
+
+	t.Run("ErrorHandlingSuccess", func(t *testing.T) {
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "error_handling"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			Quick:                    true,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				sawMagicStringMessage := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "oh yeah") {
+							sawMagicStringMessage = true
+						}
+					}
+				}
+				assert.True(t, sawMagicStringMessage, "Did not see printed message from unexported output")
+			},
+		})
+	})
+
+	t.Run("FailureSimple", func(t *testing.T) {
+		stderr := &bytes.Buffer{}
+		expectedError := "IndexError: list index out of range"
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "failure"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			ExpectFailure:            true,
+			Quick:                    true,
+			Stderr:                   stderr,
+			ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+				output := stderr.String()
+				assert.Contains(t, output, expectedError)
+			},
+		})
+	})
+
+	t.Run("FailureWithExportedOutput", func(t *testing.T) {
+		stderr := &bytes.Buffer{}
+		expectedError := "IndexError: list index out of range"
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "failure_exported_output"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			ExpectFailure:            true,
+			Quick:                    true,
+			Stderr:                   stderr,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				output := stderr.String()
+				assert.Contains(t, output, expectedError)
+				sawFoo := false
+				sawPrinted := false
+				sawNotPrinted := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "not printed") {
+							sawNotPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "printed") {
+							sawPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "foo") {
+							sawFoo = true
+						}
+					}
+				}
+				assert.True(t, sawPrinted)
+				assert.True(t, sawFoo)
+				assert.False(t, sawNotPrinted)
+			},
+		})
+	})
+
+	t.Run("FailureMultipleOutputs", func(t *testing.T) {
+		stderr := &bytes.Buffer{}
+		expectedError := "IndexError: list index out of range"
+		integration.ProgramTest(t, &integration.ProgramTestOptions{
+			Dir: filepath.Join("python_await", "failure_multiple_unexported_outputs"),
+			Dependencies: []string{
+				filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			},
+			AllowEmptyPreviewChanges: true,
+			ExpectFailure:            true,
+			Quick:                    true,
+			Stderr:                   stderr,
+			ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+				output := stderr.String()
+				assert.Contains(t, output, expectedError)
+				sawFoo := false
+				sawPrinted := false
+				sawNotPrinted := false
+				for _, evt := range stack.Events {
+					if evt.DiagnosticEvent != nil {
+						if strings.Contains(evt.DiagnosticEvent.Message, "not printed") {
+							sawNotPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "printed") {
+							sawPrinted = true
+						}
+						if strings.Contains(evt.DiagnosticEvent.Message, "foo") {
+							sawFoo = true
+						}
+					}
+				}
+				assert.True(t, sawPrinted)
+				assert.True(t, sawFoo)
+				assert.False(t, sawNotPrinted)
+			},
+		})
 	})
 }

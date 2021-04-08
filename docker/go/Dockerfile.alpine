@@ -3,7 +3,7 @@
 # Must be defined first
 ARG PULUMI_VERSION=latest
 ARG PULUMI_IMAGE=pulumi/pulumi-base
-ARG RUNTIME_VERSION=1.15.2
+ARG RUNTIME_VERSION=1.16.2
 FROM ${PULUMI_IMAGE}:${PULUMI_VERSION}-alpine as pulumi
 
 # The runtime container

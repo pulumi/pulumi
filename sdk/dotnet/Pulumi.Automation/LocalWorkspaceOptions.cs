@@ -38,7 +38,7 @@ namespace Pulumi.Automation
         /// Environment values scoped to the current workspace. These will be supplied to every
         /// Pulumi command.
         /// </summary>
-        public IDictionary<string, string>? EnvironmentVariables { get; set; }
+        public IDictionary<string, string?>? EnvironmentVariables { get; set; }
 
         /// <summary>
         /// The settings object for the current project.

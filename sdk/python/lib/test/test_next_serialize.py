@@ -81,14 +81,30 @@ class MyMocks(Mocks):
 @pulumi.output_type
 class MyOutputTypeDict(dict):
 
-    def __init__(self, values: list):
+    def __init__(self, values: list, items: list, keys: list):
         pulumi.set(self, "values", values)
+        pulumi.set(self, "items", items)
+        pulumi.set(self, "keys", keys)
 
     # Property with empty body.
     @property
     @pulumi.getter
     def values(self) -> str:
         """Values docstring."""
+        ...
+
+    # Property with empty body.
+    @property
+    @pulumi.getter
+    def items(self) -> str:
+        """Items docstring."""
+        ...
+
+    # Property with empty body.
+    @property
+    @pulumi.getter
+    def keys(self) -> str:
+        """Keys docstring."""
         ...
 
 
@@ -952,9 +968,15 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_dangerous_prop_output(self):
-        out = self.create_output(MyOutputTypeDict(values=["foo", "bar"]), is_known=True)
+        out = self.create_output(MyOutputTypeDict(values=["foo", "bar"],
+                                                  items=["yellow", "purple"],
+                                                  keys=["yes", "no"]), is_known=True)
+        prop = await rpc.serialize_property(out, [])
 
         self.assertTrue(await out.is_known())
+        self.assertEqual(prop["values"], ["foo", "bar"])
+        self.assertEqual(prop["items"], ["yellow", "purple"])
+        self.assertEqual(prop["keys"], ["yes", "no"])
 
     @pulumi_test
     async def test_apply_unknown_output(self):

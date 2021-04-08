@@ -1,0 +1,21 @@
+image:
+  file: .gitpod/Dockerfile
+
+# See: https://www.gitpod.io/docs/config-start-tasks/
+tasks:
+  - before: >
+      mkdir -p /workspace/opt-pulumi &&
+      sudo ln -s /workspace/opt-pulumi /opt/pulumi
+    init: >
+      make ensure &&
+      make install
+    command: pulumi version
+
+# See: https://www.gitpod.io/docs/prebuilds/#configure-the-github-app
+github:
+  prebuilds:
+    master: true
+    branches: true
+    pullRequests: true
+    pullRequestsFromForks: true
+    addCheck: true

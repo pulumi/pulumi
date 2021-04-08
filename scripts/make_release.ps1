@@ -6,14 +6,14 @@ $Root=Join-Path $PSScriptRoot ".."
 $PublishDir=New-Item -ItemType Directory -Path "$env:TEMP\$([System.IO.Path]::GetRandomFileName())"
 $GitHash=$(git rev-parse HEAD)
 $PublishFile="$(Split-Path -Parent -Path $PublishDir)\$GitHash.zip"
-$Version = $( & "$PSScriptRoot\get-version.cmd")
+$Version = $(pulumictl get version)
 $Branch = $(if (Test-Path env:APPVEYOR_REPO_BRANCH) { $env:APPVEYOR_REPO_BRANCH } else { $(git rev-parse --abbrev-ref HEAD) })
 $PublishTargets = @($GitHash, $Version, $Branch)
 
 function RunGoBuild($goPackage, $dir, $outputName) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
     Push-Location $dir
-    go build -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=$Version" -o "$binRoot\$outputName" $goPackage
+    go build -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=v$Version" -o "$binRoot\$outputName" $goPackage
     Pop-Location
 }
 

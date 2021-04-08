@@ -9,7 +9,7 @@ FROM ${PULUMI_IMAGE}:${PULUMI_VERSION} as pulumi
 FROM registry.access.redhat.com/ubi8/ubi-minimal:latest AS builder
 
 # Set go versions
-ARG RUNTIME_VERSION=1.15.2
+ARG RUNTIME_VERSION=1.16.2
 
 WORKDIR /golang
 RUN microdnf install -y \

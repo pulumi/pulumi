@@ -697,6 +697,32 @@ func TestConstructNode(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
+func TestConstructSlowNode(t *testing.T) {
+	pathEnv, err := testComponentSlowPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env:          []string{pathEnv},
+		Dir:          filepath.Join("construct_component_slow", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.Type)
+				assert.Equal(t, "", string(stackRes.Parent))
+			}
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),

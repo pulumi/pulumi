@@ -9,6 +9,8 @@ namespace Pulumi.Automation.Serialization.Json
 {
     internal class ResourceChangesJsonConverter : JsonConverter<Dictionary<OperationType, int>>
     {
+        private readonly OperationTypeConverter _operationTypeConverter = new OperationTypeConverter();
+
         public override Dictionary<OperationType, int> Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
         {
             if (reader.TokenType != JsonTokenType.StartObject)
@@ -26,7 +28,7 @@ namespace Pulumi.Automation.Serialization.Json
                 if (string.IsNullOrWhiteSpace(propertyName))
                     throw new JsonException("Unable to retrieve property name.");
 
-                var operationType = ConvertToOperationType(propertyName);
+                var operationType = _operationTypeConverter.Convert(propertyName);
 
                 reader.Read();
                 if (reader.TokenType != JsonTokenType.Number
@@ -43,29 +45,6 @@ namespace Pulumi.Automation.Serialization.Json
         public override void Write(Utf8JsonWriter writer, Dictionary<OperationType, int> value, JsonSerializerOptions options)
         {
             throw new NotImplementedException();
-        }
-
-        private static OperationType ConvertToOperationType(string opType)
-        {
-            switch (opType)
-            {
-                case "create":
-                    return OperationType.Create;
-                case "create-replacement":
-                    return OperationType.CreateReplacement;
-                case "delete":
-                    return OperationType.Delete;
-                case "delete-replaced":
-                    return OperationType.DeleteReplaced;
-                case "replace":
-                    return OperationType.Replace;
-                case "same":
-                    return OperationType.Same;
-                case "update":
-                    return OperationType.Update;
-                default:
-                    throw new JsonException($"Invalid operation type: {opType}");
-            }
         }
     }
 }

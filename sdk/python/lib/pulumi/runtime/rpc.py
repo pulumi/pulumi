@@ -32,7 +32,7 @@ from .. import _types
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
-    from ..resource import Resource, ProviderResource
+    from ..resource import CustomResource, Resource, ProviderResource
     from ..asset import FileAsset, RemoteAsset, StringAsset, FileArchive, RemoteArchive, AssetArchive
 
 UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
@@ -219,12 +219,13 @@ async def serialize_property(value: 'Input[Any]',
 
     if isinstance(value, abc.Mapping):
         obj = {}
-        for k, v in value.items():
+        # Don't use value.items() here, as it will error in the case of outputs with an `items` property.
+        for k in value:
             transformed_key = k
             if transform_keys and input_transformer is not None:
                 transformed_key = input_transformer(k)
                 log.debug(f"transforming input property: {k} -> {transformed_key}")
-            obj[transformed_key] = await serialize_property(v, deps, input_transformer)
+            obj[transformed_key] = await serialize_property(value[k], deps, input_transformer)
 
         return obj
 
@@ -319,8 +320,8 @@ def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[
 
     # If we've made it here, deserialize the reference as either a URN or an ID (if present).
     if "id" in ref_struct:
-        id = ref_struct["id"]
-        return deserialize_property(UNKNOWN if id == "" else id, keep_unknowns)
+        ref_id = ref_struct["id"]
+        return deserialize_property(UNKNOWN if ref_id == "" else ref_id, keep_unknowns)
 
     return urn
 
@@ -563,12 +564,12 @@ def contains_unknowns(val: Any) -> bool:
         if known_types.is_unknown(val):
             return True
 
-        if not any([x is val for x in stack]):
+        if not any((x is val for x in stack)):
             stack.append(val)
             if isinstance(val, dict):
-                return any([impl(val[k], stack) for k in val])
+                return any((impl(val[k], stack) for k in val))
             if isinstance(val, list):
-                return any([impl(x, stack) for x in val])
+                return any((impl(x, stack) for x in val))
         return False
 
     return impl(val, [])

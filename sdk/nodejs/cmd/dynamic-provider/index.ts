@@ -57,9 +57,18 @@ process.on("exit", (code: number) => {
     }
 });
 
+const providerCache: { [key: string]: dynamic.ResourceProvider } = {};
+
 function getProvider(props: any): dynamic.ResourceProvider {
+    const providerString = props[providerKey];
+    let provider: any = providerCache[providerString];
+    if (!provider) {
+        provider = requireFromString(providerString).handler();
+        providerCache[providerString] = provider;
+    }
+
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
-    return requireFromString(props[providerKey]).handler();
+    return provider;
 }
 
 // Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD

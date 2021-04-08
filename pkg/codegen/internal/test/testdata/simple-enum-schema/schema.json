@@ -2,6 +2,25 @@
   "version": "0.0.1",
   "name": "plant",
   "resources": {
+    "plant:tree/v1:Nursery": {
+      "inputProperties": {
+        "varieties": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
+          },
+          "description": "The varieties available"
+        },
+        "sizes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/plant:tree/v1:TreeSize"
+          },
+          "description": "The sizes of trees available"
+        }
+      },
+      "requiredInputs": [ "varieties"]
+    },
     "plant:tree/v1:RubberTree": {
       "inputProperties": {
         "container": {
@@ -25,6 +44,17 @@
         "diameter": {
           "$ref": "#/types/plant:tree/v1:Diameter",
           "default": 6
+        }
+      },
+      "stateInputs": {
+        "properties": {
+          "farm": {
+            "oneOf": [
+              {"$ref": "#/types/plant:tree/v1:Farm"},
+              {"type": "string"}
+            ],
+            "default": "(unknown)"
+          }
         }
       },
       "properties": {
@@ -141,6 +171,13 @@
         }
       ]
     },
+    "plant:tree/v1:VarietiesSupported": {
+      "type": "array",
+      "items": {
+        "$ref": "#/types/plant:tree/v1:RubberTreeVariety"
+      },
+      "description": "The rubber tree varieties supported"
+    },
     "plant:tree/v1:Farm": {
       "type": "string",
       "enum": [
@@ -188,7 +225,10 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant"
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant",
+      "packageImportAliases": {
+        "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
+      }
     },
     "nodejs": {},
     "python": {

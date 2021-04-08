@@ -1,14 +1,38 @@
-### Features
+### Breaking
 
-### Enhancements
+### Improvements
 
 - [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
-- [#6410](https://github.com/pulumi/pulumi/pull/6410) Add `diff` option to Automation API's `preview` and `up`
+- [automation/python] Update pulumi python docker image to python 3.9
+  [#6706](https://github.com/pulumi/pulumi/pull/6706)
 
+- [sdk/nodejs] Add program side caching for dynamic provider serialization behind env var
+  [#6673](https://github.com/pulumi/pulumi/pull/6673)
+
+- [automation/dotnet] Allow null environment variables
+  [#6687](https://github.com/pulumi/pulumi/pull/6687)
+
+- [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
+  [#6699](https://github.com/pulumi/pulumi/pull/6699)
+  
 ### Bug Fixes
 
-- [automation/python,nodejs,dotnet] - BREAKING - Remove `summary` property from `PreviewResult`.
-  The `summary` property on `PreviewResult` returns a result that is always incorrect and is being removed.
-  [#6405](https://github.com/pulumi/pulumi/pull/6405)
+- [sdk/nodejs] Fix error handling for failed logging statements
+  [#6714](https://github.com/pulumi/pulumi/pull/6714)
+
+- [automation/dotnet] Environment variable value type is now nullable.
+  [#6520](https://github.com/pulumi/pulumi/pull/6520)
+
+- [sdk/nodejs] Fix `Construct` to wait for child resources of a multi-lang components to be created.
+  [#6452](https://github.com/pulumi/pulumi/pull/6452
+
+- [sdk/python] Fix serialization bug if output contains 'items' property.
+  [#6701](https://github.com/pulumi/pulumi/pull/6701)
+  
+- [sdk/go] Use ioutil.ReadFile to avoid forcing 1.16 upgrade.
+  [#6703](https://github.com/pulumi/pulumi/pull/6703)
+
+- [automation/dotnet] Fix GetConfigValueAsync failing to deserialize
+  [#6698](https://github.com/pulumi/pulumi/pull/6698)

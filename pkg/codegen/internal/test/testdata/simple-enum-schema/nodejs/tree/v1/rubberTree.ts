@@ -12,10 +12,11 @@ export class RubberTree extends pulumi.CustomResource {
      *
      * @param name The _unique_ name of the resulting resource.
      * @param id The _unique_ provider ID of the resource to lookup.
+     * @param state Any extra arguments used during the lookup.
      * @param opts Optional settings to control the behavior of the CustomResource.
      */
-    public static get(name: string, id: pulumi.Input<pulumi.ID>, opts?: pulumi.CustomResourceOptions): RubberTree {
-        return new RubberTree(name, undefined as any, { ...opts, id: id });
+    public static get(name: string, id: pulumi.Input<pulumi.ID>, state?: RubberTreeState, opts?: pulumi.CustomResourceOptions): RubberTree {
+        return new RubberTree(name, <any>state, { ...opts, id: id });
     }
 
     /** @internal */
@@ -45,10 +46,15 @@ export class RubberTree extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: RubberTreeArgs, opts?: pulumi.CustomResourceOptions)
+    constructor(name: string, argsOrState?: RubberTreeArgs | RubberTreeState, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
         opts = opts || {};
-        if (!opts.id) {
+        if (opts.id) {
+            const state = argsOrState as RubberTreeState | undefined;
+            inputs["farm"] = state ? state.farm : undefined;
+        } else {
+            const args = argsOrState as RubberTreeArgs | undefined;
             if ((!args || args.diameter === undefined) && !opts.urn) {
                 throw new Error("Missing required property 'diameter'");
             }
@@ -56,22 +62,20 @@ export class RubberTree extends pulumi.CustomResource {
                 throw new Error("Missing required property 'type'");
             }
             inputs["container"] = args ? args.container : undefined;
-            inputs["diameter"] = (args ? args.diameter : undefined) || 6;
-            inputs["farm"] = (args ? args.farm : undefined) || "(unknown)";
-            inputs["size"] = (args ? args.size : undefined) || "medium";
-            inputs["type"] = (args ? args.type : undefined) || "Burgundy";
-        } else {
-            inputs["container"] = undefined /*out*/;
-            inputs["diameter"] = undefined /*out*/;
-            inputs["farm"] = undefined /*out*/;
-            inputs["size"] = undefined /*out*/;
-            inputs["type"] = undefined /*out*/;
+            inputs["diameter"] = (args ? args.diameter : undefined) ?? 6;
+            inputs["farm"] = (args ? args.farm : undefined) ?? "(unknown)";
+            inputs["size"] = (args ? args.size : undefined) ?? "medium";
+            inputs["type"] = (args ? args.type : undefined) ?? "Burgundy";
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
         super(RubberTree.__pulumiType, name, inputs, opts);
     }
+}
+
+export interface RubberTreeState {
+    readonly farm?: pulumi.Input<enums.tree.v1.Farm | string>;
 }
 
 /**

@@ -18,12 +18,12 @@ Mocks for testing.
 import asyncio
 import logging
 from abc import ABC, abstractmethod
-from typing import Dict, NamedTuple, Optional, Tuple, TYPE_CHECKING
+from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
 
 from google.protobuf import empty_pb2
 from . import rpc
 from .settings import Settings, configure, get_stack, get_project, get_root_resource
-from .sync_await import _sync_await
+from .sync_await import _ensure_event_loop, _sync_await
 from ..runtime.proto import engine_pb2, provider_pb2, resource_pb2
 from ..runtime.stack import Stack, run_pulumi_func
 
@@ -37,6 +37,7 @@ def test(fn):
         _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
     return wrapper
 
+
 class Mocks(ABC):
     """
     Mocks is an abstract class that allows subclasses to replace operations normally implemented by the Pulumi engine with
@@ -44,7 +45,7 @@ class Mocks(ABC):
     return predictable values.
     """
     @abstractmethod
-    def call(self, token: str, args: dict, provider: Optional[str]) -> dict:
+    def call(self, token: str, args: dict, provider: Optional[str]) -> Tuple[dict, Optional[List[Tuple[str,str]]]]:
         """
         call mocks provider-implemented function calls (e.g. aws.get_availability_zones).
 
@@ -52,7 +53,7 @@ class Mocks(ABC):
         :param dict args: The arguments provided to the function call.
         :param Optional[str] provider: If provided, the identifier of the provider instance being used to make the call.
         """
-        return {}
+        return {}, None
 
     @abstractmethod
     def new_resource(self, type_: str, name: str, inputs: dict, provider: Optional[str], id_: Optional[str]) -> Tuple[Optional[str], dict]:
@@ -63,10 +64,10 @@ class Mocks(ABC):
         :param str type_: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
         :param str name: The logical name of the resource instance.
         :param dict inputs: The inputs for the resource.
-        :param Optional[str] provider: If provided, the identifier of the provider instnace being used to manage this resource.
+        :param Optional[str] provider: If provided, the identifier of the provider instance being used to manage this resource.
         :param Optional[str] id_: If provided, the physical identifier of an existing resource to read or import.
         """
-        return ("", {})
+        return "", {}
 
 
 class MockMonitor:
@@ -91,6 +92,9 @@ class MockMonitor:
         return "urn:pulumi:" + "::".join([get_stack(), get_project(), type_, name])
 
     def Invoke(self, request):
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
+        _ensure_event_loop()
+
         args = rpc.deserialize_properties(request.args)
 
         if request.tok == "pulumi:pulumi:getResource":
@@ -101,14 +105,21 @@ class MockMonitor:
             fields = {"failures": None, "return": ret_proto}
             return provider_pb2.InvokeResponse(**fields)
 
-        ret = self.mocks.call(request.tok, args, request.provider)
+        tup = self.mocks.call(request.tok, args, request.provider)
+        if isinstance(tup, dict):
+            (ret, failures) = (tup, None)
+        else:
+            (ret, failures) = tup[0], [provider_pb2.CheckFailure(property=failure[0], reason=failure[1]) for failure in tup[1]]
 
         ret_proto = _sync_await(rpc.serialize_properties(ret, {}))
 
-        fields = {"failures": None, "return": ret_proto}
+        fields = {"failures": failures, "return": ret_proto}
         return provider_pb2.InvokeResponse(**fields)
 
     def ReadResource(self, request):
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
+        _ensure_event_loop()
+
         state = rpc.deserialize_properties(request.properties)
 
         id_, state = self.mocks.new_resource(request.type, request.name, state, request.provider, request.id)
@@ -126,6 +137,9 @@ class MockMonitor:
 
         if request.type == "pulumi:pulumi:Stack":
             return resource_pb2.RegisterResourceResponse(urn=urn)
+
+        # Ensure we have an event loop on this thread because it's needed when deserializing resource references.
+        _ensure_event_loop()
 
         inputs = rpc.deserialize_properties(request.object)
 

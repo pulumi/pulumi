@@ -26,7 +26,7 @@ import (
 )
 
 func await(out Output) (interface{}, bool, bool, []Resource, error) {
-	return out.await(context.Background())
+	return out.getState().await(context.Background())
 }
 
 func assertApplied(t *testing.T, out Output) {

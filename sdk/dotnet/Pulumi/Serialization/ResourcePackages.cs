@@ -62,6 +62,7 @@ namespace Pulumi
         {
             var pairs =
                 from a in LoadReferencedAssemblies()
+                where MayContainResourceTypes(a)
                 from t in a.GetTypes()
                 where typeof(Resource).IsAssignableFrom(t)
                 let attr = t.GetCustomAttribute<ResourceTypeAttribute>()
@@ -84,7 +85,7 @@ namespace Pulumi
 
             foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
             {
-                if (PossibleMatch(assembly.GetName()))
+                if (MayReferenceResourceTypes(assembly.GetName()))
                 {
                     assembliesToCheck.Enqueue(assembly!);
                 }
@@ -101,18 +102,34 @@ namespace Pulumi
 
                 foreach (var reference in assemblyToCheck.GetReferencedAssemblies())
                 {
-                    if (PossibleMatch(reference))
+                    if (MayReferenceResourceTypes(reference))
                     {
                         var assembly = Assembly.Load(reference);
                         assembliesToCheck.Enqueue(assembly);
                     }
                 }
             }
-
-            static bool PossibleMatch(AssemblyName? assembly)
-                => assembly != null
-                && !assembly.FullName.StartsWith("System", StringComparison.Ordinal)
-                && assembly.ContentType != AssemblyContentType.WindowsRuntime;
         }
+
+        /// Helper to short-circuit checking assembly names that
+        /// cannot refer to or reference assemblies with resource
+        /// types in principle.
+        private static bool MayReferenceResourceTypes(AssemblyName? assemblyName)
+        {
+            return assemblyName != null
+                && !assemblyName.FullName.StartsWith("System", StringComparison.Ordinal)
+                && assemblyName.ContentType != AssemblyContentType.WindowsRuntime;
+        }
+
+        /// Helper to short-circuit traversing assemblies that do not
+        /// reference Pulumi.dll and cannot contain resource types in
+        /// principle.
+        private static bool MayContainResourceTypes(Assembly assembly)
+        {
+            return MayReferenceResourceTypes(assembly.GetName()) &&
+                assembly.GetReferencedAssemblies().Any(a => a.Name == _pulumiAssemblyName);
+        }
+
+        private static readonly string _pulumiAssemblyName = typeof(Resource).Assembly.GetName().Name!;
     }
 }
