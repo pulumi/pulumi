@@ -587,7 +587,7 @@ func (s *Stack) History(ctx context.Context, pageSize int, page int) ([]UpdateSu
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get stack history")
 	}
-	args := []string{"history", "--json", "--show-secrets"}
+	args := []string{"stack", "history", "--json", "--show-secrets"}
 	if pageSize > 0 {
 		// default page=1 if unset when pageSize is set
 		if page < 1 {
