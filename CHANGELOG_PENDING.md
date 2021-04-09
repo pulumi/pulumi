@@ -5,6 +5,12 @@
 - [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
+- [automation/dotnet] Rename (Get,Set,Remove)Config(Value) methods to match other SDKs
+  [#6731](https://github.com/pulumi/pulumi/pull/6731)
+
+- [cli] Enable absolute and relative parent paths for pulumi main
+  [#6734](https://github.com/pulumi/pulumi/pull/6734)
+
 - [automation/python] Update pulumi python docker image to python 3.9
   [#6706](https://github.com/pulumi/pulumi/pull/6706)
 
@@ -19,6 +25,9 @@
 
 ### Bug Fixes
 
+- [sdk/nodejs] Explicitly create event log file for NodeJS Automation API.
+  [#6730](https://github.com/pulumi/pulumi/pull/6730)
+
 - [sdk/nodejs] Fix error handling for failed logging statements
   [#6714](https://github.com/pulumi/pulumi/pull/6714)
 
@@ -30,7 +39,7 @@
 
 - [sdk/python] Fix serialization bug if output contains 'items' property.
   [#6701](https://github.com/pulumi/pulumi/pull/6701)
-  
+
 - [sdk/go] Use ioutil.ReadFile to avoid forcing 1.16 upgrade.
   [#6703](https://github.com/pulumi/pulumi/pull/6703)
 

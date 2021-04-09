@@ -92,7 +92,7 @@ func TestProjectMain(t *testing.T) {
 	}
 	integration.ProgramTest(t, &test)
 
-	t.Run("Error_AbsolutePath", func(t *testing.T) {
+	t.Run("AbsolutePath", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -100,15 +100,27 @@ func TestProjectMain(t *testing.T) {
 			}
 		}()
 		e.ImportDirectory("project_main_abs")
+
+		// write a new Pulumi.yaml using the absolute path of the environment as "main"
+		yamlPath := filepath.Join(e.RootPath, "Pulumi.yaml")
+		absYamlContents := fmt.Sprintf(
+			"name: project_main_abs\ndescription: A program with an absolute entry point\nruntime: nodejs\nmain: %s\n",
+			e.RootPath,
+		)
+		t.Logf("writing new Pulumi.yaml: \npath: %s\ncontents:%s", yamlPath, absYamlContents)
+		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0644); err != nil {
+			t.Error(err)
+			return
+		}
+
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
-		assert.Equal(t, "Updating (main-abs):\n \n", stdout)
-		assert.Contains(t, stderr, "project 'main' must be a relative path")
+		e.RunCommand("pulumi", "preview")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 
-	t.Run("Error_ParentFolder", func(t *testing.T) {
+	t.Run("ParentFolder", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -116,11 +128,15 @@ func TestProjectMain(t *testing.T) {
 			}
 		}()
 		e.ImportDirectory("project_main_parent")
+
+		// yarn link first
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+		// then virtually change directory to the location of the nested Pulumi.yaml
+		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
+
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
-		stdout, stderr := e.RunCommandExpectError("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
-		assert.Equal(t, "Updating (main-parent):\n \n", stdout)
-		assert.Contains(t, stderr, "project 'main' must be a subfolder")
+		e.RunCommand("pulumi", "preview")
 		e.RunCommand("pulumi", "stack", "rm", "--yes")
 	})
 }
