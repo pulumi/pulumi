@@ -16,7 +16,6 @@ package engine
 
 import (
 	"os"
-	"path"
 	"path/filepath"
 
 	"github.com/pkg/errors"
@@ -51,7 +50,7 @@ func getPwdMain(root, main string) (string, string, error) {
 	} else {
 
 		// The path can be relative from the package root.
-		if !path.IsAbs(main) {
+		if !filepath.IsAbs(main) {
 			cleanPwd := filepath.Clean(pwd)
 			main = filepath.Clean(filepath.Join(cleanPwd, main))
 		}

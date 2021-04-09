@@ -107,6 +107,7 @@ func TestProjectMain(t *testing.T) {
 			"name: project_main_abs\ndescription: A program with an absolute entry point\nruntime: nodejs\nmain: %s\n",
 			e.RootPath,
 		)
+		t.Logf("writing new Pulumi.yaml: \npath: %s\ncontents:%s", yamlPath, absYamlContents)
 		if err := os.WriteFile(yamlPath, []byte(absYamlContents), 0644); err != nil {
 			t.Error(err)
 			return
