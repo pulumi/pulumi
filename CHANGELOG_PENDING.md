@@ -5,6 +5,9 @@
 
 ### Improvements
 
+- [cli] Enable absolute and relative parent paths for pulumi main
+  [#6734](https://github.com/pulumi/pulumi/pull/6734)
+
 - [automation/python] Update pulumi python docker image to python 3.9
   [#6706](https://github.com/pulumi/pulumi/pull/6706)
 

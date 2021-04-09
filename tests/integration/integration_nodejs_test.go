@@ -111,6 +111,7 @@ func TestProjectMain(t *testing.T) {
 			t.Error(err)
 			return
 		}
+
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-abs")
@@ -129,19 +130,8 @@ func TestProjectMain(t *testing.T) {
 
 		// yarn link first
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
-		// then virtually change directory
+		// then virtually change directory to the location of the nested Pulumi.yaml
 		e.CWD = filepath.Join(e.RootPath, "foo", "bar")
-
-		// files, err := os.ReadDir(filepath.Join(e.RootPath, ".."))
-		// if err != nil {
-		// 	t.Error(err)
-		// 	return
-		// }
-
-		// for _, file := range files {
-		// 	t.Logf(file.Name())
-		// }
-		// t.Logf(e.RootPath)
 
 		e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 		e.RunCommand("pulumi", "stack", "init", "main-parent")
