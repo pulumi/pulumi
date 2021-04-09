@@ -1,5 +1,8 @@
 ### Breaking Changes
 
+- [cli] Set pagination defaults for `pulumi stack history` to 10 entries. 
+  [#6739](https://github.com/pulumi/pulumi/pull/6739)
+
 - [sdk/nodejs] Enable nodejs dynamic provider caching by default on program side.
   [#6704](https://github.com/pulumi/pulumi/pull/6704)
 
