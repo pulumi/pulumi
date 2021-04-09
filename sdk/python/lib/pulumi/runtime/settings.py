@@ -247,9 +247,9 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Optional[Exception]:
 
 
 def handle_grpc_error(exn: grpc.RpcError):
-    exn = grpc_error_to_exception(exn)
-    if exn is not None:
-        raise exn
+    exc = grpc_error_to_exception(exn)
+    if exc is not None:
+        raise exc
 
 async def monitor_supports_secrets() -> bool:
     return await monitor_supports_feature("secrets")

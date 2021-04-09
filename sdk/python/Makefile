@@ -27,7 +27,7 @@ build_plugin::
 build:: build_package build_plugin
 
 lint::
-	pipenv run mypy ./lib/pulumi --config-file=mypy.ini
+	MYPYPATH=./stubs pipenv run mypy ./lib/pulumi --config-file=mypy.ini
 	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
 
 install_package:: build_package

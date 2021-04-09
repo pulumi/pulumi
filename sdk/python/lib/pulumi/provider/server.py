@@ -3,7 +3,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Union, Any, TypeVar
 import argparse
 import asyncio
 import sys
@@ -15,7 +15,6 @@ import google.protobuf.struct_pb2 as struct_pb2
 from pulumi.provider.provider import Provider, ConstructResult
 from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
-from pulumi.runtime.proto.provider_pb2 import ConstructRequest
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
@@ -42,8 +41,8 @@ class ProviderServicer(ResourceProviderServicer):
     provider: Provider
     args: List[str]
 
-    async def Construct(self, request: ConstructRequest, context):  # pylint: disable=invalid-overridden-method
-        assert isinstance(request, ConstructRequest), \
+    async def Construct(self, request: proto.ConstructRequest, context) -> proto.ConstructResponse:  # pylint: disable=invalid-overridden-method
+        assert isinstance(request, proto.ConstructRequest), \
             f'request is not ConstructRequest but is {type(request)} instead'
 
         # Should we take a lock so Construct calls are never executing
@@ -53,7 +52,7 @@ class ProviderServicer(ResourceProviderServicer):
         pulumi.runtime.settings.reset_options(
             project=_empty_as_none(request.project),
             stack=_empty_as_none(request.stack),
-            parallel=_empty_as_none(request.parallel),
+            parallel=_zero_as_none(request.parallel),
             engine_address=self.engine_address,
             monitor_address=_empty_as_none(request.monitorEndpoint),
             preview=request.dryRun)
@@ -75,12 +74,12 @@ class ProviderServicer(ResourceProviderServicer):
         return response
 
     @staticmethod
-    def _construct_inputs(request: ConstructRequest) -> Dict[str, pulumi.Output]:
+    def _construct_inputs(request: proto.ConstructRequest) -> Dict[str, pulumi.Output]:
         return {
             k: pulumi.Output(
                 resources=set(
                     pulumi.resource.DependencyResource(urn) for urn in
-                    request.inputDependencies.get(k, ConstructRequest.PropertyDependencies()).urns
+                    request.inputDependencies.get(k, proto.ConstructRequest.PropertyDependencies()).urns
                 ),
                 future=_as_future(rpc.unwrap_rpc_secret(the_input)),
                 is_known=_as_future(True),
@@ -91,12 +90,12 @@ class ProviderServicer(ResourceProviderServicer):
         }
 
     @staticmethod
-    def _construct_options(request: ConstructRequest) -> pulumi.ResourceOptions:
+    def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
         parent = None
         if not _empty_as_none(request.parent):
             parent = pulumi.resource.DependencyResource(request.parent)
         return pulumi.ResourceOptions(
-            aliases=request.aliases,
+            aliases=list(request.aliases),
             depends_on=[pulumi.resource.DependencyResource(urn)
                         for urn in request.dependencies],
             protect=request.protect,
@@ -119,30 +118,31 @@ class ProviderServicer(ResourceProviderServicer):
             deps[k] = proto.ConstructResponse.PropertyDependencies(urns=urns)
 
         return proto.ConstructResponse(urn=urn,
-                                       state=_as_struct(state),
+                                       state=state,
                                        stateDependencies=deps)
 
-    async def Configure(self, request, context):  # pylint: disable=invalid-overridden-method
+    async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
         return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True)
 
-    async def CheckConfig(self, request, context):  # pylint: disable=invalid-overridden-method
+    async def CheckConfig(self, request, context) -> proto.CheckResponse:  # pylint: disable=invalid-overridden-method
         # NOTE: inputs=None here seems to work but we may be required
         # to remember and mirror back the inputs passed in Configure
         #
         # google.protobuf.Struct inputs = 1; // the provider inputs for this resource.
         return proto.CheckResponse(inputs=None, failures=[])
 
-    async def GetPluginInfo(self, request, context):  # pylint: disable=invalid-overridden-method
+    async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)
 
-    def __init__(self, provider: Provider, args: List[str], engine_address: str):
+    def __init__(self, provider: Provider, args: List[str], engine_address: str) -> None:
         super().__init__()
         self.provider = provider
         self.args = args
         self.engine_address = engine_address
 
 
-def main(provider: Provider, args: List[str]):
+
+def main(provider: Provider, args: List[str]) -> None:  # args not in use?
     """For use as the `main` in programs that wrap a custom Provider
     implementation into a Pulumi-compatible gRPC server.
 
@@ -154,10 +154,9 @@ def main(provider: Provider, args: List[str]):
 
     argp = argparse.ArgumentParser(description='Pulumi provider plugin (gRPC server)')
     argp.add_argument('engine', help='Pulumi engine address')
-    args = argp.parse_args()
-    engine_address = args.engine
+    engine_address: str = argp.parse_args().engine
 
-    async def serve():
+    async def serve() -> None:
         server = grpc.aio.server(options=_GRPC_CHANNEL_OPTIONS)
         servicer = ProviderServicer(provider, args, engine_address=engine_address)
         provider_pb2_grpc.add_ResourceProviderServicer_to_server(servicer, server)
@@ -173,17 +172,18 @@ def main(provider: Provider, args: List[str]):
         pass
 
 
-def _as_future(value):
-    fut = asyncio.Future()
+T = TypeVar('T')
+
+
+def _as_future(value: T) -> 'asyncio.Future[T]':
+    fut: asyncio.Future[T] = asyncio.Future()
     fut.set_result(value)
     return fut
 
 
-def _as_struct(key_values):
-    the_struct = struct_pb2.Struct()
-    the_struct.update(key_values)  # pylint: disable=no-member
-    return the_struct
-
-
 def _empty_as_none(text: str) -> Optional[str]:
     return None if text == '' else text
+
+
+def _zero_as_none(value: int) -> Optional[int]:
+    return None if value == 0 else value

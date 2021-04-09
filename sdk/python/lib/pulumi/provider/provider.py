@@ -1,5 +1,6 @@
-from pulumi import ResourceOptions, Input, Inputs
 from typing import Optional
+
+from pulumi import ResourceOptions, Input, Inputs
 
 
 class ConstructResult:
