@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- [cli] Add option to print absolute rather than relative dates in stack history
+  [#6742](https://github.com/pulumi/pulumi/pull/6742)
+
 - [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
 

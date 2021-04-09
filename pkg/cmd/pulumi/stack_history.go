@@ -26,6 +26,7 @@ func newStackHistoryCmd() *cobra.Command {
 	var showSecrets bool
 	var pageSize int
 	var page int
+	var showFullDates bool
 
 	cmd := &cobra.Command{
 		Use:        "history",
@@ -61,7 +62,7 @@ This command displays data about previous updates for a stack.`,
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, page, opts)
+			return displayUpdatesConsole(updates, page, opts, showFullDates)
 		}),
 	}
 
@@ -73,6 +74,8 @@ This command displays data about previous updates for a stack.`,
 		"Show secret values when listing config instead of displaying blinded values")
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().BoolVar(
+		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
 	cmd.PersistentFlags().IntVar(
 		&pageSize, "page-size", 0, "Used with 'page' to control number of results returned")
 	cmd.PersistentFlags().IntVar(
@@ -151,7 +154,7 @@ func displayUpdatesJSON(updates []backend.UpdateInfo, decrypter config.Decrypter
 	return printJSON(updatesJSON)
 }
 
-func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options) error {
+func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.Options, noHumanize bool) error {
 	if len(updates) == 0 {
 		if page > 1 {
 			fmt.Printf("No stack updates found on page '%d'\n", page)
@@ -182,7 +185,12 @@ func displayUpdatesConsole(updates []backend.UpdateInfo, page int, opts display.
 		printResourceChanges(colors.BlueBackground, colors.Black, " ", colors.Reset, update.ResourceChanges["same"])
 
 		timeStart := time.Unix(update.StartTime, 0)
-		timeCreated := humanize.Time(timeStart)
+		var timeCreated string
+		if noHumanize {
+			timeCreated = timeStart.String()
+		} else {
+			timeCreated = humanize.Time(timeStart)
+		}
 		timeEnd := time.Unix(update.EndTime, 0)
 		duration := timeEnd.Sub(timeStart)
 		fmt.Printf("%sUpdated %s took %s\n", " ", timeCreated, duration)
