@@ -28,6 +28,9 @@
 
 ### Bug Fixes
 
+- [cli] Handle non-existent creds file in `pulumi logout --all`
+  [#6741](https://github.com/pulumi/pulumi/pull/6741)
+
 - [sdk/nodejs] Explicitly create event log file for NodeJS Automation API.
   [#6730](https://github.com/pulumi/pulumi/pull/6730)
 
