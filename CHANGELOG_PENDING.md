@@ -23,6 +23,9 @@
 - [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
   [#6699](https://github.com/pulumi/pulumi/pull/6699)
 
+- [sdk/nodejs] Allow prompt values in `construct` for multi-lang components.
+  [#6522](https://github.com/pulumi/pulumi/pull/6522)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Explicitly create event log file for NodeJS Automation API.
