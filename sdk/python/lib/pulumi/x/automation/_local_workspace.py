@@ -458,7 +458,7 @@ def _local_source_stack_helper(stack_name: str,
 
 
 def default_project(project_name: str) -> ProjectSettings:
-    return ProjectSettings(name=project_name, runtime="python")
+    return ProjectSettings(name=project_name, runtime="python", main=os.getcwd())
 
 
 def get_stack_settings_name(name: str) -> str:

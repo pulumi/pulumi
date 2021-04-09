@@ -663,7 +663,7 @@ function getStackSettingsName(name: string): string {
 type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
 function defaultProject(projectName: string) {
-    const settings: ProjectSettings = { name: projectName, runtime: "nodejs" };
+    const settings: ProjectSettings = { name: projectName, runtime: "nodejs", main: process.cwd() };
     return settings;
 }
 
