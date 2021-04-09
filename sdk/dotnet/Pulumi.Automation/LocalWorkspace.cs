@@ -612,7 +612,7 @@ namespace Pulumi.Automation
         {
             var commandResult = await this.RunCommandAsync(
                 new [] { "stack", "export", "--stack", stackName, "--show-secrets" },
-                cancellationToken);
+                cancellationToken).ConfigureAwait(false);
             return StackDeployment.FromJsonString(commandResult.StandardOutput);
         }
 
