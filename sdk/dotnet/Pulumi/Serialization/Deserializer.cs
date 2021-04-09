@@ -1,7 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics.CodeAnalysis;
 using Google.Protobuf.Collections;

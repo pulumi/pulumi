@@ -38,7 +38,20 @@ namespace Pulumi
             _logger = new Logger(this, Engine);
         }
 
-        internal static Task<ExceptionDispatchInfo?> RunInlineAsync(InlineDeploymentSettings settings, Func<IRunner, Task<ExceptionDispatchInfo?>> func)
-            => func(CreateRunner(() => new Deployment(settings)));
+        internal static async Task<ExceptionDispatchInfo?> RunInlineAsync(InlineDeploymentSettings settings, Func<IRunner, Task<ExceptionDispatchInfo?>> func)
+        {
+            ExceptionDispatchInfo? exceptionDispatchInfo = null;
+
+            await CreateRunnerAndRunAsync(
+                () => new Deployment(settings),
+                async runner =>
+                {
+                    exceptionDispatchInfo = await func(runner).ConfigureAwait(false);
+                    return 1;
+                })
+                .ConfigureAwait(false);
+
+            return exceptionDispatchInfo;
+        }
     }
 }

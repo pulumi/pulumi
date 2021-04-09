@@ -1,9 +1,12 @@
 ### Breaking
 
+### Improvements
+
+- [sdk/dotnet] Thread-safe concurrency-friendly global state
+  [#6139](https://github.com/pulumi/pulumi/pull/6139)
+
 - [automation/dotnet] Rename (Get,Set,Remove)Config(Value) methods to match other SDKs
   [#6731](https://github.com/pulumi/pulumi/pull/6731)
-
-### Improvements
 
 - [cli] Enable absolute and relative parent paths for pulumi main
   [#6734](https://github.com/pulumi/pulumi/pull/6734)
