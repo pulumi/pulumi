@@ -18,7 +18,6 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/pkg/errors"
 
@@ -50,16 +49,11 @@ func getPwdMain(root, main string) (string, string, error) {
 	if main == "" {
 		main = "."
 	} else {
-		// The path must be relative from the package root.
-		if path.IsAbs(main) {
-			return "", "", errors.New("project 'main' must be a relative path")
-		}
 
-		// Check that main is a subdirectory.
-		cleanPwd := filepath.Clean(pwd)
-		main = filepath.Clean(filepath.Join(cleanPwd, main))
-		if !strings.HasPrefix(main, cleanPwd) {
-			return "", "", errors.New("project 'main' must be a subfolder")
+		// The path can be relative from the package root.
+		if !path.IsAbs(main) {
+			cleanPwd := filepath.Clean(pwd)
+			main = filepath.Clean(filepath.Join(cleanPwd, main))
 		}
 
 		// So that any relative paths inside of the program are correct, we still need to pass the pwd
