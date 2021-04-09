@@ -1,0 +1,12 @@
+# [[source]]
+# name = "testcomponent-python"
+# url = "https://pulumi.com"
+# verify_ssl = true
+
+[dev-packages]
+
+[packages]
+pulumi = {path = "../../../../sdk/python/lib/"}
+
+[requires]
+python_version = "3.8"
