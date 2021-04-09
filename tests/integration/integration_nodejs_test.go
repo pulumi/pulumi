@@ -102,7 +102,7 @@ func TestProjectMain(t *testing.T) {
 		e.ImportDirectory("project_main_abs")
 
 		// write a new Pulumi.yaml using the absolute path of the environment as "main"
-		yamlPath := filepath.Join(e.RootPath, "Pulumi.Yaml")
+		yamlPath := filepath.Join(e.RootPath, "Pulumi.yaml")
 		absYamlContents := fmt.Sprintf(
 			"name: project_main_abs\ndescription: A program with an absolute entry point\nruntime: nodejs\nmain: %s\n",
 			e.RootPath,
