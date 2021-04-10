@@ -663,14 +663,19 @@ func TestConstructNode(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to build test component PATH: %v", err)
 			}
-			integration.ProgramTest(t, optsForConstructChecks(pathEnv))
+			integration.ProgramTest(t, optsForConstructChecks(t, pathEnv))
 		})
 	}
 }
 
-func optsForConstructChecks(pathEnv string) *integration.ProgramTestOptions {
+func optsForConstructChecks(t *testing.T, pathEnv string) *integration.ProgramTestOptions {
+	runtimeVenv, err := pulumiRuntimeVirtualEnv()
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
 	return &integration.ProgramTestOptions{
-		Env:          []string{pathEnv},
+		Env:          []string{pathEnv, runtimeVenv},
 		Dir:          filepath.Join("construct_component", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,

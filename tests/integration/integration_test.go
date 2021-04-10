@@ -4,6 +4,7 @@ package ints
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -590,4 +591,22 @@ func componentPathEnv(integrationTest, componentDir string) (string, error) {
 		pathSeparator = ";"
 	}
 	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
+}
+
+func pulumiRuntimeVirtualEnv() (string, error) {
+	pulumiBin := os.Getenv("PULUMI_BIN")
+	if pulumiBin == "" {
+		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed. Missing PULUMI_BIN env var")
+	}
+	venvConf := filepath.Join(pulumiBin, "pulumi-buildtime-venv.conf")
+	venvFolderBytes, err := ioutil.ReadFile(venvConf)
+	venvFolder := string(venvFolderBytes)
+	if err != nil {
+		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed. Error while reading %s: %w", venvConf, err)
+	}
+	if _, err := os.Stat(venvFolder); os.IsNotExist(err) {
+		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed. Found %s but it points to inexistent %s",
+			venvConf, venvFolder)
+	}
+	return fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder), nil
 }
