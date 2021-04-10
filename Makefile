@@ -58,7 +58,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 
 test_all:: PULUMI_RUNTIME_VIRTUALENV = $(file < $(PULUMI_BIN)/pulumi-buildtime-venv.conf)
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
-	cd pkg && $(GO_TEST) -run SkipAllTests ${PROJECT_PKGS}
+	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
 .PHONY: publish_tgz
