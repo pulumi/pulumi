@@ -14,4 +14,4 @@
 
 from semver import VersionInfo
 
-_MINIMUM_VERSION = VersionInfo.parse("2.25.0")
+_MINIMUM_VERSION = VersionInfo.parse("2.25.0-alpha")

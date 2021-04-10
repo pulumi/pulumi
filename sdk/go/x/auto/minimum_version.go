@@ -20,4 +20,10 @@ var minimumVersion = semver.Version{
 	Major: 2,
 	Minor: 25,
 	Patch: 0,
+	Pre: []semver.PRVersion{
+		{
+			VersionStr: "alpha",
+			IsNum:      false,
+		},
+	},
 }
