@@ -50,15 +50,16 @@ lint::
 	done
 
 test_fast:: build
-	cd pkg && $(GO_TEST_FAST) -run SkipAllTests ${PROJECT_PKGS}
+	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
 test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 
+test_all:: PULUMI_RUNTIME_VIRTUALENV = $(file < $(PULUMI_BIN)/pulumi-buildtime-venv.conf)
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) -run SkipAllTests ${PROJECT_PKGS}
-	cd tests && $(GO_TEST) -run TestConstructNode -p=1 ${TESTS_PKGS}
+	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:

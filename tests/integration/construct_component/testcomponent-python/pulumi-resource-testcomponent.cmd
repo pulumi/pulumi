@@ -1,5 +1,5 @@
 @echo off
 setlocal
 set SCRIPT_DIR=%~dp0
-@cd ..\..\..\..\sdk\python
+@cd "%SCRIPT_DIR%\..\..\..\..\sdk\python"
 @pipenv run python "%SCRIPT_DIR%/testcomponent.py" %*
