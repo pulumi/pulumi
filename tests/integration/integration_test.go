@@ -600,13 +600,13 @@ func pulumiRuntimeVirtualEnv() (string, error) {
 	}
 	venvConf := filepath.Join(pulumiBin, "pulumi-buildtime-venv.conf")
 	venvFolderBytes, err := ioutil.ReadFile(venvConf)
-	venvFolder := string(venvFolderBytes)
+	venvFolder := strings.TrimRight(string(venvFolderBytes), "\r\n")
 	if err != nil {
 		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed. Error while reading %s: %w", venvConf, err)
 	}
 	if _, err := os.Stat(venvFolder); os.IsNotExist(err) {
-		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed. Found %s but it points to inexistent %s",
-			venvConf, venvFolder)
+		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed. Found %s but it points to inexistent %s: %w",
+			venvConf, venvFolder, err)
 	}
 	return fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder), nil
 }
