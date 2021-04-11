@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 
 namespace Pulumi.Automation
 {
@@ -47,8 +48,11 @@ namespace Pulumi.Automation
         {
         }
 
-        internal static ProjectSettings Default(string name)
-            => new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.NodeJS));
+        internal static ProjectSettings Default(string name) {
+            var defaultSettings = new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.Dotnet));
+            defaultSettings.Main = Directory.GetCurrentDirectory();
+            return defaultSettings;
+        }
 
         internal bool IsDefault
         {

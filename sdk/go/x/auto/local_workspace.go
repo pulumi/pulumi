@@ -951,9 +951,14 @@ func SelectStackInlineSource(
 
 func defaultInlineProject(projectName string) (workspace.Project, error) {
 	var proj workspace.Project
+	cwd, err := os.Getwd()
+	if err != nil {
+		return proj, err
+	}
 	proj = workspace.Project{
 		Name:    tokens.PackageName(projectName),
 		Runtime: workspace.NewProjectRuntimeInfo("go", nil),
+		Main:    cwd,
 	}
 
 	return proj, nil
