@@ -28,6 +28,9 @@
 
 ### Bug Fixes
 
+- [cli] Handle non-existent creds file in `pulumi logout --all`
+  [#6741](https://github.com/pulumi/pulumi/pull/6741)
+
 - [automation] Set default value for 'main' for inline programs to support relative paths, assets, and closure serialization.
   [#6743](https://github.com/pulumi/pulumi/pull/6743)
 
