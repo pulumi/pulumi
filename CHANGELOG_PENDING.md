@@ -1,31 +1,74 @@
 ### Breaking
 
+- [automation/dotnet] Rename (Get,Set,Remove)Config(Value)
+  [#6731](https://github.com/pulumi/pulumi/pull/6731)
+
+  The following methods on Workspace and WorkspaceStack classes have
+  been renamed. Please update your code (before -> after):
+
+    * GetConfigValue -> GetConfig
+    * SetConfigValue -> SetConfig
+    * RemoveConfigValue -> RemoveConfig
+    * GetConfig -> GetAllConfig
+    * SetConfig -> SetAllConfig
+    * RemoveConfig -> RemoveAllConfig
+
+  This change was made to align with the other Pulumi language SDKs.
 
 ### Improvements
 
 - [sdk/nodejs] Add support for multiple V8 VM contexts in closure serialization.
   [#6648](https://github.com/pulumi/pulumi/pull/6648)
 
-- [sdk/nodejs] Add provider side caching for dynamic provider deserialization
-  [#6657](https://github.com/pulumi/pulumi/pull/6657)
+- [cli] Add option to print absolute rather than relative dates in stack history
+  [#6742](https://github.com/pulumi/pulumi/pull/6742)
 
-- [automation/dotnet] Expose structured logging
-  [#6572](https://github.com/pulumi/pulumi/pull/6572)
+- [sdk/dotnet] Thread-safe concurrency-friendly global state
+  [#6139](https://github.com/pulumi/pulumi/pull/6139)
 
-- [cli] Support full fidelity YAML round-tripping
-  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
-  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
+- [cli] Enable absolute and relative parent paths for pulumi main
+  [#6734](https://github.com/pulumi/pulumi/pull/6734)
 
-- [sdk/python] Ensure all async tasks are awaited prior to exit.
-  [#6606](https://github.com/pulumi/pulumi/pull/6606)
+- [automation/python] Update pulumi python docker image to python 3.9
+  [#6706](https://github.com/pulumi/pulumi/pull/6706)
+
+- [sdk/nodejs] Add program side caching for dynamic provider serialization behind env var
+  [#6673](https://github.com/pulumi/pulumi/pull/6673)
+
+- [automation/dotnet] Allow null environment variables
+  [#6687](https://github.com/pulumi/pulumi/pull/6687)
+
+- [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
+  [#6699](https://github.com/pulumi/pulumi/pull/6699)
+
+- [sdk/nodejs] Allow prompt values in `construct` for multi-lang components.
+  [#6522](https://github.com/pulumi/pulumi/pull/6522)
 
 ### Bug Fixes
 
-- [sdk/nodejs] Fix error propagation in registerResource and other resource methods.
-  [#6644](https://github.com/pulumi/pulumi/pull/6644)
+- [cli] Handle non-existent creds file in `pulumi logout --all`
+  [#6741](https://github.com/pulumi/pulumi/pull/6741)
 
-- [automation/python] Fix passing of additional environment variables.
-  [#6639](https://github.com/pulumi/pulumi/pull/6639)
-  
-- [sdk/python] Make exceptions raised by calls to provider functions (e.g. data sources) catchable.
-  [#6504](https://github.com/pulumi/pulumi/pull/6504)
+- [automation] Set default value for 'main' for inline programs to support relative paths, assets, and closure serialization.
+  [#6743](https://github.com/pulumi/pulumi/pull/6743)
+
+- [sdk/nodejs] Explicitly create event log file for NodeJS Automation API.
+  [#6730](https://github.com/pulumi/pulumi/pull/6730)
+
+- [sdk/nodejs] Fix error handling for failed logging statements
+  [#6714](https://github.com/pulumi/pulumi/pull/6714)
+
+- [automation/dotnet] Environment variable value type is now nullable.
+  [#6520](https://github.com/pulumi/pulumi/pull/6520)
+
+- [sdk/nodejs] Fix `Construct` to wait for child resources of a multi-lang components to be created.
+  [#6452](https://github.com/pulumi/pulumi/pull/6452
+
+- [sdk/python] Fix serialization bug if output contains 'items' property.
+  [#6701](https://github.com/pulumi/pulumi/pull/6701)
+
+- [sdk/go] Use ioutil.ReadFile to avoid forcing 1.16 upgrade.
+  [#6703](https://github.com/pulumi/pulumi/pull/6703)
+
+- [automation/dotnet] Fix GetConfigValueAsync failing to deserialize
+  [#6698](https://github.com/pulumi/pulumi/pull/6698)

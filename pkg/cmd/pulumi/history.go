@@ -68,7 +68,7 @@ func newHistoryCmd() *cobra.Command {
 				return displayUpdatesJSON(updates, decrypter)
 			}
 
-			return displayUpdatesConsole(updates, page, opts)
+			return displayUpdatesConsole(updates, page, opts, false)
 		}),
 	}
 	cmd.PersistentFlags().StringVarP(

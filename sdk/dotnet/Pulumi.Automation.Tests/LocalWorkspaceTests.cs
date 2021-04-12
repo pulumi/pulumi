@@ -6,19 +6,19 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 using Xunit;
+using System.Collections.Immutable;
 
 namespace Pulumi.Automation.Tests
 {
     public class LocalWorkspaceTests
     {
-        private static readonly string _dataDirectory =
-            Path.Combine(new FileInfo(Assembly.GetExecutingAssembly().Location).DirectoryName, "Data");
-
         private static readonly string _pulumiOrg = GetTestOrg();
 
         private static string GetTestSuffix()
@@ -55,7 +55,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("json")]
         public async Task GetProjectSettings(string extension)
         {
-            var workingDir = Path.Combine(_dataDirectory, extension);
+            var workingDir = ResourcePath(Path.Combine("Data", extension));
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
@@ -74,7 +74,7 @@ namespace Pulumi.Automation.Tests
         [InlineData("json")]
         public async Task GetStackSettings(string extension)
         {
-            var workingDir = Path.Combine(_dataDirectory, extension);
+            var workingDir = ResourcePath(Path.Combine("Data", extension));
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
@@ -124,7 +124,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -161,7 +161,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -182,13 +182,13 @@ namespace Pulumi.Automation.Tests
             try
             {
                 await Assert.ThrowsAsync<CommandException>(
-                    () => stack.GetConfigValueAsync(plainKey));
+                    () => stack.GetConfigAsync(plainKey));
 
-                var values = await stack.GetConfigAsync();
+                var values = await stack.GetAllConfigAsync();
                 Assert.Empty(values);
 
-                await stack.SetConfigAsync(config);
-                values = await stack.GetConfigAsync();
+                await stack.SetAllConfigAsync(config);
+                values = await stack.GetAllConfigAsync();
                 Assert.True(values.TryGetValue(plainKey, out var plainValue));
                 Assert.Equal("abc", plainValue!.Value);
                 Assert.False(plainValue.IsSecret);
@@ -196,12 +196,21 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal("def", secretValue!.Value);
                 Assert.True(secretValue.IsSecret);
 
-                await stack.RemoveConfigValueAsync("plain");
-                values = await stack.GetConfigAsync();
+                // Get individual configuration values
+                plainValue = await stack.GetConfigAsync(plainKey);
+                Assert.Equal("abc", plainValue!.Value);
+                Assert.False(plainValue.IsSecret);
+
+                secretValue = await stack.GetConfigAsync(secretKey);
+                Assert.Equal("def", secretValue!.Value);
+                Assert.True(secretValue.IsSecret);
+
+                await stack.RemoveConfigAsync("plain");
+                values = await stack.GetAllConfigAsync();
                 Assert.Single(values);
 
-                await stack.SetConfigValueAsync("foo", new ConfigValue("bar"));
-                values = await stack.GetConfigAsync();
+                await stack.SetConfigAsync("foo", new ConfigValue("bar"));
+                values = await stack.GetAllConfigAsync();
                 Assert.Equal(2, values.Count);
             }
             finally
@@ -220,7 +229,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -258,7 +267,7 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -283,10 +292,10 @@ namespace Pulumi.Automation.Tests
         public async Task StackLifecycleLocalProgram()
         {
             var stackName = $"{RandomStackName()}";
-            var workingDir = Path.Combine(_dataDirectory, "testproj");
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
             using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -299,7 +308,7 @@ namespace Pulumi.Automation.Tests
             };
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 // pulumi up
                 var upResult = await stack.UpAsync();
@@ -361,7 +370,7 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -374,7 +383,7 @@ namespace Pulumi.Automation.Tests
             };
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 // pulumi up
                 var upResult = await stack.UpAsync();
@@ -415,6 +424,86 @@ namespace Pulumi.Automation.Tests
             finally
             {
                 await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task SupportsStackOutputs()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                return new Dictionary<string, object?>
+                {
+                    ["exp_static"] = "foo",
+                    ["exp_cfg"] = config.Get("bar"),
+                    ["exp_secret"] = config.GetSecret("buzz"),
+                };
+            });
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_node";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["bar"] = new ConfigValue("abc"),
+                ["buzz"] = new ConfigValue("secret", isSecret: true),
+            };
+
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                var initialOutputs = await stack.GetOutputsAsync();
+                Assert.Empty(initialOutputs);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                AssertOutputs(upResult.Outputs);
+
+                var outputsAfterUp = await stack.GetOutputsAsync();
+                AssertOutputs(outputsAfterUp);
+
+                // pulumi destroy
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+
+                var outputsAfterDestroy = await stack.GetOutputsAsync();
+                Assert.Empty(outputsAfterDestroy);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stack.Name);
+            }
+
+            static void AssertOutputs(IImmutableDictionary<string, OutputValue> outputs)
+            {
+                Assert.Equal(3, outputs.Count);
+
+                // exp_static
+                Assert.True(outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
+
+                // exp_cfg
+                Assert.True(outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
+
+                // exp_secret
+                Assert.True(outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
             }
         }
 
@@ -502,13 +591,13 @@ namespace Pulumi.Automation.Tests
             {
                 var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(project, stackName, program)
                 {
-                    EnvironmentVariables = new Dictionary<string, string>()
+                    EnvironmentVariables = new Dictionary<string, string?>()
                     {
                         ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                     }
                 });
 
-                await stack.SetConfigAsync(configMap);
+                await stack.SetAllConfigAsync(configMap);
 
                 return stack;
             }
@@ -529,7 +618,7 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_output";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -583,7 +672,7 @@ namespace Pulumi.Automation.Tests
             var stackName = $"inline_events{GetTestSuffix()}";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -622,7 +711,7 @@ namespace Pulumi.Automation.Tests
             }
 
             static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
-                where TOptions: UpdateOptions, new()
+                where TOptions : UpdateOptions, new()
             {
                 var events = new List<EngineEvent>();
 
@@ -669,7 +758,7 @@ namespace Pulumi.Automation.Tests
             var projectName = "inline_tstack_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -682,7 +771,7 @@ namespace Pulumi.Automation.Tests
             };
             try
             {
-                await stack.SetConfigAsync(config);
+                await stack.SetAllConfigAsync(config);
 
                 // pulumi up
                 var upResult = await stack.UpAsync();
@@ -735,7 +824,7 @@ namespace Pulumi.Automation.Tests
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -763,7 +852,7 @@ namespace Pulumi.Automation.Tests
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -774,7 +863,7 @@ namespace Pulumi.Automation.Tests
                 () => upTask);
         }
 
-        [Fact(Skip = "Parallel execution is not supported in this first version.")]
+        [Fact]
         public async Task InlineProgramAllowsParallelExecution()
         {
             const string projectNameOne = "parallel_inline_node1";
@@ -828,7 +917,7 @@ namespace Pulumi.Automation.Tests
 
             using var stackOne = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameOne, stackNameOne, programOne)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
@@ -836,19 +925,19 @@ namespace Pulumi.Automation.Tests
 
             using var stackTwo = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectNameTwo, stackNameTwo, programTwo)
             {
-                EnvironmentVariables = new Dictionary<string, string>()
+                EnvironmentVariables = new Dictionary<string, string?>()
                 {
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
 
-            await stackOne.SetConfigAsync(new Dictionary<string, ConfigValue>()
+            await stackOne.SetAllConfigAsync(new Dictionary<string, ConfigValue>()
             {
                 ["bar"] = new ConfigValue("1"),
                 ["buzz"] = new ConfigValue("1", isSecret: true),
             });
 
-            await stackTwo.SetConfigAsync(new Dictionary<string, ConfigValue>()
+            await stackTwo.SetAllConfigAsync(new Dictionary<string, ConfigValue>()
             {
                 ["bar"] = new ConfigValue("2"),
                 ["buzz"] = new ConfigValue("2", isSecret: true),
@@ -908,7 +997,7 @@ namespace Pulumi.Automation.Tests
                 Assert.True(expSecretValue.IsSecret);
             }
         }
-    
+
         [Fact]
         public async Task PulumiVersionTest()
         {
@@ -938,6 +1027,56 @@ namespace Pulumi.Automation.Tests
             {
                 LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
             }
+        }
+
+        [Fact]
+        public async Task RespectsProjectSettingsTest()
+        {
+            var program = PulumiFn.Create<ValidStack>();
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "project_was_overwritten";
+
+            var workdir = ResourcePath(Path.Combine("Data", "correct_project"));
+
+            var stack = await LocalWorkspace.CreateStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    WorkDir = workdir
+                });
+
+            var settings = await stack.Workspace.GetProjectSettingsAsync();
+            Assert.Equal("correct_project", settings!.Name);
+            Assert.Equal("This is a description", settings.Description);
+        }
+
+        [Fact]
+        public async Task DetectsProjectSettingConflictTest()
+        {
+            var program = PulumiFn.Create<ValidStack>();
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "project_was_overwritten";
+
+            var workdir = ResourcePath(Path.Combine("Data", "correct_project"));
+
+            var projectSettings = ProjectSettings.Default(projectName);
+            projectSettings.Description = "non-standard description";
+
+            await Assert.ThrowsAsync<ProjectSettingsConflictException>(() =>
+                LocalWorkspace.CreateStackAsync(
+                    new InlineProgramArgs(projectName, stackName, program)
+                    {
+                        WorkDir = workdir,
+                        ProjectSettings = projectSettings
+                    })
+            );
+        }
+
+        private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
+        {
+            var dir = Path.GetDirectoryName(pathBase) ?? ".";
+            return Path.Combine(dir, path);
         }
     }
 }

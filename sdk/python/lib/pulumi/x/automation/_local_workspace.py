@@ -15,10 +15,10 @@
 import os
 import tempfile
 import json
-import yaml
 from datetime import datetime
-from semver import VersionInfo
 from typing import Optional, List, Mapping, Callable
+from semver import VersionInfo
+import yaml
 
 from ._config import ConfigMap, ConfigValue
 from ._project_settings import ProjectSettings
@@ -100,14 +100,7 @@ class LocalWorkspace(Workspace):
                f"secrets_provider={self.secrets_provider})"
 
     def project_settings(self) -> ProjectSettings:
-        for ext in _setting_extensions:
-            project_path = os.path.join(self.work_dir, f"Pulumi{ext}")
-            if not os.path.exists(project_path):
-                continue
-            with open(project_path, "r") as file:
-                settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
-                return ProjectSettings(**settings)
-        raise FileNotFoundError(f"failed to find project settings file in workdir: {self.work_dir}")
+        return _load_project_settings(self.work_dir)
 
     def save_project_settings(self, settings: ProjectSettings) -> None:
         found_ext = ".yaml"
@@ -117,9 +110,12 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
+        writable_settings = {key: settings.__dict__[key] for key in settings.__dict__ if settings.__dict__[key] is not None}
         with open(path, "w") as file:
-            json.dump(settings.__dict__, file, indent=4) if found_ext == ".json" else yaml.dump(
-                settings.__dict__, stream=file)
+            if found_ext == ".json":
+                json.dump(writable_settings, file, indent=4)
+            else:
+                yaml.dump(writable_settings, stream=file)
 
     def stack_settings(self, stack_name: str) -> StackSettings:
         stack_settings_name = get_stack_settings_name(stack_name)
@@ -146,8 +142,10 @@ class LocalWorkspace(Workspace):
                 break
         path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{found_ext}")
         with open(path, "w") as file:
-            json.dump(settings.__dict__, file, indent=4) if found_ext == ".json" else yaml.dump(
-                settings.__dict__, stream=file)
+            if found_ext == ".json":
+                json.dump(settings.__dict__, file, indent=4)
+            else:
+                yaml.dump(settings.__dict__, stream=file)
 
     def serialize_args_for_op(self, stack_name: str) -> List[str]:
         # Not used by LocalWorkspace
@@ -341,7 +339,7 @@ def create_stack(stack_name: str,
     if _is_inline_program(**args):
         # Type checks are ignored because we have already asserted that the correct args are present.
         return _inline_source_stack_helper(stack_name, program, project_name, Stack.create, opts)  # type: ignore
-    elif _is_local_program(**args):
+    if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
@@ -379,7 +377,7 @@ def select_stack(stack_name: str,
     args = locals()
     if _is_inline_program(**args):
         return _inline_source_stack_helper(stack_name, program, project_name, Stack.select, opts)  # type: ignore
-    elif _is_local_program(**args):
+    if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
@@ -417,7 +415,7 @@ def create_or_select_stack(stack_name: str,
     args = locals()
     if _is_inline_program(**args):
         return _inline_source_stack_helper(stack_name, program, project_name, Stack.create_or_select, opts)  # type: ignore
-    elif _is_local_program(**args):
+    if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.create_or_select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
@@ -431,7 +429,14 @@ def _inline_source_stack_helper(stack_name: str,
     workspace_options.program = program
 
     if not workspace_options.project_settings:
-        workspace_options.project_settings = default_project(project_name)
+        work_dir = workspace_options.work_dir
+        if work_dir:
+            try:
+                _load_project_settings(work_dir)
+            except FileNotFoundError:
+                workspace_options.project_settings = default_project(project_name)
+        else:
+            workspace_options.project_settings = default_project(project_name)
 
     ws = LocalWorkspace(**workspace_options.__dict__)
     return init_fn(stack_name, ws)
@@ -453,7 +458,7 @@ def _local_source_stack_helper(stack_name: str,
 
 
 def default_project(project_name: str) -> ProjectSettings:
-    return ProjectSettings(name=project_name, runtime="python")
+    return ProjectSettings(name=project_name, runtime="python", main=os.getcwd())
 
 
 def get_stack_settings_name(name: str) -> str:
@@ -471,3 +476,14 @@ def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionI
         raise InvalidVersionError(f"Minimum version requirement failed. The minimum CLI version requirement is "
                                   f"{min_version}, your current CLI version is {current_version}. "
                                   f"Please update the Pulumi CLI.")
+
+
+def _load_project_settings(work_dir: str) -> ProjectSettings:
+    for ext in _setting_extensions:
+        project_path = os.path.join(work_dir, f"Pulumi{ext}")
+        if not os.path.exists(project_path):
+            continue
+        with open(project_path, "r") as file:
+            settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
+            return ProjectSettings(**settings)
+    raise FileNotFoundError(f"failed to find project settings file in workdir: {work_dir}")

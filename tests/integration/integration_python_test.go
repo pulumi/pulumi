@@ -5,6 +5,7 @@ package ints
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,6 +16,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
 	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
@@ -337,6 +340,42 @@ func TestPythonPylint(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Test Python SDK codegen to ensure <Resource>Args and traditional keyword args work.
+func TestPythonResourceArgs(t *testing.T) {
+	testdir := filepath.Join("python", "resource_args")
+
+	// Generate example library from schema.
+	schemaBytes, err := os.ReadFile(filepath.Join(testdir, "schema.json"))
+	assert.NoError(t, err)
+	var spec schema.PackageSpec
+	assert.NoError(t, json.Unmarshal(schemaBytes, &spec))
+	pkg, err := schema.ImportSpec(spec, nil)
+	assert.NoError(t, err)
+	files, err := pygen.GeneratePackage("test", pkg, map[string][]byte{})
+	assert.NoError(t, err)
+	outdir := filepath.Join(testdir, "lib")
+	assert.NoError(t, os.RemoveAll(outdir))
+	for f, contents := range files {
+		outfile := filepath.Join(outdir, f)
+		assert.NoError(t, os.MkdirAll(filepath.Dir(outfile), 0755))
+		if outfile == filepath.Join(outdir, "setup.py") {
+			contents = []byte(strings.ReplaceAll(string(contents), "${VERSION}", "0.0.1"))
+		}
+		assert.NoError(t, os.WriteFile(outfile, contents, 0600))
+	}
+	assert.NoError(t, os.WriteFile(filepath.Join(outdir, "README.md"), []byte(""), 0600))
+
+	// Test the program.
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: testdir,
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+			filepath.Join(testdir, "lib"),
+		},
+		Quick: true,
+	})
+}
+
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
 	pathEnv, err := testComponentPathEnv()
@@ -388,6 +427,73 @@ func TestConstructPython(t *testing.T) {
 					}
 				}
 			}
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+// Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
+func TestConstructSlowPython(t *testing.T) {
+	pathEnv, err := testComponentSlowPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
+	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
+	// the Node.js dynamic provider plugin to load.
+	// When the underlying issue has been fixed, the use of this environment variable inside the integration
+	// test module should be removed.
+	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir: filepath.Join("construct_component_slow", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			if assert.Equal(t, 5, len(stackInfo.Deployment.Resources)) {
+				stackRes := stackInfo.Deployment.Resources[0]
+				assert.NotNil(t, stackRes)
+				assert.Equal(t, resource.RootStackType, stackRes.Type)
+				assert.Equal(t, "", string(stackRes.Parent))
+			}
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
+// Test remote component construction with prompt inputs.
+func TestConstructPlainPython(t *testing.T) {
+	pathEnv, err := testComponentPlainPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
+	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
+	// the Node.js dynamic provider plugin to load.
+	// When the underlying issue has been fixed, the use of this environment variable inside the integration
+	// test module should be removed.
+	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir: filepath.Join("construct_component_plain", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
 		},
 	}
 	integration.ProgramTest(t, opts)

@@ -38,6 +38,9 @@ class Server implements grpc.UntypedServiceImplementation {
     readonly engineAddr: string;
     readonly provider: Provider;
 
+    /** Queue of construct calls. */
+    constructQueue = Promise.resolve();
+
     constructor(engineAddr: string, provider: Provider) {
         this.engineAddr = engineAddr;
         this.provider = provider;
@@ -248,6 +251,19 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     public async construct(call: any, callback: any): Promise<void> {
+        // Serialize invocations of `construct` so that each call runs one after another, avoiding concurrent runs.
+        // We do this because `construct` has to modify global state to reset the SDK's runtime options.
+        // This is a short-term workaround to provide correctness, but likely isn't sustainable long-term due to the
+        // limits it places on parallelism. We will likely want to investigate if it's possible to run each invocation
+        // in its own context, possibly using Node's `createContext` API:
+        // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
+        const res = this.constructQueue.then(() => this.constructImpl(call, callback));
+        // tslint:disable:no-empty
+        this.constructQueue = res.catch(() => {});
+        return res;
+    }
+
+    async constructImpl(call: any, callback: any): Promise<void> {
         try {
             const req: any = call.request;
             const type = req.getType();
@@ -283,8 +299,15 @@ class Server implements grpc.UntypedServiceImplementation {
                 const deps = (inputDeps ? <resource.URN[]>inputDeps.getUrnsList() : [])
                     .map(depUrn => new resource.DependencyResource(depUrn));
                 const input = deserializedInputs[k];
-                inputs[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
-                    Promise.resolve(runtime.isRpcSecret(input)), Promise.resolve([]));
+                const isSecret = runtime.isRpcSecret(input);
+                if (!isSecret && deps.length === 0) {
+                    // If it's a prompt value, return it directly without wrapping it as an output.
+                    inputs[k] = input;
+                } else {
+                    // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
+                    inputs[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
+                        Promise.resolve(isSecret), Promise.resolve([]));
+                }
             }
 
             // Rebuild the resource options.
@@ -308,6 +331,7 @@ class Server implements grpc.UntypedServiceImplementation {
             };
 
             const result = await this.provider.construct(name, type, inputs, opts);
+
             const resp = new provproto.ConstructResponse();
 
             resp.setUrn(await output(result.urn).promise());
@@ -320,6 +344,9 @@ class Server implements grpc.UntypedServiceImplementation {
                 stateDependenciesMap.set(key, deps);
             }
             resp.setState(structproto.Struct.fromJavaScript(state));
+
+            // Wait for RPC operations to complete and disconnect.
+            await runtime.disconnect();
 
             callback(undefined, resp);
         } catch (e) {

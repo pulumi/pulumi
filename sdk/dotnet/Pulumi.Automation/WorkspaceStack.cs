@@ -147,15 +147,15 @@ namespace Pulumi.Automation
         /// </summary>
         /// <param name="key">The key to use for the config lookup.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public Task<ConfigValue> GetConfigValueAsync(string key, CancellationToken cancellationToken = default)
-            => this.Workspace.GetConfigValueAsync(this.Name, key, cancellationToken);
+        public Task<ConfigValue> GetConfigAsync(string key, CancellationToken cancellationToken = default)
+            => this.Workspace.GetConfigAsync(this.Name, key, cancellationToken);
 
         /// <summary>
         /// Returns the full config map associated with the stack in the Workspace.
         /// </summary>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(CancellationToken cancellationToken = default)
-            => this.Workspace.GetConfigAsync(this.Name, cancellationToken);
+        public Task<ImmutableDictionary<string, ConfigValue>> GetAllConfigAsync(CancellationToken cancellationToken = default)
+            => this.Workspace.GetAllConfigAsync(this.Name, cancellationToken);
 
         /// <summary>
         /// Sets the config key-value pair on the Stack in the associated Workspace.
@@ -163,32 +163,32 @@ namespace Pulumi.Automation
         /// <param name="key">The key to set.</param>
         /// <param name="value">The config value to set.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public Task SetConfigValueAsync(string key, ConfigValue value, CancellationToken cancellationToken = default)
-            => this.Workspace.SetConfigValueAsync(this.Name, key, value, cancellationToken);
+        public Task SetConfigAsync(string key, ConfigValue value, CancellationToken cancellationToken = default)
+            => this.Workspace.SetConfigAsync(this.Name, key, value, cancellationToken);
 
         /// <summary>
         /// Sets all specified config values on the stack in the associated Workspace.
         /// </summary>
         /// <param name="configMap">The map of config key-value pairs to set.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public Task SetConfigAsync(IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
-            => this.Workspace.SetConfigAsync(this.Name, configMap, cancellationToken);
+        public Task SetAllConfigAsync(IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default)
+            => this.Workspace.SetAllConfigAsync(this.Name, configMap, cancellationToken);
 
         /// <summary>
         /// Removes the specified config key from the Stack in the associated Workspace.
         /// </summary>
         /// <param name="key">The config key to remove.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public Task RemoveConfigValueAsync(string key, CancellationToken cancellationToken = default)
-            => this.Workspace.RemoveConfigValueAsync(this.Name, key, cancellationToken);
+        public Task RemoveConfigAsync(string key, CancellationToken cancellationToken = default)
+            => this.Workspace.RemoveConfigAsync(this.Name, key, cancellationToken);
 
         /// <summary>
         /// Removes the specified config keys from the Stack in the associated Workspace.
         /// </summary>
         /// <param name="keys">The config keys to remove.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public Task RemoveConfigAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
-            => this.Workspace.RemoveConfigAsync(this.Name, keys, cancellationToken);
+        public Task RemoveAllConfigAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default)
+            => this.Workspace.RemoveAllConfigAsync(this.Name, keys, cancellationToken);
 
         /// <summary>
         /// Gets and sets the config map used with the last update.
@@ -283,7 +283,7 @@ namespace Pulumi.Automation
                 if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
                     exceptionInfo.Throw();
 
-                var output = await this.GetOutputAsync(cancellationToken).ConfigureAwait(false);
+                var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
                 var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
                 return new UpResult(
                     upResult.StandardOutput,
@@ -530,7 +530,7 @@ namespace Pulumi.Automation
         /// <summary>
         /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
         /// </summary>
-        private async Task<ImmutableDictionary<string, OutputValue>> GetOutputAsync(CancellationToken cancellationToken)
+        public async Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
         {
             await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
 

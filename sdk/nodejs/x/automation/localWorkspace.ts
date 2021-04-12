@@ -186,7 +186,21 @@ export class LocalWorkspace implements Workspace {
         }
 
         if (!wsOpts.projectSettings) {
-            wsOpts.projectSettings = defaultProject(args.projectName);
+            if (!!wsOpts.workDir) {
+                try {
+                    // Try to load the project settings.
+                    loadProjectSettings(wsOpts.workDir);
+                } catch (e) {
+                    // If it failed to find the project settings file, set a default project.
+                    if (e.toString().includes("failed to find project settings")) {
+                        wsOpts.projectSettings = defaultProject(args.projectName);
+                    } else {
+                        throw e;
+                    }
+                }
+            } else {
+                wsOpts.projectSettings = defaultProject(args.projectName);
+            }
         }
 
         const ws = new LocalWorkspace(wsOpts);
@@ -234,17 +248,7 @@ export class LocalWorkspace implements Workspace {
      * A workspace can contain only a single project at a time.
      */
     async projectSettings(): Promise<ProjectSettings> {
-        for (const ext of settingsExtensions) {
-            const isJSON = ext === ".json";
-            const path = upath.joinSafe(this.workDir, `Pulumi${ext}`);
-            if (!fs.existsSync(path)) { continue; }
-            const contents = fs.readFileSync(path).toString();
-            if (isJSON) {
-                return JSON.parse(contents);
-            }
-            return yaml.safeLoad(contents) as ProjectSettings;
-        }
-        throw new Error(`failed to find project settings file in workdir: ${this.workDir}`);
+        return loadProjectSettings(this.workDir);
     }
     /**
      * Overwrites the settings object in the current project.
@@ -659,8 +663,22 @@ function getStackSettingsName(name: string): string {
 type StackInitializer = (name: string, workspace: Workspace) => Promise<Stack>;
 
 function defaultProject(projectName: string) {
-    const settings: ProjectSettings = { name: projectName, runtime: "nodejs" };
+    const settings: ProjectSettings = { name: projectName, runtime: "nodejs", main: process.cwd() };
     return settings;
+}
+
+function loadProjectSettings(workDir: string) {
+    for (const ext of settingsExtensions) {
+        const isJSON = ext === ".json";
+        const path = upath.joinSafe(workDir, `Pulumi${ext}`);
+        if (!fs.existsSync(path)) { continue; }
+        const contents = fs.readFileSync(path).toString();
+        if (isJSON) {
+            return JSON.parse(contents);
+        }
+        return yaml.safeLoad(contents) as ProjectSettings;
+    }
+    throw new Error(`failed to find project settings file in workdir: ${workDir}`);
 }
 
 /** @internal */

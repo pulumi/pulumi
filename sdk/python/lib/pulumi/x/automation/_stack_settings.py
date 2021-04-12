@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Mapping, Any
+from typing import Optional, Mapping, Any, Union, Dict
 
 
 class StackSettingsSecureConfigValue:
@@ -39,10 +39,10 @@ class StackSettings:
         self.encrypted_key = encrypted_key
         self.encryption_salt = encryption_salt
         if config:
-            stack_config = {}
+            stack_config: Dict[str, Union[str, StackSettingsSecureConfigValue]] = {}
             for key in config:
                 val = config[key]
-                if type(val) == str:
+                if isinstance(val, str):
                     stack_config[key] = val
                 elif "secure" in val:
                     stack_config[key] = StackSettingsSecureConfigValue(**val)

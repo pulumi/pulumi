@@ -118,7 +118,7 @@ class Stack(ComponentResource):
 
         # Now invoke the registration to begin creating this resource.
         name = '%s-%s' % (get_project(), get_stack())
-        super(Stack, self).__init__('pulumi:pulumi:Stack', name, None, None)
+        super().__init__('pulumi:pulumi:Stack', name, None, None)
 
         # Invoke the function while this stack is active and then register its outputs.
         self.outputs = dict()
@@ -169,10 +169,11 @@ def massage(attr: Any, seen: List[Any]):
     # make sure this is a popo.
     if isinstance(attr, dict):
         result = {}
-        for key, value in attr.items():
+        # Don't use attr.items() here, as it will error in the case of outputs with an `items` property.
+        for key in attr:
             # ignore private keys
             if not key.startswith("_"):
-                result[key] = massage(value, seen)
+                result[key] = massage(attr[key], seen)
 
         return result
 
