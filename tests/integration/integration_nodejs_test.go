@@ -669,7 +669,7 @@ func TestConstructNode(t *testing.T) {
 }
 
 func optsForConstructChecks(t *testing.T, pathEnv string) *integration.ProgramTestOptions {
-	runtimeVenv, err := pulumiRuntimeVirtualEnv()
+	runtimeVenv, err := pulumiRuntimeVirtualEnv(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 		return nil

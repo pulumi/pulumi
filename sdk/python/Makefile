@@ -34,7 +34,6 @@ install_package:: build_package
 	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
 	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
 	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
-	pipenv --venv > "$(PULUMI_BIN)/pulumi-buildtime-venv.conf"
 
 install_plugin:: build_plugin
 	GOBIN=$(PULUMI_BIN) go install \

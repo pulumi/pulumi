@@ -58,7 +58,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
-	cd tests && PULUMI_BIN=$(PULUMI_BIN) $(GO_TEST) -p=1 ${TESTS_PKGS}
+	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
 .PHONY: publish_tgz
 publish_tgz:
