@@ -1,4 +1,4 @@
-secretsProvider: abc
+secretsprovider: abc
 config:
     plain: plain
     secure:
