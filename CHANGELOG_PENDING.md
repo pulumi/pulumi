@@ -41,6 +41,9 @@
 - [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
   [#6699](https://github.com/pulumi/pulumi/pull/6699)
 
+- [automation/dotnet] Implement (Import,Export)StackAsync methods on LocalWorkspace and WorkspaceStack and expose StackDeployment helper class.
+  [#6728](https://github.com/pulumi/pulumi/pull/6728)
+
 - [sdk/nodejs] Allow prompt values in `construct` for multi-lang components.
   [#6522](https://github.com/pulumi/pulumi/pull/6522)
 

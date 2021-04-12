@@ -608,6 +608,31 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
+        public override async Task<StackDeployment> ExportStackAsync(string stackName, CancellationToken cancellationToken = default)
+        {
+            var commandResult = await this.RunCommandAsync(
+                new [] { "stack", "export", "--stack", stackName, "--show-secrets" },
+                cancellationToken).ConfigureAwait(false);
+            return StackDeployment.FromJsonString(commandResult.StandardOutput);
+        }
+
+        /// <inheritdoc/>
+        public override async Task ImportStackAsync(string stackName, StackDeployment state, CancellationToken cancellationToken = default)
+        {
+            var tempFileName = Path.GetTempFileName();
+            try
+            {
+                File.WriteAllText(tempFileName, state.Json.GetRawText());
+                await this.RunCommandAsync(new [] { "stack", "import", "--file", tempFileName },
+                                           cancellationToken).ConfigureAwait(false);
+            }
+            finally
+            {
+                File.Delete(tempFileName);
+            }
+        }
+
+        /// <inheritdoc/>
         public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
             => this.RunCommandAsync(new[] { "plugin", "install", kind.ToString().ToLower(), name, version }, cancellationToken);
 
