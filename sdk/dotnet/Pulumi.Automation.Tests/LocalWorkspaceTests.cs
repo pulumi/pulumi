@@ -156,7 +156,10 @@ namespace Pulumi.Automation.Tests
         public async Task ImportExportStack()
         {
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
-            var projectSettings = new ProjectSettings("import_export_stack_test", ProjectRuntimeName.NodeJS);
+            var projectSettings = new ProjectSettings("testproj", ProjectRuntimeName.Go)
+            {
+                Description = "A minimal Go Pulumi program"
+            };
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
