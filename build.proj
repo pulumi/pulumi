@@ -67,7 +67,7 @@
           WorkingDirectory="$(DotNetSdkDirectory)" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet"
           WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <Target Name="DotNetInstallPlugin">
@@ -77,7 +77,7 @@
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet"
       EnvironmentVariables="GOBIN=$(PulumiBin)"
       WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <Target Name="CopyNugetPackages">
@@ -100,7 +100,7 @@
     </Exec>
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go"
         WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <Target Name="GoInstallPlugin">
@@ -110,7 +110,7 @@
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go"
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <!-- This is where we build and install the NodeJS SDK -->
@@ -145,7 +145,7 @@
           DestinationFolder="$(NodeJSSdkDirectory)\bin\tests\runtime\langhost\cases" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs"
           WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <Target Name="NodeJSInstallPlugin">
@@ -160,7 +160,7 @@
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs"
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <Target Name="CopyNodeJSPackages">
@@ -217,9 +217,12 @@
           DestinationFolder="$(PythonSdkDirectory)\env\src" />
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
+    <!-- Install pulumi SDK into the venv managed by pipenv. -->
+    <Exec Command="pipenv install -e ."
+          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python"
     WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <Target Name="PythonInstallPlugin">
@@ -239,7 +242,7 @@
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python"
           EnvironmentVariables="GOBIN=$(PulumiBin)"
           WorkingDirectory="$(SdkDirectory)"/>
-    
+
   </Target>
 
   <!-- Install the Pulumi SDK -->
@@ -250,7 +253,7 @@
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/pkg/v2/version.Version=v$(Version)&quot; github.com/pulumi/pulumi/pkg/v2/cmd/pulumi"
        EnvironmentVariables="GOBIN=$(PulumiBin)"
        WorkingDirectory="$(PkgDirectory)"/>
-    
+
   </Target>
 
   <!-- Build -->
