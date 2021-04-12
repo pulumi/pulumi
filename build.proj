@@ -218,7 +218,7 @@
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <!-- Install pulumi SDK into the venv managed by pipenv. -->
-    <Exec Command="pipenv install -e ."
+    <Exec Command="pipenv run pip install -e ."
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python"
     WorkingDirectory="$(SdkDirectory)"/>
