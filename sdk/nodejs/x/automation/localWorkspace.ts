@@ -296,7 +296,7 @@ export class LocalWorkspace implements Workspace {
             stackSettings = yaml.safeLoad(contents) as StackSettings;
 
             // Transform the serialized representation back to what we expect.
-            for (const key of StackSettingsSerDeKeys) {
+            for (const key of stackSettingsSerDeKeys) {
                 if (stackSettings.hasOwnProperty(key[0])) {
                     stackSettings[key[1]] = stackSettings[key[0]];
                     delete stackSettings[key[0]];
@@ -328,7 +328,7 @@ export class LocalWorkspace implements Workspace {
         let contents;
 
         // Transform the keys to the serialized representation that we expect.
-        for (const key of StackSettingsSerDeKeys) {
+        for (const key of stackSettingsSerDeKeys) {
             if (serializeSettings.hasOwnProperty(key[1])) {
                 serializeSettings[key[0]] = serializeSettings[key[1]];
                 delete serializeSettings[key[1]];
