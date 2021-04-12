@@ -35,3 +35,10 @@ export type StackSettingsConfigValue = string | StackSettingsSecureConfigValue |
 export interface StackSettingsSecureConfigValue {
     secure: string;
 }
+
+/** @internal */
+export const stackSettingsSerDeKeys = [
+    ["secretsprovider", "secretsProvider"],
+    ["encryptedkey", "encryptedKey"],
+    ["encryptionsalt", "encryptionSalt"],
+];
