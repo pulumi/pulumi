@@ -597,6 +597,24 @@ namespace Pulumi.Automation
             return list.ToImmutableList();
         }
 
+        /// <summary>
+        /// Exports the deployment state of the stack.
+        /// <para/>
+        /// This can be combined with ImportStackAsync to edit a
+        /// stack's state (such as recovery from failed deployments).
+        /// </summary>
+        public Task<StackDeployment> ExportStackAsync(CancellationToken cancellationToken = default)
+            => this.Workspace.ExportStackAsync(this.Name, cancellationToken);
+
+        /// <summary>
+        /// Imports the specified deployment state into a pre-existing stack.
+        /// <para/>
+        /// This can be combined with ExportStackAsync to edit a
+        /// stack's state (such as recovery from failed deployments).
+        /// </summary>
+        public Task ImportStackAsync(StackDeployment state, CancellationToken cancellationToken = default)
+            => this.Workspace.ImportStackAsync(this.Name, state, cancellationToken);
+
         public async Task<UpdateSummary?> GetInfoAsync(CancellationToken cancellationToken = default)
         {
             var history = await this.GetHistoryAsync(
