@@ -72,3 +72,6 @@
 
 - [automation/dotnet] Fix GetConfigValueAsync failing to deserialize
   [#6698](https://github.com/pulumi/pulumi/pull/6698)
+
+- [automation/nodejs] Fix serialization/deserialization for StackSettings
+  [#6754](https://github.com/pulumi/pulumi/pull/6754)
