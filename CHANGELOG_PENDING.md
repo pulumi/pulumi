@@ -47,6 +47,9 @@
 - [sdk/nodejs] Allow prompt values in `construct` for multi-lang components.
   [#6522](https://github.com/pulumi/pulumi/pull/6522)
 
+- [automation/dotnet] Fix (de)serialization of StackSettings.
+  [#6752](https://github.com/pulumi/pulumi/pull/6752)
+
 ### Bug Fixes
 
 - [cli] Handle non-existent creds file in `pulumi logout --all`
