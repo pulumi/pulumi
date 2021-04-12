@@ -23,7 +23,7 @@ import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
 import { Stack } from "./stack";
-import { StackSettings } from "./stackSettings";
+import { StackSettings, StackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
 /**
@@ -289,10 +289,21 @@ export class LocalWorkspace implements Workspace {
             const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${ext}`);
             if (!fs.existsSync(path)) { continue; }
             const contents = fs.readFileSync(path).toString();
+            let stackSettings;
             if (isJSON) {
-                return JSON.parse(contents);
+                stackSettings = JSON.parse(contents) as any;
             }
-            return yaml.safeLoad(contents) as StackSettings;
+            stackSettings = yaml.safeLoad(contents) as any;
+
+            // Transform the serialized representation back to what we expect.
+            for (const key of StackSettingsSerDeKeys) {
+                if (stackSettings.hasOwnProperty(key[0])) {
+                    stackSettings[key[1]] = stackSettings[key[0]];
+                    delete stackSettings[key[0]];
+                }
+            }
+
+            return stackSettings as StackSettings;
         }
         throw new Error(`failed to find stack settings file in workdir: ${this.workDir}`);
     }
@@ -314,12 +325,22 @@ export class LocalWorkspace implements Workspace {
             }
         }
         const path = upath.joinSafe(this.workDir, `Pulumi.${stackSettingsName}${foundExt}`);
+        let serializeSettings = settings as any;
         let contents;
+
+        // Transform the keys to the serialized representation that we expect.
+        for (const key of StackSettingsSerDeKeys) {
+            if (serializeSettings.hasOwnProperty(key[1])) {
+                serializeSettings[key[0]] = serializeSettings[key[1]];
+                delete serializeSettings[key[1]];
+            }
+        }
+
         if (foundExt === ".json") {
-            contents = JSON.stringify(settings, null, 4);
+            contents = JSON.stringify(serializeSettings, null, 4);
         }
         else {
-            contents = yaml.safeDump(settings, { skipInvalid: true });
+            contents = yaml.safeDump(serializeSettings, { skipInvalid: true });
         }
         return fs.writeFileSync(path, contents);
     }
