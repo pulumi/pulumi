@@ -2,7 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Testing;
 
@@ -33,8 +33,8 @@ namespace Pulumi
     /// </summary>
     public sealed partial class Deployment : IDeploymentInternal
     {
-        private static DeploymentInstance? _instance;
         private static readonly object _instanceLock = new object();
+        private static AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
 
         /// <summary>
         /// The current running deployment instance. This is only available from inside the function
@@ -42,8 +42,19 @@ namespace Pulumi
         /// </summary>
         public static DeploymentInstance Instance
         {
-            get => _instance ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
-            internal set => _instance = value;
+            get => _instance.Value ?? throw new InvalidOperationException("Trying to acquire Deployment.Instance before 'Run' was called.");
+            internal set
+            {
+                lock (_instanceLock)
+                {
+                    if (_instance.Value != null)
+                    {
+                        throw new InvalidOperationException("Deployment.Instance should only be set once at the beginning of a 'Run' call.");
+                    }
+
+                    _instance.Value = value;
+                }
+            }
         }
 
         internal static IDeploymentInternal InternalInstance
@@ -111,10 +122,13 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// This constructor is called from <see cref="TestAsync{TStack}"/> with
-        /// a mocked monitor and dummy values for project and stack.
+        /// This constructor is called from <see cref="TestAsync(IMocks, Func{IRunner, Task{int}}, TestOptions?)"/>
+        /// with a mocked monitor and dummy values for project and stack.
+        /// <para/>
+        /// This constructor is also used in deployment tests in order to
+        /// instantiate mock deployments.
         /// </summary>
-        private Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
+        internal Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";

@@ -112,32 +112,20 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    // Try for up to 10s to start tailing the file, invoking the callback once per line.
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
-        let n = 0;
         const eventLogTail = new TailFile(logPath, { startPos: 0 });
+        await eventLogTail.start();
+        eventLogTail
+            .on("tail_error", (err) => {
+                throw err;
+            })
+            .pipe(split2())
+            .on("data", (line: string) => {
+                const event: EngineEvent = JSON.parse(line);
+                callback(event);
+            });
 
-        while (true) {
-            try {
-                await eventLogTail.start();
-                eventLogTail
-                    .on("tail_error", (err) => {
-                        throw err;
-                    })
-                    .pipe(split2())
-                    .on("data", (line: string) => {
-                        const event: EngineEvent = JSON.parse(line);
-                        callback(event);
-                    });
-
-                return eventLogTail;
-            } catch (err) {
-                if (n++ > 100) {
-                    throw err;
-                }
-                await delay(100);
-            }
-        }
+        return eventLogTail;
     }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -786,7 +774,10 @@ const delay = (duration: number) => new Promise(resolve => setTimeout(resolve, d
 
 const createLogFile = (command: string) => {
     const logDir = fs.mkdtempSync(upath.joinSafe(os.tmpdir(), `automation-logs-${command}-`));
-    return upath.joinSafe(logDir, "eventlog.txt");
+    const logFile = upath.joinSafe(logDir, "eventlog.txt");
+    // just open/close the file to make sure it exists when we start polling.
+    fs.closeSync(fs.openSync(logFile, "w"));
+    return logFile;
 };
 
 const cleanUp = async (tail?: TailFile, logFile?: string) => {

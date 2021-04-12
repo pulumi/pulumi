@@ -121,14 +121,14 @@ namespace Pulumi.Automation
         /// <param name="stackName">The name of the stack to read config from.</param>
         /// <param name="key">The key to use for the config lookup.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task<ConfigValue> GetConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default);
+        public abstract Task<ConfigValue> GetConfigAsync(string stackName, string key, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Returns the config map for the specified stack name, scoped to the current Workspace.
         /// </summary>
         /// <param name="stackName">The name of the stack to read config from.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task<ImmutableDictionary<string, ConfigValue>> GetConfigAsync(string stackName, CancellationToken cancellationToken = default);
+        public abstract Task<ImmutableDictionary<string, ConfigValue>> GetAllConfigAsync(string stackName, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sets the specified key-value pair in the provided stack's config.
@@ -137,7 +137,7 @@ namespace Pulumi.Automation
         /// <param name="key">The config key to set.</param>
         /// <param name="value">The config value to set.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task SetConfigValueAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default);
+        public abstract Task SetConfigAsync(string stackName, string key, ConfigValue value, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Sets all values in the provided config map for the specified stack name.
@@ -145,7 +145,7 @@ namespace Pulumi.Automation
         /// <param name="stackName">The name of the stack to operate on.</param>
         /// <param name="configMap">The config map to upsert against the existing config.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task SetConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default);
+        public abstract Task SetAllConfigAsync(string stackName, IDictionary<string, ConfigValue> configMap, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes the specified key-value pair from the provided stack's config.
@@ -153,7 +153,7 @@ namespace Pulumi.Automation
         /// <param name="stackName">The name of the stack to operate on.</param>
         /// <param name="key">The config key to remove.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task RemoveConfigValueAsync(string stackName, string key, CancellationToken cancellationToken = default);
+        public abstract Task RemoveConfigAsync(string stackName, string key, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes all values in the provided key collection from the config map for the specified stack name.
@@ -161,7 +161,7 @@ namespace Pulumi.Automation
         /// <param name="stackName">The name of the stack to operate on.</param>
         /// <param name="keys">The collection of keys to remove from the underlying config map.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task RemoveConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
+        public abstract Task RemoveAllConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Gets and sets the config map used with the last update for the stack matching the specified stack name.
