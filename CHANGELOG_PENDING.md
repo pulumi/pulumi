@@ -1,5 +1,20 @@
 ### Breaking
 
+- [automation/dotnet] Rename (Get,Set,Remove)Config(Value)
+  [#6731](https://github.com/pulumi/pulumi/pull/6731)
+
+  The following methods on Workspace and WorkspaceStack classes have
+  been renamed. Please update your code (before -> after):
+
+    * GetConfigValue -> GetConfig
+    * SetConfigValue -> SetConfig
+    * RemoveConfigValue -> RemoveConfig
+    * GetConfig -> GetAllConfig
+    * SetConfig -> SetAllConfig
+    * RemoveConfig -> RemoveAllConfig
+
+  This change was made to align with the other Pulumi language SDKs.
+
 ### Improvements
 
 - [cli] Add option to print absolute rather than relative dates in stack history
@@ -7,9 +22,6 @@
 
 - [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
-
-- [automation/dotnet] Rename (Get,Set,Remove)Config(Value) methods to match other SDKs
-  [#6731](https://github.com/pulumi/pulumi/pull/6731)
 
 - [cli] Enable absolute and relative parent paths for pulumi main
   [#6734](https://github.com/pulumi/pulumi/pull/6734)
