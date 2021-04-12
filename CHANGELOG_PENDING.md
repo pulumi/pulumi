@@ -17,6 +17,9 @@
 
 ### Improvements
 
+- [sdk/nodejs] Add support for multiple V8 VM contexts in closure serialization.
+  [#6648](https://github.com/pulumi/pulumi/pull/6648)
+
 - [cli] Add option to print absolute rather than relative dates in stack history
   [#6742](https://github.com/pulumi/pulumi/pull/6742)
 
