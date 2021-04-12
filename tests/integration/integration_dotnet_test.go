@@ -279,6 +279,35 @@ func TestConstructSlowDotnet(t *testing.T) {
 	integration.ProgramTest(t, opts)
 }
 
+// Test remote component construction with prompt inputs.
+func TestConstructPlainDotnet(t *testing.T) {
+	pathEnv, err := testComponentPlainPathEnv()
+	if err != nil {
+		t.Fatalf("failed to build test component PATH: %v", err)
+	}
+
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
+	// module to run `yarn install && yarn link @pulumi/pulumi` in the .NET program's directory, allowing
+	// the Node.js dynamic provider plugin to load.
+	// When the underlying issue has been fixed, the use of this environment variable inside the integration
+	// test module should be removed.
+	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+
+	var opts *integration.ProgramTestOptions
+	opts = &integration.ProgramTestOptions{
+		Env:          []string{pathEnv, testYarnLinkPulumiEnv},
+		Dir:          filepath.Join("construct_component_plain", "dotnet"),
+		Dependencies: []string{"Pulumi"},
+		Quick:        true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotNil(t, stackInfo.Deployment)
+			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
+		},
+	}
+	integration.ProgramTest(t, opts)
+}
+
 func TestGetResourceDotnet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies:             []string{"Pulumi"},
