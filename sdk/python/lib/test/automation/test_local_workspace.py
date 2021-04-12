@@ -99,6 +99,8 @@ class TestLocalWorkspace(unittest.TestCase):
             ws = LocalWorkspace(work_dir=test_path("data", ext))
             settings = ws.stack_settings("dev")
             self.assertEqual(settings.secrets_provider, "abc")
+            self.assertEqual(settings.encryption_salt, "blahblah")
+            self.assertEqual(settings.encrypted_key, "thisiskey")
             self.assertEqual(settings.config["plain"], "plain")
             self.assertEqual(settings.config["secure"].secure, "secret")
 
