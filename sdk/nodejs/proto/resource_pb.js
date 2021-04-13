@@ -1283,7 +1283,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     deletebeforereplacedefined: jspb.Message.getBooleanFieldWithDefault(msg, 18, false),
     supportspartialvalues: jspb.Message.getBooleanFieldWithDefault(msg, 19, false),
     remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false)
+    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
+    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : []
   };
 
   if (includeInstance) {
@@ -1407,6 +1408,12 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
     case 21:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptresources(value);
+      break;
+    case 22:
+      var value = msg.getProvidersMap();
+      reader.readMessage(value, function(message, reader) {
+        jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
+         });
       break;
     default:
       reader.skipField();
@@ -1582,6 +1589,10 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
       21,
       f
     );
+  }
+  f = message.getProvidersMap(true);
+  if (f && f.getLength() > 0) {
+    f.serializeBinary(22, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
   }
 };
 
@@ -2426,6 +2437,28 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getAcceptresources = function(
 proto.pulumirpc.RegisterResourceRequest.prototype.setAcceptresources = function(value) {
   return jspb.Message.setProto3BooleanField(this, 21, value);
 };
+
+
+/**
+ * map<string, string> providers = 22;
+ * @param {boolean=} opt_noLazyCreate Do not create the map if
+ * empty, instead returning `undefined`
+ * @return {!jspb.Map<string,string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getProvidersMap = function(opt_noLazyCreate) {
+  return /** @type {!jspb.Map<string,string>} */ (
+      jspb.Message.getMapField(this, 22, opt_noLazyCreate,
+      null));
+};
+
+
+/**
+ * Clears values from the map. The map will be non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearProvidersMap = function() {
+  this.getProvidersMap().clear();
+  return this;};
 
 
 
