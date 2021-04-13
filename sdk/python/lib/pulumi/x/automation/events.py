@@ -429,7 +429,7 @@ class ResourcePreEvent(BaseEvent):
     """
     def __init__(self,
                  metadata: StepEventMetadata,
-                 planning: Optional[bool]):
+                 planning: Optional[bool] = None):
         self.metadata = metadata
         self.planning = planning
 
@@ -444,7 +444,7 @@ class ResOutputsEvent(BaseEvent):
     """
     def __init__(self,
                  metadata: StepEventMetadata,
-                 planning: Optional[bool]):
+                 planning: Optional[bool] = None):
         self.metadata = metadata
         self.planning = planning
 

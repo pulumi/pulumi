@@ -25,9 +25,11 @@ from pulumi.x.automation import (
     CommandError,
     ConfigMap,
     ConfigValue,
+    EngineEvent,
     InvalidVersionError,
     LocalWorkspace,
     LocalWorkspaceOptions,
+    OpType,
     PluginInfo,
     ProjectSettings,
     StackSummary,
@@ -310,8 +312,8 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(up_res.summary.result, "succeeded")
 
         # pulumi preview
-        stack.preview()
-        # TODO: update assertions when we have structured output
+        preview_result = stack.preview()
+        self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
 
         # pulumi refresh
         refresh_res = stack.refresh()
@@ -351,8 +353,8 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(up_res.summary.result, "succeeded")
 
             # pulumi preview
-            stack.preview()
-            # TODO: update assertions when we have structured output
+            preview_result = stack.preview()
+            self.assertEqual(preview_result.change_summary.get(OpType.SAME), 1)
 
             # pulumi refresh
             refresh_res = stack.refresh()
@@ -376,7 +378,7 @@ class TestLocalWorkspace(unittest.TestCase):
             "buzz": ConfigValue(value="secret", secret=True)
         }
 
-        def assertOutputs(outputs):
+        def assert_outputs(outputs):
             self.assertEqual(len(outputs), 3)
             self.assertEqual(outputs["exp_static"].value, "foo")
             self.assertFalse(outputs["exp_static"].secret)
@@ -395,10 +397,10 @@ class TestLocalWorkspace(unittest.TestCase):
             up_res = stack.up()
             self.assertEqual(up_res.summary.kind, "update")
             self.assertEqual(up_res.summary.result, "succeeded")
-            assertOutputs(up_res.outputs)
+            assert_outputs(up_res.outputs)
 
             outputs_after_up = stack.outputs()
-            assertOutputs(outputs_after_up)
+            assert_outputs(outputs_after_up)
 
             # pulumi destroy
             destroy_res = stack.destroy()
@@ -443,6 +445,54 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(project_settings.name, "correct_project")
         self.assertEqual(project_settings.description, "This is a description")
         stack.workspace.remove_stack(stack_name)
+
+    def test_structured_events(self):
+        stack_name = stack_namer()
+        project_name = "structured_events"
+        stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
+
+        stack_config: ConfigMap = {
+            "bar": ConfigValue(value="abc"),
+            "buzz": ConfigValue(value="secret", secret=True)
+        }
+
+        try:
+            stack.set_all_config(stack_config)
+
+            # can't mutate a bool from the callback, so use a single-item list
+            seen_summary_event = [False]
+
+            def find_summary_event(event: EngineEvent):
+                if event.summary_event:
+                    seen_summary_event[0] = True
+
+            # pulumi up
+            up_res = stack.up(on_event=find_summary_event)
+            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `up`")
+            self.assertEqual(up_res.summary.kind, "update")
+            self.assertEqual(up_res.summary.result, "succeeded")
+
+            # pulumi preview
+            seen_summary_event[0] = False
+            pre_res = stack.preview(on_event=find_summary_event)
+            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `preview`")
+            self.assertEqual(pre_res.change_summary.get(OpType.SAME), 1)
+
+            # pulumi refresh
+            seen_summary_event[0] = False
+            refresh_res = stack.refresh(on_event=find_summary_event)
+            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `refresh`")
+            self.assertEqual(refresh_res.summary.kind, "refresh")
+            self.assertEqual(refresh_res.summary.result, "succeeded")
+
+            # pulumi destroy
+            seen_summary_event[0] = False
+            destroy_res = stack.destroy(on_event=find_summary_event)
+            self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `destroy`")
+            self.assertEqual(destroy_res.summary.kind, "destroy")
+            self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
 
 
 def pulumi_program():

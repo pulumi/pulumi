@@ -111,6 +111,25 @@ from .errors import (
     InvalidVersionError
 )
 
+from .events import (
+    CancelEvent,
+    DiagnosticEvent,
+    DiffKind,
+    EngineEvent,
+    PolicyEvent,
+    PreludeEvent,
+    PropertyDiff,
+    ResOutputsEvent,
+    ResourcePreEvent,
+    ResOpFailedEvent,
+    StdoutEngineEvent,
+    StepEventStateMetadata,
+    StepEventMetadata,
+    SummaryEvent,
+    OpMap,
+    OpType
+)
+
 from ._local_workspace import (
     LocalWorkspace,
     LocalWorkspaceOptions,
@@ -166,6 +185,24 @@ __all__ = [
     "RuntimeError",
     "CompilationError",
     "InvalidVersionError",
+
+    # events
+    "CancelEvent",
+    "DiagnosticEvent",
+    "DiffKind",
+    "EngineEvent",
+    "PolicyEvent",
+    "PreludeEvent",
+    "PropertyDiff",
+    "ResOutputsEvent",
+    "ResourcePreEvent",
+    "ResOpFailedEvent",
+    "StdoutEngineEvent",
+    "StepEventStateMetadata",
+    "StepEventMetadata",
+    "SummaryEvent",
+    "OpType",
+    "OpMap",
 
     # _local_workspace
     "LocalWorkspace",
