@@ -293,7 +293,7 @@ namespace Pulumi.Automation.Tests
         {
             var stackName = $"{RandomStackName()}";
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
-            using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
+           using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
                 EnvironmentVariables = new Dictionary<string, string?>()
                 {
@@ -995,6 +995,60 @@ namespace Pulumi.Automation.Tests
                 Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
                 Assert.Equal(value, expSecretValue!.Value);
                 Assert.True(expSecretValue.IsSecret);
+            }
+        }
+
+        [Fact]
+        public async Task WorkspaceStackSupportsCancel()
+        {
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                WorkDir = workingDir
+            });
+            var stackName = "teststack";
+            var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+            try
+            {
+                await stack.UpAsync();
+
+                // Race destroy and cancel. We do not know for sure
+                // which one will win.
+                var destroyTask = stack.DestroyAsync();
+
+                // Empirically 1s delay makes cancel task win
+                // sometimes. YMMV.
+                await Task.Delay(1000);
+
+                var cancelTask = stack.CancelAsync();
+
+                try
+                {
+                    Task.WaitAll(new Task[] { destroyTask, cancelTask });
+                }
+                catch (AggregateException)
+                {
+                }
+
+                if (destroyTask.IsFaulted && !cancelTask.IsFaulted)
+                {
+                    // This is what we want to happen at least
+                    // sometimes to test Cancel functionality.
+                }
+                else if (cancelTask.IsFaulted && !destroyTask.IsFaulted)
+                {
+                    // This may happen if destroyTask wins the race.
+                }
+                else
+                {
+                    // This should not happen.
+                    Assert.True(destroyTask.IsFaulted, "destroyTask must fail");
+                    Assert.True(!cancelTask.IsFaulted, "cancelTask must not fail");
+                }
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
             }
         }
 
