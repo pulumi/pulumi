@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@ import asyncio
 import os
 import traceback
 
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast, Mapping
 from google.protobuf import struct_pb2
 import grpc
 
@@ -27,7 +27,7 @@ from .settings import handle_grpc_error
 from .. import _types
 
 if TYPE_CHECKING:
-    from .. import Resource, ResourceOptions, CustomResource, Inputs, Output
+    from .. import Resource, ResourceOptions, CustomResource, Inputs, Output, ProviderResource
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -55,6 +55,11 @@ class ResourceResolverOperations(NamedTuple):
     An optional reference to a provider that should be used for this resource's CRUD operations.
     """
 
+    provider_refs: Dict[str, Optional[str]]
+    """
+    An optional dict of references to providers that should be used for this resource's CRUD operations.
+    """
+
     property_dependencies: Dict[str, List[Optional[str]]]
     """
     A map from property name to the URNs of the resources the property depends on.
@@ -71,6 +76,7 @@ class ResourceResolverOperations(NamedTuple):
 async def prepare_resource(res: 'Resource',
                            ty: str,
                            custom: bool,
+                           remote: bool,
                            props: 'Inputs',
                            opts: Optional['ResourceOptions'],
                            typ: Optional[type] = None) -> ResourceResolverOperations:
@@ -115,6 +121,19 @@ async def prepare_resource(res: 'Resource',
         provider_id = await provider.id.future() or rpc.UNKNOWN
         provider_ref = f"{provider_urn}::{provider_id}"
 
+    # For remote resources, merge any provider opts into a single dict, and then create a new dict with all of the
+    # resolved provider refs.
+    provider_refs: Dict[str, Optional[str]] = {}
+    if remote and opts is not None:
+        providers = convert_providers(opts.provider, opts.providers)
+        for name, provider in providers.items():
+            # If we were given providers, wait for them to resolve and construct provider references from them.
+            # A provider reference is a well-known string (two ::-separated values) that the engine interprets.
+            urn = await provider.urn.future()
+            id_ = await provider.id.future() or rpc.UNKNOWN
+            ref = f"{urn}::{id_}"
+            provider_refs[name] = ref
+
     dependencies = set(explicit_urn_dependencies)
     property_dependencies: Dict[str, List[Optional[str]]] = {}
     for key, deps in property_dependencies_resources.items():
@@ -141,6 +160,7 @@ async def prepare_resource(res: 'Resource',
         serialized_props,
         dependencies,
         provider_ref,
+        provider_refs,
         property_dependencies,
         aliases,
     )
@@ -195,7 +215,7 @@ def get_resource(res: 'Resource',
 
     async def do_get():
         try:
-            resolver = await prepare_resource(res, ty, custom, props, None, typ)
+            resolver = await prepare_resource(res, ty, custom, False, props, None, typ)
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
@@ -309,7 +329,7 @@ def read_resource(res: 'CustomResource',
     async def do_read():
         try:
             log.debug(f"preparing read: ty={ty}, name={name}, id={opts.id}")
-            resolver = await prepare_resource(res, ty, True, props, opts, typ)
+            resolver = await prepare_resource(res, ty, True, False, props, opts, typ)
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
             # dependencies returned to us from "serialize_property" (the second argument). This is
@@ -365,7 +385,7 @@ def read_resource(res: 'CustomResource',
 
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
-        resolve_id(resolved_id, True, False, None) # Read IDs are always known.
+        resolve_id(resolved_id, True, False, None)  # Read IDs are always known.
         rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers,
                             transform_using_type_metadata)
 
@@ -415,7 +435,7 @@ def register_resource(res: 'Resource',
     async def do_register():
         try:
             log.debug(f"preparing resource registration: ty={ty}, name={name}")
-            resolver = await prepare_resource(res, ty, custom, props, opts, typ)
+            resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
             property_dependencies = {}
@@ -458,6 +478,7 @@ def register_resource(res: 'Resource',
                 object=resolver.serialized_props,
                 protect=opts.protect,
                 provider=resolver.provider_ref,
+                providers=resolver.provider_refs,
                 dependencies=resolver.dependencies,
                 propertyDependencies=property_dependencies,
                 deleteBeforeReplace=opts.delete_before_replace,
@@ -576,3 +597,24 @@ class RegisterResponse:
         self.id = id
         self.object = object
         self.propertyDependencies = propertyDependencies
+
+
+# Merge all providers opts (opts.provider and both list and dict forms of opts.providers) into a single dict.
+def convert_providers(
+        provider: Optional['ProviderResource'],
+        providers: Optional[Union[Mapping[str, 'ProviderResource'],
+                                  List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
+    if provider is not None:
+        return convert_providers(None, [provider])
+
+    if providers is None:
+        return {}
+
+    if not isinstance(providers, list):
+        return providers
+
+    result = {}
+    for p in providers:
+        result[p.package] = p
+
+    return result

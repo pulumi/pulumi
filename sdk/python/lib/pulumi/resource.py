@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,8 @@ from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING,
 from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
-from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource
+from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource, \
+    convert_providers
 from .runtime.settings import get_root_resource
 
 if TYPE_CHECKING:
@@ -724,7 +725,7 @@ class Resource:
                     [pkg, _, _] = type_components
                     self._providers = {**self._providers, pkg: provider}
         else:
-            providers = self._convert_providers(opts.provider, opts.providers)
+            providers = convert_providers(opts.provider, opts.providers)
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
@@ -757,22 +758,6 @@ class Resource:
         deployments.
         """
         return self.__dict__["urn"]
-
-    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
-        if provider is not None:
-            return self._convert_providers(None, [provider])
-
-        if providers is None:
-            return {}
-
-        if not isinstance(providers, list):
-            return providers
-
-        result = {}
-        for p in providers:
-            result[p.package] = p
-
-        return result
 
     def translate_output_property(self, prop: str) -> str:
         """
