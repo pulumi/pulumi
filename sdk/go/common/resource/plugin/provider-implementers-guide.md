@@ -555,49 +555,56 @@ None.
 
 ## Component Resource Lifecycle
 
-- user-level programming model
+- TODO: user-level programming model
 
 ### Construct
 
-- brief, parameters, results, etc.
+- TODO: brief, parameters, results, etc.
 
 ## Provider Functions
 
 ### Invoke
 
+- TODO
+
 ### StreamInvoke
+
+- TODO
 
 ## CLI Scenarios
 
-- preview
-- update
-- import
-- refresh
-- destroy
+- TODO:
+	- preview
+	- update
+	- import
+	- refresh
+	- destroy
 
 ### Preview
 
-- check
-- diff
-- create/update preview, read operation
+- TODO:
+	- check
+	- diff
+	- create/update preview, read operation
 
 ### Update
 
-- check
-- diff
-- create/update/read/delete operation
+- TODO:
+	- check
+	- diff
+	- create/update/read/delete operation
 
 ### Import
 
-- read operation
+- TODO: read operation
 
 ### Refresh
 
-- read operations
+- TODO: read operations
 
 ### Destroy
 
-- delete operation
+- TODO: delete operation
 
 ## Appendix
 
@@ -605,5 +612,6 @@ None.
 
 ### gRPC Interface
 
-- feature negotiation
-- data representation
+- TODO:
+	- feature negotiation
+	- data representation
