@@ -786,7 +786,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			return nil, err
 		}
 
-		providerRefs = make(map[string]string)
+		providerRefs = make(map[string]string, len(req.GetProviders()))
 		for name, provider := range req.GetProviders() {
 			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
 			if err != nil {
