@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""Internal Async IO utilities, compat with Python 3.6."""
+
 import asyncio
 from typing import Any, Callable, TypeVar, cast
 
@@ -19,14 +21,14 @@ from typing import Any, Callable, TypeVar, cast
 _F = TypeVar('_F', bound=Callable[..., Any])
 
 
-def _asynchronized(f: _F) -> _F:
+def _asynchronized(func: _F) -> _F:
     lock = asyncio.Lock()
 
-    async def g(*args, **kw):
+    async def sync_func(*args, **kw):
         await lock.acquire()
         try:
-            return await f(*args, **kw)
+            return await func(*args, **kw)
         finally:
             lock.release()
 
-    return cast(_F, g)
+    return cast(_F, sync_func)

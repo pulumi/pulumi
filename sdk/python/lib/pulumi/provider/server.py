@@ -17,14 +17,13 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Dict, List, Optional, Union, Any, TypeVar
+from typing import Dict, List, Optional, TypeVar
 import argparse
 import asyncio
 import sys
 
 import grpc
 import grpc.aio
-import google.protobuf.struct_pb2 as struct_pb2
 
 from pulumi.provider.provider import Provider, ConstructResult
 from pulumi.runtime import proto, rpc
@@ -56,6 +55,7 @@ class ProviderServicer(ResourceProviderServicer):
     provider: Provider
     args: List[str]
 
+    # NOTE: remove @_asynchronized when we can avoid modifying globals in the method body.
     @_asynchronized
     async def Construct(self, request: proto.ConstructRequest, context) -> proto.ConstructResponse:  # pylint: disable=invalid-overridden-method
         assert isinstance(request, proto.ConstructRequest), \
@@ -93,7 +93,8 @@ class ProviderServicer(ResourceProviderServicer):
             k: pulumi.Output(
                 resources=set(
                     pulumi.resource.DependencyResource(urn) for urn in
-                    request.inputDependencies.get(k, proto.ConstructRequest.PropertyDependencies()).urns
+                    request.inputDependencies.get(k,
+                        proto.ConstructRequest.PropertyDependencies()).urns
                 ),
                 future=_as_future(rpc.unwrap_rpc_secret(the_input)),
                 is_known=_as_future(True),
@@ -190,11 +191,11 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         pass
 
 
-T = TypeVar('T')
+T = TypeVar('T')  # pylint: disable=invalid-name
 
 
 def _as_future(value: T) -> 'asyncio.Future[T]':
-    fut: asyncio.Future[T] = asyncio.Future()
+    fut: 'asyncio.Future[T]' = asyncio.Future()
     fut.set_result(value)
     return fut
 
