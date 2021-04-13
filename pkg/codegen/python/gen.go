@@ -1026,11 +1026,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 			fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 		}
 
-		// Old versions of TFGen emitted parameters named __name__ and __opts__. In order to preserve backwards
-		// compatibility, we still emit them, but we don't emit documentation for them.
-		fmt.Fprintf(w, ",\n                 __props__=None")
-		fmt.Fprintf(w, ",\n                 __name__=None")
-		fmt.Fprintf(w, ",\n                 __opts__=None):\n")
+		fmt.Fprintf(w, ",\n                 __props__=None):\n")
 	}
 
 	// Emit an __init__ overload that accepts the resource's inputs as function arguments.
@@ -1067,12 +1063,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		fmt.Fprintf(w, "        pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, res.DeprecationMessage)
 	}
-	fmt.Fprintf(w, "        if __name__ is not None:\n")
-	fmt.Fprintf(w, "            warnings.warn(\"explicit use of __name__ is deprecated\", DeprecationWarning)\n")
-	fmt.Fprintf(w, "            resource_name = __name__\n")
-	fmt.Fprintf(w, "        if __opts__ is not None:\n")
-	fmt.Fprintf(w, "            warnings.warn(\"explicit use of __opts__ is deprecated, use 'opts' instead\", DeprecationWarning)\n")
-	fmt.Fprintf(w, "            opts = __opts__\n")
 	fmt.Fprintf(w, "        if opts is None:\n")
 	fmt.Fprintf(w, "            opts = pulumi.ResourceOptions()\n")
 	fmt.Fprintf(w, "        if not isinstance(opts, pulumi.ResourceOptions):\n")
