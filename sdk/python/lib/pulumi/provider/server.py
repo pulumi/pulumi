@@ -25,20 +25,20 @@ import sys
 import grpc
 import grpc.aio
 
+from pulumi._async import _asynchronized
 from pulumi.provider.provider import Provider, ConstructResult
 from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
+from pulumi.runtime.stack import wait_for_rpcs
 import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
-from pulumi._async import _asynchronized
 
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
 _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
-_GRPC_WORKERS = 4
 
 
 class ProviderServicer(ResourceProviderServicer):
@@ -83,8 +83,14 @@ class ProviderServicer(ResourceProviderServicer):
 
         response = await self._construct_response(result)
 
-        ## should we do runtime.disconnect()? where is this
-        ## fucntionality in Python? Node SDK does disconnect.
+        # Wait for outstanding RPCs such as more provider Construct
+        # calls. This can happen if i.e. provider creates child
+        # resources but does not await their URN promises.
+        #
+        # Do not await all tasks as that starts hanging waiting for
+        # indefinite grpc.aio servier tasks.
+        await wait_for_rpcs(await_all_outstanding_tasks=False)
+
         return response
 
     @staticmethod

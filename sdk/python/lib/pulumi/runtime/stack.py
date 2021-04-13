@@ -42,27 +42,36 @@ async def run_pulumi_func(func: Callable):
     try:
         func()
     finally:
-        log.debug("Waiting for outstanding RPCs to complete")
+        await wait_for_rpcs()
 
-        while True:
-            # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
-            # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
-            #
-            # Note that "asyncio.sleep(0)" is the blessed way to do this:
-            # https://github.com/python/asyncio/issues/284#issuecomment-154180935
-            #
-            # We await each RPC in turn so that this loop will actually block rather than busy-wait.
-            while len(RPC_MANAGER.rpcs) > 0:
-                await asyncio.sleep(0)
-                log.debug(f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding")
-                await RPC_MANAGER.rpcs.pop()
+        # By now, all tasks have exited and we're good to go.
+        log.debug("run_pulumi_func completed")
 
-            if RPC_MANAGER.unhandled_exception is not None:
-                raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
 
-            log.debug("RPCs successfully completed")
+async def wait_for_rpcs(await_all_outstanding_tasks=True) -> None:
+    log.debug("Waiting for outstanding RPCs to complete")
 
-            # If the RPCs have successfully completed, now await all remaining outstanding tasks.
+    while True:
+        # Pump the event loop, giving all of the RPCs that we just queued up time to fully execute.
+        # The asyncio scheduler does not expose a "yield" primitive, so this will have to do.
+        #
+        # Note that "asyncio.sleep(0)" is the blessed way to do this:
+        # https://github.com/python/asyncio/issues/284#issuecomment-154180935
+        #
+        # We await each RPC in turn so that this loop will actually block rather than busy-wait.
+        while len(RPC_MANAGER.rpcs) > 0:
+            await asyncio.sleep(0)
+            log.debug(f"waiting for quiescence; {len(RPC_MANAGER.rpcs)} RPCs outstanding")
+            await RPC_MANAGER.rpcs.pop()
+
+        if RPC_MANAGER.unhandled_exception is not None:
+            raise RPC_MANAGER.unhandled_exception.with_traceback(RPC_MANAGER.exception_traceback)
+
+        log.debug("RPCs successfully completed")
+
+        # If the RPCs have successfully completed, now await all remaining outstanding tasks.
+        if await_all_outstanding_tasks:
+
             outstanding_tasks = _get_running_tasks()
             if len(outstanding_tasks) == 0:
                 log.debug("No outstanding tasks to complete")
@@ -86,13 +95,10 @@ async def run_pulumi_func(func: Callable):
 
                 log.debug("All outstanding tasks completed.")
 
-            # Check to see if any more RPCs have been scheduled, and repeat the cycle if so.
-            # Break if no RPCs remain.
-            if len(RPC_MANAGER.rpcs) == 0:
-                break
-
-        # By now, all tasks have exited and we're good to go.
-        log.debug("run_pulumi_func completed")
+        # Check to see if any more RPCs have been scheduled, and repeat the cycle if so.
+        # Break if no RPCs remain.
+        if len(RPC_MANAGER.rpcs) == 0:
+            break
 
 
 async def run_in_stack(func: Callable):
