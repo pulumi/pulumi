@@ -17,7 +17,7 @@ instance as a gRPC server so that it can be used as a Pulumi plugin.
 
 """
 
-from typing import Dict, List, Optional, TypeVar
+from typing import Dict, List, Set, Optional, TypeVar, Any
 import argparse
 import asyncio
 import sys
@@ -27,6 +27,7 @@ import grpc.aio
 
 from pulumi._async import _asynchronized
 from pulumi.provider.provider import Provider, ConstructResult
+from pulumi.resource import Resource, DependencyResource, DependencyProviderResource
 from pulumi.runtime import proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.runtime.stack import wait_for_rpcs
@@ -95,32 +96,48 @@ class ProviderServicer(ResourceProviderServicer):
 
     @staticmethod
     def _construct_inputs(request: proto.ConstructRequest) -> Dict[str, pulumi.Output]:
+
+        def deps(key: str) -> Set[Resource]:
+            return set(DependencyResource(urn) for urn in
+                       request.inputDependencies.get(
+                           key,
+                           proto.ConstructRequest.PropertyDependencies()
+                       ).urns)
+
         return {
-            k: pulumi.Output(
-                resources=set(
-                    pulumi.resource.DependencyResource(urn) for urn in
-                    request.inputDependencies.get(k,
-                        proto.ConstructRequest.PropertyDependencies()).urns
-                ),
-                future=_as_future(rpc.unwrap_rpc_secret(the_input)),
-                is_known=_as_future(True),
-                is_secret=_as_future(rpc.is_rpc_secret(the_input))
-            )
+            k: ProviderServicer._construct_output(the_input, deps=deps(k))
             for k, the_input in
             rpc.deserialize_properties(request.inputs, keep_unknowns=True).items()
         }
 
     @staticmethod
+    def _construct_output(the_input: Any, deps: Set[Resource]) -> Any:
+        is_secret = rpc.is_rpc_secret(the_input)
+
+        # If it's a prompt value, return it directly without wrapping
+        # it as an output.
+        if not is_secret and len(deps) == 0:
+            return the_input
+
+        # Otherwise, wrap it as an output so we can handle secrets
+        # and/or track dependencies.
+        return pulumi.Output(
+            resources=deps,
+            future=_as_future(rpc.unwrap_rpc_secret(the_input)),
+            is_known=_as_future(True),
+            is_secret=_as_future(is_secret))
+
+    @staticmethod
     def _construct_options(request: proto.ConstructRequest) -> pulumi.ResourceOptions:
         parent = None
         if not _empty_as_none(request.parent):
-            parent = pulumi.resource.DependencyResource(request.parent)
+            parent = DependencyResource(request.parent)
         return pulumi.ResourceOptions(
             aliases=list(request.aliases),
-            depends_on=[pulumi.resource.DependencyResource(urn)
+            depends_on=[DependencyResource(urn)
                         for urn in request.dependencies],
             protect=request.protect,
-            providers={pkg:pulumi.resource.DependencyProviderResource(ref)
+            providers={pkg:DependencyProviderResource(ref)
                        for pkg, ref in request.providers.items()},
             parent=parent)
 
