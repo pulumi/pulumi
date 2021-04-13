@@ -16,6 +16,7 @@
 
 import * as inspector from "inspector";
 import * as util from "util";
+import * as vm from "vm";
 import * as v8Hooks from "./v8Hooks";
 
 /** @internal */
@@ -105,45 +106,74 @@ type PostSession<TMethod, TParams, TReturn> = {
 type EvaluationSession = PostSession<"Runtime.evaluate", inspector.Runtime.EvaluateParameterType, inspector.Runtime.EvaluateReturnType>;
 type GetPropertiesSession = PostSession<"Runtime.getProperties", inspector.Runtime.GetPropertiesParameterType, inspector.Runtime.GetPropertiesReturnType>;
 type CallFunctionSession = PostSession<"Runtime.callFunctionOn", inspector.Runtime.CallFunctionOnParameterType, inspector.Runtime.CallFunctionOnReturnType>;
+type ContextSession = {
+    post(method: "Runtime.disable" | "Runtime.enable", callback?: (err: Error | null) => void): void;
+    once(event: "Runtime.executionContextCreated", listener: (message: inspector.InspectorNotification<inspector.Runtime.ExecutionContextCreatedEventDataType>) => void): void;
+};
+
+type InflightContext = {
+    contextId: number;
+    functions: Record<string, any>;
+    currentFunctionId: number;
+    calls: Record<string, any>;
+    currentCallId: number;
+};
+// Isolated singleton context accessible from the inspector.
+// Used instead of `global` object to support executions with multiple V8 vm contexts as, e.g., done by Jest.
+const inflightContext = createContext();
+async function createContext(): Promise<InflightContext> {
+    const context: InflightContext = {
+        contextId: 0,
+        functions: {},
+        currentFunctionId: 0,
+        calls: {},
+        currentCallId: 0,
+    };
+    const session = <ContextSession>await v8Hooks.getSessionAsync();
+    const post = util.promisify(session.post);
+
+    // Create own context with known context id and functionsContext as `global`
+    await post.call(session, "Runtime.enable");
+    const contextIdAsync = new Promise<number>(resolve => {
+        session.once("Runtime.executionContextCreated", event => {
+            resolve(event.params.context.id);
+        });
+    });
+    vm.createContext(context);
+    context.contextId = await contextIdAsync;
+    await post.call(session, "Runtime.disable");
+
+    return context;
+}
 
 async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.Runtime.RemoteObjectId> {
     // In order to get information about an object, we need to put it in a well known location so
-    // that we can call Runtime.evaluate and find it.  To do this, we just make a special map on the
-    // 'global' object, and map from a unique-id to that object.  We then call Runtime.evaluate with
-    // an expression that then points to that unique-id in that global object.  The runtime will
-    // then find the object and give us back an internal id for it.  We can then query for
-    // information about the object through that internal id.
+    // that we can call Runtime.evaluate and find it.  To do this, we use a special map on the
+    // 'global' object of a vm context only used for this purpose, and map from a unique-id to that
+    // object.  We then call Runtime.evaluate with an expression that then points to that unique-id
+    // in that global object.  The runtime will then find the object and give us back an internal id
+    // for it.  We can then query for information about the object through that internal id.
     //
     // Note: the reason for the mapping object and the unique-id we create is so that we don't run
     // into any issues when being called asynchronously.  We don't want to place the object in a
     // location that might be overwritten by another call while we're asynchronously waiting for our
     // original call to complete.
-    //
-    // We also lazily initialize this in case pulumi has been loaded through another module and has
-    // already initialize this global state.
-    const globalAny = <any>global;
-    if (!globalAny.__inflightFunctions) {
-        globalAny.__inflightFunctions = {};
-        globalAny.__currentFunctionId = 0;
-    }
 
-    // Place the function in a unique location off of the global object.
-    const currentFunctionName = "id" + globalAny.__currentFunctionId++;
-    globalAny.__inflightFunctions[currentFunctionName] = func;
+    const session = <EvaluationSession>await v8Hooks.getSessionAsync();
+    const post = util.promisify(session.post);
+
+    // Place the function in a unique location
+    const context = await inflightContext;
+    const currentFunctionName = "id" + context.currentFunctionId++;
+    context.functions[currentFunctionName] = func;
+    const contextId = context.contextId;
+    const expression = `functions.${currentFunctionName}`;
 
     try {
-        const session = <EvaluationSession>await v8Hooks.getSessionAsync();
-        const post = util.promisify(session.post);
-
-        const expression = `global.__inflightFunctions.${currentFunctionName}`;
-
-        // This cast will become unnecessary when we move to TS 3.1.6 or above.  In that version they
-        // support typesafe '.call' calls.
-        const retType = <inspector.Runtime.EvaluateReturnType>await post.call(
-            session, "Runtime.evaluate", { expression });
+        const retType = await post.call(session, "Runtime.evaluate", { contextId, expression });
 
         if (retType.exceptionDetails) {
-            throw new Error(`Error calling "Runtime.evaluate(${expression})": ` + retType.exceptionDetails.text);
+            throw new Error(`Error calling "Runtime.evaluate(${expression})" on context ${contextId}: ` + retType.exceptionDetails.text);
         }
 
         const remoteObject = retType.result;
@@ -158,7 +188,7 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
         return remoteObject.objectId;
     }
     finally {
-        delete globalAny.__inflightFunctions[currentFunctionName];
+        delete context.functions[currentFunctionName];
     }
 }
 
@@ -188,20 +218,13 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
     // memory as the bound 'this' value.  Inside that function declaration, we can then access
     // 'this' and assign it to a unique-id in a well known mapping table we have set up.  As above,
     // the unique-id is to prevent any issues with multiple in-flight asynchronous calls.
-    //
-    // We also lazily initialize this in case pulumi has been loaded through another module and has
-    // already initialize this global state.
-    const globalAny = <any>global;
-    if (!globalAny.__inflightCalls) {
-        globalAny.__inflightCalls = {};
-        globalAny.__currentCallId = 0;
-    }
 
     const session = <CallFunctionSession>await v8Hooks.getSessionAsync();
     const post = util.promisify(session.post);
+    const context = await inflightContext;
 
     // Get an id for an unused location in the global table.
-    const tableId = "id" + globalAny.__currentCallId++;
+    const tableId = "id" + context.currentCallId++;
 
     // Now, ask the runtime to call a fictitious method on the scopes-array object.  When it
     // does, it will get the actual underlying value for the scopes array and bind it to the
@@ -214,7 +237,7 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
         session, "Runtime.callFunctionOn", {
             objectId,
             functionDeclaration: `function () {
-                global.__inflightCalls["${tableId}"] = this;
+                calls["${tableId}"] = this;
             }`,
         });
 
@@ -223,13 +246,13 @@ async function getValueForObjectId(objectId: inspector.Runtime.RemoteObjectId): 
             + retType.exceptionDetails.text);
     }
 
-    if (!globalAny.__inflightCalls.hasOwnProperty(tableId)) {
+    if (!context.calls.hasOwnProperty(tableId)) {
         throw new Error(`Value was not stored into table after calling "Runtime.callFunctionOn(${objectId})"`);
     }
 
     // Extract value and clear our table entry.
-    const val = globalAny.__inflightCalls[tableId];
-    delete globalAny.__inflightCalls[tableId];
+    const val = context.calls[tableId];
+    delete context.calls[tableId];
 
     return val;
 }

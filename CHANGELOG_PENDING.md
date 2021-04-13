@@ -1,5 +1,7 @@
 ### Breaking Changes
 
+- [sdk/nodejs] Drop support for NodeJS < v11.x
+
 - [cli] Set pagination defaults for `pulumi stack history` to 10 entries.
   [#6739](https://github.com/pulumi/pulumi/pull/6739)
 
@@ -41,5 +43,7 @@
 
 ### Enhancements
 
+- [sdk/nodejs] Add support for multiple V8 VM contexts in closure serialization.
+  [#6648](https://github.com/pulumi/pulumi/pull/6648)
 
 ### Bug Fixes
