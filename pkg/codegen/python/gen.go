@@ -263,7 +263,10 @@ func printComment(w io.Writer, comment string, indent string) {
 		return
 	}
 
-	replacer := strings.NewReplacer(`"""`, `\"\"\"`, `\x`, `\\x`)
+	// Known special characters that need escaping.
+	// TODO: Consider replacing the docstring with a raw string which may make sense if this
+	// list grows much further.
+	replacer := strings.NewReplacer(`"""`, `\"\"\"`, `\x`, `\\x`, `\N`, `\\N`)
 	fmt.Fprintf(w, "%s\"\"\"\n", indent)
 	for _, l := range lines {
 		if l == "" {
