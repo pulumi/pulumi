@@ -278,9 +278,10 @@ class Stack:
             outputs = self.outputs()
             summary = self.info()
             assert summary is not None
-            return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
         finally:
             _cleanup(temp_dir, log_watcher_thread, on_exit)
+
+        return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
 
     def preview(self,
                 parallel: Optional[int] = None,
@@ -355,15 +356,15 @@ class Stack:
 
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output)
-
-            if not summary_events:
-                raise RuntimeError("summary event never found")
-
-            return PreviewResult(stdout=preview_result.stdout,
-                                 stderr=preview_result.stderr,
-                                 change_summary=summary_events[0].resource_changes)
         finally:
             _cleanup(temp_dir, log_watcher_thread, on_exit)
+
+        if not summary_events:
+            raise RuntimeError("summary event never found")
+
+        return PreviewResult(stdout=preview_result.stdout,
+                             stderr=preview_result.stderr,
+                             change_summary=summary_events[0].resource_changes)
 
     def refresh(self,
                 parallel: Optional[int] = None,
