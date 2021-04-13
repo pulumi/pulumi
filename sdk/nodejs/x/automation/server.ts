@@ -39,11 +39,13 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         this.running = false;
     }
 
-    onPulumiExit() {
-        // check for leaks once the CLI exits
-        const [leaks, leakMessage] = runtime.leakedPromises();
-        if (leaks.size !== 0) {
-            throw new Error(leakMessage);
+    onPulumiExit(hasError: boolean) {
+        // check for leaks once the CLI exits but skip if the program otherwise errored to keep error output clean
+        if (!hasError) {
+            const [leaks, leakMessage] = runtime.leakedPromises();
+            if (leaks.size !== 0) {
+                throw new Error(leakMessage);
+            }
         }
         // these are globals and we need to clean up after ourselves
         runtime.resetOptions("", "", -1, "", "", false);

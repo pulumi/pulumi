@@ -170,7 +170,8 @@ export class Stack {
             }
         }
 
-        let onExit = () => { return; };
+        let onExit = (hasError: boolean) => { return; };
+        let didError = false;
 
         if (program) {
             kind = execKind.inline;
@@ -189,8 +190,8 @@ export class Stack {
                 });
             });
             server.start();
-            onExit = () => {
-                languageServer.onPulumiExit();
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
             };
             args.push(`--client=127.0.0.1:${port}`);
@@ -216,8 +217,11 @@ export class Stack {
         let tail: TailFile | undefined;
         try {
             [upResult, tail] = await Promise.all([upPromise, logPromise]);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
-            onExit();
+            onExit(didError);
             await cleanUp(tail, logFile);
         }
 
@@ -275,7 +279,8 @@ export class Stack {
             }
         }
 
-        let onExit = () => { return; };
+        let onExit = (hasError: boolean) => { return; };
+        let didError = false;
 
         if (program) {
             kind = execKind.inline;
@@ -294,8 +299,8 @@ export class Stack {
                 });
             });
             server.start();
-            onExit = () => {
-                languageServer.onPulumiExit();
+            onExit = (hasError: boolean) => {
+                languageServer.onPulumiExit(hasError);
                 server.forceShutdown();
             };
             args.push(`--client=127.0.0.1:${port}`);
@@ -322,8 +327,11 @@ export class Stack {
         let tail: TailFile | undefined;
         try {
             [preResult, tail] = await Promise.all([prePromise, logPromise]);
+        } catch (e) {
+            didError = true;
+            throw e;
         } finally {
-            onExit();
+            onExit(didError);
             await cleanUp(tail, logFile);
         }
 
