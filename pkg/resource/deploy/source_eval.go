@@ -772,23 +772,40 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 
-	var providerRef providers.Reference
-	if custom && !providers.IsProviderType(t) || remote {
-		provider := req.GetProvider()
+	getProviderRef := func(provider string) (providers.Reference, error) {
 		if provider == "" {
 			providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
 			if err != nil {
-				return nil, err
+				return providers.Reference{}, err
 			}
-			providerRef, err = rm.defaultProviders.getDefaultProviderRef(providerReq)
-			if err != nil {
-				return nil, err
-			}
+			return rm.defaultProviders.getDefaultProviderRef(providerReq)
 		} else {
-			providerRef, err = providers.ParseReference(provider)
+			providerRef, err := providers.ParseReference(provider)
 			if err != nil {
-				return nil, errors.Errorf("could not parse provider reference '%v': %v", provider, err)
+				return providers.Reference{}, errors.Errorf(
+					"could not parse provider reference '%v': %v", provider, err)
 			}
+			return providerRef, nil
+		}
+	}
+
+	var providerRef providers.Reference
+	var providerRefs map[string]string
+
+	if custom && !providers.IsProviderType(t) || remote {
+		provider := req.GetProvider()
+		providerRef, err = getProviderRef(provider)
+		if err != nil {
+			return nil, err
+		}
+
+		providerRefs = make(map[string]string)
+		for k, v := range req.GetProviders() {
+			ref, err := getProviderRef(v)
+			if err != nil {
+				return nil, err
+			}
+			providerRefs[k] = ref.String()
 		}
 	}
 
@@ -872,9 +889,10 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
-			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v",
+			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
+			"providers=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts)
+		aliases, timeouts, providerRefs)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -890,6 +908,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 			Aliases:              aliases,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,
+			Providers:            providerRefs,
 		}
 		constructResult, err := provider.Construct(rm.constructInfo, t, name, parent, props, options)
 		if err != nil {
