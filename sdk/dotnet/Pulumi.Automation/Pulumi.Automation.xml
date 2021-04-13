@@ -584,6 +584,12 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ListStacksAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.ExportStackAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
@@ -770,6 +776,27 @@
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.StackDeployment">
+            <summary>
+            Represents the state of a stack deployment as used by
+            ExportStackAsync and ImportStackAsync.
+            <para/>
+            There is no strongly typed model for the contents yet, but you
+            can access the raw representation via the Json property.
+            <para/>
+            NOTE: instances may contain sensitive data (secrets).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.StackDeployment.Version">
+            <summary>
+            Version indicates the schema of the encoded deployment.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.StackDeployment.Json">
+            <summary>
+            JSON representation of the deployment.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackSettings.SecretsProvider">
@@ -1023,6 +1050,22 @@
             This queries underlying backend and may return stacks not present in the Workspace (as Pulumi.{stack}.yaml files).
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.Workspace.ExportStackAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Exports the deployment state of the stack.
+            <para/>
+            This can be combined with ImportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <summary>
+            Imports the specified deployment state into a pre-existing stack.
+            <para/>
+            This can be combined with ExportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
             <summary>
             Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
@@ -1193,6 +1236,7 @@
             <param name="options">Options to customize the behavior of the fetch history action.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
+<<<<<<< HEAD
         <member name="M:Pulumi.Automation.WorkspaceStack.CancelAsync(System.Threading.CancellationToken)">
             <summary>
             Cancel stops a stack's currently running update. It throws
@@ -1201,6 +1245,22 @@
             stack in an inconsistent state if a resource operation was
             pending when the update was canceled. This command is not
             supported for local backends.
+=======
+        <member name="M:Pulumi.Automation.WorkspaceStack.ExportStackAsync(System.Threading.CancellationToken)">
+            <summary>
+            Exports the deployment state of the stack.
+            <para/>
+            This can be combined with ImportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+            </summary>
+        </member>
+        <member name="M:Pulumi.Automation.WorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
+            <summary>
+            Imports the specified deployment state into a pre-existing stack.
+            <para/>
+            This can be combined with ExportStackAsync to edit a
+            stack's state (such as recovery from failed deployments).
+>>>>>>> master
             </summary>
         </member>
     </members>

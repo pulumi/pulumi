@@ -41,6 +41,9 @@
 - [automation/dotnet] Expose WorkspaceStack.GetOutputsAsync
   [#6699](https://github.com/pulumi/pulumi/pull/6699)
 
+- [automation/dotnet] Implement (Import,Export)StackAsync methods on LocalWorkspace and WorkspaceStack and expose StackDeployment helper class.
+  [#6728](https://github.com/pulumi/pulumi/pull/6728)
+
 - [sdk/nodejs] Allow prompt values in `construct` for multi-lang components.
   [#6522](https://github.com/pulumi/pulumi/pull/6522)
 
@@ -62,7 +65,7 @@
   [#6520](https://github.com/pulumi/pulumi/pull/6520)
 
 - [sdk/nodejs] Fix `Construct` to wait for child resources of a multi-lang components to be created.
-  [#6452](https://github.com/pulumi/pulumi/pull/6452
+  [#6452](https://github.com/pulumi/pulumi/pull/6452)
 
 - [sdk/python] Fix serialization bug if output contains 'items' property.
   [#6701](https://github.com/pulumi/pulumi/pull/6701)
@@ -72,3 +75,8 @@
 
 - [automation/dotnet] Fix GetConfigValueAsync failing to deserialize
   [#6698](https://github.com/pulumi/pulumi/pull/6698)
+
+- [automation] Fix (de)serialization of StackSettings in .NET, Node, and Python.
+  [#6752](https://github.com/pulumi/pulumi/pull/6752)
+  [#6754](https://github.com/pulumi/pulumi/pull/6754)
+  [#6749](https://github.com/pulumi/pulumi/pull/6749)

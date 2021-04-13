@@ -48,3 +48,18 @@ class StackSettings:
                     stack_config[key] = StackSettingsSecureConfigValue(**val)
             if len(stack_config.keys()) > 0:
                 self.config = stack_config
+
+    @classmethod
+    def _deserialize(cls, data: dict):
+        return cls(secrets_provider=data.get("secretsprovider"),
+                   encrypted_key=data.get("encryptedkey"),
+                   encryption_salt=data.get("encryptionsalt"),
+                   config=data.get("config"))
+
+    def _serialize(self):
+        return {
+            "secretsprovider": self.secrets_provider,
+            "encryptedkey": self.encrypted_key,
+            "encryptionsalt": self.encryption_salt,
+            "config": self.config
+        }

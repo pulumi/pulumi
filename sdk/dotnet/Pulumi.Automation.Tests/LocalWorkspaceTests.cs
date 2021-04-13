@@ -153,6 +153,59 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
+        public async Task ImportExportStack()
+        {
+            var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
+            var projectSettings = new ProjectSettings("testproj", ProjectRuntimeName.Go)
+            {
+                Description = "A minimal Go Pulumi program"
+            };
+            using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
+            {
+                WorkDir = workingDir,
+                ProjectSettings = projectSettings
+            });
+
+            StackDeployment deployment;
+
+            var stackName = $"{RandomStackName()}";
+            try
+            {
+                var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
+
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
+
+                deployment = await workspace.ExportStackAsync(stackName);
+                Assert.True(deployment.Version > 0);
+
+                var previewBeforeDestroy = await stack.PreviewAsync();
+                Assert.Equal(1, previewBeforeDestroy.ChangeSummary[OperationType.Same]);
+
+                await stack.DestroyAsync();
+
+                var previewAfterDestroy = await stack.PreviewAsync();
+                Assert.Equal(1, previewAfterDestroy.ChangeSummary[OperationType.Create]);
+
+                await workspace.ImportStackAsync(stackName, deployment);
+
+                // After we imported before-destroy deployment,
+                // preview is back to reporting the before-destroy
+                // state.
+
+                var previewAfterImport = await stack.PreviewAsync();
+                Assert.Equal(1, previewAfterImport.ChangeSummary[OperationType.Same]);
+            }
+            finally
+            {
+                await workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+
+        [Fact]
         public async Task ManipulateConfig()
         {
             var projectName = "manipulate_config_test";
