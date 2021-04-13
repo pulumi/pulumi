@@ -343,7 +343,7 @@ class Stack:
         args.extend(["--event-log", log_file])
         summary_events: List[SummaryEvent] = []
 
-        def on_event_callback(event: EngineEvent):
+        def on_event_callback(event: EngineEvent) -> None:
             if event.summary_event:
                 summary_events.append(event.summary_event)
             if on_event:
