@@ -772,40 +772,27 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 
 	label := fmt.Sprintf("ResourceMonitor.RegisterResource(%s,%s)", t, name)
 
-	getProviderRef := func(provider string) (providers.Reference, error) {
-		if provider == "" {
-			providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
-			if err != nil {
-				return providers.Reference{}, err
-			}
-			return rm.defaultProviders.getDefaultProviderRef(providerReq)
-		} else {
-			providerRef, err := providers.ParseReference(provider)
-			if err != nil {
-				return providers.Reference{}, errors.Errorf(
-					"could not parse provider reference '%v': %v", provider, err)
-			}
-			return providerRef, nil
-		}
-	}
-
 	var providerRef providers.Reference
 	var providerRefs map[string]string
 
 	if custom && !providers.IsProviderType(t) || remote {
-		provider := req.GetProvider()
-		providerRef, err = getProviderRef(provider)
+		providerReq, err := parseProviderRequest(t.Package(), req.GetVersion())
+		if err != nil {
+			return nil, err
+		}
+
+		providerRef, err = getProviderReference(rm.defaultProviders, providerReq, req.GetProvider())
 		if err != nil {
 			return nil, err
 		}
 
 		providerRefs = make(map[string]string)
-		for k, v := range req.GetProviders() {
-			ref, err := getProviderRef(v)
+		for name, provider := range req.GetProviders() {
+			ref, err := getProviderReference(rm.defaultProviders, providerReq, provider)
 			if err != nil {
 				return nil, err
 			}
-			providerRefs[k] = ref.String()
+			providerRefs[name] = ref.String()
 		}
 	}
 
