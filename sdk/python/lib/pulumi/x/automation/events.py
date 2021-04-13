@@ -16,11 +16,36 @@
 # JSON types defined and versioned in sdk/go/common/apitype/events.go
 
 from enum import Enum
-from typing import Optional, List, Mapping, Any
+from typing import Optional, List, Mapping, Any, MutableMapping
+
+
+class OpType(str, Enum):
+    """
+    The granular CRUD operation performed on a particular resource during an update.
+    """
+    SAME = "same"
+    CREATE = "create"
+    UPDATE = "update"
+    DELETE = "delete"
+    REPLACE = "replace"
+    CREATE_REPLACEMENT = "create-replacement"
+    DELETE_REPLACED = "delete-replaced"
+    READ = "read"
+    READ_REPLACEMENT = "read-replacement"
+    REFRESH = "refresh"
+    DISCARD = "discard"
+    DISCARD_REPLACED = "discard-replaced"
+    REMOVE_PENDING_REPLACE = "remove-pending-replace"
+    IMPORT = "import"
+    IMPORT_REPLACEMENT = "import-replacement"
+
+
+OpMap = MutableMapping[OpType, int]
 
 
 class BaseEvent:
     def __repr__(self):
+        # pylint: disable=duplicate-code
         inputs = self.__dict__
         fields = [f"{key}={inputs[key]!r}" for key in inputs]
         fields = ", ".join(fields)
@@ -36,8 +61,8 @@ class CancelEvent(BaseEvent):
         pass
 
     @classmethod
-    def from_json(cls):
-        return cls
+    def from_json(cls) -> 'CancelEvent':
+        return cls()
 
 
 class StdoutEngineEvent(BaseEvent):
@@ -57,7 +82,7 @@ class StdoutEngineEvent(BaseEvent):
         self.color = color
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: dict) -> 'StdoutEngineEvent':
         return cls(**data)
 
 
@@ -100,10 +125,10 @@ class DiagnosticEvent(BaseEvent):
         self.prefix = prefix
 
     @classmethod
-    def from_json(cls, data: dict):
-        return cls(message=data.get("message"),
-                   color=data.get("color"),
-                   severity=data.get("severity"),
+    def from_json(cls, data: dict) -> 'DiagnosticEvent':
+        return cls(message=data.get("message", ""),
+                   color=data.get("color", ""),
+                   severity=data.get("severity", ""),
                    stream_id=data.get("streamId"),
                    ephemeral=data.get("ephemeral"),
                    urn=data.get("urn"),
@@ -152,14 +177,14 @@ class PolicyEvent(BaseEvent):
         self.resource_urn = resource_urn
 
     @classmethod
-    def from_json(cls, data: dict):
-        return cls(message=data.get("message"),
-                   color=data.get("color"),
-                   policy_name=data.get("policyName"),
-                   policy_pack_name=data.get("policyPackName"),
-                   policy_pack_version=data.get("policyPackVersion"),
-                   policy_pack_version_tag=data.get("policyPackVersionTag"),
-                   enforcement_level=data.get("enforcementLevel"),
+    def from_json(cls, data: dict) -> 'PolicyEvent':
+        return cls(message=data.get("message", ""),
+                   color=data.get("color", ""),
+                   policy_name=data.get("policyName", ""),
+                   policy_pack_name=data.get("policyPackName", ""),
+                   policy_pack_version=data.get("policyPackVersion", ""),
+                   policy_pack_version_tag=data.get("policyPackVersionTag", ""),
+                   enforcement_level=data.get("enforcementLevel", ""),
                    resource_urn=data.get("resource_urn"))
 
 
@@ -177,7 +202,7 @@ class PreludeEvent(BaseEvent):
         self.config = config
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: dict) -> 'PreludeEvent':
         return cls(**data)
 
 
@@ -191,7 +216,7 @@ class SummaryEvent(BaseEvent):
         maybeCorrupt is set if one or more of the resources is in an invalid state.
     duration_seconds: int
         duration is the number of seconds the update was executing.
-    resource_changes: Mapping[str, int]
+    resource_changes: OpMap
         resourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
         which is not exported in this package.
     policy_packs: Mapping[str, str]
@@ -204,7 +229,7 @@ class SummaryEvent(BaseEvent):
     def __init__(self,
                  maybe_corrupt: bool,
                  duration_seconds: int,
-                 resource_changes: Mapping[str, int],
+                 resource_changes: OpMap,
                  policy_packs: Mapping[str, str]) -> None:
         self.maybe_corrupt = maybe_corrupt
         self.duration_seconds = duration_seconds
@@ -212,11 +237,11 @@ class SummaryEvent(BaseEvent):
         self.policy_packs = policy_packs
 
     @classmethod
-    def from_json(cls, data: dict):
-        return cls(maybe_corrupt=data.get("maybeCorrupt"),
-                   duration_seconds=data.get("durationSeconds"),
-                   resource_changes=data.get("resourceChanges"),
-                   policy_packs=data.get("PolicyPacks"))
+    def from_json(cls, data: dict) -> 'SummaryEvent':
+        return cls(maybe_corrupt=data.get("maybeCorrupt", False),
+                   duration_seconds=data.get("durationSeconds", 0),
+                   resource_changes=data.get("resourceChanges", {}),
+                   policy_packs=data.get("PolicyPacks", {}))
 
 
 class DiffKind(str, Enum):
@@ -256,30 +281,9 @@ class PropertyDiff(BaseEvent):
         self.input_diff = input_diff
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: dict) -> 'PropertyDiff':
         return cls(diff_kind=DiffKind(data.get("diffKind")),
-                   input_diff=data.get("inputDiff"))
-
-
-class OpType(str, Enum):
-    """
-    The granular CRUD operation performed on a particular resource during an update.
-    """
-    SAME = "same"
-    CREATE = "create"
-    UPDATE = "update"
-    DELETE = "delete"
-    REPLACE = "replace"
-    CREATE_REPLACEMENT = "create-replacement"
-    DELETE_REPLACED = "delete-replaced"
-    READ = "read"
-    READ_REPLACEMENT = "read-replacement"
-    REFRESH = "refresh"
-    DISCARD = "discard"
-    DISCARD_REPLACED = "discard-replaced"
-    REMOVE_PENDING_REPLACE = "remove-pending-replace"
-    IMPORT = "import"
-    IMPORT_REPLACEMENT = "import-replacement"
+                   input_diff=data.get("inputDiff", False))
 
 
 class StepEventStateMetadata(BaseEvent):
@@ -314,9 +318,9 @@ class StepEventStateMetadata(BaseEvent):
         init_errors is the set of errors encountered in the process of initializing resource.
     """
     def __init__(self,
-                 type: str,
+                 type: str,  # pylint: disable=redefined-builtin
                  urn: str,
-                 id: str,
+                 id: str,  # pylint: disable=redefined-builtin
                  parent: str,
                  provider: str,
                  custom: Optional[bool] = None,
@@ -338,12 +342,12 @@ class StepEventStateMetadata(BaseEvent):
         self.init_errors = init_errors
 
     @classmethod
-    def from_json(cls, data: dict):
-        return cls(type=data.get("type"),
-                   urn=data.get("urn"),
-                   id=data.get("id"),
-                   parent=data.get("parent"),
-                   provider=data.get("provider"),
+    def from_json(cls, data: dict) -> 'StepEventStateMetadata':
+        return cls(type=data.get("type", ""),
+                   urn=data.get("urn", ""),
+                   id=data.get("id", ""),
+                   parent=data.get("parent", ""),
+                   provider=data.get("provider", ""),
                    custom=data.get("custom"),
                    delete=data.get("delete"),
                    protect=data.get("protect"),
@@ -367,9 +371,9 @@ class StepEventMetadata(BaseEvent):
         The type of resource.
     provider: str
         The provider actually performing the step.
-    old: StepEventStateMetadata
+    old: Optional[StepEventStateMetadata]
         old is the state of the resource before performing the step.
-    new: StepEventStateMetadata
+    new: Optional[StepEventStateMetadata]
         new is the state of the resource after performing the step.
     keys: Optional[List[str]]
         keys causing a replacement (only applicable for "create" and "replace" Ops)
@@ -383,10 +387,10 @@ class StepEventMetadata(BaseEvent):
     def __init__(self,
                  op: OpType,
                  urn: str,
-                 type: str,
+                 type: str,  # pylint: disable=redefined-builtin
                  provider: str,
-                 old: StepEventStateMetadata,
-                 new: StepEventStateMetadata,
+                 old: Optional[StepEventStateMetadata] = None,
+                 new: Optional[StepEventStateMetadata] = None,
                  keys: Optional[List[str]] = None,
                  diffs: Optional[List[str]] = None,
                  detailed_diff: Optional[Mapping[str, PropertyDiff]] = None,
@@ -403,13 +407,16 @@ class StepEventMetadata(BaseEvent):
         self.logical = logical
 
     @classmethod
-    def from_json(cls, data: dict):
-        return cls(op=OpType(data.get("op")),
-                   urn=data.get("urn"),
-                   type=data.get("type"),
-                   provider=data.get("provider"),
-                   old=StepEventStateMetadata.from_json(data.get("old")),
-                   new=StepEventStateMetadata.from_json(data.get("new")),
+    def from_json(cls, data: dict) -> 'StepEventMetadata':
+        old = data.get("old")
+        new = data.get("new")
+
+        return cls(op=OpType(data.get("op", "")),
+                   urn=data.get("urn", ""),
+                   type=data.get("type", ""),
+                   provider=data.get("provider", ""),
+                   old=StepEventStateMetadata.from_json(old) if old else None,
+                   new=StepEventStateMetadata.from_json(new) if new else None,
                    keys=data.get("keys"),
                    diffs=data.get("diffs"),
                    detailed_diff=data.get("detailed_diff"),
@@ -427,7 +434,7 @@ class ResourcePreEvent(BaseEvent):
         self.planning = planning
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: dict) -> 'ResourcePreEvent':
         return cls(**data)
 
 
@@ -442,7 +449,7 @@ class ResOutputsEvent(BaseEvent):
         self.planning = planning
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: dict) -> 'ResOutputsEvent':
         return cls(**data)
 
 
@@ -460,7 +467,7 @@ class ResOpFailedEvent(BaseEvent):
         self.steps = steps
 
     @classmethod
-    def from_json(cls, data: dict):
+    def from_json(cls, data: dict) -> 'ResOpFailedEvent':
         return cls(**data)
 
 
@@ -507,15 +514,24 @@ class EngineEvent(BaseEvent):
         self.policy_event = policy_event
 
     @classmethod
-    def from_json(cls, data: dict):
-        return cls(sequence=data.get("sequence"),
-                   timestamp=data.get("timestamp"),
+    def from_json(cls, data: dict) -> 'EngineEvent':
+        stdout_event = data.get("stdoutEvent")
+        diagnostic_event = data.get("diagnosticEvent")
+        prelude_event = data.get("preludeEvent")
+        summary_event = data.get("summaryEvent")
+        resource_pre_event = data.get("resourcePreEvent")
+        res_outputs_event = data.get("resOutputsEvent")
+        res_op_failed_event = data.get("resOpFailedEvent")
+        policy_event = data.get("policyEvent")
+
+        return cls(sequence=data.get("sequence", 0),
+                   timestamp=data.get("timestamp", 0),
                    cancel_event=CancelEvent() if "cancelEvent" in data else None,
-                   stdout_event=StdoutEngineEvent(**data.get("stdoutEvent")) if "stdoutEvent" in data else None,
-                   diagnostic_event=DiagnosticEvent(**data.get("diagnosticEvent")) if "diagnosticEvent" in data else None,
-                   prelude_event=PreludeEvent(**data.get("preludeEvent")) if "preludeEvent" in data else None,
-                   summary_event=SummaryEvent(**data.get("summaryEvent")) if "summaryEvent" in data else None,
-                   resource_pre_event=ResourcePreEvent(**data.get("resourcePreEvent")) if "resourcePreEvent" in data else None,
-                   res_outputs_event=ResOutputsEvent(**data.get("resOutputsEvent")) if "resOutputsEvent" in data else None,
-                   res_op_failed_event=ResOpFailedEvent(**data.get("resOpFailedEvent")) if "resOpFailedEvent" in data else None,
-                   policy_event=PolicyEvent(**data.get("policyEvent")) if "policyEvent" in data else None)
+                   stdout_event=StdoutEngineEvent.from_json(stdout_event) if stdout_event else None,
+                   diagnostic_event=DiagnosticEvent.from_json(diagnostic_event) if diagnostic_event else None,
+                   prelude_event=PreludeEvent.from_json(prelude_event) if prelude_event else None,
+                   summary_event=SummaryEvent.from_json(summary_event) if summary_event else None,
+                   resource_pre_event=ResourcePreEvent.from_json(resource_pre_event) if resource_pre_event else None,
+                   res_outputs_event=ResOutputsEvent.from_json(res_outputs_event) if res_outputs_event else None,
+                   res_op_failed_event=ResOpFailedEvent.from_json(res_op_failed_event) if res_op_failed_event else None,
+                   policy_event=PolicyEvent.from_json(policy_event) if policy_event else None)
