@@ -1,3 +1,17 @@
+# Copyright 2016-2021, Pulumi Corporation.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Define gRPC plumbing to expose a custom user-defined `Provider`
 instance as a gRPC server so that it can be used as a Pulumi plugin.
 
@@ -19,6 +33,7 @@ import pulumi
 import pulumi.resource
 import pulumi.runtime.config
 import pulumi.runtime.settings
+from pulumi._async import _asynchronized
 
 
 # _MAX_RPC_MESSAGE_SIZE raises the gRPC Max Message size from `4194304` (4mb) to `419430400` (400mb)
@@ -41,13 +56,12 @@ class ProviderServicer(ResourceProviderServicer):
     provider: Provider
     args: List[str]
 
+    @_asynchronized
     async def Construct(self, request: proto.ConstructRequest, context) -> proto.ConstructResponse:  # pylint: disable=invalid-overridden-method
         assert isinstance(request, proto.ConstructRequest), \
             f'request is not ConstructRequest but is {type(request)} instead'
 
-        # Should we take a lock so Construct calls are never executing
-        # in parallel? Node SDK does this. Also, should we set these
-        # settings back after we are done?
+        # Should we set these settings back after we are done?
 
         pulumi.runtime.settings.reset_options(
             project=_empty_as_none(request.project),
@@ -167,7 +181,11 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
         await server.wait_for_termination()
 
     try:
-        asyncio.run(serve())
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(serve())
+        finally:
+            loop.close()
     except KeyboardInterrupt:
         pass
 
