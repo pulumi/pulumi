@@ -58,7 +58,6 @@ namespace Pulumi.Automation
                 runner => this._callerContext.Program.InvokeAsync(runner, cts.Token))
                 .ConfigureAwait(false);
 
-            Deployment.Instance = null!;
             return new RunResponse();
         }
 

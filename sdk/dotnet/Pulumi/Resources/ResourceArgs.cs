@@ -17,10 +17,7 @@ namespace Pulumi
 
         private protected override void ValidateMember(Type memberType, string fullName)
         {
-            if (!typeof(IInput).IsAssignableFrom(memberType))
-            {
-                throw new InvalidOperationException($"{fullName} must be an Input<T>");
-            }
+            // No validation. A member may or may not be IInput.
         }
 
         private class EmptyResourceArgs : ResourceArgs

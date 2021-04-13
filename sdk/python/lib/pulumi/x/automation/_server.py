@@ -88,7 +88,7 @@ class LanguageServer(LanguageRuntimeServicer):
             # at the time the loop is closed, which results in a `Task was destroyed but it is pending!` error being
             # logged to stdout. To avoid this, we collect all the unresolved tasks in the loop and cancel them before
             # closing the loop.
-            pending = asyncio.Task.all_tasks(loop) if _py_version_less_than_3_7 else asyncio.all_tasks(loop)
+            pending = asyncio.Task.all_tasks(loop) if _py_version_less_than_3_7 else asyncio.all_tasks(loop)  # pylint: disable=no-member
             log.debug(f"Cancelling {len(pending)} tasks.")
             for task in pending:
                 task.cancel()

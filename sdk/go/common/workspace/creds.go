@@ -81,7 +81,10 @@ func DeleteAllAccounts() error {
 		return err
 	}
 
-	return os.Remove(credsFile)
+	if err = os.Remove(credsFile); err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	return nil
 }
 
 // StoreAccount saves the given account underneath the given key.

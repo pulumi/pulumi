@@ -125,11 +125,7 @@ class LocalWorkspace(Workspace):
                 continue
             with open(path, "r") as file:
                 settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
-                return StackSettings(
-                    secrets_provider=settings["secretsProvider"] if "secretsProvider" in settings else None,
-                    encrypted_key=settings["encryptedKey"] if "encryptedKey" in settings else None,
-                    encryption_salt=settings["encryptionSalt"] if "encryptionSalt" in settings else None,
-                    config=settings["config"] if "config" in settings else None)
+                return StackSettings._deserialize(settings)
         raise FileNotFoundError(f"failed to find stack settings file in workdir: {self.work_dir}")
 
     def save_stack_settings(self, stack_name: str, settings: StackSettings) -> None:
@@ -143,9 +139,9 @@ class LocalWorkspace(Workspace):
         path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{found_ext}")
         with open(path, "w") as file:
             if found_ext == ".json":
-                json.dump(settings.__dict__, file, indent=4)
+                json.dump(settings._serialize(), file, indent=4)
             else:
-                yaml.dump(settings.__dict__, stream=file)
+                yaml.dump(settings._serialize(), stream=file)
 
     def serialize_args_for_op(self, stack_name: str) -> List[str]:
         # Not used by LocalWorkspace
@@ -458,7 +454,7 @@ def _local_source_stack_helper(stack_name: str,
 
 
 def default_project(project_name: str) -> ProjectSettings:
-    return ProjectSettings(name=project_name, runtime="python")
+    return ProjectSettings(name=project_name, runtime="python", main=os.getcwd())
 
 
 def get_stack_settings_name(name: str) -> str:

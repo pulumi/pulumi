@@ -103,7 +103,7 @@ export interface PropertyDiff {
 // StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
 // to migrate a set of cloud resources from one state to another.
 export interface StepEventMetadata {
-    // Op is the operation being performed, a deploy.StepOp.
+    // Op is the operation being performed.
     op: OpType;
     urn: string;
     type: string;
@@ -165,7 +165,7 @@ export interface ResOutputsEvent {
 }
 
 // ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
-// emitted before this event, indicating what the root cause of the error.
+// emitted before this event, indicating the root cause of the error.
 export interface ResOpFailedEvent {
     metadata: StepEventMetadata;
     status: number;

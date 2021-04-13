@@ -575,6 +575,11 @@ func testComponentSlowPathEnv() (string, error) {
 	return componentPathEnv("construct_component_slow", "testcomponent")
 }
 
+//nolint:golint,deadcode
+func testComponentPlainPathEnv() (string, error) {
+	return componentPathEnv("construct_component_plain", "testcomponent")
+}
+
 func componentPathEnv(integrationTest, componentDir string) (string, error) {
 	cwd, err := os.Getwd()
 	if err != nil {

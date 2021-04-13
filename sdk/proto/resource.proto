@@ -102,6 +102,7 @@ message RegisterResourceRequest {
     bool supportsPartialValues = 19;                            // true if the request is from an SDK that supports partially-known properties during preview.
     bool remote = 20;                                           // true if the resource is a plugin-managed component resource.
     bool acceptResources = 21;                                  // when true operations should return resource references as strongly typed.
+    map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the
