@@ -111,6 +111,25 @@ from .errors import (
     InvalidVersionError
 )
 
+from .events import (
+    CancelEvent,
+    DiagnosticEvent,
+    DiffKind,
+    EngineEvent,
+    PolicyEvent,
+    PreludeEvent,
+    PropertyDiff,
+    ResOutputsEvent,
+    ResourcePreEvent,
+    ResOpFailedEvent,
+    StdoutEngineEvent,
+    StepEventStateMetadata,
+    StepEventMetadata,
+    SummaryEvent,
+    OpMap,
+    OpType
+)
+
 from ._local_workspace import (
     LocalWorkspace,
     LocalWorkspaceOptions,
@@ -138,6 +157,7 @@ from ._stack_settings import (
 )
 
 from ._stack import (
+    OnEvent,
     Stack,
     UpdateSummary,
     UpResult,
@@ -166,6 +186,24 @@ __all__ = [
     "CompilationError",
     "InvalidVersionError",
 
+    # events
+    "CancelEvent",
+    "DiagnosticEvent",
+    "DiffKind",
+    "EngineEvent",
+    "PolicyEvent",
+    "PreludeEvent",
+    "PropertyDiff",
+    "ResOutputsEvent",
+    "ResourcePreEvent",
+    "ResOpFailedEvent",
+    "StdoutEngineEvent",
+    "StepEventStateMetadata",
+    "StepEventMetadata",
+    "SummaryEvent",
+    "OpType",
+    "OpMap",
+
     # _local_workspace
     "LocalWorkspace",
     "LocalWorkspaceOptions",
@@ -189,6 +227,7 @@ __all__ = [
     "StackSettings",
 
     # _stack
+    "OnEvent",
     "Stack",
     "UpdateSummary",
     "UpResult",
@@ -199,4 +238,5 @@ __all__ = [
 
     # sub-modules
     "errors",
+    "events"
 ]

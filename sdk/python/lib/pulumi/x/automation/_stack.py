@@ -13,21 +13,28 @@
 # limitations under the License.
 
 import json
+import os
+import tempfile
+import time
+import threading
 from concurrent import futures
 from enum import Enum
 from datetime import datetime
-from typing import List, Any, Mapping, MutableMapping, Optional
+from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
 import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
 from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
 from .errors import StackAlreadyExistsError
+from .events import OpMap, EngineEvent, SummaryEvent
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ...runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ...runtime.proto import language_pb2_grpc
 
 _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
+
+OnEvent = Callable[[EngineEvent], Any]
 
 
 class ExecKind(str, Enum):
@@ -55,30 +62,16 @@ class OutputValue:
 
 OutputMap = MutableMapping[str, OutputValue]
 
-OpMap = MutableMapping[str, int]
-
 
 class UpdateSummary:
-    # pre-update info
-    kind: str
-    start_time: datetime
-    message: str
-    environment: Mapping[str, str]
-    config: ConfigMap
-
-    # post-update info
-    result: str
-    end_time: datetime
-    version: Optional[int]
-    deployment: Optional[str]
-    resource_changes: Optional[OpMap]
-
     def __init__(self,
+                 # pre-update info
                  kind: str,
                  start_time: datetime,
                  message: str,
                  environment: Mapping[str, str],
                  config: Mapping[str, dict],
+                 # post-update info
                  result: str,
                  end_time: datetime,
                  version: Optional[int] = None,
@@ -105,33 +98,28 @@ class UpdateSummary:
 
 
 class BaseResult:
-    stdout: str
-    stderr: str
-
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
         self.stderr = stderr
 
     def __repr__(self):
-        return f"{self.__class__.__name__}(stdout={self.stdout!r}, stderr={self.stderr!r})"
+        inputs = self.__dict__
+        fields = [f"{key}={inputs[key]!r}" for key in inputs]
+        fields = ", ".join(fields)
+        return f"{self.__class__.__name__}({fields})"
 
 
 class PreviewResult(BaseResult):
-    pass
+    def __init__(self, stdout: str, stderr: str, change_summary: OpMap):
+        super().__init__(stdout, stderr)
+        self.change_summary = change_summary
 
 
 class UpResult(BaseResult):
-    outputs: OutputMap
-    summary: UpdateSummary
-
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary, outputs: OutputMap):
         super().__init__(stdout, stderr)
         self.outputs = outputs
         self.summary = summary
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}(outputs={self.outputs!r}, summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
 
 
 class RefreshResult(BaseResult):
@@ -139,30 +127,14 @@ class RefreshResult(BaseResult):
         super().__init__(stdout, stderr)
         self.summary = summary
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
-
 
 class DestroyResult(BaseResult):
     def __init__(self, stdout: str, stderr: str, summary: UpdateSummary):
         super().__init__(stdout, stderr)
         self.summary = summary
 
-    def __repr__(self):
-        return f"{self.__class__.__name__}(summary={self.summary!r}, " \
-               f"stdout={self.stdout!r}, stderr={self.stderr!r})"
-
 
 class Stack:
-    # pylint: disable=unused-argument
-
-    name: str
-    """The name identifying the Stack."""
-
-    workspace: Workspace
-    """The Workspace the Stack was created from."""
-
     @classmethod
     def create(cls, stack_name: str, workspace: Workspace) -> 'Stack':
         """
@@ -244,6 +216,7 @@ class Stack:
            target_dependents: Optional[bool] = None,
            replace: Optional[List[str]] = None,
            on_output: Optional[OnOutput] = None,
+           on_event: Optional[OnEvent] = None,
            program: Optional[PulumiFn] = None) -> UpResult:
         """
         Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -258,9 +231,12 @@ class Stack:
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :returns: UpResult
         """
+        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
+        # pylint: disable=unused-argument
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["up", "--yes", "--skip-preview"]
@@ -289,15 +265,23 @@ class Stack:
 
         args.extend(["--exec-kind", kind])
 
+        log_watcher_thread = None
+        temp_dir = None
+        if on_event:
+            log_file, temp_dir = _create_log_file("up")
+            args.extend(["--event-log", log_file])
+            log_watcher_thread = threading.Thread(target=_watch_logs, args=(log_file, on_event))
+            log_watcher_thread.start()
+
         try:
             up_result = self._run_pulumi_cmd_sync(args, on_output)
             outputs = self.outputs()
             summary = self.info()
             assert summary is not None
-            return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
         finally:
-            if on_exit is not None:
-                on_exit()
+            _cleanup(temp_dir, log_watcher_thread, on_exit)
+
+        return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
 
     def preview(self,
                 parallel: Optional[int] = None,
@@ -308,6 +292,7 @@ class Stack:
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
                 on_output: Optional[OnOutput] = None,
+                on_event: Optional[OnEvent] = None,
                 program: Optional[PulumiFn] = None) -> PreviewResult:
         """
         Performs a dry-run update to a stack, returning pending changes.
@@ -322,9 +307,12 @@ class Stack:
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :param program: The inline program.
         :returns: PreviewResult
         """
+        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
+        # pylint: disable=unused-argument
         program = program or self.workspace.program
         extra_args = _parse_extra_args(**locals())
         args = ["preview"]
@@ -352,19 +340,39 @@ class Stack:
             args.append(f"--client=127.0.0.1:{port}")
         args.extend(["--exec-kind", kind])
 
+        log_file, temp_dir = _create_log_file("preview")
+        args.extend(["--event-log", log_file])
+        summary_events: List[SummaryEvent] = []
+
+        def on_event_callback(event: EngineEvent) -> None:
+            if event.summary_event:
+                summary_events.append(event.summary_event)
+            if on_event:
+                on_event(event)
+
+        # Start watching logs in a thread
+        log_watcher_thread = threading.Thread(target=_watch_logs, args=(log_file, on_event_callback))
+        log_watcher_thread.start()
+
         try:
             preview_result = self._run_pulumi_cmd_sync(args, on_output)
-            return PreviewResult(stdout=preview_result.stdout, stderr=preview_result.stderr)
         finally:
-            if on_exit is not None:
-                on_exit()
+            _cleanup(temp_dir, log_watcher_thread, on_exit)
+
+        if not summary_events:
+            raise RuntimeError("summary event never found")
+
+        return PreviewResult(stdout=preview_result.stdout,
+                             stderr=preview_result.stderr,
+                             change_summary=summary_events[0].resource_changes)
 
     def refresh(self,
                 parallel: Optional[int] = None,
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
-                on_output: Optional[OnOutput] = None) -> RefreshResult:
+                on_output: Optional[OnOutput] = None,
+                on_event: Optional[OnEvent] = None) -> RefreshResult:
         """
         Compares the current stack’s resource state with the state known to exist in the actual
         cloud provider. Any such changes are adopted into the current stack.
@@ -375,8 +383,11 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to refresh.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :returns: RefreshResult
         """
+        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
+        # pylint: disable=unused-argument
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
@@ -385,7 +396,20 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         self.workspace.select_stack(self.name)
-        refresh_result = self._run_pulumi_cmd_sync(args, on_output)
+
+        log_watcher_thread = None
+        temp_dir = None
+        if on_event:
+            log_file, temp_dir = _create_log_file("refresh")
+            args.extend(["--event-log", log_file])
+            log_watcher_thread = threading.Thread(target=_watch_logs, args=(log_file, on_event))
+            log_watcher_thread.start()
+
+        try:
+            refresh_result = self._run_pulumi_cmd_sync(args, on_output)
+        finally:
+            _cleanup(temp_dir, log_watcher_thread)
+
         summary = self.info()
         assert summary is not None
         return RefreshResult(stdout=refresh_result.stdout, stderr=refresh_result.stderr, summary=summary)
@@ -395,7 +419,8 @@ class Stack:
                 message: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 target_dependents: Optional[bool] = None,
-                on_output: Optional[OnOutput] = None) -> DestroyResult:
+                on_output: Optional[OnOutput] = None,
+                on_event: Optional[OnEvent] = None) -> DestroyResult:
         """
         Destroy deletes all resources in a stack, leaving all history and configuration intact.
 
@@ -405,8 +430,11 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to destroy.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param on_output: A function to process the stdout stream.
+        :param on_event: A function to process structured events from the Pulumi event stream.
         :returns: DestroyResult
         """
+        # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
+        # pylint: disable=unused-argument
         extra_args = _parse_extra_args(**locals())
         args = ["destroy", "--yes", "--skip-preview"]
         args.extend(extra_args)
@@ -415,7 +443,20 @@ class Stack:
         args.extend(["--exec-kind", kind])
 
         self.workspace.select_stack(self.name)
-        destroy_result = self._run_pulumi_cmd_sync(args, on_output)
+
+        log_watcher_thread = None
+        temp_dir = None
+        if on_event:
+            log_file, temp_dir = _create_log_file("destroy")
+            args.extend(["--event-log", log_file])
+            log_watcher_thread = threading.Thread(target=_watch_logs, args=(log_file, on_event))
+            log_watcher_thread.start()
+
+        try:
+            destroy_result = self._run_pulumi_cmd_sync(args, on_output)
+        finally:
+            _cleanup(temp_dir, log_watcher_thread)
+
         summary = self.info()
         assert summary is not None
         return DestroyResult(stdout=destroy_result.stdout, stderr=destroy_result.stderr, summary=summary)
@@ -493,8 +534,8 @@ class Stack:
         return outputs
 
     def history(self,
-        page_size: Optional[int] = None,
-        page: Optional[int] = None) -> List[UpdateSummary]:
+                page_size: Optional[int] = None,
+                page: Optional[int] = None) -> List[UpdateSummary]:
         """
         Returns a list summarizing all previous and current results from Stack lifecycle operations
         (up/preview/refresh/destroy).
@@ -570,7 +611,9 @@ class Stack:
     def _run_pulumi_cmd_sync(self,
                              args: List[str],
                              on_output: Optional[OnOutput] = None) -> CommandResult:
-        envs = {"PULUMI_HOME": self.workspace.pulumi_home} if self.workspace.pulumi_home else {}
+        envs = {"PULUMI_DEBUG_COMMANDS": "true"}
+        if self.workspace.pulumi_home is not None:
+            envs = {**envs, "PULUMI_HOME": self.workspace.pulumi_home}
         envs = {**envs, **self.workspace.env_vars}
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
@@ -584,22 +627,30 @@ class Stack:
 def _parse_extra_args(**kwargs) -> List[str]:
     extra_args: List[str] = []
 
-    if "message" in kwargs and kwargs["message"] is not None:
-        extra_args.extend(["--message", kwargs["message"]])
-    if "expect_no_changes" in kwargs and kwargs["expect_no_changes"] is not None:
+    message = kwargs.get("message")
+    expect_no_changes = kwargs.get("expect_no_changes")
+    diff = kwargs.get("diff")
+    replace = kwargs.get("replace")
+    target = kwargs.get("target")
+    target_dependents = kwargs.get("target_dependents")
+    parallel = kwargs.get("parallel")
+
+    if message:
+        extra_args.extend(["--message", message])
+    if expect_no_changes:
         extra_args.append("--expect-no-changes")
-    if "diff" in kwargs and kwargs["diff"] is not None:
+    if diff:
         extra_args.append("--diff")
-    if "replace" in kwargs and kwargs["replace"] is not None:
-        for r in kwargs["replace"]:
+    if replace:
+        for r in replace:
             extra_args.extend(["--replace", r])
-    if "target" in kwargs and kwargs["target"] is not None:
-        for t in kwargs["target"]:
+    if target:
+        for t in target:
             extra_args.extend(["--target", t])
-    if "target_dependents" in kwargs and kwargs["target_dependents"] is not None:
+    if target_dependents:
         extra_args.append("--target-dependents")
-    if "parallel" in kwargs and kwargs["parallel"] is not None:
-        extra_args.extend(["--parallel", str(kwargs["parallel"])])
+    if parallel:
+        extra_args.extend(["--parallel", str(parallel)])
     return extra_args
 
 
@@ -620,3 +671,45 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
     :returns: The fully qualified stack name.
     """
     return f"{org}/{project}/{stack}"
+
+
+def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
+    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")
+    filepath = os.path.join(log_dir.name, "eventlog.txt")
+
+    # Open and close the file to ensure it exists before we start polling for logs
+    f = open(filepath, "w+")
+    f.close()
+    return filepath, log_dir
+
+
+def _watch_logs(filename: str, callback: OnEvent):
+    with open(filename) as f:
+        while True:
+            line = f.readline()
+
+            # sleep if file hasn't been updated
+            if not line:
+                time.sleep(0.1)
+                continue
+
+            event = EngineEvent.from_json(json.loads(line))
+            callback(event)
+
+            # if this is the cancel event, stop watching logs.
+            if event.cancel_event:
+                break
+
+
+def _cleanup(temp_dir: Optional[tempfile.TemporaryDirectory],
+             thread: Optional[threading.Thread],
+             on_exit_fn: Optional[Callable[[], None]] = None) -> None:
+    # If there's an on_exit function, execute it (used in preview/up to shut down server)
+    if on_exit_fn:
+        on_exit_fn()
+    # If we started a thread to watch logs, wait for it to terminate, timing out after 5 seconds.
+    if thread:
+        thread.join(5)
+    # If we created a temp_dir for the logs, clean up.
+    if temp_dir:
+        temp_dir.cleanup()

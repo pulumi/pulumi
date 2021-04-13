@@ -47,6 +47,17 @@
 - [automation/dotnet] Implement CancelAsync method on WorkspaceStack
   [#6729](https://github.com/pulumi/pulumi/pull/6729)
 
+- [automation/python] - Expose structured logging for Stack.up/preview/refresh/destroy.
+  [#6527](https://github.com/pulumi/pulumi/pull/6527)
+
+  You can now pass in an `on_event` callback function as a keyword arg to `up`, `preview`, `refresh` 
+  and `destroy` to process streaming json events defined in `automation/events.py`
+  
+  Example:
+  ```python
+  stack.up(on_event=print)
+  ```
+
 ### Bug Fixes
 
 - [automation/nodejs] Do not run the promise leak checker if an inline program has errored.
