@@ -58,8 +58,7 @@
   stack.up(on_event=print)
   ```
 
-- [sdk/python] Python support for authoring resource providers for
-  multi-language components.
+- [sdk/python] Allow using Python to build resource providers for multi-lang components.
   [#6715](https://github.com/pulumi/pulumi/pull/6715)
 
 
