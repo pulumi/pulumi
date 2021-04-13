@@ -49,6 +49,9 @@
 
 ### Bug Fixes
 
+- [automation/nodejs] Do not run the promise leak checker if an inline program has errored.
+  [#6758](https://github.com/pulumi/pulumi/pull/6758)
+
 - [cli] Handle non-existent creds file in `pulumi logout --all`
   [#6741](https://github.com/pulumi/pulumi/pull/6741)
 
