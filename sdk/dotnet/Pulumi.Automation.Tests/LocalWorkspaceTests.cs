@@ -346,7 +346,7 @@ namespace Pulumi.Automation.Tests
         {
             var stackName = $"{RandomStackName()}";
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
-           using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
+            using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
             {
                 EnvironmentVariables = new Dictionary<string, string?>()
                 {
