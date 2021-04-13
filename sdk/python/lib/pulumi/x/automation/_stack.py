@@ -280,12 +280,7 @@ class Stack:
             assert summary is not None
             return UpResult(stdout=up_result.stdout, stderr=up_result.stderr, summary=summary, outputs=outputs)
         finally:
-            if on_exit is not None:
-                on_exit()
-            if log_watcher_thread:
-                log_watcher_thread.join(5)
-            if temp_dir:
-                temp_dir.cleanup()
+            _cleanup(temp_dir, log_watcher_thread, on_exit)
 
     def preview(self,
                 parallel: Optional[int] = None,
@@ -368,15 +363,7 @@ class Stack:
                                  stderr=preview_result.stderr,
                                  change_summary=summary_events[0].resource_changes)
         finally:
-            if on_exit is not None:
-                on_exit()
-
-            # Wait for thread to end, with a 5 second timeout
-            log_watcher_thread.join(5)
-
-            # Clean up log dir
-            if temp_dir:
-                temp_dir.cleanup()
+            _cleanup(temp_dir, log_watcher_thread, on_exit)
 
     def refresh(self,
                 parallel: Optional[int] = None,
@@ -400,7 +387,6 @@ class Stack:
         """
         # Disable unused-argument because pylint doesn't understand we process them in _parse_extra_args
         # pylint: disable=unused-argument
-
         extra_args = _parse_extra_args(**locals())
         args = ["refresh", "--yes", "--skip-preview"]
         args.extend(extra_args)
@@ -421,10 +407,7 @@ class Stack:
         try:
             refresh_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            if log_watcher_thread:
-                log_watcher_thread.join()
-            if temp_dir:
-                temp_dir.cleanup()
+            _cleanup(temp_dir, log_watcher_thread)
 
         summary = self.info()
         assert summary is not None
@@ -471,10 +454,7 @@ class Stack:
         try:
             destroy_result = self._run_pulumi_cmd_sync(args, on_output)
         finally:
-            if log_watcher_thread:
-                log_watcher_thread.join(5)
-            if temp_dir:
-                temp_dir.cleanup()
+            _cleanup(temp_dir, log_watcher_thread)
 
         summary = self.info()
         assert summary is not None
@@ -718,3 +698,17 @@ def _watch_logs(filename: str, callback: OnEvent):
             # if this is the cancel event, stop watching logs.
             if event.cancel_event:
                 break
+
+
+def _cleanup(temp_dir: Optional[tempfile.TemporaryDirectory],
+             thread: Optional[threading.Thread],
+             on_exit_fn: Optional[Callable[[], None]] = None) -> None:
+    # If there's an on_exit function, execute it (used in preview/up to shut down server)
+    if on_exit_fn:
+        on_exit_fn()
+    # If we started a thread to watch logs, wait for it to terminate, timing out after 5 seconds.
+    if thread:
+        thread.join(5)
+    # If we created a temp_dir for the logs, clean up.
+    if temp_dir:
+        temp_dir.cleanup()
