@@ -613,7 +613,7 @@ namespace Pulumi.Automation
             var commandResult = await this.RunCommandAsync(
                 new [] { "stack", "export", "--stack", stackName, "--show-secrets" },
                 cancellationToken).ConfigureAwait(false);
-            return StackDeployment.FromJsonString(commandResult.StandardOutput);
+            return _serializer.DeserializeJson<StackDeploymentModel>(commandResult.StandardOutput).Convert();
         }
 
         /// <inheritdoc/>
@@ -622,7 +622,9 @@ namespace Pulumi.Automation
             var tempFileName = Path.GetTempFileName();
             try
             {
-                File.WriteAllText(tempFileName, state.Json.GetRawText());
+                // TODO(vipentti): Remove this workaround because StackDeployment.Deployment is currently internal
+                var json = _serializer.SerializeJson(new StackDeploymentModel { Version = state.Version, Deployment = state.Deployment });
+                File.WriteAllText(tempFileName, json);
                 await this.RunCommandAsync(new [] { "stack", "import", "--file", tempFileName },
                                            cancellationToken).ConfigureAwait(false);
             }

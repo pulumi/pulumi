@@ -1,7 +1,6 @@
 // Copyright 2016-2021, Pulumi Corporation
 
-using System;
-using System.Text.Json;
+using Pulumi.Automation.Types;
 
 namespace Pulumi.Automation
 {
@@ -9,34 +8,26 @@ namespace Pulumi.Automation
     /// Represents the state of a stack deployment as used by
     /// ExportStackAsync and ImportStackAsync.
     /// <para/>
-    /// There is no strongly typed model for the contents yet, but you
-    /// can access the raw representation via the Json property.
-    /// <para/>
     /// NOTE: instances may contain sensitive data (secrets).
+    /// <para/>
     /// </summary>
     public sealed class StackDeployment
     {
-        internal static StackDeployment FromJsonString(string jsonString)
-        {
-            var json = JsonSerializer.Deserialize<JsonElement>(jsonString);
-            var version = json.GetProperty("version").GetInt32();
-            return new StackDeployment(version, json);
-        }
-
         /// <summary>
         /// Version indicates the schema of the encoded deployment.
         /// </summary>
         public int Version { get; }
 
         /// <summary>
-        /// JSON representation of the deployment.
+        /// The deployment
         /// </summary>
-        public JsonElement Json { get; }
+        // TODO(vipentti): internal -> public
+        internal DeploymentV3 Deployment { get; }
 
-        private StackDeployment(int version, JsonElement json)
+        internal StackDeployment(int version, DeploymentV3 deployment)
         {
             this.Version = version;
-            this.Json = json;
+            this.Deployment = deployment;
         }
     }
 }

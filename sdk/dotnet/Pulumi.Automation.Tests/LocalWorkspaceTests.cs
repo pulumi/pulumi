@@ -178,7 +178,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
                 Assert.Equal(3, upResult.Outputs.Count);
 
-                deployment = await workspace.ExportStackAsync(stackName);
+                deployment = await stack.ExportStackAsync();
                 Assert.True(deployment.Version > 0);
 
                 var previewBeforeDestroy = await stack.PreviewAsync();
@@ -189,7 +189,7 @@ namespace Pulumi.Automation.Tests
                 var previewAfterDestroy = await stack.PreviewAsync();
                 Assert.Equal(1, previewAfterDestroy.ChangeSummary[OperationType.Create]);
 
-                await workspace.ImportStackAsync(stackName, deployment);
+                await stack.ImportStackAsync(deployment);
 
                 // After we imported before-destroy deployment,
                 // preview is back to reporting the before-destroy
