@@ -15,7 +15,7 @@
 package config
 
 import (
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Config is a struct that permits access to config as a "bag" with a package name.  This avoids needing to access

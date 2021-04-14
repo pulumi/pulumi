@@ -12,23 +12,23 @@ namespace Pulumi.Tests.Mocks
 {
     class MyMocks : IMocks
     {
-        public Task<object> CallAsync(string token, ImmutableDictionary<string, object> args, string? provider)
+        public Task<object> CallAsync(MockCallArgs args)
         {
             return Task.FromResult<object>(args);
         }
 
-        public Task<(string? id, object state)> NewResourceAsync(string type, string name, ImmutableDictionary<string, object> inputs, string? provider, string? id)
+        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
         {
-            switch (type)
+            switch (args.Type)
             {
                 case "aws:ec2/instance:Instance":
                     return Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
                         { "publicIp", "203.0.113.12" },
                     }));
                 case "pkg:index:MyCustom":
-                    return Task.FromResult<(string?, object)>((name + "_id", inputs));
+                    return Task.FromResult<(string?, object)>((args.Name + "_id",  args.Inputs));
                 default:
-                    throw new Exception($"Unknown resource {type}");
+                    throw new Exception($"Unknown resource {args.Type}");
             }
         }
     }

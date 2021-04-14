@@ -28,7 +28,7 @@ run_go_build() {
 
     mkdir -p "${PUBDIR}/bin"
     pushd "$2" > /dev/null && go build \
-       -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=${VERSION}" \
+       -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${VERSION}" \
        -o "${PUBDIR}/bin/${output_name}${bin_suffix}" \
        "$1"
     popd > /dev/null

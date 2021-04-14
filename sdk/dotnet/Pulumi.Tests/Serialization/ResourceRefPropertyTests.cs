@@ -66,14 +66,14 @@ namespace Pulumi.Tests.Serialization
                 this.isPreview = isPreview;
             }
 
-            public Task<object> CallAsync(string token, ImmutableDictionary<string, object> args, string? provider)
+            public Task<object> CallAsync(MockCallArgs args)
             {
-                throw new Exception($"Unknown function {token}");
+                throw new Exception($"Unknown function {args.Token}");
             }
 
-            public Task<(string? id, object state)> NewResourceAsync(string type, string name, ImmutableDictionary<string, object> inputs, string? provider, string? id)
+            public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
             {
-                switch (type)
+                switch (args.Type)
                 {
                     case "test:index:resource":
                     case "test:missing:resource":
@@ -82,7 +82,7 @@ namespace Pulumi.Tests.Serialization
                     case "test:missing:component":
                         return Task.FromResult<(string?, object)>((null, new Dictionary<string, object> {}));
                     default:
-                        throw new Exception($"Unknown resource {type}");
+                        throw new Exception($"Unknown resource {args.Type}");
                 }
             }
         }

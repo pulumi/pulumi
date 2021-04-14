@@ -21,7 +21,7 @@ export {
 
 export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
 export { leakedPromises } from "./debuggable";
-export { Mocks, setMocks } from "./mocks";
+export { Mocks, setMocks, MockResourceArgs, MockCallArgs } from "./mocks";
 
 export * from "./config";
 export * from "./invoke";

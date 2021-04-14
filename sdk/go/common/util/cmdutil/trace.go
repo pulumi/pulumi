@@ -21,7 +21,7 @@ import (
 	"os"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
 	"sourcegraph.com/sourcegraph/appdash"

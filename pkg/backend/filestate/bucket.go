@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"gocloud.dev/blob"
 )
 

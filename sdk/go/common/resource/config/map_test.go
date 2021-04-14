@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )

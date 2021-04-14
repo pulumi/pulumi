@@ -165,6 +165,7 @@ const providerCache = new WeakMap<ResourceProvider, Promise<string>>();
 
 function serializeProvider(provider: ResourceProvider): Promise<string> {
     let result: Promise<string>;
+    // caching is enabled by default as of 3.0
     if (runtime.cacheDynamicProviders()) {
         const cachedProvider = providerCache.get(provider);
         if (cachedProvider) {

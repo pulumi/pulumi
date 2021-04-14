@@ -4,7 +4,7 @@ import (
 	"bytes"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // CRDTypes returns a map from each module name to a buffer containing the

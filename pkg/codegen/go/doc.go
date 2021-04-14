@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/golang/glog"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.

@@ -568,6 +568,7 @@ namespace Pulumi.Automation
         {
             var args = new List<string>()
             {
+                "stack",
                 "history",
                 "--json",
                 "--show-secrets",

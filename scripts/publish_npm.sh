@@ -9,12 +9,18 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     echo "Publishing NPM package to NPMjs.com:"
     NPM_TAG="dev"
 
-    if [[ "${TRAVIS_BRANCH:-}" == features/* ]]; then
-        NPM_TAG=$(echo "${TRAVIS_BRANCH}" | sed -e 's|^features/|feature-|g')
+    ## We need split the GITHUB_REF into the correct parts
+    ## so that we can test for NPM Tags
+    IFS='/' read -ra my_array <<< "${GITHUB_REF:-}"
+    BRANCH_NAME="${my_array[2]}"
+
+    echo $BRANCH_NAME
+    if [[ "${BRANCH_NAME}" == features/* ]]; then
+        NPM_TAG=$(echo "${BRANCH_NAME}" | sed -e 's|^features/|feature-|g')
     fi
 
-    if [[ "${TRAVIS_BRANCH:-}" == feature-* ]]; then
-        NPM_TAG=$(echo "${TRAVIS_BRANCH}")
+    if [[ "${BRANCH_NAME}" == feature-* ]]; then
+        NPM_TAG=$(echo "${BRANCH_NAME}")
     fi
 
     PKG_NAME=$(jq -r .name < "${ROOT}/sdk/nodejs/bin/package.json")
@@ -25,6 +31,15 @@ if [[ "${TRAVIS_PUBLISH_PACKAGES:-}" == "true" ]]; then
     # the newest released version.
     if [[ "${PKG_VERSION}" != *-alpha* ]]; then
         NPM_TAG="latest"
+    fi
+
+    # we need to set explicit beta and rc tags to ensure that we don't mutate to use the latest tag
+    if [[ "${PKG_VERSION}" == *-beta* ]]; then
+        NPM_TAG="beta"
+    fi
+
+    if [[ "${PKG_VERSION}" == *-rc* ]]; then
+        NPM_TAG="rc"
     fi
 
     # Now, perform the publish. The logic here is a little goofy because npm provides

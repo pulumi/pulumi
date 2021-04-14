@@ -17,7 +17,7 @@ package python
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // Compatibility mode for Kubernetes 2.0 SDK

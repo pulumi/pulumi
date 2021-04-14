@@ -32,15 +32,15 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/buildutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/executable"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/goversion"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/buildutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func findProgram(binary string) (*exec.Cmd, error) {

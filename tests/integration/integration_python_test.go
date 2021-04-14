@@ -16,12 +16,12 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	pygen "github.com/pulumi/pulumi/pkg/v2/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v2/python"
+	pygen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 // TestEmptyPython simply tests that we can run an empty Python project.
@@ -769,5 +769,16 @@ func TestPythonAwaitOutputs(t *testing.T) {
 				assert.False(t, sawNotPrinted)
 			},
 		})
+	})
+}
+
+// Test dict key translations.
+func TestPythonTranslation(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("python", "translation"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
 	})
 }

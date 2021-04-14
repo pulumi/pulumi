@@ -2,7 +2,7 @@ PROJECT_NAME     := Pulumi Node.JS SDK
 NODE_MODULE_NAME := @pulumi/pulumi
 VERSION 		 := $(shell cd ../../ && pulumictl get version --language javascript)
 
-LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs
+LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 TESTPARALLELISM := 10
@@ -28,7 +28,7 @@ build_package::
 	find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
 
 build_plugin::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 build:: build_package build_plugin
 
@@ -37,7 +37,7 @@ install_package:: build
 	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
 
 install_plugin:: build
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 install:: install_package install_plugin
 
@@ -58,13 +58,13 @@ test_all:: sxs_tests istanbul_tests
 	$(GO_TEST) ${PROJECT_PKGS}
 
 dist:: build
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
-	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=${BREW_VERSION}" ${LANGUAGE_HOST}
+	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
 	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
 

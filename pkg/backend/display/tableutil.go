@@ -18,8 +18,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func columnHeader(msg string) string {

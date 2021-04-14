@@ -7,6 +7,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+  VERSION_PREFIX: "3.0.0"
 
 jobs:
  test-containers:
@@ -19,9 +20,6 @@ jobs:
        go-version: [ 1.16.x ]
    runs-on: ubuntu-latest
    steps:
-     - if: github.ref == 'refs/heads/feature-3.0'
-       run:
-         echo "VERSION_PREFIX=3.0.0" >> $GITHUB_ENV
      - name: Set up Go ${{ matrix.go-version }}
        uses: actions/setup-go@v1
        with:

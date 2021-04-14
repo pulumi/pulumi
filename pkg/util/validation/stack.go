@@ -18,7 +18,7 @@ import (
 	"regexp"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
 // validateStackName checks if s is a valid stack name, otherwise returns a descriptive error.

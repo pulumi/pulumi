@@ -10,6 +10,7 @@ env:
   PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_PROD_ACCESS_TOKEN }}
   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   PULUMI_TEST_OWNER: "moolumi"
+  VERSION_PREFIX: "3.0.0"
 
 jobs:
   comment-notification:

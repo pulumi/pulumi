@@ -28,6 +28,8 @@ from .mocks import (
     Mocks,
     set_mocks,
     test,
+    MockResourceArgs,
+    MockCallArgs,
 )
 
 from .settings import (
@@ -70,6 +72,8 @@ __all__ = [
     "Mocks",
     "set_mocks",
     "test",
+    "MockCallArgs",
+    "MockResourceArgs",
 
     # settings
     "Settings",

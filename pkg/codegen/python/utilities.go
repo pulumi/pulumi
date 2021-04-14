@@ -2,7 +2,7 @@ package python
 
 import (
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"io"
 	"regexp"
 	"strings"

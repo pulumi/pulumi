@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TGZ adds the contents of the provided directory to an in-memory .tar.gz/.tgz and returns the bytes.

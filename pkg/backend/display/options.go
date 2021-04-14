@@ -17,7 +17,7 @@ package display
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 )
 
 // Type of output to display.

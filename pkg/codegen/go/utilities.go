@@ -21,7 +21,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
 // isReservedWord returns true if s is a Go reserved word as per

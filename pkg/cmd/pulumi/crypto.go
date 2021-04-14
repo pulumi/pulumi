@@ -19,13 +19,13 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 func getStackEncrypter(s backend.Stack) (config.Encrypter, error) {

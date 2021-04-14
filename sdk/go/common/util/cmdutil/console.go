@@ -24,7 +24,7 @@ import (
 
 	"golang.org/x/crypto/ssh/terminal"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
 )
 
 // Emoji controls whether emojis will by default be printed in the output.

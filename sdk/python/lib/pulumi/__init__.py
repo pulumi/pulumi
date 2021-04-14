@@ -96,7 +96,7 @@ from ._types import (
     set,
 )
 
-from . import runtime, dynamic, policy, x
+from . import runtime, dynamic, policy, automation
 
 __all__ = [
     # asset
@@ -169,5 +169,5 @@ __all__ = [
     "runtime",
     "dynamic",
     "policy",
-    "x"
+    "automation"
 ]

@@ -5,8 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 // Tests that the stack export that included secrets in step1 is read into a secret output.
@@ -29,7 +29,7 @@ func main() {
 		results := make(chan []string)
 		secret := make(chan bool)
 
-		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
+		_ = val.ApplyT(func(v []string) ([]string, error) {
 
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
 				errChan <- fmt.Errorf("invalid result")

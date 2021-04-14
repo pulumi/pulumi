@@ -225,9 +225,9 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant",
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant",
       "packageImportAliases": {
-        "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
+        "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
       }
     },
     "nodejs": {},

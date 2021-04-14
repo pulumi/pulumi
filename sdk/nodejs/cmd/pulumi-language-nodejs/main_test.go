@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"github.com/stretchr/testify/assert"
 )
 

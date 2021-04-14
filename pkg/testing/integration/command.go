@@ -23,7 +23,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // RunCommand executes the specified command and additional arguments, wrapping any output in the

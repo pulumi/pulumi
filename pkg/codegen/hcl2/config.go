@@ -17,7 +17,7 @@ package hcl2
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 )
 
 // ConfigVariable represents a program- or component-scoped input variable. The value for a config variable may come

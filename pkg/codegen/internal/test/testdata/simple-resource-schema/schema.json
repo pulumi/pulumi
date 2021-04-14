@@ -117,7 +117,7 @@
   "language": {
     "csharp": {},
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi/pkg/v2/codegen/internal/test/testdata/simple-resource-schema/go/example"
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example"
     },
     "nodejs": {},
     "python": {}

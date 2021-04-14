@@ -3,11 +3,11 @@ package engine
 import (
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 var _ = SnapshotManager((*Journal)(nil))

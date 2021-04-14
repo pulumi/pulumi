@@ -5,8 +5,8 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 		errChan := make(chan error)
 		results := make(chan []string)
 
-		_ = val.ApplyStringArray(func(v []string) ([]string, error) {
+		_ = val.ApplyT(func(v []string) ([]string, error) {
 			if len(v) != 2 || v[0] != "a" || v[1] != "b" {
 				errChan <- fmt.Errorf("invalid result")
 				return nil, fmt.Errorf("invalid result")

@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 func ensureKey(ctx *pulumi.Context, key string) string {

@@ -13,7 +13,7 @@ $PublishTargets = @($GitHash, $Version, $Branch)
 function RunGoBuild($goPackage, $dir, $outputName) {
     $binRoot = New-Item -ItemType Directory -Force -Path "$PublishDir\bin"
     Push-Location $dir
-    go build -ldflags "-X github.com/pulumi/pulumi/pkg/v2/version.Version=v$Version" -o "$binRoot\$outputName" $goPackage
+    go build -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=v$Version" -o "$binRoot\$outputName" $goPackage
     Pop-Location
 }
 
@@ -28,11 +28,11 @@ function CopyPackage($pathToModule, $moduleName) {
     }
 }
 
-RunGoBuild "github.com/pulumi/pulumi/pkg/v2/cmd/pulumi" "pkg" "pulumi.exe"
-RunGoBuild "github.com/pulumi/pulumi/sdk/v2/nodejs/cmd/pulumi-language-nodejs" "sdk" "pulumi-language-nodejs.exe"
-RunGoBuild "github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python" "sdk" "pulumi-language-python.exe"
-RunGoBuild "github.com/pulumi/pulumi/sdk/v2/dotnet/cmd/pulumi-language-dotnet" "sdk" "pulumi-language-dotnet.exe"
-RunGoBuild "github.com/pulumi/pulumi/sdk/v2/go/pulumi-language-go" "sdk" "pulumi-language-go.exe"
+RunGoBuild "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi" "pkg" "pulumi.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs" "sdk" "pulumi-language-nodejs.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python" "sdk" "pulumi-language-python.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet" "sdk" "pulumi-language-dotnet.exe"
+RunGoBuild "github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go" "sdk" "pulumi-language-go.exe"
 CopyPackage "$Root\sdk\nodejs\bin" "pulumi"
 
 Copy-Item "$Root\sdk\nodejs\dist\pulumi-resource-pulumi-nodejs.cmd" "$PublishDir\bin"

@@ -23,10 +23,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type providerServer struct {

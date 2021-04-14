@@ -1,9 +1,10 @@
 package tests
 
 import (
-	"github.com/pulumi/pulumi/pkg/v2/testing/integration"
-	ptesting "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
 	"testing"
+
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 func TestLogin(t *testing.T) {

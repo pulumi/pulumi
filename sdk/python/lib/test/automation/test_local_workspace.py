@@ -19,7 +19,7 @@ from semver import VersionInfo
 from typing import List, Optional
 
 from pulumi import Config, export
-from pulumi.x.automation import (
+from pulumi.automation import (
     create_stack,
     create_or_select_stack,
     CommandError,
@@ -37,7 +37,7 @@ from pulumi.x.automation import (
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
-from pulumi.x.automation._local_workspace import _validate_pulumi_version
+from pulumi.automation._local_workspace import _validate_pulumi_version
 
 extensions = ["json", "yaml", "yml"]
 
