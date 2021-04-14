@@ -585,23 +585,3 @@ func diagEvent(e *eventEmitter, d *diag.Diag, prefix, msg string, sev diag.Sever
 		Ephemeral: ephemeral,
 	})
 }
-
-func (e *eventEmitter) diagDebugEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
-	diagEvent(e, d, prefix, msg, diag.Debug, ephemeral)
-}
-
-func (e *eventEmitter) diagInfoEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
-	diagEvent(e, d, prefix, msg, diag.Info, ephemeral)
-}
-
-func (e *eventEmitter) diagInfoerrEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
-	diagEvent(e, d, prefix, msg, diag.Infoerr, ephemeral)
-}
-
-func (e *eventEmitter) diagErrorEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
-	diagEvent(e, d, prefix, msg, diag.Error, ephemeral)
-}
-
-func (e *eventEmitter) diagWarningEvent(d *diag.Diag, prefix, msg string, ephemeral bool) {
-	diagEvent(e, d, prefix, msg, diag.Warning, ephemeral)
-}

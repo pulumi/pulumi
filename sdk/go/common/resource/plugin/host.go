@@ -168,11 +168,11 @@ func (host *defaultHost) ServerAddr() string {
 }
 
 func (host *defaultHost) Log(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.ctx.Diag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+	host.ctx.Diag.LogfDepth(1, sev, diag.StreamMessage(urn, msg, streamID))
 }
 
 func (host *defaultHost) LogStatus(sev diag.Severity, urn resource.URN, msg string, streamID int32) {
-	host.ctx.StatusDiag.Logf(sev, diag.StreamMessage(urn, msg, streamID))
+	host.ctx.StatusDiag.LogfDepth(1, sev, diag.StreamMessage(urn, msg, streamID))
 }
 
 // loadPlugin sends an appropriate load request to the plugin loader and returns the loaded plugin (if any) and error.
