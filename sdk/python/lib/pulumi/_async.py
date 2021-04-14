@@ -22,6 +22,22 @@ _F = TypeVar('_F', bound=Callable[..., Any])
 
 
 def _asynchronized(func: _F) -> _F:
+    """Decorates a function to acquire and release a lock.
+
+    This makes sure that only one invocation of a function is active
+    on the current event loop at one time. Since this is an asyncio
+    lock, no real threads are blocked; only the invoking coroutine may
+    be blocked.
+
+    Usage:
+
+        class MyClass:
+
+            @_asynchronized
+            async def my_func(self, x, y=None):
+                ...
+
+    """
     lock = asyncio.Lock()
 
     async def sync_func(*args, **kw):
