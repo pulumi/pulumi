@@ -783,10 +783,8 @@
             Represents the state of a stack deployment as used by
             ExportStackAsync and ImportStackAsync.
             <para/>
-            There is no strongly typed model for the contents yet, but you
-            can access the raw representation via the Json property.
-            <para/>
             NOTE: instances may contain sensitive data (secrets).
+            <para/>
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackDeployment.Version">
@@ -794,9 +792,9 @@
             Version indicates the schema of the encoded deployment.
             </summary>
         </member>
-        <member name="P:Pulumi.Automation.StackDeployment.Json">
+        <member name="P:Pulumi.Automation.StackDeployment.Deployment">
             <summary>
-            JSON representation of the deployment.
+            The deployment
             </summary>
         </member>
         <member name="P:Pulumi.Automation.StackSettings.SecretsProvider">
@@ -819,6 +817,206 @@
         <member name="P:Pulumi.Automation.StackSettings.Config">
             <summary>
             This is an optional configuration bag.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Types.EngineOperationType">
+            <summary>
+            <see cref="T:Pulumi.Automation.Types.EngineOperationType"/> is the type of an operation initiated by the engine. Its value indicates the type of operation
+            that the engine initiated.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Types.EngineOperationType.Creating">
+            <summary>
+            Creating is the state of resources that are being created.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Types.EngineOperationType.Updating">
+            <summary>
+            Updating is the state of resources that are being updated.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Types.EngineOperationType.Deleting">
+            <summary>
+            Deleting is the state of resources that are being deleted.
+            </summary>
+        </member>
+        <member name="F:Pulumi.Automation.Types.EngineOperationType.Reading">
+            <summary>
+            Reading is the state of resources that are being read.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Types.ManifestV1">
+            <summary>
+            <see cref="T:Pulumi.Automation.Types.ManifestV1"/> captures meta-information about this checkpoint file, such as versions of binaries, etc.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ManifestV1.Time">
+            <summary>
+            Time of the update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ManifestV1.Magic">
+            <summary>
+            Magic number, used to identify integrity of the checkpoint.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ManifestV1.Version">
+            <summary>
+            Version of the Pulumi engine used to render the checkpoint.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ManifestV1.Plugins">
+            <summary>
+            Plugins contains the binary version info of plug-ins used.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Types.PluginInfoV1">
+            <summary>
+            <see cref="T:Pulumi.Automation.Types.PluginInfoV1"/> captures the version and information about a plugin.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Types.OperationV2">
+            <summary>
+            <see cref="T:Pulumi.Automation.Types.OperationV2"/> represents an operation that the engine is performing. It consists of a Resource, which is the state
+            that the engine used to initiate the operation, and a Type, which represents the operation that the engine initiated.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.OperationV2.Resource">
+            <summary>
+            Resource is the state that the engine used to initiate this operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.OperationV2.Type">
+            <summary>
+            Type represents the operation that the engine is performing.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Types.DeploymentV3">
+            <summary>
+            <see cref="T:Pulumi.Automation.Types.DeploymentV3"/> is the third version of the Deployment. It contains newer versions of the
+            Resource and Operation API types and a placeholder for a stack's secrets configuration.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.DeploymentV3.Manifest">
+            <summary>
+            Manifest contains metadata about this deployment.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.DeploymentV3.SecretsProviders">
+            <summary>
+            SecretsProviders is a placeholder for secret provider configuration.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.DeploymentV3.Resources">
+            <summary>
+            Resources contains all resources that are currently part of this stack after this deployment has finished.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.DeploymentV3.PendingOperations">
+            <summary>
+            PendingOperations are all operations that were known by the engine to be currently executing.
+            </summary>
+        </member>
+        <member name="T:Pulumi.Automation.Types.ResourceV3">
+            <summary>
+            <see cref="T:Pulumi.Automation.Types.ResourceV3"/> is the third version of the Resource API type
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Urn">
+            <summary>
+            URN uniquely identifying this resource.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Custom">
+            <summary>
+            Custom is true when it is managed by a plugin.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Delete">
+            <summary>
+            Delete is true when the resource should be deleted during the next update.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Id">
+            <summary>
+            ID is the provider-assigned resource, if any, for custom resources.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Type">
+            <summary>
+            Type is the resource's full type token.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Inputs">
+            <summary>
+            Inputs are the input properties supplied to the provider.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Outputs">
+            <summary>
+            Outputs are the output properties returned by the provider after provisioning.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Parent">
+            <summary>
+            Parent is an optional parent URN if this resource is a child of it.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Protect">
+            <summary>
+            Protect is set to true when this resource is "protected" and may not be deleted.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.External">
+            <summary>
+            External is set to true when the lifecycle of this resource is not managed by Pulumi.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Dependencies">
+            <summary>
+            Dependencies contains the dependency edges to other resources that this depends on.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.InitErrors">
+            <summary>
+            InitErrors is the set of errors encountered in the process of initializing resource (i.e.,
+            during create or update).
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Provider">
+            <summary>
+            Provider is a reference to the provider that is associated with this resource.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.PropertyDependencies">
+            <summary>
+            PropertyDependencies maps from an input property name to the set of resources that property depends on.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.PendingReplacement">
+            <summary>
+            PendingReplacement is used to track delete-before-replace resources that have been deleted but not yet
+            recreated.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.AdditionalSecretOutputs">
+            <summary>
+            AdditionalSecretOutputs is a list of outputs that were explicitly marked as secret when the resource was created.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.Aliases">
+            <summary>
+            Aliases is a list of previous URNs that this resource may have had in previous deployments
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.CustomTimeouts">
+            <summary>
+            CustomTimeouts is a configuration block that can be used to control timeouts of CRUD operations
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Types.ResourceV3.ImportId">
+            <summary>
+            ImportID is the import input used for imported resources.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.UpdateOptions">
