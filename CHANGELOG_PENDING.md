@@ -45,5 +45,8 @@
 
 - [sdk/nodejs] Add support for multiple V8 VM contexts in closure serialization.
   [#6648](https://github.com/pulumi/pulumi/pull/6648)
+  
+- [sdk] Handle providers for RegisterResourceRequest
+  [#6771](https://github.com/pulumi/pulumi/pull/6771)
 
 ### Bug Fixes
