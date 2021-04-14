@@ -62,8 +62,6 @@ class ProviderServicer(ResourceProviderServicer):
         assert isinstance(request, proto.ConstructRequest), \
             f'request is not ConstructRequest but is {type(request)} instead'
 
-        # Should we set these settings back after we are done?
-
         pulumi.runtime.settings.reset_options(
             project=_empty_as_none(request.project),
             stack=_empty_as_none(request.stack),
