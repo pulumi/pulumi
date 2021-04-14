@@ -598,6 +598,7 @@ func componentPathEnv(integrationTest, componentDir string) (string, error) {
 	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
 }
 
+// nolint: unused,deadcode
 func venvFromPipenv(relativeWorkdir string) (string, error) {
 	workdir, err := filepath.Abs(relativeWorkdir)
 	if err != nil {
@@ -617,6 +618,7 @@ func venvFromPipenv(relativeWorkdir string) (string, error) {
 	return venv, nil
 }
 
+// nolint: unused,deadcode
 func pulumiRuntimeVirtualEnv(pulumiRepoRootDir string) (string, error) {
 	venvFolder, err := venvFromPipenv(filepath.Join(pulumiRepoRootDir, "sdk", "python"))
 	if err != nil {
