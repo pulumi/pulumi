@@ -378,11 +378,19 @@ func TestPythonResourceArgs(t *testing.T) {
 
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
-	pathEnv, err := testComponentPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
+	builders := []string{"testcomponent", "testcomponent-python"}
+	for _, builder := range builders {
+		t.Run(fmt.Sprintf("builder:%s", builder), func(t *testing.T) {
+			pathEnv, err := componentPathEnv("construct_component", builder)
+			if err != nil {
+				t.Fatalf("failed to build test component PATH: %v", err)
+			}
+			integration.ProgramTest(t, optsForConstructPython(t, pathEnv))
+		})
 	}
+}
 
+func optsForConstructPython(t *testing.T, pathEnv string) *integration.ProgramTestOptions {
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
 	// module to run `yarn install && yarn link @pulumi/pulumi` in the Python program's directory, allowing
@@ -391,9 +399,14 @@ func TestConstructPython(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
-	var opts *integration.ProgramTestOptions
-	opts = &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+	runtimeVenv, err := pulumiRuntimeVirtualEnv(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+		return nil
+	}
+
+	return &integration.ProgramTestOptions{
+		Env: []string{pathEnv, testYarnLinkPulumiEnv, runtimeVenv},
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
@@ -429,7 +442,6 @@ func TestConstructPython(t *testing.T) {
 			}
 		},
 	}
-	integration.ProgramTest(t, opts)
 }
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.

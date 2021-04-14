@@ -5,6 +5,7 @@ package ints
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -595,4 +596,32 @@ func componentPathEnv(integrationTest, componentDir string) (string, error) {
 		pathSeparator = ";"
 	}
 	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
+}
+
+func venvFromPipenv(relativeWorkdir string) (string, error) {
+	workdir, err := filepath.Abs(relativeWorkdir)
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("pipenv", "--venv")
+	cmd.Dir = workdir
+	dir, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	venv := strings.TrimRight(string(dir), "\r\n")
+	if _, err := os.Stat(venv); os.IsNotExist(err) {
+		return "", fmt.Errorf("Folder '%s' returned by 'pipenv --venv' from %s does not exist: %w",
+			venv, workdir, err)
+	}
+	return venv, nil
+}
+
+func pulumiRuntimeVirtualEnv(pulumiRepoRootDir string) (string, error) {
+	venvFolder, err := venvFromPipenv(filepath.Join(pulumiRepoRootDir, "sdk", "python"))
+	if err != nil {
+		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed: %w", err)
+	}
+	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
+	return r, nil
 }
