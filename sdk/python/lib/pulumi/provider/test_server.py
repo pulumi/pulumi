@@ -44,8 +44,7 @@ async def test_construct_inputs_preserves_unknowns():
     assert fut_v is None
 
 
-
-def _as_struct(key_values: Dict[str,Any]) -> struct_pb2.Struct:
+def _as_struct(key_values: Dict[str, Any]) -> struct_pb2.Struct:
     the_struct = struct_pb2.Struct()
     the_struct.update(key_values)  # pylint: disable=no-member
     return the_struct

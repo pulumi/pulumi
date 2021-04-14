@@ -81,7 +81,6 @@ class ProviderServicer(ResourceProviderServicer):
                                          inputs=inputs,
                                          options=self._construct_options(request))
 
-
         response = await self._construct_response(result)
 
         # Wait for outstanding RPCs such as more provider Construct
@@ -137,7 +136,7 @@ class ProviderServicer(ResourceProviderServicer):
             depends_on=[DependencyResource(urn)
                         for urn in request.dependencies],
             protect=request.protect,
-            providers={pkg:DependencyProviderResource(ref)
+            providers={pkg: DependencyProviderResource(ref)
                        for pkg, ref in request.providers.items()},
             parent=parent)
 
@@ -177,7 +176,6 @@ class ProviderServicer(ResourceProviderServicer):
         self.provider = provider
         self.args = args
         self.engine_address = engine_address
-
 
 
 def main(provider: Provider, args: List[str]) -> None:  # args not in use?

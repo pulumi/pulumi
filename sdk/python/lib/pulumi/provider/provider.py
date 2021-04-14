@@ -46,7 +46,7 @@ class Provider:
         self.version = version
 
     def construct(self, name: str, resource_type: str, inputs: Inputs,
-                  options: Optional[ResourceOptions]=None) -> ConstructResult:
+                  options: Optional[ResourceOptions] = None) -> ConstructResult:
         """Construct creates a new component resource.
 
         :param name str: The name of the resource to create.
