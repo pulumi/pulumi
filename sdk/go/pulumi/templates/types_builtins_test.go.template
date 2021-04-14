@@ -126,25 +126,6 @@ func TestOutputApply(t *testing.T) {
 		assert.NotNil(t, err)
 		assert.Nil(t, v)
 	}
-	// Test builtin applies.
-	{
-		out := newIntOutput()
-		go func() { out.resolve(42, true, false, nil) }()
-
-{{range .Builtins}}
-		t.Run("Apply{{.Name}}", func(t *testing.T) {
-			o2 := out.Apply{{.Name}}(func(v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, _, err := await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-
-			o2 = out.Apply{{.Name}}WithContext(context.Background(), func(_ context.Context, v int) {{.ElementType}} { return *new({{.ElementType}}) })
-			_, known, _, _, err = await(o2)
-			assert.True(t, known)
-			assert.NoError(t, err)
-		})
-{{end}}
-	}
 	// Test that applies return appropriate concrete implementations of Output based on the callback type
 	{
 		out := newIntOutput()
@@ -220,7 +201,7 @@ func TestOutputApply(t *testing.T) {
 			}
 		})
 
-		res5 := All(res3, res4).Apply(func (v interface{}) (interface{}, error) {
+		res5 := All(res3, res4).ApplyT(func (v interface{}) (interface{}, error) {
 			vs := v.([]interface{})
 			res3 := vs[0].(string)
 			res4 := vs[1].(*myStructType)

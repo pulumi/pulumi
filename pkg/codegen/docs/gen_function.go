@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // functionDocArgs represents the args that a Function doc template needs.
@@ -138,7 +138,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "Context",
-				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#Context",
+				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context",
 			},
 		},
 	}
@@ -158,7 +158,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 		OptionalFlag: "...",
 		Type: propertyType{
 			Name: "InvokeOption",
-			Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#InvokeOption",
+			Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption",
 		},
 	})
 	return params

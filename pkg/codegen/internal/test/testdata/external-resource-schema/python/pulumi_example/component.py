@@ -6,7 +6,7 @@ import warnings
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from . import _utilities, _tables
+from . import _utilities
 import pulumi_aws
 import pulumi_kubernetes
 
@@ -38,9 +38,7 @@ class Component(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
-                 __props__=None,
-                 __name__=None,
-                 __opts__=None):
+                 __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
@@ -70,15 +68,7 @@ class Component(pulumi.CustomResource):
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
-                 __props__=None,
-                 __name__=None,
-                 __opts__=None):
-        if __name__ is not None:
-            warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)
-            resource_name = __name__
-        if __opts__ is not None:
-            warnings.warn("explicit use of __opts__ is deprecated, use 'opts' instead", DeprecationWarning)
-            opts = __opts__
+                 __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -88,12 +78,12 @@ class Component(pulumi.CustomResource):
         if opts.id is None:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = dict()
+            __props__ = ComponentArgs.__new__(ComponentArgs)
 
-            __props__['metadata'] = metadata
-            __props__['provider'] = None
-            __props__['security_group'] = None
-            __props__['storage_classes'] = None
+            __props__.__dict__["metadata"] = metadata
+            __props__.__dict__["provider"] = None
+            __props__.__dict__["security_group"] = None
+            __props__.__dict__["storage_classes"] = None
         super(Component, __self__).__init__(
             'example::Component',
             resource_name,
@@ -114,11 +104,11 @@ class Component(pulumi.CustomResource):
         """
         opts = pulumi.ResourceOptions.merge(opts, pulumi.ResourceOptions(id=id))
 
-        __props__ = dict()
+        __props__ = ComponentArgs.__new__(ComponentArgs)
 
-        __props__["provider"] = None
-        __props__["security_group"] = None
-        __props__["storage_classes"] = None
+        __props__.__dict__["provider"] = None
+        __props__.__dict__["security_group"] = None
+        __props__.__dict__["storage_classes"] = None
         return Component(resource_name, opts=opts, __props__=__props__)
 
     @property
@@ -135,10 +125,4 @@ class Component(pulumi.CustomResource):
     @pulumi.getter(name="storageClasses")
     def storage_classes(self) -> pulumi.Output[Optional[Mapping[str, 'pulumi_kubernetes.storage.v1.StorageClass']]]:
         return pulumi.get(self, "storage_classes")
-
-    def translate_output_property(self, prop):
-        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
-
-    def translate_input_property(self, prop):
-        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 

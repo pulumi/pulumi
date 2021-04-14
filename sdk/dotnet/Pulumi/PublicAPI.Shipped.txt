@@ -204,9 +204,29 @@ Pulumi.StackReferenceArgs.Name.set -> void
 Pulumi.StackReferenceArgs.StackReferenceArgs() -> void
 Pulumi.StringAsset
 Pulumi.StringAsset.StringAsset(string text) -> void
+Pulumi.Testing.MockResourceArgs
+Pulumi.Testing.MockResourceArgs.MockResourceArgs() -> void
+Pulumi.Testing.MockResourceArgs.Type.get -> string
+Pulumi.Testing.MockResourceArgs.Type.set -> void
+Pulumi.Testing.MockResourceArgs.Name.get -> string
+Pulumi.Testing.MockResourceArgs.Name.set -> void
+Pulumi.Testing.MockResourceArgs.Provider.get -> string
+Pulumi.Testing.MockResourceArgs.Provider.set -> void
+Pulumi.Testing.MockResourceArgs.Id.get -> string
+Pulumi.Testing.MockResourceArgs.Id.set -> void
+Pulumi.Testing.MockResourceArgs.Inputs.get -> System.Collections.Immutable.ImmutableDictionary<string, object>
+Pulumi.Testing.MockResourceArgs.Inputs.set -> void
+Pulumi.Testing.MockCallArgs
+Pulumi.Testing.MockCallArgs.MockCallArgs() -> void
+Pulumi.Testing.MockCallArgs.Token.get -> string
+Pulumi.Testing.MockCallArgs.Token.set -> void
+Pulumi.Testing.MockCallArgs.Provider.get -> string
+Pulumi.Testing.MockCallArgs.Provider.set -> void
+Pulumi.Testing.MockCallArgs.Args.get -> System.Collections.Immutable.ImmutableDictionary<string, object>
+Pulumi.Testing.MockCallArgs.Args.set -> void
 Pulumi.Testing.IMocks
-Pulumi.Testing.IMocks.CallAsync(string token, System.Collections.Immutable.ImmutableDictionary<string, object> args, string provider) -> System.Threading.Tasks.Task<object>
-Pulumi.Testing.IMocks.NewResourceAsync(string type, string name, System.Collections.Immutable.ImmutableDictionary<string, object> inputs, string provider, string id) -> System.Threading.Tasks.Task<(string id, object state)>
+Pulumi.Testing.IMocks.CallAsync(Pulumi.Testing.MockCallArgs args) -> System.Threading.Tasks.Task<object>
+Pulumi.Testing.IMocks.NewResourceAsync(Pulumi.Testing.MockResourceArgs args) -> System.Threading.Tasks.Task<(string id, object state)>
 Pulumi.Testing.TestOptions
 Pulumi.Testing.TestOptions.TestOptions() -> void
 Pulumi.Testing.TestOptions.ProjectName.get -> string

@@ -6,7 +6,7 @@ import warnings
 import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
-from . import _utilities, _tables
+from . import _utilities
 from . import outputs
 from ._inputs import *
 
@@ -113,9 +113,7 @@ class Component(pulumi.ComponentResource):
                  e: Optional[str] = None,
                  f: Optional[str] = None,
                  foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
-                 __props__=None,
-                 __name__=None,
-                 __opts__=None):
+                 __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
@@ -151,15 +149,7 @@ class Component(pulumi.ComponentResource):
                  e: Optional[str] = None,
                  f: Optional[str] = None,
                  foo: Optional[pulumi.Input[pulumi.InputType['FooArgs']]] = None,
-                 __props__=None,
-                 __name__=None,
-                 __opts__=None):
-        if __name__ is not None:
-            warnings.warn("explicit use of __name__ is deprecated", DeprecationWarning)
-            resource_name = __name__
-        if __opts__ is not None:
-            warnings.warn("explicit use of __opts__ is deprecated, use 'opts' instead", DeprecationWarning)
-            opts = __opts__
+                 __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()
         if not isinstance(opts, pulumi.ResourceOptions):
@@ -171,21 +161,21 @@ class Component(pulumi.ComponentResource):
         else:
             if __props__ is not None:
                 raise TypeError('__props__ is only valid when passed in combination with a valid opts.id to get an existing resource')
-            __props__ = dict()
+            __props__ = ComponentArgs.__new__(ComponentArgs)
 
             if a is None and not opts.urn:
                 raise TypeError("Missing required property 'a'")
-            __props__['a'] = a
-            __props__['b'] = b
+            __props__.__dict__["a"] = a
+            __props__.__dict__["b"] = b
             if c is None and not opts.urn:
                 raise TypeError("Missing required property 'c'")
-            __props__['c'] = c
-            __props__['d'] = d
+            __props__.__dict__["c"] = c
+            __props__.__dict__["d"] = d
             if e is None and not opts.urn:
                 raise TypeError("Missing required property 'e'")
-            __props__['e'] = e
-            __props__['f'] = f
-            __props__['foo'] = foo
+            __props__.__dict__["e"] = e
+            __props__.__dict__["f"] = f
+            __props__.__dict__["foo"] = foo
         super(Component, __self__).__init__(
             'example::Component',
             resource_name,
@@ -227,10 +217,4 @@ class Component(pulumi.ComponentResource):
     @pulumi.getter
     def foo(self) -> pulumi.Output[Optional['outputs.Foo']]:
         return pulumi.get(self, "foo")
-
-    def translate_output_property(self, prop):
-        return _tables.CAMEL_TO_SNAKE_CASE_TABLE.get(prop) or prop
-
-    def translate_input_property(self, prop):
-        return _tables.SNAKE_TO_CAMEL_CASE_TABLE.get(prop) or prop
 

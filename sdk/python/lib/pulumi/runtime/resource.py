@@ -24,6 +24,7 @@ from .. import log
 from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
+from .. import _types
 
 if TYPE_CHECKING:
     from .. import Resource, ResourceOptions, CustomResource, Inputs, Output
@@ -71,7 +72,8 @@ async def prepare_resource(res: 'Resource',
                            ty: str,
                            custom: bool,
                            props: 'Inputs',
-                           opts: Optional['ResourceOptions']) -> ResourceResolverOperations:
+                           opts: Optional['ResourceOptions'],
+                           typ: Optional[type] = None) -> ResourceResolverOperations:
     from .. import Output  # pylint: disable=import-outside-toplevel
     log.debug(f"resource {props} preparing to wait for dependencies")
     # Before we can proceed, all our dependencies must be finished.
@@ -83,7 +85,13 @@ async def prepare_resource(res: 'Resource',
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
     property_dependencies_resources: Dict[str, List['Resource']] = {}
-    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, res.translate_input_property)
+
+    # If we have type information, we'll use it for translations rather than the resource's translate_input_property.
+    translate: Optional[Callable[[str], str]] = res.translate_input_property
+    if typ is not None:
+        translate = None
+
+    serialized_props = await rpc.serialize_properties(props, property_dependencies_resources, translate, typ)
 
     # Wait for our parent to resolve
     parent_urn: Optional[str] = ""
@@ -158,8 +166,16 @@ def resource_output(res: 'Resource') -> Tuple[Callable[[Any, bool, bool, Optiona
     return resolve, Output({res}, value_future, known_future, secret_future)
 
 
-def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> None:
+def get_resource(res: 'Resource',
+                 props: 'Inputs',
+                 custom: bool,
+                 urn: str,
+                 typ: Optional[type] = None) -> None:
     log.debug(f"getting resource: urn={urn}")
+
+    # If we have type information, we'll use its and the resource's type/name metadata
+    # for name translations rather than using the resource's translation methods.
+    transform_using_type_metadata = typ is not None
 
     # Extract the resource type from the URN.
     urn_parts = urn.split("::")
@@ -179,7 +195,7 @@ def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> No
 
     async def do_get():
         try:
-            resolver = await prepare_resource(res, ty, custom, props, None)
+            resolver = await prepare_resource(res, ty, custom, props, None, typ)
 
             monitor = settings.get_monitor()
             inputs = await rpc.serialize_properties({"urn": urn}, {})
@@ -219,18 +235,57 @@ def get_resource(res: 'Resource', props: 'Inputs', custom: bool, urn: str) -> No
             is_known = bool(resp["id"])
             resolve_id(resp["id"], is_known, False, None)
 
-        rpc.resolve_outputs(res, resolver.serialized_props, resp["state"], {}, resolvers)
+        rpc.resolve_outputs(res, resolver.serialized_props, resp["state"], {}, resolvers, transform_using_type_metadata)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("get resource", do_get)())
 
 
-def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', opts: 'ResourceOptions') -> None:
+def _translate_ignore_changes(res: 'Resource',
+                              typ: Optional[type],
+                              ignore_changes: Optional[List[str]]) -> Optional[List[str]]:
+    if ignore_changes is not None:
+        if typ is not None:
+            # If `typ` is specified, use its type/name metadata for translation.
+            input_names = _types.input_type_py_to_pulumi_names(typ)
+            ignore_changes = list(map(lambda k: input_names.get(k) or k, ignore_changes))
+        elif res.translate_input_property is not None:
+            ignore_changes = list(map(res.translate_input_property, ignore_changes))
+    return ignore_changes
+
+
+def _translate_additional_secret_outputs(res: 'Resource',
+                                         typ: Optional[type],
+                                         additional_secret_outputs: Optional[List[str]]) -> Optional[List[str]]:
+    if additional_secret_outputs is not None:
+        if typ is not None:
+            # If a `typ` is specified, we've opt-ed in to doing translations using type/name metadata rather
+            # than using the resource's tranlate_input_property. Use the resource's metadata to translate.
+            output_names = _types.resource_py_to_pulumi_names(type(res))
+            additional_secret_outputs = list(map(lambda k: output_names.get(k) or k, additional_secret_outputs))
+        elif res.translate_input_property is not None:
+            # Note that while `additional_secret_outputs` lists property names that are outputs, we
+            # call `translate_input_property` because it is the method that converts from the
+            # language projection name to the provider name, which is what we want.
+            additional_secret_outputs = list(map(res.translate_input_property, additional_secret_outputs))
+    return additional_secret_outputs
+
+
+def read_resource(res: 'CustomResource',
+                  ty: str,
+                  name: str,
+                  props: 'Inputs',
+                  opts: 'ResourceOptions',
+                  typ: Optional[type] = None) -> None:
     if opts.id is None:
         raise Exception(
             "Cannot read resource whose options are lacking an ID value")
 
     log.debug(f"reading resource: ty={ty}, name={name}, id={opts.id}")
     monitor = settings.get_monitor()
+
+    # If we have type information, we'll use its and the resource's type/name metadata
+    # for name translations rather than using the resource's translation methods.
+    transform_using_type_metadata = typ is not None
 
     # Prepare the resource, similar to a RegisterResource. Reads are deliberately similar to RegisterResource except
     # that we are populating the Resource object with properties associated with an already-live resource.
@@ -254,7 +309,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
     async def do_read():
         try:
             log.debug(f"preparing read: ty={ty}, name={name}, id={opts.id}")
-            resolver = await prepare_resource(res, ty, True, props, opts)
+            resolver = await prepare_resource(res, ty, True, props, opts, typ)
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
             # dependencies returned to us from "serialize_property" (the second argument). This is
@@ -266,10 +321,7 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
 
             # These inputs will end up in the snapshot, so if there are any additional secret
             # outputs, record them here.
-            additional_secret_outputs = opts.additional_secret_outputs
-            if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
-                additional_secret_outputs = map(
-                    res.translate_input_property, opts.additional_secret_outputs)
+            additional_secret_outputs = _translate_additional_secret_outputs(res, typ, opts.additional_secret_outputs)
 
             accept_resources = not (os.getenv("PULUMI_DISABLE_RESOURCE_REFERENCES", "").upper() in {"TRUE", "1"})
             req = resource_pb2.ReadResourceRequest(
@@ -314,7 +366,8 @@ def read_resource(res: 'CustomResource', ty: str, name: str, props: 'Inputs', op
         log.debug(f"resource read successful: ty={ty}, urn={resp.urn}")
         resolve_urn(resp.urn, True, False, None)
         resolve_id(resolved_id, True, False, None) # Read IDs are always known.
-        rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers)
+        rpc.resolve_outputs(res, resolver.serialized_props, resp.properties, {}, resolvers,
+                            transform_using_type_metadata)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc("read resource", do_read)())
 
@@ -326,7 +379,8 @@ def register_resource(res: 'Resource',
                       remote: bool,
                       new_dependency: Callable[[str], 'Resource'],
                       props: 'Inputs',
-                      opts: Optional['ResourceOptions']) -> None:
+                      opts: Optional['ResourceOptions'],
+                      typ: Optional[type] = None) -> None:
     """
     Registers a new resource object with a given type t and name.  It returns the
     auto-generated URN and the ID that will resolve after the deployment has completed.  All
@@ -335,6 +389,10 @@ def register_resource(res: 'Resource',
     """
     log.debug(f"registering resource: ty={ty}, name={name}, custom={custom}, remote={remote}")
     monitor = settings.get_monitor()
+
+    # If we have type information, we'll use its and the resource's type/name metadata
+    # for name translations rather than using the resource's translation methods.
+    transform_using_type_metadata = typ is not None
 
     # Prepare the resource.
 
@@ -357,7 +415,7 @@ def register_resource(res: 'Resource',
     async def do_register():
         try:
             log.debug(f"preparing resource registration: ty={ty}, name={name}")
-            resolver = await prepare_resource(res, ty, custom, props, opts)
+            resolver = await prepare_resource(res, ty, custom, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 
             property_dependencies = {}
@@ -365,18 +423,8 @@ def register_resource(res: 'Resource',
                 property_dependencies[key] = resource_pb2.RegisterResourceRequest.PropertyDependencies(
                     urns=deps)
 
-            ignore_changes = opts.ignore_changes
-            if res.translate_input_property is not None and opts.ignore_changes is not None:
-                ignore_changes = map(
-                    res.translate_input_property, opts.ignore_changes)
-
-            # Note that while `additional_secret_outputs` lists property names that are outputs, we
-            # call `translate_input_property` because it is the method that converts from the
-            # language projection name to the provider name, which is what we want.
-            additional_secret_outputs = opts.additional_secret_outputs
-            if res.translate_input_property is not None and opts.additional_secret_outputs is not None:
-                additional_secret_outputs = map(
-                    res.translate_input_property, opts.additional_secret_outputs)
+            ignore_changes = _translate_ignore_changes(res, typ, opts.ignore_changes)
+            additional_secret_outputs = _translate_additional_secret_outputs(res, typ, opts.additional_secret_outputs)
 
             # Translate the CustomTimeouts object.
             custom_timeouts = None
@@ -470,7 +518,7 @@ def register_resource(res: 'Resource',
                 urns = list(v.urns)
                 deps[k] = set(map(new_dependency, urns))
 
-        rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers)
+        rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers, transform_using_type_metadata)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())

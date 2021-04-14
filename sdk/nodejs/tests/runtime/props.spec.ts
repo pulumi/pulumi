@@ -52,12 +52,12 @@ class TestResourceModule implements runtime.ResourceModule {
 }
 
 class TestMocks implements runtime.Mocks {
-    call(token: string, args: any, provider?: string): Record<string, any> {
-        throw new Error(`unknown function ${token}`);
+    call(args: runtime.MockCallArgs): Record<string, any> {
+        throw new Error(`unknown function ${args.token}`);
     }
 
-    newResource(type: string, name: string, inputs: any, provider?: string, id?: string): { id: string | undefined, state: Record<string, any> } {
-        switch (type) {
+    newResource(args: runtime.MockResourceArgs): { id: string | undefined, state: Record<string, any> } {
+        switch (args.type) {
             case "test:index:component":
                 return {id: undefined, state: {}};
             case "test:index:custom":
@@ -69,7 +69,7 @@ class TestMocks implements runtime.Mocks {
             case "error":
                 throw new Error("this is an intentional error");
             default:
-                throw new Error(`unknown resource type ${type}`);
+                throw new Error(`unknown resource type ${args.type}`);
         }
     }
 }

@@ -20,7 +20,7 @@ import (
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
 // Try loads a configuration value by its key, returning a non-nil error if it doesn't exist.

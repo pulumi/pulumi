@@ -3,7 +3,7 @@ package pulumi
 import (
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -17,16 +17,15 @@ func TestStackReference(t *testing.T) {
 		},
 	}
 	mocks := &testMonitor{
-		NewResourceF: func(typeToken, name string, inputs resource.PropertyMap,
-			provider, id string) (string, resource.PropertyMap, error) {
-			assert.Equal(t, "pulumi:pulumi:StackReference", typeToken)
-			assert.Equal(t, resName, name)
-			assert.True(t, inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			assert.Equal(t, "pulumi:pulumi:StackReference", args.TypeToken)
+			assert.Equal(t, resName, args.Name)
+			assert.True(t, args.Inputs.DeepEquals(resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name": "stack",
 			})))
-			assert.Equal(t, "", provider)
-			assert.Equal(t, inputs["name"].StringValue(), id)
-			return inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
+			assert.Equal(t, "", args.Provider)
+			assert.Equal(t, args.Inputs["name"].StringValue(), args.ID)
+			return args.Inputs["name"].StringValue(), resource.NewPropertyMapFromMap(map[string]interface{}{
 				"name":    "stack",
 				"outputs": outputs,
 			}), nil
