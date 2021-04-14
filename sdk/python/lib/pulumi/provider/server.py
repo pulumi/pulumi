@@ -159,13 +159,6 @@ class ProviderServicer(ResourceProviderServicer):
     async def Configure(self, request, context) -> proto.ConfigureResponse:  # pylint: disable=invalid-overridden-method
         return proto.ConfigureResponse(acceptSecrets=True, acceptResources=True)
 
-    async def CheckConfig(self, request, context) -> proto.CheckResponse:  # pylint: disable=invalid-overridden-method
-        # NOTE: inputs=None here seems to work but we may be required
-        # to remember and mirror back the inputs passed in Configure
-        #
-        # google.protobuf.Struct inputs = 1; // the provider inputs for this resource.
-        return proto.CheckResponse(inputs=None, failures=[])
-
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)
 
