@@ -39,6 +39,8 @@ type ResourceOptions struct {
 	Protect model.Expression
 	// A list of properties that are not considered when diffing the resource.
 	IgnoreChanges model.Expression
+	// An optional override for the "name" portion of the resource's URN.
+	URNName *model.LiteralValueExpression
 }
 
 // Resource represents a resource instantiation inside of a program or component.
@@ -92,6 +94,14 @@ func (r *Resource) Traverse(traverser hcl.Traverser) (model.Traversable, hcl.Dia
 // Name returns the name of the resource.
 func (r *Resource) Name() string {
 	return r.Definition.Labels[0]
+}
+
+// URNName returns the URN name of the resource
+func (r *Resource) URNName() string {
+	if r.Options != nil && r.Options.URNName != nil {
+		return r.Options.URNName.Value.AsString()
+	}
+	return r.Name()
 }
 
 // DecomposeToken attempts to decompose the resource's type token into its package, module, and type. If decomposition

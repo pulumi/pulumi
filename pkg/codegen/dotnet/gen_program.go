@@ -435,8 +435,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		input.Value = g.lowerExpression(input.Value, destType.(model.Type))
 	}
 
-	name := r.Name()
-	variableName := makeValidIdentifier(name)
+	variableName := makeValidIdentifier(r.Name())
 
 	g.genTrivia(w, r.Definition.Tokens.GetType(""))
 	for _, l := range r.Definition.Tokens.GetLabels(nil) {
@@ -477,7 +476,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 			g.Fgenf(w, "%s{\n", g.Indent)
 		}
 
-		resName := g.makeResourceName(name, "range."+resKey)
+		resName := g.makeResourceName(r.URNName(), "range."+resKey)
 		g.Indented(func() {
 			g.Fgenf(w, "%s%s.Add(", g.Indent, variableName)
 			instantiate(resName)
@@ -486,7 +485,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		g.Fgenf(w, "%s}\n", g.Indent)
 	} else {
 		g.Fgenf(w, "%svar %s = ", g.Indent, variableName)
-		instantiate(g.makeResourceName(name, ""))
+		instantiate(g.makeResourceName(r.URNName(), ""))
 		g.Fgenf(w, ";\n")
 	}
 

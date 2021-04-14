@@ -6,7 +6,6 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -47,15 +46,8 @@ func RewritePropertyReferences(expr model.Expression) model.Expression {
 
 		// TODO: transfer internal trivia
 
-		propertyPath := cty.StringVal(buffer.String())
-		value := &model.TemplateExpression{
-			Parts: []model.Expression{
-				&model.LiteralValueExpression{
-					Tokens: syntax.NewLiteralValueTokens(propertyPath),
-					Value:  propertyPath,
-				},
-			},
-		}
+		propertyPath := buffer.String()
+		value := model.NewQuotedStringLiteral(propertyPath)
 		value.SetLeadingTrivia(expr.GetLeadingTrivia())
 		value.SetTrailingTrivia(expr.GetTrailingTrivia())
 		diags := value.Typecheck(false)

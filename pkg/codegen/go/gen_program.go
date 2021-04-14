@@ -390,8 +390,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block) {
 }
 
 func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
-
-	resName := makeValidIdentifier(r.Name())
+	variableName := makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
 	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
@@ -448,12 +447,12 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 		rangeExpr, temps := g.lowerExpression(r.Options.Range, rangeType, false)
 		g.genTemps(w, temps)
 
-		g.Fgenf(w, "var %s []*%s.%s\n", resName, modOrAlias, typ)
+		g.Fgenf(w, "var %s []*%s.%s\n", variableName, modOrAlias, typ)
 
 		// ahead of range statement declaration generate the resource instantiation
 		// to detect and removed unused k,v variables
 		var buf bytes.Buffer
-		instantiate("__res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, resName), &buf)
+		instantiate("__res", fmt.Sprintf(`fmt.Sprintf("%s-%%v", key0)`, r.URNName()), &buf)
 		instantiation := buf.String()
 		isValUsed := strings.Contains(instantiation, "val0")
 		valVar := "_"
@@ -463,11 +462,11 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 		g.Fgenf(w, "for key0, %s := range %.v {\n", valVar, rangeExpr)
 		g.Fgen(w, instantiation)
-		g.Fgenf(w, "%s = append(%s, __res)\n", resName, resName)
+		g.Fgenf(w, "%s = append(%s, __res)\n", variableName, variableName)
 		g.Fgenf(w, "}\n")
 
 	} else {
-		instantiate(resName, fmt.Sprintf("%q", resName), w)
+		instantiate(variableName, fmt.Sprintf("%q", r.URNName()), w)
 	}
 
 }

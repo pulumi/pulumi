@@ -8,13 +8,13 @@ import (
 
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
-		provider, err := providers.Newaws(ctx, "provider", &providers.awsArgs{
+		provider, err := providers.Newaws(ctx, "bucket", &providers.awsArgs{
 			Region: pulumi.String("us-west-2"),
 		})
 		if err != nil {
 			return err
 		}
-		_, err = s3.NewBucket(ctx, "bucket1", nil, pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{
+		_, err = s3.NewBucket(ctx, "bucket", nil, pulumi.Provider(provider), pulumi.DependsOn([]pulumi.Resource{
 			provider,
 		}), pulumi.Protect(true), pulumi.IgnoreChanges([]string{
 			"bucket",
