@@ -217,9 +217,6 @@
           DestinationFolder="$(PythonSdkDirectory)\env\src" />
     <Exec Command="pipenv run python setup.py build bdist_wheel --universal"
           WorkingDirectory="$(PythonSdkDirectory)\env\src" />
-    <!-- Install pulumi SDK into the venv managed by pipenv. -->
-    <Exec Command="pipenv run pip install -e ."
-          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v2/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v2/python/cmd/pulumi-language-python"
     WorkingDirectory="$(SdkDirectory)"/>
 
@@ -297,11 +294,16 @@
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component\testcomponent" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_slow\testcomponent" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_plain\testcomponent" />
+
+    <!-- Install pulumi SDK into the venv managed by pipenv. -->
+    <Exec Command="pipenv run pip install -e ."
+          WorkingDirectory="$(PythonSdkDirectory)\env\src" />
   </Target>
 
   <!-- Tests -->
   <Target Name="Tests"
-	      DependsOnTargets="BuildTests">
+	  DependsOnTargets="BuildTests">
+
     <Exec Command="go test -timeout 5m -parallel $(TestParallelism) .\backend\..."
           IgnoreExitCode="true"
           WorkingDirectory="$(PkgDirectory)">
