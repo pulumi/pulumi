@@ -228,6 +228,7 @@ func optsForConstructDotnet(t *testing.T, pathEnv string) *integration.ProgramTe
 		Dir:          filepath.Join("construct_component", "dotnet"),
 		Dependencies: []string{"Pulumi"},
 		Quick:        true,
+		NoParallel:   true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {

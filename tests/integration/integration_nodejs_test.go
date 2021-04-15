@@ -60,6 +60,7 @@ func TestEngineEvents(t *testing.T) {
 		Dir:          "single_resource",
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+		NoParallel:   true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			// Ensure that we have a non-empty list of events.
 			assert.NotEmpty(t, stackInfo.Events)

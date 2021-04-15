@@ -155,7 +155,8 @@ func optsForConstructGo(t *testing.T, pathEnv string) *integration.ProgramTestOp
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
 		},
-		Quick: true,
+		Quick:      true,
+		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
