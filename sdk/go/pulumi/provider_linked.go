@@ -35,13 +35,13 @@ func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engin
 }
 
 //go:linkname linkedConstructInputsMap github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsMap
-func linkedConstructInputsMap(inputs map[string]interface{}) Map {
-	return constructInputsMap(inputs)
+func linkedConstructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error) {
+	return constructInputsMap(ctx, inputs)
 }
 
 //go:linkname linkedConstructInputsSetArgs github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsSetArgs
-func linkedConstructInputsSetArgs(inputs map[string]interface{}, args interface{}) error {
-	return constructInputsSetArgs(inputs, args)
+func linkedConstructInputsSetArgs(ctx *Context, inputs map[string]interface{}, args interface{}) error {
+	return constructInputsSetArgs(ctx, inputs, args)
 }
 
 //go:linkname linkedNewConstructResult github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewConstructResult
