@@ -677,29 +677,12 @@ func TestConstructNode(t *testing.T) {
 		t.Skip("Temporarily skipping test on Windows")
 	}
 
-	builders := []string{"testcomponent", "testcomponent-python"}
-	for _, builder := range builders {
-		t.Run(fmt.Sprintf("builder:%s", builder), func(t *testing.T) {
-			pathEnv, err := componentPathEnv("construct_component", builder)
-			if err != nil {
-				t.Fatalf("failed to build test component PATH: %v", err)
-			}
-			integration.ProgramTest(t, optsForConstructNode(t, pathEnv))
-		})
-	}
-}
-
-func optsForConstructNode(t *testing.T, pathEnv string) *integration.ProgramTestOptions {
-	runtimeVenv, err := pulumiRuntimeVirtualEnv(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-		return nil
-	}
-	return &integration.ProgramTestOptions{
-		Env:          []string{pathEnv, runtimeVenv},
+	opts := &integration.ProgramTestOptions{
+		Env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		Dir:          filepath.Join("construct_component", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+		NoParallel:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
@@ -727,14 +710,16 @@ func optsForConstructNode(t *testing.T, pathEnv string) *integration.ProgramTest
 			}
 		},
 	}
+
+	runProgramSubTests(t, opts, map[string]string{
+		"WithNodeProvider":   componentPathEnv(t, "construct_component", "testcomponent"),
+		"WithPythonProvider": componentPathEnv(t, "construct_component", "testcomponent-python"),
+	})
 }
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowNode(t *testing.T) {
-	pathEnv, err := testComponentSlowPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
-	}
+	pathEnv := testComponentSlowPathEnv(t)
 
 	var opts *integration.ProgramTestOptions
 	opts = &integration.ProgramTestOptions{
@@ -757,23 +742,21 @@ func TestConstructSlowNode(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainNode(t *testing.T) {
-	pathEnv, err := testComponentPlainPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
-	}
-
-	var opts *integration.ProgramTestOptions
-	opts = &integration.ProgramTestOptions{
-		Env:          []string{pathEnv},
+	opts := &integration.ProgramTestOptions{
+		Env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		Dir:          filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
+		NoParallel:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
 		},
 	}
-	integration.ProgramTest(t, opts)
+	runProgramSubTests(t, opts, map[string]string{
+		"WithNodeProvider":   componentPathEnv(t, "construct_component_plain", "testcomponent"),
+		"WithPythonProvider": componentPathEnv(t, "construct_component_plain", "testcomponent-python"),
+	})
 }
 
 func TestGetResourceNode(t *testing.T) {

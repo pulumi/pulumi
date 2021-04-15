@@ -567,35 +567,37 @@ func TestConfigPaths(t *testing.T) {
 }
 
 //nolint:golint,deadcode
-func testComponentPathEnv() (string, error) {
-	return componentPathEnv("construct_component", "testcomponent")
+func testComponentPathEnv(t *testing.T) string {
+	return componentPathEnv(t, "construct_component", "testcomponent")
 }
 
 //nolint:golint,deadcode
-func testComponentSlowPathEnv() (string, error) {
-	return componentPathEnv("construct_component_slow", "testcomponent")
+func testComponentSlowPathEnv(t *testing.T) string {
+	return componentPathEnv(t, "construct_component_slow", "testcomponent")
 }
 
 //nolint:golint,deadcode
-func testComponentPlainPathEnv() (string, error) {
-	return componentPathEnv("construct_component_plain", "testcomponent")
+func testComponentPlainPathEnv(t *testing.T) string {
+	return componentPathEnv(t, "construct_component_plain", "testcomponent")
 }
 
-func componentPathEnv(integrationTest, componentDir string) (string, error) {
+func componentPathEnv(t *testing.T, integrationTest, componentDir string) string {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		t.Fatal(err)
+		return ""
 	}
 	absCwd, err := filepath.Abs(cwd)
 	if err != nil {
-		return "", err
+		t.Fatal(err)
+		return ""
 	}
 	pluginDir := filepath.Join(absCwd, integrationTest, componentDir)
 	pathSeparator := ":"
 	if runtime.GOOS == "windows" {
 		pathSeparator = ";"
 	}
-	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
+	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir
 }
 
 // nolint: unused,deadcode
@@ -619,11 +621,25 @@ func venvFromPipenv(relativeWorkdir string) (string, error) {
 }
 
 // nolint: unused,deadcode
-func pulumiRuntimeVirtualEnv(pulumiRepoRootDir string) (string, error) {
+func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
 	venvFolder, err := venvFromPipenv(filepath.Join(pulumiRepoRootDir, "sdk", "python"))
 	if err != nil {
-		return "", fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed: %w", err)
+		t.Fatal(fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed: %w", err))
+		return ""
 	}
 	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
-	return r, nil
+	return r
+}
+
+func runProgramSubTests(t *testing.T, opts *integration.ProgramTestOptions, envExtensions map[string]string) {
+	extend := func(extraEnv string, opts integration.ProgramTestOptions) integration.ProgramTestOptions {
+		opts.Env = append(opts.Env, extraEnv)
+		return opts
+	}
+	for subTestName, extraEnv := range envExtensions {
+		t.Run(subTestName, func(t *testing.T) {
+			subTestOpts := extend(extraEnv, *opts)
+			integration.ProgramTest(t, &subTestOpts)
+		})
+	}
 }
