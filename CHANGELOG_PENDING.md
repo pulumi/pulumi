@@ -1,5 +1,8 @@
 ### Breaking Changes
 
+- [codegen/{dotnet,nodejs,python}] Ensure object type names are unique and consistent.
+  [#6686](https://github.com/pulumi/pulumi/pull/6686)
+
 - [sdk/nodejs] Drop support for NodeJS < v11.x
 
 - [cli] Set pagination defaults for `pulumi stack history` to 10 entries.
