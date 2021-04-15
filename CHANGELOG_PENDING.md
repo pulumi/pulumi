@@ -55,5 +55,6 @@
 - [sdk] Handle providers for RegisterResourceRequest
   [#6771](https://github.com/pulumi/pulumi/pull/6771)
   [#6781](https://github.com/pulumi/pulumi/pull/6781)
+  [#6786](https://github.com/pulumi/pulumi/pull/6786)
 
 ### Bug Fixes

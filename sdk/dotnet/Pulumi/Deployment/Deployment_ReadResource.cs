@@ -20,7 +20,7 @@ namespace Pulumi
             Log.Debug($"Reading resource: id={id}, t=${type}, name=${name}");
 
             var prepareResult = await this.PrepareResourceAsync(
-                label, resource, custom: true, args, options).ConfigureAwait(false);
+                label, resource, custom: true, remote: false, args, options).ConfigureAwait(false);
 
             var serializer = new Serializer(_excessiveDebugOutput);
             Log.Debug($"ReadResource RPC prepared: id={id}, t={type}, name={name}" +
