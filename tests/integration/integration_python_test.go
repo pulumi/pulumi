@@ -378,10 +378,6 @@ func TestPythonResourceArgs(t *testing.T) {
 
 // Test remote component construction in Python.
 func TestConstructPython(t *testing.T) {
-	pathEnv, err := testComponentPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
-	}
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
@@ -391,14 +387,16 @@ func TestConstructPython(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
-	var opts *integration.ProgramTestOptions
-	opts = &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+	runtimeVenv := pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))
+
+	opts := &integration.ProgramTestOptions{
+		Env: []string{testYarnLinkPulumiEnv, runtimeVenv},
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		Quick:      true,
+		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, 9, len(stackInfo.Deployment.Resources)) {
@@ -429,15 +427,16 @@ func TestConstructPython(t *testing.T) {
 			}
 		},
 	}
-	integration.ProgramTest(t, opts)
+
+	runProgramSubTests(t, opts, map[string]string{
+		"WithNodeProvider":   componentPathEnv(t, "construct_component", "testcomponent"),
+		"WithPythonProvider": componentPathEnv(t, "construct_component", "testcomponent-python"),
+	})
 }
 
 // Test remote component construction with a child resource that takes a long time to be created, ensuring it's created.
 func TestConstructSlowPython(t *testing.T) {
-	pathEnv, err := testComponentSlowPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
-	}
+	pathEnv := testComponentSlowPathEnv(t)
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
@@ -447,8 +446,7 @@ func TestConstructSlowPython(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
-	var opts *integration.ProgramTestOptions
-	opts = &integration.ProgramTestOptions{
+	opts := &integration.ProgramTestOptions{
 		Env: []string{pathEnv, testYarnLinkPulumiEnv},
 		Dir: filepath.Join("construct_component_slow", "python"),
 		Dependencies: []string{
@@ -470,10 +468,6 @@ func TestConstructSlowPython(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainPython(t *testing.T) {
-	pathEnv, err := testComponentPlainPathEnv()
-	if err != nil {
-		t.Fatalf("failed to build test component PATH: %v", err)
-	}
 
 	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
 	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
@@ -483,20 +477,26 @@ func TestConstructPlainPython(t *testing.T) {
 	// test module should be removed.
 	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
 
-	var opts *integration.ProgramTestOptions
-	opts = &integration.ProgramTestOptions{
-		Env: []string{pathEnv, testYarnLinkPulumiEnv},
+	runtimeVenv := pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))
+
+	opts := &integration.ProgramTestOptions{
+		Env: []string{testYarnLinkPulumiEnv, runtimeVenv},
 		Dir: filepath.Join("construct_component_plain", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
-		Quick: true,
+		Quick:      true,
+		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
 		},
 	}
-	integration.ProgramTest(t, opts)
+
+	runProgramSubTests(t, opts, map[string]string{
+		"WithNodeProvider":   componentPathEnv(t, "construct_component_plain", "testcomponent"),
+		"WithPythonProvider": componentPathEnv(t, "construct_component_plain", "testcomponent-python"),
+	})
 }
 
 func TestGetResourcePython(t *testing.T) {

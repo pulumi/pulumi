@@ -41,11 +41,14 @@
 - [CLI] Remove `pulumi history` command. This was previously deprecated and replaced by `pulumi stack history`
   [#6724](https://github.com/pulumi/pulumi/pull/6724)
 
+- [sdk/python] Allow using Python to build resource providers for multi-lang components.
+  [#6715](https://github.com/pulumi/pulumi/pull/6715)
+
 ### Enhancements
 
 - [sdk/nodejs] Add support for multiple V8 VM contexts in closure serialization.
   [#6648](https://github.com/pulumi/pulumi/pull/6648)
-  
+
 - [sdk] Handle providers for RegisterResourceRequest
   [#6771](https://github.com/pulumi/pulumi/pull/6771)
 

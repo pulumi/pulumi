@@ -90,6 +90,14 @@ async def serialize_properties(inputs: 'Inputs',
 
     When `typ` is an input type, the metadata from the type is used to translate Python snake_case
     names to Pulumi camelCase names, rather than using the `input_transformer`.
+
+    Modifies given property_deps dict to collect discovered dependencies by property name.
+
+    :param Inputs inputs: The bag to serialize.
+
+    :param Dict[str, List[Resource]] property_deps: Dependencies are set here.
+
+    :param input_transfomer: Optional name translator.
     """
 
     # Default implementation of get_type that always returns None.

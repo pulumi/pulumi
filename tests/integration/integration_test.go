@@ -5,6 +5,7 @@ package ints
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -566,34 +567,80 @@ func TestConfigPaths(t *testing.T) {
 }
 
 //nolint:golint,deadcode
-func testComponentPathEnv() (string, error) {
-	return componentPathEnv("construct_component", "testcomponent")
+func testComponentPathEnv(t *testing.T) string {
+	return componentPathEnv(t, "construct_component", "testcomponent")
 }
 
 //nolint:golint,deadcode
-func testComponentSlowPathEnv() (string, error) {
-	return componentPathEnv("construct_component_slow", "testcomponent")
+func testComponentSlowPathEnv(t *testing.T) string {
+	return componentPathEnv(t, "construct_component_slow", "testcomponent")
 }
 
 //nolint:golint,deadcode
-func testComponentPlainPathEnv() (string, error) {
-	return componentPathEnv("construct_component_plain", "testcomponent")
+func testComponentPlainPathEnv(t *testing.T) string {
+	return componentPathEnv(t, "construct_component_plain", "testcomponent")
 }
 
-func componentPathEnv(integrationTest, componentDir string) (string, error) {
+func componentPathEnv(t *testing.T, integrationTest, componentDir string) string {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return "", err
+		t.Fatal(err)
+		return ""
 	}
 	absCwd, err := filepath.Abs(cwd)
 	if err != nil {
-		return "", err
+		t.Fatal(err)
+		return ""
 	}
 	pluginDir := filepath.Join(absCwd, integrationTest, componentDir)
-
 	pathSeparator := ":"
 	if runtime.GOOS == "windows" {
 		pathSeparator = ";"
 	}
-	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir, nil
+	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir
+}
+
+// nolint: unused,deadcode
+func venvFromPipenv(relativeWorkdir string) (string, error) {
+	workdir, err := filepath.Abs(relativeWorkdir)
+	if err != nil {
+		return "", err
+	}
+	cmd := exec.Command("pipenv", "--venv")
+	cmd.Dir = workdir
+	dir, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	venv := strings.TrimRight(string(dir), "\r\n")
+	if _, err := os.Stat(venv); os.IsNotExist(err) {
+		return "", fmt.Errorf("Folder '%s' returned by 'pipenv --venv' from %s does not exist: %w",
+			venv, workdir, err)
+	}
+	return venv, nil
+}
+
+// nolint: unused,deadcode
+func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
+	venvFolder, err := venvFromPipenv(filepath.Join(pulumiRepoRootDir, "sdk", "python"))
+	if err != nil {
+		t.Fatal(fmt.Errorf("PULUMI_RUNTIME_VIRTUALENV guess failed: %w", err))
+		return ""
+	}
+	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
+	return r
+}
+
+// nolint: unused,deadcode
+func runProgramSubTests(t *testing.T, opts *integration.ProgramTestOptions, envExtensions map[string]string) {
+	extend := func(extraEnv string, opts integration.ProgramTestOptions) integration.ProgramTestOptions {
+		opts.Env = append(opts.Env, extraEnv)
+		return opts
+	}
+	for subTestName, extraEnv := range envExtensions {
+		t.Run(subTestName, func(t *testing.T) {
+			subTestOpts := extend(extraEnv, *opts)
+			integration.ProgramTest(t, &subTestOpts)
+		})
+	}
 }
