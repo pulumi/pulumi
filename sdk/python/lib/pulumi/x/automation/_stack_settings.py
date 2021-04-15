@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional, Mapping, Any, Union, Dict
+from typing import Optional, Any, Dict
 
 
 class StackSettingsSecureConfigValue:
@@ -28,38 +28,52 @@ class StackSettings:
     secrets_provider: Optional[str]
     encrypted_key: Optional[str]
     encryption_salt: Optional[str]
-    config: Optional[Mapping[str, Any]]
+    config: Optional[Dict[str, Any]]
 
     def __init__(self,
                  secrets_provider: Optional[str] = None,
                  encrypted_key: Optional[str] = None,
                  encryption_salt: Optional[str] = None,
-                 config: Optional[Mapping[str, Any]] = None):
+                 config: Optional[Dict[str, Any]] = None):
         self.secrets_provider = secrets_provider
         self.encrypted_key = encrypted_key
         self.encryption_salt = encryption_salt
-        if config:
-            stack_config: Dict[str, Union[str, StackSettingsSecureConfigValue]] = {}
-            for key in config:
-                val = config[key]
+        self.config = config
+
+    @classmethod
+    def _deserialize(cls, data: dict):
+        config = data.get("config")
+        if config is not None:
+            stack_config: Dict[str, Any] = {}
+            for key, val in config.items():
                 if isinstance(val, str):
                     stack_config[key] = val
                 elif "secure" in val:
                     stack_config[key] = StackSettingsSecureConfigValue(**val)
-            if len(stack_config.keys()) > 0:
-                self.config = stack_config
-
-    @classmethod
-    def _deserialize(cls, data: dict):
+            config = stack_config
         return cls(secrets_provider=data.get("secretsprovider"),
                    encrypted_key=data.get("encryptedkey"),
                    encryption_salt=data.get("encryptionsalt"),
-                   config=data.get("config"))
+                   config=config)
 
     def _serialize(self):
-        return {
-            "secretsprovider": self.secrets_provider,
-            "encryptedkey": self.encrypted_key,
-            "encryptionsalt": self.encryption_salt,
-            "config": self.config
-        }
+        serializable = {}
+
+        # Only add the keys that are present to avoid writing nulls to the
+        # Pulumi.[stack].yaml file.
+        if self.secrets_provider:
+            serializable["secretsprovider"] = self.secrets_provider
+        if self.encrypted_key:
+            serializable["encryptedkey"] = self.encrypted_key
+        if self.encryption_salt:
+            serializable["encryptionsalt"] = self.encryption_salt
+        if self.config:
+            config = {}
+            for key, val in self.config.items():
+                if isinstance(val, StackSettingsSecureConfigValue):
+                    config[key] = {"secure": val.secure}
+                else:
+                    config[key] = val
+            serializable["config"] = config
+
+        return serializable

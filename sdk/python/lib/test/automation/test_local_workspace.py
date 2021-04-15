@@ -34,6 +34,7 @@ from pulumi.x.automation import (
     ProjectSettings,
     StackSummary,
     Stack,
+    StackSettings,
     StackAlreadyExistsError,
     fully_qualified_stack_name,
 )
@@ -105,6 +106,24 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(settings.encrypted_key, "thisiskey")
             self.assertEqual(settings.config["plain"], "plain")
             self.assertEqual(settings.config["secure"].secure, "secret")
+
+        settings_with_no_config = StackSettings(secrets_provider="blah",
+                                                encrypted_key="thisiskey",
+                                                encryption_salt="salty")
+        self.assertEqual(settings_with_no_config._serialize(), {
+            "secretsprovider": "blah",
+            "encryptedkey": "thisiskey",
+            "encryptionsalt": "salty"
+        })
+
+        config = {
+            "cool": "sup",
+            "foo": {"secure": "thisisasecret"},
+        }
+        settings_with_only_config = StackSettings(config=config)
+        self.assertEqual(settings_with_only_config._serialize(), {
+            "config": config
+        })
 
     def test_plugin_functions(self):
         ws = LocalWorkspace()
