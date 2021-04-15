@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+## 2.25.1 (2021-04-15)
+
+### Bug Fixes
+
+- [automation/python] - Fix serialization bug in `StackSettings`
+  [#6776](https://github.com/pulumi/pulumi/pull/6776)
+
 ## 2.25.0 (2021-04-14)
 
 ### Breaking
