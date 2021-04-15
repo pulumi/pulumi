@@ -631,6 +631,7 @@ func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
 	return r
 }
 
+// nolint: unused,deadcode
 func runProgramSubTests(t *testing.T, opts *integration.ProgramTestOptions, envExtensions map[string]string) {
 	extend := func(extraEnv string, opts integration.ProgramTestOptions) integration.ProgramTestOptions {
 		opts.Env = append(opts.Env, extraEnv)
