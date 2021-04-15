@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -360,7 +360,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, res)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, res, false)
 		if err != nil {
 			return
 		}
@@ -534,7 +534,7 @@ func (ctx *Context) registerResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, resState)
+		inputs, err = ctx.prepareResourceInputs(props, t, options, resState, remote)
 		if err != nil {
 			return
 		}
@@ -894,13 +894,13 @@ type resourceInputs struct {
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
-func (ctx *Context) prepareResourceInputs(props Input, t string,
-	opts *resourceOptions, resource *resourceState) (*resourceInputs, error) {
+func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceOptions, resource *resourceState,
+	remote bool) (*resourceInputs, error) {
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parent, optDeps, protect, provider, providers, deleteBeforeReplace,
-		importID, ignoreChanges, additionalSecretOutputs, version, err := ctx.getOpts(t, resource.providers, opts)
+	parent, optDeps, protect, provider, providers, deleteBeforeReplace, importID, ignoreChanges,
+		additionalSecretOutputs, version, err := ctx.getOpts(t, resource.providers, opts, remote)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -990,8 +990,8 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opts *resourceOptions) (
-	URN, []URN, bool, string, map[string]string, bool, ID, []string, []string, string, error) {
+func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opts *resourceOptions, remote bool,
+) (URN, []URN, bool, string, map[string]string, bool, ID, []string, []string, string, error) {
 
 	var importID ID
 	if opts.Import != nil {
@@ -1039,14 +1039,16 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 	}
 
 	var providerRefs map[string]string
-	if opts.Providers != nil {
-		providerRefs = make(map[string]string, len(opts.Providers))
-		for name, provider := range opts.Providers {
-			pr, err := ctx.resolveProviderReference(provider)
-			if err != nil {
-				return "", nil, false, "", nil, false, "", nil, nil, "", err
+	if remote {
+		if opts.Providers != nil {
+			providerRefs = make(map[string]string, len(opts.Providers))
+			for name, provider := range opts.Providers {
+				pr, err := ctx.resolveProviderReference(provider)
+				if err != nil {
+					return "", nil, false, "", nil, false, "", nil, nil, "", err
+				}
+				providerRefs[name] = pr
 			}
-			providerRefs[name] = pr
 		}
 	}
 
