@@ -14,6 +14,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-random/sdk/v3 v3.1.2-0.20210323111705-623d65f88c52
 	github.com/pulumi/pulumi/pkg/v3 v3.0.0-beta.2
-	github.com/pulumi/pulumi/sdk/v3 v3.0.0-beta.2
+	github.com/pulumi/pulumi/sdk/v3 v3.0.0-rc.1
 	github.com/stretchr/testify v1.7.0
 )
