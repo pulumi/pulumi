@@ -90,7 +90,7 @@ var (
 		"f5bigip":       "f5 BIG-IP",
 		"fastly":        "Fastly",
 		"gcp":           "GCP",
-		"gcp-native":    "GCP Native (preview)",
+		"google-native": "Google Native (preview)",
 		"github":        "GitHub",
 		"gitlab":        "GitLab",
 		"hcloud":        "Hetzner Cloud",
