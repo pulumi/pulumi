@@ -213,7 +213,7 @@ func (mod *modContext) typeName(t *schema.ObjectType, state, input, args bool) s
 	if state {
 		return name + "GetArgs"
 	}
-	if !mod.isTFCompatMode() {
+	if !mod.isTFCompatMode() && !mod.isK8sCompatMode() {
 		if args {
 			return name + "Args"
 		}
@@ -1648,7 +1648,7 @@ func (mod *modContext) gen(fs fs) error {
 			fmt.Fprintf(buffer, "}\n")
 
 			suffix := ""
-			if mod.isTFCompatMode() && mod.details(t).functionType {
+			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && mod.details(t).functionType {
 				suffix = "Result"
 			}
 
