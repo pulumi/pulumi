@@ -52,7 +52,7 @@ namespace Pulumi
                 providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
             }
 
-            Dictionary<string, string>? providerRefs = null;
+            var providerRefs = new Dictionary<string, string>();
             if (remote)
             {
                 var componentOpts = options as ComponentResourceOptions;
@@ -65,14 +65,13 @@ namespace Pulumi
                         componentOpts.Provider = null;
                     }
 
-                    providerRefs = new Dictionary<string, string>(componentOpts.Providers.Count);
                     foreach (var provider in componentOpts.Providers)
                     {
                         var pref = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
-if (pref != null)
-{
-    providerRefs.Add(provider.Package, pref);
-}
+                        if (pref != null)
+                        {
+                            providerRefs.Add(provider.Package, pref);
+                        }
                     }
                 }
             }
@@ -114,7 +113,7 @@ if (pref != null)
                 serializedProps,
                 parentURN ?? "",
                 providerRef ?? "",
-                providerRefs ?? new Dictionary<string, string>(),
+                providerRefs,
                 allDirectDependencyURNs,
                 propertyToDirectDependencyURNs,
                 aliases);
