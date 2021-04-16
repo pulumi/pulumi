@@ -54,9 +54,9 @@ func (inputs ConstructInputs) Map() (pulumi.Map, error) {
 	return linkedConstructInputsMap(inputs.ctx, inputs.inputs)
 }
 
-// SetArgs sets the inputs on the given args struct.
-func (inputs ConstructInputs) SetArgs(args interface{}) error {
-	return linkedConstructInputsSetArgs(inputs.ctx, inputs.inputs, args)
+// CopyTo sets the inputs on the given args struct.
+func (inputs ConstructInputs) CopyTo(args interface{}) error {
+	return linkedConstructInputsCopyTo(inputs.ctx, inputs.inputs, args)
 }
 
 // ConstructResult is the result of a call to Construct.
@@ -87,8 +87,8 @@ func linkedConstruct(ctx context.Context, req *pulumirpc.ConstructRequest, engin
 // linkedConstructInputsMap is made available here from ../provider_linked.go via go:linkname.
 func linkedConstructInputsMap(ctx *pulumi.Context, inputs map[string]interface{}) (pulumi.Map, error)
 
-// linkedConstructInputsSetArgs is made available here from ../provider_linked.go via go:linkname.
-func linkedConstructInputsSetArgs(ctx *pulumi.Context, inputs map[string]interface{}, args interface{}) error
+// linkedConstructInputsCopyTo is made available here from ../provider_linked.go via go:linkname.
+func linkedConstructInputsCopyTo(ctx *pulumi.Context, inputs map[string]interface{}, args interface{}) error
 
 // linkedNewConstructResult is made available here from ../provider_linked.go via go:linkname.
 func linkedNewConstructResult(resource pulumi.ComponentResource) (pulumi.URNInput, pulumi.Input, error)

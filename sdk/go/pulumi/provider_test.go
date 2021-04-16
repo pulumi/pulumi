@@ -130,7 +130,7 @@ type NestedMapArgs struct {
 	Value map[string]Nested `pulumi:"value"`
 }
 
-func TestSetArgs(t *testing.T) {
+func TestConstructInputsCopyTo(t *testing.T) {
 	bar := "bar"
 	dep := newDependencyResource(URN(resource.NewURN("stack", "project", "", "test:index:custom", "test")))
 	tests := []struct {
@@ -346,7 +346,7 @@ func TestSetArgs(t *testing.T) {
 			inputs := map[string]interface{}{
 				"value": &constructInput{value: test.input, deps: test.deps},
 			}
-			err = constructInputsSetArgs(ctx, inputs, test.args)
+			err = constructInputsCopyTo(ctx, inputs, test.args)
 			assert.NoError(t, err)
 
 			result := reflect.ValueOf(test.args).Elem().FieldByName("Value").Interface()
@@ -371,7 +371,7 @@ func TestSetArgs(t *testing.T) {
 	}
 }
 
-func TestSetArgsError(t *testing.T) {
+func TestConstructInputsCopyToError(t *testing.T) {
 	tests := []struct {
 		input         resource.PropertyValue
 		deps          []Resource
@@ -421,7 +421,7 @@ func TestSetArgsError(t *testing.T) {
 			inputs := map[string]interface{}{
 				"value": &constructInput{value: test.input, deps: test.deps},
 			}
-			err = constructInputsSetArgs(ctx, inputs, test.args)
+			err = constructInputsCopyTo(ctx, inputs, test.args)
 			if assert.Error(t, err) {
 				assert.Equal(t, test.expectedError, err.Error())
 			}

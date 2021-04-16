@@ -192,8 +192,8 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 	return result, nil
 }
 
-// constructInputsSetArgs sets the inputs on the given args struct.
-func constructInputsSetArgs(ctx *Context, inputs map[string]interface{}, args interface{}) error {
+// constructInputsCopyTo sets the inputs on the given args struct.
+func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args interface{}) error {
 	if args == nil {
 		return errors.New("args must not be nil")
 	}

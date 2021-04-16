@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-//nolint:deadcode,lll
+//nolint:deadcode
 package pulumi
 
 import (
@@ -39,9 +39,9 @@ func linkedConstructInputsMap(ctx *Context, inputs map[string]interface{}) (Map,
 	return constructInputsMap(ctx, inputs)
 }
 
-//go:linkname linkedConstructInputsSetArgs github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsSetArgs
-func linkedConstructInputsSetArgs(ctx *Context, inputs map[string]interface{}, args interface{}) error {
-	return constructInputsSetArgs(ctx, inputs, args)
+//go:linkname linkedConstructInputsCopyTo github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedConstructInputsCopyTo
+func linkedConstructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args interface{}) error {
+	return constructInputsCopyTo(ctx, inputs, args)
 }
 
 //go:linkname linkedNewConstructResult github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider.linkedNewConstructResult

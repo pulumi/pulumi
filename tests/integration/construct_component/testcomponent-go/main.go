@@ -138,7 +138,7 @@ func (p *testcomponentProvider) Construct(ctx context.Context,
 		}
 
 		args := &ComponentArgs{}
-		if err := inputs.SetArgs(args); err != nil {
+		if err := inputs.CopyTo(args); err != nil {
 			return nil, errors.Wrap(err, "setting args")
 		}
 
