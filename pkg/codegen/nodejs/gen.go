@@ -158,7 +158,7 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 		return "enums." + modName + title(name)
 	}
 
-	if args && mod.compatibility != tfbridge20 {
+	if args && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		name += "Args"
 	}
 	return pkgName + root + modName + title(name)
@@ -850,7 +850,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 	}
 
 	name := tokenToName(obj.Token)
-	if mod.compatibility == tfbridge20 {
+	if mod.compatibility == tfbridge20 || mod.compatibility == kubernetes20 {
 		wrapInput := input && !mod.details(obj).functionType
 		mod.genPlainType(w, name, obj.Comment, properties, input, wrapInput, false, level)
 		return

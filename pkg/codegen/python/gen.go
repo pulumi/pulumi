@@ -138,7 +138,7 @@ func (mod *modContext) modNameAndName(tok string, pkg *schema.Package) (modName 
 func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input, args bool) string {
 	name := tokenToName(t.Token)
 
-	if mod.compatibility != tfbridge20 {
+	if mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
 		if args {
 			return name + "Args"
 		}
