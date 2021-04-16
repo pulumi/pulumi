@@ -15,7 +15,7 @@ __all__ = ['ComponentArgs', 'Component']
 @pulumi.input_type
 class ComponentArgs:
     def __init__(__self__, *,
-                 metadata: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']] = None):
+                 metadata: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMeta']] = None):
         """
         The set of arguments for constructing a Component resource.
         """
@@ -24,11 +24,11 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
-    def metadata(self) -> Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]:
+    def metadata(self) -> Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMeta']]:
         return pulumi.get(self, "metadata")
 
     @metadata.setter
-    def metadata(self, value: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]):
+    def metadata(self, value: Optional[pulumi.Input['pulumi_kubernetes.meta.v1.ObjectMeta']]):
         pulumi.set(self, "metadata", value)
 
 
@@ -37,7 +37,7 @@ class Component(pulumi.CustomResource):
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
+                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMeta']]] = None,
                  __props__=None):
         """
         Create a Component resource with the given unique name, props, and options.
@@ -67,7 +67,7 @@ class Component(pulumi.CustomResource):
     def _internal_init(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
-                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMetaArgs']]] = None,
+                 metadata: Optional[pulumi.Input[pulumi.InputType['pulumi_kubernetes.meta.v1.ObjectMeta']]] = None,
                  __props__=None):
         if opts is None:
             opts = pulumi.ResourceOptions()

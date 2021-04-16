@@ -23,6 +23,9 @@ import (
 // Compatibility mode for Kubernetes 2.0 SDK
 const kubernetes20 = "kubernetes20"
 
+// Compatibility mode for tfbridge 2.x SDKs
+const tfbridge20 = "tfbridge20"
+
 // PropertyInfo tracks Python-specific information associated with properties in a package.
 type PropertyInfo struct {
 	MapCase bool `json:"mapCase,omitempty"`

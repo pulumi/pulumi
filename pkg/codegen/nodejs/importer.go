@@ -23,6 +23,9 @@ import (
 // Compatibility mode for Kubernetes 2.0 SDK
 const kubernetes20 = "kubernetes20"
 
+// Compatibility mode for tfbridge 2.x SDKs
+const tfbridge20 = "tfbridge20"
+
 // NodePackageInfo contains NodeJS-specific information for a package.
 type NodePackageInfo struct {
 	// Custom name for the NPM package.

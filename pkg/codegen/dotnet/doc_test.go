@@ -86,7 +86,7 @@ func TestGetDocLinkForResourceInputOrOutputType(t *testing.T) {
 	expected := "/docs/reference/pkg/dotnet/Pulumi.Aws/Pulumi.Aws.S3.Inputs.BucketCorsRuleArgs.html"
 	// Generate the type string for the property type and use that to generate the doc link.
 	propertyType := pkg.Resources[0].InputProperties[0].Type
-	typeString := d.GetLanguageTypeString(pkg, "S3", propertyType, true, true)
+	typeString := d.GetLanguageTypeString(pkg, "S3", propertyType, true, true, true)
 	link := d.GetDocLinkForResourceInputOrOutputType(pkg, "doesNotMatter", typeString, true)
 	assert.Equal(t, expected, link)
 }

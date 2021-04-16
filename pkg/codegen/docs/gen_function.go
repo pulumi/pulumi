@@ -200,7 +200,7 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 	if f.Inputs != nil {
 		params = make([]formalParam, 0, len(f.Inputs.Properties))
 		for _, prop := range f.Inputs.Properties {
-			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, prop.Type, true /*input*/, false /*optional*/)
+			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, prop.Type, true /*input*/, false /*args*/, false /*optional*/)
 			params = append(params, formalParam{
 				Name:         python.PyName(prop.Name),
 				DefaultValue: " = None",
@@ -302,10 +302,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	outputProps := make(map[string][]property)
 	for _, lang := range supportedLanguages {
 		if f.Inputs != nil {
-			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false, false)
+			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false, false, false)
 		}
 		if f.Outputs != nil {
-			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false, false)
+			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false, false, false)
 		}
 	}
 
