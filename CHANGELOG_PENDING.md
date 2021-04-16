@@ -60,3 +60,6 @@
   [#6403](https://github.com/pulumi/pulumi/pull/6403)
 
 ### Bug Fixes
+
+- [CLI] Clean the template cache if the repo remote has changed.
+  [#6784](https://github.com/pulumi/pulumi/pull/6784)

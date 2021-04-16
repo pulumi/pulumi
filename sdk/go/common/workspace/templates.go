@@ -215,7 +215,8 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 	}
 
 	// See if the template directory is a Git repository.
-	if _, err = git.PlainOpen(templateDir); err != nil {
+	repo, err := git.PlainOpen(templateDir)
+	if err != nil {
 		// If the repository doesn't exist, it's a legacy directory.
 		// Delete the entire template directory and all children.
 		if err == git.ErrRepositoryNotExists {
@@ -223,6 +224,24 @@ func cleanupLegacyTemplateDir(templateKind TemplateKind) error {
 		}
 
 		return err
+	}
+
+	// The template directory is a Git repository. We want to make sure that it has the same remote as the one that
+	// we want to pull from. If it doesn't have the same remote, we'll delete it, so that the clone later succeeds.
+	// Select the appropriate remote
+	var url string
+	if templateKind == TemplateKindPolicyPack {
+		url = pulumiPolicyTemplateGitRepository
+	} else {
+		url = pulumiTemplateGitRepository
+	}
+	remotes, err := repo.Remotes()
+	if err != nil {
+		return fmt.Errorf("getting template repo remotes: %w", err)
+	}
+	// If the repo exists and it doesn't have exactly one remote that matches our URL, wipe the templates directory.
+	if len(remotes) != 1 || remotes[0] == nil || !strings.Contains(remotes[0].String(), url) {
+		return os.RemoveAll(templateDir)
 	}
 
 	return nil
@@ -319,7 +338,7 @@ func retrievePulumiTemplates(templateName string, offline bool, templateKind Tem
 		}
 		err := gitutil.GitCloneOrPull(repo, branch, templateDir, false /*shallow*/)
 		if err != nil {
-			return TemplateRepository{}, err
+			return TemplateRepository{}, fmt.Errorf("cloning templates repo: %w", err)
 		}
 	}
 
