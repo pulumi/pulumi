@@ -1,0 +1,1025 @@
+{
+  "name": "azure-native",
+  "version": "v0.7.0",
+  "description": "A native Generation Pulumi package for creating and managing Azure resources.",
+  "keywords": [
+    "pulumi",
+    "azure",
+    "azure-native"
+  ],
+  "homepage": "https://pulumi.com",
+  "license": "Apache-2.0",
+  "repository": "https://github.com/pulumi/pulumi-azure-native",
+  "types": {
+    "azure-native:cdn:CacheExpirationActionParameters": {
+      "description": "Defines the parameters for the cache expiration action.",
+      "properties": {
+        "cacheBehavior": {
+          "type": "string"
+        },
+        "cacheDuration": {
+          "type": "string"
+        },
+        "cacheType": {
+          "type": "string"
+        },
+        "odataType": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "cacheBehavior",
+        "cacheType",
+        "odataType"
+      ]
+    },
+    "azure-native:cdn:DeliveryRule": {
+      "description": "A rule that specifies a set of actions and conditions",
+      "properties": {
+        "actions": {
+          "type": "array",
+          "items": {
+            "discriminator": {
+              "propertyName": "name",
+              "mapping": {
+                "CacheExpiration": "#/types/azure-native:cdn:DeliveryRuleCacheExpirationAction",
+                "ModifyRequestHeader": "#/types/azure-native:cdn:DeliveryRuleRequestHeaderAction",
+                "ModifyResponseHeader": "#/types/azure-native:cdn:DeliveryRuleResponseHeaderAction"
+              }
+            },
+            "oneOf": [
+              {
+                "type": "object",
+                "$ref": "#/types/azure-native:cdn:DeliveryRuleCacheExpirationAction"
+              },
+              {
+                "type": "object",
+                "$ref": "#/types/azure-native:cdn:DeliveryRuleRequestHeaderAction"
+              },
+              {
+                "type": "object",
+                "$ref": "#/types/azure-native:cdn:DeliveryRuleResponseHeaderAction"
+              }
+            ]
+          },
+          "description": "A list of actions that are executed when all the conditions of a rule are satisfied."
+        },
+        "conditions": {
+          "type": "array",
+          "items": {
+            "discriminator": {
+              "propertyName": "name",
+              "mapping": {
+                "RemoteAddress": "#/types/azure-native:cdn:DeliveryRuleRemoteAddressCondition",
+                "RequestBody": "#/types/azure-native:cdn:DeliveryRuleRequestBodyCondition"
+              }
+            },
+            "oneOf": [
+              {
+                "type": "object",
+                "$ref": "#/types/azure-native:cdn:DeliveryRuleRemoteAddressCondition"
+              },
+              {
+                "type": "object",
+                "$ref": "#/types/azure-native:cdn:DeliveryRuleRequestBodyCondition"
+              }
+            ]
+          },
+          "description": "A list of conditions that must be matched for the actions to be executed"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the rule"
+        },
+        "order": {
+          "type": "integer",
+          "description": "The order in which the rules are applied for the endpoint. Possible values {0,1,2,3,………}. A rule with a lesser order will be applied before a rule with a greater order. Rule with order 0 is a special rule. It does not require any condition and actions listed in it will always be applied."
+        }
+      },
+      "type": "object",
+      "required": [
+        "actions",
+        "order"
+      ]
+    },
+    "azure-native:cdn:DeliveryRuleCacheExpirationAction": {
+      "description": "Defines the cache expiration action for the delivery rule.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the action for the delivery rule.\nExpected value is 'CacheExpiration'.",
+          "const": "CacheExpiration"
+        },
+        "parameters": {
+          "type": "object",
+          "$ref": "#/types/azure-native:cdn:CacheExpirationActionParameters",
+          "description": "Defines the parameters for the action."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
+    "azure-native:cdn:DeliveryRuleRemoteAddressCondition": {
+      "description": "Defines the RemoteAddress condition for the delivery rule.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the condition for the delivery rule.\nExpected value is 'RemoteAddress'.",
+          "const": "RemoteAddress"
+        },
+        "parameters": {
+          "type": "object",
+          "$ref": "#/types/azure-native:cdn:RemoteAddressMatchConditionParameters",
+          "description": "Defines the parameters for the condition."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
+    "azure-native:cdn:DeliveryRuleRequestBodyCondition": {
+      "description": "Defines the RequestBody condition for the delivery rule.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the condition for the delivery rule.\nExpected value is 'RequestBody'.",
+          "const": "RequestBody"
+        },
+        "parameters": {
+          "type": "object",
+          "$ref": "#/types/azure-native:cdn:RequestBodyMatchConditionParameters",
+          "description": "Defines the parameters for the condition."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
+    "azure-native:cdn:DeliveryRuleRequestHeaderAction": {
+      "description": "Defines the request header action for the delivery rule.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the action for the delivery rule.\nExpected value is 'ModifyRequestHeader'.",
+          "const": "ModifyRequestHeader"
+        },
+        "parameters": {
+          "type": "object",
+          "$ref": "#/types/azure-native:cdn:HeaderActionParameters",
+          "description": "Defines the parameters for the action."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
+    "azure-native:cdn:DeliveryRuleResponseHeaderAction": {
+      "description": "Defines the response header action for the delivery rule.",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "The name of the action for the delivery rule.\nExpected value is 'ModifyResponseHeader'.",
+          "const": "ModifyResponseHeader"
+        },
+        "parameters": {
+          "type": "object",
+          "$ref": "#/types/azure-native:cdn:HeaderActionParameters",
+          "description": "Defines the parameters for the action."
+        }
+      },
+      "type": "object",
+      "required": [
+        "name",
+        "parameters"
+      ]
+    },
+    "azure-native:cdn:EndpointPropertiesUpdateParametersDeliveryPolicy": {
+      "description": "A policy that specifies the delivery rules to be used for an endpoint.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "User-friendly description of the policy."
+        },
+        "rules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/azure-native:cdn:DeliveryRule"
+          },
+          "description": "A list of the delivery rules."
+        }
+      },
+      "type": "object",
+      "required": [
+        "rules"
+      ]
+    },
+    "azure-native:cdn:HeaderActionParameters": {
+      "description": "Defines the parameters for the request header action.",
+      "properties": {
+        "headerAction": {
+          "type": "string"
+        },
+        "headerName": {
+          "type": "string",
+          "description": "Name of the header to modify"
+        },
+        "odataType": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "description": "Value for the specified action"
+        }
+      },
+      "type": "object",
+      "required": [
+        "headerAction",
+        "headerName",
+        "odataType"
+      ]
+    },
+    "azure-native:cdn:RemoteAddressMatchConditionParameters": {
+      "description": "Defines the parameters for RemoteAddress match conditions",
+      "properties": {
+        "matchValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Match values to match against. The operator will apply to each value in here with OR semantics. If any of them match the variable with the given operator this match condition is considered a match."
+        },
+        "negateCondition": {
+          "type": "boolean",
+          "description": "Describes if this is negate condition or not"
+        },
+        "odataType": {
+          "type": "string"
+        },
+        "operator": {
+          "type": "string"
+        }
+      },
+      "type": "object",
+      "required": [
+        "odataType",
+        "operator"
+      ]
+    },
+    "azure-native:cdn:RequestBodyMatchConditionParameters": {
+      "description": "Defines the parameters for RequestBody match conditions",
+      "properties": {
+        "matchValues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The match value for the condition of the delivery rule"
+        },
+        "negateCondition": {
+          "type": "boolean",
+          "description": "Describes if this is negate condition or not"
+        },
+        "odataType": {
+          "type": "string"
+        },
+        "operator": {
+          "type": "string"
+        },
+        "transforms": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "List of transforms"
+        }
+      },
+      "type": "object",
+      "required": [
+        "odataType",
+        "operator"
+      ]
+    },
+    "azure-native:network:ForwardingConfiguration": {
+      "properties": {
+        "backendPool": {
+          "type": "object",
+          "$ref": "#/types/azure-native:network:SubResource",
+          "description": "A reference to the BackendPool which this rule routes to."
+        },
+        "customForwardingPath": {
+          "type": "string",
+          "description": "A custom path used to rewrite resource paths matched by this rule. Leave empty to use incoming path."
+        },
+        "odataType": {
+          "type": "string",
+          "description": "\nExpected value is '#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration'.",
+          "const": "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration"
+        }
+      },
+      "type": "object",
+      "required": [
+        "odataType"
+      ]
+    },
+    "azure-native:network:RedirectConfiguration": {
+      "description": "Describes Redirect Route.",
+      "properties": {
+        "customFragment": {
+          "type": "string",
+          "description": "Fragment to add to the redirect URL. Fragment is the part of the URL that comes after #. Do not include the #."
+        },
+        "customHost": {
+          "type": "string",
+          "description": "Host to redirect. Leave empty to use the incoming host as the destination host."
+        },
+        "customPath": {
+          "type": "string",
+          "description": "The full path to redirect. Path cannot be empty and must start with /. Leave empty to use the incoming path as destination path."
+        },
+        "customQueryString": {
+          "type": "string",
+          "description": "The set of query strings to be placed in the redirect URL. Setting this value would replace any existing query string; leave empty to preserve the incoming query string. Query string must be in \u003ckey\u003e=\u003cvalue\u003e format. The first ? and \u0026 will be added automatically so do not include them in the front, but do separate multiple query strings with \u0026."
+        },
+        "odataType": {
+          "type": "string",
+          "description": "\nExpected value is '#Microsoft.Azure.FrontDoor.Models.FrontdoorRedirectConfiguration'.",
+          "const": "#Microsoft.Azure.FrontDoor.Models.FrontdoorRedirectConfiguration"
+        }
+      },
+      "type": "object",
+      "required": [
+        "odataType"
+      ]
+    },
+    "azure-native:network:RoutingRule": {
+      "description": "A routing rule represents a specification for traffic to treat and where to send it, along with health probe information.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource ID."
+        },
+        "name": {
+          "type": "string",
+          "description": "Resource name."
+        },
+        "patternsToMatch": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "The route patterns of the rule."
+        },
+        "routeConfiguration": {
+          "discriminator": {
+            "propertyName": "odataType",
+            "mapping": {
+              "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration": "#/types/azure-native:network:ForwardingConfiguration",
+              "#Microsoft.Azure.FrontDoor.Models.FrontdoorRedirectConfiguration": "#/types/azure-native:network:RedirectConfiguration"
+            }
+          },
+          "oneOf": [
+            {
+              "type": "object",
+              "$ref": "#/types/azure-native:network:ForwardingConfiguration"
+            },
+            {
+              "type": "object",
+              "$ref": "#/types/azure-native:network:RedirectConfiguration"
+            }
+          ],
+          "description": "A reference to the routing configuration."
+        }
+      },
+      "type": "object"
+    },
+    "azure-native:network:SubResource": {
+      "description": "A reference to a another resource",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Resource Id."
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "azure-native:cdn:Endpoint": {
+      "type": "object",
+      "inputProperties": {
+        "deliveryPolicy": {
+          "type": "object",
+          "$ref": "#/types/azure-native:cdn:EndpointPropertiesUpdateParametersDeliveryPolicy",
+          "description": "A policy that specifies the delivery rules to be used for an endpoint."
+        },
+        "endpointName": {
+          "type": "string",
+          "description": "Name of the endpoint under the profile which is unique globally."
+        },
+        "isCompressionEnabled": {
+          "type": "boolean",
+          "description": "Indicates whether content compression is enabled on CDN. Default value is false. If compression is enabled, content will be served as compressed if user requests for a compressed version. Content won't be compressed on CDN when requested content is smaller than 1 byte or larger than 1 MB."
+        },
+        "isHttpAllowed": {
+          "type": "boolean",
+          "description": "Indicates whether HTTP traffic is allowed on the endpoint. Default value is true. At least one protocol (HTTP or HTTPS) must be allowed."
+        },
+        "isHttpsAllowed": {
+          "type": "boolean",
+          "description": "Indicates whether HTTPS traffic is allowed on the endpoint. Default value is true. At least one protocol (HTTP or HTTPS) must be allowed."
+        },
+        "location": {
+          "type": "string",
+          "description": "Resource location."
+        },
+        "originHostHeader": {
+          "type": "string",
+          "description": "The host header value sent to the origin with each request. This property at Endpoint is only allowed when endpoint uses single origin and can be overridden by the same property specified at origin.If you leave this blank, the request hostname determines this value. Azure CDN origins, such as Web Apps, Blob Storage, and Cloud Services require this host header value to match the origin hostname by default."
+        },
+        "originPath": {
+          "type": "string",
+          "description": "A directory path on the origin that CDN can use to retrieve content from, e.g. contoso.cloudapp.net/originpath."
+        },
+        "probePath": {
+          "type": "string",
+          "description": "Path to a file hosted on the origin which helps accelerate delivery of the dynamic content and calculate the most optimal routes for the CDN. This is relative to the origin path. This property is only relevant when using a single origin."
+        },
+        "profileName": {
+          "type": "string",
+          "description": "Name of the CDN profile which is unique within the resource group."
+        },
+        "resourceGroupName": {
+          "type": "string",
+          "description": "Name of the Resource group within the Azure subscription."
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags."
+        }
+      }
+    },
+    "azure-native:network:FrontDoor": {
+      "type": "object",
+      "inputProperties": {
+        "routingRules": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/azure-native:network:RoutingRule"
+          },
+          "description": "Routing rules associated with this Front Door."
+        },
+        "tags": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Resource tags."
+        }
+      }
+    }
+  },
+  "language": {
+    "csharp": {
+      "namespaces": {
+        "aad": "Aad",
+        "aadiam": "AadIam",
+        "addons": "Addons",
+        "adhybridhealthservice": "ADHybridHealthService",
+        "advisor": "Advisor",
+        "alertsmanagement": "AlertsManagement",
+        "analysisservices": "AnalysisServices",
+        "apimanagement": "ApiManagement",
+        "appconfiguration": "AppConfiguration",
+        "appplatform": "AppPlatform",
+        "attestation": "Attestation",
+        "authorization": "Authorization",
+        "automanage": "Automanage",
+        "automation": "Automation",
+        "autonomousdevelopmentplatform": "AutonomousDevelopmentPlatform",
+        "avs": "AVS",
+        "azure-native": "AzureNative",
+        "azureactivedirectory": "AzureActiveDirectory",
+        "azuredata": "AzureData",
+        "azurestack": "AzureStack",
+        "azurestackhci": "AzureStackHCI",
+        "baremetalinfrastructure": "BareMetalInfrastructure",
+        "batch": "Batch",
+        "batchai": "BatchAI",
+        "billing": "Billing",
+        "blockchain": "Blockchain",
+        "blueprint": "Blueprint",
+        "botservice": "BotService",
+        "cache": "Cache",
+        "capacity": "Capacity",
+        "cdn": "Cdn",
+        "certificateregistration": "CertificateRegistration",
+        "changeanalysis": "ChangeAnalysis",
+        "cognitiveservices": "CognitiveServices",
+        "commerce": "Commerce",
+        "communication": "Communication",
+        "compute": "Compute",
+        "confidentialledger": "ConfidentialLedger",
+        "confluent": "Confluent",
+        "consumption": "Consumption",
+        "containerinstance": "ContainerInstance",
+        "containerregistry": "ContainerRegistry",
+        "containerservice": "ContainerService",
+        "costmanagement": "CostManagement",
+        "customerinsights": "CustomerInsights",
+        "customerlockbox": "CustomerLockbox",
+        "customproviders": "CustomProviders",
+        "databox": "DataBox",
+        "databoxedge": "DataBoxEdge",
+        "databricks": "Databricks",
+        "datacatalog": "DataCatalog",
+        "datadog": "Datadog",
+        "datafactory": "DataFactory",
+        "datalakeanalytics": "DataLakeAnalytics",
+        "datalakestore": "DataLakeStore",
+        "datamigration": "DataMigration",
+        "datashare": "DataShare",
+        "dbformariadb": "DBforMariaDB",
+        "dbformysql": "DBforMySQL",
+        "dbforpostgresql": "DBforPostgreSQL",
+        "delegatednetwork": "DelegatedNetwork",
+        "deploymentmanager": "DeploymentManager",
+        "desktopvirtualization": "DesktopVirtualization",
+        "devices": "Devices",
+        "devops": "DevOps",
+        "devspaces": "DevSpaces",
+        "devtestlab": "DevTestLab",
+        "digitaltwins": "DigitalTwins",
+        "documentdb": "DocumentDB",
+        "domainregistration": "DomainRegistration",
+        "dynamicstelemetry": "DynamicsTelemetry",
+        "edgeorder": "EdgeOrder",
+        "engagementfabric": "EngagementFabric",
+        "enterpriseknowledgegraph": "EnterpriseKnowledgeGraph",
+        "eventgrid": "EventGrid",
+        "eventhub": "EventHub",
+        "features": "Features",
+        "guestconfiguration": "GuestConfiguration",
+        "hanaonazure": "HanaOnAzure",
+        "hardwaresecuritymodules": "HardwareSecurityModules",
+        "hdinsight": "HDInsight",
+        "healthbot": "HealthBot",
+        "healthcareapis": "HealthcareApis",
+        "hybridcompute": "HybridCompute",
+        "hybriddata": "HybridData",
+        "hybridnetwork": "HybridNetwork",
+        "importexport": "ImportExport",
+        "insights": "Insights",
+        "intune": "Intune",
+        "iotcentral": "IoTCentral",
+        "iotsecurity": "IoTSecurity",
+        "iotspaces": "IoTSpaces",
+        "keyvault": "KeyVault",
+        "kubernetes": "Kubernetes",
+        "kubernetesconfiguration": "KubernetesConfiguration",
+        "kusto": "Kusto",
+        "labservices": "LabServices",
+        "logic": "Logic",
+        "machinelearning": "MachineLearning",
+        "machinelearningcompute": "MachineLearningCompute",
+        "machinelearningexperimentation": "MachineLearningExperimentation",
+        "machinelearningservices": "MachineLearningServices",
+        "maintenance": "Maintenance",
+        "managedidentity": "ManagedIdentity",
+        "managednetwork": "ManagedNetwork",
+        "managedservices": "ManagedServices",
+        "management": "Management",
+        "managementpartner": "ManagementPartner",
+        "maps": "Maps",
+        "marketplace": "Marketplace",
+        "marketplaceordering": "MarketplaceOrdering",
+        "media": "Media",
+        "migrate": "Migrate",
+        "mixedreality": "MixedReality",
+        "netapp": "NetApp",
+        "network": "Network",
+        "notebooks": "Notebooks",
+        "notificationhubs": "NotificationHubs",
+        "offazure": "OffAzure",
+        "operationalinsights": "OperationalInsights",
+        "operationsmanagement": "OperationsManagement",
+        "peering": "Peering",
+        "policyinsights": "PolicyInsights",
+        "portal": "Portal",
+        "powerbi": "PowerBI",
+        "powerbidedicated": "PowerBIDedicated",
+        "powerplatform": "PowerPlatform",
+        "providerhub": "ProviderHub",
+        "purview": "Purview",
+        "quantum": "Quantum",
+        "recoveryservices": "RecoveryServices",
+        "redhatopenshift": "RedHatOpenShift",
+        "relay": "Relay",
+        "resourcegraph": "ResourceGraph",
+        "resourcehealth": "ResourceHealth",
+        "resources": "Resources",
+        "saas": "SaaS",
+        "scheduler": "Scheduler",
+        "search": "Search",
+        "security": "Security",
+        "securityinsights": "SecurityInsights",
+        "serialconsole": "SerialConsole",
+        "servicebus": "ServiceBus",
+        "servicefabric": "ServiceFabric",
+        "servicefabricmesh": "ServiceFabricMesh",
+        "signalrservice": "SignalRService",
+        "softwareplan": "SoftwarePlan",
+        "solutions": "Solutions",
+        "sql": "Sql",
+        "sqlvirtualmachine": "SqlVirtualMachine",
+        "storage": "Storage",
+        "storagecache": "StorageCache",
+        "storagepool": "StoragePool",
+        "storagesync": "StorageSync",
+        "storsimple": "StorSimple",
+        "streamanalytics": "StreamAnalytics",
+        "subscription": "Subscription",
+        "support": "Support",
+        "synapse": "Synapse",
+        "timeseriesinsights": "TimeSeriesInsights",
+        "virtualmachineimages": "VirtualMachineImages",
+        "visualstudio": "VisualStudio",
+        "vmwarecloudsimple": "VMwareCloudSimple",
+        "web": "Web",
+        "windowsesu": "WindowsESU",
+        "windowsiot": "WindowsIoT",
+        "workloadmonitor": "WorkloadMonitor"
+      },
+      "packageReferences": {
+        "Pulumi": "2.*",
+        "System.Collections.Immutable": "1.6.0"
+      }
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi-azure-native/sdk/go/azure",
+      "packageImportAliases": {
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/aad": "aad",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/aadiam": "aadiam",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/addons": "addons",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/adhybridhealthservice": "adhybridhealthservice",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/advisor": "advisor",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/alertsmanagement": "alertsmanagement",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/analysisservices": "analysisservices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/apimanagement": "apimanagement",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/appconfiguration": "appconfiguration",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/appplatform": "appplatform",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/attestation": "attestation",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/authorization": "authorization",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/automanage": "automanage",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/automation": "automation",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/autonomousdevelopmentplatform": "autonomousdevelopmentplatform",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/avs": "avs",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/azureactivedirectory": "azureactivedirectory",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/azuredata": "azuredata",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/azurestack": "azurestack",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/azurestackhci": "azurestackhci",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/baremetalinfrastructure": "baremetalinfrastructure",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/batch": "batch",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/batchai": "batchai",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/billing": "billing",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/blockchain": "blockchain",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/blueprint": "blueprint",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/botservice": "botservice",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/cache": "cache",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/capacity": "capacity",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/cdn": "cdn",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/certificateregistration": "certificateregistration",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/changeanalysis": "changeanalysis",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/cognitiveservices": "cognitiveservices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/commerce": "commerce",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/communication": "communication",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/compute": "compute",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/confidentialledger": "confidentialledger",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/confluent": "confluent",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/consumption": "consumption",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/containerinstance": "containerinstance",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/containerregistry": "containerregistry",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/containerservice": "containerservice",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/costmanagement": "costmanagement",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/customerinsights": "customerinsights",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/customerlockbox": "customerlockbox",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/customproviders": "customproviders",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/databox": "databox",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/databoxedge": "databoxedge",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/databricks": "databricks",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datacatalog": "datacatalog",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datadog": "datadog",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datafactory": "datafactory",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datalakeanalytics": "datalakeanalytics",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datalakestore": "datalakestore",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datamigration": "datamigration",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/datashare": "datashare",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/dbformariadb": "dbformariadb",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/dbformysql": "dbformysql",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/dbforpostgresql": "dbforpostgresql",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/delegatednetwork": "delegatednetwork",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/deploymentmanager": "deploymentmanager",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/desktopvirtualization": "desktopvirtualization",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/devices": "devices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/devops": "devops",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/devspaces": "devspaces",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/devtestlab": "devtestlab",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/digitaltwins": "digitaltwins",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/documentdb": "documentdb",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/domainregistration": "domainregistration",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/dynamicstelemetry": "dynamicstelemetry",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/edgeorder": "edgeorder",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/engagementfabric": "engagementfabric",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/enterpriseknowledgegraph": "enterpriseknowledgegraph",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/eventgrid": "eventgrid",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/eventhub": "eventhub",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/features": "features",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/guestconfiguration": "guestconfiguration",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/hanaonazure": "hanaonazure",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/hardwaresecuritymodules": "hardwaresecuritymodules",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/hdinsight": "hdinsight",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/healthbot": "healthbot",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/healthcareapis": "healthcareapis",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/hybridcompute": "hybridcompute",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/hybriddata": "hybriddata",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/hybridnetwork": "hybridnetwork",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/importexport": "importexport",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/insights": "insights",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/intune": "intune",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/iotcentral": "iotcentral",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/iotsecurity": "iotsecurity",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/iotspaces": "iotspaces",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/keyvault": "keyvault",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/kubernetes": "kubernetes",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/kubernetesconfiguration": "kubernetesconfiguration",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/kusto": "kusto",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/labservices": "labservices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/logic": "logic",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/machinelearning": "machinelearning",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/machinelearningcompute": "machinelearningcompute",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/machinelearningexperimentation": "machinelearningexperimentation",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/machinelearningservices": "machinelearningservices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/maintenance": "maintenance",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/managedidentity": "managedidentity",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/managednetwork": "managednetwork",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/managedservices": "managedservices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/management": "management",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/managementpartner": "managementpartner",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/maps": "maps",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/marketplace": "marketplace",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/marketplaceordering": "marketplaceordering",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/media": "media",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/migrate": "migrate",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/mixedreality": "mixedreality",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/netapp": "netapp",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/network": "network",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/notebooks": "notebooks",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/notificationhubs": "notificationhubs",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/offazure": "offazure",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/operationalinsights": "operationalinsights",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/operationsmanagement": "operationsmanagement",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/peering": "peering",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/policyinsights": "policyinsights",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/portal": "portal",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/powerbi": "powerbi",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/powerbidedicated": "powerbidedicated",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/powerplatform": "powerplatform",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/providerhub": "providerhub",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/purview": "purview",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/quantum": "quantum",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/recoveryservices": "recoveryservices",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/redhatopenshift": "redhatopenshift",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/relay": "relay",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/resourcegraph": "resourcegraph",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/resourcehealth": "resourcehealth",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/resources": "resources",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/saas": "saas",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/scheduler": "scheduler",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/search": "search",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/security": "security",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/securityinsights": "securityinsights",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/serialconsole": "serialconsole",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/servicebus": "servicebus",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/servicefabric": "servicefabric",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/servicefabricmesh": "servicefabricmesh",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/signalrservice": "signalrservice",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/softwareplan": "softwareplan",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/solutions": "solutions",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/sql": "sql",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/sqlvirtualmachine": "sqlvirtualmachine",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/storage": "storage",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/storagecache": "storagecache",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/storagepool": "storagepool",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/storagesync": "storagesync",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/storsimple": "storsimple",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/streamanalytics": "streamanalytics",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/subscription": "subscription",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/support": "support",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/synapse": "synapse",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/timeseriesinsights": "timeseriesinsights",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/virtualmachineimages": "virtualmachineimages",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/visualstudio": "visualstudio",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/vmwarecloudsimple": "vmwarecloudsimple",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/web": "web",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/windowsesu": "windowsesu",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/windowsiot": "windowsiot",
+        "github.com/pulumi/pulumi-azure-native/sdk/go/azure/workloadmonitor": "workloadmonitor"
+      }
+    },
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/pulumi": "^2.20.0"
+      },
+      "readme": "The native Azure provider package offers support for all Azure Resource Manager (ARM)\nresources and their properties. Resources are exposed as types from modules based on Azure Resource\nProviders such as 'compute', 'network', 'storage', and 'web', among many others. Using this package\nallows you to programmatically declare instances of any Azure resource and any supported resource\nversion using infrastructure as code, which Pulumi then uses to drive the ARM API."
+    },
+    "python": {
+      "moduleNameOverrides": {
+        "aad": "aad",
+        "aadiam": "aadiam",
+        "addons": "addons",
+        "adhybridhealthservice": "adhybridhealthservice",
+        "advisor": "advisor",
+        "alertsmanagement": "alertsmanagement",
+        "analysisservices": "analysisservices",
+        "apimanagement": "apimanagement",
+        "appconfiguration": "appconfiguration",
+        "appplatform": "appplatform",
+        "attestation": "attestation",
+        "authorization": "authorization",
+        "automanage": "automanage",
+        "automation": "automation",
+        "autonomousdevelopmentplatform": "autonomousdevelopmentplatform",
+        "avs": "avs",
+        "azureactivedirectory": "azureactivedirectory",
+        "azuredata": "azuredata",
+        "azurestack": "azurestack",
+        "azurestackhci": "azurestackhci",
+        "baremetalinfrastructure": "baremetalinfrastructure",
+        "batch": "batch",
+        "batchai": "batchai",
+        "billing": "billing",
+        "blockchain": "blockchain",
+        "blueprint": "blueprint",
+        "botservice": "botservice",
+        "cache": "cache",
+        "capacity": "capacity",
+        "cdn": "cdn",
+        "certificateregistration": "certificateregistration",
+        "changeanalysis": "changeanalysis",
+        "cognitiveservices": "cognitiveservices",
+        "commerce": "commerce",
+        "communication": "communication",
+        "compute": "compute",
+        "confidentialledger": "confidentialledger",
+        "confluent": "confluent",
+        "consumption": "consumption",
+        "containerinstance": "containerinstance",
+        "containerregistry": "containerregistry",
+        "containerservice": "containerservice",
+        "costmanagement": "costmanagement",
+        "customerinsights": "customerinsights",
+        "customerlockbox": "customerlockbox",
+        "customproviders": "customproviders",
+        "databox": "databox",
+        "databoxedge": "databoxedge",
+        "databricks": "databricks",
+        "datacatalog": "datacatalog",
+        "datadog": "datadog",
+        "datafactory": "datafactory",
+        "datalakeanalytics": "datalakeanalytics",
+        "datalakestore": "datalakestore",
+        "datamigration": "datamigration",
+        "datashare": "datashare",
+        "dbformariadb": "dbformariadb",
+        "dbformysql": "dbformysql",
+        "dbforpostgresql": "dbforpostgresql",
+        "delegatednetwork": "delegatednetwork",
+        "deploymentmanager": "deploymentmanager",
+        "desktopvirtualization": "desktopvirtualization",
+        "devices": "devices",
+        "devops": "devops",
+        "devspaces": "devspaces",
+        "devtestlab": "devtestlab",
+        "digitaltwins": "digitaltwins",
+        "documentdb": "documentdb",
+        "domainregistration": "domainregistration",
+        "dynamicstelemetry": "dynamicstelemetry",
+        "edgeorder": "edgeorder",
+        "engagementfabric": "engagementfabric",
+        "enterpriseknowledgegraph": "enterpriseknowledgegraph",
+        "eventgrid": "eventgrid",
+        "eventhub": "eventhub",
+        "features": "features",
+        "guestconfiguration": "guestconfiguration",
+        "hanaonazure": "hanaonazure",
+        "hardwaresecuritymodules": "hardwaresecuritymodules",
+        "hdinsight": "hdinsight",
+        "healthbot": "healthbot",
+        "healthcareapis": "healthcareapis",
+        "hybridcompute": "hybridcompute",
+        "hybriddata": "hybriddata",
+        "hybridnetwork": "hybridnetwork",
+        "importexport": "importexport",
+        "insights": "insights",
+        "intune": "intune",
+        "iotcentral": "iotcentral",
+        "iotsecurity": "iotsecurity",
+        "iotspaces": "iotspaces",
+        "keyvault": "keyvault",
+        "kubernetes": "kubernetes",
+        "kubernetesconfiguration": "kubernetesconfiguration",
+        "kusto": "kusto",
+        "labservices": "labservices",
+        "logic": "logic",
+        "machinelearning": "machinelearning",
+        "machinelearningcompute": "machinelearningcompute",
+        "machinelearningexperimentation": "machinelearningexperimentation",
+        "machinelearningservices": "machinelearningservices",
+        "maintenance": "maintenance",
+        "managedidentity": "managedidentity",
+        "managednetwork": "managednetwork",
+        "managedservices": "managedservices",
+        "management": "management",
+        "managementpartner": "managementpartner",
+        "maps": "maps",
+        "marketplace": "marketplace",
+        "marketplaceordering": "marketplaceordering",
+        "media": "media",
+        "migrate": "migrate",
+        "mixedreality": "mixedreality",
+        "netapp": "netapp",
+        "network": "network",
+        "notebooks": "notebooks",
+        "notificationhubs": "notificationhubs",
+        "offazure": "offazure",
+        "operationalinsights": "operationalinsights",
+        "operationsmanagement": "operationsmanagement",
+        "peering": "peering",
+        "policyinsights": "policyinsights",
+        "portal": "portal",
+        "powerbi": "powerbi",
+        "powerbidedicated": "powerbidedicated",
+        "powerplatform": "powerplatform",
+        "providerhub": "providerhub",
+        "purview": "purview",
+        "quantum": "quantum",
+        "recoveryservices": "recoveryservices",
+        "redhatopenshift": "redhatopenshift",
+        "relay": "relay",
+        "resourcegraph": "resourcegraph",
+        "resourcehealth": "resourcehealth",
+        "resources": "resources",
+        "saas": "saas",
+        "scheduler": "scheduler",
+        "search": "search",
+        "security": "security",
+        "securityinsights": "securityinsights",
+        "serialconsole": "serialconsole",
+        "servicebus": "servicebus",
+        "servicefabric": "servicefabric",
+        "servicefabricmesh": "servicefabricmesh",
+        "signalrservice": "signalrservice",
+        "softwareplan": "softwareplan",
+        "solutions": "solutions",
+        "sql": "sql",
+        "sqlvirtualmachine": "sqlvirtualmachine",
+        "storage": "storage",
+        "storagecache": "storagecache",
+        "storagepool": "storagepool",
+        "storagesync": "storagesync",
+        "storsimple": "storsimple",
+        "streamanalytics": "streamanalytics",
+        "subscription": "subscription",
+        "support": "support",
+        "synapse": "synapse",
+        "timeseriesinsights": "timeseriesinsights",
+        "virtualmachineimages": "virtualmachineimages",
+        "visualstudio": "visualstudio",
+        "vmwarecloudsimple": "vmwarecloudsimple",
+        "web": "web",
+        "windowsesu": "windowsesu",
+        "windowsiot": "windowsiot",
+        "workloadmonitor": "workloadmonitor"
+      },
+      "readme": "The Azure native provider package offers support for all Azure Resource Manager (ARM)\nresources and their properties. Resources are exposed as types from modules based on Azure Resource\nProviders such as 'compute', 'network', 'storage', and 'web', among many others. Using this package\nallows you to programmatically declare instances of any Azure resource and any supported resource\nversion using infrastructure as code, which Pulumi then uses to drive the ARM API.",
+      "requires": {
+        "pulumi": "\u003e=2.20.0,\u003c3.0.0"
+      },
+      "usesIOClasses": true
+    }
+  }
+}
