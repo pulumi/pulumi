@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -12,7 +12,7 @@ namespace Pulumi
     public partial class Deployment
     {
         private async Task<PrepareResult> PrepareResourceAsync(
-            string label, Resource res, bool custom,
+            string label, Resource res, bool custom, bool remote,
             ResourceArgs args, ResourceOptions options)
         {
             /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
@@ -21,35 +21,59 @@ namespace Pulumi
             var type = res.GetResourceType();
             var name = res.GetResourceName();
 
-            LogExcessive($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}, remote={remote}");
             var explicitDirectDependencies = new HashSet<Resource>(
                 await GatherExplicitDependenciesAsync(options.DependsOn).ConfigureAwait(false));
-            LogExcessive($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
             // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-            LogExcessive($"Serializing properties: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Serializing properties: t={type}, name={name}, custom={custom}, remote={remote}");
             var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
             var (serializedProps, propertyToDirectDependencies) =
                 await SerializeResourcePropertiesAsync(
                         label,
                         dictionary,
                         await this.MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
-            LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
-            LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
             var parentURN = options.Parent != null
                 ? await options.Parent.Urn.GetValueAsync().ConfigureAwait(false)
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
-            LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
 
             string? providerRef = null;
             if (custom)
             {
                 var customOpts = options as CustomResourceOptions;
                 providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
+            }
+
+            var providerRefs = new Dictionary<string, string>();
+            if (remote)
+            {
+                var componentOpts = options as ComponentResourceOptions;
+                if (componentOpts != null)
+                {
+                    // If only the Provider opt is set, move it to the Providers list for further processing.
+                    if (componentOpts.Provider != null && componentOpts.Providers.Count == 0)
+                    {
+                        componentOpts.Providers.Add(componentOpts.Provider);
+                        componentOpts.Provider = null;
+                    }
+
+                    foreach (var provider in componentOpts.Providers)
+                    {
+                        var pref = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
+                        if (pref != null)
+                        {
+                            providerRefs.Add(provider.Package, pref);
+                        }
+                    }
+                }
             }
 
             // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
@@ -89,6 +113,7 @@ namespace Pulumi
                 serializedProps,
                 parentURN ?? "",
                 providerRef ?? "",
+                providerRefs,
                 allDirectDependencyURNs,
                 propertyToDirectDependencyURNs,
                 aliases);
@@ -170,15 +195,17 @@ namespace Pulumi
             public readonly Struct SerializedProps;
             public readonly string ParentUrn;
             public readonly string ProviderRef;
+            public readonly Dictionary<string, string> ProviderRefs;
             public readonly HashSet<string> AllDirectDependencyURNs;
             public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyURNs;
             public readonly List<string> Aliases;
 
-            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
                 ProviderRef = providerRef;
+                ProviderRefs = providerRefs;
                 AllDirectDependencyURNs = allDirectDependencyURNs;
                 PropertyToDirectDependencyURNs = propertyToDirectDependencyURNs;
                 Aliases = aliases;

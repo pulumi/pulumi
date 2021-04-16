@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Immutable;
@@ -24,7 +24,7 @@ namespace Pulumi
             var request = CreateRegisterResourceRequest(type, name, custom, remote, options);
 
             Log.Debug($"Preparing resource: t={type}, name={name}, custom={custom}, remote={remote}");
-            var prepareResult = await PrepareResourceAsync(label, resource, custom, args, options).ConfigureAwait(false);
+            var prepareResult = await PrepareResourceAsync(label, resource, custom, remote, args, options).ConfigureAwait(false);
             Log.Debug($"Prepared resource: t={type}, name={name}, custom={custom}, remote={remote}");
 
             PopulateRequest(request, prepareResult);
@@ -52,6 +52,7 @@ namespace Pulumi
             request.Object = prepareResult.SerializedProps;
             request.Parent = prepareResult.ParentUrn;
             request.Provider = prepareResult.ProviderRef;
+            request.Providers.Add(prepareResult.ProviderRefs);
             request.Aliases.AddRange(prepareResult.Aliases);
             request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
 
