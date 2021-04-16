@@ -69,7 +69,10 @@ namespace Pulumi
                     foreach (var provider in componentOpts.Providers)
                     {
                         var pref = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
-                        providerRefs.Add(provider.Package, pref ?? "");
+if (pref != null)
+{
+    providerRefs.Add(provider.Package, pref);
+}
                     }
                 }
             }
