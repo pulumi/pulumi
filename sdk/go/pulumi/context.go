@@ -79,7 +79,10 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 
 	var engineConn *grpc.ClientConn
 	var engine pulumirpc.EngineClient
-	if addr := info.EngineAddr; addr != "" {
+	if info.engineConn != nil {
+		engineConn = info.engineConn
+		engine = pulumirpc.NewEngineClient(engineConn)
+	} else if addr := info.EngineAddr; addr != "" {
 		conn, err := grpc.Dial(
 			info.EngineAddr,
 			grpc.WithInsecure(),

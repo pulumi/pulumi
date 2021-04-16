@@ -10,6 +10,7 @@ replace (
 
 require (
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/golang/protobuf v1.4.3 // indirect
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi-random/sdk/v3 v3.1.2-0.20210323111705-623d65f88c52

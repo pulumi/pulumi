@@ -54,6 +54,11 @@ func (host *HostClient) Close() error {
 	return host.conn.Close()
 }
 
+// EngineConn provides the engine gRPC client connection.
+func (host *HostClient) EngineConn() *grpc.ClientConn {
+	return host.conn
+}
+
 func (host *HostClient) log(
 	context context.Context, sev diag.Severity, urn resource.URN, msg string, ephemeral bool,
 ) error {

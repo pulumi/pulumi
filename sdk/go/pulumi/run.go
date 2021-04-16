@@ -25,6 +25,8 @@ import (
 	multierror "github.com/hashicorp/go-multierror"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+
+	"google.golang.org/grpc"
 )
 
 var ErrPlugins = errors.New("pulumi: plugins requested")
@@ -132,6 +134,7 @@ type RunInfo struct {
 	EngineAddr  string
 	Mocks       MockResourceMonitor
 	getPlugins  bool
+	engineConn  *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
 }
 
 // getEnvInfo reads various program information from the process environment.
