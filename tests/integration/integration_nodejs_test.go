@@ -767,21 +767,47 @@ func TestConstructSlowNode(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainNode(t *testing.T) {
-	opts := &integration.ProgramTestOptions{
-		Env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+	tests := []struct {
+		componentDir          string
+		expectedResourceCount int
+		env                   []string
+	}{
+		{
+			componentDir:          "testcomponent",
+			expectedResourceCount: 9,
+		},
+		{
+			componentDir:          "testcomponent-python",
+			expectedResourceCount: 9,
+			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir:          "testcomponent-go",
+			expectedResourceCount: 8, // One less because no dynamic provider.
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			integration.ProgramTest(t,
+				optsForConstructPlainNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+		})
+	}
+}
+
+func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+	return &integration.ProgramTestOptions{
+		Env:          env,
 		Dir:          filepath.Join("construct_component_plain", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
 		Quick:        true,
 		NoParallel:   true,
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
+			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
-	runProgramSubTests(t, opts, map[string]string{
-		"WithNodeProvider":   componentPathEnv(t, "construct_component_plain", "testcomponent"),
-		"WithPythonProvider": componentPathEnv(t, "construct_component_plain", "testcomponent-python"),
-	})
 }
 
 func TestGetResourceNode(t *testing.T) {

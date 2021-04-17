@@ -5,7 +5,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/pkg/errors"
 
@@ -23,24 +22,9 @@ type Resource struct {
 	pulumi.CustomResourceState
 }
 
-type resourceArgs struct {
-	Echo interface{} `pulumi:"echo"`
-}
-
-type ResourceArgs struct {
-	Echo pulumi.Input
-}
-
-func (ResourceArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*resourceArgs)(nil)).Elem()
-}
-
-func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
-	opts ...pulumi.ResourceOption) (*Resource, error) {
-	args := &ResourceArgs{Echo: echo}
+func NewResource(ctx *pulumi.Context, name string, opts ...pulumi.ResourceOption) (*Resource, error) {
 	var resource Resource
-	err := ctx.RegisterResource("testcomponent:index:Resource", name, args, &resource, opts...)
-	if err != nil {
+	if err := ctx.RegisterResource("testcomponent:index:Resource", name, nil, &resource, opts...); err != nil {
 		return nil, err
 	}
 	return &resource, nil
@@ -48,13 +32,10 @@ func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
 
 type Component struct {
 	pulumi.ResourceState
-
-	Echo    pulumi.Input    `pulumi:"echo"`
-	ChildID pulumi.IDOutput `pulumi:"childId"`
 }
 
 type ComponentArgs struct {
-	Echo pulumi.Input `pulumi:"echo"`
+	Children int `pulumi:"children"`
 }
 
 func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
@@ -69,13 +50,14 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 		return nil, err
 	}
 
-	res, err := NewResource(ctx, fmt.Sprintf("child-%s", name), args.Echo, pulumi.Parent(component))
-	if err != nil {
-		return nil, err
+	if args.Children > 0 {
+		for i := 0; i < args.Children; i++ {
+			_, err := NewResource(ctx, fmt.Sprintf("child-%s-%v", name, i+1), pulumi.Parent(component))
+			if err != nil {
+				return nil, err
+			}
+		}
 	}
-
-	component.Echo = args.Echo
-	component.ChildID = res.ID()
 
 	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{}); err != nil {
 		return nil, err

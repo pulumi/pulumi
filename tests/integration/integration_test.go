@@ -625,17 +625,3 @@ func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
 	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
 	return r
 }
-
-// nolint: unused,deadcode
-func runProgramSubTests(t *testing.T, opts *integration.ProgramTestOptions, envExtensions map[string]string) {
-	extend := func(extraEnv string, opts integration.ProgramTestOptions) integration.ProgramTestOptions {
-		opts.Env = append(opts.Env, extraEnv)
-		return opts
-	}
-	for subTestName, extraEnv := range envExtensions {
-		t.Run(subTestName, func(t *testing.T) {
-			subTestOpts := extend(extraEnv, *opts)
-			integration.ProgramTest(t, &subTestOpts)
-		})
-	}
-}
