@@ -19,6 +19,7 @@ class ComponentArgs:
                  c: int,
                  e: str,
                  b: Optional[bool] = None,
+                 bar: Optional['Foo'] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None,
                  foo: Optional[pulumi.Input['FooArgs']] = None):
@@ -30,6 +31,8 @@ class ComponentArgs:
         pulumi.set(__self__, "e", e)
         if b is not None:
             pulumi.set(__self__, "b", b)
+        if bar is not None:
+            pulumi.set(__self__, "bar", bar)
         if d is not None:
             pulumi.set(__self__, "d", d)
         if f is not None:
@@ -75,6 +78,15 @@ class ComponentArgs:
 
     @property
     @pulumi.getter
+    def bar(self) -> Optional['Foo']:
+        return pulumi.get(self, "bar")
+
+    @bar.setter
+    def bar(self, value: Optional['Foo']):
+        pulumi.set(self, "bar", value)
+
+    @property
+    @pulumi.getter
     def d(self) -> Optional[int]:
         return pulumi.get(self, "d")
 
@@ -108,6 +120,7 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[bool] = None,
                  b: Optional[bool] = None,
+                 bar: Optional[pulumi.InputType['Foo']] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
@@ -144,6 +157,7 @@ class Component(pulumi.ComponentResource):
                  opts: Optional[pulumi.ResourceOptions] = None,
                  a: Optional[bool] = None,
                  b: Optional[bool] = None,
+                 bar: Optional[pulumi.InputType['Foo']] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
@@ -167,6 +181,7 @@ class Component(pulumi.ComponentResource):
                 raise TypeError("Missing required property 'a'")
             __props__.__dict__["a"] = a
             __props__.__dict__["b"] = b
+            __props__.__dict__["bar"] = bar
             if c is None and not opts.urn:
                 raise TypeError("Missing required property 'c'")
             __props__.__dict__["c"] = c
@@ -192,6 +207,11 @@ class Component(pulumi.ComponentResource):
     @pulumi.getter
     def b(self) -> pulumi.Output[Optional[bool]]:
         return pulumi.get(self, "b")
+
+    @property
+    @pulumi.getter
+    def bar(self) -> pulumi.Output[Optional['outputs.Foo']]:
+        return pulumi.get(self, "bar")
 
     @property
     @pulumi.getter

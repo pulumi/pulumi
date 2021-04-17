@@ -16,6 +16,7 @@ type Component struct {
 
 	A   pulumi.BoolOutput      `pulumi:"a"`
 	B   pulumi.BoolPtrOutput   `pulumi:"b"`
+	Bar FooPtrOutput           `pulumi:"bar"`
 	C   pulumi.IntOutput       `pulumi:"c"`
 	D   pulumi.IntPtrOutput    `pulumi:"d"`
 	E   pulumi.StringOutput    `pulumi:"e"`
@@ -41,6 +42,7 @@ func NewComponent(ctx *pulumi.Context,
 type componentArgs struct {
 	A   bool    `pulumi:"a"`
 	B   *bool   `pulumi:"b"`
+	Bar *Foo    `pulumi:"bar"`
 	C   int     `pulumi:"c"`
 	D   *int    `pulumi:"d"`
 	E   string  `pulumi:"e"`
@@ -52,6 +54,7 @@ type componentArgs struct {
 type ComponentArgs struct {
 	A   bool
 	B   *bool
+	Bar *Foo
 	C   int
 	D   *int
 	E   string

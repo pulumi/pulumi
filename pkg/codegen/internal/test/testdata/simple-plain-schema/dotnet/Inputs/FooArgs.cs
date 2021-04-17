@@ -34,4 +34,29 @@ namespace Pulumi.Example.Inputs
         {
         }
     }
+
+    public sealed class Foo : Pulumi.InvokeArgs
+    {
+        [Input("a", required: true)]
+        public bool A { get; set; }
+
+        [Input("b")]
+        public bool? B { get; set; }
+
+        [Input("c", required: true)]
+        public int C { get; set; }
+
+        [Input("d")]
+        public int? D { get; set; }
+
+        [Input("e", required: true)]
+        public string E { get; set; } = null!;
+
+        [Input("f")]
+        public string? F { get; set; }
+
+        public Foo()
+        {
+        }
+    }
 }
