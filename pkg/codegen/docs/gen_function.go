@@ -237,6 +237,9 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 		)
 		b := &bytes.Buffer{}
 
+		paramSeparatorTemplate := "param_separator"
+		ps := paramSeparator{}
+
 		switch lang {
 		case "nodejs":
 			params = mod.genFunctionTS(f, funcNameMap["nodejs"])
@@ -250,6 +253,11 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 		case "python":
 			params = mod.genFunctionPython(f, funcNameMap["python"])
 			paramTemplate = "py_formal_param"
+			paramSeparatorTemplate = "py_param_separator"
+
+			docHelper := getLanguageDocHelper(lang)
+			funcName := docHelper.GetFunctionName(mod.mod, f)
+			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(funcName))}
 		}
 
 		n := len(params)
@@ -262,7 +270,7 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 				panic(err)
 			}
 			if i != n-1 {
-				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}

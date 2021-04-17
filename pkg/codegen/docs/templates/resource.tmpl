@@ -31,7 +31,10 @@
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language python %}}" }}
-<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">, </span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span></code></pre></div>
+<div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
+<span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.python }}<span class="p">)</span>
+<span class=nd>@overload</span>
+<span class="k">def </span>{{ template "linkify_param" .ConstructorResource.python }}<span class="p">(</span>{{ htmlSafe .ConstructorParams.pythonargs }}<span class="p">)</span></code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}
@@ -47,26 +50,7 @@
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language python %}}" }}
-{{/*
-    Constructing resources in python uses a different approach, which is why
-    we don't use the "constructor_args" and just hard-code two params here.
-*/}}
-<dl class="resources-properties">
-    <dt class="property-required" title="Required">
-        <span>resource_name</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">str</span>
-    </dt>
-    <dd>The unique name of the resource.</dd>
-    <dt class="property-optional" title="Optional">
-        <span>opts</span>
-        <span class="property-indicator"></span>
-        <span class="property-type">
-            <a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">ResourceOptions</a>
-        </span>
-    </dt>
-    <dd>A bag of options that control this resource's behavior.</dd>
-</dl>
+{{ template "constructor_args" .ConstructorParamsTyped.pythonargs }}
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}
@@ -112,7 +96,10 @@ Get an existing {{.Header.Title}} resource's state with the given name, ID, and 
 
 {{ htmlSafe "{{% choosable language python %}}" }}
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@staticmethod</span>
-<span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">, </span><span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">, </span><span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">, </span>{{ htmlSafe .LookupParams.python }}<span class="p">) -&gt;</span> {{ .ConstructorResource.python.Name }}</code></pre></div>
+<span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+        <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
+        <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
+        {{ htmlSafe .LookupParams.python }}<span class="p">) -&gt;</span> {{ .ConstructorResource.python.Name }}</code></pre></div>
 {{ htmlSafe "{{% /choosable %}}" }}
 
 {{ htmlSafe "{{% choosable language go %}}" }}

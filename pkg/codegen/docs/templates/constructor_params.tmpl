@@ -1,4 +1,7 @@
-{{ define "param_separator" }}<span class="p">, </span>{{ end }}
+{{ define "param_separator" }}<span class="p">,</span> {{ end }}
+
+{{ define "py_param_separator" }}<span class="p">,</span>
+{{ .Indent }}{{ end }}
 
 {{ define "go_formal_param" }}<span class="nx">{{ .Name }}</span><span class="p"> {{ .OptionalFlag }}</span>{{ template "linkify_param" .Type }}{{ end }}
 
