@@ -5,6 +5,7 @@ go 1.16
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
 	github.com/pulumi/pulumi/sdk/v2 => ../sdk
+	gocloud.dev => github.com/pulumi/go-cloud v0.0.0-20210416195059-50874ed4c504
 )
 
 require (
@@ -12,7 +13,7 @@ require (
 	cloud.google.com/go/storage v1.12.0
 	github.com/Azure/go-ansiterm v0.0.0-20170929234023-d6e3b3328b78 // indirect
 	github.com/Sirupsen/logrus v1.0.5 // indirect
-	github.com/aws/aws-sdk-go v1.36.1
+	github.com/aws/aws-sdk-go v1.37.31
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
