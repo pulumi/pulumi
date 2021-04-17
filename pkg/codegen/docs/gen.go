@@ -192,11 +192,17 @@ type docNestedType struct {
 
 // propertyType represents the type of a property.
 type propertyType struct {
-	DisplayName string
-	Name        string
+	DisplayName     string
+	DescriptionName string // Name used in description list.
+	Name            string
 	// Link can be a link to an anchor tag on the same
 	// page, or to another page/site.
 	Link string
+}
+
+// paramSeparator is for data passed to the separator template.
+type paramSeparator struct {
+	Indent string
 }
 
 // formalParam represents the formal parameters of a constructor
@@ -703,7 +709,7 @@ func (mod *modContext) genConstructorCS(r *schema.Resource, argsOptional bool) [
 	}
 }
 
-func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional bool) []formalParam {
+func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, argsOverload bool) []formalParam {
 	docLanguageHelper := getLanguageDocHelper("python")
 	isK8sOverlayMod := mod.isKubernetesOverlayModule()
 	isDockerImageResource := mod.pkg.Name == "docker" && resourceName(r) == "Image"
@@ -715,16 +721,51 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional boo
 		return getDockerImagePythonFormalParams()
 	}
 
-	params := make([]formalParam, 0, len(r.InputProperties)+1)
-	// All other resources accept the resource options as a second parameter.
+	var params []formalParam
+
+	params = append(params, formalParam{
+		Name: "resource_name",
+		Type: propertyType{
+			Name: "str",
+		},
+		Comment: ctorNameArgComment,
+	})
+
+	if argsOverload {
+		optionalFlag, defaultVal, descriptionName := "", "", fmt.Sprintf("%sArgs", resourceName(r))
+		typeName := descriptionName
+		if argsOptional {
+			optionalFlag, defaultVal, typeName = "optional", " = None", fmt.Sprintf("Optional[%s]", typeName)
+		}
+		params = append(params, formalParam{
+			Name:         "args",
+			OptionalFlag: optionalFlag,
+			DefaultValue: defaultVal,
+			Type: propertyType{
+				Name:            typeName,
+				DescriptionName: descriptionName,
+				Link:            "#inputs",
+			},
+			Comment: ctorArgsArgComment,
+		})
+	}
+
 	params = append(params, formalParam{
 		Name:         "opts",
+		OptionalFlag: "optional",
 		DefaultValue: " = None",
 		Type: propertyType{
-			Name: "Optional[ResourceOptions]",
-			Link: "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions",
+			Name:            "Optional[ResourceOptions]",
+			DescriptionName: "ResourceOptions",
+			Link:            "/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions",
 		},
+		Comment: ctorOptsArgComment,
 	})
+
+	if argsOverload {
+		return params
+	}
+
 	for _, p := range r.InputProperties {
 		// If the property defines a const value, then skip it.
 		// For example, in k8s, `apiVersion` and `kind` are often hard-coded
@@ -935,12 +976,18 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 	renderedParams := make(map[string]string)
 	formalParams := make(map[string][]formalParam)
 
-	for _, lang := range supportedLanguages {
+	// Add an extra language for Python's ResourceArg __init__ overload.
+	langs := append(supportedLanguages, "pythonargs")
+
+	for _, lang := range langs {
 		var (
 			paramTemplate string
 			params        []formalParam
 		)
 		b := &bytes.Buffer{}
+
+		paramSeparatorTemplate := "param_separator"
+		ps := paramSeparator{}
 
 		switch lang {
 		case "nodejs":
@@ -953,13 +1000,18 @@ func (mod *modContext) genConstructors(r *schema.Resource, allOptionalInputs boo
 			params = mod.genConstructorCS(r, allOptionalInputs)
 			paramTemplate = "csharp_formal_param"
 		case "python":
-			params = mod.genConstructorPython(r, allOptionalInputs)
+			fallthrough
+		case "pythonargs":
+			argsOverload := lang == "pythonargs"
+			params = mod.genConstructorPython(r, allOptionalInputs, argsOverload)
 			paramTemplate = "py_formal_param"
+			paramSeparatorTemplate = "py_param_separator"
+			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(resourceName(r)))}
 		}
 
 		for i, p := range params {
 			if i != 0 {
-				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}
@@ -1164,6 +1216,9 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 		)
 		b := &bytes.Buffer{}
 
+		paramSeparatorTemplate := "param_separator"
+		ps := paramSeparator{}
+
 		switch lang {
 		case "nodejs":
 			params = mod.getTSLookupParams(r, stateParam)
@@ -1177,6 +1232,8 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 		case "python":
 			params = mod.getPythonLookupParams(r, stateParam)
 			paramTemplate = "py_formal_param"
+			paramSeparatorTemplate = "py_param_separator"
+			ps = paramSeparator{Indent: strings.Repeat(" ", len("def get("))}
 		}
 
 		n := len(params)
@@ -1185,7 +1242,7 @@ func (mod *modContext) genLookupParams(r *schema.Resource, stateParam string) ma
 				panic(err)
 			}
 			if i != n-1 {
-				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}
