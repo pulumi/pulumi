@@ -231,18 +231,45 @@ func TestConstructSlowGo(t *testing.T) {
 
 // Test remote component construction with prompt inputs.
 func TestConstructPlainGo(t *testing.T) {
-	runtimeVenv := pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))
+	tests := []struct {
+		componentDir          string
+		expectedResourceCount int
+		env                   []string
+	}{
+		{
+			componentDir:          "testcomponent",
+			expectedResourceCount: 9,
+			// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+			// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
+			// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
+			// the Node.js dynamic provider plugin to load.
+			// When the underlying issue has been fixed, the use of this environment variable inside the integration
+			// test module should be removed.
+			env: []string{"PULUMI_TEST_YARN_LINK_PULUMI=true"},
+		},
+		{
+			componentDir:          "testcomponent-python",
+			expectedResourceCount: 9,
+			env:                   []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir:          "testcomponent-go",
+			expectedResourceCount: 8, // One less because no dynamic provider.
+		},
+	}
 
-	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
-	// Until we've addressed this, set PULUMI_TEST_YARN_LINK_PULUMI, which tells the integration test
-	// module to run `yarn install && yarn link @pulumi/pulumi` in the Go program's directory, allowing
-	// the Node.js dynamic provider plugin to load.
-	// When the underlying issue has been fixed, the use of this environment variable inside the integration
-	// test module should be removed.
-	const testYarnLinkPulumiEnv = "PULUMI_TEST_YARN_LINK_PULUMI=true"
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			integration.ProgramTest(t,
+				optsForConstructPlainGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
+		})
+	}
+}
 
-	opts := &integration.ProgramTestOptions{
-		Env: []string{runtimeVenv, testYarnLinkPulumiEnv},
+func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...string) *integration.ProgramTestOptions {
+	return &integration.ProgramTestOptions{
+		Env: env,
 		Dir: filepath.Join("construct_component_plain", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v2",
@@ -251,14 +278,9 @@ func TestConstructPlainGo(t *testing.T) {
 		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
-			assert.Equal(t, 9, len(stackInfo.Deployment.Resources))
+			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
-
-	runProgramSubTests(t, opts, map[string]string{
-		"WithNodeProvider":   componentPathEnv(t, "construct_component_plain", "testcomponent"),
-		"WithPythonProvider": componentPathEnv(t, "construct_component_plain", "testcomponent-python"),
-	})
 }
 
 func TestGetResourceGo(t *testing.T) {

@@ -21,6 +21,7 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
@@ -59,7 +60,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		return nil, errors.Wrap(err, "unmarshaling inputs")
 	}
 	inputs := make(map[string]interface{}, len(deserializedInputs))
-	for key, input := range deserializedInputs {
+	for key, value := range deserializedInputs {
 		k := string(key)
 		var deps []Resource
 		if inputDeps, ok := inputDependencies[k]; ok {
@@ -69,15 +70,9 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 			}
 		}
 
-		val, secret, err := unmarshalPropertyValue(pulumiCtx, input)
-		if err != nil {
-			return nil, errors.Wrapf(err, "unmarshaling input %s", k)
-		}
-
 		inputs[k] = &constructInput{
-			value:  val,
-			secret: secret,
-			deps:   deps,
+			value: value,
+			deps:  deps,
 		}
 	}
 
@@ -170,25 +165,35 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 }
 
 type constructInput struct {
-	value  interface{}
-	secret bool
-	deps   []Resource
+	value resource.PropertyValue
+	deps  []Resource
 }
 
 // constructInputsMap returns the inputs as a Map.
-func constructInputsMap(inputs map[string]interface{}) Map {
+func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error) {
 	result := make(Map, len(inputs))
 	for k, v := range inputs {
-		val := v.(*constructInput)
-		output := newOutput(anyOutputType, val.deps...)
-		output.getState().resolve(val.value, true /*known*/, val.secret, nil)
+		ci := v.(*constructInput)
+
+		value, secret, err := unmarshalPropertyValue(ctx, ci.value)
+		if err != nil {
+			return nil, errors.Wrapf(err, "unmarshaling input %s", k)
+		}
+
+		resultType := anyOutputType
+		if ot, ok := concreteTypeToOutputType.Load(reflect.TypeOf(value)); ok {
+			resultType = ot.(reflect.Type)
+		}
+
+		output := newOutput(resultType, ci.deps...)
+		output.getState().resolve(value, true /*known*/, secret, nil)
 		result[k] = output
 	}
-	return result
+	return result, nil
 }
 
-// constructInputsSetArgs sets the inputs on the given args struct.
-func constructInputsSetArgs(inputs map[string]interface{}, args interface{}) error {
+// constructInputsCopyTo sets the inputs on the given args struct.
+func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args interface{}) error {
 	if args == nil {
 		return errors.New("args must not be nil")
 	}
@@ -200,7 +205,7 @@ func constructInputsSetArgs(inputs map[string]interface{}, args interface{}) err
 	argsV, typ = argsV.Elem(), typ.Elem()
 
 	for k, v := range inputs {
-		val := v.(*constructInput)
+		ci := v.(*constructInput)
 		for i := 0; i < typ.NumField(); i++ {
 			fieldV := argsV.Field(i)
 			if !fieldV.CanSet() {
@@ -212,28 +217,46 @@ func constructInputsSetArgs(inputs map[string]interface{}, args interface{}) err
 				continue
 			}
 
-			if !field.Type.Implements(reflect.TypeOf((*Input)(nil)).Elem()) {
+			if field.Type.Implements(outputType) || field.Type.Implements(inputType) {
+				resultType := anyOutputType
+				if field.Type.Implements(outputType) {
+					resultType = field.Type
+				} else if field.Type.Implements(inputType) {
+					toOutputMethodName := "To" + strings.TrimSuffix(field.Type.Name(), "Input") + "Output"
+					if toOutputMethod, found := field.Type.MethodByName(toOutputMethodName); found {
+						mt := toOutputMethod.Type
+						if mt.NumIn() == 0 && mt.NumOut() == 1 && mt.Out(0).Implements(outputType) {
+							resultType = mt.Out(0)
+						}
+					}
+				}
+				output := newOutput(resultType, ci.deps...)
+				dest := reflect.New(output.ElementType()).Elem()
+				secret, err := unmarshalOutput(ctx, ci.value, dest)
+				if err != nil {
+					return err
+				}
+				output.getState().resolve(dest.Interface(), true /*known*/, secret, nil)
+				fieldV.Set(reflect.ValueOf(output))
 				continue
 			}
 
-			outputType := anyOutputType
-
-			toOutputMethodName := "To" + strings.TrimSuffix(field.Type.Name(), "Input") + "Output"
-			toOutputMethod, found := field.Type.MethodByName(toOutputMethodName)
-			if found {
-				mt := toOutputMethod.Type
-				if mt.NumIn() != 0 || mt.NumOut() != 1 {
-					continue
-				}
-				outputType = mt.Out(0)
-				if !outputType.Implements(reflect.TypeOf((*Output)(nil)).Elem()) {
-					continue
-				}
+			if len(ci.deps) > 0 {
+				return errors.Errorf(
+					"%s.%s is typed as %v but must be typed as Input or Output for input %q with dependencies",
+					typ, field.Name, field.Type, k)
 			}
-
-			output := newOutput(outputType, val.deps...)
-			output.getState().resolve(val.value, true /*known*/, val.secret, nil)
-			fieldV.Set(reflect.ValueOf(output))
+			dest := reflect.New(field.Type).Elem()
+			secret, err := unmarshalOutput(ctx, ci.value, dest)
+			if err != nil {
+				return errors.Wrapf(err, "unmarshaling input %s", k)
+			}
+			if secret {
+				return errors.Errorf(
+					"%s.%s is typed as %v but must be typed as Input or Output for secret input %q",
+					typ, field.Name, field.Type, k)
+			}
+			fieldV.Set(reflect.ValueOf(dest.Interface()))
 		}
 	}
 
@@ -256,6 +279,9 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 	state := make(Map)
 	for i := 0; i < typ.NumField(); i++ {
 		fieldV := resourceV.Field(i)
+		if !fieldV.CanInterface() {
+			continue
+		}
 		field := typ.Field(i)
 		tag, has := field.Tag.Lookup("pulumi")
 		if !has {
@@ -264,6 +290,8 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 		val := fieldV.Interface()
 		if v, ok := val.(Input); ok {
 			state[tag] = v
+		} else {
+			state[tag] = ToOutput(val)
 		}
 	}
 
