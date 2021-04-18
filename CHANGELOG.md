@@ -1,6 +1,20 @@
 CHANGELOG
 =========
 
+## 2.25.2 (2021-04-17)
+
+### Bug Fixes
+
+- [cli] Fix a bug that prevented copying checkpoint files when using Azure Blob Storage
+  as the backend provider. [#6794](https://github.com/pulumi/pulumi/pull/6794)
+
+## 2.25.1 (2021-04-15)
+
+### Bug Fixes
+
+- [automation/python] - Fix serialization bug in `StackSettings`
+  [#6776](https://github.com/pulumi/pulumi/pull/6776)
+
 ## 2.25.0 (2021-04-14)
 
 ### Breaking
