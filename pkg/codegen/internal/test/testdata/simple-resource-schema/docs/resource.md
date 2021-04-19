@@ -25,7 +25,7 @@ meta_desc: "Documentation for the example.Resource resource with examples, input
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">)</span>
+             <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Resource</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
              <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ResourceArgs]</a></span> = None<span class="p">,</span>
@@ -209,7 +209,7 @@ The Resource resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#bar_nodejs" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<string></span>
+        <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -221,7 +221,7 @@ The Resource resource accepts the following [input]({{< relref "/docs/intro/conc
 <a href="#bar_python" style="color: inherit; text-decoration: inherit;">bar</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[str]</span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

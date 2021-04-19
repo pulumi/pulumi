@@ -262,7 +262,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, args, optiona
 	if constValue != nil && typ == "string" {
 		typ = fmt.Sprintf("%q", constValue.(string))
 	}
-	if args && typ != "any" {
+	if wrapInput && typ != "any" {
 		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
 	}
 	if optional {

@@ -25,8 +25,8 @@ meta_desc: "Documentation for the example.Cat resource with examples, input prop
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-        <span class="nx">age</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[int]]</span> = None<span class="p">,</span>
-        <span class="nx">pet</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[PetArgs]]</span> = None<span class="p">)</span>
+        <span class="nx">age</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
+        <span class="nx">pet</span><span class="p">:</span> <span class="nx">Optional[PetArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Cat</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[CatArgs]</a></span> = None<span class="p">,</span>
@@ -226,7 +226,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<number></span>
+        <span class="property-type">number</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -234,7 +234,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#pet_nodejs" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">pulumi<wbr>Input<Pet<wbr>Args></a></span>
+        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -246,7 +246,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[int]</span>
+        <span class="property-type">int</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -254,7 +254,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#pet_python" style="color: inherit; text-decoration: inherit;">pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Input[Pet<wbr>Args]</a></span>
+        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -405,7 +405,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<number></span>
+        <span class="property-type">number</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -413,7 +413,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi<wbr>Input<random<wbr>Random<wbr>Pet></span>
+        <span class="property-type">random<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -425,7 +425,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[int]</span>
+        <span class="property-type">int</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -433,7 +433,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#name_python" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Random<wbr>Pet]</span>
+        <span class="property-type">Random<wbr>Pet</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

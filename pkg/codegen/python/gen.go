@@ -1992,7 +1992,7 @@ func (mod *modContext) typeString(t schema.Type, input, wrapInput, args, optiona
 		}
 	}
 
-	if args && typ != "Any" {
+	if wrapInput && typ != "Any" {
 		typ = fmt.Sprintf("pulumi.Input[%s]", typ)
 	}
 	if optional {

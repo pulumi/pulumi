@@ -25,13 +25,13 @@ meta_desc: "Documentation for the example.Component resource with examples, inpu
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[bool]]</span> = None<span class="p">,</span>
-              <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[bool]]</span> = None<span class="p">,</span>
-              <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[int]]</span> = None<span class="p">,</span>
-              <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[int]]</span> = None<span class="p">,</span>
-              <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-              <span class="nx">f</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[str]]</span> = None<span class="p">,</span>
-              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[FooArgs]]</span> = None<span class="p">)</span>
+              <span class="nx">a</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+              <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
+              <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
+              <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
+              <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+              <span class="nx">f</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
+              <span class="nx">foo</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">ComponentArgs</a></span><span class="p">,</span>
@@ -311,7 +311,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<boolean></span>
+        <span class="property-type">boolean</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -319,7 +319,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#c_nodejs" style="color: inherit; text-decoration: inherit;">c</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<number></span>
+        <span class="property-type">number</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -327,7 +327,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#e_nodejs" style="color: inherit; text-decoration: inherit;">e</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<string></span>
+        <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -335,7 +335,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<boolean></span>
+        <span class="property-type">boolean</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -343,7 +343,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#d_nodejs" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<number></span>
+        <span class="property-type">number</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -351,7 +351,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#f_nodejs" style="color: inherit; text-decoration: inherit;">f</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<string></span>
+        <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -359,7 +359,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#foo_nodejs" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">pulumi<wbr>Input<Foo<wbr>Args></a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -371,7 +371,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[bool]</span>
+        <span class="property-type">bool</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -379,7 +379,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#c_python" style="color: inherit; text-decoration: inherit;">c</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[int]</span>
+        <span class="property-type">int</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -387,7 +387,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#e_python" style="color: inherit; text-decoration: inherit;">e</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[str]</span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -395,7 +395,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[bool]</span>
+        <span class="property-type">bool</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -403,7 +403,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#d_python" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[int]</span>
+        <span class="property-type">int</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -411,7 +411,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#f_python" style="color: inherit; text-decoration: inherit;">f</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[str]</span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -419,7 +419,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#foo_python" style="color: inherit; text-decoration: inherit;">foo</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#foo">Input[Foo<wbr>Args]</a></span>
+        <span class="property-type"><a href="#foo">Foo<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -602,7 +602,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#a_nodejs" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<boolean></span>
+        <span class="property-type">boolean</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -610,7 +610,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#c_nodejs" style="color: inherit; text-decoration: inherit;">c</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<number></span>
+        <span class="property-type">number</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -618,7 +618,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#e_nodejs" style="color: inherit; text-decoration: inherit;">e</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<string></span>
+        <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -626,7 +626,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#b_nodejs" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<boolean></span>
+        <span class="property-type">boolean</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -634,7 +634,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#d_nodejs" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<number></span>
+        <span class="property-type">number</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -642,7 +642,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#f_nodejs" style="color: inherit; text-decoration: inherit;">f</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<string></span>
+        <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -654,7 +654,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#a_python" style="color: inherit; text-decoration: inherit;">a</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[bool]</span>
+        <span class="property-type">bool</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -662,7 +662,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#c_python" style="color: inherit; text-decoration: inherit;">c</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[int]</span>
+        <span class="property-type">int</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -670,7 +670,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#e_python" style="color: inherit; text-decoration: inherit;">e</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[str]</span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -678,7 +678,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#b_python" style="color: inherit; text-decoration: inherit;">b</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[bool]</span>
+        <span class="property-type">bool</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -686,7 +686,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#d_python" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[int]</span>
+        <span class="property-type">int</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -694,7 +694,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#f_python" style="color: inherit; text-decoration: inherit;">f</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[str]</span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

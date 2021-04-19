@@ -25,11 +25,11 @@ meta_desc: "Documentation for the plant.tree/v1.RubberTree resource with example
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-               <span class="nx">container</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[_root_inputs.ContainerArgs]]</span> = None<span class="p">,</span>
-               <span class="nx">diameter</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[_tree_v1.Diameter]]</span> = None<span class="p">,</span>
-               <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Union[_tree_v1.Farm, str]]]</span> = None<span class="p">,</span>
-               <span class="nx">size</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[_tree_v1.TreeSize]]</span> = None<span class="p">,</span>
-               <span class="nx">type</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[_tree_v1.RubberTreeVariety]]</span> = None<span class="p">)</span>
+               <span class="nx">container</span><span class="p">:</span> <span class="nx">Optional[_root_inputs.ContainerArgs]</span> = None<span class="p">,</span>
+               <span class="nx">diameter</span><span class="p">:</span> <span class="nx">Optional[_tree_v1.Diameter]</span> = None<span class="p">,</span>
+               <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[_tree_v1.Farm, str]]</span> = None<span class="p">,</span>
+               <span class="nx">size</span><span class="p">:</span> <span class="nx">Optional[_tree_v1.TreeSize]</span> = None<span class="p">,</span>
+               <span class="nx">type</span><span class="p">:</span> <span class="nx">Optional[_tree_v1.RubberTreeVariety]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span>
@@ -277,7 +277,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#diameter_nodejs" style="color: inherit; text-decoration: inherit;">diameter</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">pulumi.<wbr>Input<Diameter></a></span>
+        <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -285,7 +285,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#type_nodejs" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">pulumi.<wbr>Input<Rubber<wbr>Tree<wbr>Variety></a></span>
+        <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -293,7 +293,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#container_nodejs" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">pulumi.<wbr>Input<Container<wbr>Args></a></span>
+        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -301,7 +301,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">pulumi.<wbr>Input<Farm></a> | pulumi.<wbr>Input<string></span>
+        <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -309,7 +309,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#treesize">pulumi.<wbr>Input<Tree<wbr>Size></a></span>
+        <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -321,7 +321,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#diameter_python" style="color: inherit; text-decoration: inherit;">diameter</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#diameter">Diameter]</a></span>
+        <span class="property-type"><a href="#diameter">Diameter</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -329,7 +329,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#type_python" style="color: inherit; text-decoration: inherit;">type</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety]</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -337,7 +337,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#container_python" style="color: inherit; text-decoration: inherit;">container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">Container<wbr>Args]</a></span>
+        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -345,7 +345,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">Farm]</a> | pulumi.<wbr>Input[str]</span>
+        <span class="property-type"><a href="#farm">Farm</a> | str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -353,7 +353,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#treesize">Tree<wbr>Size]</a></span>
+        <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -429,7 +429,7 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
 <span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-        <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[pulumi.Input[Union[_tree_v1.Farm, str]]]</span> = None<span class="p">) -&gt;</span> RubberTree</code></pre></div>
+        <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[_tree_v1.Farm, str]]</span> = None<span class="p">) -&gt;</span> RubberTree</code></pre></div>
 {{% /choosable %}}
 
 {{% choosable language go %}}
@@ -570,7 +570,7 @@ The following state arguments are supported:
 <a href="#state_farm_nodejs" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">pulumi.<wbr>Input<Farm></a> | pulumi.<wbr>Input<string></span>
+        <span class="property-type"><a href="#farm">Farm</a> | string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -582,7 +582,7 @@ The following state arguments are supported:
 <a href="#state_farm_python" style="color: inherit; text-decoration: inherit;">farm</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#farm">Farm]</a> | pulumi.<wbr>Input[str]</span>
+        <span class="property-type"><a href="#farm">Farm</a> | str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -677,7 +677,7 @@ The following state arguments are supported:
 <a href="#size_nodejs" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containersize">pulumi.<wbr>Input<Container<wbr>Size></a></span>
+        <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -685,7 +685,7 @@ The following state arguments are supported:
 <a href="#brightness_nodejs" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containerbrightness">pulumi.<wbr>Input<Container<wbr>Brightness></a></span>
+        <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -693,7 +693,7 @@ The following state arguments are supported:
 <a href="#color_nodejs" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containercolor">pulumi.<wbr>Input<Container<wbr>Color></a> | pulumi.<wbr>Input<string></span>
+        <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -701,7 +701,7 @@ The following state arguments are supported:
 <a href="#material_nodejs" style="color: inherit; text-decoration: inherit;">material</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input<string></span>
+        <span class="property-type">string</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -713,7 +713,7 @@ The following state arguments are supported:
 <a href="#size_python" style="color: inherit; text-decoration: inherit;">size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containersize">Container<wbr>Size]</a></span>
+        <span class="property-type"><a href="#containersize">Container<wbr>Size</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -721,7 +721,7 @@ The following state arguments are supported:
 <a href="#brightness_python" style="color: inherit; text-decoration: inherit;">brightness</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness]</a></span>
+        <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -729,7 +729,7 @@ The following state arguments are supported:
 <a href="#color_python" style="color: inherit; text-decoration: inherit;">color</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containercolor">Container<wbr>Color]</a> | pulumi.<wbr>Input[str]</span>
+        <span class="property-type"><a href="#containercolor">Container<wbr>Color</a> | str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -737,7 +737,7 @@ The following state arguments are supported:
 <a href="#material_python" style="color: inherit; text-decoration: inherit;">material</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">pulumi.<wbr>Input[str]</span>
+        <span class="property-type">str</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
