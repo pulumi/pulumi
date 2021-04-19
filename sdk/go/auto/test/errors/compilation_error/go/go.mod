@@ -1,4 +1,4 @@
-module compilation_error
+module github.com/pulumi/pulumi/sdk/v3/go/auto/test/errors/compilation_error
 
 go 1.16
 

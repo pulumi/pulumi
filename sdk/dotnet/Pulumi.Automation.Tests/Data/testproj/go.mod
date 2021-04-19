@@ -1,4 +1,4 @@
-module testproj
+module github.com/pulumi/pulumi/sdk/v3/dotnet/Pulumi.Automation.Tests/Data/testproj
 
 go 1.16
 

@@ -173,6 +173,9 @@ CHANGELOG
 
 ### Bug Fixes
 
+- [sdk/go] Fix wrongly named Go modules
+  [#6775](https://github.com/pulumi/pulumi/issues/6775)
+
 - [cli] Handle non-existent creds file in `pulumi logout --all`
   [#6741](https://github.com/pulumi/pulumi/pull/6741)
 
