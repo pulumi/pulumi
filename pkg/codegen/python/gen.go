@@ -119,13 +119,29 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) modNameAndName(tok string, pkg *schema.Package) (modName string, name string) {
+func (mod *modContext) modNameAndName(pkg *schema.Package, t schema.Type, input, args bool) (modName string, name string) {
 	var info PackageInfo
 	contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"python": Importer}))
 	if v, ok := pkg.Language["python"].(PackageInfo); ok {
 		info = v
 	}
-	modName, name = tokenToModule(tok, pkg, info.ModuleNameOverrides), tokenToName(tok)
+
+	var token string
+	switch t := t.(type) {
+	case *schema.EnumType:
+		token, name = t.Token, tokenToName(t.Token)
+	case *schema.ObjectType:
+		namingCtx := &modContext{
+			pkg:              pkg,
+			modNameOverrides: info.ModuleNameOverrides,
+			compatibility:    info.Compatibility,
+		}
+		token, name = t.Token, namingCtx.unqualifiedObjectTypeName(t, input, args)
+	case *schema.ResourceType:
+		token, name = t.Token, tokenToName(t.Token)
+	}
+
+	modName = tokenToModule(token, pkg, info.ModuleNameOverrides)
 	if modName == mod.mod {
 		modName = ""
 	}
@@ -155,8 +171,6 @@ func (mod *modContext) unqualifiedObjectTypeName(t *schema.ObjectType, input, ar
 }
 
 func (mod *modContext) objectType(t *schema.ObjectType, input, args bool) string {
-	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input, args)
-
 	var prefix string
 	if !input {
 		prefix = "outputs."
@@ -164,10 +178,11 @@ func (mod *modContext) objectType(t *schema.ObjectType, input, args bool) string
 
 	// If it's an external type, reference it via fully qualified name.
 	if t.Package != mod.pkg {
-		modName, name := mod.modNameAndName(t.Token, t.Package)
+		modName, name := mod.modNameAndName(t.Package, t, input, args)
 		return fmt.Sprintf("'%s.%s%s%s'", pyPack(t.Package.Name), modName, prefix, name)
 	}
 
+	modName, name := mod.tokenToModule(t.Token), mod.unqualifiedObjectTypeName(t, input, args)
 	if modName == "" && modName != mod.mod {
 		rootModName := "_root_outputs."
 		if input {
@@ -215,7 +230,7 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	}
 
 	pkg := r.Resource.Package
-	modName, name := mod.modNameAndName(r.Token, pkg)
+	modName, name := mod.modNameAndName(pkg, r, false, false)
 	return fmt.Sprintf("%s.%s%s", pyPack(pkg.Name), modName, name)
 }
 
