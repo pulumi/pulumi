@@ -17,6 +17,7 @@ type Component struct {
 	A   pulumi.BoolOutput      `pulumi:"a"`
 	B   pulumi.BoolPtrOutput   `pulumi:"b"`
 	Bar FooPtrOutput           `pulumi:"bar"`
+	Baz FooArrayOutput         `pulumi:"baz"`
 	C   pulumi.IntOutput       `pulumi:"c"`
 	D   pulumi.IntPtrOutput    `pulumi:"d"`
 	E   pulumi.StringOutput    `pulumi:"e"`
@@ -43,6 +44,7 @@ type componentArgs struct {
 	A   bool    `pulumi:"a"`
 	B   *bool   `pulumi:"b"`
 	Bar *Foo    `pulumi:"bar"`
+	Baz []Foo   `pulumi:"baz"`
 	C   int     `pulumi:"c"`
 	D   *int    `pulumi:"d"`
 	E   string  `pulumi:"e"`
@@ -55,6 +57,7 @@ type ComponentArgs struct {
 	A   bool
 	B   *bool
 	Bar *Foo
+	Baz []Foo
 	C   int
 	D   *int
 	E   string

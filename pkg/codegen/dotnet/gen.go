@@ -424,9 +424,11 @@ type plainType struct {
 }
 
 func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string) {
+	argsType := pt.args && !prop.IsPlain
+
 	wireName := prop.Name
 	propertyName := pt.mod.propertyName(prop)
-	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.args && !prop.IsPlain, pt.args && !prop.IsPlain, false, !prop.IsRequired)
+	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, false, !prop.IsRequired)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -453,7 +455,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	case *schema.ArrayType, *schema.MapType:
 		backingFieldName := "_" + prop.Name
 		requireInitializers := !pt.args
-		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.args && !prop.IsPlain, pt.args, requireInitializers, false)
+		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, requireInitializers, false)
 
 		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
 		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)

@@ -23,6 +23,7 @@ export class Component extends pulumi.ComponentResource {
     public readonly a!: pulumi.Output<boolean>;
     public readonly b!: pulumi.Output<boolean | undefined>;
     public readonly bar!: pulumi.Output<outputs.Foo | undefined>;
+    public readonly baz!: pulumi.Output<outputs.Foo[] | undefined>;
     public readonly c!: pulumi.Output<number>;
     public readonly d!: pulumi.Output<number | undefined>;
     public readonly e!: pulumi.Output<string>;
@@ -52,6 +53,7 @@ export class Component extends pulumi.ComponentResource {
             inputs["a"] = args ? args.a : undefined;
             inputs["b"] = args ? args.b : undefined;
             inputs["bar"] = args ? args.bar : undefined;
+            inputs["baz"] = args ? args.baz : undefined;
             inputs["c"] = args ? args.c : undefined;
             inputs["d"] = args ? args.d : undefined;
             inputs["e"] = args ? args.e : undefined;
@@ -61,6 +63,7 @@ export class Component extends pulumi.ComponentResource {
             inputs["a"] = undefined /*out*/;
             inputs["b"] = undefined /*out*/;
             inputs["bar"] = undefined /*out*/;
+            inputs["baz"] = undefined /*out*/;
             inputs["c"] = undefined /*out*/;
             inputs["d"] = undefined /*out*/;
             inputs["e"] = undefined /*out*/;
@@ -81,6 +84,7 @@ export interface ComponentArgs {
     readonly a: boolean;
     readonly b?: boolean;
     readonly bar?: inputs.Foo;
+    readonly baz?: inputs.Foo[];
     readonly c: number;
     readonly d?: number;
     readonly e: string;
