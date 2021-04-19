@@ -92,6 +92,31 @@ func (i *fooPtrType) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput
 	return pulumi.ToOutputWithContext(ctx, i).(FooPtrOutput)
 }
 
+// FooArrayInput is an input type that accepts FooArray and FooArrayOutput values.
+// You can construct a concrete instance of `FooArrayInput` via:
+//
+//          FooArray{ FooArgs{...} }
+type FooArrayInput interface {
+	pulumi.Input
+
+	ToFooArrayOutput() FooArrayOutput
+	ToFooArrayOutputWithContext(context.Context) FooArrayOutput
+}
+
+type FooArray []FooInput
+
+func (FooArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Foo)(nil)).Elem()
+}
+
+func (i FooArray) ToFooArrayOutput() FooArrayOutput {
+	return i.ToFooArrayOutputWithContext(context.Background())
+}
+
+func (i FooArray) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FooArrayOutput)
+}
+
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -211,7 +236,28 @@ func (o FooPtrOutput) F() pulumi.StringPtrOutput {
 	}).(pulumi.StringPtrOutput)
 }
 
+type FooArrayOutput struct{ *pulumi.OutputState }
+
+func (FooArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Foo)(nil)).Elem()
+}
+
+func (o FooArrayOutput) ToFooArrayOutput() FooArrayOutput {
+	return o
+}
+
+func (o FooArrayOutput) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutput {
+	return o
+}
+
+func (o FooArrayOutput) Index(i pulumi.IntInput) FooOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Foo {
+		return vs[0].([]Foo)[vs[1].(int)]
+	}).(FooOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(FooOutput{})
 	pulumi.RegisterOutputType(FooPtrOutput{})
+	pulumi.RegisterOutputType(FooArrayOutput{})
 }

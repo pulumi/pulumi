@@ -38,10 +38,10 @@ import (
 )
 
 type typeDetails struct {
-	outputType   bool
-	inputType    bool
-	argsType     bool
-	functionType bool
+	outputType bool
+	inputType  bool
+	argsType   bool
+	plainType  bool
 }
 
 func title(s string) string {
@@ -801,26 +801,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	}
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen codegen.Set) {
-	if seen.Has(t) {
-		return
-	}
-	seen.Add(t)
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		visitObjectTypes(t.ElementType, visitor, seen)
-	case *schema.MapType:
-		visitObjectTypes(t.ElementType, visitor, seen)
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			visitObjectTypes(p.Type, visitor, seen)
+func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType, bool)) {
+	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
+		if o, ok := t.Type.(*schema.ObjectType); ok {
+			visitor(o, t.Plain)
 		}
-		visitor(t)
-	case *schema.UnionType:
-		for _, e := range t.ElementTypes {
-			visitObjectTypes(e, visitor, seen)
-		}
-	}
+	})
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
@@ -851,13 +837,13 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 
 	name := tokenToName(obj.Token)
 	if mod.compatibility == tfbridge20 || mod.compatibility == kubernetes20 {
-		wrapInput := input && !mod.details(obj).functionType
+		wrapInput := input && !mod.details(obj).plainType
 		mod.genPlainType(w, name, obj.Comment, properties, input, wrapInput, false, level)
 		return
 	}
 
 	if input {
-		if mod.details(obj).functionType {
+		if mod.details(obj).plainType {
 			mod.genPlainType(w, name, obj.Comment, properties, true, false, false, level)
 		}
 		if mod.details(obj).argsType {
@@ -1771,30 +1757,32 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		_ = getMod("config")
 	}
 
-	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, codegen.Set{})
-	}
+	visitObjectTypes(pkg.Config, func(t *schema.ObjectType, plain bool) {
+		types.details(t).outputType = true
+	})
 
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
-		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, codegen.Set{})
-		}
-		for _, p := range r.InputProperties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				if r.IsProvider {
-					types.details(t).outputType = true
-				}
-				types.details(t).inputType = true
+		visitObjectTypes(r.Properties, func(t *schema.ObjectType, _ bool) {
+			types.details(t).outputType = true
+		})
+		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType, plain bool) {
+			if r.IsProvider {
+				types.details(t).outputType = true
+			}
+			types.details(t).inputType = true
+			if plain {
+				types.details(t).plainType = true
+			} else {
 				types.details(t).argsType = true
-			}, codegen.Set{})
-		}
+			}
+		})
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) {
+			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType, _ bool) {
 				types.details(t).inputType = true
 				types.details(t).argsType = true
-			}, codegen.Set{})
+			})
 		}
 	}
 
@@ -1809,16 +1797,16 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
+			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType, _ bool) {
 				types.details(t).inputType = true
-				types.details(t).functionType = true
-			}, codegen.Set{})
+				types.details(t).plainType = true
+			})
 		}
 		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
+			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType, _ bool) {
 				types.details(t).outputType = true
-				types.details(t).functionType = true
-			}, codegen.Set{})
+				types.details(t).plainType = true
+			})
 		}
 	}
 

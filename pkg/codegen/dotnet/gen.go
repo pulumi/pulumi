@@ -50,11 +50,11 @@ func (ss stringSet) has(s string) bool {
 }
 
 type typeDetails struct {
-	outputType   bool
-	inputType    bool
-	stateType    bool
-	argsType     bool
-	functionType bool
+	outputType bool
+	inputType  bool
+	stateType  bool
+	argsType   bool
+	plainType  bool
 }
 
 // Title converts the input string to a title case
@@ -223,7 +223,7 @@ func (mod *modContext) typeName(t *schema.ObjectType, state, input, args bool) s
 	switch {
 	case input:
 		return name + "Args"
-	case mod.details(t).functionType:
+	case mod.details(t).plainType:
 		return name + "Result"
 	}
 	return name
@@ -423,9 +423,11 @@ type plainType struct {
 }
 
 func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string) {
+	argsType := pt.args && !prop.IsPlain
+
 	wireName := prop.Name
 	propertyName := pt.mod.propertyName(prop)
-	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.args && !prop.IsPlain, pt.args, false, !prop.IsRequired)
+	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, false, !prop.IsRequired)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -452,7 +454,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	case *schema.ArrayType, *schema.MapType:
 		backingFieldName := "_" + prop.Name
 		requireInitializers := !pt.args
-		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.args && !prop.IsPlain, pt.args, requireInitializers, false)
+		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, requireInitializers, false)
 
 		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
 		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
@@ -1207,33 +1209,12 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	return nil
 }
 
-func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited codegen.Set) {
-	if visited.Has(t) {
-		return
-	}
-	visited.Add(t)
-
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		visitObjectTypesAcc(t.ElementType, visitor, visited)
-	case *schema.MapType:
-		visitObjectTypesAcc(t.ElementType, visitor, visited)
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			visitObjectTypesAcc(p.Type, visitor, visited)
+func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType, bool)) {
+	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
+		if o, ok := t.Type.(*schema.ObjectType); ok {
+			visitor(o, t.Plain)
 		}
-		visitor(t)
-	case *schema.UnionType:
-		for _, e := range t.ElementTypes {
-			visitObjectTypesAcc(e, visitor, visited)
-		}
-	}
-}
-
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
-	// Accumulator to avoid visiting the same node twice in case of recursive types.
-	visited := codegen.Set{}
-	visitObjectTypesAcc(t, visitor, visited)
+	})
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyTypeQualifier string, input, state, args bool, level int) error {
@@ -1249,7 +1230,7 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 
 	if input {
 		pt.baseClass = "ResourceArgs"
-		if mod.details(obj).functionType {
+		if !args && mod.details(obj).plainType {
 			pt.baseClass = "InvokeArgs"
 		}
 		return pt.genInputType(w, level)
@@ -1614,7 +1595,7 @@ func (mod *modContext) gen(fs fs) error {
 					return err
 				}
 			}
-			if mod.details(t).functionType {
+			if mod.details(t).plainType {
 				if err := mod.genType(buffer, t, "Inputs", true, false, false, 1); err != nil {
 					return err
 				}
@@ -1648,7 +1629,7 @@ func (mod *modContext) gen(fs fs) error {
 			fmt.Fprintf(buffer, "}\n")
 
 			suffix := ""
-			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && mod.details(t).functionType {
+			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && mod.details(t).plainType {
 				suffix = "Result"
 			}
 
@@ -1829,30 +1810,30 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		cfg.namespaceName = "Pulumi." + namespaceName(infos[pkg].Namespaces, pkg.Name)
 	}
 
-	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { getModFromToken(t.Token, pkg).details(t).outputType = true })
-	}
+	visitObjectTypes(pkg.Config, func(t *schema.ObjectType, _ bool) {
+		getModFromToken(t.Token, pkg).details(t).outputType = true
+	})
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token, pkg)
 		mod.resources = append(mod.resources, r)
-		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
+		visitObjectTypes(r.Properties, func(t *schema.ObjectType, _ bool) {
+			getModFromToken(t.Token, t.Package).details(t).outputType = true
+		})
+		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType, plain bool) {
+			if r.IsProvider {
 				getModFromToken(t.Token, t.Package).details(t).outputType = true
-			})
-		}
-		for _, p := range r.InputProperties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				if r.IsProvider {
-					getModFromToken(t.Token, t.Package).details(t).outputType = true
-				}
-				getModFromToken(t.Token, t.Package).details(t).inputType = true
+			}
+			getModFromToken(t.Token, t.Package).details(t).inputType = true
+			if plain {
+				getModFromToken(t.Token, t.Package).details(t).plainType = true
+			} else {
 				getModFromToken(t.Token, t.Package).details(t).argsType = true
-			})
-		}
+			}
+		})
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) {
+			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType, _ bool) {
 				getModFromToken(t.Token, t.Package).details(t).inputType = true
 				getModFromToken(t.Token, t.Package).details(t).stateType = true
 			})
@@ -1869,17 +1850,17 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 		mod := getModFromToken(f.Token, pkg)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
+			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType, _ bool) {
 				details := getModFromToken(t.Token, t.Package).details(t)
 				details.inputType = true
-				details.functionType = true
+				details.plainType = true
 			})
 		}
 		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
+			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType, _ bool) {
 				details := getModFromToken(t.Token, t.Package).details(t)
 				details.outputType = true
-				details.functionType = true
+				details.plainType = true
 			})
 		}
 	}

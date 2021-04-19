@@ -18,6 +18,12 @@ namespace Pulumi.Example
         [Output("b")]
         public Output<bool?> B { get; private set; } = null!;
 
+        [Output("bar")]
+        public Output<Outputs.Foo?> Bar { get; private set; } = null!;
+
+        [Output("baz")]
+        public Output<ImmutableArray<Outputs.Foo>> Baz { get; private set; } = null!;
+
         [Output("c")]
         public Output<int> C { get; private set; } = null!;
 
@@ -66,6 +72,17 @@ namespace Pulumi.Example
 
         [Input("b")]
         public bool? B { get; set; }
+
+        [Input("bar")]
+        public Inputs.Foo? Bar { get; set; }
+
+        [Input("baz")]
+        private ImmutableArray<Inputs.Foo>? _baz;
+        public ImmutableArray<Inputs.Foo> Baz
+        {
+            get => _baz ?? (_baz = new ImmutableArray<Inputs.Foo>());
+            set => _baz = value;
+        }
 
         [Input("c", required: true)]
         public int C { get; set; } = null!;

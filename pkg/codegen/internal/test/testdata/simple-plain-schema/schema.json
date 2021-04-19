@@ -52,6 +52,15 @@
         },
         "foo": {
           "$ref": "#/types/example::Foo"
+        },
+        "bar": {
+          "$ref": "#/types/example::Foo"
+        },
+        "baz": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example::Foo"
+          }
         }
       },
       "required": ["a", "c", "e"],
@@ -76,10 +85,19 @@
         },
         "foo": {
           "$ref": "#/types/example::Foo"
+        },
+        "bar": {
+          "$ref": "#/types/example::Foo"
+        },
+        "baz": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example::Foo"
+          }
         }
       },
       "requiredInputs": ["a", "c", "e"],
-      "plainInputs": ["a", "b", "c", "d", "e", "f"],
+      "plainInputs": ["a", "b", "c", "d", "e", "f", "bar", "baz"],
       "type": "object"
     }
   },

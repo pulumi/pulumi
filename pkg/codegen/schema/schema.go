@@ -1663,7 +1663,11 @@ func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, ma
 		}
 		resourceTable[token] = res
 
-		if _, ok := types.resources[token]; !ok {
+		if rt, ok := types.resources[token]; ok {
+			if rt.Resource == nil {
+				rt.Resource = res
+			}
+		} else {
 			types.resources[token] = &ResourceType{
 				Token:    res.Token,
 				Resource: res,
