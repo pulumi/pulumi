@@ -40,10 +40,11 @@ import (
 )
 
 type typeDetails struct {
-	outputType bool
-	inputType  bool
-	argsType   bool
-	plainType  bool
+	outputType         bool
+	inputType          bool
+	argsType           bool
+	resourceOutputType bool
+	plainType          bool
 }
 
 type imports codegen.StringSet
@@ -940,7 +941,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Produce an args class.
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	err := mod.genType(w, fmt.Sprintf("%sArgs", name), argsComment, res.InputProperties, false, true, true)
+	err := mod.genType(w, fmt.Sprintf("%sArgs", name), argsComment, res.InputProperties, false, true, true, false)
 	if err != nil {
 		return "", err
 	}
@@ -953,7 +954,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		len(res.StateInputs.Properties) > 0
 	if hasStateInputs {
 		stateComment := fmt.Sprintf("Input properties used for looking up and filtering %s resources.", name)
-		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, false, true, true)
+		err = mod.genType(w, fmt.Sprintf("_%sState", name), stateComment, res.StateInputs.Properties, false, true, true, false)
 		if err != nil {
 			return "", err
 		}
@@ -2013,13 +2014,13 @@ func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input 
 	if input {
 		if mod.details(obj).argsType {
 			name := mod.unqualifiedObjectTypeName(obj, input, true)
-			if err := mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).plainType, input, true); err != nil {
+			if err := mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).plainType, input, true, false); err != nil {
 				return err
 			}
 		}
 		if mod.details(obj).plainType {
 			name := mod.unqualifiedObjectTypeName(obj, input, false)
-			if err := mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).plainType, input, false); err != nil {
+			if err := mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).plainType, input, false, false); err != nil {
 				return err
 			}
 		}
@@ -2027,10 +2028,10 @@ func (mod *modContext) genObjectType(w io.Writer, obj *schema.ObjectType, input 
 	}
 
 	name := mod.unqualifiedObjectTypeName(obj, input, false)
-	return mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).plainType, false, false)
+	return mod.genType(w, name, obj.Comment, obj.Properties, mod.details(obj).plainType, false, false, mod.details(obj).resourceOutputType)
 }
 
-func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, plainType, input, args bool) error {
+func (mod *modContext) genType(w io.Writer, name, comment string, properties []*schema.Property, plainType, input, args, resourceOutput bool) error {
 	// Sort required props first.
 	props := make([]*schema.Property, len(properties))
 	copy(props, properties)
@@ -2062,7 +2063,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// To help users migrate to using the properly snake_cased property getters, emit warnings when camelCase keys are
 	// accessed. We emit this at the top of the class in case we have a `get` property that will be redefined later.
-	if !input && !plainType {
+	if resourceOutput {
 		var needsCaseWarning bool
 		for _, prop := range props {
 			pname := PyName(prop.Name)
@@ -2306,6 +2307,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 			switch T := t.(type) {
 			case *schema.ObjectType:
 				getModFromToken(T.Token, T.Package).details(T).outputType = true
+				getModFromToken(T.Token, T.Package).details(T).resourceOutputType = true
 			}
 		})
 		visitObjectTypes(r.InputProperties, func(t schema.Type, plain bool) {

@@ -25,7 +25,7 @@ meta_desc: "Documentation for the example.Component resource with examples, inpu
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMeta]</span> = None<span class="p">)</span>
+              <span class="nx">metadata</span><span class="p">:</span> <span class="nx">Optional[pulumi_kubernetes.meta.v1.ObjectMetaArgs]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Component</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
               <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">Optional[ComponentArgs]</a></span> = None<span class="p">,</span>
@@ -221,7 +221,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#metadata_python" style="color: inherit; text-decoration: inherit;">metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
