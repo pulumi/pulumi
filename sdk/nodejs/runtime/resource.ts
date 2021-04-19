@@ -19,8 +19,10 @@ import * as utils from "../utils";
 
 import { getAllResources, Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
+import { expandProviders } from "../resource";
 import {
     ComponentResource,
+    ComponentResourceOptions,
     createUrn,
     CustomResource,
     CustomResourceOptions,
@@ -72,6 +74,8 @@ interface ResourceResolverOperation {
     parentURN: URN | undefined;
     // A provider reference, fully resolved, if any.
     providerRef: string | undefined;
+    // A map of provider references, fully resolved, if any.
+    providerRefs: Map<string, string>;
     // All serialized properties, fully awaited, serialized, and ready to go.
     serializedProps: Record<string, any>;
     // A set of URNs that this resource is directly dependent upon.  These will all be URNs of
@@ -101,7 +105,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
     log.debug(`Getting resource: urn=${urn}`);
 
     const monitor: any = getMonitor();
-    const resopAsync = prepareResource(label, res, custom, props, {});
+    const resopAsync = prepareResource(label, res, custom, false, props, {});
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
@@ -197,7 +201,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     log.debug(`Reading resource: id=${Output.isInstance(id) ? "Output<T>" : id}, t=${t}, name=${name}`);
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, true, props, opts);
+    const resopAsync = prepareResource(label, res, true, false, props, opts);
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
@@ -281,7 +285,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
     log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, custom, props, opts);
+    const resopAsync = prepareResource(label, res, custom, remote, props, opts);
 
     // In order to present a useful stack trace if an error does occur, we preallocate potential
     // errors here. V8 captures a stack trace at the moment an Error is created and this stack
@@ -326,6 +330,11 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             const deps = new resproto.RegisterResourceRequest.PropertyDependencies();
             deps.setUrnsList(Array.from(resourceURNs));
             propertyDependencies.set(key, deps);
+        }
+
+        const providerRefs = req.getProvidersMap();
+        for (const [key, ref] of resop.providerRefs) {
+            providerRefs.set(key, ref);
         }
 
         // Now run the operation, serializing the invocation if necessary.
@@ -407,7 +416,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
  */
-async function prepareResource(label: string, res: Resource, custom: boolean,
+async function prepareResource(label: string, res: Resource, custom: boolean, remote: boolean,
                                props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
 
     // Simply initialize the URN property and get prepared to resolve it later on.
@@ -509,6 +518,20 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         providerRef = await ProviderResource.register(opts.provider);
     }
 
+    const providerRefs: Map<string, string> = new Map<string, string>();
+    if (remote) {
+        const componentOpts = <ComponentResourceOptions>opts;
+        expandProviders(componentOpts);
+        if (componentOpts.providers) {
+            for (const provider of componentOpts.providers as ProviderResource[]) {
+                const pref = await ProviderResource.register(provider);
+                if (pref) {
+                    providerRefs.set(provider.getPackage(), pref);
+                }
+            }
+        }
+    }
+
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
     // the dependency graph and optimize operations accordingly.
 
@@ -546,6 +569,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         serializedProps: serializedProps,
         parentURN: parentURN,
         providerRef: providerRef,
+        providerRefs: providerRefs,
         allDirectDependencyURNs: allDirectDependencyURNs,
         propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
         aliases: aliases,

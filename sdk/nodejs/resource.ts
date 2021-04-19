@@ -920,7 +920,8 @@ function isPromiseOrOutput(val: any): boolean {
     return val instanceof Promise || Output.isInstance(val);
 }
 
-function expandProviders(options: ComponentResourceOptions) {
+/** @internal */
+export function expandProviders(options: ComponentResourceOptions) {
     // Move 'provider' up to 'providers' if we have it.
     if (options.provider) {
         options.providers = [options.provider];
@@ -1019,4 +1020,3 @@ export class DependencyProviderResource extends ProviderResource {
         (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
     }
 }
-
