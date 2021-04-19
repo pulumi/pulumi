@@ -16,7 +16,6 @@ env:
   NUGET_PUBLISH_KEY: ${{ secrets.NUGET_PUBLISH_KEY }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   TRAVIS_PUBLISH_PACKAGES: true
-  VERSION_PREFIX: "3.0.0"
 
 jobs:
   publish-sdks:

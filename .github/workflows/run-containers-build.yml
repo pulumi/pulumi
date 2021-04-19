@@ -7,7 +7,6 @@ on:
 
 env:
   GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
-  VERSION_PREFIX: "3.0.0"
 
 jobs:
  test-containers:
