@@ -206,15 +206,15 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input, args, optional bool, constValue interface{}) string {
+func (mod *modContext) typeString(t schema.Type, input, wrapInput, args, optional bool, constValue interface{}) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
 		typ = mod.objectType(nil, t.Token, input, args, true)
 	case *schema.ArrayType:
-		typ = mod.typeString(t.ElementType, input, args, false, constValue) + "[]"
+		typ = mod.typeString(t.ElementType, input, wrapInput, args, false, constValue) + "[]"
 	case *schema.MapType:
-		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, args, false, constValue))
+		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, args, false, constValue))
 	case *schema.ObjectType:
 		typ = mod.objectType(t.Package, t.Token, input, args, false)
 	case *schema.ResourceType:
@@ -224,13 +224,13 @@ func (mod *modContext) typeString(t schema.Type, input, args, optional bool, con
 	case *schema.UnionType:
 		if !input && mod.disableUnionOutputTypes {
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, args, optional, constValue)
+				return mod.typeString(t.DefaultType, input, wrapInput, args, optional, constValue)
 			}
 			typ = "any"
 		} else {
 			var elements []string
 			for _, e := range t.ElementTypes {
-				t := mod.typeString(e, input, args, false, constValue)
+				t := mod.typeString(e, input, wrapInput, args, false, constValue)
 				if args && strings.HasPrefix(t, "pulumi.Input<") {
 					contract.Assert(t[len(t)-1] == '>')
 					// Strip off the leading `pulumi.Input<` and the trailing `>`
@@ -328,7 +328,7 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		typ := mod.typeString(p.Type, input, arg && !p.IsPlain, false, p.ConstValue)
+		typ := mod.typeString(p.Type, input, arg && !p.IsPlain, arg && !p.IsPlain, false, p.ConstValue)
 		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
@@ -523,7 +523,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		if mod.compatibility == kubernetes20 {
 			required = true
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !required, prop.ConstValue))
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, false, !required, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -1024,11 +1024,11 @@ func (mod *modContext) configGetter(v *schema.Property) (string, string) {
 	}
 
 	if tok, ok := v.Type.(*schema.TokenType); ok && tok.UnderlyingType == schema.StringType {
-		return "get", fmt.Sprintf("<%s>", mod.typeString(v.Type, false, false, false, nil))
+		return "get", fmt.Sprintf("<%s>", mod.typeString(v.Type, false, false, false, false, nil))
 	}
 
 	// Only try to parse a JSON object if the config isn't a straight string.
-	return fmt.Sprintf("getObject<%s>", mod.typeString(v.Type, false, false, false, nil)), ""
+	return fmt.Sprintf("getObject<%s>", mod.typeString(v.Type, false, false, false, false, nil)), ""
 }
 
 func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
@@ -1061,7 +1061,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		}
 
 		fmt.Fprintf(w, "export let %s: %s = %s;\n",
-			p.Name, mod.typeString(p.Type, false, false, true, nil), configFetch)
+			p.Name, mod.typeString(p.Type, false, false, false, true, nil), configFetch)
 	}
 
 	return nil
@@ -1907,9 +1907,9 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 					Name: p.Name,
 				}
 				if p.ConstValue != nil {
-					lp.ConstValue = mod.typeString(p.Type, false, false, false, p.ConstValue)
+					lp.ConstValue = mod.typeString(p.Type, false, false, false, false, p.ConstValue)
 				} else {
-					lp.Package = mod.typeString(p.Type, false, false, false, nil)
+					lp.Package = mod.typeString(p.Type, false, false, false, false, nil)
 				}
 				lr.Properties = append(lr.Properties, lp)
 			}
