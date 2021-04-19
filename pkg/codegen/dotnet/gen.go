@@ -50,12 +50,11 @@ func (ss stringSet) has(s string) bool {
 }
 
 type typeDetails struct {
-	outputType   bool
-	inputType    bool
-	stateType    bool
-	argsType     bool
-	plainType    bool
-	functionType bool
+	outputType bool
+	inputType  bool
+	stateType  bool
+	argsType   bool
+	plainType  bool
 }
 
 // Title converts the input string to a title case
