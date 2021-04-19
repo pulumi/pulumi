@@ -20,9 +20,11 @@ package docs
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
@@ -485,5 +487,75 @@ func TestExamplesProcessing(t *testing.T) {
 			assert.True(t, ok, "Expected to find default placeholders for other languages")
 			assert.Contains(t, "Coming soon!", snippet)
 		}
+	}
+}
+
+func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	return GeneratePackage(tool, pkg)
+}
+
+func TestGeneratePackage(t *testing.T) {
+	tests := []struct {
+		name          string
+		schemaDir     string
+		expectedFiles []string
+	}{
+		{
+			"Simple schema with local resource properties",
+			"simple-resource-schema",
+			[]string{
+				"provider.md",
+				"otherresource.md",
+				"resource.md",
+				"argfunction.md",
+				"_index.md",
+			},
+		},
+		{
+			"Simple schema with enum types",
+			"simple-enum-schema",
+			[]string{
+				"provider.md",
+				"_index.md",
+				"tree/_index.md",
+				"tree/v1/nursery.md",
+				"tree/v1/rubbertree.md",
+				"tree/v1/_index.md",
+			},
+		},
+		{
+			"External resource schema",
+			"external-resource-schema",
+			[]string{
+				"workload.md",
+				"argfunction.md",
+				"_index.md",
+				"provider.md",
+				"cat.md",
+				"component.md",
+			},
+		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				"_index.md",
+				"provider.md",
+				"component.md",
+			},
+		},
+	}
+	testDir := filepath.Join("..", "internal", "test", "testdata")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, err := test.GeneratePackageFilesFromSchema(
+				filepath.Join(testDir, tt.schemaDir, "schema.json"), generatePackage)
+			assert.NoError(t, err)
+
+			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "docs", tt.expectedFiles)
+			assert.NoError(t, err)
+
+			test.ValidateFileEquality(t, files, expectedFiles)
+		})
 	}
 }

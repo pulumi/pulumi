@@ -889,7 +889,7 @@ func (mod *modContext) genAwaitableType(w io.Writer, obj *schema.ObjectType) str
 
 	// Write out Python property getters for each property.
 	mod.genProperties(w, obj.Properties, false /*setters*/, func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, false /*input*/, false /*args*/, !prop.IsRequired,
+		return mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, false /*args*/, !prop.IsRequired,
 			false /*acceptMapping*/)
 	})
 
@@ -1028,7 +1028,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		// If there's an argument type, emit it.
 		for _, prop := range res.InputProperties {
 			wrapInput := !prop.IsPlain
-			ty := mod.typeString(prop.Type, true, wrapInput, true /*optional*/, true /*acceptMapping*/)
+			ty := mod.typeString(prop.Type, true, wrapInput, wrapInput, true /*optional*/, true /*acceptMapping*/)
 			fmt.Fprintf(w, ",\n                 %s: %s = None", InitParamName(prop.Name), ty)
 		}
 
@@ -1210,7 +1210,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if hasStateInputs {
 			for _, prop := range res.StateInputs.Properties {
 				pname := PyName(prop.Name)
-				ty := mod.typeString(prop.Type, true, true, true /*optional*/, true /*acceptMapping*/)
+				ty := mod.typeString(prop.Type, true, true, true, true /*optional*/, true /*acceptMapping*/)
 				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
 			}
 		}
@@ -1245,7 +1245,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Write out Python property getters for each of the resource's properties.
 	mod.genProperties(w, res.Properties, false /*setters*/, func(prop *schema.Property) string {
-		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, !prop.IsRequired, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, false /*input*/, false /*wrapInput*/, false /*args*/, !prop.IsRequired, false /*acceptMapping*/)
 		return fmt.Sprintf("pulumi.Output[%s]", ty)
 	})
 
@@ -1389,7 +1389,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 			ind = indent
 		}
 		pname := PyName(arg.Name)
-		ty := mod.typeString(arg.Type, true, false /*wrapInput*/, true /*optional*/, true /*acceptMapping*/)
+		ty := mod.typeString(arg.Type, true, false /*wrapInput*/, false /*args*/, true /*optional*/, true /*acceptMapping*/)
 		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
 	}
 	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
@@ -1488,7 +1488,7 @@ func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
 func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 	indent := "    "
 	enumName := tokenToName(enum.Token)
-	underlyingType := mod.typeString(enum.ElementType, false, false, false, false)
+	underlyingType := mod.typeString(enum.ElementType, false, false, false, false, false)
 
 	switch enum.ElementType {
 	case schema.StringType, schema.IntType, schema.NumberType:
@@ -1890,7 +1890,7 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 		return
 	}
 
-	ty := mod.typeString(prop.Type, true, wrapInput && !prop.IsPlain, false /*optional*/, acceptMapping)
+	ty := mod.typeString(prop.Type, true, wrapInput && !prop.IsPlain, wrapInput && !prop.IsPlain, false /*optional*/, acceptMapping)
 
 	// If this property has some documentation associated with it, we need to split it so that it is indented
 	// in a way that Sphinx can understand.
@@ -1909,15 +1909,15 @@ func (mod *modContext) genPropDocstring(w io.Writer, name string, prop *schema.P
 	}
 }
 
-func (mod *modContext) typeString(t schema.Type, input, args, optional, acceptMapping bool) string {
+func (mod *modContext) typeString(t schema.Type, input, wrapInput, args, optional, acceptMapping bool) string {
 	var typ string
 	switch t := t.(type) {
 	case *schema.EnumType:
 		typ = mod.tokenToEnum(t.Token)
 	case *schema.ArrayType:
-		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, args, false, acceptMapping))
+		typ = fmt.Sprintf("Sequence[%s]", mod.typeString(t.ElementType, input, wrapInput, args, false, acceptMapping))
 	case *schema.MapType:
-		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, args, false, acceptMapping))
+		typ = fmt.Sprintf("Mapping[str, %s]", mod.typeString(t.ElementType, input, wrapInput, args, false, acceptMapping))
 	case *schema.ObjectType:
 		typ = mod.objectType(t, input, args)
 		if acceptMapping {
@@ -1928,7 +1928,7 @@ func (mod *modContext) typeString(t schema.Type, input, args, optional, acceptMa
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
-			return mod.typeString(t.UnderlyingType, input, args, optional, acceptMapping)
+			return mod.typeString(t.UnderlyingType, input, wrapInput, args, optional, acceptMapping)
 		}
 		typ = "Any"
 	case *schema.UnionType:
@@ -1937,18 +1937,18 @@ func (mod *modContext) typeString(t schema.Type, input, args, optional, acceptMa
 				// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
 				// Eg. Output[str] rather than Output[Any]
 				if typ, ok := e.(*schema.EnumType); ok {
-					return mod.typeString(typ.ElementType, input, args, optional, acceptMapping)
+					return mod.typeString(typ.ElementType, input, wrapInput, args, optional, acceptMapping)
 				}
 			}
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, args, optional, acceptMapping)
+				return mod.typeString(t.DefaultType, input, wrapInput, args, optional, acceptMapping)
 			}
 			typ = "Any"
 		} else {
 			elementTypeSet := codegen.NewStringSet()
 			var elementTypes []schema.Type
 			for _, e := range t.ElementTypes {
-				et := mod.typeString(e, input, args, false, acceptMapping)
+				et := mod.typeString(e, input, wrapInput, args, false, acceptMapping)
 				if !elementTypeSet.Has(et) {
 					elementTypeSet.Add(et)
 					elementTypes = append(elementTypes, e)
@@ -1956,12 +1956,12 @@ func (mod *modContext) typeString(t schema.Type, input, args, optional, acceptMa
 			}
 
 			if len(elementTypes) == 1 {
-				return mod.typeString(elementTypes[0], input, args, optional, acceptMapping)
+				return mod.typeString(elementTypes[0], input, wrapInput, args, optional, acceptMapping)
 			}
 
 			var elements []string
 			for _, e := range elementTypes {
-				t := mod.typeString(e, input, args, false, acceptMapping)
+				t := mod.typeString(e, input, wrapInput, args, false, acceptMapping)
 				if args && strings.HasPrefix(t, "pulumi.Input[") {
 					contract.Assert(t[len(t)-1] == ']')
 					// Strip off the leading `pulumi.Input[` and the trailing `]`
@@ -1992,7 +1992,7 @@ func (mod *modContext) typeString(t schema.Type, input, args, optional, acceptMa
 		}
 	}
 
-	if args && typ != "Any" {
+	if wrapInput && typ != "Any" {
 		typ = fmt.Sprintf("pulumi.Input[%s]", typ)
 	}
 	if optional {
@@ -2166,7 +2166,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 	}
 	for _, prop := range props {
 		pname := PyName(prop.Name)
-		ty := mod.typeString(prop.Type, input, args && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
+		ty := mod.typeString(prop.Type, input, args && !prop.IsPlain, args && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 		var defaultValue string
 		if !prop.IsRequired {
 			defaultValue = " = None"
@@ -2223,7 +2223,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 
 	// Generate properties. Input types have getters and setters, output types only have getters.
 	mod.genProperties(w, props, input /*setters*/, func(prop *schema.Property) string {
-		return mod.typeString(prop.Type, input, args && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
+		return mod.typeString(prop.Type, input, args && !prop.IsPlain, args && !prop.IsPlain, !prop.IsRequired, false /*acceptMapping*/)
 	})
 
 	fmt.Fprintf(w, "\n")
