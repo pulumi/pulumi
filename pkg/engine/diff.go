@@ -507,6 +507,8 @@ func printPropertyValue(
 			contract.Assert(a.IsURI())
 			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
+	} else if v.IsResourceReference() {
+		// I am a resource reference and not an object!
 	} else {
 		contract.Assert(v.IsObject())
 		obj := v.ObjectValue()
