@@ -11,7 +11,7 @@
 [![Gitpod ready-to-code](https://img.shields.io/badge/Gitpod-ready--to--code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/pulumi/pulumi)
 
 <a href="https://www.pulumi.com/docs/get-started/?utm_campaign=pulumi-pulumi-github-repo&utm_source=github.com&utm_medium=get-started-button" title="Get Started">
-    <img src="https://www.pulumi.com/images/get-started.svg" align="right" width="120">
+    <img src="https://www.pulumi.com/images/get-started.svg?" align="right" width="120">
 </a>
 
 **Pulumi's Infrastructure as Code SDK** is the easiest way to create and deploy cloud software that use
