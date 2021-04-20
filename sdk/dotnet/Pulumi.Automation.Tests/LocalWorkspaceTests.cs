@@ -883,6 +883,10 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
+            var previewTask = stack.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTask);
+
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
@@ -910,6 +914,10 @@ namespace Pulumi.Automation.Tests
                     ["PULUMI_CONFIG_PASSPHRASE"] = "test",
                 }
             });
+
+            var previewTask = stack.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTask);
 
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
