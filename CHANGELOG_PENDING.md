@@ -12,8 +12,12 @@
 - [codegen/python] Lazy module import to improve CLI startup performance
   [#6827](https://github.com/pulumi/pulumi/pull/6827)
 
+
 ### Bug Fixes
 
 
 - [codegen] Fix codegen for types that are used by both resources and functions.
   [#6811](https://github.com/pulumi/pulumi/pull/6811)
+
+- [sdk/python] Fix bug in `get_resource_module` affecting resource hydration.
+  [#6833](https://github.com/pulumi/pulumi/pull/6833)
