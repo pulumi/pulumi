@@ -16,8 +16,7 @@
 // without the CLI.
 // Generally this can be thought of as encapsulating the functionality of the CLI (`pulumi up`, `pulumi preview`,
 // pulumi destroy`, `pulumi stack init`, etc.) but with more flexibility. This still requires a
-// CLI binary to be installed and available on your $PATH. The Automation API is in Alpha (experimental package/x)
-// breaking changes (mostly additive) will be made. You can pin to a specific commit version if you need stability.
+// CLI binary to be installed and available on your $PATH.
 //
 // In addition to fine-grained building blocks, Automation API provides three out of the box ways to work with Stacks:
 //
