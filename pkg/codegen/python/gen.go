@@ -109,6 +109,19 @@ type modContext struct {
 	compatibility    string            // Toggle compatibility mode for a specified target.
 }
 
+func (mod *modContext) isTopLevel() bool {
+	return mod.parent == nil
+}
+
+func (mod *modContext) walkSelfWithDescendants() []*modContext {
+	var found []*modContext
+	found = append(found, mod)
+	for _, childMod := range mod.children {
+		found = append(found, childMod.walkSelfWithDescendants()...)
+	}
+	return found
+}
+
 func (mod *modContext) addChild(child *modContext) {
 	mod.children = append(mod.children, child)
 	child.parent = mod
@@ -584,7 +597,7 @@ func (mod *modContext) genInit(exports []string) string {
 
 	// If there are resources in this module, register the module with the runtime.
 	if len(mod.resources) != 0 {
-		mod.genResourceModule(w)
+		genResourceMappings(mod, w)
 	}
 
 	return w.String()
@@ -603,75 +616,6 @@ func (mod *modContext) genUtilitiesImport() string {
 	relRoot := path.Dir(rel)
 	relImport := relPathToRelImport(relRoot)
 	return fmt.Sprintf("from %s import _utilities", relImport)
-}
-
-// genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
-// Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
-// hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
-// definition and its registration to support rehydrating providers.
-func (mod *modContext) genResourceModule(w io.Writer) {
-	contract.Assert(len(mod.resources) != 0)
-
-	fmt.Fprintf(w, "\ndef _register_module():\n")
-	fmt.Fprintf(w, "    import pulumi\n")
-	fmt.Fprintf(w, "    %s\n", mod.genUtilitiesImport())
-
-	// Check for provider-only modules.
-	var provider *schema.Resource
-	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
-		provider = mod.resources[0]
-	} else {
-		fmt.Fprintf(w, "\n\n    class Module(pulumi.runtime.ResourceModule):\n")
-		fmt.Fprintf(w, "        _version = _utilities.get_semver_version()\n")
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "        def version(self):\n")
-		fmt.Fprintf(w, "            return Module._version\n")
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "        def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:\n")
-
-		registrations, first := codegen.StringSet{}, true
-		for _, r := range mod.resources {
-			if r.IsProvider {
-				contract.Assert(provider == nil)
-				provider = r
-				continue
-			}
-
-			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
-
-			conditional := "elif"
-			if first {
-				conditional, first = "if", false
-			}
-			fmt.Fprintf(w, "            %v typ == \"%v\":\n", conditional, r.Token)
-			fmt.Fprintf(w, "                return %v(name, pulumi.ResourceOptions(urn=urn))\n", tokenToName(r.Token))
-		}
-		fmt.Fprintf(w, "            else:\n")
-		fmt.Fprintf(w, "                raise Exception(f\"unknown resource type {typ}\")\n")
-		fmt.Fprintf(w, "\n\n")
-		fmt.Fprintf(w, "    _module_instance = Module()\n")
-		for _, name := range registrations.SortedValues() {
-			fmt.Fprintf(w, "    pulumi.runtime.register_resource_module(\"%v\", \"%v\", _module_instance)\n", mod.pkg.Name, name)
-		}
-	}
-
-	if provider != nil {
-		fmt.Fprintf(w, "\n\n    class Package(pulumi.runtime.ResourcePackage):\n")
-		fmt.Fprintf(w, "        _version = _utilities.get_semver_version()\n")
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "        def version(self):\n")
-		fmt.Fprintf(w, "            return Package._version\n")
-		fmt.Fprintf(w, "\n")
-		fmt.Fprintf(w, "        def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:\n")
-		fmt.Fprintf(w, "            if typ != \"%v\":\n", provider.Token)
-		fmt.Fprintf(w, "                raise Exception(f\"unknown provider type {typ}\")\n")
-		fmt.Fprintf(w, "            return Provider(name, pulumi.ResourceOptions(urn=urn))\n")
-		fmt.Fprintf(w, "\n\n")
-		fmt.Fprintf(w, "    pulumi.runtime.register_resource_package(\"%v\", Package())\n", mod.pkg.Name)
-	}
-
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "_register_module()\n")
 }
 
 func (mod *modContext) importObjectType(t *schema.ObjectType, input bool) string {
@@ -2522,10 +2466,14 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 const utilitiesFile = `
+import json
 import os
 import sys
 import importlib.util
 import pkg_resources
+
+import pulumi
+import pulumi.runtime
 
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
@@ -2652,4 +2600,55 @@ def lazy_import(fullname):
     sys.modules[fullname] = module
     loader.exec_module(module)
     return module
+
+
+class Package(pulumi.runtime.ResourcePackage):
+    _version = get_semver_version()
+
+    def __init__(self, pkg_info):
+        super().__init__()
+        self.pkg_info = pkg_info
+
+    def version(self):
+        return Package._version
+
+    def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:
+        if typ != self.pkg_info['token']:
+            raise Exception(f"unknown provider type {typ}")
+        Provider = getattr(lazy_import(self.pkg_info['fqn']), self.pkg_info['class'])
+        return Provider(name, pulumi.ResourceOptions(urn=urn))
+
+
+class Module(pulumi.runtime.ResourceModule):
+    _version = get_semver_version()
+
+    def __init__(self, mod_info):
+        super().__init__()
+        self.mod_info = mod_info
+
+    def version(self):
+        return Module._version
+
+    def construct(self, name: str, typ: str, urn: str) -> pulumi.Resource:
+        class_name = self.mod_info['classes'].get(typ, None)
+
+        if class_name is None:
+            raise Exception(f"unknown resource type {typ}")
+
+        TheClass = getattr(lazy_import(self.mod_info['fqn']), class_name)
+        return TheClass(name, pulumi.ResourceOptions(urn=urn))
+
+
+def register(resource_modules, resource_packages):
+    resource_modules = json.loads(resource_modules)
+    resource_packages = json.loads(resource_packages)
+
+    for pkg_info in resource_packages:
+        pulumi.runtime.register_resource_package(pkg_info['pkg'], Package(pkg_info))
+
+    for mod_info in resource_modules:
+        pulumi.runtime.register_resource_module(
+            mod_info['pkg'],
+            mod_info['mod'],
+            Module(mod_info))
 `
