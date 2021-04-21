@@ -7,7 +7,10 @@
   [#6795](https://github.com/pulumi/pulumi/pull/6795)
 
 - [automation/dotnet] Remove dependency on Gprc.Tools for F# / Paket compatibility
-  [#6793](https://github.com/pulumi/pulumi/pull/6793)  
+  [#6793](https://github.com/pulumi/pulumi/pull/6793)
+
+- [codegen/python] Lazy module import to improve CLI startup performance
+  [#6827](https://github.com/pulumi/pulumi/pull/6827)
 
 ### Bug Fixes
 
