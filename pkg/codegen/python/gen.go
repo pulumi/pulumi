@@ -532,15 +532,13 @@ func (mod *modContext) unqualifiedImportName() string {
 
 func (mod *modContext) fullyQualifiedImportName() string {
 	name := mod.unqualifiedImportName()
-	if mod.parent == nil {
-		if name == "" {
-			return pyPack(mod.pkg.Name)
-		} else {
-			return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name), name)
-		}
-	} else {
-		return fmt.Sprintf("%s.%s", mod.parent.fullyQualifiedImportName(), name)
+	if mod.parent == nil && name == "" {
+		return pyPack(mod.pkg.Name)
 	}
+	if mod.parent == nil {
+		return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name), name)
+	}
+	return fmt.Sprintf("%s.%s", mod.parent.fullyQualifiedImportName(), name)
 }
 
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
@@ -597,7 +595,8 @@ func (mod *modContext) genInit(exports []string) string {
 
 	// If there are resources in this module, register the module with the runtime.
 	if len(mod.resources) != 0 {
-		genResourceMappings(mod, w)
+		err := genResourceMappings(mod, w)
+		contract.Assert(err == nil)
 	}
 
 	return w.String()

@@ -46,9 +46,8 @@ func genResourceMappings(root *modContext, w io.Writer) error {
 		}
 		fmt.Fprintf(w, "_utilities.register(\n    resource_modules=%s,\n    resource_packages=%s\n)\n", rm, rp)
 		return nil
-	} else {
-		return nil
 	}
+	return nil
 }
 
 func jsonPythonLiteral(thing interface{}) (string, error) {
