@@ -88,7 +88,8 @@ class UpdateSummary:
         self.version = version
         self.config: ConfigMap = {}
         for key in config:
-            self.config[key] = ConfigValue(**config[key])
+            config_value = config[key]
+            self.config[key] = ConfigValue(value=config_value["value"], secret=config_value["secret"])
 
     def __repr__(self):
         return f"UpdateSummary(result={self.result!r}, version={self.version!r}, " \
