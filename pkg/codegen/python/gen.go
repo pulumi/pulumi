@@ -97,6 +97,7 @@ type modContext struct {
 	functions            []*schema.Function
 	typeDetails          map[*schema.ObjectType]*typeDetails
 	children             []*modContext
+	parent               *modContext
 	snakeCaseToCamelCase map[string]string
 	camelCaseToSnakeCase map[string]string
 	tool                 string
@@ -106,6 +107,11 @@ type modContext struct {
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
 	compatibility    string            // Toggle compatibility mode for a specified target.
+}
+
+func (mod *modContext) addChild(child *modContext) {
+	mod.children = append(mod.children, child)
+	child.parent = mod
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -498,10 +504,37 @@ func (mod *modContext) submodulesExist() bool {
 	return len(mod.children) > 0
 }
 
+func (mod *modContext) unqualifiedImportName() string {
+	name := mod.mod
+
+	// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
+	// Example: apps/v1beta1 -> v1beta1
+	parts := strings.SplitN(name, "/", 2)
+	if len(parts) == 2 {
+		name = parts[1]
+	}
+
+	return PyName(name)
+}
+
+func (mod *modContext) fullyQualifiedImportName() string {
+	name := mod.unqualifiedImportName()
+	if mod.parent == nil {
+		if name == "" {
+			return pyPack(mod.pkg.Name)
+		} else {
+			return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name), name)
+		}
+	} else {
+		return fmt.Sprintf("%s.%s", mod.parent.fullyQualifiedImportName(), name)
+	}
+}
+
 // genInit emits an __init__.py module, optionally re-exporting other members or submodules.
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false /*needsSDK*/, nil)
+	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -529,27 +562,24 @@ func (mod *modContext) genInit(exports []string) string {
 
 	// If there are subpackages, import them with importlib.
 	if mod.submodulesExist() {
-		sort.Slice(mod.children, func(i, j int) bool {
-			return PyName(mod.children[i].mod) < PyName(mod.children[j].mod)
+
+		children := make([]*modContext, len(mod.children))
+		copy(children, mod.children)
+
+		sort.Slice(children, func(i, j int) bool {
+			return PyName(children[i].mod) < PyName(children[j].mod)
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
-		fmt.Fprintf(w, "from . import (\n")
-		for _, mod := range mod.children {
-			if mod.isEmpty() {
+
+		for _, submod := range children {
+			if submod.isEmpty() {
 				continue
 			}
-
-			child := mod.mod
-			// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
-			// Example: apps/v1beta1 -> v1beta1
-			parts := strings.SplitN(child, "/", 2)
-			if len(parts) == 2 {
-				child = parts[1]
-			}
-			fmt.Fprintf(w, "    %s,\n", PyName(child))
+			fmt.Fprintf(w, "%s = _utilities.lazy_import('%s')\n",
+				submod.unqualifiedImportName(),
+				submod.fullyQualifiedImportName())
 		}
-		fmt.Fprintf(w, ")\n")
 	}
 
 	// If there are resources in this module, register the module with the runtime.
@@ -567,6 +597,14 @@ func (mod *modContext) getRelImportFromRoot() string {
 	return relPathToRelImport(relRoot)
 }
 
+func (mod *modContext) genUtilitiesImport() string {
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	relRoot := path.Dir(rel)
+	relImport := relPathToRelImport(relRoot)
+	return fmt.Sprintf("from %s import _utilities", relImport)
+}
+
 // genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
 // Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
 // hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
@@ -574,14 +612,9 @@ func (mod *modContext) getRelImportFromRoot() string {
 func (mod *modContext) genResourceModule(w io.Writer) {
 	contract.Assert(len(mod.resources) != 0)
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(rel)
-	relImport := relPathToRelImport(relRoot)
-
 	fmt.Fprintf(w, "\ndef _register_module():\n")
 	fmt.Fprintf(w, "    import pulumi\n")
-	fmt.Fprintf(w, "    from %s import _utilities\n", relImport)
+	fmt.Fprintf(w, "    %s\n", mod.genUtilitiesImport())
 
 	// Check for provider-only modules.
 	var provider *schema.Resource
@@ -2269,7 +2302,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 					parentName = ""
 				}
 				parent := getMod(parentName, p)
-				parent.children = append(parent.children, mod)
+				parent.addChild(mod)
 			}
 
 			// Save the module only if it's for the current package.
@@ -2490,6 +2523,8 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 
 const utilitiesFile = `
 import os
+import sys
+import importlib.util
 import pkg_resources
 
 from semver import VersionInfo as SemverVersion
@@ -2601,4 +2636,15 @@ def get_resource_args_opts(resource_args_type, resource_options_type, *args, **k
         opts = kwargs.get("opts")
 
     return resource_args, opts
+
+
+def lazy_import(fullname):
+    try:
+        return sys.modules[fullname]
+    except KeyError:
+        spec = importlib.util.find_spec(fullname)
+        module = importlib.util.module_from_spec(spec)
+        loader = importlib.util.LazyLoader(spec.loader)
+        loader.exec_module(module)
+        return module
 `
