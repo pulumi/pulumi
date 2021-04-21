@@ -1,6 +1,6 @@
 # Automation API
 
-Programmatic infrastructure. Currently in Alpha.
+Programmatic infrastructure.
 
 ## Godocs
 See the full godocs for the most extensive and up to date information including full examples coverage: 
@@ -11,7 +11,7 @@ https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/auto?tab=doc
 
 Multiple full working examples with detailed walkthroughs can be found in this repo:
 
-https://github.com/EvanBoyle/automation-api-examples
+https://github.com/pulumi/automation-api-examples
 
 
 ## Overview
