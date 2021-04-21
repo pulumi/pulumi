@@ -546,6 +546,7 @@ func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false /*needsSDK*/, nil)
 	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
+	fmt.Fprintf(w, "import typing\n")
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -582,15 +583,27 @@ func (mod *modContext) genInit(exports []string) string {
 		})
 
 		fmt.Fprintf(w, "\n# Make subpackages available:\n")
+		fmt.Fprintf(w, "if typing.TYPE_CHECKING:\n")
 
 		for _, submod := range children {
-			if submod.isEmpty() {
-				continue
+			if !submod.isEmpty() {
+				fmt.Fprintf(w, "    import %s as %s\n",
+					submod.fullyQualifiedImportName(),
+					submod.unqualifiedImportName())
 			}
-			fmt.Fprintf(w, "%s = _utilities.lazy_import('%s')\n",
-				submod.unqualifiedImportName(),
-				submod.fullyQualifiedImportName())
 		}
+
+		fmt.Fprintf(w, "else:\n")
+
+		for _, submod := range children {
+			if !submod.isEmpty() {
+				fmt.Fprintf(w, "    %s = _utilities.lazy_import('%s')\n",
+					submod.unqualifiedImportName(),
+					submod.fullyQualifiedImportName())
+			}
+		}
+
+		fmt.Fprintf(w, "\n")
 	}
 
 	// If there are resources in this module, register the module with the runtime.
