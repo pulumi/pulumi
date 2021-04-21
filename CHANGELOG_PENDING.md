@@ -11,9 +11,11 @@
 
 ### Bug Fixes
 
-
 - [codegen] Fix codegen for types that are used by both resources and functions.
   [#6811](https://github.com/pulumi/pulumi/pull/6811)
 
 - [sdk/python] Fix bug in `get_resource_module` affecting resource hydration.
   [#6833](https://github.com/pulumi/pulumi/pull/6833)
+  
+- [automation/python] Fix bug in UpdateSummary deserialization for nested config values.
+  [#6838](https://github.com/pulumi/pulumi/pull/6838)
