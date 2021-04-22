@@ -4,6 +4,11 @@
   We apologize for any confusion or inconvenience this may have caused and have now correctly added that behavior.
   [#6840](https://github.com/pulumi/pulumi/pull/6840)
 
+- [cli] Set pagination defaults for `pulumi stack history` to 10 entries.
+  This change was originally intended for the 3.0 release but was unfortunately left out of the initial release.
+  We apologize for any confusion or inconvenience this may have caused and have now correctly added the behavior.
+  [#6841](https://github.com/pulumi/pulumi/pull/6841)
+
 ### Enhancements
 
 - [sdk/nodejs] Handle providers for RegisterResourceRequest
@@ -13,7 +18,6 @@
   [#6793](https://github.com/pulumi/pulumi/pull/6793)
 
 ### Bug Fixes
-
 
 - [codegen] Fix codegen for types that are used by both resources and functions.
   [#6811](https://github.com/pulumi/pulumi/pull/6811)
