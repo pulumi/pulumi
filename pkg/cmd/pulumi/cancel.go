@@ -56,7 +56,7 @@ func newCancelCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}

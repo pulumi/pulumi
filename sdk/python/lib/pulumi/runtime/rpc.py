@@ -24,7 +24,7 @@ from typing import List, Any, Callable, Dict, Mapping, Optional, Sequence, Set, 
 from enum import Enum
 
 from google.protobuf import struct_pb2
-from semver import VersionInfo as Version  # type:ignore
+from semver import VersionInfo as Version
 import six
 from . import known_types, settings
 from .. import log
@@ -777,7 +777,7 @@ def same_version(a: Optional[Version], b: Optional[Version]) -> bool:
 def check_version(want: Optional[Version], have: Optional[Version]) -> bool:
     if want is None or have is None:
         return True
-    return have.major == want.major() and have.minor() >= want.minor() and have.patch() >= want.patch()
+    return have.major == want.major and have.minor >= want.minor and have.patch >= want.patch
 
 
 class ResourcePackage(ABC):

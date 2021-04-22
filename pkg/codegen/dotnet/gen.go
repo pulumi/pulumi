@@ -1686,7 +1686,7 @@ func getLogo(pkg *schema.Package) ([]byte, error) {
 	url := pkg.LogoURL
 	if url == "" {
 		// Default to a generic Pulumi logo from the parent repository.
-		url = "https://raw.githubusercontent.com/pulumi/pulumi/394c91d7f6ab7a4096f4454827690a460f665433/sdk/dotnet/pulumi_logo_64x64.png"
+		url = "https://raw.githubusercontent.com/pulumi/pulumi/dbc96206bec722b7791a22ff50e895ab7c0abdc0/sdk/dotnet/pulumi_logo_64x64.png"
 	}
 
 	// Get the data.

@@ -1,6 +1,6 @@
 # Automation API
 
-Programmatic infrastructure. Currently in Alpha.
+Programmatic infrastructure.
 
 ## Godocs
 See the full godocs for the most extensive and up to date information including full examples coverage: 
@@ -11,7 +11,7 @@ https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/auto?tab=doc
 
 Multiple full working examples with detailed walkthroughs can be found in this repo:
 
-https://github.com/EvanBoyle/automation-api-examples
+https://github.com/pulumi/automation-api-examples
 
 
 ## Overview
@@ -20,8 +20,7 @@ Package auto contains the Pulumi Automation API, the programmatic interface for 
 without the CLI.
 Generally this can be thought of as encapsulating the functionality of the CLI (`pulumi up`, `pulumi preview`,
 `pulumi destroy`, `pulumi stack init`, etc.) but with more flexibility. This still requires a
-CLI binary to be installed and available on your $PATH. The Automation API is in Alpha (experimental package/x)
-breaking changes (mostly additive) will be made. You can pin to a specific commit version if you need stability.
+CLI binary to be installed and available on your $PATH.
 
 In addition to fine-grained building blocks, Automation API provides three out of the box ways to work with Stacks:
 
@@ -111,7 +110,5 @@ This repo has extensive examples and godoc content. To test out your changes loc
 
 ## Known Issues
 
-The Automation API is currently in Alpha and has several known issues. Please upvote issues,
-add comments, and open new ones to help prioritize our efforts:
-
+Please upvote issues, add comments, and open new ones to help prioritize our efforts:
 https://github.com/pulumi/pulumi/issues?q=is%3Aissue+is%3Aopen+label%3Aarea%2Fautomation-api
