@@ -208,7 +208,6 @@ namespace Pulumi.Automation
             UpOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
             var args = new List<string>()
@@ -311,7 +310,6 @@ namespace Pulumi.Automation
             PreviewOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
             var args = new List<string>() { "preview" };
@@ -424,7 +422,6 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var args = new List<string>()
             {
                 "refresh",
@@ -480,7 +477,6 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var args = new List<string>()
             {
                 "destroy",
@@ -532,8 +528,6 @@ namespace Pulumi.Automation
         /// </summary>
         public async Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
-
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
             var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, null, cancellationToken).ConfigureAwait(false);
             var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, null, cancellationToken).ConfigureAwait(false);
@@ -642,13 +636,17 @@ namespace Pulumi.Automation
                 .ConfigureAwait(false);
         }
 
-        private Task<CommandResult> RunCommandAsync(
+        private async Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
-            => this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
+        {
+            var argsList = args.ToList();
+            argsList.AddRange(new List<string>() { "--stack", this.Name });
+            return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
+        }
 
         public void Dispose()
             => this.Workspace.Dispose();

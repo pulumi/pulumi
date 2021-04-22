@@ -453,6 +453,35 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(projectSettings.description, "This is a description");
         await stack.workspace.removeStack(stackName);
     }));
+    it(`correctly sets config on multiple stacks concurrently`, asyncTest(async () => {
+        const dones = [];
+        const stacks = [ "dev", "dev2", "dev3", "dev4", "dev5" ];
+        const workDir = upath.joinSafe(__dirname, "data", "tcfg");
+        for (let i = 0; i < stacks.length; i++) {
+            const x = i;
+            const s = stacks[i];
+            dones.push((async () => {
+                const stack = await LocalWorkspace.createOrSelectStack({
+                    stackName: s,
+                    workDir,
+                });
+                for (let j = 0; j < 20; j++) {
+                    await stack.setConfig("var-" + j, { value: ((x*20)+j).toString() });
+                }
+            })());
+        }
+        await Promise.all(dones);
+
+        for (let i = 0; i < stacks.length; i++) {
+            const stack = await LocalWorkspace.selectStack({
+                stackName: stacks[i],
+                workDir,
+            });
+            const config = await stack.getAllConfig();
+            assert.strictEqual(Object.keys(config).length, 20);
+            await stack.workspace.removeStack(stacks[i]);
+        }
+    }));
 });
 
 describe(`checkVersionIsValid`, () => {
