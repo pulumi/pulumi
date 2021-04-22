@@ -1,9 +1,7 @@
 ### Breaking Changes
 
-- [CLI] Standardize the `--stack` flag to *not* set the stack as current (i.e. setStack=false) across CLI commands.
-  [#6840](https://github.com/pulumi/pulumi/pull/6840)
-
-- [Automation/*] All operations use `--stack` to specify the stack instead of running `select stack` before the operation.
+- We documented a breaking change for 3.0 for stack selection behavior (see https://www.pulumi.com/docs/get-started/install/migrating-3.0/#updated-cli-behavior-in-pulumi-30). Unfortunately, the initial release did not include that change. 
+  We apologize for any confusion or inconvenience this may have caused and have now correctly added that behavior.
   [#6840](https://github.com/pulumi/pulumi/pull/6840)
 
 ### Enhancements
