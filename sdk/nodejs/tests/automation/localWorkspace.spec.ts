@@ -457,14 +457,12 @@ describe("LocalWorkspace", () => {
         const dones = [];
         const stacks = [ "dev", "dev2", "dev3", "dev4", "dev5" ];
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
+        const ws = await LocalWorkspace.create({ workDir });
         for (let i = 0; i < stacks.length; i++) {
             const x = i;
             const s = stacks[i];
             dones.push((async () => {
-                const stack = await LocalWorkspace.createOrSelectStack({
-                    stackName: s,
-                    workDir,
-                });
+                const stack = await Stack.createOrSelect(s, ws);
                 for (let j = 0; j < 20; j++) {
                     await stack.setConfig("var-" + j, { value: ((x*20)+j).toString() });
                 }
