@@ -1,12 +1,12 @@
 ### Breaking Changes
 
-- We documented a breaking change for 3.0 for stack selection behavior (see https://www.pulumi.com/docs/get-started/install/migrating-3.0/#updated-cli-behavior-in-pulumi-30). Unfortunately, the initial release did not include that change. 
-  We apologize for any confusion or inconvenience this may have caused and have now correctly added that behavior.
+Please note, the following 2 breaking changes were included in our [3.0 changlog](https://www.pulumi.com/docs/get-started/install/migrating-3.0/#updated-cli-behavior-in-pulumi-30)
+Unfortunately, the initial release did not include that change. We apologize for any confusion or inconvenience this may have included the addressed behaviour.
+
+- [cli] Standardize stack select behavior to ensure that passing `--stack` does not make that the current stack.
   [#6840](https://github.com/pulumi/pulumi/pull/6840)
 
 - [cli] Set pagination defaults for `pulumi stack history` to 10 entries.
-  This change was originally intended for the 3.0 release but was unfortunately left out of the initial release.
-  We apologize for any confusion or inconvenience this may have caused and have now correctly added the behavior.
   [#6841](https://github.com/pulumi/pulumi/pull/6841)
 
 ### Enhancements
