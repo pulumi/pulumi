@@ -1,6 +1,8 @@
 ### Breaking Changes
 
 - [cli] Set pagination defaults for `pulumi stack history` to 10 entries.
+  This change was originally intended for the 3.0 release but was unfortunately left out of the initial release.
+  We apologize for any confusion or inconvenience this may have caused and have now correctly added the behavior.
   [#6841](https://github.com/pulumi/pulumi/pull/6841)
 
 ### Enhancements
