@@ -24,9 +24,10 @@ from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
 import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
-from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
+from ._config import ConfigValue, ConfigMap
 from .errors import StackAlreadyExistsError
 from .events import OpMap, EngineEvent, SummaryEvent
+from ._output import OutputMap
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
@@ -46,21 +47,6 @@ class StackInitMode(Enum):
     CREATE = "create"
     SELECT = "select"
     CREATE_OR_SELECT = "create_or_select"
-
-
-class OutputValue:
-    value: Any
-    secret: bool
-
-    def __init__(self, value: Any, secret: bool):
-        self.value = value
-        self.secret = secret
-
-    def __repr__(self):
-        return _SECRET_SENTINEL if self.secret else repr(self.value)
-
-
-OutputMap = MutableMapping[str, OutputValue]
 
 
 class UpdateSummary:
@@ -515,15 +501,7 @@ class Stack:
 
         :returns: OutputMap
         """
-        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json"])
-        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets"])
-        masked_outputs = json.loads(masked_result.stdout)
-        plaintext_outputs = json.loads(plaintext_result.stdout)
-        outputs: OutputMap = {}
-        for key in plaintext_outputs:
-            secret = masked_outputs[key] == _SECRET_SENTINEL
-            outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
-        return outputs
+        return self.workspace.outputs(self.name)
 
     def history(self,
                 page_size: Optional[int] = None,

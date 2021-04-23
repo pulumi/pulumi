@@ -25,6 +25,7 @@ from typing import (
 from ._stack_settings import StackSettings
 from ._project_settings import ProjectSettings
 from ._config import ConfigMap, ConfigValue
+from ._output import OutputMap
 
 PulumiFn = Callable[[], None]
 
@@ -359,4 +360,13 @@ class Workspace(ABC):
 
         :param stack_name: The name of the stack to import.
         :param state: The deployment state to import.
+        """
+
+    @abstractmethod
+    def outputs(self, stack_name: str) -> OutputMap:
+        """
+        Gets the current set of Stack outputs from the last Stack.up().
+
+        :param stack_name: The name of the stack.
+        :returns: OutputMap
         """
