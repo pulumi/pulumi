@@ -231,24 +231,17 @@ func (g *generator) collectImports(
 }
 
 func (g *generator) getVersionPath(program *hcl2.Program, pkg string) (string, error) {
-	version := -1
 	for _, p := range program.Packages() {
 		if p.Name == pkg {
-			version = int(p.Version.Major)
-			break
+			if p.Version != nil && p.Version.Major > 1 {
+				return fmt.Sprintf("/v%d", p.Version.Major), nil
+			}
+			return "", nil
 		}
 	}
 
-	if version == -1 {
-		return "", errors.Errorf("could not find package version information for pkg: %s", pkg)
-	}
+	return "", errors.Errorf("could not find package version information for pkg: %s", pkg)
 
-	var vPath string
-	if version > 1 {
-		vPath = fmt.Sprintf("/v%d", version)
-	}
-
-	return vPath, nil
 }
 
 func (g *generator) getPkgContext(pkg, mod string) (*pkgContext, bool) {
