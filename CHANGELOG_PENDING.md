@@ -4,7 +4,8 @@
 
 ### Enhancements
 
-
+- [automation/*] Add support for getting stack outputs using Workspace
+  [#6859](https://github.com/pulumi/pulumi/pull/6859)
 
 ### Bug Fixes
 
