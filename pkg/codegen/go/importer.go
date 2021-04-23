@@ -27,6 +27,9 @@ type GoPackageInfo struct {
 	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
 	ImportBasePath string `json:"importBasePath,omitempty"`
 
+	// Explicit package name, which may be different to the import path.
+	RootPackageName string `json:"rootPackageName,omitempty"`
+
 	// Map from module -> package name
 	//
 	//    { "flowcontrol.apiserver.k8s.io/v1alpha1": "flowcontrol/v1alpha1" }
