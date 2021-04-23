@@ -515,43 +515,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
-	// standard outputs
-	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json",
-	)
-	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
-	}
-
-	// secret outputs
-	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json", "--show-secrets",
-	)
-	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
-	}
-
-	var outputs map[string]interface{}
-	var secrets map[string]interface{}
-
-	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
-	}
-
-	if err = json.Unmarshal([]byte(secretStdout), &secrets); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr)
-	}
-
-	res := make(OutputMap)
-	for k, v := range secrets {
-		isSecret := outputs[k] == secretSentinel
-		res[k] = OutputValue{
-			Value:  v,
-			Secret: isSecret,
-		}
-	}
-
-	return res, nil
+	return s.Workspace().Outputs(ctx, s.Name())
 }
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
