@@ -65,7 +65,7 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^.*/pulumi-example/sdk(/v\\d+)?")
+	re := regexp.MustCompile("^github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-plain-schema-with-root-package/go/example(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
