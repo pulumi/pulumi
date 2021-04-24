@@ -8,6 +8,8 @@
 
 ### Bug Fixes
 
+- [sdk/python] - Fix bug in MockResourceArgs.
+  [#6863](https://github.com/pulumi/pulumi/pull/6863)
 
 ### Misc.
 
