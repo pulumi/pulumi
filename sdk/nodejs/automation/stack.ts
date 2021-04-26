@@ -502,7 +502,7 @@ export class Stack {
      * Gets the current set of Stack outputs from the last Stack.up().
      */
     async outputs(): Promise<OutputMap> {
-        return this.workspace.outputs(this.name);
+        return this.workspace.stackOutputs(this.name);
     }
     /**
      * Returns a list summarizing all previous and current results from Stack lifecycle operations

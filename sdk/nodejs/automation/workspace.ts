@@ -211,7 +211,7 @@ export interface Workspace {
      * Gets the current set of Stack outputs from the last Stack.up().
      * @param stackName the name of the stack.
      */
-    outputs(stackName: string): Promise<OutputMap>;
+    stackOutputs(stackName: string): Promise<OutputMap>;
 }
 
 /**

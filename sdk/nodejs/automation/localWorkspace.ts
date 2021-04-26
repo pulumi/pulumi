@@ -548,7 +548,7 @@ export class LocalWorkspace implements Workspace {
      * Gets the current set of Stack outputs from the last Stack.up().
      * @param stackName the name of the stack.
      */
-    async outputs(stackName: string): Promise<OutputMap> {
+    async stackOutputs(stackName: string): Promise<OutputMap> {
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
         const maskedResult = await this.runPulumiCmd(["stack", "output", "--json", "--stack", stackName]);
         const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets", "--stack", stackName]);
