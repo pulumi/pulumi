@@ -649,6 +649,31 @@ namespace Pulumi.Automation
             return plugins.ToImmutableList();
         }
 
+        /// <inheritdoc/>
+        public override async Task<ImmutableDictionary<string, OutputValue>> GetStackOutputsAsync(string stackName, CancellationToken cancellationToken = default)
+        {
+            // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--stack", stackName }, cancellationToken).ConfigureAwait(false);
+            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets", "--stack", stackName }, cancellationToken).ConfigureAwait(false);
+
+            var maskedOutput = string.IsNullOrWhiteSpace(maskedResult.StandardOutput)
+                ? new Dictionary<string, object>()
+                : _serializer.DeserializeJson<Dictionary<string, object>>(maskedResult.StandardOutput);
+
+            var plaintextOutput = string.IsNullOrWhiteSpace(plaintextResult.StandardOutput)
+                ? new Dictionary<string, object>()
+                : _serializer.DeserializeJson<Dictionary<string, object>>(plaintextResult.StandardOutput);
+
+            var output = new Dictionary<string, OutputValue>();
+            foreach (var (key, value) in plaintextOutput)
+            {
+                var secret = maskedOutput[key] is string maskedValue && maskedValue == "[secret]";
+                output[key] = new OutputValue(value, secret);
+            }
+
+            return output.ToImmutableDictionary();
+        }
+
         public override void Dispose()
         {
             base.Dispose();

@@ -20,11 +20,12 @@ from typing import Optional, List, Mapping, Callable
 from semver import VersionInfo
 import yaml
 
-from ._config import ConfigMap, ConfigValue
+from ._config import ConfigMap, ConfigValue, _SECRET_SENTINEL
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
 from ._stack import _DATETIME_FORMAT, Stack
+from ._output import OutputMap, OutputValue
 from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 from ._minimum_version import _MINIMUM_VERSION
 from .errors import InvalidVersionError
@@ -269,6 +270,17 @@ class LocalWorkspace(Workspace):
             json.dump(state.__dict__, file, indent=4)
         self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "--stack", stack_name])
         os.remove(file.name)
+
+    def stack_outputs(self, stack_name: str) -> OutputMap:
+        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--stack", stack_name])
+        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets", "--stack", stack_name])
+        masked_outputs = json.loads(masked_result.stdout)
+        plaintext_outputs = json.loads(plaintext_result.stdout)
+        outputs: OutputMap = {}
+        for key in plaintext_outputs:
+            secret = masked_outputs[key] == _SECRET_SENTINEL
+            outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
+        return outputs
 
     def _get_pulumi_version(self) -> VersionInfo:
         result = self._run_pulumi_cmd_sync(["version"])

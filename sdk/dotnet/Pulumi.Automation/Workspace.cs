@@ -267,6 +267,13 @@ namespace Pulumi.Automation
         /// </summary>
         public abstract Task<ImmutableList<PluginInfo>> ListPluginsAsync(CancellationToken cancellationToken = default);
 
+        /// <summary>
+        /// Gets the current set of Stack outputs from the last <see cref="WorkspaceStack.UpAsync(UpOptions?, CancellationToken)"/>.
+        /// </summary>
+        /// <param name="stackName">The name of the stack.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public abstract Task<ImmutableDictionary<string, OutputValue>> GetStackOutputsAsync(string stackName, CancellationToken cancellationToken = default);
+
         internal async Task<CommandResult> RunStackCommandAsync(
             string stackName,
             IEnumerable<string> args,

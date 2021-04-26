@@ -599,6 +599,9 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ListPluginsAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetOutputsAsync(System.String,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
         <member name="T:Pulumi.Automation.LocalWorkspaceOptions">
             <summary>
             Extensibility options to configure a LocalWorkspace; e.g: settings to seed
@@ -1088,6 +1091,13 @@
             <summary>
             Returns a list of all plugins installed in the Workspace.
             </summary>
+        </member>
+        <member name="M:Pulumi.Automation.Workspace.GetOutputsAsync(System.String,System.Threading.CancellationToken)">
+            <summary>
+            Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
+            </summary>
+            <param name="stackName">The name of the stack.</param>
+            <param name="cancellationToken">A cancellation token.</param>
         </member>
         <member name="T:Pulumi.Automation.WorkspaceStack">
             <summary>

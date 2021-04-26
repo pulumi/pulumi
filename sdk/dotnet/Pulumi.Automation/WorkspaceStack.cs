@@ -526,30 +526,8 @@ namespace Pulumi.Automation
         /// <summary>
         /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
         /// </summary>
-        public async Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
-        {
-            // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, null, cancellationToken).ConfigureAwait(false);
-            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, null, cancellationToken).ConfigureAwait(false);
-            var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
-
-            var maskedOutput = string.IsNullOrWhiteSpace(maskedResult.StandardOutput)
-                ? new Dictionary<string, object>()
-                : JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
-
-            var plaintextOutput = string.IsNullOrWhiteSpace(plaintextResult.StandardOutput)
-                ? new Dictionary<string, object>()
-                : JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
-
-            var output = new Dictionary<string, OutputValue>();
-            foreach (var (key, value) in plaintextOutput)
-            {
-                var secret = maskedOutput[key] is string maskedValue && maskedValue == "[secret]";
-                output[key] = new OutputValue(value, secret);
-            }
-
-            return output.ToImmutableDictionary();
-        }
+        public Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
+            => this.Workspace.GetStackOutputsAsync(this.Name, cancellationToken);
 
         /// <summary>
         /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).

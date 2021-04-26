@@ -30,8 +30,6 @@ import { Deployment, PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../proto/language_grpc_pb.js");
 
-const secretSentinel = "[secret]";
-
 /**
  * Stack is an isolated, independently configurable instance of a Pulumi program.
  * Stack exposes methods for the full pulumi lifecycle (up/preview/refresh/destroy), as well as managing configuration.
@@ -504,19 +502,7 @@ export class Stack {
      * Gets the current set of Stack outputs from the last Stack.up().
      */
     async outputs(): Promise<OutputMap> {
-        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json"]);
-        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets"]);
-        const maskedOuts = JSON.parse(maskedResult.stdout);
-        const plaintextOuts = JSON.parse(plaintextResult.stdout);
-        const outputs: OutputMap = {};
-
-        for (const [key, value] of Object.entries(plaintextOuts)) {
-            const secret = maskedOuts[key] === secretSentinel;
-            outputs[key] = { value, secret };
-        }
-
-        return outputs;
+        return this.workspace.stackOutputs(this.name);
     }
     /**
      * Returns a list summarizing all previous and current results from Stack lifecycle operations

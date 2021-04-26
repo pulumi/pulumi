@@ -446,6 +446,45 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 	return nil
 }
 
+// Outputs get the current set of Stack outputs from the last Stack.Up().
+func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (OutputMap, error) {
+	// standard outputs
+	outStdout, outStderr, code, err := l.runPulumiCmdSync(ctx, "stack", "output", "--json", "--stack", stackName)
+	if err != nil {
+		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
+	}
+
+	// secret outputs
+	secretStdout, secretStderr, code, err := l.runPulumiCmdSync(ctx,
+		"stack", "output", "--json", "--show-secrets", "--stack", stackName,
+	)
+	if err != nil {
+		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
+	}
+
+	var outputs map[string]interface{}
+	var secrets map[string]interface{}
+
+	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
+	}
+
+	if err = json.Unmarshal([]byte(secretStdout), &secrets); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr)
+	}
+
+	res := make(OutputMap)
+	for k, v := range secrets {
+		isSecret := outputs[k] == secretSentinel
+		res[k] = OutputValue{
+			Value:  v,
+			Secret: isSecret,
+		}
+	}
+
+	return res, nil
+}
+
 func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, error) {
 	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "version")
 	if err != nil {

@@ -146,6 +146,11 @@ from ._workspace import (
     Deployment,
 )
 
+from ._output import (
+    OutputMap,
+    OutputValue
+)
+
 from ._project_settings import (
     ProjectSettings,
     ProjectRuntimeInfo,
@@ -217,6 +222,10 @@ __all__ = [
     "Workspace",
     "Deployment",
     "WhoAmIResult",
+
+    # _output
+    "OutputMap",
+    "OutputValue",
 
     # _project_settings
     "ProjectSettings",

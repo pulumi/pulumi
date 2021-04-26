@@ -22,7 +22,7 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
-import { Stack } from "./stack";
+import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
@@ -544,6 +544,26 @@ export class LocalWorkspace implements Workspace {
         await this.runPulumiCmd(["stack", "import", "--file", filepath, "--stack", stackName]);
         fs.unlinkSync(filepath);
     }
+    /**
+     * Gets the current set of Stack outputs from the last Stack.up().
+     * @param stackName the name of the stack.
+     */
+    async stackOutputs(stackName: string): Promise<OutputMap> {
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json", "--stack", stackName]);
+        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets", "--stack", stackName]);
+        const maskedOuts = JSON.parse(maskedResult.stdout);
+        const plaintextOuts = JSON.parse(plaintextResult.stdout);
+        const outputs: OutputMap = {};
+
+        for (const [key, value] of Object.entries(plaintextOuts)) {
+            const secret = maskedOuts[key] === "[secret]";
+            outputs[key] = { value, secret };
+        }
+
+        return outputs;
+    }
+
     /**
      * serializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
      * Provided with stack name,
