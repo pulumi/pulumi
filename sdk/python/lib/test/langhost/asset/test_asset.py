@@ -16,20 +16,21 @@ from pulumi.asset import FileAsset, StringAsset, RemoteAsset
 from ..util import LanghostTest
 
 
-
 class AssetTest(LanghostTest):
     def test_asset(self):
         self.run_test(
             program=path.join(self.base_path(), "asset"),
+            pwd=path.join(self.base_path(), "asset"),
             expected_resource_count=4)
 
     def register_resource(self, _ctx, _dry_run, ty, name, resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+                          _dependencies, _parent, _custom, _provider, _property_deps, _delete_before_replace,
+                          _import):
         self.assertEqual(ty, "test:index:MyResource")
         if name == "file":
             self.assertIsInstance(resource["asset"], FileAsset)
-            self.assertEqual(path.normpath(resource["asset"].path), "testfile.txt")
+            self.assertEqual(path.normpath(resource["asset"].path),
+                             path.join(self.base_path(), "asset", "testfile.txt"))
         elif name == "string":
             self.assertIsInstance(resource["asset"], StringAsset)
             self.assertEqual(resource["asset"].text, "its a string")

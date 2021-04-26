@@ -825,3 +825,33 @@ func TestPythonTranslation(t *testing.T) {
 		Quick: true,
 	})
 }
+
+// Tests a bad asset
+func TestBadAssetPython(t *testing.T) {
+	stderr := &bytes.Buffer{}
+	expectedError := "FileNotFoundError: Provided FileAsset path does not exist"
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("assets", "bad", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		ExpectFailure: true,
+		Stderr:        stderr,
+		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
+		Quick: true,
+	})
+}
+
+// Tests a good asset
+func TestGoodAssetPython(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("assets", "good", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+	})
+}

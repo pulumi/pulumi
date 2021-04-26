@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
 from pathlib import Path
 
 from pulumi import CustomResource
 from pulumi.asset import FileAsset, StringAsset, RemoteAsset
-
 
 
 class MyResource(CustomResource):
@@ -24,7 +24,9 @@ class MyResource(CustomResource):
             "asset": asset
         })
 
-MyResource("file", FileAsset("./testfile.txt"))
-MyResource("file", FileAsset(Path(".") / "testfile.txt"))
+
+abspath = os.path.abspath("./testfile.txt")
+MyResource("file", FileAsset(abspath))
+MyResource("file", FileAsset(Path(".").absolute() / "testfile.txt"))
 MyResource("string", StringAsset("its a string"))
 MyResource("remote", RemoteAsset("https://pulumi.com"))

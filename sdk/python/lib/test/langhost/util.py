@@ -279,7 +279,7 @@ class LanghostTest(unittest.TestCase):
                                   _resource, _outputs):
         """
         Method corresponding to the `RegisterResourceOutputs` resource monitor RPC call.
-        Override for custom behavior or assertirons.
+        Override for custom behavior or assertions.
 
         Returns None.
         """
@@ -331,22 +331,23 @@ class LanghostTest(unittest.TestCase):
 
     def _run_program(self, stub, monitor, project, stack, program, pwd, args,
                      config, dryrun):
-        args = {}
-        args["monitor_address"] = "localhost:%d" % monitor.port
-        args["project"] = project or "project"
-        args["stack"] = stack or "stack"
-        args["program"] = program
+        request_args = {
+            "monitor_address": f"localhost:{monitor.port}",
+            "project": project or "project",
+            "stack": stack or "stack",
+            "program": program,
+            "dryRun": dryrun
+        }
         if pwd:
-            args["pwd"] = pwd
+            request_args["pwd"] = pwd
 
         if args:
-            args["args"] = args
+            request_args["args"] = args
 
         if config:
-            args["config"] = config
+            request_args["config"] = config
 
-        args["dryRun"] = dryrun
-        request = proto.RunRequest(**args)
+        request = proto.RunRequest(**request_args)
         self.assertTrue(request.IsInitialized())
         resp = stub.Run(request)
         return resp.error
