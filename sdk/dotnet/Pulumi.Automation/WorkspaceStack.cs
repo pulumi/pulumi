@@ -527,7 +527,7 @@ namespace Pulumi.Automation
         /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
         /// </summary>
         public Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
-            => this.Workspace.GetOutputsAsync(this.Name, cancellationToken);
+            => this.Workspace.GetStackOutputsAsync(this.Name, cancellationToken);
 
         /// <summary>
         /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).

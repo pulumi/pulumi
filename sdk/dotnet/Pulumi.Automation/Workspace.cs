@@ -272,7 +272,7 @@ namespace Pulumi.Automation
         /// </summary>
         /// <param name="stackName">The name of the stack.</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(string stackName, CancellationToken cancellationToken = default);
+        public abstract Task<ImmutableDictionary<string, OutputValue>> GetStackOutputsAsync(string stackName, CancellationToken cancellationToken = default);
 
         internal async Task<CommandResult> RunStackCommandAsync(
             string stackName,

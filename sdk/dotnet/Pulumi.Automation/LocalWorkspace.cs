@@ -650,7 +650,7 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
-        public override async Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(string stackName, CancellationToken cancellationToken = default)
+        public override async Task<ImmutableDictionary<string, OutputValue>> GetStackOutputsAsync(string stackName, CancellationToken cancellationToken = default)
         {
             // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
             var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--stack", stackName }, cancellationToken).ConfigureAwait(false);
