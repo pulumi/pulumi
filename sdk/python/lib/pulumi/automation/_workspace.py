@@ -363,7 +363,7 @@ class Workspace(ABC):
         """
 
     @abstractmethod
-    def outputs(self, stack_name: str) -> OutputMap:
+    def stack_outputs(self, stack_name: str) -> OutputMap:
         """
         Gets the current set of Stack outputs from the last Stack.up().
 

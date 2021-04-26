@@ -501,7 +501,7 @@ class Stack:
 
         :returns: OutputMap
         """
-        return self.workspace.outputs(self.name)
+        return self.workspace.stack_outputs(self.name)
 
     def history(self,
                 page_size: Optional[int] = None,

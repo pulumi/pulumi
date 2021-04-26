@@ -272,7 +272,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "--stack", stack_name])
         os.remove(file.name)
 
-    def outputs(self, stack_name: str) -> OutputMap:
+    def stack_outputs(self, stack_name: str) -> OutputMap:
         masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--stack", stack_name])
         plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets", "--stack", stack_name])
         masked_outputs = json.loads(masked_result.stdout)
