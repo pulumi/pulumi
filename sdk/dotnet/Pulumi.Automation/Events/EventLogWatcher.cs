@@ -91,7 +91,7 @@ namespace Pulumi.Automation.Events
                 return;
             }
 
-            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read)
+            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
             {
                 Position = this._position
             };
