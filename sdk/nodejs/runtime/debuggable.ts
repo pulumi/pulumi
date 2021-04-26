@@ -114,12 +114,6 @@ export function debuggablePromise<T>(p: Promise<T>, ctx: any): Promise<T> {
     });
 }
 
-process.on("unhandledRejection", err => {
-    if (err && (<any>err).promise) {
-        console.log(`unhandled rejection: ${promiseDebugString((<any>err).promise)}`);
-    }
-});
-
 /**
  * errorString produces a string from an error, conditionally including additional diagnostics.
  * @internal

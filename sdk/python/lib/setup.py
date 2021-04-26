@@ -39,7 +39,7 @@ setup(name='pulumi',
       install_requires=[
           'protobuf>=3.6.0',
           'dill>=0.3.0',
-          'grpcio>=1.9.1,!=1.30.0',
+          'grpcio>=1.33.2',
           'six>=1.12.0',
           'semver>=2.8.1',
           'pyyaml>=5.3.1'

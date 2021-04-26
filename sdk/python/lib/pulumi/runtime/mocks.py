@@ -15,7 +15,6 @@
 """
 Mocks for testing.
 """
-import asyncio
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
@@ -45,11 +44,17 @@ class MockResourceArgs:
     typ: str
     name: str
     inputs: dict
-    provider: str
-    resource_id: str
-    custom: bool
+    provider: Optional[str] = None
+    resource_id: Optional[str] = None
+    custom: Optional[bool] = None
 
-    def __init__(self, typ: str, name: str, inputs: dict, provider: str, resource_id: str, custom: bool) -> None:
+    def __init__(self,
+                 typ: str,
+                 name: str,
+                 inputs: dict,
+                 provider: Optional[str] = None,
+                 resource_id: Optional[str] = None,
+                 custom: Optional[bool] = None) -> None:
         """
         :param str typ: The token that indicates which resource type is being constructed. This token is of the form "package:module:type".
         :param str name: The logical name of the resource instance.
@@ -64,6 +69,7 @@ class MockResourceArgs:
         self.provider = provider
         self.resource_id = resource_id
         self.custom = custom
+
 
 class MockCallArgs:
     """
@@ -167,8 +173,7 @@ class MockMonitor:
                                          name=request.name,
                                          inputs=state,
                                          provider=request.provider,
-                                         resource_id=request.id,
-                                         custom=request.custom or False)
+                                         resource_id=request.id)
         id_, state = self.mocks.new_resource(resource_args)
 
         props_proto = _sync_await(rpc.serialize_properties(state, {}))
