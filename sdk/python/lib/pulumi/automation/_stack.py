@@ -88,7 +88,8 @@ class UpdateSummary:
         self.version = version
         self.config: ConfigMap = {}
         for key in config:
-            self.config[key] = ConfigValue(**config[key])
+            config_value = config[key]
+            self.config[key] = ConfigValue(value=config_value["value"], secret=config_value["secret"])
 
     def __repr__(self):
         return f"UpdateSummary(result={self.result!r}, version={self.version!r}, " \
@@ -664,12 +665,12 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
 
 def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
-    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")
+    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")  # pylint: disable=consider-using-with
     filepath = os.path.join(log_dir.name, "eventlog.txt")
 
     # Open and close the file to ensure it exists before we start polling for logs
-    f = open(filepath, "w+")
-    f.close()
+    with open(filepath, "w+"):
+        pass
     return filepath, log_dir
 
 

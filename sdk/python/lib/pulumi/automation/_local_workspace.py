@@ -265,9 +265,8 @@ class LocalWorkspace(Workspace):
         return Deployment(**state_json)
 
     def import_stack(self, stack_name: str, state: Deployment) -> None:
-        file = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        json.dump(state.__dict__, file, indent=4)
-        file.close()
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as file:
+            json.dump(state.__dict__, file, indent=4)
         self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "--stack", stack_name])
         os.remove(file.name)
 
