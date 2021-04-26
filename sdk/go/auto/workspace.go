@@ -106,7 +106,7 @@ type Workspace interface {
 	// This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
 	// Outputs get the current set of Stack outputs from the last Stack.Up().
-	Outputs(context.Context, string) (OutputMap, error)
+	StackOutputs(context.Context, string) (OutputMap, error)
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.

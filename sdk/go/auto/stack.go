@@ -515,7 +515,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
-	return s.Workspace().Outputs(ctx, s.Name())
+	return s.Workspace().StackOutputs(ctx, s.Name())
 }
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations

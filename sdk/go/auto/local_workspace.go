@@ -447,7 +447,7 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 }
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
-func (l *LocalWorkspace) Outputs(ctx context.Context, stackName string) (OutputMap, error) {
+func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (OutputMap, error) {
 	// standard outputs
 	outStdout, outStderr, code, err := l.runPulumiCmdSync(ctx, "stack", "output", "--json", "--stack", stackName)
 	if err != nil {
