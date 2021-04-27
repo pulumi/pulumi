@@ -57,6 +57,17 @@ func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
 	return newConfig, nil
 }
 
+// SecureKeys returns a list of keys that have secure values.
+func (m Map) SecureKeys() []Key {
+	var keys []Key
+	for k, v := range m {
+		if v.Secure() {
+			keys = append(keys, k)
+		}
+	}
+	return keys
+}
+
 // HasSecureValue returns true if the config map contains a secure (encrypted) value.
 func (m Map) HasSecureValue() bool {
 	for _, v := range m {
