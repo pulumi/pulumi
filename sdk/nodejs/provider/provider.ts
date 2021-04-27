@@ -148,6 +148,11 @@ export interface Provider {
     version: string;
 
     /**
+     * The JSON-encoded schema for this provider's package.
+     */
+    schema?: string;
+
+    /**
      * Check validates that the given property bag is valid for a resource of the given type.
      *
      * @param olds The old input properties to use for validation.
