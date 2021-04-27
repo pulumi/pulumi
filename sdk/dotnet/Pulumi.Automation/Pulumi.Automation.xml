@@ -599,7 +599,7 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ListPluginsAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.GetOutputsAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetStackOutputsAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="T:Pulumi.Automation.LocalWorkspaceOptions">
@@ -773,6 +773,16 @@
                 When invoked, a new stack instance will be resolved based
                 on the provided <typeparamref name="TStack"/> type parameter
                 using the <paramref name="serviceProvider"/>.
+            </summary>
+            <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create``1(System.IServiceProvider,System.Type)">
+            <summary>
+            Creates an inline (in process) pulumi program via a traditional <see cref="T:Pulumi.Stack"/> implementation.
+            <para/>
+                When invoked, a new stack instance will be resolved based
+                on the provided <typeparamref name="TStack"/> type parameter
+                using the <paramref name="serviceProvider"/> and <paramref name="serviceType"/>.
             </summary>
             <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
         </member>
@@ -1092,7 +1102,7 @@
             Returns a list of all plugins installed in the Workspace.
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.GetOutputsAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.GetStackOutputsAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>

@@ -104,6 +104,18 @@ namespace Pulumi.Automation
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
         public static PulumiFn Create<TStack>(IServiceProvider serviceProvider)
             where TStack : Pulumi.Stack
+            => Create<TStack>(serviceProvider, typeof(TStack));
+
+        /// <summary>
+        /// Creates an inline (in process) pulumi program via a traditional <see cref="Pulumi.Stack"/> implementation.
+        /// <para/>
+        ///     When invoked, a new stack instance will be resolved based
+        ///     on the provided <typeparamref name="TStack"/> type parameter
+        ///     using the <paramref name="serviceProvider"/> and <paramref name="serviceType"/>.
+        /// </summary>
+        /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
+        public static PulumiFn Create<TStack>(IServiceProvider serviceProvider, Type serviceType)
+            where TStack : Pulumi.Stack
         {
             if (serviceProvider is null)
                 throw new ArgumentNullException(nameof(serviceProvider));
@@ -114,7 +126,7 @@ namespace Pulumi.Automation
                     if (serviceProvider is null)
                         throw new ArgumentNullException(nameof(serviceProvider), $"The provided service provider was null by the time this {nameof(PulumiFn)} was invoked.");
 
-                    return serviceProvider.GetService(typeof(TStack)) as TStack
+                    return serviceProvider.GetService(serviceType) as TStack
                         ?? throw new ApplicationException(
                             $"Failed to resolve instance of type {typeof(TStack)} from service provider. Register the type with the service provider before this {nameof(PulumiFn)} is invoked.");
                 });
