@@ -499,6 +499,9 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, 
 
 //nolint:lll
 func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version) error {
+	if os.Getenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK") != "" {
+		return nil
+	}
 	if minVersion.Major < currentVersion.Major {
 		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major))
 	}
