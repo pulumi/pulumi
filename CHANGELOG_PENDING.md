@@ -9,6 +9,11 @@
 
 - [automation/*] Add support for getting stack outputs using Workspace
   [#6859](https://github.com/pulumi/pulumi/pull/6859)
+  
+- [automation/go] Optionally skip Automation API version check
+  [#6882](https://github.com/pulumi/pulumi/pull/6882)
+  
+  The version check can be skipped by passing a non-empty value to the `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK` environment variable.
 
 ### Bug Fixes
 
