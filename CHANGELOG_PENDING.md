@@ -21,6 +21,9 @@
 - [automation/dotnet] Use stackName in ImportStack
   [#6858](https://github.com/pulumi/pulumi/pull/6858)
 
+- [sdk/python] Address issues when using resource subclasses.
+  [#6890](https://github.com/pulumi/pulumi/pull/6890)
+
 ### Misc.
 
 - [auto/*] - Bump minimum version to v3.1.0.
