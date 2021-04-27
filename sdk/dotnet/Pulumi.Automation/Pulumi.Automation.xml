@@ -599,7 +599,7 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ListPluginsAsync(System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.GetOutputsAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.GetStackOutputsAsync(System.String,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="T:Pulumi.Automation.LocalWorkspaceOptions">
@@ -1092,7 +1092,7 @@
             Returns a list of all plugins installed in the Workspace.
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.GetOutputsAsync(System.String,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.GetStackOutputsAsync(System.String,System.Threading.CancellationToken)">
             <summary>
             Gets the current set of Stack outputs from the last <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/>.
             </summary>

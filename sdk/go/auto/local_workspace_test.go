@@ -1457,7 +1457,7 @@ var minVersionTests = []struct {
 	},
 	{
 		"opt_out_of_check_would_succeed_otherwise",
-		semver.Version{Major: 3, Minor: 0, Patch: 0},
+		semver.Version{Major: 2, Minor: 22, Patch: 0},
 		false,
 		true,
 	},

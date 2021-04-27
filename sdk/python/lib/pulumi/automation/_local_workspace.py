@@ -469,6 +469,8 @@ def get_stack_settings_name(name: str) -> str:
 
 
 def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo):
+    if os.getenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK") is not None:
+        return
     if min_version.major < current_version.major:
         raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {current_version} with "
                                   f"Automation SDK v{min_version.major}. Please update the SDK.")

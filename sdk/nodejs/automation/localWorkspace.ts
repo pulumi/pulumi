@@ -716,6 +716,9 @@ function loadProjectSettings(workDir: string) {
 
 /** @internal */
 export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
+    if (process.env.PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK !== undefined) {
+        return;
+    }
     if (minVersion.major < currentVersion.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
     }

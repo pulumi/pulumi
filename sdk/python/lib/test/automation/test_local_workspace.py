@@ -43,15 +43,18 @@ from pulumi.automation._local_workspace import _validate_pulumi_version
 extensions = ["json", "yaml", "yml"]
 
 version_tests = [
-    ("100.0.0", True),
-    ("1.0.0", True),
-    ("2.22.0", False),
-    ("2.1.0", True),
-    ("2.21.2", False),
-    ("2.21.1", False),
-    ("2.21.0", True),
+    ("100.0.0", True, False),
+    ("1.0.0", True, False),
+    ("2.22.0", False, False),
+    ("2.1.0", True, False),
+    ("2.21.2", False, False),
+    ("2.21.1", False, False),
+    ("2.21.0", True, False),
     # Note that prerelease < release so this case will error
-    ("2.21.1-alpha.1234", True)
+    ("2.21.1-alpha.1234", True, False),
+    # Test opting out of version check
+    ("2.20.0", False, True),
+    ("2.22.0", False, True)
 ]
 test_min_version = VersionInfo.parse("2.21.1")
 
@@ -437,9 +440,11 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
 
     def test_validate_pulumi_version(self):
-        for current_version, expect_error in version_tests:
+        for current_version, expect_error, opt_out in version_tests:
             with self.subTest():
                 current_version = VersionInfo.parse(current_version)
+                if opt_out:
+                    os.environ["PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"] = "1"
                 if expect_error:
                     error_regex = "Major version mismatch." \
                         if test_min_version.major < current_version.major \
@@ -452,6 +457,8 @@ class TestLocalWorkspace(unittest.TestCase):
                         _validate_pulumi_version(test_min_version, current_version)
                 else:
                     self.assertIsNone(_validate_pulumi_version(test_min_version, current_version))
+                if opt_out:
+                    os.unsetenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK")
 
     def test_project_settings_respected(self):
         stack_name = stack_namer()

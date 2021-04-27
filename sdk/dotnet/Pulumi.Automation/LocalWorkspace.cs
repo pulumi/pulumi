@@ -379,6 +379,10 @@ namespace Pulumi.Automation
 
         internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion)
         {
+            if (Environment.GetEnvironmentVariable("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK") != null)
+            {
+                return;
+            }
             if (minVersion.Major < currentVersion.Major)
             {
                 throw new InvalidOperationException($"Major version mismatch. You are using Pulumi CLI version {currentVersion} with Automation SDK v{minVersion.Major}. Please update the SDK.");

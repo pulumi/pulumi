@@ -488,42 +488,62 @@ describe(`checkVersionIsValid`, () => {
             name: "higher_major",
             currentVersion: "100.0.0",
             expectError: true,
+            optOut: false,
         },
         {
             name: "lower_major",
             currentVersion: "1.0.0",
             expectError: true,
+            optOut: false,
         },
         {
             name: "higher_minor",
             currentVersion: "v2.22.0",
             expectError: false,
+            optOut: false,
         },
         {
             name: "lower_minor",
             currentVersion: "v2.1.0",
             expectError: true,
+            optOut: false,
         },
         {
             name: "equal_minor_higher_patch",
             currentVersion: "v2.21.2",
             expectError: false,
+            optOut: false,
         },
         {
             name: "equal_minor_equal_patch",
             currentVersion: "v2.21.1",
             expectError: false,
+            optOut: false,
         },
         {
             name: "equal_minor_lower_patch",
             currentVersion: "v2.21.0",
             expectError: true,
+            optOut: false,
         },
         {
             name: "equal_minor_equal_patch_prerelease",
             // Note that prerelease < release so this case will error
             currentVersion: "v2.21.1-alpha.1234",
             expectError: true,
+            optOut: false,
+        },
+        {
+            name: "opt_out_of_check_would_fail_otherwise",
+            currentVersion: "v2.20.0",
+            expectError: false,
+            optOut: true,
+        },
+        {
+            name: "opt_out_of_check_would_succeed_otherwise",
+            currentVersion: "v2.22.0",
+            expectError: false,
+            optOut: true,
         },
     ];
     const minVersion = new semver.SemVer("v2.21.1");
@@ -532,6 +552,9 @@ describe(`checkVersionIsValid`, () => {
         it(`validates ${test.currentVersion}`, () => {
             const currentVersion = new semver.SemVer(test.currentVersion);
 
+            if (test.optOut) {
+                process.env.PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK = "1";
+            }
             if (test.expectError) {
                 if (minVersion.major < currentVersion.major) {
                     assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Major version mismatch./);
@@ -540,6 +563,9 @@ describe(`checkVersionIsValid`, () => {
                 }
             } else {
                 assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion));
+            }
+            if (test.optOut) {
+                delete process.env.PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK;
             }
         });
     });
