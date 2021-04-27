@@ -666,6 +666,9 @@ func (ur *UpResult) GetPermalink() (string, error) {
 	return GetPermalink(ur.StdOut)
 }
 
+// ErrParsePermalinkFailed occurs when the the generated permalink URL can't be found in the op result
+var ErrParsePermalinkFailed = errors.New("failed to get permalink")
+
 // GetPermalink returns the permalink URL in the Pulumi Console for the update
 // or refresh operation. This will error for alternate, local backends.
 func GetPermalink(stdout string) (string, error) {
@@ -676,14 +679,14 @@ func GetPermalink(stdout string) (string, error) {
 	// Find the start of the permalink in the output.
 	start := startRegex.FindStringIndex(stdout)
 	if start == nil {
-		return "", errors.New(fmt.Sprintf("failed to get permalink for update"))
+		return "", ErrParsePermalinkFailed
 	}
 	permalinkStart := stdout[start[1]:]
 
 	// Find the end of the permalink.
 	end := endRegex.FindStringIndex(permalinkStart)
 	if end == nil {
-		return "", errors.New(fmt.Sprintf("failed to get permalink for update"))
+		return "", ErrParsePermalinkFailed
 	}
 	permalink := permalinkStart[:end[1]-1]
 	return permalink, nil
@@ -727,6 +730,11 @@ type PreviewResult struct {
 	ChangeSummary map[apitype.OpType]int
 }
 
+// GetPermalink returns the permalink URL in the Pulumi Console for the preview operation.
+func (pr *PreviewResult) GetPermalink() (string, error) {
+	return GetPermalink(pr.StdOut)
+}
+
 // RefreshResult is the output of a successful Stack.Refresh operation
 type RefreshResult struct {
 	StdOut  string
@@ -734,11 +742,21 @@ type RefreshResult struct {
 	Summary UpdateSummary
 }
 
+// GetPermalink returns the permalink URL in the Pulumi Console for the refresh operation.
+func (rr *RefreshResult) GetPermalink() (string, error) {
+	return GetPermalink(rr.StdOut)
+}
+
 // DestroyResult is the output of a successful Stack.Destroy operation
 type DestroyResult struct {
 	StdOut  string
 	StdErr  string
 	Summary UpdateSummary
+}
+
+// GetPermalink returns the permalink URL in the Pulumi Console for the destroy operation.
+func (dr *DestroyResult) GetPermalink() (string, error) {
+	return GetPermalink(dr.StdOut)
 }
 
 // secretSentinel represents the CLI response for an output marked as "secret"

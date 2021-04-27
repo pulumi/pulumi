@@ -4,6 +4,9 @@
 
 ### Enhancements
 
+- [auto/go] - Provide GetPermalink for all results
+  [#6875](https://github.com/pulumi/pulumi/pull/6875)
+
 - [automation/*] Add support for getting stack outputs using Workspace
   [#6859](https://github.com/pulumi/pulumi/pull/6859)
 
