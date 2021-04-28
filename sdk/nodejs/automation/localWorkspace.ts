@@ -26,6 +26,8 @@ import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
 
+const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
+
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
  * A Workspace is the execution context containing a single Pulumi project, a program,
@@ -586,7 +588,8 @@ export class LocalWorkspace implements Workspace {
     private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
         const version = new semver.SemVer(result.stdout.trim());
-        validatePulumiVersion(minVersion, version);
+        const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
+        validatePulumiVersion(minVersion, version, optOut);
         this._pulumiVersion = version;
     }
     private async runPulumiCmd(
@@ -715,8 +718,8 @@ function loadProjectSettings(workDir: string) {
 }
 
 /** @internal */
-export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
-    if (process.env.PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK !== undefined) {
+export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer, optOut: boolean) {
+    if (optOut) {
         return;
     }
     if (minVersion.major < currentVersion.major) {

@@ -1468,13 +1468,7 @@ func TestMinimumVersion(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			minVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
 
-			if tt.optOut {
-				assert.NoError(t, os.Setenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK", "1"))
-			}
-			err := validatePulumiVersion(minVersion, tt.currentVersion)
-			if tt.optOut {
-				assert.NoError(t, os.Unsetenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"))
-			}
+			err := validatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
 
 			if tt.expectError {
 				assert.Error(t, err)

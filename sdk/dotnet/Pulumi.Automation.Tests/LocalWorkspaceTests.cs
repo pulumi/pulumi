@@ -1135,22 +1135,14 @@ namespace Pulumi.Automation.Tests
         public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
             var testMinVersion = SemVersion.Parse("2.21.1");
-            if (optOut)
-            {
-                Environment.SetEnvironmentVariable("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK", "1");
-            }
             if (errorExpected)
             {
-                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
+                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
                 Assert.Throws<InvalidOperationException>(act);
             }
             else
             {
-                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
-            }
-            if (optOut)
-            {
-                Environment.SetEnvironmentVariable("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK", null);
+                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
             }
         }
 

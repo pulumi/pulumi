@@ -443,8 +443,6 @@ class TestLocalWorkspace(unittest.TestCase):
         for current_version, expect_error, opt_out in version_tests:
             with self.subTest():
                 current_version = VersionInfo.parse(current_version)
-                if opt_out:
-                    os.environ["PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"] = "1"
                 if expect_error:
                     error_regex = "Major version mismatch." \
                         if test_min_version.major < current_version.major \
@@ -454,11 +452,9 @@ class TestLocalWorkspace(unittest.TestCase):
                             error_regex,
                             msg=f"min_version:{test_min_version}, current_version:{current_version}"
                     ):
-                        _validate_pulumi_version(test_min_version, current_version)
+                        _validate_pulumi_version(test_min_version, current_version, opt_out)
                 else:
-                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version))
-                if opt_out:
-                    os.unsetenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK")
+                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version, opt_out))
 
     def test_project_settings_respected(self):
         stack_name = stack_namer()

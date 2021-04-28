@@ -373,13 +373,16 @@ namespace Pulumi.Automation
             {
                 throw new InvalidOperationException("Failed to get Pulumi version.");
             }
-            LocalWorkspace.ValidatePulumiVersion(LocalWorkspace._minimumVersion, version);
+            var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
+            var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(skipVersionCheckVar) ?? false;
+            var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(skipVersionCheckVar) != null;
+            LocalWorkspace.ValidatePulumiVersion(LocalWorkspace._minimumVersion, version, optOut);
             this.pulumiVersion = version;
         }
 
-        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion)
+        internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion, bool optOut)
         {
-            if (Environment.GetEnvironmentVariable("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK") != null)
+            if (optOut)
             {
                 return;
             }

@@ -552,20 +552,14 @@ describe(`checkVersionIsValid`, () => {
         it(`validates ${test.currentVersion}`, () => {
             const currentVersion = new semver.SemVer(test.currentVersion);
 
-            if (test.optOut) {
-                process.env.PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK = "1";
-            }
             if (test.expectError) {
                 if (minVersion.major < currentVersion.major) {
-                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Major version mismatch./);
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion, test.optOut), /Major version mismatch./);
                 } else {
-                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion), /Minimum version requirement failed./);
+                    assert.throws(() => validatePulumiVersion(minVersion, currentVersion, test.optOut), /Minimum version requirement failed./);
                 }
             } else {
-                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion));
-            }
-            if (test.optOut) {
-                delete process.env.PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK;
+                assert.doesNotThrow(() => validatePulumiVersion(minVersion, currentVersion, test.optOut));
             }
         });
     });

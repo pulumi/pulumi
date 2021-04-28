@@ -32,6 +32,8 @@ from .errors import InvalidVersionError
 
 _setting_extensions = [".yaml", ".yml", ".json"]
 
+_SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
+
 
 class LocalWorkspaceOptions:
     work_dir: Optional[str] = None
@@ -86,7 +88,10 @@ class LocalWorkspace(Workspace):
         self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
 
         pulumi_version = self._get_pulumi_version()
-        _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version)
+        opt_out = os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
+        if env_vars:
+            opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
+        _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
         self.pulumi_version = str(pulumi_version)
 
         if project_settings:
@@ -468,8 +473,8 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo):
-    if os.getenv("PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK") is not None:
+def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo, opt_out: bool):
+    if opt_out:
         return
     if min_version.major < current_version.major:
         raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {current_version} with "
