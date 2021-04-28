@@ -873,7 +873,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task StackLifecycleInlineProgramWithRuntimeStackType()
         {
-            var provider = new ServiceCollection()
+            using var provider = new ServiceCollection()
                 .AddSingleton<ValidStack>()
                 .BuildServiceProvider();
 
@@ -881,7 +881,7 @@ namespace Pulumi.Automation.Tests
             Assert.IsType<PulumiFnRuntimeType>(program);
 
             var stackName = $"{RandomStackName()}";
-            var projectName = "inline_tstack_node";
+            var projectName = "inline_runtimestacktype_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string?>()
@@ -947,6 +947,7 @@ namespace Pulumi.Automation.Tests
             const string projectName = "exception_inline_node";
             var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
+            Assert.IsType<PulumiFnInline>(program);
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
@@ -979,6 +980,36 @@ namespace Pulumi.Automation.Tests
             const string projectName = "exception_inline_tstack_node";
             var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>();
+            Assert.IsType<PulumiFn<FileNotFoundStack>>(program);
+
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTask = stack.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTask);
+
+            var upTask = stack.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTask);
+        }
+
+        [Fact]
+        public async Task InlineProgramExceptionPropagatesToCallerWithRuntimeStackType()
+        {
+            using var provider = new ServiceCollection()
+                .AddSingleton<FileNotFoundStack>()
+                .BuildServiceProvider();
+
+            const string projectName = "exception_inline_tstack_node";
+            var stackName = $"{RandomStackName()}";
+            var program = PulumiFn.Create(provider, typeof(FileNotFoundStack));
+            Assert.IsType<PulumiFnRuntimeType>(program);
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
