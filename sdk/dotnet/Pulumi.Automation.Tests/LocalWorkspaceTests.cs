@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +13,7 @@ using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 using Xunit;
 using System.Collections.Immutable;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Pulumi.Automation.Tests
 {
@@ -418,6 +418,7 @@ namespace Pulumi.Automation.Tests
                     ["exp_secret"] = config.GetSecret("buzz"),
                 };
             });
+            Assert.IsType<PulumiFnInline>(program);
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_node";
@@ -806,6 +807,78 @@ namespace Pulumi.Automation.Tests
         public async Task StackLifecycleInlineProgramWithTStack()
         {
             var program = PulumiFn.Create<ValidStack>();
+            Assert.IsType<PulumiFn<ValidStack>>(program);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_tstack_node";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["bar"] = new ConfigValue("abc"),
+                ["buzz"] = new ConfigValue("secret", isSecret: true),
+            };
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
+
+                // exp_static
+                Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
+
+                // exp_cfg
+                Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
+
+                // exp_secret
+                Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
+
+                // pulumi preview
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
+
+                // pulumi refresh
+                var refreshResult = await stack.RefreshAsync();
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+
+                // pulumi destroy
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StackLifecycleInlineProgramWithRuntimeStackType()
+        {
+            var provider = new ServiceCollection()
+                .AddSingleton<ValidStack>()
+                .BuildServiceProvider();
+
+            var program = PulumiFn.Create(provider, typeof(ValidStack));
+            Assert.IsType<PulumiFnRuntimeType>(program);
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_tstack_node";
