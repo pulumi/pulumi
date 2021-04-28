@@ -142,6 +142,30 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 	return sm, nil
 }
 
+// Tries to find the Passphrase first using `PULUMI_CONFIG_PASSPHRASE` then
+// `PULUMI_CONFIG_PASSPHRASE_FILE` if it is not found and defaulting to an empty string
+func getConfigPassphrase() (string, error) {
+	if passphrase, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); isOk {
+		return passphrase, nil
+	}
+
+	if phraseFile, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); isOk {
+		phraseFilePath, err := filepath.Abs(phraseFile)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to detect passphrase path")
+		}
+
+		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+		if err != nil {
+			return "", errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+		}
+
+		return strings.TrimSpace(string(phraseDetails)), nil
+	}
+
+	return "", nil
+}
+
 // NewPassphaseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE.
 func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
@@ -153,24 +177,9 @@ func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager
 	// This is not ideal, but we don't have a great way to prompt the user in this case, since this may be
 	// called during an update when trying to read stack outputs as part servicing a StackReference request
 	// (since we need to decrypt the deployment)
-	phrase := ""
-	passphrase, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE")
-	if isOk {
-		phrase = passphrase
-	}
-	phraseFile, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE")
-	if isOk {
-		phraseFilePath, err := filepath.Abs(phraseFile)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to detect passphrase path")
-		}
-
-		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
-		if err != nil {
-			return nil, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
-		}
-
-		phrase = strings.TrimSpace(string(phraseDetails))
+	phrase, err := getConfigPassphrase()
+	if err != nil {
+		return nil, err // this is already a wrapped error from getConfigPassphrase()
 	}
 
 	// At this point, we don't know if it's an incorrect passphrase. We only know if there is a passphrase or there is
@@ -178,8 +187,8 @@ func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager
 	// update operation, so we should at least error out with an appropriate message here to ensure that the user
 	// understands why the operation fails unexpectedly.
 	if phrase == "" {
-		return nil, errors.New("unable to find either `PULUMI_CONFIG_PASSPHRASE` nor " +
-			"`PULUMI_CONFIG_PASSPHRASE_FILE` when trying to access the Passphrase Secrets Manager; please ensure one " +
+		return nil, errors.New("unable to find either `PULUMI_CONFIG_PASSPHRASE` or " +
+			"`PULUMI_CONFIG_PASSPHRASE_FILE` when trying to access the Passphrase Secrets Provider; please ensure one " +
 			"of these environment variables is set to allow the operation to continue")
 	}
 
