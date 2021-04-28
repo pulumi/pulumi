@@ -31,7 +31,7 @@ type Key struct {
 
 // MustMakeKey constructs a config.Key for a given namespace and name. The namespace may not contain a `:`
 func MustMakeKey(namespace string, name string) Key {
-	contract.Requiref(!strings.Contains(":", namespace), "namespace", "may not contain a colon")
+	contract.Requiref(!strings.Contains(namespace, ":"), "namespace", "may not contain a colon")
 	return Key{namespace: namespace, name: name}
 }
 
