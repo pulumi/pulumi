@@ -1397,47 +1397,68 @@ var minVersionTests = []struct {
 	name           string
 	currentVersion semver.Version
 	expectError    bool
+	optOut         bool
 }{
 	{
 		"higher_major",
 		semver.Version{Major: 100, Minor: 0, Patch: 0},
 		true,
+		false,
 	},
 	{
 		"lower_major",
 		semver.Version{Major: 1, Minor: 0, Patch: 0},
 		true,
+		false,
 	},
 	{
 		"higher_minor",
 		semver.Version{Major: 2, Minor: 22, Patch: 0},
+		false,
 		false,
 	},
 	{
 		"lower_minor",
 		semver.Version{Major: 2, Minor: 1, Patch: 0},
 		true,
+		false,
 	},
 	{
 		"equal_minor_higher_patch",
 		semver.Version{Major: 2, Minor: 21, Patch: 2},
+		false,
 		false,
 	},
 	{
 		"equal_minor_equal_patch",
 		semver.Version{Major: 2, Minor: 21, Patch: 1},
 		false,
+		false,
 	},
 	{
 		"equal_minor_lower_patch",
 		semver.Version{Major: 2, Minor: 21, Patch: 0},
 		true,
+		false,
 	},
 	{
 		"equal_minor_equal_patch_prerelease",
 		// Note that prerelease < release so this case will error
 		semver.Version{Major: 2, Minor: 21, Patch: 1,
 			Pre: []semver.PRVersion{{VersionStr: "alpha"}, {VersionNum: 1234, IsNum: true}}},
+		true,
+		false,
+	},
+	{
+		"opt_out_of_check_would_fail_otherwise",
+		semver.Version{Major: 2, Minor: 20, Patch: 0},
+		false,
+		true,
+	},
+	{
+		"opt_out_of_check_would_succeed_otherwise",
+		semver.Version{Major: 2, Minor: 22, Patch: 0},
+		false,
 		true,
 	},
 }
@@ -1446,7 +1467,9 @@ func TestMinimumVersion(t *testing.T) {
 	for _, tt := range minVersionTests {
 		t.Run(tt.name, func(t *testing.T) {
 			minVersion := semver.Version{Major: 2, Minor: 21, Patch: 1}
-			err := validatePulumiVersion(minVersion, tt.currentVersion)
+
+			err := validatePulumiVersion(minVersion, tt.currentVersion, tt.optOut)
+
 			if tt.expectError {
 				assert.Error(t, err)
 				if minVersion.Major < tt.currentVersion.Major {

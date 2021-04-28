@@ -1121,26 +1121,28 @@ namespace Pulumi.Automation.Tests
         }
 
         [Theory]
-        [InlineData("100.0.0", true)]
-        [InlineData("1.0.0", true)]
-        [InlineData("2.22.0", false)]
-        [InlineData("2.1.0", true)]
-        [InlineData("2.21.2", false)]
-        [InlineData("2.21.1", false)]
-        [InlineData("2.21.0", true)]
+        [InlineData("100.0.0", true, false)]
+        [InlineData("1.0.0", true, false)]
+        [InlineData("2.22.0", false, false)]
+        [InlineData("2.1.0", true, false)]
+        [InlineData("2.21.2", false, false)]
+        [InlineData("2.21.1", false, false)]
+        [InlineData("2.21.0", true, false)]
         // Note that prerelease < release so this case should error
-        [InlineData("2.21.1-alpha.1234", true)]
-        public void ValidVersionTheory(string currentVersion, bool errorExpected)
+        [InlineData("2.21.1-alpha.1234", true, false)]
+        [InlineData("2.20.0", false, true)]
+        [InlineData("2.22.0", false, true)]
+        public void ValidVersionTheory(string currentVersion, bool errorExpected, bool optOut)
         {
             var testMinVersion = SemVersion.Parse("2.21.1");
             if (errorExpected)
             {
-                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
+                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
                 Assert.Throws<InvalidOperationException>(act);
             }
             else
             {
-                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion);
+                LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
             }
         }
 

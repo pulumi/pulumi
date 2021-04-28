@@ -53,6 +53,8 @@ type LocalWorkspace struct {
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
 
+var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
+
 // ProjectSettings returns the settings object for the current project if any
 // LocalWorkspace reads settings from the Pulumi.yaml in the workspace.
 // A workspace can contain only a single project at a time.
@@ -498,7 +500,10 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, 
 }
 
 //nolint:lll
-func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version) error {
+func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version, optOut bool) error {
+	if optOut {
+		return nil
+	}
 	if minVersion.Major < currentVersion.Major {
 		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major))
 	}
@@ -573,8 +578,12 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		return nil, errors.Wrap(err, "failed to create workspace, unable to get pulumi version")
 	}
 	l.pulumiVersion = v
+	optOut := os.Getenv(skipVersionCheckVar) != ""
+	if val, ok := l.GetEnvVars()[skipVersionCheckVar]; ok {
+		optOut = optOut || val != ""
+	}
 
-	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion); err != nil {
+	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion, optOut); err != nil {
 		return nil, err
 	}
 
