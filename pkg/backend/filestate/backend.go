@@ -464,7 +464,7 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
 		err := b.Lock(ctx, stack.Ref())
 		if err != nil {
-			return nil, result.FromError(err)
+			return nil, nil, result.FromError(err)
 		}
 		defer b.Unlock(ctx, stack.Ref())
 	}

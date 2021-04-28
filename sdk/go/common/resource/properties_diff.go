@@ -187,7 +187,7 @@ func (props PropertyMap) diff(other PropertyMap, ignoreUnknowns bool, ignoreKeys
 			// If a new exists, use it; for output properties, however, ignore differences.
 			if new.IsOutput() {
 				sames[k] = old
-			} else if diff := old.Diff(new, ignoreKeys...); diff != nil {
+			} else if diff := old.diff(new, ignoreUnknowns, ignoreKeys); diff != nil {
 				if !old.HasValue() {
 					adds[k] = new
 				} else if !new.HasValue() {
@@ -250,7 +250,7 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 		sames := make(map[int]PropertyValue)
 		updates := make(map[int]ValueDiff)
 		for i := 0; i < len(old) && i < len(new); i++ {
-			if diff := old[i].Diff(new[i]); diff != nil {
+			if diff := old[i].diff(new[i], ignoreUnknowns, ignoreKeys); diff != nil {
 				updates[i] = *diff
 			} else {
 				sames[i] = old[i]
@@ -274,7 +274,7 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 	if v.IsObject() && other.IsObject() {
 		old := v.ObjectValue()
 		new := other.ObjectValue()
-		if diff := old.Diff(new, ignoreKeys...); diff != nil {
+		if diff := old.diff(new, ignoreUnknowns, ignoreKeys); diff != nil {
 			return &ValueDiff{
 				Old:    v,
 				New:    other,

@@ -40,19 +40,19 @@ func (u *updateInfo) GetTarget() *deploy.Target {
 
 func ImportOp(imports []deploy.Import) TestOp {
 	return TestOp(func(info UpdateInfo, ctx *Context, opts UpdateOptions,
-		dryRun bool) (Plan, ResourceChanges, result.Result) {
+		dryRun bool) (deploy.Plan, ResourceChanges, result.Result) {
 
 		return Import(info, ctx, opts, imports, dryRun)
 	})
 }
 
-type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (Plan, ResourceChanges, result.Result)
+type TestOp func(UpdateInfo, *Context, UpdateOptions, bool) (deploy.Plan, ResourceChanges, result.Result)
 
 type ValidateFunc func(project workspace.Project, target deploy.Target, entries JournalEntries,
 	events []Event, res result.Result) result.Result
 
 func (op TestOp) Plan(project workspace.Project, target deploy.Target, opts UpdateOptions,
-	backendClient deploy.BackendClient, validate ValidateFunc) (Plan, result.Result) {
+	backendClient deploy.BackendClient, validate ValidateFunc) (deploy.Plan, result.Result) {
 
 	plan, _, res := op.runWithContext(context.Background(), project, target, opts, true, backendClient, validate)
 	return plan, res
@@ -76,7 +76,7 @@ func (op TestOp) RunWithContext(
 func (op TestOp) runWithContext(
 	callerCtx context.Context, project workspace.Project,
 	target deploy.Target, opts UpdateOptions, dryRun bool,
-	backendClient deploy.BackendClient, validate ValidateFunc) (Plan, *deploy.Snapshot, result.Result) {
+	backendClient deploy.BackendClient, validate ValidateFunc) (deploy.Plan, *deploy.Snapshot, result.Result) {
 
 	// Create an appropriate update info and context.
 	info := &updateInfo{project: project, target: target}

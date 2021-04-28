@@ -2638,7 +2638,7 @@ func TestPlannedUpdate(t *testing.T) {
 	plan, res := TestOp(Update).Plan(project, p.GetTarget(nil), p.Options, p.BackendClient, nil)
 	assert.Nil(t, res)
 
-	// Run an update using the plan.
+	// Attempt to run an update using the plan.
 	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
 		"qux": []interface{}{
 			"alpha",
@@ -2647,6 +2647,30 @@ func TestPlannedUpdate(t *testing.T) {
 	})
 	p.Options.Plan = plan
 	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, false, p.BackendClient, nil)
+	assert.NotNil(t, res)
+
+	// Check the resource's state.
+	if !assert.Len(t, snap.Resources, 1) {
+		return
+	}
+
+	// Change the provider's planned operation to a same step.
+	// Remove the provider from the plan.
+	plan["urn:pulumi:test::test::pulumi:providers:pkgA::default"].Ops = []deploy.StepOp{deploy.OpSame}
+
+	// Attempt to run an update using the plan.
+	ins = resource.NewPropertyMapFromMap(map[string]interface{}{
+		"foo": "bar",
+		"baz": map[string]interface{}{
+			"a": 42,
+			"b": "alpha",
+		},
+		"qux": []interface{}{
+			"beta",
+			24,
+		},
+	})
+	snap, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, false, p.BackendClient, nil)
 	assert.Nil(t, res)
 
 	// Check the resource's state.
@@ -2658,9 +2682,10 @@ func TestPlannedUpdate(t *testing.T) {
 		"foo": "bar",
 		"baz": map[string]interface{}{
 			"a": 42,
+			"b": "alpha",
 		},
 		"qux": []interface{}{
-			"alpha",
+			"beta",
 			24,
 		},
 	})
