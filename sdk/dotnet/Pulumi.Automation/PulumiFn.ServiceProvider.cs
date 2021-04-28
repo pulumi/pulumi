@@ -8,12 +8,12 @@ using System.Threading.Tasks;
 
 namespace Pulumi.Automation
 {
-    internal class PulumiFnRuntimeType : PulumiFn
+    internal class PulumiFnServiceProvider : PulumiFn
     {
         private readonly IServiceProvider _serviceProvider;
         private readonly Type _stackType;
 
-        public PulumiFnRuntimeType(
+        public PulumiFnServiceProvider(
             IServiceProvider serviceProvider,
             Type stackType)
         {
@@ -51,11 +51,9 @@ namespace Pulumi.Automation
                 // the constructor of the user-provided TStack, it will be wrapped
                 // in TargetInvocationException - which is not the exception
                 // we want to throw to the consumer.
-                catch (TargetInvocationException ex)
+                catch (TargetInvocationException ex) when (ex.InnerException != null)
                 {
-                    info = ex.InnerException != null
-                        ? ExceptionDispatchInfo.Capture(ex.InnerException)
-                        : ExceptionDispatchInfo.Capture(ex);
+                    info = ExceptionDispatchInfo.Capture(ex.InnerException);
                     throw;
                 }
                 catch (Exception ex)

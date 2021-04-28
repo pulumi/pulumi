@@ -871,14 +871,14 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
-        public async Task StackLifecycleInlineProgramWithRuntimeStackType()
+        public async Task StackLifecycleInlineProgramWithServiceProvider()
         {
             using var provider = new ServiceCollection()
                 .AddSingleton<ValidStack>()
                 .BuildServiceProvider();
 
-            var program = PulumiFn.Create(provider, typeof(ValidStack));
-            Assert.IsType<PulumiFnRuntimeType>(program);
+            var program = PulumiFn.Create<ValidStack>(provider);
+            Assert.IsType<PulumiFnServiceProvider>(program);
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_runtimestacktype_node";
@@ -1000,7 +1000,7 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
-        public async Task InlineProgramExceptionPropagatesToCallerWithRuntimeStackType()
+        public async Task InlineProgramExceptionPropagatesToCallerWithServiceProvider()
         {
             using var provider = new ServiceCollection()
                 .AddSingleton<FileNotFoundStack>()
@@ -1008,8 +1008,8 @@ namespace Pulumi.Automation.Tests
 
             const string projectName = "exception_inline_tstack_node";
             var stackName = $"{RandomStackName()}";
-            var program = PulumiFn.Create(provider, typeof(FileNotFoundStack));
-            Assert.IsType<PulumiFnRuntimeType>(program);
+            var program = PulumiFn.Create<FileNotFoundStack>(provider);
+            Assert.IsType<PulumiFnServiceProvider>(program);
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
