@@ -73,7 +73,7 @@ func (l *LocalWorkspace) SaveProjectSettings(ctx context.Context, settings *work
 func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*workspace.ProjectStack, error) {
 	name := getStackSettingsName(stackName)
 	for _, ext := range settingsExtensions {
-		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi.%s%s", name, ext))
+		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s%s", name, ext))
 		if _, err := os.Stat(stackPath); err != nil {
 			proj, err := workspace.LoadProjectStack(stackPath)
 			if err != nil {
@@ -93,7 +93,7 @@ func (l *LocalWorkspace) SaveStackSettings(
 	settings *workspace.ProjectStack,
 ) error {
 	name := getStackSettingsName(stackName)
-	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi.%s.yaml:", name))
+	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s.yaml", name))
 	err := settings.Save(stackYamlPath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to save stack setttings for %s", stackName)
