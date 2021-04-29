@@ -15,10 +15,9 @@
 package auto
 
 import (
+	"fmt"
 	"regexp"
 	"strings"
-
-	"github.com/pkg/errors"
 )
 
 type autoError struct {
@@ -38,7 +37,7 @@ func newAutoError(err error, stdout, stderr string, code int) autoError {
 }
 
 func (ae autoError) Error() string {
-	return errors.Wrapf(ae.err, "code: %d\n, stdout: %s\n, stderr: %s\n", ae.code, ae.stdout, ae.stderr).Error()
+	return fmt.Sprintf("%s\ncode: %d\nstdout: %s\nstderr: %s\n", ae.err.Error(), ae.code, ae.stdout, ae.stderr)
 }
 
 // IsConcurrentUpdateError returns true if the error was a result of a conflicting update locking the stack.
