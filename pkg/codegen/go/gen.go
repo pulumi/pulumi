@@ -82,14 +82,15 @@ func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string
 }
 
 type pkgContext struct {
-	pkg            *schema.Package
-	mod            string
-	importBasePath string
-	typeDetails    map[schema.Type]*typeDetails
-	enums          []*schema.EnumType
-	types          []*schema.ObjectType
-	resources      []*schema.Resource
-	functions      []*schema.Function
+	pkg             *schema.Package
+	mod             string
+	importBasePath  string
+	rootPackageName string
+	typeDetails     map[schema.Type]*typeDetails
+	enums           []*schema.EnumType
+	types           []*schema.ObjectType
+	resources       []*schema.Resource
+	functions       []*schema.Function
 	// schemaNames tracks the names of types/resources as specified in the schema
 	schemaNames   codegen.StringSet
 	names         codegen.StringSet
@@ -1699,7 +1700,10 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 
 	var pkgName string
 	if pkg.mod == "" {
-		pkgName = goPackage(pkg.pkg.Name)
+		pkgName = pkg.rootPackageName
+		if pkgName == "" {
+			pkgName = goPackage(pkg.pkg.Name)
+		}
 	} else {
 		pkgName = path.Base(pkg.mod)
 	}
@@ -1907,6 +1911,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				pkg:              pkg,
 				mod:              mod,
 				importBasePath:   goInfo.ImportBasePath,
+				rootPackageName:  goInfo.RootPackageName,
 				typeDetails:      map[schema.Type]*typeDetails{},
 				names:            codegen.NewStringSet(),
 				schemaNames:      codegen.NewStringSet(),
@@ -2137,9 +2142,16 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 	sort.Strings(pkgMods)
 
+	name := goPkgInfo.RootPackageName
+	if name == "" {
+		name = goPackage(pkg.Name)
+	}
+
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
-		relPath = path.Join(goPackage(pkg.Name), relPath)
+		if goPkgInfo.RootPackageName == "" {
+			relPath = path.Join(goPackage(name), relPath)
+		}
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
@@ -2154,7 +2166,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		files[relPath] = formattedSource
 	}
 
-	name := goPackage(pkg.Name)
 	for _, mod := range pkgMods {
 		pkg := packages[mod]
 
