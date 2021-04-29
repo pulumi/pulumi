@@ -15,6 +15,10 @@
 
   The version check can be skipped by passing a non-empty value to the `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK` environment variable.
 
+- [codegen/python] Lazy module import to improve CLI startup performance
+  [#6827](https://github.com/pulumi/pulumi/pull/6827)
+
+
 ### Bug Fixes
 
 - [cli] Return an appropriate error when a user has not set `PULUMI_CONFIG_PASSPHRASE` nor `PULUMI_CONFIG_PASSPHRASE_FILE`
