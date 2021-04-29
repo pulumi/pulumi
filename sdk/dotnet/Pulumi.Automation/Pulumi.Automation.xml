@@ -775,6 +775,18 @@
                 using the <paramref name="serviceProvider"/>.
             </summary>
             <typeparam name="TStack">The <see cref="T:Pulumi.Stack"/> type.</typeparam>
+            <param name="serviceProvider">The service provider that will be used to resolve an instance of <typeparamref name="TStack"/>.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn.Create(System.IServiceProvider,System.Type)">
+            <summary>
+            Creates an inline (in process) pulumi program via a traditional <see cref="T:Pulumi.Stack"/> implementation.
+            <para/>
+                When invoked, a new stack instance will be resolved based
+                on the provided <paramref name="stackType"/> type parameter
+                using the <paramref name="serviceProvider"/>.
+            </summary>
+            <param name="serviceProvider">The service provider that will be used to resolve an instance of type <paramref name="stackType"/>.</param>
+            <param name="stackType">The stack type, which must derive from <see cref="T:Pulumi.Stack"/>.</param>
         </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
