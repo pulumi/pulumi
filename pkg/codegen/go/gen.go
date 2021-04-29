@@ -32,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -2292,7 +2293,12 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
-			_, err := fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
+			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name)
+			if pkg.rootPackageName != "" {
+				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
+			}
+
+			_, err := fmt.Fprintf(buffer, utilitiesFile, packageRegex)
 			if err != nil {
 				return nil, err
 			}
@@ -2368,7 +2374,7 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^.*/pulumi-%s/sdk(/v\\d+)?")
+	re := regexp.MustCompile(%q)
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
