@@ -47,6 +47,9 @@
 
 ### Misc.
 
+- [auto/dotnet] Bump YamlDotNet to 11.1.1
+  [#6915](https://github.com/pulumi/pulumi/pull/6915)
+
 - [sdk/dotnet] Enable deterministic builds
   [#6917](https://github.com/pulumi/pulumi/pull/6917)
 
