@@ -18,6 +18,8 @@
 - [codegen/python] Lazy module import to improve CLI startup performance
   [#6827](https://github.com/pulumi/pulumi/pull/6827)
 
+- [auto/go,nodejs] Add UserAgent to update/pre/refresh/destroy options.
+  [#6935](https://github.com/pulumi/pulumi/pull/6935)
 
 ### Bug Fixes
 

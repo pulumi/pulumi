@@ -530,7 +530,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root, execKind string) (*backend.UpdateMetadata, error) {
+func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
@@ -542,7 +542,7 @@ func getUpdateMetadata(msg, root, execKind string) (*backend.UpdateMetadata, err
 
 	addCIMetadataToEnvironment(m.Environment)
 
-	addExecutionMetadataToEnvironment(m.Environment, execKind)
+	addExecutionMetadataToEnvironment(m.Environment, execKind, execAgent)
 
 	return m, nil
 }
@@ -695,7 +695,7 @@ func addCIMetadataToEnvironment(env map[string]string) {
 }
 
 // addExecutionMetadataToEnvironment populates the environment metadata bag with execution-related values.
-func addExecutionMetadataToEnvironment(env map[string]string, execKind string) {
+func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgent string) {
 	// this comes from a hidden flag, so we restrict the set of allowed values
 	switch execKind {
 	case constant.ExecKindAutoInline:
@@ -708,6 +708,9 @@ func addExecutionMetadataToEnvironment(env map[string]string, execKind string) {
 		execKind = constant.ExecKindCLI
 	}
 	env[backend.ExecutionKind] = execKind
+	if execAgent != "" {
+		env[backend.ExecutionAgent] = execAgent
+	}
 }
 
 type cancellationScope struct {

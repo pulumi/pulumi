@@ -3,7 +3,7 @@ package debug
 import "fmt"
 
 type LoggingOptions struct {
-	// LogLevel - choose verbosity level between 1 (least verbose) to 9 (most verbose).
+	// LogLevel - choose verbosity level of at least 1 (least verbose).
 	// If not specified, reverts to default log level.
 	// Note - These logs may include sensitive information that is provided from your
 	// execution environment to your cloud provider (and which Pulumi may not even
@@ -21,9 +21,6 @@ func AddArgs(debugLogOpts *LoggingOptions, sharedArgs []string) []string {
 		sharedArgs = append(sharedArgs, "--logtostderr")
 	}
 	if debugLogOpts.LogLevel != nil {
-		if *debugLogOpts.LogLevel > 9 {
-			*debugLogOpts.LogLevel = 9
-		}
 		if *debugLogOpts.LogLevel == 0 {
 			*debugLogOpts.LogLevel = 1
 		}
