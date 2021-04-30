@@ -238,6 +238,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.Parallel > 0 {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
 	}
+	if preOpts.UserAgent != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -330,6 +333,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.Parallel > 0 {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
 	}
+	if upOpts.UserAgent != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -408,6 +414,9 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	if refreshOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
 	}
+	if refreshOpts.UserAgent != "" {
+		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
+	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
 		execKind = constant.ExecKindAutoInline
@@ -472,6 +481,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	if destroyOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
+	}
+	if destroyOpts.UserAgent != "" {
+		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {

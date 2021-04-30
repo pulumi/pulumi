@@ -80,6 +80,7 @@ func ProgressStreams(writers ...io.Writer) Option {
 	})
 }
 
+// DebugLogging provides options for verbose logging to standard error, and enabling plugin logs.
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
 		opts.DebugLogOpts = debugOpts
@@ -90,6 +91,13 @@ func DebugLogging(debugOpts debug.LoggingOptions) Option {
 func EventStreams(channels ...chan<- events.EngineEvent) Option {
 	return optionFunc(func(opts *Options) {
 		opts.EventStreams = channels
+	})
+}
+
+// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
+func UserAgent(agent string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.UserAgent = agent
 	})
 }
 
@@ -123,6 +131,8 @@ type Options struct {
 	ProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
+	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
+	UserAgent string
 }
 
 type optionFunc func(*Options)

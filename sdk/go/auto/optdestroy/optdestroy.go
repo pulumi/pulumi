@@ -66,9 +66,17 @@ func EventStreams(channels ...chan<- events.EngineEvent) Option {
 	})
 }
 
+// DebugLogging provides options for verbose logging to standard error, and enabling plugin logs.
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
 		opts.DebugLogOpts = debugOpts
+	})
+}
+
+// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
+func UserAgent(agent string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.UserAgent = agent
 	})
 }
 
@@ -96,6 +104,8 @@ type Options struct {
 	EventStreams []chan<- events.EngineEvent
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
+	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
+	UserAgent string
 }
 
 type optionFunc func(*Options)
