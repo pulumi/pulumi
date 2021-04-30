@@ -579,7 +579,7 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 	}
 	l.pulumiVersion = v
 	optOut := os.Getenv(skipVersionCheckVar) != ""
-	if val, ok := l.GetEnvVars()[skipVersionCheckVar]; ok {
+	if val, ok := lwOpts.EnvVars[skipVersionCheckVar]; ok {
 		optOut = optOut || val != ""
 	}
 
