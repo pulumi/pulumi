@@ -407,13 +407,13 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
 
 
 def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
-    for python_name, v in cls.__dict__.items():
-        if isinstance(v, builtins.property):
-            prop = cast(builtins.property, v)
-            pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
-            if pulumi_name is not MISSING:
-                yield (python_name, pulumi_name, prop)
-
+    for base in reversed(cls.__mro__):
+        for python_name, v in base.__dict__.items():
+            if isinstance(v, builtins.property):
+                prop = cast(builtins.property, v)
+                pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
+                if pulumi_name is not MISSING:
+                    yield (python_name, pulumi_name, prop)
 
 def input_type(cls: Type[T]) -> Type[T]:
     """
@@ -678,6 +678,21 @@ def _is_optional_type(tp):
     return False
 
 
+def _globals_for_cls(cls: type) -> Optional[Dict[str, Any]]:
+    """
+    Returns a dict of globals for the class and its base classes.
+    """
+    globalns = None
+    for base in reversed(cls.__mro__):
+        if base.__module__ in sys.modules:
+            globals = sys.modules[base.__module__].__dict__
+            if globalns is None:
+                globalns = dict(globals)
+            else:
+                globalns.update(globals)
+    return globalns
+
+
 def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
@@ -696,9 +711,7 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     # (either via the @output_type decorator, which converts class annotations into Python
     # properties, or via the @getter decorator, which replaces empty getter functions) and
     # therefore has __globals__ of this SDK module.
-    globalns = None
-    if cls.__module__ in sys.modules:
-        globalns = dict(sys.modules[cls.__module__].__dict__)
+    globalns = _globals_for_cls(cls)
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
@@ -760,9 +773,7 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     dynamic_cls = type(cls.__name__, (object,), dynamic_cls_attrs)
 
     # Pass along globals for the cls, to help resolve forward references.
-    globalns = None
-    if getattr(cls, "__module__", None) in sys.modules:
-        globalns = dict(sys.modules[cls.__module__].__dict__)
+    globalns = _globals_for_cls(cls)
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).

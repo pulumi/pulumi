@@ -39,6 +39,9 @@
 - [automation/go] Improve autoError message formatting
   [#6924](https://github.com/pulumi/pulumi/pull/6924)
 
+- [sdk/python] Address issues when using resource subclasses.
+  [#6890](https://github.com/pulumi/pulumi/pull/6890)
+
 ### Misc.
 
 - [sdk/dotnet] Enable deterministic builds
