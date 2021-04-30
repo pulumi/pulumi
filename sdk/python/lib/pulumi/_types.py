@@ -657,6 +657,13 @@ else:
         return None
 
     def get_args(tp):
+        # Emulate the behavior of get_args for Union on Python 3.6.
+        if _is_union_type(tp) and hasattr(tp, "_subs_tree"):
+            tree = tp._subs_tree()
+            if isinstance(tree, tuple) and len(tree) > 1:
+                def _eval(args):
+                    return tuple(arg if not isinstance(arg, tuple) else arg[0][_eval(arg[1:])] for arg in args)
+                return _eval(tree[1:])
         if hasattr(tp, "__args__"):
             return tp.__args__
         return ()
@@ -715,8 +722,10 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
-    # Additionally, include the `T` TypeVar, which is needed for Input and InputType.
-    localns = {"Output": Output, "T": TypeVar("T")}  # type: ignore
+    # Additionally, include a value for "T", which is needed for Input and InputType.
+    # We use the NoneType for the value of "T" because using TypeVar here doesn't work on Python 3.6
+    # and it doesn't matter what the value is for our purposes.
+    localns = {"Output": Output, "T": type(None)}  # type: ignore
 
     # Build-up a dictionary of Pulumi property names to types by looping through all the
     # Python properties on the class that have a getter marked as a Pulumi property getter,
@@ -777,8 +786,10 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
-    # Additionally, include the `T` TypeVar, which is needed for Input and InputType.
-    localns = {"Output": Output, "T": TypeVar("T")}  # type: ignore
+    # Additionally, include a value for "T", which is needed for Input and InputType.
+    # We use the NoneType for the value of "T" because using TypeVar here doesn't work on Python 3.6
+    # and it doesn't matter what the value is for our purposes.
+    localns = {"Output": Output, "T": type(None)}  # type: ignore
 
     # Get the type hints, resolving any forward references.
     cls_hints = get_type_hints(dynamic_cls, globalns=globalns, localns=localns)
@@ -912,7 +923,8 @@ def unwrap_type(val: type) -> type:
 
         def isInput(args, i = 1):
             assert len(args) > i + 1
-            return get_origin(args[i]) is collections.abc.Awaitable and get_origin(args[i + 1]) is Output
+            return (get_origin(args[i]) in {typing.Awaitable, collections.abc.Awaitable} and
+                get_origin(args[i + 1]) is Output)
 
         args = get_args(val)
         if len(args) == 2:

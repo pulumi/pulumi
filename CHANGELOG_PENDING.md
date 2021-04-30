@@ -42,6 +42,9 @@
 - [sdk/python] Address issues when using resource subclasses.
   [#6890](https://github.com/pulumi/pulumi/pull/6890)
 
+- [sdk/python] Fix type-related regression on Python 3.6.
+  [#6942](https://github.com/pulumi/pulumi/pull/6942)
+
 ### Misc.
 
 - [sdk/dotnet] Enable deterministic builds
