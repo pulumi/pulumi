@@ -45,6 +45,9 @@
 - [sdk/python] Fix type-related regression on Python 3.6.
   [#6942](https://github.com/pulumi/pulumi/pull/6942)
 
+- [sdk/python] Don't error when a dict input value has a mismatched type annotation.
+  [#6949](https://github.com/pulumi/pulumi/pull/6949)
+
 ### Misc.
 
 - [auto/dotnet] Bump YamlDotNet to 11.1.1
