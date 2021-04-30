@@ -164,6 +164,9 @@ export class Stack {
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -272,6 +275,9 @@ export class Stack {
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -364,6 +370,9 @@ export class Stack {
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
             }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
+            }
         }
 
         let logPromise: Promise<TailFile> | undefined;
@@ -415,6 +424,9 @@ export class Stack {
             }
             if (opts.parallel) {
                 args.push("--parallel", opts.parallel.toString());
+            }
+            if (opts.userAgent) {
+                args.push("--exec-agent", opts.userAgent);
             }
         }
 
@@ -705,6 +717,7 @@ export interface UpOptions {
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;
+    userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
@@ -721,6 +734,7 @@ export interface PreviewOptions {
     replace?: string[];
     target?: string[];
     targetDependents?: boolean;
+    userAgent?: string;
     program?: PulumiFn;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
@@ -734,6 +748,7 @@ export interface RefreshOptions {
     message?: string;
     expectNoChanges?: boolean;
     target?: string[];
+    userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
 }
@@ -746,6 +761,7 @@ export interface DestroyOptions {
     message?: string;
     target?: string[];
     targetDependents?: boolean;
+    userAgent?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
 }

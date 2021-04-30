@@ -30,6 +30,7 @@ import { Config } from "../../index";
 import { asyncTest } from "../util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
+const userAgent = "pulumi/pulumi/test";
 
 describe("LocalWorkspace", () => {
     it(`projectSettings from yaml/yml/json`, asyncTest(async () => {
@@ -198,7 +199,7 @@ describe("LocalWorkspace", () => {
         await stack.setAllConfig(config);
 
         // pulumi up
-        const upRes = await stack.up();
+        const upRes = await stack.up({ userAgent });
         assert.strictEqual(Object.keys(upRes.outputs).length, 3);
         assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
         assert.strictEqual(upRes.outputs["exp_static"].secret, false);
@@ -210,16 +211,16 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
-        const preRes = await stack.preview();
+        const preRes = await stack.preview({ userAgent });
         assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
-        const refRes = await stack.refresh();
+        const refRes = await stack.refresh({ userAgent });
         assert.strictEqual(refRes.summary.kind, "refresh");
         assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
-        const destroyRes = await stack.destroy();
+        const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
@@ -245,7 +246,7 @@ describe("LocalWorkspace", () => {
         await stack.setAllConfig(stackConfig);
 
         // pulumi up
-        const upRes = await stack.up();
+        const upRes = await stack.up({ userAgent });
         assert.strictEqual(Object.keys(upRes.outputs).length, 3);
         assert.strictEqual(upRes.outputs["exp_static"].value, "foo");
         assert.strictEqual(upRes.outputs["exp_static"].secret, false);
@@ -257,16 +258,16 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(upRes.summary.result, "succeeded");
 
         // pulumi preview
-        const preRes = await stack.preview();
+        const preRes = await stack.preview({ userAgent });
         assert.strictEqual(preRes.changeSummary.same, 1);
 
         // pulumi refresh
-        const refRes = await stack.refresh();
+        const refRes = await stack.refresh({ userAgent });
         assert.strictEqual(refRes.summary.kind, "refresh");
         assert.strictEqual(refRes.summary.result, "succeeded");
 
         // pulumi destroy
-        const destroyRes = await stack.destroy();
+        const destroyRes = await stack.destroy({ userAgent });
         assert.strictEqual(destroyRes.summary.kind, "destroy");
         assert.strictEqual(destroyRes.summary.result, "succeeded");
 
