@@ -19,6 +19,6 @@ import "github.com/blang/semver"
 var minimumVersion = calculateMinVersion()
 
 func calculateMinVersion() semver.Version {
-	v, _ := semver.ParseTolerant("3.1.0-alpha")
+	v, _ := semver.ParseTolerant("3.2.0-alpha")
 	return v
 }
