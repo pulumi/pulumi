@@ -98,7 +98,7 @@ func newWatchCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind)
+			m, err := getUpdateMetadata(message, root, execKind, "" /* execAgent */)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
