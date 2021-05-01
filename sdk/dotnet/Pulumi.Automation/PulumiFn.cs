@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +15,11 @@ namespace Pulumi.Automation
     /// </summary>
     public abstract class PulumiFn
     {
+        /// <summary>
+        /// Get or set the assembly that will be used for required plugin discovery.
+        /// </summary>
+        public Assembly? DiscoveryAssembly { get; set; }
+
         internal PulumiFn()
         {
         }

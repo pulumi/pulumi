@@ -724,6 +724,11 @@
             A Pulumi program as an inline function (in process).
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.PulumiFn.DiscoveryAssembly">
+            <summary>
+            Get or set the assembly that will be used for required plugin discovery.
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
             <summary>
             Creates an asynchronous inline (in process) pulumi program.

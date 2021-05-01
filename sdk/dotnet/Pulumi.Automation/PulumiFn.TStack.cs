@@ -15,6 +15,7 @@ namespace Pulumi.Automation
         public PulumiFn(Func<TStack> stackFactory)
         {
             this._stackFactory = stackFactory;
+            this.DiscoveryAssembly = typeof(TStack).Assembly;
         }
 
         internal override async Task<ExceptionDispatchInfo?> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
