@@ -33,7 +33,7 @@ namespace Pulumi.Automation
             if (assembly is null)
                 return response;
 
-            var pulumiAssemblyNames = assembly.GetReferencedAssemblies().Where(x => x.Name != null && x.Name.StartsWith("Pulumi.")).ToArray();
+            var pulumiAssemblyNames = assembly.GetReferencedAssemblies().Where(x => x.Name != null && x.Name.StartsWith("Pulumi.", StringComparison.Ordinal)).ToArray();
             foreach (var assemblyName in pulumiAssemblyNames)
             {
                 var pulumiAssembly = Assembly.Load(assemblyName);
@@ -43,7 +43,7 @@ namespace Pulumi.Automation
                 // instead of using the embedded version.txt resource
                 // pulumiAssembly.GetCustomAttribute<ResourcePluginAttribute>();
                 var resources = pulumiAssembly.GetManifestResourceNames();
-                var versionResource = resources.FirstOrDefault(x => x.EndsWith("version.txt"));
+                var versionResource = resources.FirstOrDefault(x => x.EndsWith("version.txt", StringComparison.Ordinal));
                 if (versionResource is null)
                 {
                     // no version.txt so is not resource plugin
@@ -61,7 +61,7 @@ namespace Pulumi.Automation
                 var versionText = await versionReader.ReadToEndAsync().ConfigureAwait(false);
 
                 // ToLower() everything after "Pulumi." to determine plugin name
-                var pluginName = assemblyName.Name!.Substring("Pulumi.".Length).ToLower();
+                var pluginName = assemblyName.Name!.Substring("Pulumi.".Length).ToLowerInvariant();
                 var version = versionText.Trim();
                 var parts = versionText.Split('\n', StringSplitOptions.RemoveEmptyEntries)
                     .Select(x => x.Trim())
