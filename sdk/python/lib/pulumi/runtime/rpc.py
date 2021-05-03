@@ -300,7 +300,15 @@ async def serialize_property(value: 'Input[Any]',
                         get_type = lambda k: args[1]
                         translate = None
                 else:
-                    raise AssertionError(f"Unexpected type. Expected 'dict' got '{typ}'")
+                    translate = None
+                    # Note: Alternatively, we could assert here that we expected a dict type but got some other type,
+                    # but there are cases where we've historically allowed a user-defined dict value to be passed even
+                    # though the type annotation isn't a dict type (e.g. the `aws.s3.BucketPolicy.policy` input property
+                    # is currently typed as `pulumi.Input[str]`, but we've allowed a dict to be passed, which will
+                    # "magically" work at runtime because the provider will convert the dict value to a JSON string).
+                    # Ideally, we'd update the type annotations for such cases to reflect that a dict could be passed,
+                    # but we haven't done that yet and want these existing cases to continue to work as they have
+                    # before.
 
         obj = {}
         # Don't use value.items() here, as it will error in the case of outputs with an `items` property.
