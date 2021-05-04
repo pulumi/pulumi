@@ -63,8 +63,15 @@ const (
 func main() {
 	var tracing string
 	var virtualenv string
+	var configfile string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&virtualenv, "virtualenv", "", "Virtual environment path to use")
+	flag.StringVar(&configfile, "configfile", "", "Path to Pulumi.yaml or similar config file")
+
+	cwd, err := os.Getwd()
+	if err != nil {
+		cmdutil.Exit(errors.Wrapf(err, "getting the working directory"))
+	}
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -105,10 +112,13 @@ func main() {
 		engineAddress = args[0]
 	}
 
+	// Resolve virtualenv path relative to configfile if given, otherwise cwd.
+	virtualenvPath := resolveVirtualEnvironmentPath(configfile, cwd, virtualenv)
+
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
 		func(srv *grpc.Server) error {
-			host := newLanguageHost(pythonExec, engineAddress, tracing, virtualenv)
+			host := newLanguageHost(pythonExec, engineAddress, tracing, cwd, virtualenv, virtualenvPath)
 			pulumirpc.RegisterLanguageRuntimeServer(srv, host)
 			return nil
 		},
@@ -132,15 +142,25 @@ type pythonLanguageHost struct {
 	exec          string
 	engineAddress string
 	tracing       string
-	virtualenv    string
+
+	// current working directory
+	cwd string
+
+	// virtualenv option as passed from Pulumi.yaml runtime.options.virtualenv.
+	virtualenv string
+
+	// if non-empty, points to the resolved directory path of the virtualenv
+	virtualenvPath string
 }
 
-func newLanguageHost(exec, engineAddress, tracing, virtualenv string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv, virtualenvPath string) pulumirpc.LanguageRuntimeServer {
 	return &pythonLanguageHost{
-		exec:          exec,
-		engineAddress: engineAddress,
-		tracing:       tracing,
-		virtualenv:    virtualenv,
+		cwd:            cwd,
+		exec:           exec,
+		engineAddress:  engineAddress,
+		tracing:        tracing,
+		virtualenv:     virtualenv,
+		virtualenvPath: virtualenvPath,
 	}
 }
 
@@ -148,19 +168,14 @@ func newLanguageHost(exec, engineAddress, tracing, virtualenv string) pulumirpc.
 func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	req *pulumirpc.GetRequiredPluginsRequest) (*pulumirpc.GetRequiredPluginsResponse, error) {
 
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, errors.Wrap(err, "getting the working directory")
-	}
-
 	// Prepare the virtual environment (if needed).
-	virtualenv, err := host.prepareVirtualEnvironment(ctx, cwd)
+	err := host.prepareVirtualEnvironment(ctx, host.cwd)
 	if err != nil {
 		return nil, err
 	}
 
 	// Now, determine which Pulumi packages are installed.
-	pulumiPackages, err := determinePulumiPackages(virtualenv, cwd)
+	pulumiPackages, err := determinePulumiPackages(host.virtualenvPath, host.cwd)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +183,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	plugins := []*pulumirpc.PluginDependency{}
 	for _, pkg := range pulumiPackages {
 
-		plugin, err := determinePluginDependency(virtualenv, cwd, pkg.Name, pkg.Version)
+		plugin, err := determinePluginDependency(host.virtualenvPath, host.cwd, pkg.Name, pkg.Version)
 		if err != nil {
 			return nil, err
 		}
@@ -181,18 +196,31 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
-// prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
-// The full path to the virtual environment is returned.
-func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, cwd string) (string, error) {
-	virtualenv := host.virtualenv
+func resolveRootPath(configfile, cwd string) string {
+	if configfile != "" {
+		return filepath.Dir(configfile)
+	}
+	return cwd
+}
+
+func resolveVirtualEnvironmentPath(configfile, cwd, virtualenv string) string {
 	if virtualenv == "" {
-		return "", nil
+		return ""
+	}
+	if !filepath.IsAbs(virtualenv) {
+		return filepath.Join(resolveRootPath(configfile, cwd), virtualenv)
+	}
+	return virtualenv
+}
+
+// prepareVirtualEnvironment will create and install dependencies in the virtual environment if host.virtualenv is set.
+func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, cwd string) error {
+
+	if host.virtualenv == "" {
+		return nil
 	}
 
-	// Make sure it's an absolute path.
-	if !filepath.IsAbs(virtualenv) {
-		virtualenv = filepath.Join(cwd, virtualenv)
-	}
+	virtualenv := host.virtualenvPath
 
 	// If the virtual environment directory doesn't exist, create it.
 	var createVirtualEnv bool
@@ -201,18 +229,17 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 		if os.IsNotExist(err) {
 			createVirtualEnv = true
 		} else {
-			return "", err
+			return err
 		}
 	} else if !info.IsDir() {
-		return "",
-			errors.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenv)
+		return errors.Errorf("the 'virtualenv' option in Pulumi.yaml is set to %q but it is not a directory", virtualenv)
 	}
 
 	// If the virtual environment directory exists, but is empty, it needs to be created.
 	if !createVirtualEnv {
 		empty, err := fsutil.IsDirEmpty(virtualenv)
 		if err != nil {
-			return "", err
+			return err
 		}
 		createVirtualEnv = empty
 	}
@@ -226,7 +253,7 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 			rpcutil.GrpcChannelOptions(),
 		)
 		if err != nil {
-			return "", errors.Wrapf(err, "language host could not make connection to engine")
+			return errors.Wrapf(err, "language host could not make connection to engine")
 		}
 
 		// Make a client around that connection.
@@ -251,17 +278,16 @@ func (host *pythonLanguageHost) prepareVirtualEnvironment(ctx context.Context, c
 
 		if err := python.InstallDependenciesWithWriters(
 			cwd, virtualenv, true /*showOutput*/, infoWriter, errorWriter); err != nil {
-			return "", err
+			return err
 		}
 	}
 
 	// Ensure the specified virtual directory is a valid virtual environment.
 	if !python.IsVirtualEnv(virtualenv) {
-		return "", python.NewVirtualEnvError(host.virtualenv, virtualenv)
+		return python.NewVirtualEnvError(host.virtualenv, virtualenv)
 	}
 
-	// Return the full path to the virtual environment.
-	return virtualenv, nil
+	return nil
 }
 
 type logWriter struct {
@@ -518,14 +544,7 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	var cmd *exec.Cmd
 	var virtualenv string
 	if host.virtualenv != "" {
-		virtualenv = host.virtualenv
-		if !filepath.IsAbs(virtualenv) {
-			cwd, err := os.Getwd()
-			if err != nil {
-				return nil, errors.Wrap(err, "getting the working directory")
-			}
-			virtualenv = filepath.Join(cwd, virtualenv)
-		}
+		virtualenv = host.virtualenvPath
 		if !python.IsVirtualEnv(virtualenv) {
 			return nil, python.NewVirtualEnvError(host.virtualenv, virtualenv)
 		}

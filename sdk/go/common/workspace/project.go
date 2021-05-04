@@ -90,6 +90,9 @@ type Project struct {
 
 	// Backend is an optional backend configuration
 	Backend *ProjectBackend `json:"backend,omitempty" yaml:"backend,omitempty"`
+
+	// If non-empty, points to the file the manifest was loaded from.
+	ConfigFileLocation string `json:"-" yaml:"-"`
 }
 
 func (proj *Project) Validate() error {

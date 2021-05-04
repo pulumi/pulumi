@@ -55,12 +55,15 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		})
 	}
 
-	panic(fmt.Sprintf("NewLanguageRuntime(runtime=%s, project.Main=%s, ctx.Pwd=%s)", runtime, project.Main, ctx.Pwd))
-
 	var args []string
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
+
+	if project.ConfigFileLocation != "" && runtime == "python" {
+		args = append(args, fmt.Sprintf("-configfile=%s", project.ConfigFileLocation))
+	}
+
 	args = append(args, host.ServerAddr())
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)

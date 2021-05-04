@@ -17,6 +17,7 @@ package workspace
 import (
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
@@ -105,6 +106,14 @@ func (singleton *projectLoader) load(path string) (*Project, error) {
 	}
 
 	singleton.internal[path] = &project
+
+	configFileLocation, err := filepath.Abs(path)
+	if err != nil {
+		return nil, err
+	}
+
+	project.ConfigFileLocation = filepath.Clean(configFileLocation)
+
 	return &project, nil
 }
 
