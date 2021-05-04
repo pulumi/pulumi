@@ -18,7 +18,7 @@ import (
 	"encoding/json"
 	"path/filepath"
 
-	yaml "gopkg.in/yaml.v2"
+	"github.com/pulumi/go-yaml"
 )
 
 var JSONExt = ".json"
