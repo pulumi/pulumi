@@ -1,3 +1,4 @@
-name: tcfg
+name: concurrent-config
 runtime: nodejs
-description: A minimal TypeScript Pulumi program
+backend:
+  url: 'file://~'
