@@ -102,7 +102,7 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, q Query
 	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
 	// need to be loaded here.
 	const kinds = plugin.LanguagePlugins
-	if err := ensurePluginsAreLoaded(opts.plugctx, allPlugins, kinds); err != nil {
+	if err := ensurePluginsAreLoaded(opts.plugctx, allPlugins, kinds, q.GetProject()); err != nil {
 		return nil, err
 	}
 
