@@ -296,6 +296,11 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 		if _, hasGoal := se.deployment.goals.get(newState.URN); hasGoal {
 			se.deployment.news.set(newState.URN, newState)
 		}
+
+		// Update the resource's outputs in the generated plan.
+		if resourcePlan, ok := se.deployment.newPlans.get(newState.URN); ok {
+			resourcePlan.Outputs = newState.Outputs
+		}
 	}
 
 	if events != nil {

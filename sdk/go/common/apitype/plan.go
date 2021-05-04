@@ -47,6 +47,8 @@ type ResourcePlanV1 struct {
 	Goal GoalV1 `json:"goal"`
 	// The steps to be performed on the resource.
 	Steps []OpType `json:"steps,omitempty"`
+	// The proposed outputs for the resource, if any. Purely advisory.
+	Outputs map[string]interface{} `json:"state"`
 }
 
 // VersionedDeploymentPlan is a version number plus a JSON document. The version number describes what

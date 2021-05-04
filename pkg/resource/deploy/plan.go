@@ -21,8 +21,9 @@ type Plan map[resource.URN]*ResourcePlan
 // A ResourcePlan represents the planned goal state and resource operations for a single resource. The operations are
 // ordered.
 type ResourcePlan struct {
-	Goal *resource.Goal
-	Ops  []StepOp
+	Goal    *resource.Goal
+	Ops     []StepOp
+	Outputs resource.PropertyMap
 }
 
 func (rp *ResourcePlan) diffURNs(a, b []resource.URN) (message string, changed bool) {

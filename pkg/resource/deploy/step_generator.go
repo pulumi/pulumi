@@ -170,12 +170,12 @@ func (sg *stepGenerator) GenerateSteps(event RegisterResourceEvent) ([]Step, res
 			resourcePlan.Ops = resourcePlan.Ops[1:]
 		}
 
-		resourcePlan, ok := sg.deployment.newPlan[s.URN()]
+		resourcePlan, ok := sg.deployment.newPlans.get(s.URN())
 		if !ok {
 			// TODO(pdg-plan): using the program inputs means that non-determinism could sneak in as part of default
 			// application. However, it is necessary in the face of computed inputs.
 			resourcePlan = &ResourcePlan{Goal: event.Goal()}
-			sg.deployment.newPlan[s.URN()] = resourcePlan
+			sg.deployment.newPlans.set(s.URN(), resourcePlan)
 		}
 		resourcePlan.Ops = append(resourcePlan.Ops, s.Op())
 	}

@@ -13,6 +13,15 @@ func SerializeResourcePlan(plan *deploy.ResourcePlan, enc config.Encrypter, show
 		return apitype.ResourcePlanV1{}, err
 	}
 
+	var outputs map[string]interface{}
+	if plan.Outputs != nil {
+		outs, err := SerializeProperties(plan.Outputs, enc, showSecrets)
+		if err != nil {
+			return apitype.ResourcePlanV1{}, err
+		}
+		outputs = outs
+	}
+
 	goal := apitype.GoalV1{
 		Type:                    plan.Goal.Type,
 		Name:                    plan.Goal.Name,
@@ -37,8 +46,9 @@ func SerializeResourcePlan(plan *deploy.ResourcePlan, enc config.Encrypter, show
 	}
 
 	return apitype.ResourcePlanV1{
-		Goal:  goal,
-		Steps: steps,
+		Goal:    goal,
+		Steps:   steps,
+		Outputs: outputs,
 	}, nil
 }
 
@@ -58,6 +68,15 @@ func DeserializeResourcePlan(plan apitype.ResourcePlanV1, dec config.Decrypter, 
 	properties, err := DeserializeProperties(plan.Goal.Properties, dec, enc)
 	if err != nil {
 		return nil, err
+	}
+
+	var outputs resource.PropertyMap
+	if plan.Outputs != nil {
+		outs, err := DeserializeProperties(plan.Outputs, dec, enc)
+		if err != nil {
+			return nil, err
+		}
+		outputs = outs
 	}
 
 	goal := &resource.Goal{
@@ -84,8 +103,9 @@ func DeserializeResourcePlan(plan apitype.ResourcePlanV1, dec config.Decrypter, 
 	}
 
 	return &deploy.ResourcePlan{
-		Goal: goal,
-		Ops:  ops,
+		Goal:    goal,
+		Ops:     ops,
+		Outputs: outputs,
 	}, nil
 }
 
