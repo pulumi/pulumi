@@ -21,6 +21,8 @@
 - [auto/go,nodejs] Add UserAgent to update/pre/refresh/destroy options.
   [#6935](https://github.com/pulumi/pulumi/pull/6935)
 
+- [plugins] - It is now possible to opt out of loading plugins present on PATH but not installed explicitly, by setting the `PULUMI_IGNORE_AMBIENT_PLUGINS` environment variable to any non-empty value.
+
 ### Bug Fixes
 
 - [cli] Return an appropriate error when a user has not set `PULUMI_CONFIG_PASSPHRASE` nor `PULUMI_CONFIG_PASSPHRASE_FILE`
