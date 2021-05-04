@@ -26,6 +26,9 @@
 - [cli] Return an appropriate error when a user has not set `PULUMI_CONFIG_PASSPHRASE` nor `PULUMI_CONFIG_PASSPHRASE_FILE`
   when trying to access the Passphrase Secrets Manager
   [#6893](https://github.com/pulumi/pulumi/pull/6893)
+  
+- [cli] Prevent against panic when using a ResourceReference as a program output
+  [#6962](https://github.com/pulumi/pulumi/pull/6962)
 
 - [sdk/python] - Fix bug in MockResourceArgs.
   [#6863](https://github.com/pulumi/pulumi/pull/6863)
