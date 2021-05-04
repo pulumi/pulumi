@@ -458,7 +458,17 @@ describe("LocalWorkspace", () => {
         const dones = [];
         const stacks = [ "dev", "dev2", "dev3", "dev4", "dev5" ];
         const workDir = upath.joinSafe(__dirname, "data", "tcfg");
-        const ws = await LocalWorkspace.create({ workDir });
+        const ws = await LocalWorkspace.create({
+            workDir,
+            projectSettings: {
+                name: "concurrent-config",
+                runtime: "nodejs",
+                backend: { url: "file://~" },
+            },
+            envVars: {
+                "PULUMI_CONFIG_PASSPHRASE": "test",
+            },
+        });
         for (let i = 0; i < stacks.length; i++) {
             const x = i;
             const s = stacks[i];
