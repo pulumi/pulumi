@@ -1,7 +1,3 @@
-### Breaking Changes
-
-
-
 ### Enhancements
 
 - [auto/go] - Provide GetPermalink for all results
@@ -12,17 +8,11 @@
 
 - [automation/*] Optionally skip Automation API version check
   [#6882](https://github.com/pulumi/pulumi/pull/6882)
-
   The version check can be skipped by passing a non-empty value to the `PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK` environment variable.
-
-- [codegen/python] Lazy module import to improve CLI startup performance
-  [#6827](https://github.com/pulumi/pulumi/pull/6827)
 
 - [auto/go,nodejs] Add UserAgent to update/pre/refresh/destroy options.
   [#6935](https://github.com/pulumi/pulumi/pull/6935)
-
-- [plugins] - It is now possible to opt out of loading plugins present on PATH but not installed explicitly, by setting the `PULUMI_IGNORE_AMBIENT_PLUGINS` environment variable to any non-empty value.
-
+  
 ### Bug Fixes
 
 - [cli] Return an appropriate error when a user has not set `PULUMI_CONFIG_PASSPHRASE` nor `PULUMI_CONFIG_PASSPHRASE_FILE`
@@ -35,15 +25,6 @@
 - [sdk/python] - Fix bug in MockResourceArgs.
   [#6863](https://github.com/pulumi/pulumi/pull/6863)
 
-- [automation/dotnet] Fix EventLogWatcher failing to read events after an exception was thrown
-  [#6821](https://github.com/pulumi/pulumi/pull/6821)
-
-- [automation/dotnet] Use stackName in ImportStack
-  [#6858](https://github.com/pulumi/pulumi/pull/6858)
-  
-- [automation/go] Improve autoError message formatting
-  [#6924](https://github.com/pulumi/pulumi/pull/6924)
-
 - [sdk/python] Address issues when using resource subclasses.
   [#6890](https://github.com/pulumi/pulumi/pull/6890)
 
@@ -52,6 +33,15 @@
 
 - [sdk/python] Don't error when a dict input value has a mismatched type annotation.
   [#6949](https://github.com/pulumi/pulumi/pull/6949)
+
+- [automation/dotnet] Fix EventLogWatcher failing to read events after an exception was thrown
+  [#6821](https://github.com/pulumi/pulumi/pull/6821)
+
+- [automation/dotnet] Use stackName in ImportStack
+  [#6858](https://github.com/pulumi/pulumi/pull/6858)
+  
+- [automation/go] Improve autoError message formatting
+  [#6924](https://github.com/pulumi/pulumi/pull/6924)
 
 ### Misc.
 
