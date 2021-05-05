@@ -16,9 +16,7 @@
         {{- end -}}
         </span>
     </dt>
-    <dd>
-        {{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}
-        {{- if .DeprecationMessage -}}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
+    <dd>{{- print "{{% md %}}" -}}{{- htmlSafe .Comment -}}{{- print "{{% /md %}}" -}}{{- if .DeprecationMessage -}}<p class="property-message">Deprecated: {{ print "{{% md %}}" -}}{{- .DeprecationMessage -}}{{- print "{{% /md %}}" -}}</p>{{- end -}}
     </dd>
 {{- end -}}
 </dl>

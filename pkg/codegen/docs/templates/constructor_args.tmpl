@@ -9,9 +9,7 @@
         <span class="property-indicator"></span>
         <span class="property-type">{{- if eq .Type.Link "#" "" -}}{{- htmlSafe .Type.Name -}}{{- else -}}{{ template "linkify_constructor_args" .Type }}{{- end -}}</span>
     </dt>
-    <dd>
-      {{ .Comment }}
-    </dd>
+    <dd>{{- .Comment -}}</dd>
   {{- end -}}
 </dl>
 {{ end }}

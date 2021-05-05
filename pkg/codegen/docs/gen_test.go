@@ -552,6 +552,8 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join(testDir, tt.schemaDir, "schema.json"), generatePackage)
 			assert.NoError(t, err)
 
+			test.RewriteFilesWhenPulumiAccept(t, filepath.Join(testDir, tt.schemaDir), "docs", files)
+
 			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "docs", tt.expectedFiles)
 			assert.NoError(t, err)
 
