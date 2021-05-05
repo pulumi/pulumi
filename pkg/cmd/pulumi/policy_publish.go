@@ -80,7 +80,7 @@ func newPolicyPublishCmd() *cobra.Command {
 				return err
 			}
 
-			plugctx, err := plugin.NewContext(cmdutil.Diag(), cmdutil.Diag(), nil, nil, pwd,
+			plugctx, err := plugin.NewContextWithRoot(cmdutil.Diag(), cmdutil.Diag(), nil, nil, pwd, projinfo.Root,
 				projinfo.Proj.Runtime.Options(), false, nil)
 			if err != nil {
 				return err
