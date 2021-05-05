@@ -1,0 +1,8 @@
+version: '3'
+
+tasks:
+  gen:
+    sources:
+      - "*.proto"
+    cmds:
+      - ./generate.sh

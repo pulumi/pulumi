@@ -1,0 +1,41 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: cd .. && pulumictl get version
+
+tasks:
+  gen:
+    sources:
+      - ./codegen/docs/bundler.go
+      - ./codegen/docs/templates/*
+    cmds:
+      - go generate ./codegen/docs/gen.go
+
+  build-cli:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
+    deps:
+      - gen
+      - :sdk/proto:gen
+    cmds:
+      - go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version={{.VERSION}}" github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
+
+  build:
+    deps:
+      - build-cli
+
+  test-fast:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs .
+    deps:
+      - gen
+      - :sdk/proto:gen
+    cmds:
+      - go test ./...
+
+  test-all:
+    deps:
+      - test-fast

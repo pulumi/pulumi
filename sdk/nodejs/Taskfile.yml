@@ -1,0 +1,106 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: cd ../.. && pulumictl get version --language javascript
+
+tasks:
+  yarn-install:
+    sources:
+      - package.json
+    cmds:
+      - yarn install
+
+  run-tsc:
+    vars:
+      TS_SRCS:
+        sh: find . \( -path ./node_modules -o -path ./bin \) -prune -false -o -name "*.ts"
+    deps:
+      - yarn-install
+    sources:
+      - "{{.TS_SRCS}}"
+    cmds:
+      - ./node_modules/.bin/tsc
+
+  build-sdk:
+    deps:
+      - run-tsc
+      - :sdk/proto:gen
+    sources:
+      - tests/runtime/jsClosureCases_8.js
+      - tests/runtime/jsClosureCases_10_4.js
+      - tests/automation/data/**
+      - README.md
+      - ../../LICENSE
+      - package.json
+      - dist/**
+      - ../../scripts/reversion.js
+      - proto/**
+      - tests/runtime/langhost/cases/**
+    cmds:
+      - cp tests/runtime/jsClosureCases_8.js bin/tests/runtime
+      - cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime
+      - cp -R tests/automation/data/. bin/tests/automation/data/
+      - cp README.md ../../LICENSE package.json ./dist/* bin/
+      - node ../../scripts/reversion.js bin/package.json {{.VERSION}}
+      - node ../../scripts/reversion.js bin/version.js {{.VERSION}}
+      - cp -R proto/. bin/proto/
+      - mkdir -p bin/tests/runtime/langhost/cases/
+      - find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \;
+
+  build-language-host:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs ./cmd/pulumi-language-nodejs
+    deps:
+      - :sdk/proto:gen
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.VERSION}}" github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
+
+  build:
+    deps:
+      - build-sdk
+      - build-language-host
+
+  test-sdk:
+    deps:
+      - yarn-install
+      - build
+    cmds:
+      - ./node_modules/.bin/istanbul test --print none ./node_modules/.bin/_mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js' 
+      - ./node_modules/.bin/istanbul report text-summary
+      - ./node_modules/.bin/istanbul report text
+      - ./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+
+  test-auto:
+    deps:
+      - :build
+    cmds:
+      - ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
+      - ./node_modules/.bin/istanbul report text-summary
+      - ./node_modules/.bin/istanbul report text
+
+  test-go:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs .
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - go test -count=1 -cover ./...
+
+  test-fast:
+    deps:
+      - test-sdk
+      - test-go
+
+  test-slow:
+    deps:
+      - test-auto
+
+  test-all:
+    deps:
+      - test-fast
+      - test-slow

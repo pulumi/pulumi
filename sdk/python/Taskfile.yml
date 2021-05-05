@@ -1,0 +1,89 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: cd ../.. && pulumictl get version
+  PYPI_VERSION:
+    sh: cd ../.. && pulumictl get version --language python
+  PYENV: ./env
+  PYENVSRC: "{{.PYENV}}/src"
+
+tasks:
+  pipenv-install:
+    sources:
+      - Pipfile
+      - Pipfile.lock
+    cmds:
+      - pipenv install --dev
+      - mkdir -p {{.PYENVSRC}}
+
+  build-sdk:
+    deps:
+      - pipenv-install
+      - :sdk/proto:gen
+    sources:
+      - ./lib/**
+      - ../../README.md
+    cmds:
+      - rm -rf {{.PYENVSRC}} && cp -R ./lib/. {{.PYENVSRC}}/
+      - sed -i.bak "s/\${VERSION}/{{.PYPI_VERSION}}/g" {{.PYENVSRC}}/setup.py && rm {{.PYENVSRC}}/setup.py.bak
+      - cp ../../README.md {{.PYENVSRC}}
+      - cd {{.PYENVSRC}} && pipenv run python setup.py build bdist_wheel --universal
+
+  build-language-host:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs ./cmd/pulumi-language-python
+    deps:
+      - :sdk/proto:gen
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.VERSION}}" github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
+
+  build:
+    deps:
+      - build-sdk
+      - build-language-host
+
+  test-go:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs .
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - go test -count=1 -cover ./...
+
+  test-install:
+    deps:
+      - build
+    cmds:
+      - pipenv run pip install ./env/src
+
+  test-sdk:
+    deps:
+      - test-install
+    cmds:
+      # TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
+      - pipenv run pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py
+      - pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
+      # Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
+      - pushd lib/test_with_mocks ; pipenv run python -m pytest ; popd
+
+  test-fast:
+    deps:
+      - test-go
+      - test-sdk
+
+  test-slow:
+    deps:
+      - test-install
+      - :build
+    cmds:
+      - pipenv run pytest lib/test/automation 
+
+  test-all:
+    deps:
+      - test-fast
+      - test-slow

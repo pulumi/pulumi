@@ -35,7 +35,7 @@
         "@types/semver": "^5.5.0",
         "@types/split2": "^2.1.6",
         "istanbul": "^0.4.5",
-        "mocha": "^3.5.0",
+        "mocha": "^8.3.2",
         "tslint": "^5.11.0"
     },
     "pulumi": {

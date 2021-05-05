@@ -1,0 +1,50 @@
+version: '3'
+
+vars:
+  DOTNET_VERSION:
+    sh: cd ../.. && pulumictl get version --language dotnet
+
+tasks:
+  build-sdk:
+    vars:
+      SRCS:
+        sh: find . \( -name "bin" -o -name "obj" \) -prune -false -o -type f -path "./Pulumi*"
+    deps:
+      - :sdk/proto:gen
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - dotnet build dotnet.sln /p:Version={{.DOTNET_VERSION}}
+
+  build-language-host:
+    vars:
+      GO_SRCS:
+        sh: pulumictl get gosrcs .
+    deps:
+      - :sdk/proto:gen
+    sources:
+      - "{{.GO_SRCS}}"
+    cmds:
+      - go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
+
+  build:
+    deps:
+      - build-sdk
+      - build-language-host
+
+  test-fast:
+    deps:
+      - build
+    cmds:
+      - dotnet test --no-build --filter --filter FullyQualifiedName\!~Pulumi.Automation.Tests /p:Version={{.DOTNET_VERSION}}
+
+  test-slow:
+    deps:
+      - :build
+    cmds:
+      - dotnet test --no-build --filter --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version={{.DOTNET_VERSION}}
+
+  test-all:
+    deps:
+      - test-fast
+      - test-slow

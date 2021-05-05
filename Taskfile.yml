@@ -1,0 +1,33 @@
+version: '3'
+
+includes:
+  sdk/dotnet:
+    taskfile: ./sdk/dotnet/Taskfile.yml
+    dir: ./sdk/dotnet
+  sdk/go:
+    taskfile: ./sdk/go/Taskfile.yml
+    dir: ./sdk/go
+  sdk/nodejs:
+    taskfile: ./sdk/nodejs/Taskfile.yml
+    dir: ./sdk/nodejs
+  sdk/proto:
+    taskfile: ./sdk/proto/Taskfile.yml
+    dir: ./sdk/proto
+  sdk/python:
+    taskfile: ./sdk/python/Taskfile.yml
+    dir: ./sdk/python
+  pkg:
+    taskfile: ./pkg/Taskfile.yml
+    dir: ./pkg
+#  tests:
+#    taskfile: ./tests/Taskfile.yml
+#    dir: ./tests
+
+tasks:
+  build:
+    deps:
+      - sdk/dotnet:build
+      - sdk/go:build
+      - sdk/nodejs:build
+      - sdk/python:build
+      - pkg:build
