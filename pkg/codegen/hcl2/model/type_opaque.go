@@ -97,6 +97,9 @@ func (t *OpaqueType) AssignableFrom(src Type) bool {
 
 func (t *OpaqueType) conversionFromImpl(src Type, unifying, checkUnsafe bool, seen map[Type]struct{}) ConversionKind {
 	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+		if constType, ok := src.(*ConstType); ok {
+			return t.ConversionFrom(constType.Type)
+		}
 		switch {
 		case t == NumberType:
 			// src == NumberType is handled by t == src above

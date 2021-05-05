@@ -722,6 +722,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if _, isOpaqueType := ut.(*model.OpaqueType); isOpaqueType {
 				return g.argumentTypeName(expr, ut, isInput)
 			}
+			if ct, isConstType := ut.(*model.ConstType); isConstType {
+				return g.argumentTypeName(expr, ct.Type, isInput)
+			}
 		}
 		return "interface{}"
 	case *model.PromiseType:

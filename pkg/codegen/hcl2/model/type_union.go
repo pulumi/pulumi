@@ -28,13 +28,15 @@ import (
 type UnionType struct {
 	// ElementTypes are the allowable types for the union type.
 	ElementTypes []Type
+	// Annotations records any annotations associated with the object type.
+	Annotations []interface{}
 
 	s string
 }
 
-// NewUnionType creates a new union type with the given element types. Any element types that are union types are
-// replaced with their element types.
-func NewUnionType(types ...Type) Type {
+// NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
+// Any element types that are union types are replaced with their element types.
+func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
 	var elementTypes []Type
 	for _, t := range types {
 		if union, isUnion := t.(*UnionType); isUnion {
@@ -65,7 +67,19 @@ func NewUnionType(types ...Type) Type {
 		return elementTypes[0]
 	}
 
-	return &UnionType{ElementTypes: elementTypes}
+	return &UnionType{ElementTypes: elementTypes, Annotations: annotations}
+}
+
+// NewUnionType creates a new union type with the given element types. Any element types that are union types are
+// replaced with their element types.
+func NewUnionType(types ...Type) Type {
+	var annotations []interface{}
+	for _, t := range types {
+		if union, isUnion := t.(*UnionType); isUnion {
+			annotations = append(annotations, union.Annotations...)
+		}
+	}
+	return NewUnionTypeAnnotated(types, annotations...)
 }
 
 // NewOptionalType returns a new union(T, None).
@@ -201,7 +215,13 @@ func (t *UnionType) string(seen map[Type]struct{}) string {
 		for i, e := range t.ElementTypes {
 			elements[i] = e.string(seen)
 		}
-		t.s = fmt.Sprintf("union(%s)", strings.Join(elements, ", "))
+
+		annotations := ""
+		if len(t.Annotations) != 0 {
+			annotations = fmt.Sprintf(", annotated(%p)", t)
+		}
+
+		t.s = fmt.Sprintf("union(%s%v)", strings.Join(elements, ", "), annotations)
 	}
 	return t.s
 }

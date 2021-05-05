@@ -168,6 +168,10 @@ type UnionType struct {
 	// DefaultType is the default type, if any, for the union type. This can be used by targets that do not support
 	// unions, or in positions where unions are not appropriate.
 	DefaultType Type
+	// Discriminator informs the consumer of an alternative schema based on the value associated with it.
+	Discriminator string
+	// Mapping is an optional object to hold mappings between payload values and schema names or references.
+	Mapping map[string]string
 }
 
 func (t *UnionType) String() string {
@@ -652,6 +656,16 @@ type TypeSpec struct {
 	Items *TypeSpec `json:"items,omitempty"`
 	// OneOf indicates that values of the type may be one of any of the listed types.
 	OneOf []TypeSpec `json:"oneOf,omitempty"`
+	// Discriminator informs the consumer of an alternative schema based on the value associated with it.
+	Discriminator *DiscriminatorSpec `json:"discriminator,omitempty"`
+}
+
+// DiscriminatorSpec informs the consumer of an alternative schema based on the value associated with it.
+type DiscriminatorSpec struct {
+	// PropertyName is the name of the property in the payload that will hold the discriminator value.
+	PropertyName string `json:"propertyName"`
+	// Mapping is an optional object to hold mappings between payload values and schema names or references.
+	Mapping map[string]string `json:"mapping,omitempty"`
 }
 
 // DefaultSpec is the serializable form of extra information about the default value for a property.
@@ -1196,9 +1210,18 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			elements[i] = e
 		}
 
+		var discriminator string
+		var mapping map[string]string
+		if spec.Discriminator != nil {
+			discriminator = spec.Discriminator.PropertyName
+			mapping = spec.Discriminator.Mapping
+		}
+
 		union := &UnionType{
-			ElementTypes: elements,
-			DefaultType:  defaultType,
+			ElementTypes:  elements,
+			DefaultType:   defaultType,
+			Discriminator: discriminator,
+			Mapping:       mapping,
 		}
 		if typ, ok := t.unions[union.String()]; ok {
 			return typ, nil

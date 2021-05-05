@@ -50,7 +50,7 @@ func modifyInputs(
 	switch expr := x.(type) {
 	case *model.AnonymousFunctionExpression:
 		switch expr.Signature.ReturnType.(type) {
-		case *model.OpaqueType:
+		case *model.ConstType, *model.OpaqueType:
 			x = modf(x)
 		}
 	case *model.FunctionCallExpression:
@@ -65,7 +65,7 @@ func modifyInputs(
 			case *model.UnionType:
 				for _, t := range rt.ElementTypes {
 					switch t.(type) {
-					case *model.OpaqueType:
+					case *model.ConstType, *model.OpaqueType:
 						return modf(x)
 					}
 				}
@@ -76,7 +76,7 @@ func modifyInputs(
 	case *model.LiteralValueExpression:
 		t := expr.Type()
 		switch t.(type) {
-		case *model.OpaqueType:
+		case *model.ConstType, *model.OpaqueType:
 			x = modf(x)
 		}
 	case *model.ObjectConsExpression:
