@@ -94,6 +94,7 @@ func (diff *ObjectDiff) Paths() []PropertyPath {
 type ValueDiff struct {
 	Old    PropertyValue // the old value.
 	New    PropertyValue // the new value.
+	Secret *ValueDiff    // the secret value diff (only for secrets)
 	Array  *ArrayDiff    // the array's detailed diffs (only for arrays).
 	Object *ObjectDiff   // the object's detailed diffs (only for objects).
 }
@@ -283,6 +284,32 @@ func (v PropertyValue) diff(other PropertyValue, ignoreUnknowns bool, ignoreKeys
 		}
 		return nil
 	}
+	if v.IsSecret() && other.IsSecret() {
+		old, new := v.SecretValue().Element, other.SecretValue().Element
+		diff := old.diff(new, ignoreUnknowns, ignoreKeys)
+		if diff != nil {
+			return &ValueDiff{
+				Old:    v,
+				New:    other,
+				Secret: diff,
+			}
+		}
+		return nil
+	}
+	if v.IsResourceReference() && other.IsResourceReference() {
+		vr := v.ResourceReferenceValue()
+		or := other.ResourceReferenceValue()
+
+		if vr.URN != or.URN {
+			return &ValueDiff{Old: v, New: other}
+		}
+
+		vid, oid := vr.ID, or.ID
+		if vid.IsComputed() && ignoreUnknowns || vid.DeepEquals(oid) {
+			return nil
+		}
+		return &ValueDiff{Old: v, New: other}
+	}
 
 	// If we got here, either the values are primitives, or they weren't the same type; do a simple diff.
 	if v.DeepEquals(other) || ignoreUnknowns && (v.IsComputed() || v.IsOutput()) {
@@ -322,6 +349,11 @@ func (props PropertyMap) DeepEquals(other PropertyMap) bool {
 
 // DeepEquals returns true if this property map is deeply equal to the other property map; and false otherwise.
 func (v PropertyValue) DeepEquals(other PropertyValue) bool {
+	// Computed values are always equal.
+	if v.IsComputed() && other.IsComputed() {
+		return true
+	}
+
 	// Arrays are equal if they are both of the same size and elements are deeply equal.
 	if v.IsArray() {
 		if !other.IsArray() {
