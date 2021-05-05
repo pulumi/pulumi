@@ -1,0 +1,58 @@
+version: '3'
+
+vars:
+  VERSION:
+    sh: cd ../.. && pulumictl get version
+
+tasks:
+  gen:
+    sources:
+      - ./pulumi/generate.go
+      - ./pulumi/templates/**
+    cmds:
+      - go generate ./pulumi/...
+
+  build-sdk:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs ./auto ./common ./pulumi
+    deps:
+      - gen
+      - :sdk/proto:gen
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - go build ./auto/... ./common/... ./pulumi/...
+
+  build-language-host:
+    vars:
+      SRCS:
+        sh: pulumictl get gosrcs ./pulumi-language-go
+    deps:
+      - :sdk/proto:gen
+    sources:
+      - "{{.SRCS}}"
+    cmds:
+      - go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.VERSION}}" github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go
+
+  build:
+    deps:
+      - build-sdk
+      - build-language-host
+
+  test-fast:
+    deps:
+      - build
+    cmds:
+      - go test ./pulumi/... ./common/... ./pulumi-language-go/...
+
+  test-slow:
+    deps:
+      - :build
+    cmds:
+      - go test ./auto/...
+
+  test:
+    deps:
+      - test-fast
+      - test-slow
