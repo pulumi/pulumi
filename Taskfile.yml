@@ -1,0 +1,111 @@
+version: '3'
+
+vars:
+  PULUMI_ROOT: /opt/pulumi
+  PULUMI_BIN: "{{ .PULUMI_ROOT }}/bin"
+  PULUMI_NODE_MODULES: "{{ .PULUMI_ROOT }}/node_modules"
+  PULUMI_NUGET: "{{ .PULUMI_ROOT }}/nuget"
+  PULUMI_LOCAL_NUGET: "{{ .PULUMI_NUGET }}"
+  TESTPARALLELISM: 10
+
+tasks:
+  __default:
+    desc: A dev wrapper around ensure, lint, build + install
+    cmds:
+      - task: ensure
+      - task: lint
+      - task: build
+      - task: install
+      - task: unit-test
+
+  ensure:
+    cmds:
+      - task: pkg:ensure
+      - task: sdk:ensure
+      - task: tests:ensure
+      - task: dotnet:ensure
+      - task: go:ensure
+      - task: nodejs:ensure
+      - task: python:ensure
+
+  lint:
+    desc: Lint the CLI, Language SDKs and the tests folder
+    cmds:
+      - task: pkg:lint
+      - task: sdk:lint
+      - task: tests:lint
+      - task: dotnet:lint
+      - task: go:lint
+      - task: nodejs:lint
+      - task: python:lint
+
+  build-proto:
+    desc: Build the protos
+    cmds:
+      - task: proto:build-proto
+
+  build:
+    desc: Build the CLI + SDKs - this does not install the binaries
+    deps: [build-proto]
+    cmds:
+      - task: pkg:build
+      - task: sdk:build
+      - task: tests:build
+      - task: dotnet:build
+      - task: go:build
+      - task: nodejs:build
+      - task: python:build
+
+  install:
+    desc: Install the CLI + Language host binaries
+    cmds:
+      - task: pkg:install
+      - task: sdk:install
+      - task: tests:install
+      - task: dotnet:install
+      - task: go:install
+      - task: nodejs:install
+      - task: python:install
+
+  unit-test:
+    desc: Run unit tests of SDKs + CLI - these unit tests include some Automation API tests which are full integration tests
+    cmds:
+      - task: pkg:test
+      - task: dotnet:test
+      - task: go:test
+      - task: python:test
+      - task: nodejs:test
+
+  integration-tests:
+    desc: Run integration tests in tests folder - this runs all integration tests but each can be called individually
+    cmds:
+      - task tests:dotnet
+      - task tests:go
+      - task tests:nodejs
+      - task tests:python
+
+includes:
+  pkg:
+    taskfile: ./pkg/Taskfile.yml
+    dir: ./pkg
+  sdk:
+    taskfile: ./sdk/Taskfile.yml
+    dir: ./sdk
+  tests:
+    taskfile: ./tests/Taskfile.yml
+    dir: ./tests
+  dotnet:
+    taskfile: ./sdk/dotnet/Taskfile.yml
+    dir: ./sdk/dotnet
+  go:
+    taskfile: ./sdk/go/Taskfile.yml
+    dir: ./sdk/go
+  nodejs:
+    taskfile: ./sdk/nodejs/Taskfile.yml
+    dir: ./sdk/nodejs
+  python:
+    taskfile: ./sdk/python/Taskfile.yml
+    dir: ./sdk/python
+  proto:
+    taskfile: ./sdk/proto/Taskfile.yml
+    dir: ./sdk/proto

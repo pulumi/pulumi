@@ -1,0 +1,58 @@
+version: '3'
+
+tasks:
+  ensure:
+    cmds:
+      - go mod download
+    status:
+      - go mod verify
+
+  lint:
+    cmds:
+      - golangci-lint run -c ../.golangci.yml --timeout 5m
+
+  build:
+    cmds:
+      - ""
+
+  install:
+    cmds:
+      - ""
+
+  dotnet-integration:
+    cmds:
+      - PATH="{{ .PULUMI_BIN }}:$PATH" go test -count=1 -cover -timeout 1h -tags=dotnet -parallel {{ .TESTPARALLELISM }} ./integration/...
+
+  setup-go-integration-tests:
+    desc: These are the setup steps required for the Go integration tests to run
+    cmds:
+      - cd integration/construct_component/testcomponent-go && go build -o pulumi-resource-testcomponent
+      - cd integration/construct_component_plain/testcomponent-go && go build -o pulumi-resource-testcomponent
+
+  go-integration:
+    deps:
+      - setup-go-integration-tests
+    cmds:
+      - PATH="{{ .PULUMI_BIN }}:$PATH" go test -count=1 -cover -timeout 1h -tags=go -parallel {{ .TESTPARALLELISM }} ./integration/...
+
+  python-integration:
+    cmds:
+      - PATH="{{ .PULUMI_BIN }}:$PATH" go test -count=1 -cover -timeout 1h -tags=python -parallel {{ .TESTPARALLELISM }} ./integration/...
+
+  setup-nodejs-integration-tests:
+    desc: These are the setup steps required for the NodeJS integration tests to run
+    cmds:
+      - cd integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+      - cd integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+      - cd integration/construct_component_plain/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+
+  nodejs-integration:
+    deps:
+      - setup-nodejs-integration-tests
+    cmds:
+      - PATH="{{ .PULUMI_BIN }}:$PATH" go test -count=1 -cover -timeout 1h -tags=nodejs -parallel {{ .TESTPARALLELISM }} ./integration/...
+
+  integration:
+    desc: These are the non tagged integration tests in the tests repo - e.g. history / login / stack etc.
+    cmds:
+      - PATH="{{ .PULUMI_BIN }}:$PATH" go test -count=1 -cover -timeout 1h -parallel {{ .TESTPARALLELISM }} ./...

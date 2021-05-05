@@ -1,0 +1,56 @@
+version: '3'
+
+vars:
+  GO_PROJECT: "github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python"
+  GO_VERSION:
+    sh: cd ../../ && pulumictl get version && cd sdk/python
+
+tasks:
+  ensure:
+    cmds:
+      - ""
+
+  lint:
+    cmds:
+      - ""
+
+  generate:
+    cmds:
+      - go generate ./pulumi/...
+    sources:
+      - ./pulumi/generate.go
+    generates:
+      - ./pulumi/types_builtins.go
+      - ./pulumi/types_builtins_test.go
+      - ./pulumi/config/config.go
+      - ./pulumi/config/get.go
+      - ./pulumi/config/require.go
+      - ./pulumi/config/try.go
+    method: checksum
+
+  build:
+    deps: [ generate ]
+    cmds:
+      - go build -o ../../bin/pulumi-language-go -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.GO_VERSION}}" {{.GO_PROJECT}}
+    sources:
+      - ./cmd/pulumi-language-go/*.go
+    generates:
+      - ../../bin/pulumi-language-go
+    method: checksum
+
+  install:
+    deps: [ build ]
+    cmds:
+      - GOBIN={{.PULUMI_BIN}} go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.GO_VERSION}}" {{.GO_PROJECT}}
+    sources:
+      - ./cmd/pulumi-language-go/*.go
+    generates:
+      - "{{.PULUMI_BIN}}/pulumi-language-go"
+    method: checksum
+
+  test:
+    deps:
+      - task :install
+    cmds:
+      - cmd: go test -count=1 -cover -timeout 1h -parallel {{.TESTPARALLELISM}} ./...
+        ignore_error: true

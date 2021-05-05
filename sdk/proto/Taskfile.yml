@@ -1,0 +1,11 @@
+version: '3'
+
+tasks:
+  build-proto:
+    cmds:
+      - ./generate.sh
+    sources:
+      - ./*.proto
+    generates:
+      - ./go/*.pb.go
+    method: checksum

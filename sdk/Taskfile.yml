@@ -1,0 +1,20 @@
+version: '3'
+
+tasks:
+  ensure:
+    cmds:
+      - go mod download
+    status:
+      - go mod verify
+
+  lint:
+    cmds:
+      - golangci-lint run -c ../.golangci.yml --timeout 5m
+
+  build:
+    cmds:
+      - ""
+
+  install:
+    cmds:
+      - ""

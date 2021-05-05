@@ -1,0 +1,62 @@
+version: '3'
+
+vars:
+  CLI_PROJECT: "github.com/pulumi/pulumi/pkg/v3/cmd/pulumi"
+  CLI_VERSION:
+    sh: cd ../ && pulumictl get version && cd pkg
+
+tasks:
+  ensure:
+    cmds:
+      - go mod download
+    status:
+      - go mod verify
+
+  lint:
+    cmds:
+      - golangci-lint run -c ../.golangci.yml --timeout 5m
+
+  generate:
+    cmds:
+      - go generate ./codegen/docs/gen.go
+    sources:
+      - ./codegen/docs/gen.go
+    generates:
+      - ./codegen/docs/packaged.go
+    method: checksum
+
+  build:
+    deps: [generate]
+    cmds:
+      - go build -o ../bin/pulumi -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version={{.CLI_VERSION}}" {{.CLI_PROJECT}}
+    sources:
+      - ./cmd/pulumi/*.go
+    generates:
+      - ../bin/pulumi
+    method: checksum
+
+  build-debug:
+    deps: [ generate ]
+    cmds:
+      - go build -o ../bin/pulumi -gcflags="all=-N -l" -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version={{.CLI_VERSION}}" {{.CLI_PROJECT}}
+    sources:
+      - ./cmd/pulumi/*.go
+    generates:
+      - ../bin/pulumi
+    method: checksum
+
+  install:
+    deps: [build]
+    cmds:
+      - GOBIN={{.PULUMI_BIN}} go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version={{.CLI_VERSION}}" {{.CLI_PROJECT}}
+    sources:
+      - ./cmd/pulumi/*.go
+    generates:
+      - "{{.PULUMI_BIN}}/pulumi"
+    method: checksum
+
+  test:
+    deps: [ build ]
+    cmds:
+      - cmd: go test -count=1 -cover -timeout 1h -tags=all -parallel {{ .TESTPARALLELISM }} ./...
+        ignore_error: true

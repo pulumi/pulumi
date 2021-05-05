@@ -14,6 +14,10 @@ coverage.cov
 **/.idea/
 *.iml
 
+# Ignoring the task folder where it calculates the checksums for the files to understand if it
+# needs to do work
+.task/
+
 # VSCode creates this binary when running tests in the debugger
 **/debug.test
 

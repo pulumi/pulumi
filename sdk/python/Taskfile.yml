@@ -1,0 +1,68 @@
+version: '3'
+
+vars:
+  PYENV: "./env"
+  PYENVSRC: "{{ .PYENV }}/src"
+  PY_PROJECT: "github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go"
+  PY_VERSION:
+    sh: cd ../../ && pulumictl get version --language python && cd sdk/go
+
+tasks:
+  ensure:
+    cmds:
+      - pipenv install --dev
+      - mkdir -p "{{ .PYENVSRC }}"
+
+  lint:
+    cmds:
+      - MYPYPATH=./stubs pipenv run mypy ./lib/pulumi --config-file=mypy.ini
+      - pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
+
+  build-package:
+    cmds:
+      - rm -rf {{ .PYENVSRC }} && cp -R ./lib/. {{ .PYENVSRC }}/
+      - "sed -i.bak 's/${VERSION}/{{.PY_VERSION}}/g' {{.PYENVSRC}}/setup.py && rm {{.PYENVSRC}}/setup.py.bak"
+      - cp ../../README.md {{ .PYENVSRC }}
+      - cd {{ .PYENVSRC }} && pipenv run python setup.py build bdist_wheel --universal
+
+  build:
+    deps:
+      - build-package
+    cmds:
+      - go build -o ../../bin/pulumi-language-python -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.PY_VERSION}}" {{.PY_PROJECT}}
+    sources:
+      - ./cmd/pulumi-language-python/*.go
+    generates:
+      - ../../bin/pulumi-language-python
+    method: checksum
+
+  install-plugin:
+    cmds:
+      - cp ./cmd/pulumi-language-python-exec "{{.PULUMI_BIN}}"
+      - cp ./dist/pulumi-resource-pulumi-python "{{.PULUMI_BIN}}"
+      - cp ./dist/pulumi-analyzer-policy-python "{{.PULUMI_BIN}}"
+
+  install:
+    cmds:
+      - task: build
+      - task: install-plugin
+      - GOBIN={{.PULUMI_BIN}} go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={{.PY_VERSION}}" {{.PY_PROJECT}}
+    sources:
+      - ./cmd/pulumi-language-python/*.go
+    generates:
+      - "{{.PULUMI_BIN}}/pulumi-language-python"
+    method: checksum
+
+  pipenv-test:
+    cmds:
+      - pipenv run pip install ./env/src
+      - pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py
+      - pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
+      - pushd lib/test_with_mocks ; pipenv run python -m pytest ; popd
+
+  test:
+    cmds:
+      - task: install
+      - task: pipenv-test
+      - cmd: go test -count=1 -cover -timeout 1h -tags=all -parallel {{ .TESTPARALLELISM }} ./...
+        ignore_error: true
