@@ -63,10 +63,10 @@ const (
 func main() {
 	var tracing string
 	var virtualenv string
-	var configfile string
+	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&virtualenv, "virtualenv", "", "Virtual environment path to use")
-	flag.StringVar(&configfile, "configfile", "", "Path to Pulumi.yaml or similar config file")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -113,7 +113,7 @@ func main() {
 	}
 
 	// Resolve virtualenv path relative to configfile if given, otherwise cwd.
-	virtualenvPath := resolveVirtualEnvironmentPath(configfile, cwd, virtualenv)
+	virtualenvPath := resolveVirtualEnvironmentPath(root, cwd, virtualenv)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
@@ -196,19 +196,18 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
-func resolveRootPath(configfile, cwd string) string {
-	if configfile != "" {
-		return filepath.Dir(configfile)
-	}
-	return cwd
-}
-
-func resolveVirtualEnvironmentPath(configfile, cwd, virtualenv string) string {
+func resolveVirtualEnvironmentPath(root, cwd, virtualenv string) string {
 	if virtualenv == "" {
 		return ""
 	}
 	if !filepath.IsAbs(virtualenv) {
-		return filepath.Join(resolveRootPath(configfile, cwd), virtualenv)
+		var basepath string
+		if root == "" {
+			basepath = cwd
+		} else {
+			basepath = root
+		}
+		return filepath.Join(basepath, virtualenv)
 	}
 	return virtualenv
 }

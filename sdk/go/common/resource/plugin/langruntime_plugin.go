@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
@@ -60,8 +61,12 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
 
-	if project.ConfigFileLocation != "" && runtime == "python" {
-		args = append(args, fmt.Sprintf("-configfile=%s", project.ConfigFileLocation))
+	if runtime == "python" { // TODO drop Python, check other language hosts.
+		root, err := filepath.Abs(ctx.Root)
+		if err != nil {
+			return nil, err
+		}
+		args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
 	}
 
 	args = append(args, host.ServerAddr())
