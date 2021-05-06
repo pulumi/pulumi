@@ -35,7 +35,7 @@
 
 - [automation/dotnet] Use stackName in ImportStack
   [#6858](https://github.com/pulumi/pulumi/pull/6858)
-  
+
 - [automation/go] Improve autoError message formatting
   [#6924](https://github.com/pulumi/pulumi/pull/6924)
 
@@ -47,6 +47,9 @@
 
 - [sdk/python] Don't error when a dict input value has a mismatched type annotation.
   [#6949](https://github.com/pulumi/pulumi/pull/6949)
+
+- [sdk/python] Fix relative `runtime:options:virtualenv` path resolution to ignore `main` project attribute
+  [#6966](https://github.com/pulumi/pulumi/pull/6966)
 
 ### Misc.
 
