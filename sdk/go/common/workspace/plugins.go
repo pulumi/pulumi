@@ -580,13 +580,19 @@ func getPlugins(dir string) ([]PluginInfo, error) {
 
 // GetPluginPath finds a plugin's path by its kind, name, and optional version.  It will match the latest version that
 // is >= the version specified.  If no version is supplied, the latest plugin for that given kind/name pair is loaded,
-// using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH.
+// using standard semver sorting rules.  A plugin may be overridden entirely by placing it on your $PATH, though it is
+// possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
-	// If we have a version of the plugin on its $PATH, use it.  This supports development scenarios.
-	filename := (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
-	if path, err := exec.LookPath(filename); err == nil {
-		logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
-		return "", path, nil
+	var filename string
+
+	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
+	// This supports development scenarios.
+	if _, isFound := os.LookupEnv("PULUMI_IGNORE_AMBIENT_PLUGINS"); !isFound {
+		filename = (&PluginInfo{Kind: kind, Name: name, Version: version}).FilePrefix()
+		if path, err := exec.LookPath(filename); err == nil {
+			logging.V(6).Infof("GetPluginPath(%s, %s, %v): found on $PATH %s", kind, name, version, path)
+			return "", path, nil
+		}
 	}
 
 	// At some point in the future, language plugins will be located in the plugin cache, just like regular plugins

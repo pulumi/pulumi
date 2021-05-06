@@ -286,7 +286,7 @@ func inputTypeImpl(t Type, seen map[Type]Type) Type {
 		for i, t := range t.ElementTypes {
 			elementTypes[i] = inputTypeImpl(t, seen)
 		}
-		src = NewUnionType(elementTypes...)
+		src = NewUnionTypeAnnotated(elementTypes, t.Annotations...)
 	case *ObjectType:
 		properties := map[string]Type{}
 		src = NewObjectType(properties, t.Annotations...)

@@ -144,26 +144,26 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 
 // Tries to find the Passphrase first using `PULUMI_CONFIG_PASSPHRASE` then
 // `PULUMI_CONFIG_PASSPHRASE_FILE` if it is not found and defaulting to an empty string
-func getConfigPassphrase() (string, error) {
+func getConfigPassphrase() (string, bool, error) {
 	if passphrase, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); isOk {
-		return passphrase, nil
+		return passphrase, true, nil
 	}
 
 	if phraseFile, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); isOk {
 		phraseFilePath, err := filepath.Abs(phraseFile)
 		if err != nil {
-			return "", errors.Wrap(err, "unable to detect passphrase path")
+			return "", false, errors.Wrap(err, "unable to detect passphrase path")
 		}
 
 		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
 		if err != nil {
-			return "", errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
 		}
 
-		return strings.TrimSpace(string(phraseDetails)), nil
+		return strings.TrimSpace(string(phraseDetails)), true, nil
 	}
 
-	return "", nil
+	return "", false, nil
 }
 
 // NewPassphaseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
@@ -177,7 +177,7 @@ func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager
 	// This is not ideal, but we don't have a great way to prompt the user in this case, since this may be
 	// called during an update when trying to read stack outputs as part servicing a StackReference request
 	// (since we need to decrypt the deployment)
-	phrase, err := getConfigPassphrase()
+	phrase, isFound, err := getConfigPassphrase()
 	if err != nil {
 		return nil, err // this is already a wrapped error from getConfigPassphrase()
 	}
@@ -186,7 +186,7 @@ func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager
 	// not. Ideally, we would prompt the user for the passphrase at this point but we can't do that in the CLI is in an
 	// update operation, so we should at least error out with an appropriate message here to ensure that the user
 	// understands why the operation fails unexpectedly.
-	if phrase == "" {
+	if !isFound {
 		return nil, errors.New("unable to find either `PULUMI_CONFIG_PASSPHRASE` or " +
 			"`PULUMI_CONFIG_PASSPHRASE_FILE` when trying to access the Passphrase Secrets Provider; please ensure one " +
 			"of these environment variables is set to allow the operation to continue")
