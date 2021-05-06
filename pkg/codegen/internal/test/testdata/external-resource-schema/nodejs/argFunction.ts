@@ -22,7 +22,7 @@ export function argFunction(args?: ArgFunctionArgs, opts?: pulumi.InvokeOptions)
 }
 
 export interface ArgFunctionArgs {
-    readonly name?: random.RandomPet;
+    name?: random.RandomPet;
 }
 
 export interface ArgFunctionResult {

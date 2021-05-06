@@ -722,7 +722,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, true, true, 0)
+	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, true, false, 0)
 
 	return nil
 }
@@ -793,7 +793,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, true, 0)
+		mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, false, 0)
 	}
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")

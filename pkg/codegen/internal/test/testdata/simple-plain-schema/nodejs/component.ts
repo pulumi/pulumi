@@ -81,13 +81,13 @@ export class Component extends pulumi.ComponentResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    readonly a: boolean;
-    readonly b?: boolean;
-    readonly bar?: inputs.Foo;
-    readonly baz?: inputs.Foo[];
-    readonly c: number;
-    readonly d?: number;
-    readonly e: string;
-    readonly f?: string;
-    readonly foo?: pulumi.Input<inputs.FooArgs>;
+    a: boolean;
+    b?: boolean;
+    bar?: inputs.Foo;
+    baz?: inputs.Foo[];
+    c: number;
+    d?: number;
+    e: string;
+    f?: string;
+    foo?: pulumi.Input<inputs.FooArgs>;
 }
