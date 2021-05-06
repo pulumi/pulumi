@@ -77,10 +77,12 @@ const (
 func main() {
 	var tracing string
 	var typescript bool
+	var root string
 	flag.StringVar(&tracing, "tracing", "",
 		"Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.BoolVar(&typescript, "typescript", true,
 		"Use ts-node at runtime to support typescript source natively")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 	flag.Parse()
 
 	args := flag.Args()

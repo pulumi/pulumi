@@ -61,13 +61,11 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
 
-	if runtime == "python" { // TODO drop Python, check other language hosts.
-		root, err := filepath.Abs(ctx.Root)
-		if err != nil {
-			return nil, err
-		}
-		args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return nil, err
 	}
+	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
 
 	args = append(args, host.ServerAddr())
 

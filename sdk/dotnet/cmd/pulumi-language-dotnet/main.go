@@ -47,8 +47,10 @@ var (
 func main() {
 	var tracing string
 	var binary string
+	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "A relative or an absolute path to a precompiled .NET assembly to execute")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
