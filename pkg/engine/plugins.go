@@ -156,8 +156,8 @@ func ensurePluginsAreInstalled(plugins pluginSet) error {
 
 // ensurePluginsAreLoaded ensures that all of the plugins in the given plugin set that match the given plugin flags are
 // loaded.
-func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds plugin.Flags, project *workspace.Project) error {
-	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds, project)
+func ensurePluginsAreLoaded(plugctx *plugin.Context, plugins pluginSet, kinds plugin.Flags) error {
+	return plugctx.Host.EnsurePlugins(plugins.Values(), kinds)
 }
 
 // installPlugin installs a plugin from the given backend client.

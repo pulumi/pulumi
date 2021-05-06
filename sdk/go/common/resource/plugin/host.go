@@ -66,13 +66,13 @@ type Host interface {
 	CloseProvider(provider Provider) error
 	// LanguageRuntime fetches the language runtime plugin for a given language, lazily allocating if necessary.  If
 	// an implementation of this language runtime wasn't found, on an error occurs, a non-nil error is returned.
-	LanguageRuntime(runtime string, project *workspace.Project) (LanguageRuntime, error)
+	LanguageRuntime(runtime string) (LanguageRuntime, error)
 
 	// ListPlugins lists all plugins that have been loaded, with version information.
 	ListPlugins() []workspace.PluginInfo
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
-	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags, project *workspace.Project) error
+	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -304,7 +304,7 @@ func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (
 	return plugin.(Provider), nil
 }
 
-func (host *defaultHost) LanguageRuntime(runtime string, project *workspace.Project) (LanguageRuntime, error) {
+func (host *defaultHost) LanguageRuntime(runtime string) (LanguageRuntime, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// First see if we already loaded this plugin.
 		if plug, has := host.languagePlugins[runtime]; has {
@@ -313,7 +313,7 @@ func (host *defaultHost) LanguageRuntime(runtime string, project *workspace.Proj
 		}
 
 		// If not, allocate a new one.
-		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions, project)
+		plug, err := NewLanguageRuntime(host, host.ctx, runtime, host.runtimeOptions)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -339,7 +339,7 @@ func (host *defaultHost) ListPlugins() []workspace.PluginInfo {
 
 // EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 // and/or there are errors loading one or more plugins, a non-nil error is returned.
-func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags, project *workspace.Project) error {
+func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error {
 	// Use a multieerror to track failures so we can return one big list of all failures at the end.
 	var result error
 	for _, plugin := range plugins {
@@ -353,7 +353,7 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 			}
 		case workspace.LanguagePlugin:
 			if kinds&LanguagePlugins != 0 {
-				if _, err := host.LanguageRuntime(plugin.Name, project); err != nil {
+				if _, err := host.LanguageRuntime(plugin.Name); err != nil {
 					result = multierror.Append(result,
 						errors.Wrapf(err, "failed to load language plugin %s", plugin.Name))
 				}
@@ -452,7 +452,7 @@ func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.Plug
 	if kinds&LanguagePlugins != 0 {
 		// First make sure the language plugin is present.  We need this to load the required resource plugins.
 		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name(), info.Proj)
+		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
 		}

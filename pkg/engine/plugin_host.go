@@ -20,7 +20,6 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -45,6 +44,6 @@ func connectToLanguageRuntime(ctx *plugin.Context, address string) (plugin.Host,
 	}, nil
 }
 
-func (host *clientLanguageRuntimeHost) LanguageRuntime(runtime string, project *workspace.Project) (plugin.LanguageRuntime, error) {
+func (host *clientLanguageRuntimeHost) LanguageRuntime(runtime string) (plugin.LanguageRuntime, error) {
 	return host.languageRuntime, nil
 }

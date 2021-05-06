@@ -371,7 +371,7 @@ func newUpdateSource(
 	// loaded up and ready to go. Provider plugins are loaded lazily by the provider registry and thus don't
 	// need to be loaded here.
 	const kinds = plugin.AnalyzerPlugins | plugin.LanguagePlugins
-	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds, proj); err != nil {
+	if err := ensurePluginsAreLoaded(plugctx, allPlugins, kinds); err != nil {
 		return nil, err
 	}
 

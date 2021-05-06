@@ -68,7 +68,7 @@ func newDestroySource(
 	}
 
 	// We don't need the language plugin, since destroy doesn't run code, so we will leave that out.
-	if err := ensurePluginsAreLoaded(plugctx, plugins, plugin.AnalyzerPlugins, proj); err != nil {
+	if err := ensurePluginsAreLoaded(plugctx, plugins, plugin.AnalyzerPlugins); err != nil {
 		return nil, err
 	}
 
