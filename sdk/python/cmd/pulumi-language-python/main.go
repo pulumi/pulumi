@@ -153,7 +153,9 @@ type pythonLanguageHost struct {
 	virtualenvPath string
 }
 
-func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv, virtualenvPath string) pulumirpc.LanguageRuntimeServer {
+func newLanguageHost(exec, engineAddress, tracing, cwd, virtualenv,
+	virtualenvPath string) pulumirpc.LanguageRuntimeServer {
+
 	return &pythonLanguageHost{
 		cwd:            cwd,
 		exec:           exec,
