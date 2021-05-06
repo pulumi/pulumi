@@ -49,6 +49,15 @@ func TestGeneratePackage(t *testing.T) {
 			},
 		},
 		{
+			"Simple schema with local resource properties and custom Python package name",
+			"simple-resource-schema-custom-pypackage-name",
+			[]string{
+				filepath.Join("custom_py_package", "resource.py"),
+				filepath.Join("custom_py_package", "other_resource.py"),
+				filepath.Join("custom_py_package", "arg_function.py"),
+			},
+		},
+		{
 			"External resource schema",
 			"external-resource-schema",
 			[]string{

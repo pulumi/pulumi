@@ -33,6 +33,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -91,6 +92,7 @@ func title(s string) string {
 type modContext struct {
 	pkg                  *schema.Package
 	mod                  string
+	pyPkgName            string
 	types                []*schema.ObjectType
 	enums                []*schema.EnumType
 	resources            []*schema.Resource
@@ -379,7 +381,7 @@ func (fs fs) add(path string, contents []byte) {
 }
 
 func (mod *modContext) gen(fs fs) error {
-	dir := path.Join(pyPack(mod.pkg.Name), mod.mod)
+	dir := path.Join(mod.pyPkgName, mod.mod)
 
 	var exports []string
 	for p := range fs {
@@ -533,7 +535,7 @@ func (mod *modContext) unqualifiedImportName() string {
 func (mod *modContext) fullyQualifiedImportName() string {
 	name := mod.unqualifiedImportName()
 	if mod.parent == nil && name == "" {
-		return pyPack(mod.pkg.Name)
+		return mod.pyPkgName
 	}
 	if mod.parent == nil {
 		return fmt.Sprintf("%s.%s", pyPack(mod.pkg.Name), name)
@@ -1516,7 +1518,7 @@ func genPulumiPluginFile(pkg *schema.Package) ([]byte, error) {
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
 func genPackageMetadata(
-	tool string, pkg *schema.Package, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
+	tool string, pkg *schema.Package, pyPkgName string, emitPulumiPluginFile bool, requires map[string]string) (string, error) {
 
 	w := &bytes.Buffer{}
 	(&modContext{tool: tool}).genHeader(w, false /*needsSDK*/, nil)
@@ -1559,7 +1561,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "\n\n")
 
 	// Finally, the actual setup part.
-	fmt.Fprintf(w, "setup(name='%s',\n", pyPack(pkg.Name))
+	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
 	fmt.Fprintf(w, "      version='${VERSION}',\n")
 	if pkg.Description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
@@ -1594,7 +1596,7 @@ func genPackageMetadata(
 
 	// Publish type metadata: PEP 561
 	fmt.Fprintf(w, "      package_data={\n")
-	fmt.Fprintf(w, "          '%s': [\n", pyPack(pkg.Name))
+	fmt.Fprintf(w, "          '%s': [\n", pyPkgName)
 	fmt.Fprintf(w, "              'py.typed',\n")
 	if emitPulumiPluginFile {
 		fmt.Fprintf(w, "              'pulumiplugin.json',\n")
@@ -2235,6 +2237,12 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 	seenTypes := codegen.Set{}
 	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 
+	// determine whether to use the default Python package name
+	pyPkgName := info.PackageName
+	if pyPkgName == "" {
+		pyPkgName = fmt.Sprintf("pulumi_%s", strings.ReplaceAll(pkg.Name, "-", "_"))
+	}
+
 	// group resources, types, and functions into modules
 	modules := map[string]*modContext{}
 
@@ -2244,6 +2252,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		if !ok {
 			mod = &modContext{
 				pkg:                  p,
+				pyPkgName:            pyPkgName,
 				mod:                  modName,
 				tool:                 tool,
 				snakeCaseToCamelCase: snakeCaseToCamelCase,
@@ -2447,9 +2456,14 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		return nil, err
 	}
 
+	pkgName := info.PackageName
+	if pkgName == "" {
+		pkgName = pyPack(pkg.Name)
+	}
+
 	files := fs{}
 	for p, f := range extraFiles {
-		files.add(filepath.Join(pyPack(pkg.Name), p), f)
+		files.add(filepath.Join(pkgName, p), f)
 	}
 
 	for _, mod := range modules {
@@ -2464,11 +2478,11 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		if err != nil {
 			return nil, err
 		}
-		files.add(filepath.Join(pyPack(pkg.Name), "pulumiplugin.json"), plugin)
+		files.add(filepath.Join(pkgName, "pulumiplugin.json"), plugin)
 	}
 
 	// Finally emit the package metadata (setup.py).
-	setup, err := genPackageMetadata(tool, pkg, info.EmitPulumiPluginFile, info.Requires)
+	setup, err := genPackageMetadata(tool, pkg, pkgName, info.EmitPulumiPluginFile, info.Requires)
 	if err != nil {
 		return nil, err
 	}
