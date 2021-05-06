@@ -112,8 +112,8 @@ func main() {
 		engineAddress = args[0]
 	}
 
-	// Resolve virtualenv path relative to configfile if given, otherwise cwd.
-	virtualenvPath := resolveVirtualEnvironmentPath(root, cwd, virtualenv)
+	// Resolve virtualenv path relative to root.
+	virtualenvPath := resolveVirtualEnvironmentPath(root, virtualenv)
 
 	// Fire up a gRPC server, letting the kernel choose a free port.
 	port, done, err := rpcutil.Serve(0, nil, []func(*grpc.Server) error{
@@ -196,18 +196,12 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 	return &pulumirpc.GetRequiredPluginsResponse{Plugins: plugins}, nil
 }
 
-func resolveVirtualEnvironmentPath(root, cwd, virtualenv string) string {
+func resolveVirtualEnvironmentPath(root, virtualenv string) string {
 	if virtualenv == "" {
 		return ""
 	}
 	if !filepath.IsAbs(virtualenv) {
-		var basepath string
-		if root == "" {
-			basepath = cwd
-		} else {
-			basepath = root
-		}
-		return filepath.Join(basepath, virtualenv)
+		return filepath.Join(root, virtualenv)
 	}
 	return virtualenv
 }
