@@ -442,9 +442,12 @@ export async function main(provider: Provider, args: string[]) {
     const uncaughtHandler = (err: Error) => {
         if (!uncaughtErrors.has(err)) {
             uncaughtErrors.add(err);
-            // Use `pulumi.log.error` here to tell the engine there was a fatal error, which should
-            // stop processing subsequent resource operations.
-            log.error(err.stack || err.message || ("" + err));
+
+            // log the first error we see, kill any outstanding work, and exit.
+            log.error(err.stack || err.message || ("" + err)).then(() => {
+                runtime.disconnectSync();
+                process.exit(-1);
+            });
         }
     };
 
