@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "../../log";
+
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
 // if we do not, unhandled rejections in particular may cause us to exit with a 0 exit code, which
@@ -33,7 +35,7 @@ let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
     if (!programRunning && !loggedErrors.has(err)) {
-        console.error(err.stack || err.message || ("" + err));
+        log.error(err.stack || err.message || ("" + err));
         // dedupe errors that we're reporting when the program is not running
         loggedErrors.add(err);
     }
