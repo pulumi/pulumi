@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Serilog;
 using Pulumi.Testing;
 
 namespace Pulumi
@@ -188,7 +189,11 @@ namespace Pulumi
             Func<Deployment> deploymentFactory,
             Func<IRunner, Task<int>> runAsync)
         {
-            // Serilog.Log.Logger = new LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
+            var enableVerboseLogging = Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE");
+            if (enableVerboseLogging != null && enableVerboseLogging != "")
+            {
+                Serilog.Log.Logger = new Serilog.LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
+            }
 
             Serilog.Log.Debug("Deployment.Run called.");
             Serilog.Log.Debug("Creating new Deployment.");
