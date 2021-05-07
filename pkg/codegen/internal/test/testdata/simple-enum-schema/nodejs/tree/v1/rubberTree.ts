@@ -75,7 +75,7 @@ export class RubberTree extends pulumi.CustomResource {
 }
 
 export interface RubberTreeState {
-    readonly farm?: pulumi.Input<enums.tree.v1.Farm | string>;
+    farm?: pulumi.Input<enums.tree.v1.Farm | string>;
 }
 
 /**

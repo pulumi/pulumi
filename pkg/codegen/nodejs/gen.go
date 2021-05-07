@@ -716,7 +716,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the state type for get methods.
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, true, true, 0)
+		mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, true, false, 0)
 	}
 
 	// Emit the argument type for construction.
