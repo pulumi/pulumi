@@ -53,6 +53,20 @@ func RegisterOutputType(output Output) {
 	}
 }
 
+type waitGroups []*sync.WaitGroup
+
+func (wgs waitGroups) add() {
+	for _, g := range wgs {
+		g.Add(1)
+	}
+}
+
+func (wgs waitGroups) done() {
+	for _, g := range wgs {
+		g.Done()
+	}
+}
+
 const (
 	outputPending = iota
 	outputResolved
@@ -63,6 +77,8 @@ const (
 type OutputState struct {
 	mutex sync.Mutex
 	cond  *sync.Cond
+
+	join *sync.WaitGroup // the wait group associated with this output, if any.
 
 	state uint32 // one of output{Pending,Resolved,Rejected}
 
@@ -106,6 +122,10 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 
 	if o.state != outputPending {
 		return
+	}
+
+	if o.join != nil {
+		defer o.join.Done()
 	}
 
 	if err != nil {
@@ -184,8 +204,13 @@ func (o *OutputState) getState() *OutputState {
 	return o
 }
 
-func newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
+func newOutputState(join *sync.WaitGroup, elementType reflect.Type, deps ...Resource) *OutputState {
+	if join != nil {
+		join.Add(1)
+	}
+
 	out := &OutputState{
+		join:    join,
 		element: elementType,
 		deps:    deps,
 	}
@@ -196,7 +221,7 @@ func newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
 var outputStateType = reflect.TypeOf((*OutputState)(nil))
 var outputTypeToOutputState sync.Map // map[reflect.Type]int
 
-func newOutput(typ reflect.Type, deps ...Resource) Output {
+func newOutput(wg *sync.WaitGroup, typ reflect.Type, deps ...Resource) Output {
 	contract.Assert(typ.Implements(outputType))
 
 	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
@@ -219,16 +244,13 @@ func newOutput(typ reflect.Type, deps ...Resource) Output {
 
 	// Create the new output.
 	output := reflect.New(typ).Elem()
-	state := newOutputState(output.Interface().(Output).ElementType(), deps...)
+	state := newOutputState(wg, output.Interface().(Output).ElementType(), deps...)
 	output.Field(outputFieldV.(int)).Set(reflect.ValueOf(state))
 	return output.Interface().(Output)
 }
 
-// NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
-// function returns the output itself, plus two functions: one for resolving a value, and another for rejecting with an
-// error; exactly one function must be called. This acts like a promise.
-func NewOutput() (Output, func(interface{}), func(error)) {
-	out := newOutputState(anyType)
+func newAnyOutput(wg *sync.WaitGroup) (Output, func(interface{}), func(error)) {
+	out := newOutputState(wg, anyType)
 
 	resolve := func(v interface{}) {
 		out.resolve(v, true, false, nil)
@@ -238,6 +260,13 @@ func NewOutput() (Output, func(interface{}), func(error)) {
 	}
 
 	return AnyOutput{out}, resolve, reject
+}
+
+// NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
+// function returns the output itself, plus two functions: one for resolving a value, and another for rejecting with an
+// error; exactly one function must be called. This acts like a promise.
+func NewOutput() (Output, func(interface{}), func(error)) {
+	return newAnyOutput(nil)
 }
 
 var contextType = reflect.TypeOf((*context.Context)(nil)).Elem()
@@ -368,7 +397,7 @@ func (o *OutputState) ApplyTWithContext(ctx context.Context, applier interface{}
 		resultType = ot.(reflect.Type)
 	}
 
-	result := newOutput(resultType, o.dependencies()...)
+	result := newOutput(o.join, resultType, o.dependencies()...)
 	go func() {
 		v, known, secret, deps, err := o.getState().await(ctx)
 		if err != nil || !known {
@@ -406,7 +435,7 @@ func Unsecret(input Output) Output {
 // UnsecretWithContext will unwrap a secret output as a new output with a resolved value and no secretness
 func UnsecretWithContext(ctx context.Context, input Output) Output {
 	var x bool
-	o := toOutputWithContext(ctx, input, &x)
+	o := toOutputWithContext(ctx, input.getState().join, input, &x)
 	// set immediate secretness ahead of resolution/fulfillment
 	o.getState().secret = false
 	return o
@@ -422,7 +451,7 @@ func ToSecret(input interface{}) Output {
 // that will resolve when all Inputs contained in the given value have resolved.
 func ToSecretWithContext(ctx context.Context, input interface{}) Output {
 	x := true
-	o := toOutputWithContext(ctx, input, &x)
+	o := toOutputWithContext(ctx, nil, input, &x)
 	// set immediate secretness ahead of resolution/fufillment
 	o.getState().secret = true
 	return o
@@ -442,32 +471,44 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-func gatherDependencies(v interface{}) []Resource {
+func gatherDependencies(v interface{}) ([]Resource, waitGroups) {
 	if v == nil {
-		return nil
+		return nil, nil
 	}
 
 	depSet := make(map[Resource]struct{})
-	gatherDependencySet(reflect.ValueOf(v), depSet)
+	joinSet := make(map[*sync.WaitGroup]struct{})
+	gatherDependencySet(reflect.ValueOf(v), depSet, joinSet)
 
-	if len(depSet) == 0 {
-		return nil
+	var joins waitGroups
+	if len(joinSet) > 0 {
+		joins = make([]*sync.WaitGroup, 0, len(joinSet))
+		for j := range joinSet {
+			joins = append(joins, j)
+		}
 	}
 
-	deps := make([]Resource, 0, len(depSet))
-	for d := range depSet {
-		deps = append(deps, d)
+	var deps []Resource
+	if len(depSet) > 0 {
+		deps = make([]Resource, 0, len(depSet))
+		for d := range depSet {
+			deps = append(deps, d)
+		}
 	}
-	return deps
+
+	return deps, joins
 }
 
 var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
 
-func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
+func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*sync.WaitGroup]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
 		if v.Type().Implements(outputType) && v.CanInterface() {
 			output := v.Convert(outputType).Interface().(Output)
+			if join := output.getState().join; join != nil {
+				joins[join] = struct{}{}
+			}
 			for _, d := range output.getState().dependencies() {
 				deps[d] = struct{}{}
 			}
@@ -492,18 +533,18 @@ func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}) {
 		case reflect.Struct:
 			numFields := v.Type().NumField()
 			for i := 0; i < numFields; i++ {
-				gatherDependencySet(v.Field(i), deps)
+				gatherDependencySet(v.Field(i), deps, joins)
 			}
 		case reflect.Array, reflect.Slice:
 			l := v.Len()
 			for i := 0; i < l; i++ {
-				gatherDependencySet(v.Index(i), deps)
+				gatherDependencySet(v.Index(i), deps, joins)
 			}
 		case reflect.Map:
 			iter := v.MapRange()
 			for iter.Next() {
-				gatherDependencySet(iter.Key(), deps)
-				gatherDependencySet(iter.Value(), deps)
+				gatherDependencySet(iter.Key(), deps, joins)
+				gatherDependencySet(iter.Value(), deps, joins)
 			}
 		}
 		return
@@ -719,6 +760,48 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	return known, secret, deps, err
 }
 
+func toOutputTWithContext(ctx context.Context, join *sync.WaitGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
+	deps, joins := gatherDependencies(v)
+
+	done := joins.done
+	if join == nil {
+		switch len(joins) {
+		case 0:
+			// OK
+		case 1:
+			join, joins, done = joins[0], nil, func() {}
+		default:
+			join = &sync.WaitGroup{}
+			done = func() {
+				join.Wait()
+				joins.done()
+			}
+		}
+	}
+	joins.add()
+
+	output := newOutput(join, outputType, deps...)
+	go func() {
+		defer done()
+
+		if v == nil {
+			output.getState().fulfill(nil, true, false, nil, nil)
+			return
+		}
+
+		known, secret, deps, err := awaitInputs(ctx, reflect.ValueOf(v), result)
+		if forceSecretVal != nil {
+			secret = *forceSecretVal
+		}
+		if err != nil || !known {
+			output.getState().fulfill(nil, known, secret, deps, err)
+			return
+		}
+		output.getState().resolveValue(result, true, secret, deps)
+	}()
+	return output
+}
+
 // ToOutput returns an Output that will resolve when all Inputs contained in the given value have resolved.
 func ToOutput(v interface{}) Output {
 	return ToOutputWithContext(context.Background(), v)
@@ -727,41 +810,25 @@ func ToOutput(v interface{}) Output {
 // ToOutputWithContext returns an Output that will resolve when all Outputs contained in the given value have
 // resolved.
 func ToOutputWithContext(ctx context.Context, v interface{}) Output {
-	return toOutputWithContext(ctx, v, nil)
+	return toOutputWithContext(ctx, nil, v, nil)
 }
 
-func toOutputWithContext(ctx context.Context, v interface{}, forceSecretVal *bool) Output {
-	resolvedType := reflect.TypeOf(v)
+func toOutputWithContext(ctx context.Context, join *sync.WaitGroup, v interface{}, forceSecretVal *bool) Output {
+	resultType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
-		resolvedType = input.ElementType()
+		resultType = input.ElementType()
+	}
+	var result reflect.Value
+	if v != nil {
+		result = reflect.New(resultType).Elem()
 	}
 
-	resultType := anyOutputType
-	if ot, ok := concreteTypeToOutputType.Load(resolvedType); ok {
-		resultType = ot.(reflect.Type)
+	outputType := anyOutputType
+	if ot, ok := concreteTypeToOutputType.Load(resultType); ok {
+		outputType = ot.(reflect.Type)
 	}
 
-	result := newOutput(resultType, gatherDependencies(v)...)
-	go func() {
-		if v == nil {
-			result.getState().fulfill(nil, true, false, nil, nil)
-			return
-		}
-
-		element := reflect.New(resolvedType).Elem()
-
-		known, secret, deps, err := awaitInputs(ctx, reflect.ValueOf(v), element)
-		if forceSecretVal != nil {
-			secret = *forceSecretVal
-		}
-		if err != nil || !known {
-			result.getState().fulfill(nil, known, secret, deps, err)
-			return
-		}
-
-		result.getState().resolveValue(element, true, secret, deps)
-	}()
-	return result
+	return toOutputTWithContext(ctx, join, outputType, v, result, forceSecretVal)
 }
 
 // Input is the type of a generic input value for a Pulumi resource. This type is used in conjunction with Output
@@ -835,18 +902,12 @@ func Any(v interface{}) AnyOutput {
 }
 
 func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
-	// Return an output that resolves when all nested inputs have resolved.
-	out := newOutput(anyOutputType, gatherDependencies(v)...)
-	go func() {
-		if v == nil {
-			out.getState().fulfill(nil, true, false, nil, nil)
-			return
-		}
-		var result interface{}
-		known, secret, deps, err := awaitInputs(ctx, reflect.ValueOf(v), reflect.ValueOf(&result).Elem())
-		out.getState().fulfill(result, known, secret, deps, err)
-	}()
-	return out.(AnyOutput)
+	return anyWithContext(ctx, nil, v)
+}
+
+func anyWithContext(ctx context.Context, join *sync.WaitGroup, v interface{}) AnyOutput {
+	var result interface{}
+	return toOutputTWithContext(ctx, join, anyOutputType, v, reflect.ValueOf(&result).Elem(), nil).(AnyOutput)
 }
 
 type AnyOutput struct{ *OutputState }

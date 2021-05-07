@@ -1,7 +1,9 @@
+//nolint: goconst
 package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
@@ -384,4 +386,379 @@ func TestRegisterResourceWithResourceReferences(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
+}
+
+func TestWaitOrphanedApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		res.ID().ApplyT(func(id ID) int {
+			theID = id
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedNestedApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		ctx.Export("urn", res.URN().ApplyT(func(urn URN) URN {
+			res.ID().ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return urn
+		}))
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedAllApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+			theURN, _ = vs[0].(URN)
+			theID, _ = vs[1].(ID)
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedAnyApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		Any(map[string]Output{
+			"urn": res.URN(),
+			"id":  res.ID(),
+		}).ApplyT(func(v interface{}) int {
+			m := v.(map[string]Output)
+			m["urn"].ApplyT(func(urn URN) int {
+				theURN = urn
+				return 0
+			})
+			m["id"].ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedContextAllApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		ctx.All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+			theURN, _ = vs[0].(URN)
+			theID, _ = vs[1].(ID)
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedContextAnyApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theURN URN
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		ctx.Any(map[string]Output{
+			"urn": res.URN(),
+			"id":  res.ID(),
+		}).ApplyT(func(v interface{}) int {
+			m := v.(map[string]Output)
+			m["urn"].ApplyT(func(urn URN) int {
+				theURN = urn
+				return 0
+			})
+			m["id"].ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.NotEqual(t, URN(""), theURN)
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitOrphanedResource(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var res testResource2
+	err := RunErr(func(ctx *Context) error {
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &res)
+		assert.NoError(t, err)
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(outputResolved), res.urn.state)
+	assert.Equal(t, uint32(outputResolved), res.id.state)
+}
+
+func TestWaitResourceInsideApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var innerRes testResource2
+	err := RunErr(func(ctx *Context) error {
+		var outerRes testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &outerRes)
+		assert.NoError(t, err)
+
+		outerRes.ID().ApplyT(func(_ ID) error {
+			return ctx.RegisterResource("test:resource:type", "resB", &testResource2Inputs{
+				Foo: String("foo"),
+			}, &innerRes)
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, uint32(outputResolved), innerRes.urn.state)
+	assert.Equal(t, uint32(outputResolved), innerRes.id.state)
+}
+
+func TestWaitOrphanedApplyOnResourceInsideApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var theID ID
+	err := RunErr(func(ctx *Context) error {
+		var outerRes testResource2
+		err := ctx.RegisterResource("test:resource:type", "resA", &testResource2Inputs{
+			Foo: String("oof"),
+		}, &outerRes)
+		assert.NoError(t, err)
+
+		outerRes.ID().ApplyT(func(_ ID) int {
+			var innerRes testResource2
+			err := ctx.RegisterResource("test:resource:type", "resB", &testResource2Inputs{
+				Foo: String("foo"),
+			}, &innerRes)
+			assert.NoError(t, err)
+
+			innerRes.ID().ApplyT(func(id ID) int {
+				theID = id
+				return 0
+			})
+			return 0
+		})
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, ID("someID"), theID)
+}
+
+func TestWaitRecursiveApply(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	resources := 0
+
+	var newResource func(ctx *Context, n int)
+	newResource = func(ctx *Context, n int) {
+		if n == 0 {
+			return
+		}
+
+		var res testResource2
+		err := ctx.RegisterResource("test:resource:type", fmt.Sprintf("res%d", n), &testResource2Inputs{
+			Foo: String(fmt.Sprintf("%d", n)),
+		}, &res)
+		assert.NoError(t, err)
+
+		resources++
+		res.ID().ApplyT(func(_ ID) int {
+			newResource(ctx, n-1)
+			return 0
+		})
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		newResource(ctx, 10)
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	assert.Equal(t, 10, resources)
+}
+
+func TestWaitOrphanedManualOutput(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	output := make(chan Output)
+	doResolve := make(chan bool)
+	done := make(chan bool)
+	go func() {
+		err := RunErr(func(ctx *Context) error {
+			out, resolve, _ := ctx.NewOutput()
+			go func() {
+				<-doResolve
+				resolve("foo")
+			}()
+			output <- out
+
+			return nil
+		}, WithMocks("project", "stack", mocks))
+		assert.NoError(t, err)
+
+		close(done)
+	}()
+
+	state := (<-output).getState()
+	assert.Equal(t, uint32(outputPending), state.state)
+	close(doResolve)
+
+	<-done
+	assert.Equal(t, uint32(outputResolved), state.state)
+	assert.Equal(t, "foo", state.value)
+}
+
+func TestWaitOrphanedDeprecatedOutput(t *testing.T) {
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			return "someID", resource.PropertyMap{"foo": resource.NewStringProperty("qux")}, nil
+		},
+	}
+
+	var output Output
+	err := RunErr(func(ctx *Context) error {
+		output, _, _ = NewOutput()
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+	assert.NoError(t, err)
+
+	state := output.getState()
+	assert.Equal(t, uint32(outputPending), state.state)
 }

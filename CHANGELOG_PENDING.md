@@ -30,3 +30,11 @@
 - Ensure that all outstanding asynchronous work is awaited before returning from a .NET
   Pulumi program.
   [#6993](https://github.com/pulumi/pulumi/pull/6993)
+
+- Config: Avoid emitting integers in objects using exponential notation.
+  [#7005](https://github.com/pulumi/pulumi/pull/7005)
+
+- Ensure that all outstanding asynchronous work is awaited before returning from a Go
+  Pulumi program. Note that this may require changes to programs that use the
+  `pulumi.NewOutput` API.
+  [#6983](https://github.com/pulumi/pulumi/pull/6983)

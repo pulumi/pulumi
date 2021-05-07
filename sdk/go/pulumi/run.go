@@ -109,10 +109,8 @@ func RunWithContext(ctx *Context, body RunFunc) error {
 		result = multierror.Append(result, err)
 	}
 
-	// Ensure all outstanding RPCs have completed before proceeding. Also, prevent any new RPCs from happening.
-	ctx.waitForRPCs()
-	if ctx.rpcError != nil {
-		return ctx.rpcError
+	if err = ctx.wait(); err != nil {
+		return err
 	}
 
 	// Propagate the error from the body, if any.
