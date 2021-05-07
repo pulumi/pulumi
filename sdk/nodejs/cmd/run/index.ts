@@ -32,8 +32,10 @@ const loggedErrors = new Set<Error>();
 let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
-    if (!programRunning) {
+    if (!programRunning && !loggedErrors.has(err)) {
         console.error(err.stack || err.message || ("" + err));
+        // dedupe errors that we're reporting when the program is not running
+        loggedErrors.add(err);
     }
 };
 
@@ -154,7 +156,8 @@ function main(args: string[]): void {
         const promise: Promise<void> = require("./run").run(
             argv,
             /*programStarted:   */ () => programRunning = true,
-            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err));
+            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
+            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err));
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.

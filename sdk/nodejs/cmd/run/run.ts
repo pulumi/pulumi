@@ -133,7 +133,8 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
 /** @internal */
 export function run(argv: minimist.ParsedArgs,
                     programStarted: () => void,
-                    reportLoggedError: (err: Error) => void) {
+                    reportLoggedError: (err: Error) => void,
+                    isErrorReported: (err: Error) => boolean) {
     // If there is a --pwd directive, switch directories.
     const pwd: string | undefined = argv["pwd"];
     if (pwd) {
@@ -174,18 +175,14 @@ export function run(argv: minimist.ParsedArgs,
     process.argv = [ process.argv[0], process.argv[1], ...programArgs ];
 
     // Set up the process uncaught exception, unhandled rejection, and program exit handlers.
-    const errorSet = new Set<Error>();
-
     const uncaughtHandler = (err: Error) => {
         // In node, if you throw an error in a chained promise, but the exception is not finally
         // handled, then you can end up getting an unhandledRejection for each exception/promise
         // pair.  Because the exception is the same through all of these, we keep track of it and
         // only report it once so the user doesn't get N messages for the same thing.
-        if (errorSet.has(err)) {
+        if (isErrorReported(err)) {
             return;
         }
-
-        errorSet.add(err);
 
         // Default message should be to include the full stack (which includes the message), or
         // fallback to just the message if we can't get the stack.
