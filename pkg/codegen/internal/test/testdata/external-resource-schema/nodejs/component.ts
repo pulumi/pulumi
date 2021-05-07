@@ -69,5 +69,5 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    readonly metadata?: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    metadata?: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
 }
