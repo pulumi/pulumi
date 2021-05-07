@@ -120,7 +120,7 @@ export function getResource(res: Resource, props: Inputs, custom: boolean, urn: 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.getResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
-            let resp: any;
+            let resp: any = {};
             let err: Error | undefined;
             try {
                 if (monitor) {
@@ -226,7 +226,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
-            let resp: any;
+            let resp: any = {};
             let err: Error | undefined;
             try {
                 if (monitor) {
@@ -340,7 +340,7 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.registerResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
-            let resp: any;
+            let resp: any = {};
             let err: Error | undefined;
             try {
                 if (monitor) {
