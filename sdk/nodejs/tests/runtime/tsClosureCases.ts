@@ -2734,6 +2734,71 @@ return () => C;
     }
 
     {
+        class C {
+            static get foo() {
+                throw new Error("This getter function should not be evaluated while closure serialization.")
+            }
+
+            static set foo(v: number) {
+                throw new Error("This setter function should not be evaluated while closure serialization.")
+            }
+        }
+
+        cases.push({
+            title: "Test getter/setter #2",
+            func: () => C,
+            expectText: `exports.handler = __f0;
+
+Object.defineProperty(__f1, "foo", { configurable: true, get: __f2, set: __f3 });
+
+function __f1() {
+  return (function() {
+    with({  }) {
+
+return function /*constructor*/() { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f2() {
+  return (function() {
+    with({  }) {
+
+return function /*foo*/() {
+                throw new Error("This getter function should not be evaluated while closure serialization.");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f3(__0) {
+  return (function() {
+    with({  }) {
+
+return function /*foo*/(v) {
+                throw new Error("This setter function should not be evaluated while closure serialization.");
+            };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f0() {
+  return (function() {
+    with({ C: __f1 }) {
+
+return () => C;
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
+
+    {
         const methodName = "method name";
         class C {
             [methodName](a: number) {
