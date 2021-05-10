@@ -1171,7 +1171,8 @@ namespace Pulumi.Automation.Tests
             {
                 WorkDir = workingDir
             });
-            var stackName = "teststack";
+            var stackName = $"{RandomStackName()}";
+
             var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
             try
             {
