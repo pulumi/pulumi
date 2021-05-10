@@ -45,6 +45,7 @@ import (
 var pulumiOrg = getTestOrg()
 
 const pName = "testproj"
+const agent = "pulumi/pulumi/test"
 
 func TestWorkspaceSecretsProvider(t *testing.T) {
 	ctx := context.Background()
@@ -171,7 +172,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
 
 	// -- pulumi up --
-	res, err := s.Up(ctx)
+	res, err := s.Up(ctx, optup.UserAgent(agent))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -198,7 +199,7 @@ func TestNewStackLocalSource(t *testing.T) {
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
 	go collectEvents(prevCh, &previewEvents)
-	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -209,7 +210,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi refresh --
 
-	ref, err := s.Refresh(ctx)
+	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
 
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
@@ -220,7 +221,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy(ctx)
+	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent))
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
@@ -772,7 +773,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	}
 
 	// -- pulumi up --
-	res, err := s.Up(ctx)
+	res, err := s.Up(ctx, optup.UserAgent(agent))
 	if err != nil {
 		t.Errorf("up failed, err: %v", err)
 		t.FailNow()
@@ -794,7 +795,7 @@ func TestNewStackInlineSource(t *testing.T) {
 	var previewEvents []events.EngineEvent
 	prevCh := make(chan events.EngineEvent)
 	go collectEvents(prevCh, &previewEvents)
-	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh))
+	prev, err := s.Preview(ctx, optpreview.EventStreams(prevCh), optpreview.UserAgent(agent))
 	if err != nil {
 		t.Errorf("preview failed, err: %v", err)
 		t.FailNow()
@@ -805,7 +806,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi refresh --
 
-	ref, err := s.Refresh(ctx)
+	ref, err := s.Refresh(ctx, optrefresh.UserAgent(agent))
 
 	if err != nil {
 		t.Errorf("refresh failed, err: %v", err)
@@ -816,7 +817,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	// -- pulumi destroy --
 
-	dRes, err := s.Destroy(ctx)
+	dRes, err := s.Destroy(ctx, optdestroy.UserAgent(agent))
 	if err != nil {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()

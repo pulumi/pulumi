@@ -1,0 +1,127 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example::Object": {
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        },
+        "bar": {
+          "type": "string"
+        },
+        "others": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/example::SomeOtherObject"
+            }
+          },
+          "description": "List of lists of other objects"
+        },
+        "configs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/example::ConfigMap"
+          }
+        },
+        "stillOthers": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/example::SomeOtherObject"
+            }
+          },
+          "description": "Mapping from string to list of some other object"
+        }
+      },
+      "type": "object"
+    },
+    "example::OtherResourceOutput": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::SomeOtherObject": {
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ConfigMap": {
+      "properties": {
+        "config": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example::Resource": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::OtherResource": {
+      "isComponent": true,
+      "properties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "functions": {
+    "example::argFunction": {
+      "inputs": {
+        "properties": {
+          "arg1": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "result": {
+            "$ref": "#/resources/example::Resource"
+          }
+        }
+      }
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example"
+    },
+    "nodejs": {},
+    "python": {
+      "packageName": "custom_py_package"
+    }
+  }
+}

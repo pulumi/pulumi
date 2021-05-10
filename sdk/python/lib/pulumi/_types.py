@@ -407,13 +407,13 @@ def _create_py_property(a_name: str, pulumi_name: str, typ: Any, setter: bool = 
 
 
 def _py_properties(cls: type) -> Iterator[Tuple[str, str, builtins.property]]:
-    for python_name, v in cls.__dict__.items():
-        if isinstance(v, builtins.property):
-            prop = cast(builtins.property, v)
-            pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
-            if pulumi_name is not MISSING:
-                yield (python_name, pulumi_name, prop)
-
+    for base in reversed(cls.__mro__):
+        for python_name, v in base.__dict__.items():
+            if isinstance(v, builtins.property):
+                prop = cast(builtins.property, v)
+                pulumi_name = getattr(prop.fget, _PULUMI_NAME, MISSING)
+                if pulumi_name is not MISSING:
+                    yield (python_name, pulumi_name, prop)
 
 def input_type(cls: Type[T]) -> Type[T]:
     """
@@ -657,6 +657,13 @@ else:
         return None
 
     def get_args(tp):
+        # Emulate the behavior of get_args for Union on Python 3.6.
+        if _is_union_type(tp) and hasattr(tp, "_subs_tree"):
+            tree = tp._subs_tree()
+            if isinstance(tree, tuple) and len(tree) > 1:
+                def _eval(args):
+                    return tuple(arg if not isinstance(arg, tuple) else arg[0][_eval(arg[1:])] for arg in args)
+                return _eval(tree[1:])
         if hasattr(tp, "__args__"):
             return tp.__args__
         return ()
@@ -678,6 +685,21 @@ def _is_optional_type(tp):
     return False
 
 
+def _globals_for_cls(cls: type) -> Optional[Dict[str, Any]]:
+    """
+    Returns a dict of globals for the class and its base classes.
+    """
+    globalns = None
+    for base in reversed(cls.__mro__):
+        if base.__module__ in sys.modules:
+            globals = sys.modules[base.__module__].__dict__
+            if globalns is None:
+                globalns = dict(globals)
+            else:
+                globalns.update(globals)
+    return globalns
+
+
 def _types_from_py_properties(cls: type) -> Dict[str, type]:
     """
     Returns a dict of Pulumi names to types for a type.
@@ -696,14 +718,14 @@ def _types_from_py_properties(cls: type) -> Dict[str, type]:
     # (either via the @output_type decorator, which converts class annotations into Python
     # properties, or via the @getter decorator, which replaces empty getter functions) and
     # therefore has __globals__ of this SDK module.
-    globalns = None
-    if cls.__module__ in sys.modules:
-        globalns = dict(sys.modules[cls.__module__].__dict__)
+    globalns = _globals_for_cls(cls)
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
-    # Additionally, include the `T` TypeVar, which is needed for Input and InputType.
-    localns = {"Output": Output, "T": TypeVar("T")}  # type: ignore
+    # Additionally, include a value for "T", which is needed for Input and InputType.
+    # We use the NoneType for the value of "T" because using TypeVar here doesn't work on Python 3.6
+    # and it doesn't matter what the value is for our purposes.
+    localns = {"Output": Output, "T": type(None)}  # type: ignore
 
     # Build-up a dictionary of Pulumi property names to types by looping through all the
     # Python properties on the class that have a getter marked as a Pulumi property getter,
@@ -760,14 +782,14 @@ def _types_from_annotations(cls: type) -> Dict[str, type]:
     dynamic_cls = type(cls.__name__, (object,), dynamic_cls_attrs)
 
     # Pass along globals for the cls, to help resolve forward references.
-    globalns = None
-    if getattr(cls, "__module__", None) in sys.modules:
-        globalns = dict(sys.modules[cls.__module__].__dict__)
+    globalns = _globals_for_cls(cls)
 
     # Pass along Output as a local, as it is a forward reference type annotation on the base
     # CustomResource class that can be instantiated directly (which our tests do).
-    # Additionally, include the `T` TypeVar, which is needed for Input and InputType.
-    localns = {"Output": Output, "T": TypeVar("T")}  # type: ignore
+    # Additionally, include a value for "T", which is needed for Input and InputType.
+    # We use the NoneType for the value of "T" because using TypeVar here doesn't work on Python 3.6
+    # and it doesn't matter what the value is for our purposes.
+    localns = {"Output": Output, "T": type(None)}  # type: ignore
 
     # Get the type hints, resolving any forward references.
     cls_hints = get_type_hints(dynamic_cls, globalns=globalns, localns=localns)
@@ -901,7 +923,8 @@ def unwrap_type(val: type) -> type:
 
         def isInput(args, i = 1):
             assert len(args) > i + 1
-            return get_origin(args[i]) is collections.abc.Awaitable and get_origin(args[i + 1]) is Output
+            return (get_origin(args[i]) in {typing.Awaitable, collections.abc.Awaitable} and
+                get_origin(args[i + 1]) is Output)
 
         args = get_args(val)
         if len(args) == 2:

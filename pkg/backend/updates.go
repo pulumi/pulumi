@@ -88,6 +88,8 @@ const (
 
 	// ExecutionKind indicates how the update was executed. One of "cli", "auto.local", or "auto.inline".
 	ExecutionKind = "exec.kind"
+	// ExecutionAgent indicates the user agent of the updater for automated scenarios (GHA, Kubernetes Operator).
+	ExecutionAgent = "exec.agent"
 )
 
 // UpdateInfo describes a previous update.

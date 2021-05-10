@@ -122,6 +122,19 @@ func TestGeneratePackage(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"Simple schema with root package set",
+			"simple-plain-schema-with-root-package",
+			[]string{
+				filepath.Join("doc.go"),
+				filepath.Join("init.go"),
+				filepath.Join("component.go"),
+				filepath.Join("provider.go"),
+				filepath.Join("pulumiTypes.go"),
+				filepath.Join("pulumiUtilities.go"),
+			},
+			false,
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
