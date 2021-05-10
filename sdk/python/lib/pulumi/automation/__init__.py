@@ -152,6 +152,7 @@ from ._output import (
 )
 
 from ._project_settings import (
+    ProjectBackend,
     ProjectSettings,
     ProjectRuntimeInfo,
 )
@@ -228,6 +229,7 @@ __all__ = [
     "OutputValue",
 
     # _project_settings
+    "ProjectBackend",
     "ProjectSettings",
     "ProjectRuntimeInfo",
 

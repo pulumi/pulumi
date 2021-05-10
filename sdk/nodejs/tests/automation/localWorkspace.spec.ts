@@ -62,24 +62,26 @@ describe("LocalWorkspace", () => {
     }));
 
     it(`create/select/remove LocalWorkspace stack`, asyncTest(async () => {
+        const projectName = "node_test";
         const projectSettings: ProjectSettings = {
-            name: "node_test",
+            name: projectName,
             runtime: "nodejs",
         };
         const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         await ws.createStack(stackName);
         await ws.selectStack(stackName);
         await ws.removeStack(stackName);
     }));
 
     it(`create/select/createOrSelect Stack`, asyncTest(async () => {
+        const projectName = "node_test";
         const projectSettings: ProjectSettings = {
-            name: "node_test",
+            name: projectName,
             runtime: "nodejs",
         };
         const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         await Stack.create(stackName, ws);
         await Stack.select(stackName, ws);
         await Stack.createOrSelect(stackName, ws);
@@ -92,7 +94,7 @@ describe("LocalWorkspace", () => {
             runtime: "nodejs",
         };
         const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
 
         const config = {
@@ -130,7 +132,7 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     }));
     it(`nested_config`, asyncTest(async () => {
-        const stackName = fullyQualifiedStackName("pulumi-test", "nested_config", "dev");
+        const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
 
@@ -152,15 +154,16 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(list.value, "[\"one\",\"two\",\"three\"]");
     }));
     it(`can list stacks and currently selected stack`, asyncTest(async () => {
+        const projectName = `node_list_test${getTestSuffix()}`;
         const projectSettings: ProjectSettings = {
-            name: `node_list_test${getTestSuffix()}`,
+            name: projectName,
             runtime: "nodejs",
         };
         const ws = await LocalWorkspace.create({ projectSettings });
         const stackNamer = () => `int_test${getTestSuffix()}`;
         const stackNames: string[] = [];
         for (let i = 0; i < 2; i++) {
-            const stackName = stackNamer();
+            const stackName = fullyQualifiedStackName(getTestOrg(), projectName, stackNamer());
             stackNames[i] = stackName;
             await Stack.create(stackName, ws);
             const stackSummary = await ws.stack();
@@ -174,12 +177,13 @@ describe("LocalWorkspace", () => {
         }
     }));
     it(`stack status methods`, asyncTest(async () => {
+        const projectName = "node_test";
         const projectSettings: ProjectSettings = {
-            name: "node_test",
+            name: projectName,
             runtime: "nodejs",
         };
         const ws = await LocalWorkspace.create({ projectSettings });
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await Stack.create(stackName, ws);
         const history = await stack.history();
         assert.strictEqual(history.length, 0);
@@ -188,7 +192,7 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     }));
     it(`runs through the stack lifecycle with a local program`, asyncTest(async () => {
-        const stackName = `int_test${getTestSuffix()}`;
+        const stackName = fullyQualifiedStackName(getTestOrg(), "testproj", `int_test${getTestSuffix()}`);
         const workDir = upath.joinSafe(__dirname, "data", "testproj");
         const stack = await LocalWorkspace.createStack({ stackName, workDir });
 
@@ -235,8 +239,8 @@ describe("LocalWorkspace", () => {
                 exp_secret: config.getSecret("buzz"),
             };
         };
-        const stackName = `int_test${getTestSuffix()}`;
         const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const stackConfig: ConfigMap = {
@@ -282,8 +286,8 @@ describe("LocalWorkspace", () => {
                 exp_secret: config.getSecret("buzz"),
             };
         };
-        const stackName = `int_test${getTestSuffix()}`;
         const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const stackConfig: ConfigMap = {
@@ -342,8 +346,8 @@ describe("LocalWorkspace", () => {
                 exp_secret: config.getSecret("buzz"),
             };
         };
-        const stackName = `int_test${getTestSuffix()}`;
         const projectName = "import_export_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         try {
@@ -376,8 +380,8 @@ describe("LocalWorkspace", () => {
                 exp_secret: config.getSecret("buzz"),
             };
         };
-        const stackName = `int_test${getTestSuffix()}`;
         const projectName = "import_export_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         const assertOutputs = (outputs: OutputMap) => {
@@ -423,8 +427,8 @@ describe("LocalWorkspace", () => {
             Promise.reject(new Error());
             return {};
         };
-        const stackName = `int_test${getTestSuffix()}`;
         const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
 
         // pulumi up
@@ -443,14 +447,15 @@ describe("LocalWorkspace", () => {
         assert.strictEqual(versionRegex.test(ws.pulumiVersion), true);
     }));
     it(`respects existing project settings`, asyncTest(async () => {
-        const stackName = `int_test${getTestSuffix()}`;
-        const projectName = "project_was_overwritten";
+        const projectName = "correct_project";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
         const stack = await LocalWorkspace.createStack(
             {stackName, projectName, program: async() => { return; }},
             {workDir: upath.joinSafe(__dirname, "data", "correct_project")},
         );
         const projectSettings = await stack.workspace.projectSettings();
         assert.strictEqual(projectSettings.name, "correct_project");
+        // the description check is enough to verify that the stack wasn't overwritten
         assert.strictEqual(projectSettings.description, "This is a description");
         await stack.workspace.removeStack(stackName);
     }));
@@ -587,4 +592,12 @@ const normalizeConfigKey = (key: string, projectName: string) => {
         return `${projectName}:${key}`;
     }
     return "";
+};
+
+const getTestOrg = () => {
+    let testOrg = "pulumi-test";
+    if (process.env.PULUMI_TEST_ORG) {
+        testOrg = process.env.PULUMI_TEST_ORG;
+    }
+    return testOrg;
 };
