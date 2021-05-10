@@ -14,3 +14,6 @@
 
  - [auto/python] - Export missing `ProjectBackend` type
    [#6984](https://github.com/pulumi/pulumi/pull/6984)
+
+ - Config: Avoid emitting integers in objects using exponential notation.
+   [#7005](https://github.com/pulumi/pulumi/pull/7005)
