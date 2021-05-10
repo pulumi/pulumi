@@ -5,7 +5,6 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -14,6 +13,7 @@ using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 using Xunit;
 using System.Collections.Immutable;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Pulumi.Automation.Tests
 {
@@ -418,6 +418,7 @@ namespace Pulumi.Automation.Tests
                     ["exp_secret"] = config.GetSecret("buzz"),
                 };
             });
+            Assert.IsType<PulumiFnInline>(program);
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_node";
@@ -806,9 +807,81 @@ namespace Pulumi.Automation.Tests
         public async Task StackLifecycleInlineProgramWithTStack()
         {
             var program = PulumiFn.Create<ValidStack>();
+            Assert.IsType<PulumiFn<ValidStack>>(program);
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_tstack_node";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["bar"] = new ConfigValue("abc"),
+                ["buzz"] = new ConfigValue("secret", isSecret: true),
+            };
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.Equal(3, upResult.Outputs.Count);
+
+                // exp_static
+                Assert.True(upResult.Outputs.TryGetValue("exp_static", out var expStaticValue));
+                Assert.Equal("foo", expStaticValue!.Value);
+                Assert.False(expStaticValue.IsSecret);
+
+                // exp_cfg
+                Assert.True(upResult.Outputs.TryGetValue("exp_cfg", out var expConfigValue));
+                Assert.Equal("abc", expConfigValue!.Value);
+                Assert.False(expConfigValue.IsSecret);
+
+                // exp_secret
+                Assert.True(upResult.Outputs.TryGetValue("exp_secret", out var expSecretValue));
+                Assert.Equal("secret", expSecretValue!.Value);
+                Assert.True(expSecretValue.IsSecret);
+
+                // pulumi preview
+                var previewResult = await stack.PreviewAsync();
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(1, sameCount);
+
+                // pulumi refresh
+                var refreshResult = await stack.RefreshAsync();
+                Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
+
+                // pulumi destroy
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task StackLifecycleInlineProgramWithServiceProvider()
+        {
+            using var provider = new ServiceCollection()
+                .AddTransient<ValidStack>() // must be transient so it is instantiated each time
+                .BuildServiceProvider();
+
+            var program = PulumiFn.Create<ValidStack>(provider);
+            Assert.IsType<PulumiFnServiceProvider>(program);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_serviceprovider_node";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
                 EnvironmentVariables = new Dictionary<string, string?>()
@@ -874,6 +947,7 @@ namespace Pulumi.Automation.Tests
             const string projectName = "exception_inline_node";
             var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
+            Assert.IsType<PulumiFnInline>(program);
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {
@@ -906,6 +980,36 @@ namespace Pulumi.Automation.Tests
             const string projectName = "exception_inline_tstack_node";
             var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>();
+            Assert.IsType<PulumiFn<FileNotFoundStack>>(program);
+
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTask = stack.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTask);
+
+            var upTask = stack.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTask);
+        }
+
+        [Fact]
+        public async Task InlineProgramExceptionPropagatesToCallerWithServiceProvider()
+        {
+            using var provider = new ServiceCollection()
+                .AddTransient<FileNotFoundStack>() // must be transient so it is instantiated each time
+                .BuildServiceProvider();
+
+            const string projectName = "exception_inline_serviceprovider_node";
+            var stackName = $"{RandomStackName()}";
+            var program = PulumiFn.Create<FileNotFoundStack>(provider);
+            Assert.IsType<PulumiFnServiceProvider>(program);
 
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
             {

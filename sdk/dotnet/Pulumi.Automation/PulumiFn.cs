@@ -102,22 +102,21 @@ namespace Pulumi.Automation
         ///     using the <paramref name="serviceProvider"/>.
         /// </summary>
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
+        /// <param name="serviceProvider">The service provider that will be used to resolve an instance of <typeparamref name="TStack"/>.</param>
         public static PulumiFn Create<TStack>(IServiceProvider serviceProvider)
             where TStack : Pulumi.Stack
-        {
-            if (serviceProvider is null)
-                throw new ArgumentNullException(nameof(serviceProvider));
+            => new PulumiFnServiceProvider(serviceProvider, typeof(TStack));
 
-            return new PulumiFn<TStack>(
-                () =>
-                {
-                    if (serviceProvider is null)
-                        throw new ArgumentNullException(nameof(serviceProvider), $"The provided service provider was null by the time this {nameof(PulumiFn)} was invoked.");
-
-                    return serviceProvider.GetService(typeof(TStack)) as TStack
-                        ?? throw new ApplicationException(
-                            $"Failed to resolve instance of type {typeof(TStack)} from service provider. Register the type with the service provider before this {nameof(PulumiFn)} is invoked.");
-                });
-        }
+        /// <summary>
+        /// Creates an inline (in process) pulumi program via a traditional <see cref="Pulumi.Stack"/> implementation.
+        /// <para/>
+        ///     When invoked, a new stack instance will be resolved based
+        ///     on the provided <paramref name="stackType"/> type parameter
+        ///     using the <paramref name="serviceProvider"/>.
+        /// </summary>
+        /// <param name="serviceProvider">The service provider that will be used to resolve an instance of type <paramref name="stackType"/>.</param>
+        /// <param name="stackType">The stack type, which must derive from <see cref="Pulumi.Stack"/>.</param>
+        public static PulumiFn Create(IServiceProvider serviceProvider, Type stackType)
+            => new PulumiFnServiceProvider(serviceProvider, stackType);
     }
 }
