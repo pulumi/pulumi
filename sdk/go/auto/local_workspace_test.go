@@ -1126,6 +1126,9 @@ func TestImportExportStack(t *testing.T) {
 }
 
 func TestNestedConfig(t *testing.T) {
+	if getTestOrg() != "pulumi-test" {
+		return
+	}
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName(pulumiOrg, "nested_config", "dev")
 

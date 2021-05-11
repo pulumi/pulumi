@@ -132,6 +132,9 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     }));
     it(`nested_config`, asyncTest(async () => {
+        if (getTestOrg() !== "pulumi-test") {
+            return;
+        }
         const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
