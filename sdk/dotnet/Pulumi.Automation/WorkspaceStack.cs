@@ -658,6 +658,12 @@ namespace Pulumi.Automation
                     .ConfigureWebHostDefaults(webBuilder =>
                     {
                         webBuilder
+                            .ConfigureAppConfiguration((context, config) =>
+                            {
+                                // clear so we don't read appsettings.json
+                                // note that we also won't read environment variables for config
+                                config.Sources.Clear();
+                            })
                             .ConfigureKestrel(kestrelOptions =>
                             {
                                 kestrelOptions.Listen(IPAddress.Any, 0, listenOptions =>
@@ -667,8 +673,6 @@ namespace Pulumi.Automation
                             })
                             .ConfigureServices(services =>
                             {
-                                services.AddLogging();
-
                                 // to be injected into LanguageRuntimeService
                                 var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
                                 services.AddSingleton(callerContext);
