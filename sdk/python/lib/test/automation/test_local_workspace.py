@@ -63,8 +63,16 @@ def test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
 
 
-def stack_namer():
-    return f"int_test_{get_test_suffix()}"
+def get_test_org():
+    test_org = "pulumi-test"
+    env_var = os.getenv("PULUMI_TEST_ORG")
+    if env_var is not None:
+        test_org = env_var
+    return test_org
+
+
+def stack_namer(project_name):
+    return fully_qualified_stack_name(get_test_org(), project_name, f"int_test_{get_test_suffix()}")
 
 
 def normalize_config_key(key: str, project_name: str):
@@ -201,9 +209,10 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNotNone(result.user)
 
     def test_stack_init(self):
-        project_settings = ProjectSettings(name="python_test", runtime="python")
+        project_name = "python_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
 
         Stack.create(stack_name, ws)
         # Trying to create the stack again throws an error
@@ -218,7 +227,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
@@ -255,7 +264,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
@@ -276,6 +285,8 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_nested_config(self):
+        if get_test_org() != "pulumi-test":
+            return
         stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
         project_dir = test_path("data", "nested_config")
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
@@ -298,9 +309,10 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(arr.value, "[\"one\",\"two\",\"three\"]")
 
     def test_stack_status_methods(self):
-        project_settings = ProjectSettings(name="python_test", runtime="python")
+        project_name = "python_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
         history = stack.history()
@@ -311,8 +323,9 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_stack_lifecycle_local_program(self):
-        stack_name = stack_namer()
-        work_dir = test_path("data", "testproj")
+        project_name = "testproj"
+        stack_name = stack_namer(project_name)
+        work_dir = test_path("data", project_name)
         stack = create_stack(stack_name, work_dir=work_dir)
 
         config: ConfigMap = {
@@ -350,8 +363,8 @@ class TestLocalWorkspace(unittest.TestCase):
         stack.workspace.remove_stack(stack_name)
 
     def test_stack_lifecycle_inline_program(self):
-        stack_name = stack_namer()
         project_name = "inline_python"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
@@ -391,8 +404,8 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.workspace.remove_stack(stack_name)
 
     def test_supports_stack_outputs(self):
-        stack_name = stack_namer()
         project_name = "inline_python"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
@@ -457,8 +470,8 @@ class TestLocalWorkspace(unittest.TestCase):
                     self.assertIsNone(_validate_pulumi_version(test_min_version, current_version, opt_out))
 
     def test_project_settings_respected(self):
-        stack_name = stack_namer()
         project_name = "project_was_overwritten"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name,
                              program=pulumi_program,
                              project_name=project_name,
@@ -469,8 +482,8 @@ class TestLocalWorkspace(unittest.TestCase):
         stack.workspace.remove_stack(stack_name)
 
     def test_structured_events(self):
-        stack_name = stack_namer()
         project_name = "structured_events"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
