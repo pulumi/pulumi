@@ -1,4 +1,4 @@
-FROM python:3.7-slim-stretch
+FROM python:3.9-slim-stretch
 
 LABEL "repository"="https://github.com/pulumi/pulumi"
 LABEL "homepage"="https://pulumi.com/"
