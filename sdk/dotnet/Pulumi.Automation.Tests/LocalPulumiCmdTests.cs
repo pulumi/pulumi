@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xunit;
 using Pulumi.Automation.Commands;
+using System.Linq;
 
 namespace Pulumi.Automation.Tests
 {
@@ -43,7 +44,8 @@ namespace Pulumi.Automation.Tests
 
         private IEnumerable<string> Lines(string s) {
             return s.Split(Environment.NewLine,
-                           StringSplitOptions.RemoveEmptyEntries);
+                           StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim());
         }
     }
 }
