@@ -470,14 +470,13 @@ class TestLocalWorkspace(unittest.TestCase):
                     self.assertIsNone(_validate_pulumi_version(test_min_version, current_version, opt_out))
 
     def test_project_settings_respected(self):
-        project_name = "project_was_overwritten"
+        project_name = "correct_project"
         stack_name = stack_namer(project_name)
         stack = create_stack(stack_name,
                              program=pulumi_program,
                              project_name=project_name,
-                             opts=LocalWorkspaceOptions(work_dir=test_path("data", "correct_project")))
+                             opts=LocalWorkspaceOptions(work_dir=test_path("data", project_name)))
         project_settings = stack.workspace.project_settings()
-        self.assertEqual(project_settings.name, "correct_project")
         self.assertEqual(project_settings.description, "This is a description")
         stack.workspace.remove_stack(stack_name)
 
