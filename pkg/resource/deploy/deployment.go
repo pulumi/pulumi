@@ -280,7 +280,7 @@ func buildResourceMap(prev *Snapshot, preview bool) ([]*resource.State, map[reso
 		}
 
 		urn := oldres.URN
-		if olds[urn] != nil {
+		if olds[urn] != nil && urn.Type() != "pulumi:pulumi:StackReference" {
 			return nil, nil, errors.Errorf("unexpected duplicate resource '%s'", urn)
 		}
 		olds[urn] = oldres

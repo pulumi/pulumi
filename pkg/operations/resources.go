@@ -57,7 +57,7 @@ func makeResourceTreeMap(source []*resource.State) (*Resource, map[resource.URN]
 	for _, state := range source {
 		stack = state.URN.Stack()
 		proj = state.URN.Project()
-		if !state.Delete {
+		if !state.Delete && state.URN.Type() != "pulumi:pulumi:StackReference" {
 			// Only include resources which are not marked as pending-deletion.
 			contract.Assertf(resources[state.URN] == nil, "Unexpected duplicate resource %s", state.URN)
 			resources[state.URN] = &Resource{

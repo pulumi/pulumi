@@ -186,7 +186,7 @@ func (snap *Snapshot) VerifyIntegrity() error {
 				}
 			}
 
-			if _, has := urns[urn]; has && !state.Delete {
+			if _, has := urns[urn]; has && !state.Delete && urn.Type() != "pulumi:pulumi:StackReference" {
 				// The only time we should have duplicate URNs is when all but one of them are marked for deletion.
 				return errors.Errorf("duplicate resource %s (not marked for deletion)", urn)
 			}

@@ -273,7 +273,7 @@ func (se *stepExecutor) executeStep(workerID int, step Step) error {
 	if err == nil {
 		// If we have a state object, and this is a create or update, remember it, as we may need to update it later.
 		if step.Logical() && step.New() != nil {
-			if prior, has := se.pendingNews.Load(step.URN()); has {
+			if prior, has := se.pendingNews.Load(step.URN()); has && step.URN().Type() != "pulumi:pulumi:StackReference" {
 				return errors.Errorf(
 					"resource '%s' registered twice (%s and %s)", step.URN(), prior.(Step).Op(), step.Op())
 			}
