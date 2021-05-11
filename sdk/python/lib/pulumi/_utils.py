@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+
+import importlib
+import sys
 import typing
 
 
@@ -55,3 +58,31 @@ def is_empty_function(fn: typing.Callable) -> bool:
         (fn.__code__.co_code == _empty_lambda.__code__.co_code and consts == _consts_empty_lambda) or
         (fn.__code__.co_code == _empty_lambda_doc.__code__.co_code and consts == _consts_empty_lambda_doc)
     )
+
+
+# https://github.com/python/cpython/blob/master/Doc/library/importlib.rst#implementing-lazy-imports
+#
+# Original example extended to support import cycles and registration
+# of sub-modules as attributes.
+def _lazy_import(fullname):
+    m = sys.modules.get(fullname, None)
+    if m is not None:
+        return m
+
+    spec = importlib.util.find_spec(fullname)
+
+    m = sys.modules.get(fullname, None)
+    if m is not None:
+        return m
+
+    loader = importlib.util.LazyLoader(spec.loader)
+    spec.loader = loader
+    module = importlib.util.module_from_spec(spec)
+
+    m = sys.modules.get(fullname, None)
+    if m is not None:
+        return m
+
+    sys.modules[fullname] = module
+    loader.exec_module(module)
+    return module

@@ -549,6 +549,7 @@ func (mod *modContext) genInit(exports []string) string {
 	mod.genHeader(w, false /*needsSDK*/, nil)
 	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
 	fmt.Fprintf(w, "import typing\n")
+	fmt.Fprintf(w, "from pulumi._utils import _lazy_import\n")
 
 	// Import anything to export flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -599,7 +600,7 @@ func (mod *modContext) genInit(exports []string) string {
 
 		for _, submod := range children {
 			if !submod.isEmpty() {
-				fmt.Fprintf(w, "    %s = _utilities.lazy_import('%s')\n",
+				fmt.Fprintf(w, "    %s = _lazy_import('%s')\n",
 					submod.unqualifiedImportName(),
 					submod.fullyQualifiedImportName())
 			}
@@ -2501,6 +2502,8 @@ import pkg_resources
 import pulumi
 import pulumi.runtime
 
+from pulumi._utils import _lazy_import
+
 from semver import VersionInfo as SemverVersion
 from parver import Version as PEP440Version
 
@@ -2612,22 +2615,6 @@ def get_resource_args_opts(resource_args_type, resource_options_type, *args, **k
     return resource_args, opts
 
 
-# https://github.com/python/cpython/blob/master/Doc/library/importlib.rst#implementing-lazy-imports
-def lazy_import(fullname):
-    module = sys.modules.get(fullname, None)
-
-    if module is not None:
-        return module
-
-    spec = importlib.util.find_spec(fullname)
-    loader = importlib.util.LazyLoader(spec.loader)
-    spec.loader = loader
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[fullname] = module
-    loader.exec_module(module)
-    return module
-
-
 class Package(pulumi.runtime.ResourcePackage):
     _version = get_semver_version()
 
@@ -2641,7 +2628,7 @@ class Package(pulumi.runtime.ResourcePackage):
     def construct_provider(self, name: str, typ: str, urn: str) -> pulumi.ProviderResource:
         if typ != self.pkg_info['token']:
             raise Exception(f"unknown provider type {typ}")
-        Provider = getattr(lazy_import(self.pkg_info['fqn']), self.pkg_info['class'])
+        Provider = getattr(_lazy_import(self.pkg_info['fqn']), self.pkg_info['class'])
         return Provider(name, pulumi.ResourceOptions(urn=urn))
 
 
@@ -2661,7 +2648,7 @@ class Module(pulumi.runtime.ResourceModule):
         if class_name is None:
             raise Exception(f"unknown resource type {typ}")
 
-        TheClass = getattr(lazy_import(self.mod_info['fqn']), class_name)
+        TheClass = getattr(_lazy_import(self.mod_info['fqn']), class_name)
         return TheClass(name, pulumi.ResourceOptions(urn=urn))
 
 
