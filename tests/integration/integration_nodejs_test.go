@@ -15,6 +15,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -580,6 +581,58 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	})
 }
 
+func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
+	testOptions := integration.ProgramTestOptions{
+		Dir:             "cloud_secrets_provider",
+		Dependencies:    []string{"@pulumi/pulumi"},
+		SecretsProvider: fmt.Sprintf("passphrase"),
+		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
+		NoParallel:      true,
+		Secrets: map[string]string{
+			"mysecret": "THISISASECRET",
+		},
+		CloudURL: "file://~",
+	}
+
+	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "passphrase")
+
+			_, err := passphrase.NewPassphaseSecretsManagerFromState(secretsProvider.State)
+			assert.NoError(t, err)
+
+			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
+			os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		},
+	})
+
+	brokenTestOptions := testOptions.With(integration.ProgramTestOptions{
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "passphrase")
+
+			_, err := passphrase.NewPassphaseSecretsManagerFromState(secretsProvider.State)
+			assert.Error(t, err)
+		},
+	})
+
+	t.Run("works-when-passphrase-set", func(t *testing.T) {
+		integration.ProgramTest(t, &workingTestOptions)
+	})
+
+	t.Run("error-when-passphrase-not-set", func(t *testing.T) {
+		integration.ProgramTest(t, &brokenTestOptions)
+	})
+}
+
 func TestCloudSecretProvider(t *testing.T) {
 	awsKmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
 	if awsKmsKeyAlias == "" {
@@ -633,7 +686,9 @@ func TestCloudSecretProvider(t *testing.T) {
 	})
 
 	// Run with default Pulumi service backend
-	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
+	t.Run("service", func(t *testing.T) {
+		integration.ProgramTest(t, &testOptions)
+	})
 
 	// Check Azure secrets provider
 	t.Run("azure", func(t *testing.T) { integration.ProgramTest(t, &azureTestOptions) })
