@@ -73,6 +73,7 @@ import resources
 
 
 class TestingWithMocks(unittest.TestCase):
+    @unittest.skip(reason="Skipping flaky test tracked in https://github.com/pulumi/pulumi/issues/6561")
     @pulumi.runtime.test
     def test_component(self):
         def check_outprop(outprop):
