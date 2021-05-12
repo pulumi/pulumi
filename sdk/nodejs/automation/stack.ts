@@ -794,7 +794,8 @@ const cleanUp = async (tail?: TailFile, logFile?: string) => {
     if (tail) {
         await tail.quit();
     }
-    if (logFile) {
-        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
-    }
+    // TODO: Undo this. Not deleting the logfile for debugging purposes.
+    // if (logFile) {
+    //     fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+    // }
 };
