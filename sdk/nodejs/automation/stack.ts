@@ -21,6 +21,7 @@ import * as grpc from "@grpc/grpc-js";
 import * as TailFile from "@logdna/tail-file";
 import * as split2 from "split2";
 
+import * as log from "../log";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
@@ -118,7 +119,13 @@ export class Stack {
             })
             .pipe(split2())
             .on("data", (line: string) => {
-                const event: EngineEvent = JSON.parse(line);
+                let event: EngineEvent;
+                try {
+                    event = JSON.parse(line);
+                } catch (e) {
+                    log.info(`failed to parse engine event\nevent: ${line}\n${e.toString()}`);
+                    return;
+                }
                 callback(event);
             });
 
