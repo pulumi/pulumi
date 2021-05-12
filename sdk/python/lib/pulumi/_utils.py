@@ -60,17 +60,33 @@ def is_empty_function(fn: typing.Callable) -> bool:
     )
 
 
-# https://github.com/python/cpython/blob/master/Doc/library/importlib.rst#implementing-lazy-imports
-#
-# Original example extended to support import cycles and registration
-# of sub-modules as attributes.
 def lazy_import(fullname):
+    """Defers module import until first attribute access. For example:
+
+    import a.b.c as x
+
+    Becomes:
+
+    x = lazy_import('a.b.c')
+
+    The code started from the official Python example:
+
+    https://github.com/python/cpython/blob/master/Doc/library/importlib.rst#implementing-lazy-imports
+
+    This example is extended by early returns to support import cycles
+    and registration of sub-modules as attributes.
+    """
+
+    # Return early if already registered; this supports import cycles.
     m = sys.modules.get(fullname, None)
     if m is not None:
         return m
 
     spec = importlib.util.find_spec(fullname)
 
+    # Return early if find_spec has recursively called lazy_import
+    # again and pre-populated the sys.modules slot; an example of this
+    # is covered by test_lazy_import.
     m = sys.modules.get(fullname, None)
     if m is not None:
         return m
@@ -79,6 +95,7 @@ def lazy_import(fullname):
     spec.loader = loader
     module = importlib.util.module_from_spec(spec)
 
+    # Return early rather than overwriting the sys.modules slot.
     m = sys.modules.get(fullname, None)
     if m is not None:
         return m
