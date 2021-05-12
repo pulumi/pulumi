@@ -123,7 +123,7 @@ export class Stack {
                 try {
                     event = JSON.parse(line);
                 } catch (e) {
-                    log.info(`failed to parse engine event\nevent: ${line}\n${e.toString()}`);
+                    log.info(`failed to parse engine event\nlogfile: ${logPath}\nevent: ${line}\n${e.toString()}`);
                     return;
                 }
                 callback(event);
