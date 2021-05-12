@@ -54,7 +54,8 @@ class LanguageServer(LanguageRuntimeServicer):
         )
 
         if request.config:
-            set_all_config(request.config)
+            secret_keys = request.configSecretKeys if request.configSecretKeys else None
+            set_all_config(request.config, secret_keys)
 
         # The strategy here is derived from sdk/python/cmd/pulumi-language-python-exec
         result = language_pb2.RunResponse()
