@@ -324,10 +324,10 @@ class Output(Generic[T]):
         is_secret.set_result(True)
         return Output(o._resources, o._future, o._is_known, is_secret)
 
-    @overload
-    @staticmethod
     # According to mypy these overloads unsafely overlap, so we ignore the type check.
     # https://mypy.readthedocs.io/en/stable/more_types.html#type-checking-the-variants:~:text=considered%20unsafely%20overlapping
+    @overload
+    @staticmethod
     def all(*args: Input[T]) -> 'Output[List[T]]':  # type: ignore
         ...
 
