@@ -2612,11 +2612,11 @@ def get_resource_args_opts(resource_args_type, resource_options_type, *args, **k
     return resource_args, opts
 
 
-# Temporary: just use pulumi._utilities._lazy_import once everyone upgrades.
+# Temporary: just use pulumi._utils.lazy_import once everyone upgrades.
 def lazy_import(fullname):
 
     import pulumi._utils as u
-    f = getattr(u, '_lazy_import', None)
+    f = getattr(u, 'lazy_import', None)
     if f is None:
         f = _lazy_import_temp
 

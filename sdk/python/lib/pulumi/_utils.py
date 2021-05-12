@@ -64,7 +64,7 @@ def is_empty_function(fn: typing.Callable) -> bool:
 #
 # Original example extended to support import cycles and registration
 # of sub-modules as attributes.
-def _lazy_import(fullname):
+def lazy_import(fullname):
     m = sys.modules.get(fullname, None)
     if m is not None:
         return m

@@ -17,7 +17,7 @@ import os.path
 
 import unittest
 
-from pulumi._utils import is_empty_function, _lazy_import
+from pulumi._utils import is_empty_function, lazy_import
 
 # Function with return value based on input, called in the non_empty function
 # bodies below.
@@ -96,8 +96,8 @@ class IsEmptyFunctionTests(unittest.TestCase):
 
 def test_lazy_import():
     sys.path.append(os.path.join(os.path.dirname(__file__), 'data'))
-    x = _lazy_import('lazy_import_test.x')
-    test = _lazy_import('lazy_import_test')
+    x = lazy_import('lazy_import_test.x')
+    test = lazy_import('lazy_import_test')
 
     assert test.x.foo() == 'foo'
     assert x.foo() == 'foo'

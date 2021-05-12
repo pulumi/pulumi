@@ -1,3 +1,3 @@
-from pulumi._utils import _lazy_import
+from pulumi._utils import lazy_import
 
-x = _lazy_import('lazy_import_test.x')
+x = lazy_import('lazy_import_test.x')
