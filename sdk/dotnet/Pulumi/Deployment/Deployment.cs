@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Testing;
@@ -55,6 +56,18 @@ namespace Pulumi
                     _instance.Value = value;
                 }
             }
+        }
+
+        internal static bool TryGetInternalInstance([NotNullWhen(true)] out IDeploymentInternal? instance)
+        {
+            if (_instance.Value != null)
+            {
+                instance = _instance.Value.Internal;
+                return true;
+            }
+
+            instance = null;
+            return false;
         }
 
         internal static IDeploymentInternal InternalInstance

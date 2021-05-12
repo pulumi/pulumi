@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Pulumi.Testing;
 using Pulumi.Tests.Mocks;
@@ -84,6 +85,25 @@ namespace Pulumi.Tests
 
             tcs.SetResult(1);
             await runTaskOne;
+        }
+
+        [Fact]
+        public async Task RunWaitsForOrphanedOutput()
+        {
+            var result = 0;
+            var tcs = new TaskCompletionSource<int>();
+            var runTaskOne = Deployment.CreateRunnerAndRunAsync(
+                () => new Deployment(new MockEngine(), new MockMonitor(new MyMocks()), null),
+                runner => runner.RunAsync(() =>
+                {
+                    Output.Create(tcs.Task).Apply(i => result = i);
+                    return Task.FromResult((IDictionary<string, object?>)new Dictionary<string, object?>());
+                }, null));
+
+            tcs.SetResult(42);
+            await runTaskOne;
+
+            Assert.Equal(42, result);
         }
     }
 }
