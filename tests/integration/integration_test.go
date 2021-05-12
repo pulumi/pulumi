@@ -661,13 +661,16 @@ func testComponentProviderSchema(t *testing.T, path string, env ...string) {
 		t.Run(test.name, func(t *testing.T) {
 			// Start the plugin binary.
 			cmd := exec.Command(path, "ignored")
-			cmd.Env = append(env, test.env...)
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, env...)
+			cmd.Env = append(cmd.Env, test.env...)
 			stdout, err := cmd.StdoutPipe()
 			assert.NoError(t, err)
 			err = cmd.Start()
 			assert.NoError(t, err)
 			defer func() {
-				assert.NoError(t, cmd.Process.Kill())
+				// Ignore the error as it may fail with access denied on Windows.
+				cmd.Process.Kill() // nolint: errcheck
 			}()
 
 			// Read the port from standard output.
