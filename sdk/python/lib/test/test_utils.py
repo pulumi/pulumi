@@ -12,9 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import sys
+import os.path
+
 import unittest
 
-from pulumi._utils import is_empty_function
+from pulumi._utils import is_empty_function, lazy_import
 
 # Function with return value based on input, called in the non_empty function
 # bodies below.
@@ -89,3 +92,13 @@ class IsEmptyFunctionTests(unittest.TestCase):
         self.assertFalse(is_empty_function(non_empty_lambda_b))
         self.assertFalse(is_empty_function(non_empty_lambda_c))
         self.assertFalse(is_empty_function(non_empty_lambda_d))
+
+
+def test_lazy_import():
+    sys.path.append(os.path.join(os.path.dirname(__file__), 'data'))
+    x = lazy_import('lazy_import_test.x')
+    test = lazy_import('lazy_import_test')
+
+    assert test.x.foo() == 'foo'
+    assert x.foo() == 'foo'
+    assert id(x) == id(test.x)
