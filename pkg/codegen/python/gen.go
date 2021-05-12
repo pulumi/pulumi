@@ -2623,10 +2623,7 @@ def lazy_import(fullname):
     return f(fullname)
 
 
-# https://github.com/python/cpython/blob/master/Doc/library/importlib.rst#implementing-lazy-imports
-#
-# Original example extended to support import cycles and registration
-# of sub-modules as attributes.
+# Copied from pulumi._utils.lazy_import, see comments there.
 def _lazy_import_temp(fullname):
     m = sys.modules.get(fullname, None)
     if m is not None:
