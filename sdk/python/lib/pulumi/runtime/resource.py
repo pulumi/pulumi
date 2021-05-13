@@ -511,35 +511,40 @@ def register_resource(res: 'Resource',
                     return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+
+            if resp is None:
+                return
+
+            log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
+            resolve_urn(resp.urn, True, False, None)
+            resolved_urn = True
+
+            if resolve_id is not None:
+                # The ID is known if (and only if) it is a non-empty string. If it's either None or an
+                # empty string, we should treat it as unknown. TFBridge in particular is known to send
+                # the empty string as an ID when doing a preview.
+                is_known = bool(resp.id)
+                resolve_id(resp.id, is_known, False, None)
+                resolved_id = True
+
+            deps = {}
+            rpc_deps = resp.propertyDependencies
+            if rpc_deps:
+                for k, v in rpc_deps.items():
+                    urns = list(v.urns)
+                    deps[k] = set(map(new_dependency, urns))
+
+            rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers, transform_using_type_metadata)
+
         except Exception as exn:
             log.debug(
                 f"exception when preparing or executing rpc: {traceback.format_exc()}")
             rpc.resolve_outputs_due_to_exception(resolvers, exn)
-            resolve_urn(None, True, False, exn)
-            if resolve_id is not None:
+            if not resolved_urn:
+                resolve_urn(None, True, False, exn)
+            if resolve_id is not None and not resolved_id:
                 resolve_id(None, True, False, exn)
             raise
-
-        if resp is None:
-            return
-
-        log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
-        resolve_urn(resp.urn, True, False, None)
-        if resolve_id is not None:
-            # The ID is known if (and only if) it is a non-empty string. If it's either None or an
-            # empty string, we should treat it as unknown. TFBridge in particular is known to send
-            # the empty string as an ID when doing a preview.
-            is_known = bool(resp.id)
-            resolve_id(resp.id, is_known, False, None)
-
-        deps = {}
-        rpc_deps = resp.propertyDependencies
-        if rpc_deps:
-            for k, v in rpc_deps.items():
-                urns = list(v.urns)
-                deps[k] = set(map(new_dependency, urns))
-
-        rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers, transform_using_type_metadata)
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
         "register resource", do_register)())
