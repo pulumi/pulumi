@@ -91,6 +91,17 @@ type OutputState struct {
 	deps    []Resource   // the dependencies associated with this output property.
 }
 
+func getOutputState(v reflect.Value) (*OutputState, bool) {
+	if !v.IsValid() || !v.CanInterface() {
+		return nil, false
+	}
+	out, ok := v.Interface().(Output)
+	if !ok {
+		return nil, false
+	}
+	return out.getState(), true
+}
+
 func (o *OutputState) elementType() reflect.Type {
 	if o == nil {
 		return anyType
@@ -124,8 +135,31 @@ func (o *OutputState) fulfillValue(value reflect.Value, known, secret bool, deps
 		return
 	}
 
+	// If there is a wait group associated with this output--which should be the case in all outputs created
+	// by a Context or a combinator that was passed any non-prompt value--ensure that we decrement its count
+	// before this function returns. This allows Contexts to remain alive until all outstanding asynchronous
+	// work that may reference that context has completed.
+	//
+	// Code that creates an output must take care to bump the count for any relevant waitgroups prior to
+	// creating asynchronous work associated with that output. For combinators, this means digging through
+	// inputs, collecting all wait groups, and calling Add (see toOutputTWithContext for an example). For
+	// code that creates outputs directly, this is as simple as passing the wait group for the associated
+	// context to newOutput.
+	//
+	// User code should use combinators or Context.NewOutput to ensure that all asynchronous work is
+	// associated with a Context.
 	if o.join != nil {
-		defer o.join.Done()
+		// If this output is being resolved to another output O' with a different wait group, ensure that we
+		// don't decrement the current output's wait group until O' completes.
+		if other, ok := getOutputState(value); ok && other.join != o.join {
+			go func() {
+				//nolint:errcheck
+				other.await(context.Background())
+				o.join.Done()
+			}()
+		} else {
+			defer o.join.Done()
+		}
 	}
 
 	if err != nil {
@@ -265,6 +299,8 @@ func newAnyOutput(wg *sync.WaitGroup) (Output, func(interface{}), func(error)) {
 // NewOutput returns an output value that can be used to rendezvous with the production of a value or error.  The
 // function returns the output itself, plus two functions: one for resolving a value, and another for rejecting with an
 // error; exactly one function must be called. This acts like a promise.
+//
+// Deprecated: use Context.NewOutput instead.
 func NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(nil)
 }

@@ -531,7 +531,7 @@ func TestWaitOrphanedContextAllApply(t *testing.T) {
 		}, &res)
 		assert.NoError(t, err)
 
-		ctx.All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
+		All(res.URN(), res.ID()).ApplyT(func(vs []interface{}) int {
 			theURN, _ = vs[0].(URN)
 			theID, _ = vs[1].(ID)
 			return 0
@@ -561,7 +561,7 @@ func TestWaitOrphanedContextAnyApply(t *testing.T) {
 		}, &res)
 		assert.NoError(t, err)
 
-		ctx.Any(map[string]Output{
+		Any(map[string]Output{
 			"urn": res.URN(),
 			"id":  res.ID(),
 		}).ApplyT(func(v interface{}) int {

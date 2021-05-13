@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -595,4 +596,57 @@ func TestDeps(t *testing.T) {
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, boolDep1, boolDep2}, deps)
 	assert.NoError(t, err)
+}
+
+func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
+	var wg1, wg2 sync.WaitGroup
+
+	o1 := newOutput(&wg1, anyOutputType)
+	o2 := newOutput(&wg2, anyOutputType)
+
+	gate := make(chan chan bool)
+	combine(o1, o2).ApplyT(func(_ interface{}) interface{} {
+		<-gate <- true
+		return 0
+	})
+
+	wg1Done, wg2Done := false, false
+	go func() {
+		wg1.Wait()
+		wg1Done = true
+		wg2.Wait()
+		wg2Done = true
+	}()
+
+	o1.getState().resolve(0, true, true, nil)
+	o2.getState().resolve(0, true, true, nil)
+
+	c := make(chan bool)
+	gate <- c
+	assert.False(t, wg1Done)
+	assert.False(t, wg2Done)
+	<-c
+	wg1.Wait()
+	wg2.Wait()
+
+}
+
+func TestMixedWaitGroupsAll(t *testing.T) {
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return All(o1, o2)
+	})
+}
+
+func TestMixedWaitGroupsAny(t *testing.T) {
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return Any(struct{ O1, O2 Output }{o1, o2})
+	})
+}
+
+func TestMixedWaitGroupsApply(t *testing.T) {
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return o1.ApplyT(func(_ interface{}) interface{} {
+			return o2
+		})
+	})
 }
