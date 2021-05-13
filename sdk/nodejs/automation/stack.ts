@@ -111,8 +111,7 @@ export class Stack {
         }
     }
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
-        const eventLogTail = new TailFile(logPath, { startPos: 0 });
-        await eventLogTail.start();
+        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 });
         eventLogTail
             .on("tail_error", (err) => {
                 throw err;
@@ -128,6 +127,7 @@ export class Stack {
                 }
                 callback(event);
             });
+        await eventLogTail.start();
 
         return eventLogTail;
     }
