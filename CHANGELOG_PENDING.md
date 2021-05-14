@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- [cli] - Provide user information when protected resources are not able to be deleted
+  [#7055](https://github.com/pulumi/pulumi/pull/7055)
+
 - [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
   [#6910](https://github.com/pulumi/pulumi/pull/6910)
 
