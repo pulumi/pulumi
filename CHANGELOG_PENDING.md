@@ -30,3 +30,8 @@
 - Ensure that all outstanding asynchronous work is awaited before returning from a .NET
   Pulumi program.
   [#6993](https://github.com/pulumi/pulumi/pull/6993)
+
+### Misc.
+
+- Build: Add vs code dev container
+  [#7052](https://github.com/pulumi/pulumi/pull/7052)
