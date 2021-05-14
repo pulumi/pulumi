@@ -42,19 +42,23 @@ var disableResourceReferences = cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOU
 
 // Context handles registration of resources and exposes metadata about the current deployment context.
 type Context struct {
-	ctx           context.Context
-	info          RunInfo
-	stack         Resource
-	exports       map[string]Input
-	monitor       pulumirpc.ResourceMonitorClient
-	monitorConn   *grpc.ClientConn
-	engine        pulumirpc.EngineClient
-	engineConn    *grpc.ClientConn
-	keepResources bool        // true if resources should be marshaled as strongly-typed references.
-	rpcs          int         // the number of outstanding RPC requests.
-	rpcsDone      *sync.Cond  // an event signaling completion of RPCs.
-	rpcsLock      *sync.Mutex // a lock protecting the RPC count and event.
-	rpcError      error       // the first error (if any) encountered during an RPC.
+	ctx         context.Context
+	info        RunInfo
+	stack       Resource
+	exports     map[string]Input
+	monitor     pulumirpc.ResourceMonitorClient
+	monitorConn *grpc.ClientConn
+	engine      pulumirpc.EngineClient
+	engineConn  *grpc.ClientConn
+
+	keepResources bool // true if resources should be marshaled as strongly-typed references.
+
+	rpcs     int        // the number of outstanding RPC requests.
+	rpcsDone *sync.Cond // an event signaling completion of RPCs.
+	rpcsLock sync.Mutex // a lock protecting the RPC count and event.
+	rpcError error      // the first error (if any) encountered during an RPC.
+
+	join sync.WaitGroup // the waitgroup for non-RPC async work associated with this context
 
 	Log Log // the logging interface for the Pulumi log stream.
 }
@@ -111,12 +115,7 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		keepResources = supportsFeatureResp.GetHasSupport()
 	}
 
-	mutex := &sync.Mutex{}
-	log := &logState{
-		engine: engine,
-		ctx:    ctx,
-	}
-	return &Context{
+	context := &Context{
 		ctx:           ctx,
 		info:          info,
 		exports:       make(map[string]Input),
@@ -125,11 +124,14 @@ func NewContext(ctx context.Context, info RunInfo) (*Context, error) {
 		engineConn:    engineConn,
 		engine:        engine,
 		keepResources: keepResources,
-		rpcs:          0,
-		rpcsLock:      mutex,
-		rpcsDone:      sync.NewCond(mutex),
-		Log:           log,
-	}, nil
+	}
+	context.rpcsDone = sync.NewCond(&context.rpcsLock)
+	context.Log = &logState{
+		engine: engine,
+		ctx:    ctx,
+		join:   &context.join,
+	}
+	return context, nil
 }
 
 // Close implements io.Closer and relinquishes any outstanding resources held by the context.
@@ -144,6 +146,31 @@ func (ctx *Context) Close() error {
 			return err
 		}
 	}
+	return nil
+}
+
+// wait waits for all asynchronous work associated with this context to drain. RPCs may not be queued once wait
+// returns.
+func (ctx *Context) wait() error {
+	// Wait for async work to flush.
+	ctx.join.Wait()
+
+	// Ensure all outstanding RPCs have completed before proceeding. Also, prevent any new RPCs from happening.
+	ctx.rpcsLock.Lock()
+	defer ctx.rpcsLock.Unlock()
+
+	// Wait until the RPC count hits zero.
+	for ctx.rpcs > 0 {
+		ctx.rpcsDone.Wait()
+	}
+
+	// Mark the RPCs flag so that no more RPCs are permitted.
+	ctx.rpcs = noMoreRPCs
+
+	if ctx.rpcError != nil {
+		return fmt.Errorf("waiting for RPCs: %w", ctx.rpcError)
+	}
+
 	return nil
 }
 
@@ -168,7 +195,7 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.
-func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) error {
+func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opts ...InvokeOption) (err error) {
 	if tok == "" {
 		return errors.New("invoke token must not be empty")
 	}
@@ -186,6 +213,12 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 			o.applyInvokeOption(options)
 		}
 	}
+
+	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
+	if err = ctx.beginRPC(); err != nil {
+		return err
+	}
+	defer ctx.endRPC(err)
 
 	var providerRef string
 	if provider := mergeProviders(tok, options.Parent, options.Provider, nil)[getPackage(tok)]; provider != nil {
@@ -218,12 +251,6 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	if err != nil {
 		return fmt.Errorf("marshaling arguments: %w", err)
 	}
-
-	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
-	if err = ctx.beginRPC(); err != nil {
-		return err
-	}
-	defer ctx.endRPC(err)
 
 	// Now, invoke the RPC to the provider synchronously.
 	logging.V(9).Infof("Invoke(%s, #args=%d): RPC call being made synchronously", tok, len(resolvedArgsMap))
@@ -343,7 +370,7 @@ func (ctx *Context) ReadResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	res := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	res := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -520,7 +547,7 @@ func (ctx *Context) registerResource(
 	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
-	resState := makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -713,7 +740,7 @@ var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
-func makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
+func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
 	aliases []URNOutput, transformations []ResourceTransformation) *resourceState {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
@@ -765,7 +792,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 				continue
 			}
 
-			output := newOutput(field.Type, resourceV)
+			output := ctx.newOutput(field.Type, resourceV)
 			fieldV.Set(reflect.ValueOf(output))
 
 			if tag == "" && field.Type != mapOutputType {
@@ -783,7 +810,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 	}
 	if crs != nil {
 		rs = &crs.ResourceState
-		crs.id = IDOutput{newOutputState(idType, resourceV)}
+		crs.id = IDOutput{ctx.newOutputState(idType, resourceV)}
 		state.outputs["id"] = crs.id
 	}
 
@@ -792,7 +819,7 @@ func makeResourceState(t, name string, resourceV Resource, providers map[string]
 		contract.Assert(rs != nil)
 		state.providers = providers
 		rs.providers = providers
-		rs.urn = URNOutput{newOutputState(urnType, resourceV)}
+		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
@@ -1107,22 +1134,6 @@ func (ctx *Context) endRPC(err error) {
 	}
 }
 
-// waitForRPCs awaits the completion of any outstanding RPCs and then leaves behind a sentinel to prevent
-// any subsequent ones from starting.  This is often used during the shutdown of a program to ensure no RPCs
-// go missing due to the program exiting prior to their completion.
-func (ctx *Context) waitForRPCs() {
-	ctx.rpcsLock.Lock()
-	defer ctx.rpcsLock.Unlock()
-
-	// Wait until the RPC count hits zero.
-	for ctx.rpcs > 0 {
-		ctx.rpcsDone.Wait()
-	}
-
-	// Mark the RPCs flag so that no more RPCs are permitted.
-	ctx.rpcs = noMoreRPCs
-}
-
 // RegisterResourceOutputs completes the resource registration, attaching an optional set of computed outputs.
 func (ctx *Context) RegisterResourceOutputs(resource Resource, outs Map) error {
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
@@ -1177,6 +1188,18 @@ func (ctx *Context) Export(name string, value Input) {
 // RegisterStackTransformation adds a transformation to all future resources constructed in this Pulumi stack.
 func (ctx *Context) RegisterStackTransformation(t ResourceTransformation) error {
 	ctx.stack.addTransformation(t)
-
 	return nil
+}
+
+func (ctx *Context) newOutputState(elementType reflect.Type, deps ...Resource) *OutputState {
+	return newOutputState(&ctx.join, elementType, deps...)
+}
+
+func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
+	return newOutput(&ctx.join, typ, deps...)
+}
+
+// NewOutput creates a new output associated with this context.
+func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
+	return newAnyOutput(&ctx.join)
 }

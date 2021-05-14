@@ -31,9 +31,9 @@ type simpleComponentResource struct {
 	ResourceState
 }
 
-func newSimpleComponentResource(urn URN) ComponentResource {
+func newSimpleComponentResource(ctx *Context, urn URN) ComponentResource {
 	var res simpleComponentResource
-	res.urn.OutputState = newOutputState(res.urn.ElementType(), &res)
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
 	return &res
 }
@@ -42,10 +42,10 @@ type simpleCustomResource struct {
 	CustomResourceState
 }
 
-func newSimpleCustomResource(urn URN, id ID) CustomResource {
+func newSimpleCustomResource(ctx *Context, urn URN, id ID) CustomResource {
 	var res simpleCustomResource
-	res.urn.OutputState = newOutputState(res.urn.ElementType(), &res)
-	res.id.OutputState = newOutputState(res.id.ElementType(), &res)
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
+	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
 	res.id.resolve(id, id != "", false, nil)
 	return &res
@@ -55,10 +55,10 @@ type simpleProviderResource struct {
 	ProviderResourceState
 }
 
-func newSimpleProviderResource(urn URN, id ID) ProviderResource {
+func newSimpleProviderResource(ctx *Context, urn URN, id ID) ProviderResource {
 	var res simpleProviderResource
-	res.urn.OutputState = newOutputState(res.urn.ElementType(), &res)
-	res.id.OutputState = newOutputState(res.id.ElementType(), &res)
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
+	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
 	res.id.resolve(id, id != "", false, nil)
 	res.pkg = string(resource.URN(urn).Type().Name())
@@ -77,7 +77,7 @@ func (rp *testResourcePackage) ConstructProvider(ctx *Context, name, typ, urn st
 	if resource.URN(urn).Name() == "preview" {
 		id = ""
 	}
-	return newSimpleProviderResource(URN(urn), ID(id)), nil
+	return newSimpleProviderResource(ctx, URN(urn), ID(id)), nil
 }
 
 func (rp *testResourcePackage) Version() semver.Version {
@@ -95,9 +95,9 @@ func (rm *testResourceModule) Construct(ctx *Context, name, typ, urn string) (Re
 		if resource.URN(urn).Name() == "preview" {
 			id = ""
 		}
-		return newSimpleCustomResource(URN(urn), ID(id)), nil
+		return newSimpleCustomResource(ctx, URN(urn), ID(id)), nil
 	case "test:index:component":
-		return newSimpleComponentResource(URN(urn)), nil
+		return newSimpleComponentResource(ctx, URN(urn)), nil
 	default:
 		return nil, fmt.Errorf("unknown resource type %v", typ)
 	}
@@ -188,9 +188,9 @@ func TestMarshalRoundtrip(t *testing.T) {
 	RegisterResourcePackage("test", &testResourcePackage{})
 	RegisterResourceModule("test", "index", &testResourceModule{})
 
-	out, resolve, _ := NewOutput()
+	out, resolve, _ := ctx.NewOutput()
 	resolve("outputty")
-	out2 := newOutputState(reflect.TypeOf(""))
+	out2 := ctx.newOutputState(reflect.TypeOf(""))
 	out2.fulfill(nil, false, false, nil, nil)
 	inputs := testInputs{
 		S:           String("a string"),
@@ -215,16 +215,16 @@ func TestMarshalRoundtrip(t *testing.T) {
 		G:                              StringOutput{out2},
 		H:                              URN("foo"),
 		I:                              StringOutput{},
-		CustomResource:                 newSimpleCustomResource(URN(customURN), "id"),
-		ComponentResource:              newDependencyResource(URN(componentURN)),
-		ProviderResource:               newSimpleProviderResource(URN(providerURN), "id"),
-		PreviewCustomResource:          newSimpleCustomResource(URN(previewCustomURN), ""),
-		PreviewProviderResource:        newSimpleProviderResource(URN(previewProviderURN), ""),
-		MissingCustomResource:          newSimpleCustomResource(URN(missingCustomURN), "id"),
-		MissingComponentResource:       newDependencyResource(URN(missingComponentURN)),
-		MissingProviderResource:        newSimpleProviderResource(URN(missingProviderURN), "id"),
-		MissingPreviewCustomResource:   newSimpleCustomResource(URN(missingPreviewCustomURN), ""),
-		MissingPreviewProviderResource: newSimpleProviderResource(URN(missingPreviewProviderURN), ""),
+		CustomResource:                 newSimpleCustomResource(ctx, URN(customURN), "id"),
+		ComponentResource:              ctx.newDependencyResource(URN(componentURN)),
+		ProviderResource:               newSimpleProviderResource(ctx, URN(providerURN), "id"),
+		PreviewCustomResource:          newSimpleCustomResource(ctx, URN(previewCustomURN), ""),
+		PreviewProviderResource:        newSimpleProviderResource(ctx, URN(previewProviderURN), ""),
+		MissingCustomResource:          newSimpleCustomResource(ctx, URN(missingCustomURN), "id"),
+		MissingComponentResource:       ctx.newDependencyResource(URN(missingComponentURN)),
+		MissingProviderResource:        newSimpleProviderResource(ctx, URN(missingProviderURN), "id"),
+		MissingPreviewCustomResource:   newSimpleCustomResource(ctx, URN(missingPreviewCustomURN), ""),
+		MissingPreviewProviderResource: newSimpleProviderResource(ctx, URN(missingPreviewProviderURN), ""),
 	}
 
 	// Marshal those inputs.
@@ -414,7 +414,7 @@ func TestResourceState(t *testing.T) {
 	assert.Nil(t, err)
 
 	var theResource testResource
-	state := makeResourceState("", "", &theResource, nil, nil, nil)
+	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -537,7 +537,7 @@ func TestMarshalRoundtripNestedSecret(t *testing.T) {
 
 	out, resolve, _ := NewOutput()
 	resolve("outputty")
-	out2 := newOutputState(reflect.TypeOf(""))
+	out2 := ctx.newOutputState(reflect.TypeOf(""))
 	out2.fulfill(nil, false, true, nil, nil)
 	inputs := testInputs{
 		S:           String("a string"),
@@ -623,7 +623,7 @@ func (UntypedArgs) ElementType() reflect.Type {
 
 func TestMapInputMarhsalling(t *testing.T) {
 	var theResource simpleCustomResource
-	out := newOutput(reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
+	out := newOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
 	out.getState().resolve("outputty", true, false, nil)
 
 	inputs1 := Map(map[string]Input{

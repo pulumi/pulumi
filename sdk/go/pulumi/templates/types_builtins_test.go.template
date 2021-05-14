@@ -148,7 +148,7 @@ func TestOutputApply(t *testing.T) {
 		out := newIntOutput()
 		go func() { out.resolve(42, true, false, nil) }()
 
-		out2 := StringOutput{newOutputState(reflect.TypeOf(""))}
+		out2 := StringOutput{newOutputState(nil, reflect.TypeOf(""))}
 		go func() { out2.resolve("hello", true, false, nil) }()
 
 		res := out.
