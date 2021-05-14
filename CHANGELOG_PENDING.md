@@ -15,6 +15,9 @@
 - [auto/dotnet] - Disable Language Server Host logging and checking appsettings.json config
   [#7023](https://github.com/pulumi/pulumi/pull/7023)
 
+- [auto/dotnet] Fix deserialization of CancelEvent in .NET 5
+  [#7051](https://github.com/pulumi/pulumi/pull/7051)
+
 - [auto/python] - Export missing `ProjectBackend` type
   [#6984](https://github.com/pulumi/pulumi/pull/6984)
 
