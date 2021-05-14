@@ -1219,6 +1219,165 @@ namespace Pulumi.Automation.Tests
         }
 
         [Fact]
+        public async Task ThrowingExceptionDuringUpShouldNotDeleteResourcesInlineProgram()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                var a = new ComponentResource("test:res:a", "a", null);
+
+                if (config.GetBoolean("ShouldFail") == true) throw new InvalidOperationException("ShouldFail");
+
+                var b = new ComponentResource("test:res:b", "b", null);
+                var c = new ComponentResource("test:res:c", "c", null);
+            });
+            Assert.IsType<PulumiFnInline>(program);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "test_optionally_failing_stack";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["ShouldFail"] = new ConfigValue("false"),
+            };
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(4, upCount);
+
+                config["ShouldFail"] = new ConfigValue("true");
+
+                await stack.SetAllConfigAsync(config);
+                var sb = new System.Text.StringBuilder();
+
+                try
+                {
+                    await stack.UpAsync(new UpOptions() { OnStandardOutput = msg => sb.AppendLine(msg) });
+                }
+                catch (InvalidOperationException ex) when (ex.Message == "ShouldFail")
+                {
+                    // Expected
+                }
+
+                var upOutput = sb.ToString();
+                Assert.DoesNotContain("test:res:b b deleted", upOutput);
+                Assert.DoesNotContain("test:res:c c deleted", upOutput);
+
+                config["ShouldFail"] = new ConfigValue("false");
+
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi preview
+                var previewResult = await stack.PreviewAsync(new PreviewOptions() { OnStandardOutput = Console.WriteLine });
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(4, sameCount);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        private class OptionallyFailingStack : Stack
+        {
+            public OptionallyFailingStack()
+            {
+                var config = new Config();
+                var a = new ComponentResource("test:res:a", "a", null);
+
+                if (config.GetBoolean("ShouldFail") == true) throw new InvalidOperationException("ShouldFail");
+
+                var b = new ComponentResource("test:res:b", "b", null);
+                var c = new ComponentResource("test:res:c", "c", null);
+            }
+        }
+
+        [Fact]
+        public async Task ThrowingExceptionDuringUpShouldNotDeleteResources()
+        {
+            var program = PulumiFn.Create<OptionallyFailingStack>();
+            Assert.IsType<PulumiFn<OptionallyFailingStack>>(program);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "test_optionally_failing_stack";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["ShouldFail"] = new ConfigValue("false"),
+            };
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(4, upCount);
+
+                config["ShouldFail"] = new ConfigValue("true");
+
+                await stack.SetAllConfigAsync(config);
+
+                var sb = new System.Text.StringBuilder();
+
+                try
+                {
+                    await stack.UpAsync(new UpOptions() { OnStandardOutput = msg => sb.AppendLine(msg) });
+                }
+                catch (InvalidOperationException ex) when (ex.Message == "ShouldFail")
+                {
+                    // Expected
+                }
+
+                var upOutput = sb.ToString();
+                Assert.DoesNotContain("test:res:b b deleted", upOutput);
+                Assert.DoesNotContain("test:res:c c deleted", upOutput);
+
+                config["ShouldFail"] = new ConfigValue("false");
+
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi preview
+                var previewResult = await stack.PreviewAsync(new PreviewOptions() { OnStandardOutput = Console.WriteLine });
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(4, sameCount);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+
+        [Fact]
         public async Task PulumiVersionTest()
         {
             using var workspace = await LocalWorkspace.CreateAsync();
