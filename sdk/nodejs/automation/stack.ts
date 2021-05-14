@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { read } from "fs";
 import * as fs from "fs";
 import * as os from "os";
 import * as readline from "readline";
@@ -29,6 +30,11 @@ import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../proto/language_grpc_pb.js");
+
+interface ReadlineResult {
+    tail: TailFile;
+    rl: readline.Interface;
+}
 
 /**
  * Stack is an isolated, independently configurable instance of a Pulumi program.
@@ -109,7 +115,7 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
+    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
         const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 })
             .on("tail_error", (err) => {
                 throw err;
@@ -127,7 +133,10 @@ export class Stack {
             callback(event);
         });
 
-        return eventLogTail;
+        return {
+            tail: eventLogTail,
+            rl: lineSplitter,
+        };
     }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -203,7 +212,7 @@ export class Stack {
 
         args.push("--exec-kind", kind);
 
-        let logPromise: Promise<TailFile> | undefined;
+        let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
@@ -218,15 +227,15 @@ export class Stack {
 
         const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
-        let tail: TailFile | undefined;
+        let logResult: ReadlineResult | undefined;
         try {
-            [upResult, tail] = await Promise.all([upPromise, logPromise]);
+            [upResult, logResult] = await Promise.all([upPromise, logPromise]);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(tail, logFile);
+            await cleanUp(logFile, logResult);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -318,7 +327,7 @@ export class Stack {
         const logFile = createLogFile("preview");
         args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const rlPromise = this.readLines(logFile, (event) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
@@ -330,15 +339,15 @@ export class Stack {
         const prePromise = this.runPulumiCmd(args, opts?.onOutput);
 
         let preResult: CommandResult;
-        let tail: TailFile | undefined;
+        let rlResult: ReadlineResult | undefined;
         try {
-            [preResult, tail] = await Promise.all([prePromise, logPromise]);
+            [preResult, rlResult] = await Promise.all([prePromise, rlPromise]);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(tail, logFile);
+            await cleanUp(logFile, rlResult);
         }
 
         if (!summaryEvent) {
@@ -380,7 +389,7 @@ export class Stack {
             }
         }
 
-        let logPromise: Promise<TailFile> | undefined;
+        let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
@@ -397,8 +406,8 @@ export class Stack {
         args.push("--exec-kind", kind);
 
         const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [refResult, tail] = await Promise.all([refPromise, logPromise]);
-        await cleanUp(tail, logFile);
+        const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
+        await cleanUp(logFile, logResult);
 
         const summary = await this.info();
         return {
@@ -435,7 +444,7 @@ export class Stack {
             }
         }
 
-        let logPromise: Promise<TailFile> | undefined;
+        let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
@@ -452,8 +461,8 @@ export class Stack {
         args.push("--exec-kind", kind);
 
         const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [desResult, tail] = await Promise.all([desPromise, logPromise]);
-        await cleanUp(tail, logFile);
+        const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
+        await cleanUp(logFile, logResult);
 
         const summary = await this.info();
         return {
@@ -788,9 +797,10 @@ const createLogFile = (command: string) => {
     return logFile;
 };
 
-const cleanUp = async (tail?: TailFile, logFile?: string) => {
-    if (tail) {
-        await tail.quit();
+const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
+    if (rl) {
+        await rl.tail.quit();
+        rl.rl.close();
     }
     // TODO: Undo this. Not deleting the logfile for debugging purposes.
     // if (logFile) {
