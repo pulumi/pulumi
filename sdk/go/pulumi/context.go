@@ -192,6 +192,16 @@ func (ctx *Context) GetConfig(key string) (string, bool) {
 	return v, ok
 }
 
+// IsConfigSecret returns true if the config value is a secret.
+func (ctx *Context) IsConfigSecret(key string) bool {
+	for _, secretKey := range ctx.info.ConfigSecretKeys {
+		if key == secretKey {
+			return true
+		}
+	}
+	return false
+}
+
 // Invoke will invoke a provider's function, identified by its token tok. This function call is synchronous.
 //
 // args and result must be pointers to struct values fields and appropriately tagged and typed for use with Pulumi.

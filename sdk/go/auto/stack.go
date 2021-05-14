@@ -919,13 +919,14 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		engineAddress = req.Args[0]
 	}
 	runInfo := pulumi.RunInfo{
-		EngineAddr:  engineAddress,
-		MonitorAddr: req.GetMonitorAddress(),
-		Config:      req.GetConfig(),
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
+		EngineAddr:       engineAddress,
+		MonitorAddr:      req.GetMonitorAddress(),
+		Config:           req.GetConfig(),
+		ConfigSecretKeys: req.GetConfigSecretKeys(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Parallel:         int(req.GetParallel()),
+		DryRun:           req.GetDryRun(),
 	}
 
 	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)

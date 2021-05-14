@@ -284,6 +284,10 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	if err != nil {
 		return nil, err
 	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		return nil, err
+	}
 
 	env := os.Environ()
 	maybeAppendEnv := func(k, v string) {
@@ -295,6 +299,7 @@ func (host *goLanguageHost) constructEnv(req *pulumirpc.RunRequest) ([]string, e
 	maybeAppendEnv(pulumi.EnvProject, req.GetProject())
 	maybeAppendEnv(pulumi.EnvStack, req.GetStack())
 	maybeAppendEnv(pulumi.EnvConfig, config)
+	maybeAppendEnv(pulumi.EnvConfigSecretKeys, configSecretKeys)
 	maybeAppendEnv(pulumi.EnvDryRun, fmt.Sprintf("%v", req.GetDryRun()))
 	maybeAppendEnv(pulumi.EnvParallel, fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv(pulumi.EnvMonitor, req.GetMonitorAddress())
@@ -316,6 +321,22 @@ func (host *goLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string, 
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *goLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *goLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
