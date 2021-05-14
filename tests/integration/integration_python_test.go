@@ -561,7 +561,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	// handling by test harness; we actually are testing venv
 	// handling by the pulumi CLI itself.
 
-	check := func(t *testing.T, venvPathTemplate string) {
+	check := func(t *testing.T, venvPathTemplate string, dir string) {
 
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -573,7 +573,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
 		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
 
-		e.ImportDirectory(filepath.Join("python", "venv"))
+		e.ImportDirectory(dir)
 
 		// replace "virtualenv: venv" with "virtualenv: ${venvPath}" in Pulumi.yaml
 		pulumiYaml := filepath.Join(e.RootPath, "Pulumi.yaml")
@@ -586,6 +586,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
 			"virtualenv: venv",
 			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
+
 		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
 			t.Error(err)
 			return
@@ -611,11 +612,19 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	}
 
 	t.Run("RelativePath", func(t *testing.T) {
-		check(t, "venv")
+		check(t, "venv", filepath.Join("python", "venv"))
 	})
 
 	t.Run("AbsolutePath", func(t *testing.T) {
-		check(t, filepath.Join("${root}", "absvenv"))
+		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv"))
+	})
+
+	t.Run("RelativePathWithMain", func(t *testing.T) {
+		check(t, "venv", filepath.Join("python", "venv-with-main"))
+	})
+
+	t.Run("AbsolutePathWithMain", func(t *testing.T) {
+		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 }
 

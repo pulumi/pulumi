@@ -1,7 +1,5 @@
 ### Breaking Changes
 
-
-
 ### Improvements
 
 - [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
@@ -11,6 +9,9 @@
   [#6875](https://github.com/pulumi/pulumi/pull/6875)
 
 ### Bug Fixes
+
+- [sdk/python] Fix relative `runtime:options:virtualenv` path resolution to ignore `main` project attribute
+  [#6966](https://github.com/pulumi/pulumi/pull/6966)
 
 - [auto/dotnet] - Disable Language Server Host logging and checking appsettings.json config
   [#7023](https://github.com/pulumi/pulumi/pull/7023)
