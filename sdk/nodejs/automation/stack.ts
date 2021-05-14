@@ -14,12 +14,11 @@
 
 import * as fs from "fs";
 import * as os from "os";
-import * as path from "path";
+import * as readline from "readline";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
 import * as TailFile from "@logdna/tail-file";
-import * as split2 from "split2";
 
 import * as log from "../log";
 import { CommandResult, runPulumiCmd } from "./cmd";
@@ -111,23 +110,22 @@ export class Stack {
         }
     }
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
-        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 });
-        eventLogTail
+        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 })
             .on("tail_error", (err) => {
                 throw err;
-            })
-            .pipe(split2())
-            .on("data", (line: string) => {
-                let event: EngineEvent;
-                try {
-                    event = JSON.parse(line);
-                } catch (e) {
-                    log.info(`failed to parse engine event\nlogfile: ${logPath}\nevent: ${line}\n${e.toString()}`);
-                    return;
-                }
-                callback(event);
             });
         await eventLogTail.start();
+        const lineSplitter = readline.createInterface({ input: eventLogTail });
+        lineSplitter.on("line", (line) => {
+            let event: EngineEvent;
+            try {
+                event = JSON.parse(line);
+            } catch (e) {
+                log.info(`failed to parse engine event\nlogfile: ${logPath}\nevent: ${line}\n${e.toString()}`);
+                return;
+            }
+            callback(event);
+        });
 
         return eventLogTail;
     }
