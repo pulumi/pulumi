@@ -89,9 +89,13 @@ namespace Pulumi.Tests
             // Arrange
             Output<IDictionary<string, object?>>? outputs = null;
 
+            var runner = new Mock<IRunner>(MockBehavior.Strict);
+            runner.Setup(r => r.RegisterTask(It.IsAny<string>(), It.IsAny<Task>()));
+
             var mock = new Mock<IDeploymentInternal>(MockBehavior.Strict);
             mock.Setup(d => d.ProjectName).Returns("TestProject");
             mock.Setup(d => d.StackName).Returns("TestStack");
+            mock.Setup(d => d.Runner).Returns(runner.Object);
             mock.SetupSet(content => content.Stack = It.IsAny<Stack>());
             mock.Setup(d => d.ReadOrRegisterResource(It.IsAny<Stack>(), It.IsAny<bool>(),
                 It.IsAny<Func<string, Resource>>(), It.IsAny<ResourceArgs>(), It.IsAny<ResourceOptions>()));

@@ -132,6 +132,9 @@ describe("LocalWorkspace", () => {
         await ws.removeStack(stackName);
     }));
     it(`nested_config`, asyncTest(async () => {
+        if (getTestOrg() !== "pulumi-test") {
+            return;
+        }
         const stackName = fullyQualifiedStackName(getTestOrg(), "nested_config", "dev");
         const workDir = upath.joinSafe(__dirname, "data", "nested_config");
         const stack = await LocalWorkspace.createOrSelectStack({ stackName, workDir });
@@ -475,12 +478,14 @@ describe("LocalWorkspace", () => {
             },
         });
         for (let i = 0; i < stacks.length; i++) {
+            await Stack.create(stacks[i], ws);
+        }
+        for (let i = 0; i < stacks.length; i++) {
             const x = i;
             const s = stacks[i];
             dones.push((async () => {
-                const stack = await Stack.createOrSelect(s, ws);
                 for (let j = 0; j < 20; j++) {
-                    await stack.setConfig("var-" + j, { value: ((x*20)+j).toString() });
+                    await ws.setConfig(s, "var-" + j, { value: ((x*20)+j).toString()});
                 }
             })());
         }

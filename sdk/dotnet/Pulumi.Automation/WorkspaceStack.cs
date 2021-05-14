@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -665,10 +666,19 @@ namespace Pulumi.Automation
                                     listenOptions.Protocols = HttpProtocols.Http2;
                                 });
                             })
+                            .ConfigureAppConfiguration((context, config) =>
+                            {
+                                // clear so we don't read appsettings.json
+                                // note that we also won't read environment variables for config
+                                config.Sources.Clear();
+                            })
+                            .ConfigureLogging(loggingBuilder =>
+                            {
+                                // disable default logging
+                                loggingBuilder.ClearProviders();
+                            })
                             .ConfigureServices(services =>
                             {
-                                services.AddLogging();
-
                                 // to be injected into LanguageRuntimeService
                                 var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
                                 services.AddSingleton(callerContext);
