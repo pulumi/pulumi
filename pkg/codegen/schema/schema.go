@@ -1668,6 +1668,19 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, e
 	}
 	res.IsProvider = true
 
+	// Since non-primitive provider configuration is currently JSON serialized, we can't handle it without
+	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
+	// values which are primitives, we'll simply remove any properties for the provider resource which are not
+	// here, before we generate the provider code.
+	var primitiveProperties []*Property
+	for _, prop := range res.Properties {
+		if prop.Type != stringType {
+			continue
+		}
+		primitiveProperties = append(primitiveProperties, prop)
+	}
+	res.Properties = primitiveProperties
+
 	types.resources[res.Token] = &ResourceType{
 		Token:    res.Token,
 		Resource: res,
