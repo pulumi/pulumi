@@ -79,8 +79,10 @@ func findProgram(binary string) (*exec.Cmd, error) {
 func main() {
 	var tracing string
 	var binary string
+	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "Look on path for a binary executable with this name")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	flag.Parse()
 	args := flag.Args()

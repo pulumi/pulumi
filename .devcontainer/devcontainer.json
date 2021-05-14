@@ -1,0 +1,23 @@
+{
+    "name": "Pulumi",
+
+    "build": {
+        "dockerfile": "Dockerfile",
+        "args": {
+            "USER_NAME": "user",
+            "USER_UID": "1000"
+        }
+    },
+
+    "runArgs": [
+        "-e",
+        "PULUMI_ACCESS_TOKEN",
+        "-e",
+        "PULUMI_TEST_ORG"
+    ],
+    "remoteUser": "user",
+
+    "settings": {
+        "extensions.ignoreRecommendations": true
+    }
+}

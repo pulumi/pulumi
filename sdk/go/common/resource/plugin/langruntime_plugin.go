@@ -16,6 +16,7 @@ package plugin
 
 import (
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	"github.com/blang/semver"
@@ -59,6 +60,13 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 	for k, v := range options {
 		args = append(args, fmt.Sprintf("-%s=%v", k, v))
 	}
+
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return nil, err
+	}
+	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
+
 	args = append(args, host.ServerAddr())
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
