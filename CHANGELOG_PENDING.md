@@ -8,6 +8,9 @@
 - [auto/go] - Provide GetPermalink for all results
   [#6875](https://github.com/pulumi/pulumi/pull/6875)
 
+- [cli] - Error instead of panic on invalid state file import
+  [#7065](https://github.com/pulumi/pulumi/pull/7065)
+
 ### Bug Fixes
 
 - [sdk/python] Fix relative `runtime:options:virtualenv` path resolution to ignore `main` project attribute
