@@ -2,6 +2,9 @@
 
 ### Improvements
 
+- [auto/dotnet] - Make StackDeployment.FromJsonString public
+  [#7067](https://github.com/pulumi/pulumi/pull/7067)
+
 - [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
   [#6910](https://github.com/pulumi/pulumi/pull/6910)
 
