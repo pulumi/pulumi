@@ -16,6 +16,7 @@ package stack
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -396,4 +397,41 @@ func TestCustomSerialization(t *testing.T) {
 			t.Logf("Full JSON encoding:\n%v", json)
 		}
 	})
+}
+
+func TestDeserializeInvalidResourceErrors(t *testing.T) {
+	deployment, err := DeserializeDeploymentV3(apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{},
+		},
+	}, DefaultSecretsProvider)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, "resource missing required 'urn' field", err.Error())
+
+	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
+	deployment, err = DeserializeDeploymentV3(apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN: resource.URN(urn),
+			},
+		},
+	}, DefaultSecretsProvider)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
+
+	deployment, err = DeserializeDeploymentV3(apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:    resource.URN(urn),
+				Type:   "aws:ebs/volume:Volume",
+				Custom: false,
+				ID:     "vol-044ba5ad2bd959bc1",
+			},
+		},
+	}, DefaultSecretsProvider)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn), err.Error())
 }
