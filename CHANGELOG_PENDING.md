@@ -42,3 +42,6 @@
   Pulumi program. Note that this may require changes to programs that use the
   `pulumi.NewOutput` API.
   [#6983](https://github.com/pulumi/pulumi/pull/6983)
+
+- [sdk/nodejs] Prevent Pulumi from overriding tsconfig.json options.
+  [#7068](https://github.com/pulumi/pulumi/pull/7068)
