@@ -16,6 +16,7 @@ import * as fs from "fs";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
+import { parseConfigFileTextToJson } from "typescript";
 import { ResourceError, RunError } from "../../errors";
 import * as log from "../../log";
 import * as runtime from "../../runtime";
@@ -162,17 +163,26 @@ export function run(opts: RunOpts): Promise<Record<string, any> | undefined> | P
     // that the "root" of the project is the cwd, if there's a tsconfig.json file here. Otherwise,
     // just tell ts-node to not load project options at all. This helps with cases like
     // pulumi/pulumi#1772.
-    const skipProject = !fs.existsSync("tsconfig.json");
+    let compilerOptions: object;
+    try {
+        const tsConfigPath = "tsconfig.json";
+        const tsConfigString = fs.readFileSync(tsConfigPath).toString();
+        const tsConfig = parseConfigFileTextToJson(tsConfigPath, tsConfigString).config;
+        compilerOptions = tsConfig["compilerOptions"] ?? {};
+    } catch (e) {
+        compilerOptions = {};
+    }
 
     if (opts.typeScript) {
         tsnode.register({
             typeCheck: true,
-            skipProject: skipProject,
+            skipProject: true,
             compilerOptions: {
                 target: "es6",
                 module: "commonjs",
                 moduleResolution: "node",
                 sourceMap: "true",
+                ...compilerOptions,
             },
         });
     }
