@@ -927,12 +927,38 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		name = "Provider"
 	}
 
+	resourceArgsName := fmt.Sprintf("%sArgs", name)
+	// Some providers (e.g. Kubernetes) have types with the same name as resources (e.g. StorageClass in Kubernetes).
+	// We've already shipped the input type (e.g. StorageClassArgs) in the same module as the resource, so we can't use
+	// the same name for the resource's args class. When an input type exists that would conflict with the name of the
+	// resource args class, we'll use a different name: `<Resource>InitArgs` instead of `<Resource>Args`.
+	const alternateSuffix = "InitArgs"
+	for _, t := range mod.types {
+		if mod.details(t).inputType {
+			if mod.unqualifiedObjectTypeName(t, true, true) == resourceArgsName {
+				resourceArgsName = name + alternateSuffix
+				break
+			}
+		}
+	}
+	// If we're using the alternate name, ensure the alternate name doesn't conflict with an input type.
+	if strings.HasSuffix(resourceArgsName, alternateSuffix) {
+		for _, t := range mod.types {
+			if mod.details(t).inputType {
+				if mod.unqualifiedObjectTypeName(t, true, true) == resourceArgsName {
+					return "", errors.Errorf(
+						"resource args class named %s in %s conflicts with input type", resourceArgsName, mod.mod)
+				}
+			}
+		}
+	}
+
 	// Export only the symbols we want exported.
-	fmt.Fprintf(w, "__all__ = ['%[1]sArgs', '%[1]s']\n\n", name)
+	fmt.Fprintf(w, "__all__ = ['%s', '%s']\n\n", resourceArgsName, name)
 
 	// Produce an args class.
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	err := mod.genType(w, fmt.Sprintf("%sArgs", name), argsComment, res.InputProperties, false, true, true, false)
+	err := mod.genType(w, resourceArgsName, argsComment, res.InputProperties, false, true, true, false)
 	if err != nil {
 		return "", err
 	}
@@ -1000,7 +1026,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Emit an __init__ overload that accepts the resource's inputs as function arguments.
 	fmt.Fprintf(w, "    @overload\n")
 	emitInitMethodSignature("__init__")
-	mod.genInitDocstring(w, res, name, false /*argsOverload*/)
+	mod.genInitDocstring(w, res, resourceArgsName, false /*argsOverload*/)
 	fmt.Fprintf(w, "        ...\n")
 
 	// Emit an __init__ overload that accepts the resource's inputs from the args class.
@@ -1008,18 +1034,18 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	fmt.Fprintf(w, "    def __init__(__self__,\n")
 	fmt.Fprintf(w, "                 resource_name: str,\n")
 	if allOptionalInputs {
-		fmt.Fprintf(w, "                 args: Optional[%sArgs] = None,\n", name)
+		fmt.Fprintf(w, "                 args: Optional[%s] = None,\n", resourceArgsName)
 	} else {
-		fmt.Fprintf(w, "                 args: %sArgs,\n", name)
+		fmt.Fprintf(w, "                 args: %s,\n", resourceArgsName)
 	}
 	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None):\n")
-	mod.genInitDocstring(w, res, name, true /*argsOverload*/)
+	mod.genInitDocstring(w, res, resourceArgsName, true /*argsOverload*/)
 	fmt.Fprintf(w, "        ...\n")
 
 	// Emit the actual implementation of __init__, which does the appropriate thing based on which
 	// overload was called.
 	fmt.Fprintf(w, "    def __init__(__self__, resource_name: str, *args, **kwargs):\n")
-	fmt.Fprintf(w, "        resource_args, opts = _utilities.get_resource_args_opts(%sArgs, pulumi.ResourceOptions, *args, **kwargs)\n", name)
+	fmt.Fprintf(w, "        resource_args, opts = _utilities.get_resource_args_opts(%s, pulumi.ResourceOptions, *args, **kwargs)\n", resourceArgsName)
 	fmt.Fprintf(w, "        if resource_args is not None:\n")
 	fmt.Fprintf(w, "            __self__._internal_init(resource_name, opts, **resource_args.__dict__)\n")
 	fmt.Fprintf(w, "        else:\n")
@@ -1051,7 +1077,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// We use an instance of the `<Resource>Args` class for `__props__` to opt-in to the type/name metadata based
 	// translation behavior. The instance is created using `__new__` to avoid any validation in the `__init__` method,
 	// values are set directly on its `__dict__`, including any additional output properties.
-	fmt.Fprintf(w, "            __props__ = %[1]sArgs.__new__(%[1]sArgs)\n\n", name)
+	fmt.Fprintf(w, "            __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 	fmt.Fprintf(w, "")
 
 	ins := codegen.NewStringSet()
@@ -1182,7 +1208,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		} else {
 			// If we don't have any state inputs, we'll just instantiate the `<Resource>Args` class,
 			// to opt-in to the improved translation behavior.
-			fmt.Fprintf(w, "        __props__ = %[1]sArgs.__new__(%[1]sArgs)\n\n", name)
+			fmt.Fprintf(w, "        __props__ = %[1]s.__new__(%[1]s)\n\n", resourceArgsName)
 		}
 
 		stateInputs := codegen.NewStringSet()
@@ -1751,7 +1777,7 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 //
 // This function does the best it can to navigate these constraints and produce a docstring that
 // Sphinx can make sense of.
-func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, name string, argOverload bool) {
+func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resourceArgsName string, argOverload bool) {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
@@ -1765,7 +1791,8 @@ func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, name 
 	// All resources have a resource_name parameter and opts parameter.
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
 	if argOverload {
-		fmt.Fprintf(b, ":param %sArgs args: The arguments to use to populate this resource's properties.\n", name)
+		fmt.Fprintf(b, ":param %s args: The arguments to use to populate this resource's properties.\n",
+			resourceArgsName)
 	}
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if !argOverload {

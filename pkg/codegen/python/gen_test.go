@@ -92,6 +92,16 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join("pulumi_example", "outputs.py"),
 			},
 		},
+		{
+			"Resource args with same named resource and type",
+			"resource-args-python",
+			[]string{
+				filepath.Join("pulumi_example", "_inputs.py"),
+				filepath.Join("pulumi_example", "outputs.py"),
+				filepath.Join("pulumi_example", "person.py"),
+				filepath.Join("pulumi_example", "pet.py"),
+			},
+		},
 	}
 
 	testDir := filepath.Join("..", "internal", "test", "testdata")

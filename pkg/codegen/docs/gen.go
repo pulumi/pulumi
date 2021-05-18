@@ -152,6 +152,10 @@ func init() {
 	langModuleNameLookup = map[string]string{}
 }
 
+type typeDetails struct {
+	inputType bool
+}
+
 // header represents the header of each resource markdown file.
 type header struct {
 	Title    string
@@ -331,12 +335,14 @@ func (ss nestedTypeUsageInfo) contains(token string, input bool) bool {
 }
 
 type modContext struct {
-	pkg       *schema.Package
-	mod       string
-	resources []*schema.Resource
-	functions []*schema.Function
-	children  []*modContext
-	tool      string
+	pkg         *schema.Package
+	mod         string
+	inputTypes  []*schema.ObjectType
+	resources   []*schema.Resource
+	functions   []*schema.Function
+	typeDetails map[*schema.ObjectType]*typeDetails
+	children    []*modContext
+	tool        string
 }
 
 func resourceName(r *schema.Resource) string {
@@ -360,6 +366,18 @@ type propertyCharacteristics struct {
 	args bool
 	// optional is a flag indicating if the property is optional.
 	optional bool
+}
+
+func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
+	details, ok := mod.typeDetails[t]
+	if !ok {
+		details = &typeDetails{}
+		if mod.typeDetails == nil {
+			mod.typeDetails = map[*schema.ObjectType]*typeDetails{}
+		}
+		mod.typeDetails[t] = details
+	}
+	return details
 }
 
 // getLanguageModuleName transforms the current module's name to a
@@ -735,7 +753,18 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 	})
 
 	if argsOverload {
-		optionalFlag, defaultVal, descriptionName := "", "", fmt.Sprintf("%sArgs", resourceName(r))
+		// Determine whether we need to use the alternate args class name (e.g. `<Resource>InitArgs` instead of
+		// `<Resource>Args`) due to an input type with the same name as the resource in the same module.
+		resName := resourceName(r)
+		resArgsName := fmt.Sprintf("%sArgs", resName)
+		for _, inputType := range mod.inputTypes {
+			inputTypeName := strings.Title(tokenToName(inputType.Token))
+			if resName == inputTypeName {
+				resArgsName = fmt.Sprintf("%sInitArgs", resName)
+			}
+		}
+
+		optionalFlag, defaultVal, descriptionName := "", "", resArgsName
 		typeName := descriptionName
 		if argsOptional {
 			optionalFlag, defaultVal, typeName = "optional", " = None", fmt.Sprintf("Optional[%s]", typeName)
@@ -1693,7 +1722,7 @@ func formatTitleText(title string) string {
 	return title
 }
 
-func getMod(pkg *schema.Package, token string, modules map[string]*modContext, tool string) *modContext {
+func getMod(pkg *schema.Package, token string, tokenPkg *schema.Package, modules map[string]*modContext, tool string, add bool) *modContext {
 	modName := pkg.TokenToModule(token)
 	mod, ok := modules[modName]
 	if !ok {
@@ -1703,7 +1732,7 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 			tool: tool,
 		}
 
-		if modName != "" {
+		if modName != "" && tokenPkg == pkg {
 			parentName := path.Dir(modName)
 			// If the parent name is blank, it means this is the package-level.
 			if parentName == "." || parentName == "" {
@@ -1711,11 +1740,17 @@ func getMod(pkg *schema.Package, token string, modules map[string]*modContext, t
 			} else {
 				parentName = ":" + parentName + ":"
 			}
-			parent := getMod(pkg, parentName, modules, tool)
-			parent.children = append(parent.children, mod)
+			parent := getMod(pkg, parentName, tokenPkg, modules, tool, add)
+			if add {
+				parent.children = append(parent.children, mod)
+			}
 		}
 
-		modules[modName] = mod
+		// Save the module only if we're adding and it's for the current package.
+		// This way, modules for external packages are not saved.
+		if add && tokenPkg == pkg {
+			modules[modName] = mod
+		}
 	}
 	return mod
 }
@@ -1757,9 +1792,27 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	csharpLangHelper := getLanguageDocHelper("csharp").(*dotnet.DocLanguageHelper)
 	csharpLangHelper.Namespaces = csharpPkgInfo.Namespaces
 
+	visitObjects := func(r *schema.Resource) {
+		visitObjectTypes(r.InputProperties, func(t schema.Type) {
+			switch T := t.(type) {
+			case *schema.ObjectType:
+				getMod(pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
+			}
+		})
+		if r.StateInputs != nil {
+			visitObjectTypes(r.StateInputs.Properties, func(t schema.Type) {
+				switch T := t.(type) {
+				case *schema.ObjectType:
+					getMod(pkg, T.Token, T.Package, modules, tool, true).details(T).inputType = true
+				}
+			})
+		}
+	}
+
 	scanResource := func(r *schema.Resource) {
-		mod := getMod(pkg, r.Token, modules, tool)
+		mod := getMod(pkg, r.Token, r.Package, modules, tool, true)
 		mod.resources = append(mod.resources, r)
+		visitObjects(r)
 
 		generatePythonPropertyCaseMaps(mod, r, seenCasingTypes)
 	}
@@ -1767,6 +1820,7 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	scanK8SResource := func(r *schema.Resource) {
 		mod := getKubernetesMod(pkg, r.Token, modules, tool)
 		mod.resources = append(mod.resources, r)
+		visitObjects(r)
 	}
 
 	glog.V(3).Infoln("scanning resources")
@@ -1784,9 +1838,21 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	glog.V(3).Infoln("done scanning resources")
 
 	for _, f := range pkg.Functions {
-		mod := getMod(pkg, f.Token, modules, tool)
+		mod := getMod(pkg, f.Token, f.Package, modules, tool, true)
 		mod.functions = append(mod.functions, f)
 	}
+
+	// Find nested types.
+	for _, t := range pkg.Types {
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			mod := getMod(pkg, typ.Token, typ.Package, modules, tool, false)
+			if mod.details(typ).inputType {
+				mod.inputTypes = append(mod.inputTypes, typ)
+			}
+		}
+	}
+
 	return modules
 }
 
@@ -1821,4 +1887,13 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 
 	return files, nil
+}
+
+func visitObjectTypes(properties []*schema.Property, visitor func(t schema.Type)) {
+	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
+		switch st := t.Type.(type) {
+		case *schema.EnumType, *schema.ObjectType, *schema.ResourceType:
+			visitor(st)
+		}
+	})
 }
