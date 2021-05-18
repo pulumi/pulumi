@@ -783,6 +783,185 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        [Fact]
+        public async Task ConfigSecretWarnings()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+
+                config.Get("plainstr1");
+                config.Require("plainstr2");
+                config.GetSecret("plainstr3");
+                config.RequireSecret("plainstr4");
+
+                config.GetBoolean("plainbool1");
+                config.RequireBoolean("plainbool2");
+                config.GetSecretBoolean("plainbool3");
+                config.RequireSecretBoolean("plainbool4");
+
+                config.GetInt32("plainint1");
+                config.RequireInt32("plainint2");
+                config.GetSecretInt32("plainint3");
+                config.RequireSecretInt32("plainint4");
+
+                config.GetObject<System.Text.Json.JsonElement>("plainobj1");
+                config.RequireObject<System.Text.Json.JsonElement>("plainobj2");
+                config.GetSecretObject<System.Text.Json.JsonElement>("plainobj3");
+                config.RequireSecretObject<System.Text.Json.JsonElement>("plainobj4");
+
+                config.Get("str1");
+                config.Require("str2");
+                config.GetSecret("str3");
+                config.RequireSecret("str4");
+
+                config.GetBoolean("bool1");
+                config.RequireBoolean("bool2");
+                config.GetSecretBoolean("bool3");
+                config.RequireSecretBoolean("bool4");
+
+                config.GetInt32("int1");
+                config.RequireInt32("int2");
+                config.GetSecretInt32("int3");
+                config.RequireSecretInt32("int4");
+
+                config.GetObject<System.Text.Json.JsonElement>("obj1");
+                config.RequireObject<System.Text.Json.JsonElement>("obj2");
+                config.GetSecretObject<System.Text.Json.JsonElement>("obj3");
+                config.RequireSecretObject<System.Text.Json.JsonElement>("obj4");
+            });
+            var projectName = "inline_dotnet";
+            var stackName = $"inline_dotnet{GetTestSuffix()}";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                { "plainstr1", new ConfigValue("1") },
+                { "plainstr2", new ConfigValue("2") },
+                { "plainstr3", new ConfigValue("3") },
+                { "plainstr4", new ConfigValue("4") },
+                { "plainbool1", new ConfigValue("true") },
+                { "plainbool2", new ConfigValue("true") },
+                { "plainbool3", new ConfigValue("true") },
+                { "plainbool4", new ConfigValue("true") },
+                { "plainint1", new ConfigValue("1") },
+                { "plainint2", new ConfigValue("2") },
+                { "plainint3", new ConfigValue("3") },
+                { "plainint4", new ConfigValue("4") },
+                { "plainobj1", new ConfigValue("{}") },
+                { "plainobj2", new ConfigValue("{}") },
+                { "plainobj3", new ConfigValue("{}") },
+                { "plainobj4", new ConfigValue("{}") },
+                { "str1", new ConfigValue("1", isSecret: true) },
+                { "str2", new ConfigValue("2", isSecret: true) },
+                { "str3", new ConfigValue("3", isSecret: true) },
+                { "str4", new ConfigValue("4", isSecret: true) },
+                { "bool1", new ConfigValue("true", isSecret: true) },
+                { "bool2", new ConfigValue("true", isSecret: true) },
+                { "bool3", new ConfigValue("true", isSecret: true) },
+                { "bool4", new ConfigValue("true", isSecret: true) },
+                { "int1", new ConfigValue("1", isSecret: true) },
+                { "int2", new ConfigValue("2", isSecret: true) },
+                { "int3", new ConfigValue("3", isSecret: true) },
+                { "int4", new ConfigValue("4", isSecret: true) },
+                { "obj1", new ConfigValue("{}", isSecret: true) },
+                { "obj2", new ConfigValue("{}", isSecret: true) },
+                { "obj3", new ConfigValue("{}", isSecret: true) },
+                { "obj4", new ConfigValue("{}", isSecret: true) },
+            };
+
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi preview
+                await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+
+                // pulumi up
+                await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+            }
+            finally
+            {
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+                where TOptions : UpdateOptions, new()
+            {
+                var expectedWarnings = new string[]
+                {
+                    "Configuration 'inline_dotnet:str1' value is a secret; use `GetSecret` instead of `Get`",
+                    "Configuration 'inline_dotnet:str2' value is a secret; use `RequireSecret` instead of `Require`",
+                    "Configuration 'inline_dotnet:bool1' value is a secret; use `GetSecretBoolean` instead of `GetBoolean`",
+                    "Configuration 'inline_dotnet:bool2' value is a secret; use `RequireSecretBoolean` instead of `RequireBoolean`",
+                    "Configuration 'inline_dotnet:int1' value is a secret; use `GetSecretInt32` instead of `GetInt32`",
+                    "Configuration 'inline_dotnet:int2' value is a secret; use `RequireSecretInt32` instead of `RequireInt32`",
+                    "Configuration 'inline_dotnet:obj1' value is a secret; use `GetSecretObject` instead of `GetObject`",
+                    "Configuration 'inline_dotnet:obj2' value is a secret; use `RequireSecretObject` instead of `RequireObject`",
+                };
+
+                // These keys should not be in any warning messages.
+                var unexpectedWarnings = new string[]
+                {
+                    "plainstr1",
+                    "plainstr2",
+                    "plainstr3",
+                    "plainstr4",
+                    "plainbool1",
+                    "plainbool2",
+                    "plainbool3",
+                    "plainbool4",
+                    "plainint1",
+                    "plainint2",
+                    "plainint3",
+                    "plainint4",
+                    "plainobj1",
+                    "plainobj2",
+                    "plainobj3",
+                    "plainobj4",
+                    "str3",
+                    "str4",
+                    "bool3",
+                    "bool4",
+                    "int3",
+                    "int4",
+                    "obj3",
+                    "obj4",
+                };
+
+                var events = new List<DiagnosticEvent>();
+
+                var result = await func(new TOptions()
+                {
+                    OnEvent = @event =>
+                    {
+                        if (@event.DiagnosticEvent?.Severity == "warning")
+                        {
+                            events.Add(@event.DiagnosticEvent);
+                        }
+                    }
+                }, CancellationToken.None);
+
+                foreach (var expected in expectedWarnings)
+                {
+                    Assert.Contains(events, @event => @event.Message.Contains(expected));
+                }
+
+                foreach (var unexpected in unexpectedWarnings)
+                {
+                    Assert.DoesNotContain(events, @event => @event.Message.Contains(unexpected));
+                }
+
+                return result;
+            }
+        }
+
         private class ValidStack : Stack
         {
             [Output("exp_static")]
