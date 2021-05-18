@@ -8,6 +8,7 @@ namespace Pulumi
     internal interface IDeploymentInternal : IDeployment
     {
         string? GetConfig(string fullKey);
+        bool IsConfigSecret(string fullKey);
 
         Stack Stack { get; set; }
 

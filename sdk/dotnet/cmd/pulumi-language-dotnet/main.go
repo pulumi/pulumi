@@ -488,6 +488,11 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
 	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize configuration secret keys")
+		return nil, err
+	}
 
 	executable := host.exec
 	args := []string{}
@@ -518,7 +523,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	cmd := exec.Command(executable, args...) // nolint: gas // intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = host.constructEnv(req, config)
+	cmd.Env = host.constructEnv(req, config, configSecretKeys)
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
@@ -547,7 +552,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	return &pulumirpc.RunResponse{Error: errResult}, nil
 }
 
-func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config string) []string {
+func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config, configSecretKeys string) []string {
 	env := os.Environ()
 
 	maybeAppendEnv := func(k, v string) {
@@ -566,6 +571,7 @@ func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config s
 	maybeAppendEnv("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv("tracing", host.tracing)
 	maybeAppendEnv("config", config)
+	maybeAppendEnv("config_secret_keys", configSecretKeys)
 
 	return env
 }
@@ -583,6 +589,22 @@ func (host *dotnetLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *dotnetLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {
