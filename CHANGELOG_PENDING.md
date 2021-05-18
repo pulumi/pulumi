@@ -18,6 +18,7 @@
   [#6896](https://github.com/pulumi/pulumi/pull/6896)
   [#7078](https://github.com/pulumi/pulumi/pull/7078)
   [#7079](https://github.com/pulumi/pulumi/pull/7079)
+  [#7080](https://github.com/pulumi/pulumi/pull/7080)
 
 ### Bug Fixes
 
