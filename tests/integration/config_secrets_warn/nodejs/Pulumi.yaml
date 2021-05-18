@@ -1,0 +1,3 @@
+name: config_secrets_node
+runtime: nodejs
+description: A simple Node.js program that uses configuration secrets.

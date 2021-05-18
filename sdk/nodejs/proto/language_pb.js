@@ -460,7 +460,7 @@ proto.pulumirpc.GetRequiredPluginsResponse.prototype.clearPluginsList = function
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RunRequest.repeatedFields_ = [5];
+proto.pulumirpc.RunRequest.repeatedFields_ = [5,11];
 
 
 
@@ -502,7 +502,8 @@ proto.pulumirpc.RunRequest.toObject = function(includeInstance, msg) {
     dryrun: jspb.Message.getBooleanFieldWithDefault(msg, 7, false),
     parallel: jspb.Message.getFieldWithDefault(msg, 8, 0),
     monitorAddress: jspb.Message.getFieldWithDefault(msg, 9, ""),
-    querymode: jspb.Message.getBooleanFieldWithDefault(msg, 10, false)
+    querymode: jspb.Message.getBooleanFieldWithDefault(msg, 10, false),
+    configsecretkeysList: (f = jspb.Message.getRepeatedField(msg, 11)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -580,6 +581,10 @@ proto.pulumirpc.RunRequest.deserializeBinaryFromReader = function(msg, reader) {
     case 10:
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setQuerymode(value);
+      break;
+    case 11:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addConfigsecretkeys(value);
       break;
     default:
       reader.skipField();
@@ -674,6 +679,13 @@ proto.pulumirpc.RunRequest.serializeBinaryToWriter = function(message, writer) {
   if (f) {
     writer.writeBool(
       10,
+      f
+    );
+  }
+  f = message.getConfigsecretkeysList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      11,
       f
     );
   }
@@ -880,6 +892,43 @@ proto.pulumirpc.RunRequest.prototype.getQuerymode = function() {
  */
 proto.pulumirpc.RunRequest.prototype.setQuerymode = function(value) {
   return jspb.Message.setProto3BooleanField(this, 10, value);
+};
+
+
+/**
+ * repeated string configSecretKeys = 11;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RunRequest.prototype.getConfigsecretkeysList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 11));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.setConfigsecretkeysList = function(value) {
+  return jspb.Message.setField(this, 11, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.addConfigsecretkeys = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 11, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RunRequest} returns this
+ */
+proto.pulumirpc.RunRequest.prototype.clearConfigsecretkeysList = function() {
+  return this.setConfigsecretkeysList([]);
 };
 
 

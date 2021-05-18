@@ -14,6 +14,9 @@
 - [cli] - Error instead of panic on invalid state file import
   [#7065](https://github.com/pulumi/pulumi/pull/7065)
 
+- [sdk/nodejs] - Warn when a secret config is read as a non-secret
+  [#6896](https://github.com/pulumi/pulumi/pull/6896)
+
 ### Bug Fixes
 
 - [sdk/python] Fix relative `runtime:options:virtualenv` path resolution to ignore `main` project attribute
