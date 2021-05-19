@@ -13,7 +13,7 @@ namespace Pulumi
     /// since it's too low-level and provides low safety. Its target scenario are
     /// resources with a very dynamic shape of inputs.
     /// The input dictionary may only contain objects that are serializable by
-    /// Pulumi, i.e only the following types are allowed:
+    /// Pulumi, i.e only the following types (or pulumi.Output of those types) are allowed:
     /// <list type="bullet">
     /// <item><description>Primitive types: <see cref="string"/>, <see cref="double"/>,
     /// <see cref="int"/>, <see cref="bool"/></description></item>
@@ -29,7 +29,7 @@ namespace Pulumi
     public sealed class DictionaryResourceArgs : ResourceArgs
     {
         private readonly ImmutableDictionary<string, object?> _dictionary;
-        
+
         /// <summary>
         /// Constructs an instance of <see cref="DictionaryResourceArgs"/> from
         /// a dictionary of input objects.
@@ -53,7 +53,7 @@ namespace Pulumi
                         targetType = type.GenericTypeArguments[0];
                     }
                 }
-                
+
                 Converter.CheckTargetType(nameof(dictionary), targetType, seenTypes);
             }
 
