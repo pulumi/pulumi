@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import asyncio
+import os
 import unittest
 from enum import Enum
 from typing import Any, Dict, List, Mapping, Optional, Sequence, cast
@@ -251,10 +252,11 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_file_asset(self):
-        asset = FileAsset("hello.txt")
+        path = os.path.abspath(os.path.join(os.path.dirname(__file__), "assets", "hello.txt"))
+        asset = FileAsset(path)
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_asset_sig, prop[rpc._special_sig_key])
-        self.assertEqual("hello.txt", prop["path"])
+        self.assertEqual(path, prop["path"])
 
     @pulumi_test
     async def test_remote_asset(self):
@@ -432,10 +434,11 @@ class NextSerializationTests(unittest.TestCase):
 
     @pulumi_test
     async def test_file_archive(self):
-        asset = FileArchive("foo.tar.gz")
+        path = os.path.abspath(os.path.join(os.path.dirname(__file__), "assets", "foo.tar.gz"))
+        asset = FileArchive(path)
         prop = await rpc.serialize_property(asset, [])
         self.assertEqual(rpc._special_archive_sig, prop[rpc._special_sig_key])
-        self.assertEqual("foo.tar.gz", prop["path"])
+        self.assertEqual(path, prop["path"])
 
     @pulumi_test
     async def test_bad_inputs(self):
