@@ -42,8 +42,19 @@ namespace Pulumi
             var seenTypes = new HashSet<Type>();
             foreach (var value in dictionary.Values)
             {
-                if (value != null)
-                    Converter.CheckTargetType(nameof(dictionary), value.GetType(), seenTypes);
+                if (value == null) continue;
+
+                var targetType = value.GetType();
+                if (value is IOutput)
+                {
+                    var type = value.GetType();
+                    if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Output<>))
+                    {
+                        targetType = type.GenericTypeArguments[0];
+                    }
+                }
+                
+                Converter.CheckTargetType(nameof(dictionary), targetType, seenTypes);
             }
 
             _dictionary = dictionary;
