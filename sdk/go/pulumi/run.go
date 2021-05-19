@@ -123,16 +123,17 @@ type RunFunc func(ctx *Context) error
 
 // RunInfo contains all the metadata about a run request.
 type RunInfo struct {
-	Project     string
-	Stack       string
-	Config      map[string]string
-	Parallel    int
-	DryRun      bool
-	MonitorAddr string
-	EngineAddr  string
-	Mocks       MockResourceMonitor
-	getPlugins  bool
-	engineConn  *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
+	Project          string
+	Stack            string
+	Config           map[string]string
+	ConfigSecretKeys []string
+	Parallel         int
+	DryRun           bool
+	MonitorAddr      string
+	EngineAddr       string
+	Mocks            MockResourceMonitor
+	getPlugins       bool
+	engineConn       *grpc.ClientConn // Pre-existing engine connection. If set this is used over EngineAddr.
 }
 
 // getEnvInfo reads various program information from the process environment.
@@ -147,15 +148,21 @@ func getEnvInfo() RunInfo {
 		_ = json.Unmarshal([]byte(cfg), &config)
 	}
 
+	var configSecretKeys []string
+	if keys := os.Getenv(EnvConfigSecretKeys); keys != "" {
+		_ = json.Unmarshal([]byte(keys), &configSecretKeys)
+	}
+
 	return RunInfo{
-		Project:     os.Getenv(EnvProject),
-		Stack:       os.Getenv(EnvStack),
-		Config:      config,
-		Parallel:    parallel,
-		DryRun:      dryRun,
-		MonitorAddr: os.Getenv(EnvMonitor),
-		EngineAddr:  os.Getenv(EnvEngine),
-		getPlugins:  getPlugins,
+		Project:          os.Getenv(EnvProject),
+		Stack:            os.Getenv(EnvStack),
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		Parallel:         parallel,
+		DryRun:           dryRun,
+		MonitorAddr:      os.Getenv(EnvMonitor),
+		EngineAddr:       os.Getenv(EnvEngine),
+		getPlugins:       getPlugins,
 	}
 }
 
@@ -166,6 +173,9 @@ const (
 	EnvStack = "PULUMI_STACK"
 	// EnvConfig is the envvar used to read the current Pulumi configuration variables.
 	EnvConfig = "PULUMI_CONFIG"
+	// EnvConfigSecretKeys is the envvar used to read the current Pulumi configuration keys that are secrets.
+	//nolint: gosec
+	EnvConfigSecretKeys = "PULUMI_CONFIG_SECRET_KEYS"
 	// EnvParallel is the envvar used to read the current Pulumi degree of parallelism.
 	EnvParallel = "PULUMI_PARALLEL"
 	// EnvDryRun is the envvar used to read the current Pulumi dry-run setting.

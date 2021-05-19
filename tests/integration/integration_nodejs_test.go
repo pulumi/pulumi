@@ -15,6 +15,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -395,6 +396,125 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 	})
 }
 
+// Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+func TestConfigSecretsWarnNodeJS(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("config_secrets_warn", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"plainstr1":  "1",
+			"plainstr2":  "2",
+			"plainstr3":  "3",
+			"plainstr4":  "4",
+			"plainbool1": "true",
+			"plainbool2": "true",
+			"plainbool3": "true",
+			"plainbool4": "true",
+			"plainnum1":  "1",
+			"plainnum2":  "2",
+			"plainnum3":  "3",
+			"plainnum4":  "4",
+			"plainobj1":  "{}",
+			"plainobj2":  "{}",
+			"plainobj3":  "{}",
+			"plainobj4":  "{}",
+		},
+		Secrets: map[string]string{
+			"str1":  "1",
+			"str2":  "2",
+			"str3":  "3",
+			"str4":  "4",
+			"bool1": "true",
+			"bool2": "true",
+			"bool3": "true",
+			"bool4": "true",
+			"num1":  "1",
+			"num2":  "2",
+			"num3":  "3",
+			"num4":  "4",
+			"obj1":  "{}",
+			"obj2":  "{}",
+			"obj3":  "{}",
+			"obj4":  "{}",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "parent1.foo", Value: "plain1", Path: true},
+			{Key: "parent1.bar", Value: "secret1", Path: true, Secret: true},
+			{Key: "parent2.foo", Value: "plain2", Path: true},
+			{Key: "parent2.bar", Value: "secret2", Path: true, Secret: true},
+			{Key: "names1[0]", Value: "plain1", Path: true},
+			{Key: "names1[1]", Value: "secret1", Path: true, Secret: true},
+			{Key: "names2[0]", Value: "plain2", Path: true},
+			{Key: "names2[1]", Value: "secret2", Path: true, Secret: true},
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			//nolint:lll
+			expectedWarnings := []string{
+				"Configuration 'config_secrets_node:str1' value is a secret; use `getSecret` instead of `get`",
+				"Configuration 'config_secrets_node:str2' value is a secret; use `requireSecret` instead of `require`",
+				"Configuration 'config_secrets_node:bool1' value is a secret; use `getSecretBoolean` instead of `getBoolean`",
+				"Configuration 'config_secrets_node:bool2' value is a secret; use `requireSecretBoolean` instead of `requireBoolean`",
+				"Configuration 'config_secrets_node:num1' value is a secret; use `getSecretNumber` instead of `getNumber`",
+				"Configuration 'config_secrets_node:num2' value is a secret; use `requireSecretNumber` instead of `requireNumber`",
+				"Configuration 'config_secrets_node:obj1' value is a secret; use `getSecretObject` instead of `getObject`",
+				"Configuration 'config_secrets_node:obj2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+				"Configuration 'config_secrets_node:parent1' value is a secret; use `getSecretObject` instead of `getObject`",
+				"Configuration 'config_secrets_node:parent2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+				"Configuration 'config_secrets_node:names1' value is a secret; use `getSecretObject` instead of `getObject`",
+				"Configuration 'config_secrets_node:names2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+			}
+			for _, warning := range expectedWarnings {
+				var found bool
+				for _, event := range stackInfo.Events {
+					if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "warning" &&
+						strings.Contains(event.DiagnosticEvent.Message, warning) {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected warning %q", warning)
+			}
+
+			// These keys should not be in any warning messages.
+			unexpectedWarnings := []string{
+				"plainstr1",
+				"plainstr2",
+				"plainstr3",
+				"plainstr4",
+				"plainbool1",
+				"plainbool2",
+				"plainbool3",
+				"plainbool4",
+				"plainnum1",
+				"plainnum2",
+				"plainnum3",
+				"plainnum4",
+				"plainobj1",
+				"plainobj2",
+				"plainobj3",
+				"plainobj4",
+				"str3",
+				"str4",
+				"bool3",
+				"bool4",
+				"num3",
+				"num4",
+				"obj3",
+				"obj4",
+			}
+			for _, warning := range unexpectedWarnings {
+				for _, event := range stackInfo.Events {
+					if event.DiagnosticEvent != nil {
+						assert.NotContains(t, event.DiagnosticEvent.Message, warning)
+					}
+				}
+			}
+		},
+	})
+}
+
 func TestInvalidVersionInPackageJson(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
@@ -580,6 +700,58 @@ func TestStackReferenceSecretsNodejs(t *testing.T) {
 	})
 }
 
+func TestPasswordlessPassphraseSecretsProvider(t *testing.T) {
+	testOptions := integration.ProgramTestOptions{
+		Dir:             "cloud_secrets_provider",
+		Dependencies:    []string{"@pulumi/pulumi"},
+		SecretsProvider: fmt.Sprintf("passphrase"),
+		Env:             []string{"PULUMI_CONFIG_PASSPHRASE=\"\""},
+		NoParallel:      true,
+		Secrets: map[string]string{
+			"mysecret": "THISISASECRET",
+		},
+		CloudURL: "file://~",
+	}
+
+	workingTestOptions := testOptions.With(integration.ProgramTestOptions{
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			os.Setenv("PULUMI_CONFIG_PASSPHRASE", "")
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "passphrase")
+
+			_, err := passphrase.NewPassphaseSecretsManagerFromState(secretsProvider.State)
+			assert.NoError(t, err)
+
+			out, ok := stackInfo.Outputs["out"].(map[string]interface{})
+			assert.True(t, ok)
+
+			_, ok = out["ciphertext"]
+			assert.True(t, ok)
+			os.Unsetenv("PULUMI_CONFIG_PASSPHRASE")
+		},
+	})
+
+	brokenTestOptions := testOptions.With(integration.ProgramTestOptions{
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			secretsProvider := stackInfo.Deployment.SecretsProviders
+			assert.NotNil(t, secretsProvider)
+			assert.Equal(t, secretsProvider.Type, "passphrase")
+
+			_, err := passphrase.NewPassphaseSecretsManagerFromState(secretsProvider.State)
+			assert.Error(t, err)
+		},
+	})
+
+	t.Run("works-when-passphrase-set", func(t *testing.T) {
+		integration.ProgramTest(t, &workingTestOptions)
+	})
+
+	t.Run("error-when-passphrase-not-set", func(t *testing.T) {
+		integration.ProgramTest(t, &brokenTestOptions)
+	})
+}
+
 func TestCloudSecretProvider(t *testing.T) {
 	awsKmsKeyAlias := os.Getenv("PULUMI_TEST_KMS_KEY_ALIAS")
 	if awsKmsKeyAlias == "" {
@@ -633,7 +805,9 @@ func TestCloudSecretProvider(t *testing.T) {
 	})
 
 	// Run with default Pulumi service backend
-	t.Run("service", func(t *testing.T) { integration.ProgramTest(t, &testOptions) })
+	t.Run("service", func(t *testing.T) {
+		integration.ProgramTest(t, &testOptions)
+	})
 
 	// Check Azure secrets provider
 	t.Run("azure", func(t *testing.T) { integration.ProgramTest(t, &azureTestOptions) })
@@ -820,4 +994,12 @@ func TestGetResourceNode(t *testing.T) {
 			assert.Equal(t, "foo", stack.Outputs["foo"])
 		},
 	})
+}
+
+func TestComponentProviderSchemaNode(t *testing.T) {
+	path := filepath.Join("component_provider_schema", "testcomponent", "pulumi-resource-testcomponent")
+	if runtime.GOOS == WindowsOS {
+		path += ".cmd"
+	}
+	testComponentProviderSchema(t, path)
 }

@@ -16,7 +16,7 @@ namespace Pulumi
             _projectName = settings.Project;
             _stackName = settings.Stack;
             _isDryRun = settings.IsDryRun;
-            SetAllConfig(settings.Config);
+            SetAllConfig(settings.Config, settings.ConfigSecretKeys);
 
             if (string.IsNullOrEmpty(settings.MonitorAddr)
                 || string.IsNullOrEmpty(settings.EngineAddr)

@@ -76,7 +76,7 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
             for (const [k, v] of req.getConfigMap()?.entries() || []) {
                 config[<string>k] = <string>v;
             }
-            runtime.setAllConfig(config);
+            runtime.setAllConfig(config, req.getConfigsecretkeysList() || []);
 
             process.on("uncaughtException", uncaughtHandler);
             // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
