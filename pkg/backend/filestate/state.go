@@ -15,9 +15,12 @@
 package filestate
 
 import (
+	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -160,6 +163,10 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 	if err != nil {
 		return nil, err
 	}
+	bytes, err = inflateBytes(bytes)
+	if err != nil {
+		return nil, err
+	}
 
 	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
 }
@@ -167,12 +174,17 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
 	file := b.stackPath(name)
-	m, ext := encoding.Detect(file)
+	fileUnwraped := file
+	if filepath.Ext(file) == ".gz" {
+		fileUnwraped = strings.TrimSuffix(file, ".gz")
+	}
+	m, ext := encoding.Detect(fileUnwraped)
 	if m == nil {
 		return "", errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
-		file = file + ext
+		fileUnwraped = file + ext
+		file = fileUnwraped
 	}
 	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
@@ -182,9 +194,26 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	if err != nil {
 		return "", errors.Wrap(err, "An IO error occurred while marshalling the checkpoint")
 	}
+	if b.gzip {
+		if filepath.Ext(file) != ".gz" {
+			file = file + ".gz"
+		}
+		byts, err = deflateBytes(byts)
+		if err != nil {
+			return "", errors.Wrap(err, "An IO error occurred while compressing the checkpoint")
+		}
+	}
 
 	// Back up the existing file if it already exists.
-	bck := backupTarget(b.bucket, file)
+	var bck string
+	if b.gzip {
+		// Try to backup the ancestor, whether it's plain of wrapped in .gz
+		bckPlain := backupTarget(b.bucket, fileUnwraped)
+		bckGzip := backupTarget(b.bucket, file)
+		bck = fmt.Sprintf("[%s, %s]", bckPlain, bckGzip)
+	} else {
+		bck = backupTarget(b.bucket, file)
+	}
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
@@ -281,6 +310,10 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	if err != nil {
 		return err
 	}
+	byts, err = inflateBytes(byts)
+	if err != nil {
+		return err
+	}
 
 	// Get the backup directory.
 	backupDir := b.backupDirectory(name)
@@ -288,6 +321,10 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	// Write out the new backup checkpoint file.
 	stackFile := filepath.Base(stackPath)
 	ext := filepath.Ext(stackFile)
+	if ext == ".gz" {
+		// store .json.gz in ext
+		ext = filepath.Ext(strings.TrimSuffix(stackFile, ext)) + ".gz"
+	}
 	base := strings.TrimSuffix(stackFile, ext)
 	backupFile := fmt.Sprintf("%s.%v%s", base, time.Now().UnixNano(), ext)
 	return b.bucket.WriteAll(context.TODO(), filepath.Join(backupDir, backupFile), byts, nil)
@@ -296,9 +333,17 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 func (b *localBackend) stackPath(stack tokens.QName) string {
 	path := filepath.Join(b.StateDir(), workspace.StackDir)
 	if stack != "" {
-		path = filepath.Join(path, fsutil.QnamePath(stack)+".json")
+		allObjs, err := listBucket(b.bucket, path)
+		path = filepath.Join(path, fsutil.QnamePath(stack)) + ".json"
+		gzipedPath := path + ".gz"
+		if err == nil {
+			for _, obj := range allObjs {
+				if obj.Key == gzipedPath {
+					return gzipedPath
+				}
+			}
+		}
 	}
-
 	return path
 }
 
@@ -339,7 +384,8 @@ func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]
 		filepath := file.Key
 
 		// ignore checkpoints
-		if !strings.HasSuffix(filepath, ".history.json") {
+		if !strings.HasSuffix(filepath, ".history.json") &&
+			!strings.HasSuffix(filepath, ".history.json.gz") {
 			continue
 		}
 
@@ -369,6 +415,10 @@ func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]
 		b, err := b.bucket.ReadAll(context.TODO(), filepath)
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading history file %s", filepath)
+		}
+		b, err = inflateBytes(b)
+		if err != nil {
+			return nil, err
 		}
 		err = json.Unmarshal(b, &update)
 		if err != nil {
@@ -425,19 +475,69 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 
 	// Prefix for the update and checkpoint files.
 	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
+	// Add extra extension to file (like ".gz")
+	fileExtraExt := ""
 
 	// Save the history file.
 	byts, err := json.MarshalIndent(&update, "", "    ")
 	if err != nil {
 		return err
 	}
+	if b.gzip {
+		fileExtraExt = ".gz"
+		byts, err = deflateBytes(byts)
+		if err != nil {
+			return err
+		}
+	}
 
-	historyFile := fmt.Sprintf("%s.history.json", pathPrefix)
+	historyFile := fmt.Sprintf("%s.history.json%s", pathPrefix, fileExtraExt)
 	if err = b.bucket.WriteAll(context.TODO(), historyFile, byts, nil); err != nil {
 		return err
 	}
 
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
-	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
+	checkpointFile := fmt.Sprintf("%s.checkpoint.json%s", pathPrefix, fileExtraExt)
 	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
+}
+
+// return plain data from gziped (or plain) data
+func inflateBytes(data []byte) ([]byte, error) {
+	if data[0] != 31 || data[1] != 139 {
+		// not gzip
+		return data, nil
+	}
+	buf := bytes.NewBuffer(data)
+	reader, err := gzip.NewReader(buf)
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	inflated, err := ioutil.ReadAll(reader)
+	if err != nil {
+		return nil, err
+	}
+	if err := reader.Close(); err != nil {
+		return nil, err
+	}
+	return inflated, nil
+}
+
+// return gziped data from plain data
+func deflateBytes(data []byte) ([]byte, error) {
+	if data[0] == 31 && data[1] == 139 {
+		// already gziped
+		return nil, errors.New("trying to compress already gziped data")
+	}
+	var buf bytes.Buffer
+	writer := gzip.NewWriter(&buf)
+	defer writer.Close()
+	_, err := writer.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	if err := writer.Close(); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }

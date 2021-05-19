@@ -77,6 +77,8 @@ type localBackend struct {
 	mutex  sync.Mutex
 
 	lockID string
+
+	gzip bool
 }
 
 type localBackendReference struct {
@@ -157,6 +159,7 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
 		lockID:      lockID.String(),
+		gzip:        true,
 	}, nil
 }
 
@@ -848,6 +851,12 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 		// Skip files without valid extensions (e.g., *.bak files).
 		stackfn := objectName(file)
 		ext := filepath.Ext(stackfn)
+		// But accept gzip compression
+		if ext == ".gz" {
+			stackfn = strings.TrimSuffix(stackfn, ".gz")
+			ext = filepath.Ext(stackfn)
+		}
+
 		if _, has := encoding.Marshalers[ext]; !has {
 			continue
 		}
