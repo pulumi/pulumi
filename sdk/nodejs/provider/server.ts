@@ -62,10 +62,13 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     public getSchema(call: any, callback: any): void {
-        callback({
-            code: grpc.status.UNIMPLEMENTED,
-            details: "Not yet implemented: GetSchema",
-        }, undefined);
+        const req: any = call.request;
+        if (req.getVersion() !== 0) {
+            callback(new Error(`unsupported schema version ${req.getVersion()}`), undefined);
+        }
+        const resp: any = new provproto.GetSchemaResponse();
+        resp.setSchema(this.provider.schema || "{}");
+        callback(undefined, resp);
     }
 
     // Config methods

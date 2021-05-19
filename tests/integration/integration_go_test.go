@@ -576,3 +576,11 @@ func TestGetResourceGo(t *testing.T) {
 		},
 	})
 }
+
+func TestComponentProviderSchemaGo(t *testing.T) {
+	path := filepath.Join("component_provider_schema", "testcomponent-go", "pulumi-resource-testcomponent")
+	if runtime.GOOS == WindowsOS {
+		path += ".exe"
+	}
+	testComponentProviderSchema(t, path)
+}

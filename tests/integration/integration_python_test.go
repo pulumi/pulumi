@@ -971,3 +971,11 @@ func TestPythonTranslation(t *testing.T) {
 		Quick: true,
 	})
 }
+
+func TestComponentProviderSchemaPython(t *testing.T) {
+	path := filepath.Join("component_provider_schema", "testcomponent-python", "pulumi-resource-testcomponent")
+	if runtime.GOOS == WindowsOS {
+		path += ".cmd"
+	}
+	testComponentProviderSchema(t, path, pulumiRuntimeVirtualEnv(t, filepath.Join("..", "..")))
+}

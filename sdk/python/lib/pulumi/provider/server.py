@@ -162,6 +162,12 @@ class ProviderServicer(ResourceProviderServicer):
     async def GetPluginInfo(self, request, context) -> proto.PluginInfo:  # pylint: disable=invalid-overridden-method
         return proto.PluginInfo(version=self.provider.version)
 
+    async def GetSchema(self, request: proto.GetSchemaRequest, context) -> proto.GetSchemaResponse:  # pylint: disable=invalid-overridden-method
+        if request.version != 0:
+            raise Exception(f'unsupported schema version {request.version}')
+        schema = self.provider.schema if self.provider.schema else '{}'
+        return proto.GetSchemaResponse(schema=schema)
+
     def __init__(self, provider: Provider, args: List[str], engine_address: str) -> None:
         super().__init__()
         self.provider = provider

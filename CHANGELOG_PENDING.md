@@ -20,6 +20,9 @@
   [#7079](https://github.com/pulumi/pulumi/pull/7079)
   [#7080](https://github.com/pulumi/pulumi/pull/7080)
 
+- [sdk/nodejs|python] - Add GetSchema support to providers
+  [#6892](https://github.com/pulumi/pulumi/pull/6892)
+
 ### Bug Fixes
 
 - [sdk/python] Fix relative `runtime:options:virtualenv` path resolution to ignore `main` project attribute
