@@ -1290,12 +1290,12 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	mod.genHeader(w, true /*needsSDK*/, imports)
 
-	baseName, awaitableName := awaitableTypeNames(fun.Outputs.Token)
 	name := PyName(tokenToName(fun.Token))
 
 	// Export only the symbols we want exported.
 	fmt.Fprintf(w, "__all__ = [\n")
 	if fun.Outputs != nil {
+		baseName, awaitableName := awaitableTypeNames(fun.Outputs.Token)
 		fmt.Fprintf(w, "    '%s',\n", baseName)
 		fmt.Fprintf(w, "    '%s',\n", awaitableName)
 	}
@@ -1320,28 +1320,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		args = fun.Inputs.Properties
 	}
 
-	// Write out the function signature.
-	def := fmt.Sprintf("def %s(", name)
-	var indent string
-	if len(args) > 0 {
-		indent = strings.Repeat(" ", len(def))
-	}
-	fmt.Fprintf(w, def)
-	for i, arg := range args {
-		var ind string
-		if i != 0 {
-			ind = indent
-		}
-		pname := PyName(arg.Name)
-		ty := mod.typeString(arg.Type, true, false /*wrapInput*/, false /*args*/, true /*optional*/, true /*acceptMapping*/)
-		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
-	}
-	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
-	if retTypeName != "" {
-		fmt.Fprintf(w, ") -> %s:\n", retTypeName)
-	} else {
-		fmt.Fprintf(w, "):\n")
-	}
+	wrapInput := false
+	mod.genFunDef(w, name, retTypeName, args, wrapInput)
 
 	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
 	docs := &bytes.Buffer{}
@@ -1380,6 +1360,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	if fun.Outputs != nil {
 		// Pass along the private output_type we generated, so any nested outputs classes are instantiated by
 		// the call to invoke.
+		baseName, _ := awaitableTypeNames(fun.Outputs.Token)
 		typ = fmt.Sprintf(", typ=%s", baseName)
 	}
 	fmt.Fprintf(w, "    __ret__ = pulumi.runtime.invoke('%s', __args__, opts=opts%s).value\n", fun.Token, typ)
@@ -1400,7 +1381,69 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		}
 	}
 
-	return w.String(), nil
+	extraCode, err := mod.genFunctionOutputVersion(fun)
+	if err != nil {
+		return "", err
+	}
+
+	return w.String() + extraCode, nil
+}
+
+func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*schema.Property, wrapInput bool) {
+	// Write out the function signature.
+	def := fmt.Sprintf("def %s(", name)
+
+	var indent string
+	if len(args) > 0 {
+		indent = strings.Repeat(" ", len(def))
+	}
+	fmt.Fprintf(w, def)
+	for i, arg := range args {
+		var ind string
+		if i != 0 {
+			ind = indent
+		}
+		pname := PyName(arg.Name)
+		ty := mod.typeString(arg.Type, true, wrapInput, false /*args*/, true /*optional*/, true /*acceptMapping*/)
+		fmt.Fprintf(w, "%s%s: %s = None,\n", ind, pname, ty)
+	}
+	fmt.Fprintf(w, "%sopts: Optional[pulumi.InvokeOptions] = None", indent)
+	if retTypeName != "" {
+		fmt.Fprintf(w, ") -> %s:\n", retTypeName)
+	} else {
+		fmt.Fprintf(w, "):\n")
+	}
+}
+
+// Generates `def ${fn}_output(..) version lifted to work on
+// `Input`-wrapped arguments and producing an `Output`-wrapped result.
+func (mod *modContext) genFunctionOutputVersion(fun *schema.Function) (string, error) {
+	var retTypeName string
+	if fun.Outputs != nil {
+		originalOutputTypeName, _ := awaitableTypeNames(fun.Outputs.Token)
+		retTypeName = fmt.Sprintf("pulumi.Output[%s]", originalOutputTypeName)
+	} else {
+		retTypeName = "pulumi.Output[void]"
+	}
+
+	originalName := PyName(tokenToName(fun.Token))
+	outputSuffixedName := fmt.Sprintf("%s_output", originalName)
+
+	var args []*schema.Property
+	if fun.Inputs != nil {
+		args = fun.Inputs.Properties
+	}
+
+	var buf bytes.Buffer
+
+	buf.Write([]byte("\n\n"))
+
+	buf.Write([]byte(fmt.Sprintf("@_utilities.lift_output_func(%s)\n", originalName)))
+	wrapInput := true
+	mod.genFunDef(&buf, outputSuffixedName, retTypeName, args, wrapInput)
+	buf.Write([]byte("    ...\n"))
+
+	return buf.String(), nil
 }
 
 func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
@@ -2497,6 +2540,7 @@ import os
 import sys
 import importlib.util
 import pkg_resources
+import typing
 
 import pulumi
 import pulumi.runtime
@@ -2697,4 +2741,18 @@ def register(resource_modules, resource_packages):
             mod_info['pkg'],
             mod_info['mod'],
             Module(mod_info))
+
+
+_F = typing.TypeVar('_F', bound=typing.Callable[..., Any])
+
+
+def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
+    """Decorator internally used on {fn}_output lifted function versions
+    to implement them automatically from the un-lifted function."""
+
+    fn: typing.Any = lambda _: lambda opts=None, **kw: \
+        pulumi.Output.all(**kw).apply(
+            lambda d: func(opts=opts, **(d or {})))
+
+    return fn
 `
