@@ -93,6 +93,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		"listStorageAccountKeys",
 		"getClientConfig",
 		"getIntegrationRuntimeObjectMetadatum",
+		"funcWithConstInput",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {
