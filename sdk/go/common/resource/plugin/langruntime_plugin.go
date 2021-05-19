@@ -151,21 +151,26 @@ func (h *langhost) GetRequiredPlugins(info ProgInfo) ([]workspace.PluginInfo, er
 func (h *langhost) Run(info RunInfo) (string, bool, error) {
 	logging.V(7).Infof("langhost[%v].Run(pwd=%v,program=%v,#args=%v,proj=%s,stack=%v,#config=%v,dryrun=%v) executing",
 		h.runtime, info.Pwd, info.Program, len(info.Args), info.Project, info.Stack, len(info.Config), info.DryRun)
-	config := make(map[string]string)
+	config := make(map[string]string, len(info.Config))
 	for k, v := range info.Config {
 		config[k.String()] = v
 	}
+	configSecretKeys := make([]string, len(info.ConfigSecretKeys))
+	for i, k := range info.ConfigSecretKeys {
+		configSecretKeys[i] = k.String()
+	}
 	resp, err := h.client.Run(h.ctx.Request(), &pulumirpc.RunRequest{
-		MonitorAddress: info.MonitorAddress,
-		Pwd:            info.Pwd,
-		Program:        info.Program,
-		Args:           info.Args,
-		Project:        info.Project,
-		Stack:          info.Stack,
-		Config:         config,
-		DryRun:         info.DryRun,
-		QueryMode:      info.QueryMode,
-		Parallel:       int32(info.Parallel),
+		MonitorAddress:   info.MonitorAddress,
+		Pwd:              info.Pwd,
+		Program:          info.Program,
+		Args:             info.Args,
+		Project:          info.Project,
+		Stack:            info.Stack,
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           info.DryRun,
+		QueryMode:        info.QueryMode,
+		Parallel:         int32(info.Parallel),
 	})
 	if err != nil {
 		rpcError := rpcerror.Convert(err)

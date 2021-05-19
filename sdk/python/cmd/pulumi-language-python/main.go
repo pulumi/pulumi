@@ -56,6 +56,10 @@ const (
 
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
+
+	// The runtime expects the array of secret config keys to be saved to this environment variable.
+	//nolint: gosec
+	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
 )
 
 // Launches the language host RPC endpoint, which in turn fires up an RPC server implementing the
@@ -528,6 +532,11 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
 	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize configuration secret keys")
+		return nil, err
+	}
 
 	if logging.V(5) {
 		commandStr := strings.Join(args, " ")
@@ -553,13 +562,16 @@ func (host *pythonLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	if virtualenv != "" || config != "" {
+	if virtualenv != "" || config != "" || configSecretKeys != "" {
 		env := os.Environ()
 		if virtualenv != "" {
 			env = python.ActivateVirtualEnv(env, virtualenv)
 		}
 		if config != "" {
 			env = append(env, pulumiConfigVar+"="+config)
+		}
+		if configSecretKeys != "" {
+			env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 		}
 		cmd.Env = env
 	}
@@ -636,6 +648,22 @@ func (host *pythonLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *pythonLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *pythonLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

@@ -65,6 +65,10 @@ const (
 	// The runtime expects the config object to be saved to this environment variable.
 	pulumiConfigVar = "PULUMI_CONFIG"
 
+	// The runtime expects the array of secret config keys to be saved to this environment variable.
+	//nolint: gosec
+	pulumiConfigSecretKeysVar = "PULUMI_CONFIG_SECRET_KEYS"
+
 	// A exit-code we recognize when the nodejs process exits.  If we see this error, there's no
 	// need for us to print any additional error messages since the user already got a a good
 	// one they can handle.
@@ -487,9 +491,15 @@ func (host *nodeLanguageHost) execNodejs(
 			err = errors.Wrap(err, "failed to serialize configuration")
 			return &pulumirpc.RunResponse{Error: err.Error()}
 		}
+		configSecretKeys, err := host.constructConfigSecretKeys(req)
+		if err != nil {
+			err = errors.Wrap(err, "failed to serialize configuration secret keys")
+			return &pulumirpc.RunResponse{Error: err.Error()}
+		}
 
 		env := os.Environ()
 		env = append(env, pulumiConfigVar+"="+config)
+		env = append(env, pulumiConfigSecretKeysVar+"="+configSecretKeys)
 
 		if host.typescript {
 			env = append(env, "PULUMI_NODEJS_TYPESCRIPT=true")
@@ -615,6 +625,22 @@ func (host *nodeLanguageHost) constructConfig(req *pulumirpc.RunRequest) (string
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *nodeLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *nodeLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

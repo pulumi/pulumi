@@ -5,11 +5,23 @@
 - [auto/dotnet] - Make StackDeployment.FromJsonString public
   [#7067](https://github.com/pulumi/pulumi/pull/7067)
 
+- [cli] - Provide user information when protected resources are not able to be deleted
+  [#7055](https://github.com/pulumi/pulumi/pull/7055)
+
 - [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
   [#6910](https://github.com/pulumi/pulumi/pull/6910)
 
 - [auto/go] - Provide GetPermalink for all results
   [#6875](https://github.com/pulumi/pulumi/pull/6875)
+
+- [cli] - Error instead of panic on invalid state file import
+  [#7065](https://github.com/pulumi/pulumi/pull/7065)
+
+- Warn when a secret config is read as a non-secret
+  [#6896](https://github.com/pulumi/pulumi/pull/6896)
+  [#7078](https://github.com/pulumi/pulumi/pull/7078)
+  [#7079](https://github.com/pulumi/pulumi/pull/7079)
+  [#7080](https://github.com/pulumi/pulumi/pull/7080)
 
 ### Bug Fixes
 

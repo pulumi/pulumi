@@ -10,6 +10,8 @@ namespace Pulumi
 
         public IDictionary<string, string> Config { get; }
 
+        public IEnumerable<string>? ConfigSecretKeys { get; }
+
         public string Project { get; }
 
         public string Stack { get; }
@@ -25,7 +27,8 @@ namespace Pulumi
             string project,
             string stack,
             int parallel,
-            bool isDryRun)
+            bool isDryRun,
+            IEnumerable<string>? configSecretKeys = null)
         {
             EngineAddr = engineAddr;
             MonitorAddr = monitorAddr;
@@ -34,6 +37,7 @@ namespace Pulumi
             Stack = stack;
             Parallel = parallel;
             IsDryRun = isDryRun;
+            ConfigSecretKeys = configSecretKeys;
         }
     }
 }

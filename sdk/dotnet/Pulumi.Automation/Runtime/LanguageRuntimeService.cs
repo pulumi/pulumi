@@ -47,7 +47,8 @@ namespace Pulumi.Automation
                 request.Project,
                 request.Stack,
                 request.Parallel,
-                request.DryRun);
+                request.DryRun,
+                request.ConfigSecretKeys);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(
                 this._callerContext.CancellationToken,
