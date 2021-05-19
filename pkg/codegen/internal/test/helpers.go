@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,7 +15,9 @@
 package test
 
 import (
+	"bytes"
 	"encoding/json"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -71,6 +73,50 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
 		assert.Contains(t, actual, name)
 		assert.Equal(t, string(file), string(actual[name]), name)
 	}
+}
+
+// Validates a transformer on a single file.
+func ValidateFileTransformer(
+	t *testing.T,
+	inputFile string,
+	expectedOutputFile string,
+	transformer func(reader io.Reader, writer io.Writer) error) {
+
+	reader, err := os.Open(inputFile)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	var buf bytes.Buffer
+
+	err = transformer(reader, &buf)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	actualBytes := buf.Bytes()
+
+	if os.Getenv("PULUMI_ACCEPT") != "" {
+		err := ioutil.WriteFile(expectedOutputFile, actualBytes, 0600)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+	}
+
+	actual := map[string][]byte{expectedOutputFile: actualBytes}
+
+	expectedBytes, err := ioutil.ReadFile(expectedOutputFile)
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	expected := map[string][]byte{expectedOutputFile: expectedBytes}
+
+	ValidateFileEquality(t, actual, expected)
 }
 
 // If PULUMI_ACCEPT is set, writes out actual output to th expected
