@@ -1,5 +1,8 @@
 ### Improvements
 
+- [auto/dotnet] - Make StackDeployment.FromJsonString public
+  [#7067](https://github.com/pulumi/pulumi/pull/7067)
+
 - [cli] - Provide user information when protected resources are not able to be deleted
   [#7055](https://github.com/pulumi/pulumi/pull/7055)
 
