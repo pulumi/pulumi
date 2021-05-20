@@ -1,6 +1,10 @@
 package gen
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"path/filepath"
 	"sync"
 	"testing"
 
@@ -249,4 +253,59 @@ func TestEnumUsage(t *testing.T) {
 			return nil
 		}, pulumi.WithMocks("project", "stack", mocks(1))))
 	})
+}
+
+func TestGenerateOutputFuncs(t *testing.T) {
+	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
+
+	examples := []string{
+		"funcWithAllOptionalInputs",
+		"funcWithDefaultValue",
+		"funcWithDictParam",
+		"funcWithListParam",
+		//"listStorageAccountKeys",
+	}
+
+	gen := func(reader io.Reader, writer io.Writer) error {
+		var pkgSpec schema.PackageSpec
+		err := json.NewDecoder(reader).Decode(&pkgSpec)
+		if err != nil {
+			return err
+		}
+		pkg, err := schema.ImportSpec(pkgSpec, nil)
+		if err != nil {
+			return err
+		}
+
+		tool := "tool"
+		var goPkgInfo GoPackageInfo
+		if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			goPkgInfo = goInfo
+		}
+		pkgContexts := generatePackageContextMap(tool, pkg, goPkgInfo)
+
+		var pkgContext *pkgContext
+
+		for _, c := range pkgContexts {
+			if len(c.functionNames) == 1 {
+				pkgContext = c
+			}
+		}
+
+		if pkgContext == nil {
+			return fmt.Errorf("Cannot find a package with 1 function in generatePackageContextMap result")
+		}
+
+		fun := pkg.Functions[0]
+		writer.Write([]byte(pkgContext.genFunctionCodeFile(fun)))
+		return nil
+	}
+
+	for _, ex := range examples {
+		t.Run(ex, func(t *testing.T) {
+			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
+			expectedOutputFile := filepath.Join(testDir, "go", fmt.Sprintf("%s.go", ex))
+			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
+		})
+	}
 }
