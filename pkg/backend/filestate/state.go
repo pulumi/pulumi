@@ -174,17 +174,12 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
 	file := b.stackPath(name)
-	fileUnwraped := file
-	if filepath.Ext(file) == ".gz" {
-		fileUnwraped = strings.TrimSuffix(file, ".gz")
-	}
-	m, ext := encoding.Detect(fileUnwraped)
+	m, ext := encoding.Detect(strings.TrimSuffix(file, ".gz"))
 	if m == nil {
 		return "", errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
 	}
 	if filepath.Ext(file) == "" {
-		fileUnwraped = file + ext
-		file = fileUnwraped
+		file = file + ext
 	}
 	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
 	if err != nil {
@@ -204,16 +199,13 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 		}
 	}
 
-	// Back up the existing file if it already exists.
-	var bck string
-	if b.gzip {
-		// Try to backup the ancestor, whether it's plain of wrapped in .gz
-		bckPlain := backupTarget(b.bucket, fileUnwraped)
-		bckGzip := backupTarget(b.bucket, file)
-		bck = fmt.Sprintf("[%s, %s]", bckPlain, bckGzip)
-	} else {
-		bck = backupTarget(b.bucket, file)
-	}
+	// Try to back up the existing file if it already exists,
+	// whether it's compressed or not
+	filePlain := strings.TrimSuffix(file, ".gz")
+	fileGzip := filePlain + ".gz"
+	bckPlain := backupTarget(b.bucket, filePlain)
+	bckGzip := backupTarget(b.bucket, fileGzip)
+	bck := fmt.Sprintf("[%s, %s]", bckPlain, bckGzip)
 
 	// And now write out the new snapshot file, overwriting that location.
 	if err = b.bucket.WriteAll(context.TODO(), file, byts, nil); err != nil {
@@ -335,10 +327,17 @@ func (b *localBackend) stackPath(stack tokens.QName) string {
 	if stack != "" {
 		allObjs, err := listBucket(b.bucket, path)
 		path = filepath.Join(path, fsutil.QnamePath(stack)) + ".json"
-		gzipedPath := path + ".gz"
 		if err == nil {
+			gzipedPath := path + ".gz"
+			var plainObj *blob.ListObject
 			for _, obj := range allObjs {
-				if obj.Key == gzipedPath {
+				// plainObj will always come out first since allObjs is sorted by Key
+				if obj.Key == path {
+					plainObj = obj
+				} else if obj.Key == gzipedPath {
+					if plainObj != nil && plainObj.ModTime.After(obj.ModTime) {
+						return path
+					}
 					return gzipedPath
 				}
 			}
