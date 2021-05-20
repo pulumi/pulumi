@@ -58,6 +58,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+// PulumiFilestateNoGzipEnvVar is an env var that must be truthy to disable gzip compression when using a filestate backend.
+const PulumiFilestateNoGzipEnvVar = "PULUMI_SELF_MANAGED_STATE_NO_GZIP"
+
 // Backend extends the base backend interface with specific information about local backends.
 type Backend interface {
 	backend.Backend
@@ -153,13 +156,15 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		return nil, err
 	}
 
+	disableGzipCompression := cmdutil.IsTruthy(os.Getenv(PulumiFilestateNoGzipEnvVar))
+
 	return &localBackend{
 		d:           d,
 		originalURL: originalURL,
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
 		lockID:      lockID.String(),
-		gzip:        true,
+		gzip:        !disableGzipCompression,
 	}, nil
 }
 
