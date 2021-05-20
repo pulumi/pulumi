@@ -197,6 +197,8 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 		if err != nil {
 			return "", errors.Wrap(err, "An IO error occurred while compressing the checkpoint")
 		}
+	} else {
+		file = strings.TrimSuffix(file, ".gz")
 	}
 
 	// Try to back up the existing file if it already exists,
