@@ -10,6 +10,7 @@ blobs:
   folder: releases/sdk/
   ids:
     - pulumi-unix
+    - pulumi-windows
   provider: s3
   region: us-west-2
 builds:
