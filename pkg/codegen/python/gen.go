@@ -1556,8 +1556,11 @@ func genPackageMetadata(
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
 	fmt.Fprintf(w, "def readme():\n")
-	fmt.Fprintf(w, "    with open('README.md', encoding='utf-8') as f:\n")
-	fmt.Fprintf(w, "        return f.read()\n")
+	fmt.Fprintf(w, "    try:\n")
+	fmt.Fprintf(w, "        with open('README.md', encoding='utf-8') as f:\n")
+	fmt.Fprintf(w, "            return f.read()\n")
+	fmt.Fprintf(w, "    except FileNotFoundError:\n")
+	fmt.Fprintf(w, "            return \"%s Pulumi Package - Development Version\"\n", pkg.Name)
 	fmt.Fprintf(w, "\n\n")
 
 	// Finally, the actual setup part.

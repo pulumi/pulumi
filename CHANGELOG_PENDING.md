@@ -15,6 +15,8 @@
   [#7079](https://github.com/pulumi/pulumi/pull/7079)
   [#7080](https://github.com/pulumi/pulumi/pull/7080)
 
+- [sdk/python] - Generated SDKs may now be installed from in-tree source.
+
 - [sdk/nodejs|python] - Add GetSchema support to providers
   [#6892](https://github.com/pulumi/pulumi/pull/6892)
 
