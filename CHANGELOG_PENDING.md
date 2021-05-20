@@ -1,15 +1,7 @@
-### Breaking Changes
-
 ### Improvements
 
 - [cli] - Provide user information when protected resources are not able to be deleted
   [#7055](https://github.com/pulumi/pulumi/pull/7055)
-
-- [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
-  [#6910](https://github.com/pulumi/pulumi/pull/6910)
-
-- [auto/go] - Provide GetPermalink for all results
-  [#6875](https://github.com/pulumi/pulumi/pull/6875)
 
 - [cli] - Error instead of panic on invalid state file import
   [#7065](https://github.com/pulumi/pulumi/pull/7065)
@@ -22,6 +14,12 @@
 
 - [sdk/nodejs|python] - Add GetSchema support to providers
   [#6892](https://github.com/pulumi/pulumi/pull/6892)
+
+- [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
+  [#6910](https://github.com/pulumi/pulumi/pull/6910)
+
+- [auto/go] - Provide GetPermalink for all results
+  [#6875](https://github.com/pulumi/pulumi/pull/6875)
 
 ### Bug Fixes
 
