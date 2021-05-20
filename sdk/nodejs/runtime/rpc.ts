@@ -419,6 +419,19 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         return result;
     }
 
+    if (prop instanceof Map) {
+        const result: any = {};
+        for (const k of prop.keys()) {
+            if (excessiveDebugOutput) {
+                log.debug(`Serialize property [${ctx}]: map[${k}] element`);
+            }
+            // When serializing maps, we serialize any undefined values as `null`. This matches JSON semantics.
+            const elem = await serializeProperty(`${ctx}[${k}]`,prop.get(k), dependentResources);
+            result[k] = (elem === undefined ? null : elem);
+        }
+        return result;
+    }
+
     return await serializeAllKeys(prop, {});
 
     async function serializeAllKeys(innerProp: any, obj: any) {
@@ -478,6 +491,24 @@ export function deserializeProperty(prop: any): any {
             prop = deserializeProperty(e);
             hadSecret = hadSecret || isRpcSecret(prop);
             elems.push(unwrapRpcSecret(prop));
+        }
+
+        if (hadSecret) {
+            return {
+                [specialSigKey]: specialSecretSig,
+                value: elems,
+            };
+        }
+
+        return elems;
+    }
+    else if (prop instanceof Map) {
+        let hadSecret = false;
+        let elems: any = {};
+        for (const e of prop.keys()) {
+            const p = deserializeProperty(e);
+            hadSecret = hadSecret || isRpcSecret(p);
+            elems[e] = unwrapRpcSecret(p);
         }
 
         if (hadSecret) {

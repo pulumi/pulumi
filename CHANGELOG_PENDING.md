@@ -10,3 +10,6 @@
 
 - [auto/dotnet] Fix deserialization of CancelEvent in .NET 5
   [#7051](https://github.com/pulumi/pulumi/pull/7051)
+
+- [auto/dotnet] Fix map type field processing in typescipt/nodejs SDK
+  [#7106](https://github.com/pulumi/pulumi/issues/7106)
