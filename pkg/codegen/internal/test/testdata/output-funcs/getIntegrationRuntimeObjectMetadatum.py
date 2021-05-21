@@ -78,7 +78,7 @@ def get_integration_runtime_object_metadatum(factory_name: Optional[str] = None,
         opts = pulumi.InvokeOptions()
     if opts.version is None:
         opts.version = _utilities.get_version()
-    __ret__ = pulumi.runtime.invoke('azure-native:datafactory:getIntegrationRuntimeObjectMetadatum', __args__, opts=opts, typ=GetIntegrationRuntimeObjectMetadatumResult).value
+    __ret__ = pulumi.runtime.invoke('azure-native:codegentest:getIntegrationRuntimeObjectMetadatum', __args__, opts=opts, typ=GetIntegrationRuntimeObjectMetadatumResult).value
 
     return AwaitableGetIntegrationRuntimeObjectMetadatumResult(
         next_link=__ret__.next_link,
@@ -86,9 +86,9 @@ def get_integration_runtime_object_metadatum(factory_name: Optional[str] = None,
 
 
 @_utilities.lift_output_func(get_integration_runtime_object_metadatum)
-def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulumi.Input[str]] = None,
-                                                    integration_runtime_name: Optional[pulumi.Input[str]] = None,
-                                                    metadata_path: Optional[pulumi.Input[str]] = None,
-                                                    resource_group_name: Optional[pulumi.Input[str]] = None,
-                                                    opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetIntegrationRuntimeObjectMetadatumResult]:
+def get_integration_runtime_object_metadatum_apply(factory_name: Optional[pulumi.Input[str]] = None,
+                                                   integration_runtime_name: Optional[pulumi.Input[str]] = None,
+                                                   metadata_path: Optional[pulumi.Input[str]] = None,
+                                                   resource_group_name: Optional[pulumi.Input[str]] = None,
+                                                   opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetIntegrationRuntimeObjectMetadatumResult]:
     ...

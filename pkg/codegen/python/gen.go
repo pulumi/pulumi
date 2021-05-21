@@ -1381,7 +1381,7 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 		}
 	}
 
-	extraCode, err := mod.genFunctionOutputVersion(fun)
+	extraCode, err := mod.genFunctionApplyVersion(fun)
 	if err != nil {
 		return "", err
 	}
@@ -1415,9 +1415,9 @@ func (mod *modContext) genFunDef(w io.Writer, name, retTypeName string, args []*
 	}
 }
 
-// Generates `def ${fn}_output(..) version lifted to work on
+// Generates `def ${fn}_apply(..) version lifted to work on
 // `Input`-wrapped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(fun *schema.Function) (string, error) {
+func (mod *modContext) genFunctionApplyVersion(fun *schema.Function) (string, error) {
 	var retTypeName string
 	if fun.Outputs != nil {
 		originalOutputTypeName, _ := awaitableTypeNames(fun.Outputs.Token)
@@ -1427,7 +1427,7 @@ func (mod *modContext) genFunctionOutputVersion(fun *schema.Function) (string, e
 	}
 
 	originalName := PyName(tokenToName(fun.Token))
-	outputSuffixedName := fmt.Sprintf("%s_output", originalName)
+	newName := fmt.Sprintf("%s_apply", originalName)
 
 	var args []*schema.Property
 	if fun.Inputs != nil {
@@ -1440,7 +1440,7 @@ func (mod *modContext) genFunctionOutputVersion(fun *schema.Function) (string, e
 
 	buf.Write([]byte(fmt.Sprintf("@_utilities.lift_output_func(%s)\n", originalName)))
 	wrapInput := true
-	mod.genFunDef(&buf, outputSuffixedName, retTypeName, args, wrapInput)
+	mod.genFunDef(&buf, newName, retTypeName, args, wrapInput)
 	buf.Write([]byte("    ...\n"))
 
 	return buf.String(), nil

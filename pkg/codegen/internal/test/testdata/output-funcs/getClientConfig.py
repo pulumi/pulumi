@@ -87,7 +87,7 @@ def get_client_config(opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableG
         opts = pulumi.InvokeOptions()
     if opts.version is None:
         opts.version = _utilities.get_version()
-    __ret__ = pulumi.runtime.invoke('azure-native:authorization:getClientConfig', __args__, opts=opts, typ=GetClientConfigResult).value
+    __ret__ = pulumi.runtime.invoke('azure-native:codegentest:getClientConfig', __args__, opts=opts, typ=GetClientConfigResult).value
 
     return AwaitableGetClientConfigResult(
         client_id=__ret__.client_id,
@@ -97,5 +97,5 @@ def get_client_config(opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableG
 
 
 @_utilities.lift_output_func(get_client_config)
-def get_client_config_output(opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetClientConfigResult]:
+def get_client_config_apply(opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetClientConfigResult]:
     ...

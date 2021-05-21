@@ -23,11 +23,11 @@ def func_with_const_input(plain_input: Optional[str] = None,
         opts = pulumi.InvokeOptions()
     if opts.version is None:
         opts.version = _utilities.get_version()
-    __ret__ = pulumi.runtime.invoke('madeup-package:x:funcWithConstInput', __args__, opts=opts).value
+    __ret__ = pulumi.runtime.invoke('madeup-package:codegentest:funcWithConstInput', __args__, opts=opts).value
 
 
 
 @_utilities.lift_output_func(func_with_const_input)
-def func_with_const_input_output(plain_input: Optional[pulumi.Input[str]] = None,
-                                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[void]:
+def func_with_const_input_apply(plain_input: Optional[pulumi.Input[str]] = None,
+                                opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[void]:
     ...

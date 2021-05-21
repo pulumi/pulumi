@@ -62,15 +62,15 @@ def list_storage_account_keys(account_name: Optional[str] = None,
         opts = pulumi.InvokeOptions()
     if opts.version is None:
         opts.version = _utilities.get_version()
-    __ret__ = pulumi.runtime.invoke('azure-native:storage/v20210101:listStorageAccountKeys', __args__, opts=opts, typ=ListStorageAccountKeysResult).value
+    __ret__ = pulumi.runtime.invoke('azure-native:codegentest:listStorageAccountKeys', __args__, opts=opts, typ=ListStorageAccountKeysResult).value
 
     return AwaitableListStorageAccountKeysResult(
         keys=__ret__.keys)
 
 
 @_utilities.lift_output_func(list_storage_account_keys)
-def list_storage_account_keys_output(account_name: Optional[pulumi.Input[str]] = None,
-                                     expand: Optional[pulumi.Input[str]] = None,
-                                     resource_group_name: Optional[pulumi.Input[str]] = None,
-                                     opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListStorageAccountKeysResult]:
+def list_storage_account_keys_apply(account_name: Optional[pulumi.Input[str]] = None,
+                                    expand: Optional[pulumi.Input[str]] = None,
+                                    resource_group_name: Optional[pulumi.Input[str]] = None,
+                                    opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ListStorageAccountKeysResult]:
     ...

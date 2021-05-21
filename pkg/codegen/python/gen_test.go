@@ -109,7 +109,7 @@ func TestGeneratePackage(t *testing.T) {
 			dir := filepath.Join(testDir, tt.schemaDir)
 			lang := "python"
 
-			test.RewriteFilesWhenPulumiAccept(t, dir, lang, files)
+			test.RewriteFilesWhenPulumiAccept(t, dir, lang, files, tt.expectedFiles)
 
 			expectedFiles, err := test.LoadFiles(dir, lang, tt.expectedFiles)
 			assert.NoError(t, err)

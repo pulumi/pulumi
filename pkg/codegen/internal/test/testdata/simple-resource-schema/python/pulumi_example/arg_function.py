@@ -52,3 +52,9 @@ def arg_function(arg1: Optional['Resource'] = None,
 
     return AwaitableArgFunctionResult(
         result=__ret__.result)
+
+
+@_utilities.lift_output_func(arg_function)
+def arg_function_apply(arg1: Optional[pulumi.Input['Resource']] = None,
+                       opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ArgFunctionResult]:
+    ...
