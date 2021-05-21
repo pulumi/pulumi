@@ -1,6 +1,6 @@
 {
     "functions": {
-        "madeup-package:x:funcWithConstInput": {
+        "madeup-package:codegentest:funcWithConstInput": {
             "description": "Codegen demo with const inputs",
             "inputs": {
                 "type": "object",

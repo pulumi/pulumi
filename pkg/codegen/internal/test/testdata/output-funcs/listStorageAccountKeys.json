@@ -1,6 +1,6 @@
 {
   "functions": {
-    "azure-native:storage/v20210101:listStorageAccountKeys": {
+    "azure-native:codegentest:listStorageAccountKeys": {
       "description": "The response from the ListKeys operation.",
       "inputs": {
         "properties": {

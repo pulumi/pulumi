@@ -292,14 +292,6 @@ func TestGenerateOutputFuncs(t *testing.T) {
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {
-		fmt.Fprint(writer, `package codegentest
-import (
-        "context"
-        "reflect"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-)
-`)
 		var pkgSpec schema.PackageSpec
 		err := json.NewDecoder(reader).Decode(&pkgSpec)
 		if err != nil {
@@ -330,7 +322,7 @@ import (
 		}
 
 		fun := pkg.Functions[0]
-		pkgContext.genFunction(writer, fun)
+		writer.Write([]byte(pkgContext.genFunctionCodeFile(fun)))
 		return nil
 	}
 

@@ -1,6 +1,6 @@
 {
   "functions": {
-    "azure-native:authorization:getClientConfig": {
+    "azure-native:codegentest:getClientConfig": {
       "description": "Use this function to access the current configuration of the native Azure provider.",
       "outputs": {
         "description": "Configuration values returned by getClientConfig.",

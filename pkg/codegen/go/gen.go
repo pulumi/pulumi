@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -1363,6 +1363,16 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	return nil
 }
 
+func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) string {
+	importsAndAliases := map[string]string{}
+	pkg.getImports(f, importsAndAliases)
+	buffer := &bytes.Buffer{}
+	pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
+	pkg.genFunction(buffer, f)
+	pkg.genFunctionApplyVersion(buffer, f)
+	return buffer.String()
+}
+
 func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If the function starts with New or Get, it will conflict; so rename them.
 	name, hasName := pkg.functionNames[f]
@@ -1426,11 +1436,15 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 		fmt.Fprintf(w, "\n")
 		pkg.genPlainType(w, fmt.Sprintf("%sResult", name), f.Outputs.Comment, "", f.Outputs.Properties)
 	}
-
-	pkg.genFunctionOutputVersion(w, name, f)
 }
 
-func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, originalName string, f *schema.Function) {
+func (pkg *pkgContext) genFunctionApplyVersion(w io.Writer, f *schema.Function) {
+	originalName, hasName := pkg.functionNames[f]
+
+	if !hasName {
+		panic(fmt.Sprintf("No function name found for %v", f))
+	}
+
 	fnApply := fmt.Sprintf("%sApply", originalName)
 
 	fnArgsType := fmt.Sprintf("%sArgs", originalName)
@@ -1488,16 +1502,31 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, originalName string
 	fmt.Fprintf(w, "\treturn %s.ApplyT(%s)%s", initExpr, applyFunCode, castOutput)
 	fmt.Fprintf(w, "}\n")
 
+	var outputTypes []string
+
 	if f.Inputs != nil {
 		fmt.Fprintf(w, "\n")
 		details := pkg.detailsForType(f.Inputs)
 		pkg.genInputTypesWithName(w, f.Inputs, fnApply, fnArgsType, details)
 		pkg.genOutputTypesWithName(w, f.Inputs, fnApply, fnArgsType, details)
+		outputTypes = append(outputTypes, fmt.Sprintf("%sOutput", fnApply))
 	}
 
 	if f.Outputs != nil {
 		details := pkg.detailsForType(f.Outputs)
 		pkg.genOutputTypesWithName(w, f.Outputs, fnResultType, fnResultType, details)
+		outputTypes = append(outputTypes, fmt.Sprintf("%sOutput", fnResultType))
+	}
+
+	// Assuming the file represented by `w` only has one function,
+	// generate an `init()` for Output type init.
+	if len(outputTypes) > 0 {
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "func init() {\n")
+		for _, t := range outputTypes {
+			fmt.Fprintf(w, "\tpulumi.RegisterOutputType(%s{})\n", t)
+		}
+		fmt.Fprintf(w, "}\n")
 	}
 }
 
@@ -2132,6 +2161,19 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		scanResource(r)
 	}
 
+	// For fnApply function versions, we need to register any
+	// input or output property type metadata, in case they have
+	// types used in array or pointer element positions.
+	for _, f := range pkg.Functions {
+		parentOptional := false
+		if f.Inputs != nil {
+			populateDetailsForPropertyTypes(seenMap, f.Inputs.Properties, parentOptional)
+		}
+		if f.Outputs != nil {
+			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, parentOptional)
+		}
+	}
+
 	for _, f := range pkg.Functions {
 		pkg := getPkgFromToken(f.Token)
 		pkg.functions = append(pkg.functions, f)
@@ -2298,15 +2340,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Functions
 		for _, f := range pkg.functions {
-			importsAndAliases := map[string]string{}
-			pkg.getImports(f, importsAndAliases)
-
-			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, nil, importsAndAliases)
-
-			pkg.genFunction(buffer, f)
-
-			setFile(path.Join(mod, camel(tokenToName(f.Token))+".go"), buffer.String())
+			fileName := path.Join(mod, camel(tokenToName(f.Token))+".go")
+			code := pkg.genFunctionCodeFile(f)
+			setFile(fileName, code)
 		}
 
 		knownTypes := make(map[schema.Type]struct{}, len(pkg.typeDetails))
