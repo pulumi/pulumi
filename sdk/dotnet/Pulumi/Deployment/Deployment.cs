@@ -85,13 +85,9 @@ namespace Pulumi
         private readonly bool _isDryRun;
         private readonly ConcurrentDictionary<string, bool> _featureSupport = new ConcurrentDictionary<string, bool>();
 
-#if NET5_0_OR_GREATER
-        private Serilog.ILogger _serilogger;
-#else
-#nullable disable
+#nullable disable // remove when MemberNotNull available
         private Serilog.ILogger _serilogger;
 #nullable restore
-#endif
         private readonly ILogger _logger;
         private readonly IRunner _runner;
 
@@ -179,9 +175,7 @@ namespace Pulumi
             set => Stack = value;
         }
 
-#if NET5_0_OR_GREATER
-        [MemberNotNull(nameof(_serilogger))]
-#endif
+        //[MemberNotNull(nameof(_serilogger))] // uncomment when available
         private void InitSerilogger()
         {
             var verboseLogging = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE"));
