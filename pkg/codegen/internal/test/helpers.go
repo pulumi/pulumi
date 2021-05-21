@@ -25,11 +25,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-	"gopkg.in/yaml.v3"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/stretchr/testify/assert"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -43,14 +40,8 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
-	ext := filepath.Ext(schemaPath)
-
 	var pkgSpec schema.PackageSpec
-	if ext == ".yaml" || ext == ".yml" {
-		err = yaml.Unmarshal(schemaBytes, &pkgSpec)
-	} else {
-		err = json.Unmarshal(schemaBytes, &pkgSpec)
-	}
+	err = json.Unmarshal(schemaBytes, &pkgSpec)
 	if err != nil {
 		return nil, err
 	}
@@ -203,8 +194,7 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 }
 
 // ValidateFileEquality compares maps of files for equality.
-func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
-	ok := true
+func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
 	for name, file := range expected {
 		_, inActual := actual[name]
 		if inActual {
@@ -329,6 +319,8 @@ func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
 
 	for s := range seen {
 		assert.Fail(t, "No content generated for expected file %s", s)
+		assert.Contains(t, actual, name)
+		assert.Equal(t, string(file), string(actual[name]), name)
 	}
 }
 
@@ -374,4 +366,38 @@ func ValidateFileTransformer(
 	expected := map[string][]byte{expectedOutputFile: expectedBytes}
 
 	ValidateFileEquality(t, actual, expected)
+}
+
+// If PULUMI_ACCEPT is set, writes out actual output to th expected
+// file set, so we can continue enjoying golden tests without manually
+// modifying the expected output.
+func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte, expected []string) {
+	if os.Getenv("PULUMI_ACCEPT") != "" {
+		for _, file := range expected {
+			bytes := actual[file]
+			err := ioutil.WriteFile(filepath.Join(dir, lang, file), bytes, 0600)
+			if err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+}
+
+// CheckAllFilesGenerated ensures that the set of expected and actual files generated
+// are exactly equivalent.
+func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
+	seen := map[string]bool{}
+	for x := range expected {
+		seen[x] = true
+	}
+	for a := range actual {
+		assert.Contains(t, seen, a, "Unexpected file generated: %s", a)
+		if seen[a] {
+			delete(seen, a)
+		}
+	}
+
+	for s := range seen {
+		assert.Fail(t, "No content generated for expected file %s", s)
+	}
 }

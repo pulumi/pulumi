@@ -10,7 +10,7 @@ export function getClientConfig(opts?: pulumi.InvokeOptions): Promise<GetClientC
     if (!opts.version) {
         opts.version = utilities.getVersion();
     }
-    return pulumi.runtime.invoke("azure-native:authorization:getClientConfig", {
+    return pulumi.runtime.invoke("azure-native:codegentest:getClientConfig", {
     }, opts);
 }
 
@@ -36,6 +36,6 @@ export interface GetClientConfigResult {
     readonly tenantId: string;
 }
 
-export function getClientConfigOutput(opts?: pulumi.InvokeOptions): pulumi.Output<GetClientConfigResult> {
+export function getClientConfigApply(opts?: pulumi.InvokeOptions): pulumi.Output<GetClientConfigResult> {
     return pulumi.output(getClientConfig(opts))
 }
