@@ -61,7 +61,7 @@ jobs:
         with:
           ref: ${{ env.PR_COMMIT_SHA }}
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v5
+        uses: pulumi/action-test-provider-downstream@releases/v6
         env:
           GOPROXY: "https://proxy.golang.org"
         with:
@@ -71,3 +71,4 @@ jobs:
           pulumi-bot-token: ${{ secrets.PULUMI_BOT_TOKEN }}
           github-actions-token: ${{ secrets.GITHUB_TOKEN }}
           use-provider-dir: true
+          issue-number: ${{ github.event.client_payload.github.payload.issue.number }}
