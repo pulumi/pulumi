@@ -147,8 +147,8 @@ func TestGenerateOutputFuncs(t *testing.T) {
 			return err
 		}
 
-		writer.Write([]byte(funcCode))
-		return nil
+		_, err = writer.Write([]byte(funcCode))
+		return err
 	}
 
 	for _, ex := range examples {

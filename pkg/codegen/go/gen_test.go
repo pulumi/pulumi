@@ -323,8 +323,8 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		}
 
 		fun := pkg.Functions[0]
-		writer.Write([]byte(pkgContext.genFunctionCodeFile(fun)))
-		return nil
+		_, err = writer.Write([]byte(pkgContext.genFunctionCodeFile(fun)))
+		return err
 	}
 
 	for _, ex := range examples {

@@ -107,7 +107,10 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		}
 		fun := pkg.Functions[0]
 
-		writer.Write([]byte(`import * as pulumi from "@pulumi/pulumi";` + "\n"))
+		_, err = writer.Write([]byte(`import * as pulumi from "@pulumi/pulumi";` + "\n"))
+		if err != nil {
+			return err
+		}
 
 		mod := &modContext{}
 		mod.genFunction(writer, fun)
