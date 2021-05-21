@@ -10,6 +10,7 @@
 coverage.cov
 *.coverprofile
 **/obj/
+.qb
 
 **/.idea/
 *.iml
