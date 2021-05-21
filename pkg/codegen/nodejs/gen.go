@@ -458,7 +458,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "     * Get an existing %s resource's state with the given name, ID, and optional extra\n", name)
 		fmt.Fprintf(w, "     * properties used to qualify the lookup.\n")
 		fmt.Fprintf(w, "     *\n")
-		fmt.Fprintf(w, "     * @param name The _unique_ name of the resulting resource.\n")
+		fmt.Fprintf(w, "     * @param name  The _unique_ name of the resulting resource.\n")
 		fmt.Fprintf(w, "     * @param id The _unique_ provider ID of the resource to lookup.\n")
 		// TODO: Document id format: https://github.com/pulumi/pulumi/issues/4754
 		if r.StateInputs != nil {
