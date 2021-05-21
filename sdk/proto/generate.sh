@@ -19,7 +19,7 @@ PULUMI_BUILD_CONTAINER_VERSION=v0.2.0
 echo "* Pulling Pulumi Build Container:"
 docker pull "pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 
-DOCKER_RUN="docker run -it --rm -w /local -v $(pwd)/../python:/python -v $(pwd)/../nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
+DOCKER_RUN="docker run --rm -w /local -v $(pwd)/../python:/python -v $(pwd)/../nodejs:/nodejs -v $(pwd):/local pulumi/pulumi-build-container:${PULUMI_BUILD_CONTAINER_VERSION}"
 PROTOC="$DOCKER_RUN protoc"
 
 # `status.proto` is in our source tree so that we can implement initialization failure in the

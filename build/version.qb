@@ -1,0 +1,7 @@
+def get_version(language = None):
+    cmd = "pulumictl get version"
+    if language:
+        cmd = f"{cmd} --language {language}"
+    return sh.output(cmd, cwd = path("//")).strip()
+
+version = get_version()

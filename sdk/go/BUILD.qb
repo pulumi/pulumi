@@ -1,0 +1,36 @@
+load("//build:version.qb", "get_version")
+load("//build:go_sources.qb", "go_sources")
+
+version = get_version()
+
+@target(deps=["//sdk/proto:gen"], sources=glob(["pulumi/generate.go", "pulumi/templates/**"]))
+def gen():
+    sh.exec("go generate ./pulumi/...")
+
+@target(
+    deps=[gen],
+    sources=go_sources("auto") + go_sources("common") + go_sources("pulumi"))
+def build_sdk():
+    sh.exec("go build ./auto/... ./common/... ./pulumi/...")
+
+@target(sources=go_sources("pulumi-language-go"))
+def build_language_host():
+    sh.exec(f"go install -ldflags \"-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={version}\" github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go")
+
+@target(deps=[build_sdk, build_language_host])
+def build():
+    pass
+
+@target(
+    deps=[build],
+    sources=go_sources("pulumi") + go_sources("common") + go_sources("pulumi-language-go"))
+def test_fast():
+    sh.exec("go test ./pulumi/... ./common/... ./pulumi-language-go/...")
+
+@target(deps=[build], sources=go_sources("auto"))
+def test_slow():
+    sh.exec("go test ./auto/...")
+
+@target(deps=[test_fast, test_slow])
+def test():
+    pass

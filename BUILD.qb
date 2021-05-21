@@ -1,0 +1,8 @@
+@target(deps=[
+    "//sdk/dotnet:build",
+    "//sdk/go:build",
+    "//sdk/python:build",
+    "//pkg:build",
+])
+def build():
+    pass

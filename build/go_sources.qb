@@ -1,0 +1,66 @@
+def go_sources(package_dir=None):
+    packages = {}
+    visited = set()
+    sources = []
+
+    def visit_package(import_path):
+        if import_path in visited or import_path not in packages:
+            return
+        visited.add(import_path)
+
+        p = packages[import_path]
+        for imports in ["Imports", "TestImports", "XTestImports"]:
+            if imports in p:
+                for import_path in p[imports]:
+                    visit_package(import_path)
+
+        (package_dir, ok) = contains(p["Dir"])
+        if not ok:
+            return
+
+        def add_files(kind):
+            if kind in p:
+                for path in p[kind]:
+                    if not os.path.is_abs(path):
+                        path = os.path.join(p["Dir"], path)
+                    (source, ok) = contains(path)
+                    if ok:
+                        sources.append(source)
+
+        add_files("GoFiles")
+        add_files("CgoFiles")
+        add_files("CompiledGoFiles")
+        add_files("CFiles")
+        add_files("CXXFiles")
+        add_files("MFiles")
+        add_files("HFiles")
+        add_files("FFiles")
+        add_files("SFiles")
+        add_files("SwigFiles")
+        add_files("SwigCXXFiles")
+        add_files("SysoFiles")
+        add_files("TestGoFiles")
+        add_files("XTestGoFiles")
+        add_files("EmbedFiles")
+        add_files("TestEmbedFiles")
+        add_files("XTestEmbedFiles")
+
+    def list_packages(root):
+        return json.decode_all(sh.output("go list -json -test -deps ./...", cwd=root))
+
+    def find_sources(package_list):
+        for p in package_list:
+            packages[p["ImportPath"]] = p
+        for import_path in packages:
+            visit_package(import_path)
+
+    package_dir = os.path.abs(package_dir or ".")
+
+    mod = json.decode(sh.output("go list -m -json", cwd=package_dir))
+    if mod["Path"] != "command-line-arguments":
+        (source, ok) = contains(mod["GoMod"])
+        if ok:
+            sources.append(source)
+
+    find_sources(list_packages(package_dir))
+    return sources

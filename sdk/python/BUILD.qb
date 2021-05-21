@@ -1,0 +1,55 @@
+load("//build:version.qb", "get_version")
+load("//build:go_sources.qb", "go_sources")
+
+version = get_version()
+pypi_version = get_version("python")
+pyenv = "./env"
+pyenv_src = f"{pyenv}/src"
+
+@target(sources=["Pipfile", "Pipfile.lock"])
+def pipenv_install():
+    sh.exec("pipenv install --dev")
+    sh.exec(f"mkdir -p {pyenv_src}")
+
+@target(deps=[pipenv_install, "//sdk/proto:gen"], sources=glob(["lib/**", "../../README.md"]))
+def build_sdk():
+    sh.exec(f"rm -rf {pyenv_src} && cp -R ./lib/. {pyenv_src}/")
+    sh.exec(f"sed -i.bak \"s/\\${{VERSION}}/{pypi_version}/g\" {pyenv_src}/setup.py && rm {pyenv_src}/setup.py.bak")
+    sh.exec(f"cp ../../README.md {pyenv_src}")
+    sh.exec(f"cd {pyenv_src} && pipenv run python setup.py build bdist_wheel --universal")
+
+@target(deps=["//sdk/proto:gen"], sources=go_sources("cmd/pulumi-language-python"))
+def build_language_host():
+    sh.exec(f"go install -ldflags \"-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={version}\" github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python")
+
+@target(deps=[build_sdk, build_language_host])
+def build():
+    pass
+
+@target(sources=go_sources())
+def test_go():
+    sh.exec("go test -count=1 -cover ./...")
+
+@target(deps=[build])
+def test_install():
+    sh.exec(f"pipenv run pip install {pyenv_src}")
+
+@target(deps=[test_install])
+def test_sdk():
+    # TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
+    sh.exec("pipenv run pytest lib/test --ignore lib/test/automation --ignore lib/test/langhost/resource_thens/test_resource_thens.py")
+    sh.exec("pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py")
+    # Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
+    sh.exec("pushd lib/test_with_mocks ; pipenv run python -m pytest ; popd")
+
+@target(deps=[test_go, test_sdk])
+def test_fast():
+    pass
+
+@target(deps=[test_install])
+def test_slow():
+    sh.exec("pipenv run pytest lib/test/automation")
+
+@target(deps=[test_fast, test_slow])
+def test_all():
+    pass

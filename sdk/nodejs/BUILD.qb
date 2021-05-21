@@ -1,0 +1,78 @@
+load("//build:version.qb", "get_version")
+load("//build:go_sources.qb", "go_sources")
+
+version = get_version("javascript")
+
+# TODO: proto deps
+
+@target(sources=["package.json"])
+def yarn_install():
+    sh.exec("yarn install")
+
+@target(
+    deps=[yarn_install],
+    sources=glob(["tsconfig.json", "**.ts"], exclude=["node_modules/**", "bin/**"]))
+def run_tsc():
+    sh.exec("./node_modules/.bin/tsc")
+
+@target(
+    deps=[run_tsc, "//sdk/proto:gen"],
+    sources=glob([
+        "tests/runtime/jsClosureCases_8.js",
+        "tests/runtime/jsClosureCases_10_4.js",
+        "tests/automation/data/**",
+        "README.md",
+        "../../LICENSE",
+        "package.json",
+        "dist/**",
+        "../../scripts/reversion.js",
+        "proto/**",
+        "tests/runtime/langhost/cases/**",
+    ]))
+def build_sdk():
+    sh.exec("cp tests/runtime/jsClosureCases_8.js bin/tests/runtime")
+    sh.exec("cp tests/runtime/jsClosureCases_10_4.js bin/tests/runtime")
+    sh.exec("cp -R tests/automation/data/. bin/tests/automation/data/")
+    sh.exec("cp README.md ../../LICENSE package.json ./dist/* bin/")
+    sh.exec(f"node ../../scripts/reversion.js bin/package.json {version}")
+    sh.exec(f"node ../../scripts/reversion.js bin/version.js {version}")
+    sh.exec("cp -R proto/. bin/proto/")
+    sh.exec("mkdir -p bin/tests/runtime/langhost/cases/")
+    sh.exec("find tests/runtime/langhost/cases/* -type d -exec cp -R {} bin/tests/runtime/langhost/cases/ \\;")
+
+@target(deps=["//sdk/proto:gen"], sources=go_sources("cmd/pulumi-language-nodejs"))
+def build_language_host():
+    sh.exec(f"go install -ldflags \"-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={version}\" github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs")
+
+@target(deps=[build_sdk, build_language_host])
+def build():
+    pass
+
+@target(deps=[build])
+def test_sdk():
+    sh.exec("./node_modules/.bin/istanbul test --print none ./node_modules/.bin/_mocha -- --timeout 120000 --exclude 'bin/tests/automation/**/*.spec.js' 'bin/tests/**/*.spec.js' ")
+    sh.exec("./node_modules/.bin/istanbul report text-summary")
+    sh.exec("./node_modules/.bin/istanbul report text")
+    sh.exec("./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'")
+
+@target(deps=[build])
+def test_auto():
+    sh.exec("./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'")
+    sh.exec("./node_modules/.bin/istanbul report text-summary")
+    sh.exec("./node_modules/.bin/istanbul report text")
+
+@target(sources=go_sources())
+def test_go():
+    sh.exec("go test -count=1 -cover ./...")
+
+@target(deps=[test_sdk, test_go])
+def test_fast():
+    pass
+
+@target(deps=[test_auto])
+def test_slow():
+    pass
+
+@target(deps=[test_fast, test_slow])
+def test_all():
+    pass

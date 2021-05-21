@@ -1,0 +1,28 @@
+load("//build:version.qb", "get_version")
+load("//build:go_sources.qb", "go_sources")
+
+version = get_version("dotnet")
+
+@target(deps=["//sdk/proto:gen"], sources=glob(["**"], exclude=["**/bin/**", "**/obj/**"]))
+def build_sdk():
+    sh.exec(f"dotnet build dotnet.sln /p:Version={version}")
+
+@target(deps=["//sdk/proto:gen"], sources=go_sources("cmd/pulumi-language-dotnet"))
+def build_language_host():
+    sh.exec(f"go install -ldflags \"-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version={version}\" github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet")
+
+@target(deps=[build_sdk, build_language_host])
+def build():
+    pass
+
+@target(deps=[build])
+def test_fast():
+    sh.exec(f"dotnet test --no-build --filter --filter FullyQualifiedName\\!~Pulumi.Automation.Tests /p:Version={version}")
+
+@target(deps=[build])
+def test_slow():
+    sh.exec(f"dotnet test --no-build --filter --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version={version}")
+
+@target(deps=[test_fast, test_slow])
+def test_all():
+    pass

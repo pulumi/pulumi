@@ -1,0 +1,3 @@
+@target(sources=glob(["*.proto"]))
+def gen():
+    os.exec(["./generate.sh"])
