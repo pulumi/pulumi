@@ -42,7 +42,7 @@ namespace Pulumi
             /// </summary>
             Task ILogger.DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                Serilog.Log.Debug(message);
+                _deployment.Serilogger.Debug(message);
                 return LogImplAsync(LogSeverity.Debug, message, resource, streamId, ephemeral);
             }
 
@@ -52,7 +52,7 @@ namespace Pulumi
             /// </summary>
             Task ILogger.InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                Serilog.Log.Information(message);
+                _deployment.Serilogger.Information(message);
                 return LogImplAsync(LogSeverity.Info, message, resource, streamId, ephemeral);
             }
 
@@ -61,7 +61,7 @@ namespace Pulumi
             /// </summary>
             Task ILogger.WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                Serilog.Log.Warning(message);
+                _deployment.Serilogger.Warning(message);
                 return LogImplAsync(LogSeverity.Warning, message, resource, streamId, ephemeral);
             }
 
@@ -74,7 +74,7 @@ namespace Pulumi
 
             private Task ErrorAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
             {
-                Serilog.Log.Error(message);
+                _deployment.Serilogger.Error(message);
                 return LogImplAsync(LogSeverity.Error, message, resource, streamId, ephemeral);
             }
 

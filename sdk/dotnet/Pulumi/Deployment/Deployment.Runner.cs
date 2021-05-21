@@ -69,7 +69,7 @@ namespace Pulumi
 
             public void RegisterTask(string description, Task task)
             {
-                Serilog.Log.Information($"Registering task: {description}");
+                _deployment.Serilogger.Information($"Registering task: {description}");
 
                 lock (_inFlightTasks)
                 {
@@ -138,7 +138,7 @@ namespace Pulumi
                             }
                             foreach (var description in descriptions)
                             {
-                                Serilog.Log.Information($"Completed task: {description}");
+                                _deployment.Serilogger.Information($"Completed task: {description}");
                             }
 
                             // Check if all the tasks are completed and signal the completion source if so.
@@ -188,7 +188,7 @@ namespace Pulumi
                 {
                     // We got an error while logging itself.  Nothing to do here but print some errors
                     // and fail entirely.
-                    Serilog.Log.Error(exception, "Error occurred trying to send logging message to engine.");
+                    _deployment.Serilogger.Error(exception, "Error occurred trying to send logging message to engine.");
                     await Console.Error.WriteLineAsync("Error occurred trying to send logging message to engine:\n" + exception).ConfigureAwait(false);
                     return 1;
                 }
@@ -220,7 +220,7 @@ namespace Pulumi
 {exception.ToString()}").ConfigureAwait(false);
                 }
 
-                Serilog.Log.Debug("Wrote last error.  Returning from program.");
+                _deployment.Serilogger.Debug("Wrote last error.  Returning from program.");
                 return _processExitedAfterLoggingUserActionableMessage;
             }
         }
