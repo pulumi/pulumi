@@ -1001,7 +1001,15 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Package != nil && t.Package != mod.pkg {
 			pkg := t.Package.Name
-			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			var nodePackageInfo NodePackageInfo
+			if languageInfo, hasLanguageInfo := mod.pkg.Language["nodejs"]; hasLanguageInfo {
+				nodePackageInfo = languageInfo.(NodePackageInfo)
+			}
+			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
+				externalImports.Add(fmt.Sprintf("import * as %[1]s from \"%[2]s\";", pkg, imp))
+			} else {
+				externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			}
 			return false
 		}
 
