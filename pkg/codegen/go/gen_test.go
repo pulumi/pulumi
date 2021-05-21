@@ -149,7 +149,7 @@ func TestGeneratePackage(t *testing.T) {
 				})
 			assert.NoError(t, err)
 			dir := filepath.Join(testDir, tt.schemaDir)
-			test.RewriteFilesWhenPulumiAccept(t, dir, "go", files)
+			test.RewriteFilesWhenPulumiAccept(t, dir, "go", files, tt.expectedFiles)
 			expectedFiles, err := test.LoadFiles(dir, "go", tt.expectedFiles)
 			assert.NoError(t, err)
 			test.ValidateFileEquality(t, files, expectedFiles)
