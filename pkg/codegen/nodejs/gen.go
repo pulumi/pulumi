@@ -691,15 +691,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, "        const secretOpts = { additionalSecretOutputs: [")
-		for i, sp := range secretProps {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "%q", sp)
-		}
-		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, secretOpts);\n")
+		fmt.Fprintf(w, "        // Always mark these fields as secret to avoid leaking sensitive values into the state.\n")
+		fmt.Fprintf(w, `        for (const key of ["%s"]) {`, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n            if (key in inputs && inputs[key] !== undefined) inputs[key] = pulumi.secret(inputs[key]);\n")
+		fmt.Fprintf(w, "        }\n\n")
+		fmt.Fprintf(w, `        const secretOpts = { additionalSecretOutputs: ["%s"] };`, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
 	// If it's a ComponentResource, set the remote option.
