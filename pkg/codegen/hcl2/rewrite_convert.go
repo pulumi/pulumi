@@ -92,7 +92,7 @@ func rewriteConversions(x model.Expression, to model.Type) (model.Expression, bo
 		x.Key, _ = rewriteConversions(x.Key, x.KeyType())
 	case *model.ObjectConsExpression:
 		if v := resolveDiscriminatedUnions(x, to); v != nil {
-			to = v
+			to = model.InputType(v)
 			typecheck = true
 		}
 		for i := range x.Items {
