@@ -11,7 +11,7 @@ export function getIntegrationRuntimeObjectMetadatum(args: GetIntegrationRuntime
     if (!opts.version) {
         opts.version = utilities.getVersion();
     }
-    return pulumi.runtime.invoke("azure-native:datafactory:getIntegrationRuntimeObjectMetadatum", {
+    return pulumi.runtime.invoke("azure-native:codegentest:getIntegrationRuntimeObjectMetadatum", {
         "factoryName": args.factoryName,
         "integrationRuntimeName": args.integrationRuntimeName,
         "metadataPath": args.metadataPath,
@@ -52,11 +52,11 @@ export interface GetIntegrationRuntimeObjectMetadatumResult {
     readonly value?: SsisEnvironmentResponse | SsisFolderResponse | SsisPackageResponse | SsisProjectResponse[];
 }
 
-export function getIntegrationRuntimeObjectMetadatumOutput(args: GetIntegrationRuntimeObjectMetadatumOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetIntegrationRuntimeObjectMetadatumResult> {
+export function getIntegrationRuntimeObjectMetadatumApply(args: GetIntegrationRuntimeObjectMetadatumApplyArgs, opts?: pulumi.InvokeOptions): pulumi.Output<GetIntegrationRuntimeObjectMetadatumResult> {
     return pulumi.output(args).apply(a => getIntegrationRuntimeObjectMetadatum(a, opts))
 }
 
-export interface GetIntegrationRuntimeObjectMetadatumOutputArgs {
+export interface GetIntegrationRuntimeObjectMetadatumApplyArgs {
     /**
      * The factory name.
      */

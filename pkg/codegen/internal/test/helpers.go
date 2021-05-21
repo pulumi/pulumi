@@ -122,9 +122,10 @@ func ValidateFileTransformer(
 // If PULUMI_ACCEPT is set, writes out actual output to th expected
 // file set, so we can continue enjoying golden tests without manually
 // modifying the expected output.
-func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte) {
+func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte, expected []string) {
 	if os.Getenv("PULUMI_ACCEPT") != "" {
-		for file, bytes := range actual {
+		for _, file := range expected {
+			bytes := actual[file]
 			err := ioutil.WriteFile(filepath.Join(dir, lang, file), bytes, 0600)
 			if err != nil {
 				t.Fatal(err)

@@ -11,7 +11,7 @@ export function funcWithConstInput(args?: FuncWithConstInputArgs, opts?: pulumi.
     if (!opts.version) {
         opts.version = utilities.getVersion();
     }
-    return pulumi.runtime.invoke("madeup-package:x:funcWithConstInput", {
+    return pulumi.runtime.invoke("madeup-package:codegentest:funcWithConstInput", {
         "plainInput": args.plainInput,
     }, opts);
 }
@@ -20,10 +20,10 @@ export interface FuncWithConstInputArgs {
     plainInput?: "fixed";
 }
 
-export function funcWithConstInputOutput(args?: FuncWithConstInputOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<void> {
+export function funcWithConstInputApply(args?: FuncWithConstInputApplyArgs, opts?: pulumi.InvokeOptions): pulumi.Output<void> {
     return pulumi.output(args).apply(a => funcWithConstInput(a, opts))
 }
 
-export interface FuncWithConstInputOutputArgs {
+export interface FuncWithConstInputApplyArgs {
     plainInput?: pulumi.Input<"fixed">;
 }

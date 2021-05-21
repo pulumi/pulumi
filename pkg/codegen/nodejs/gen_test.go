@@ -76,10 +76,10 @@ func TestGeneratePackage(t *testing.T) {
 			files, err := test.GeneratePackageFilesFromSchema(
 				filepath.Join(testDir, tt.schemaDir, "schema.json"), GeneratePackage)
 			assert.NoError(t, err)
-
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "nodejs", tt.expectedFiles)
+			dir := filepath.Join(testDir, tt.schemaDir)
+			test.RewriteFilesWhenPulumiAccept(t, dir, "nodejs", files, tt.expectedFiles)
+			expectedFiles, err := test.LoadFiles(dir, "nodejs", tt.expectedFiles)
 			assert.NoError(t, err)
-
 			test.ValidateFileEquality(t, files, expectedFiles)
 		})
 	}

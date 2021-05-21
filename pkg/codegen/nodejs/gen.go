@@ -788,7 +788,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, false, true, 0)
 	}
 
-	mod.genFunctionOutputVersion(w, fun)
+	mod.genFunctionApplyVersion(w, fun)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {
@@ -815,12 +815,12 @@ func functionReturnType(fun *schema.Function) string {
 	return retty
 }
 
-// Generates `function ${fn}Output(..)` version lifted to work on
+// Generates `function ${fn}Apply(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
+func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function) {
 	originalName := tokenToFunctionName(fun.Token)
-	outputSuffixedName := fmt.Sprintf("%sOutput", originalName)
-	argTypeName := fmt.Sprintf("%sArgs", title(outputSuffixedName))
+	fnApply := fmt.Sprintf("%sApply", originalName)
+	argTypeName := fmt.Sprintf("%sArgs", title(fnApply))
 
 	var argsig string
 	argsOptional := functionArgsOptional(fun)
@@ -837,7 +837,7 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(args).apply(a => %s(a, opts))
 }
-`, outputSuffixedName, argsig, functionReturnType(fun), originalName)
+`, fnApply, argsig, functionReturnType(fun), originalName)
 		fmt.Fprintf(w, "\n")
 		input := true
 		arg := true
@@ -849,7 +849,7 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 export function %s(opts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(%s(opts))
 }
-`, outputSuffixedName, functionReturnType(fun), originalName)
+`, fnApply, functionReturnType(fun), originalName)
 	}
 }
 
