@@ -12,6 +12,7 @@ namespace Pulumi
 
         Stack Stack { get; set; }
 
+        Serilog.ILogger Serilogger { get; }
         ILogger Logger { get; }
         IRunner Runner { get; }
 
