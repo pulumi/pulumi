@@ -1,5 +1,8 @@
 ### Improvements
 
+- [dotnet/sdk] - Use source context with serilog
+  [#7095](https://github.com/pulumi/pulumi/pull/7095)
+
 - [auto/dotnet] - Make StackDeployment.FromJsonString public
   [#7067](https://github.com/pulumi/pulumi/pull/7067)
 
