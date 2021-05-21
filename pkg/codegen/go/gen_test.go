@@ -148,8 +148,9 @@ func TestGeneratePackage(t *testing.T) {
 					return GeneratePackage(tool, pkg)
 				})
 			assert.NoError(t, err)
-
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)
+			dir := filepath.Join(testDir, tt.schemaDir)
+			test.RewriteFilesWhenPulumiAccept(t, dir, "go", files)
+			expectedFiles, err := test.LoadFiles(dir, "go", tt.expectedFiles)
 			assert.NoError(t, err)
 			test.ValidateFileEquality(t, files, expectedFiles)
 			test.CheckAllFilesGenerated(t, files, expectedFiles)
