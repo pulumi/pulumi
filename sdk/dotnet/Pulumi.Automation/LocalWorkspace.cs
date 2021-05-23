@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Serialization;
@@ -52,6 +53,9 @@ namespace Pulumi.Automation
 
         /// <inheritdoc/>
         public override PulumiFn? Program { get; set; }
+
+        /// <inheritdoc/>
+        public override ILogger? Logger { get; set; }
 
         /// <inheritdoc/>
         public override IDictionary<string, string?>? EnvironmentVariables { get; set; }
@@ -307,6 +311,7 @@ namespace Pulumi.Automation
 
                 this.PulumiHome = options.PulumiHome;
                 this.Program = options.Program;
+                this.Logger = options.Logger;
                 this.SecretsProvider = options.SecretsProvider;
 
                 if (options.EnvironmentVariables != null)

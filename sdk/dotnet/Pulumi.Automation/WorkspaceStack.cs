@@ -203,7 +203,8 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string>
+            var logger = this.Workspace.Logger;
+            var args = new List<string>()
             {
                 "up",
                 "--yes",
@@ -214,6 +215,9 @@ namespace Pulumi.Automation
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -262,7 +266,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, logger, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -305,12 +309,16 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string> { "preview" };
+            var logger = this.Workspace.Logger;
+            var args = new List<string>() { "preview" };
 
             if (options != null)
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -373,7 +381,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, logger, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -643,6 +651,7 @@ namespace Pulumi.Automation
 
             public InlineLanguageHost(
                 PulumiFn program,
+                ILogger? logger,
                 CancellationToken cancellationToken)
             {
                 this._cancelToken = cancellationToken;
@@ -671,7 +680,7 @@ namespace Pulumi.Automation
                             .ConfigureServices(services =>
                             {
                                 // to be injected into LanguageRuntimeService
-                                var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
+                                var callerContext = new LanguageRuntimeService.CallerContext(program, logger, cancellationToken);
                                 services.AddSingleton(callerContext);
 
                                 services.AddGrpc(grpcOptions =>

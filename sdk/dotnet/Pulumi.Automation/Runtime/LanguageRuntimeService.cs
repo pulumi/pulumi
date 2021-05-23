@@ -5,6 +5,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Pulumirpc;
 
 namespace Pulumi.Automation
@@ -39,14 +40,15 @@ namespace Pulumi.Automation
             var engineAddr = args != null && args.Any() ? args[0] : "";
 
             var settings = new InlineDeploymentSettings(
+                _callerContext.Logger,
                 engineAddr,
                 request.MonitorAddress,
                 request.Config,
+                request.ConfigSecretKeys,
                 request.Project,
                 request.Stack,
                 request.Parallel,
-                request.DryRun,
-                request.ConfigSecretKeys);
+                request.DryRun);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(
                 this._callerContext.CancellationToken,
@@ -65,15 +67,19 @@ namespace Pulumi.Automation
         {
             public PulumiFn Program { get; }
 
+            public ILogger? Logger { get; }
+
             public CancellationToken CancellationToken { get; }
 
             public ExceptionDispatchInfo? ExceptionDispatchInfo { get; set; }
 
             public CallerContext(
                 PulumiFn program,
+                ILogger? logger,
                 CancellationToken cancellationToken)
             {
                 this.Program = program;
+                this.Logger = logger;
                 this.CancellationToken = cancellationToken;
             }
         }

@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -59,6 +60,12 @@ namespace Pulumi.Automation
         /// If none is specified, the stack will refer to <see cref="ProjectSettings"/> for this information.
         /// </summary>
         public abstract PulumiFn? Program { get; set; }
+
+        /// <summary>
+        /// A custom logger instance that will be used for the action. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
+        public abstract ILogger? Logger { get; set; }
 
         /// <summary>
         /// Environment values scoped to the current workspace. These will be supplied to every Pulumi command.

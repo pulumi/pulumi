@@ -1,5 +1,8 @@
 ### Improvements
 
+- [dotnet/sdk] Support microsoft logging extensions with inline programs
+  [#7117](https://github.com/pulumi/pulumi/pull/7117)
+
 - [dotnet/sdk] Add create unknown to output utilities.
   [#7173](https://github.com/pulumi/pulumi/pull/7173)
 
