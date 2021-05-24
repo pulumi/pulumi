@@ -51,6 +51,13 @@ export class Resource extends pulumi.CustomResource {
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
+        // Always mark these fields as secret to avoid leaking sensitive values into the state.
+        for (const key of ["bar"]) {
+            if (key in inputs && inputs[key] !== undefined) inputs[key] = pulumi.secret(inputs[key]);
+        }
+
+        const secretOpts = { additionalSecretOutputs: ["bar"] };
+        opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, inputs, opts);
     }
 }

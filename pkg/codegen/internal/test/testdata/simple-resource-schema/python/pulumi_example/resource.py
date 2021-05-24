@@ -79,6 +79,12 @@ class Resource(pulumi.CustomResource):
             __props__ = ResourceArgs.__new__(ResourceArgs)
 
             __props__.__dict__["bar"] = bar
+        # Always mark these fields as secret to avoid leaking sensitive values into the state.
+        for key in ["bar"]:
+            if __props__.__dict__.get(key):
+                __props__.__dict__[key] = pulumi.Output.secret(__props__.__dict__[key])
+        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["bar"])
+        opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(Resource, __self__).__init__(
             'example::Resource',
             resource_name,

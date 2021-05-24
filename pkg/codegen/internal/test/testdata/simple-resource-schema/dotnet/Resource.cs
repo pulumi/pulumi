@@ -38,6 +38,10 @@ namespace Pulumi.Example
             var defaultOptions = new CustomResourceOptions
             {
                 Version = Utilities.Version,
+                AdditionalSecretOutputs =
+                {
+                    "bar",
+                },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
             // Override the ID if one was specified for consistency with other language SDKs.
@@ -61,7 +65,23 @@ namespace Pulumi.Example
     public sealed class ResourceArgs : Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<string>? Bar { get; set; }
+        public Input<string>? Bar
+        {
+            get => Bar;
+            set
+            {
+                if (value != null)
+                {
+                    // Always mark this field as secret to avoid leaking sensitive values into the state.
+                    // Since we can't directly assign the Output from CreateSecret to the property, use an
+                    // Output.Tuple to enable the secret flag on the data.
+                    var emptySecret = Output.CreateSecret(0);
+                    Bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+                }
+                else
+                    Bar = null;
+            }
+        }
 
         public ResourceArgs()
         {

@@ -23,6 +23,14 @@ func NewResource(ctx *pulumi.Context,
 		args = &ResourceArgs{}
 	}
 
+	// Always mark these fields as secret to avoid leaking sensitive values into the state.
+	if args.Bar != nil {
+		args.Bar = pulumi.ToSecret(args.Bar).(pulumi.StringInput)
+	}
+	secrets := pulumi.AdditionalSecretOutputs([]string{
+		"bar",
+	})
+	opts = append(opts, secrets)
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {

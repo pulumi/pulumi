@@ -71,12 +71,14 @@
     "example::Resource": {
       "properties": {
         "bar": {
-          "type": "string"
+          "type": "string",
+          "secret": true
         }
       },
       "inputProperties": {
         "bar": {
-          "type": "string"
+          "type": "string",
+          "secret": true
         }
       },
       "type": "object"
