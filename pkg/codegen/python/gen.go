@@ -33,7 +33,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1106,6 +1105,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	var secretProps []string
+	var secretPropsPyName []string
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
@@ -1115,6 +1115,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		if prop.Secret {
 			secretProps = append(secretProps, prop.Name)
+			secretPropsPyName = append(secretPropsPyName, PyName(prop.Name))
 		}
 	}
 
@@ -1133,17 +1134,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=[`)
-
-		for i, sp := range secretProps {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "%q", sp)
-		}
-
-		fmt.Fprintf(w, "])\n")
-		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
+		fmt.Fprintf(w, "        # Always mark these fields as secret to avoid leaking sensitive values into the state.\n")
+		fmt.Fprintf(w, `        for key in ["%s"]:`, strings.Join(secretPropsPyName, `", "`))
+		fmt.Fprintf(w, "\n            if __props__.__dict__.get(key):\n")
+		fmt.Fprintf(w, "                __props__.__dict__[key] = pulumi.Output.secret(__props__.__dict__[key])\n")
+		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["%s"])`, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
