@@ -528,6 +528,8 @@ class TestLocalWorkspace(unittest.TestCase):
         finally:
             stack.workspace.remove_stack(stack_name)
 
+    # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+    @unittest.skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
     def test_secret_config_warnings(self):
         def program():
             config = Config()

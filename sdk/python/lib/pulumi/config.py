@@ -49,13 +49,15 @@ class Config:
             raise TypeError('Expected name to be a string')
         self.name = name
 
+    # pylint: disable=unused-argument
     def _get(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> Optional[str]:
         full_key = self.full_key(key)
-        if use is not None and is_config_secret(full_key):
-            assert instead_of is not None
-            log.warn(
-                f"Configuration '{full_key}' value is a secret; " +
-                f"use `{use.__name__}` instead of `{instead_of.__name__}`")
+        # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+        # if use is not None and is_config_secret(full_key):
+        #     assert instead_of is not None
+        #     log.warn(
+        #         f"Configuration '{full_key}' value is a secret; " +
+        #         f"use `{use.__name__}` instead of `{instead_of.__name__}`")
         return get_config(full_key)
 
     def get(self, key: str) -> Optional[str]:

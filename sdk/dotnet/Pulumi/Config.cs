@@ -59,11 +59,12 @@ namespace Pulumi
         private string? GetImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
         {
             var fullKey = FullKey(key);
-            if (use != null && Deployment.InternalInstance.IsConfigSecret(fullKey))
-            {
-                Debug.Assert(insteadOf != null);
-                Log.Warn($"Configuration '{fullKey}' value is a secret; use `{use}` instead of `{insteadOf}`");
-            }
+            // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+            // if (use != null && Deployment.InternalInstance.IsConfigSecret(fullKey))
+            // {
+            //     Debug.Assert(insteadOf != null);
+            //     Log.Warn($"Configuration '{fullKey}' value is a secret; use `{use}` instead of `{insteadOf}`");
+            // }
             return Deployment.InternalInstance.GetConfig(fullKey);
         }
 

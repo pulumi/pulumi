@@ -66,10 +66,12 @@ export class Config {
         if (v === undefined) {
             return undefined;
         }
-        if (use && insteadOf && isConfigSecret(fullKey)) {
-            log.warn(`Configuration '${fullKey}' value is a secret; ` +
-                `use \`${use.name}\` instead of \`${insteadOf.name}\``);
-        }
+        // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+        // Temporarily disabling the new warning.
+        // if (use && insteadOf && isConfigSecret(fullKey)) {
+        //     log.warn(`Configuration '${fullKey}' value is a secret; ` +
+        //         `use \`${use.name}\` instead of \`${insteadOf.name}\``);
+        // }
         if (opts) {
             // SAFETY: if allowedValues != null, verifying v ∈ K[]
             if (opts.allowedValues !== undefined && opts.allowedValues.indexOf(v as any) === -1) {
