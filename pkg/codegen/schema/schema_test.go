@@ -323,3 +323,78 @@ func Test_parseTypeSpecRef(t *testing.T) {
 		})
 	}
 }
+
+func TestMethods(t *testing.T) {
+	var tests = []struct {
+		filename      string
+		validator     func(pkg *Package)
+		expectedError string
+	}{
+		{
+			filename: "good-methods-1.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Resources, 1)
+				assert.Len(t, pkg.Resources[0].Methods, 1)
+
+				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Inputs)
+				assert.Len(t, pkg.Resources[0].Methods[0].Function.Inputs.Properties, 1)
+				inputs := pkg.Resources[0].Methods[0].Function.Inputs.Properties
+				assert.Equal(t, "__self__", inputs[0].Name)
+				assert.Equal(t, &ResourceType{
+					Token:    pkg.Resources[0].Token,
+					Resource: pkg.Resources[0],
+				}, inputs[0].Type)
+
+				assert.NotNil(t, pkg.Resources[0].Methods[0].Function.Outputs)
+				assert.Len(t, pkg.Resources[0].Methods[0].Function.Outputs.Properties, 1)
+				outputs := pkg.Resources[0].Methods[0].Function.Outputs.Properties
+				assert.Equal(t, "someValue", outputs[0].Name)
+				assert.Equal(t, StringType, outputs[0].Type)
+
+				assert.Len(t, pkg.Functions, 1)
+				assert.True(t, pkg.Functions[0].IsMethod)
+				assert.Same(t, pkg.Resources[0].Methods[0].Function, pkg.Functions[0])
+			},
+		},
+		{
+			filename:      "bad-methods-1.json",
+			expectedError: "unknown function xyz:index:Foo/bar for method bar",
+		},
+		{
+			filename:      "bad-methods-2.json",
+			expectedError: "function xyz:index:Foo/bar for method baz is already a method",
+		},
+		{
+			filename:      "bad-methods-3.json",
+			expectedError: "invalid function token format xyz:index:Foo for method bar",
+		},
+		{
+			filename:      "bad-methods-4.json",
+			expectedError: "invalid function token format xyz:index:Baz/bar for method bar",
+		},
+		{
+			filename:      "bad-methods-5.json",
+			expectedError: "function xyz:index:Foo/bar for method bar is missing __self__ parameter",
+		},
+		{
+			filename:      "bad-methods-6.json",
+			expectedError: "property and method have the same name bar",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			pkg, err := ImportSpec(pkgSpec, nil)
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				if err != nil {
+					t.Error(err)
+				}
+				tt.validator(pkg)
+			}
+		})
+	}
+}
