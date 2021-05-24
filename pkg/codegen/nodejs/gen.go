@@ -1796,7 +1796,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	// Now write out the serialized form.
 	npmjson, err := json.MarshalIndent(npminfo, "", "    ")
 	contract.Assert(err == nil)
-	return string(npmjson)
+	return string(npmjson) + "\n"
 }
 
 func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
