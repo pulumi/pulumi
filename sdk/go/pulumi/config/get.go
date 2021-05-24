@@ -16,12 +16,10 @@ package config
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -35,12 +33,13 @@ func ensureKey(ctx *pulumi.Context, key string) string {
 func get(ctx *pulumi.Context, key, use, insteadOf string) (string, bool) {
 	key = ensureKey(ctx, key)
 	v, ok := ctx.GetConfig(key)
-	if use != "" && ctx.IsConfigSecret(key) {
-		contract.Assert(insteadOf != "")
-		warning := fmt.Sprintf("Configuration '%s' value is a secret; use `%s` instead of `%s`", key, use, insteadOf)
-		err := ctx.Log.Warn(warning, nil)
-		contract.IgnoreError(err)
-	}
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	// if use != "" && ctx.IsConfigSecret(key) {
+	// 	contract.Assert(insteadOf != "")
+	// 	warning := fmt.Sprintf("Configuration '%s' value is a secret; use `%s` instead of `%s`", key, use, insteadOf)
+	// 	err := ctx.Log.Warn(warning, nil)
+	// 	contract.IgnoreError(err)
+	// }
 	return v, ok
 }
 

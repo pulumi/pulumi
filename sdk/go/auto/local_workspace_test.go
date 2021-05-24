@@ -1574,6 +1574,8 @@ func TestSaveStackSettings(t *testing.T) {
 }
 
 func TestConfigSecretWarnings(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
 	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)

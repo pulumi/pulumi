@@ -340,7 +340,9 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
-    it(`has secret config warnings`, asyncTest(async () => {
+    // TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+    // Temporarily skipping test until we've re-enabled the warning.
+    it.skip(`has secret config warnings`, asyncTest(async () => {
         const program = async () => {
             const config = new Config();
 

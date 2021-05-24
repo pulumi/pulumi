@@ -783,7 +783,8 @@ namespace Pulumi.Automation.Tests
             }
         }
 
-        [Fact]
+        // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+        [Fact(Skip="Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")]
         public async Task ConfigSecretWarnings()
         {
             var program = PulumiFn.Create(() =>

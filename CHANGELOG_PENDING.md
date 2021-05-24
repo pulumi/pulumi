@@ -16,3 +16,6 @@
 
 - [auto/dotnet] - Fix deserialization of CancelEvent in .NET 5
   [#7051](https://github.com/pulumi/pulumi/pull/7051)
+
+- Temporarily disable warning when a secret config is read as a non-secret
+  [#7129](https://github.com/pulumi/pulumi/pull/7129)
