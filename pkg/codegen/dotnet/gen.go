@@ -471,7 +471,23 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		fmt.Fprintf(w, "%spublic %s %s\n", indent, backingFieldType, propertyName)
 		fmt.Fprintf(w, "%s{\n", indent)
 		fmt.Fprintf(w, "%s    get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
-		fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		if prop.Secret {
+			fmt.Fprintf(w, "%s    set\n", indent)
+			fmt.Fprintf(w, "%s    {\n", indent)
+			fmt.Fprintf(w, "%s        // Always mark this field as secret to avoid leaking sensitive values into the state.\n", indent)
+			fmt.Fprintf(w, "%s        // Since we can't directly assign the Output from CreateSecret to the property, use an\n", indent)
+			fmt.Fprintf(w, "%s        // Output.all to enable the secret flag on the data.\n", indent)
+			switch t := prop.Type.(type) {
+			case *schema.ArrayType:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableArray.Create<%s>());\n", indent, t.ElementType.String())
+			case *schema.MapType:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableDictionary.Create<string, %s>());\n", indent, t.ElementType.String())
+			}
+			fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
+			fmt.Fprintf(w, "%s    }\n", indent)
+		} else {
+			fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		}
 		fmt.Fprintf(w, "%s}\n", indent)
 	default:
 		initializer := ""
@@ -481,7 +497,27 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 
 		printComment(w, prop.Comment, indent)
 		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%spublic %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
+		if prop.Secret {
+			fmt.Fprintf(w, "%spublic %s %s\n", indent, propertyType, propertyName)
+			fmt.Fprintf(w, "%s{\n", indent)
+			fmt.Fprintf(w, "%s    get => %s;\n", indent, propertyName)
+			fmt.Fprintf(w, "%s    set\n", indent)
+			fmt.Fprintf(w, "%s    {\n", indent)
+			fmt.Fprintf(w, "%s        if (value != null)\n", indent)
+			fmt.Fprintf(w, "%s        {\n", indent)
+			fmt.Fprintf(w, "%s            // Always mark this field as secret to avoid leaking sensitive values into the state.\n", indent)
+			fmt.Fprintf(w, "%s            // Since we can't directly assign the Output from CreateSecret to the property, use an\n", indent)
+			fmt.Fprintf(w, "%s            // Output.Tuple to enable the secret flag on the data.\n", indent)
+			fmt.Fprintf(w, "%s            var emptySecret = Output.CreateSecret(0);\n", indent)
+			fmt.Fprintf(w, "%s            %s = Output.Tuple<%s, int>(value, emptySecret).Apply(t => t.Item1);\n", indent, propertyName, propertyType)
+			fmt.Fprintf(w, "%s        }\n", indent)
+			fmt.Fprintf(w, "%s        else\n", indent)
+			fmt.Fprintf(w, "%s            %s = null;\n", indent, propertyName)
+			fmt.Fprintf(w, "%s    }\n", indent)
+			fmt.Fprintf(w, "%s}\n", indent)
+		} else {
+			fmt.Fprintf(w, "%spublic %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
+		}
 	}
 }
 
