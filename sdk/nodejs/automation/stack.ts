@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import { read } from "fs";
 import * as fs from "fs";
 import * as os from "os";
+import * as path from "path";
 import * as readline from "readline";
 import * as upath from "upath";
 
@@ -127,8 +127,8 @@ export class Stack {
             try {
                 event = JSON.parse(line);
             } catch (e) {
-                log.info(`failed to parse engine event\nlogfile: ${logPath}\nevent: ${line}\n${e.toString()}`);
-                return;
+                log.error(`failed to parse engine event\nevent: ${line}\n${e.toString()}`);
+                throw e;
             }
             callback(event);
         });
@@ -799,11 +799,13 @@ const createLogFile = (command: string) => {
 
 const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
     if (rl) {
+        // stop tailing
         await rl.tail.quit();
+        // close the readline interface
         rl.rl.close();
     }
-    // TODO: Undo this. Not deleting the logfile for debugging purposes.
-    // if (logFile) {
-    //     fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
-    // }
+    if (logFile) {
+        // remove the logfile
+        fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
+    }
 };
