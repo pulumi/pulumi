@@ -15,12 +15,13 @@
 import * as fs from "fs";
 import * as os from "os";
 import * as path from "path";
+import * as readline from "readline";
 import * as upath from "upath";
 
 import * as grpc from "@grpc/grpc-js";
 import * as TailFile from "@logdna/tail-file";
-import * as split2 from "split2";
 
+import * as log from "../log";
 import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { StackAlreadyExistsError } from "./errors";
@@ -29,6 +30,11 @@ import { LanguageServer, maxRPCMessageSize } from "./server";
 import { Deployment, PulumiFn, Workspace } from "./workspace";
 
 const langrpc = require("../proto/language_grpc_pb.js");
+
+interface ReadlineResult {
+    tail: TailFile;
+    rl: readline.Interface;
+}
 
 /**
  * Stack is an isolated, independently configurable instance of a Pulumi program.
@@ -109,20 +115,28 @@ export class Stack {
                 throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
-    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<TailFile> {
-        const eventLogTail = new TailFile(logPath, { startPos: 0 });
-        await eventLogTail.start();
-        eventLogTail
+    private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
+        const eventLogTail = new TailFile(logPath, { startPos: 0, pollFileIntervalMs: 200 })
             .on("tail_error", (err) => {
                 throw err;
-            })
-            .pipe(split2())
-            .on("data", (line: string) => {
-                const event: EngineEvent = JSON.parse(line);
-                callback(event);
             });
+        await eventLogTail.start();
+        const lineSplitter = readline.createInterface({ input: eventLogTail });
+        lineSplitter.on("line", (line) => {
+            let event: EngineEvent;
+            try {
+                event = JSON.parse(line);
+            } catch (e) {
+                log.error(`failed to parse engine event\nevent: ${line}\n${e.toString()}`);
+                throw e;
+            }
+            callback(event);
+        });
 
-        return eventLogTail;
+        return {
+            tail: eventLogTail,
+            rl: lineSplitter,
+        };
     }
     /**
      * Creates or updates the resources in a stack by executing the program in the Workspace.
@@ -198,7 +212,7 @@ export class Stack {
 
         args.push("--exec-kind", kind);
 
-        let logPromise: Promise<TailFile> | undefined;
+        let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
@@ -213,15 +227,15 @@ export class Stack {
 
         const upPromise = this.runPulumiCmd(args, opts?.onOutput);
         let upResult: CommandResult;
-        let tail: TailFile | undefined;
+        let logResult: ReadlineResult | undefined;
         try {
-            [upResult, tail] = await Promise.all([upPromise, logPromise]);
+            [upResult, logResult] = await Promise.all([upPromise, logPromise]);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(tail, logFile);
+            await cleanUp(logFile, logResult);
         }
 
         // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
@@ -313,7 +327,7 @@ export class Stack {
         const logFile = createLogFile("preview");
         args.push("--event-log", logFile);
         let summaryEvent: SummaryEvent | undefined;
-        const logPromise = this.readLines(logFile, (event) => {
+        const rlPromise = this.readLines(logFile, (event) => {
             if (event.summaryEvent) {
                 summaryEvent = event.summaryEvent;
             }
@@ -325,15 +339,15 @@ export class Stack {
         const prePromise = this.runPulumiCmd(args, opts?.onOutput);
 
         let preResult: CommandResult;
-        let tail: TailFile | undefined;
+        let rlResult: ReadlineResult | undefined;
         try {
-            [preResult, tail] = await Promise.all([prePromise, logPromise]);
+            [preResult, rlResult] = await Promise.all([prePromise, rlPromise]);
         } catch (e) {
             didError = true;
             throw e;
         } finally {
             onExit(didError);
-            await cleanUp(tail, logFile);
+            await cleanUp(logFile, rlResult);
         }
 
         if (!summaryEvent) {
@@ -375,7 +389,7 @@ export class Stack {
             }
         }
 
-        let logPromise: Promise<TailFile> | undefined;
+        let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
@@ -392,8 +406,8 @@ export class Stack {
         args.push("--exec-kind", kind);
 
         const refPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [refResult, tail] = await Promise.all([refPromise, logPromise]);
-        await cleanUp(tail, logFile);
+        const [refResult, logResult] = await Promise.all([refPromise, logPromise]);
+        await cleanUp(logFile, logResult);
 
         const summary = await this.info();
         return {
@@ -430,7 +444,7 @@ export class Stack {
             }
         }
 
-        let logPromise: Promise<TailFile> | undefined;
+        let logPromise: Promise<ReadlineResult> | undefined;
         let logFile: string | undefined;
         // Set up event log tailing
         if (opts?.onEvent) {
@@ -447,8 +461,8 @@ export class Stack {
         args.push("--exec-kind", kind);
 
         const desPromise = this.runPulumiCmd(args, opts?.onOutput);
-        const [desResult, tail] = await Promise.all([desPromise, logPromise]);
-        await cleanUp(tail, logFile);
+        const [desResult, logResult] = await Promise.all([desPromise, logPromise]);
+        await cleanUp(logFile, logResult);
 
         const summary = await this.info();
         return {
@@ -783,11 +797,15 @@ const createLogFile = (command: string) => {
     return logFile;
 };
 
-const cleanUp = async (tail?: TailFile, logFile?: string) => {
-    if (tail) {
-        await tail.quit();
+const cleanUp = async (logFile?: string, rl?: ReadlineResult) => {
+    if (rl) {
+        // stop tailing
+        await rl.tail.quit();
+        // close the readline interface
+        rl.rl.close();
     }
     if (logFile) {
+        // remove the logfile
         fs.rmdir(path.dirname(logFile), { recursive: true }, () => { return; });
     }
 };

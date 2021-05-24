@@ -21,7 +21,6 @@
         "require-from-string": "^2.0.1",
         "semver": "^6.1.0",
         "source-map-support": "^0.4.16",
-        "split2": "^3.2.2",
         "ts-node": "^7.0.1",
         "typescript": "~3.7.3",
         "upath": "^1.1.0"

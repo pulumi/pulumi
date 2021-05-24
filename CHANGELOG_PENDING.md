@@ -11,5 +11,8 @@
 
 ### Bug Fixes
 
-- [auto/dotnet] Fix deserialization of CancelEvent in .NET 5
+- [auto/nodejs] - Fix an intermittent bug in parsing JSON events 
+  [#7032](https://github.com/pulumi/pulumi/pull/7032) 
+
+- [auto/dotnet] - Fix deserialization of CancelEvent in .NET 5
   [#7051](https://github.com/pulumi/pulumi/pull/7051)
