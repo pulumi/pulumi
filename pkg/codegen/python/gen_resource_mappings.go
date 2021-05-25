@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -79,6 +80,12 @@ type resourceModuleInfo struct {
 	Classes map[string]string `json:"classes"`
 }
 
+type resourceModuleInfoByFqn []resourceModuleInfo
+
+func (a resourceModuleInfoByFqn) Len() int           { return len(a) }
+func (a resourceModuleInfoByFqn) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a resourceModuleInfoByFqn) Less(i, j int) bool { return a[i].Fqn < a[j].Fqn }
+
 func makeResourceModuleInfo(pkg, mod, fqn string) resourceModuleInfo {
 	return resourceModuleInfo{pkg, mod, fqn, make(map[string]string)}
 }
@@ -88,6 +95,7 @@ func allResourceModuleInfos(root *modContext) []resourceModuleInfo {
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourceModuleInfos(mctx)...)
 	}
+	sort.Sort(resourceModuleInfoByFqn(result))
 	return result
 }
 
@@ -136,11 +144,18 @@ type resourcePackageInfo struct {
 	Class string `json:"class"`
 }
 
+type resourcePackageInfoByFqn []resourcePackageInfo
+
+func (a resourcePackageInfoByFqn) Len() int           { return len(a) }
+func (a resourcePackageInfoByFqn) Swap(i, j int)      { a[i], a[j] = a[j], a[i] }
+func (a resourcePackageInfoByFqn) Less(i, j int) bool { return a[i].Fqn < a[j].Fqn }
+
 func allResourcePackageInfos(root *modContext) []resourcePackageInfo {
 	var result []resourcePackageInfo
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourcePackageInfos(mctx)...)
 	}
+	sort.Sort(resourcePackageInfoByFqn(result))
 	return result
 }
 
