@@ -1181,12 +1181,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
 	}
-	// Set any defined additionalSecretOutputs.
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, "\t// Always mark these fields as secret to avoid leaking sensitive values into the state.\n")
 		for _, p := range secretProps {
 			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
-			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.inputType(p.Type, false))
+			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type, false))
 			fmt.Fprintf(w, "\t}\n")
 		}
 		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")

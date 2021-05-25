@@ -33,6 +33,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -1099,13 +1100,17 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
 		}
-		fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", PyName(prop.Name), arg)
+		name := PyName(prop.Name)
+		if prop.Secret {
+			fmt.Fprintf(w, "            __props__.__dict__[%[1]q] = None if %[2]s is None else pulumi.Output.secret(%[2]s)\n", name, arg)
+		} else {
+			fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", name, arg)
+		}
 
 		ins.Add(prop.Name)
 	}
 
 	var secretProps []string
-	var secretPropsPyName []string
 	for _, prop := range res.Properties {
 		// Default any pure output properties to None.  This ensures they are available as properties, even if
 		// they don't ever get assigned a real value, and get documentation if available.
@@ -1115,7 +1120,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		if prop.Secret {
 			secretProps = append(secretProps, prop.Name)
-			secretPropsPyName = append(secretPropsPyName, PyName(prop.Name))
 		}
 	}
 
@@ -1134,10 +1138,6 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, "        # Always mark these fields as secret to avoid leaking sensitive values into the state.\n")
-		fmt.Fprintf(w, `        for key in ["%s"]:`, strings.Join(secretPropsPyName, `", "`))
-		fmt.Fprintf(w, "\n            if __props__.__dict__.get(key):\n")
-		fmt.Fprintf(w, "                __props__.__dict__[key] = pulumi.Output.secret(__props__.__dict__[key])\n")
 		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["%s"])`, strings.Join(secretProps, `", "`))
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}

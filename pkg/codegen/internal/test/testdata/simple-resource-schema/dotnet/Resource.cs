@@ -65,21 +65,14 @@ namespace Pulumi.Example
     public sealed class ResourceArgs : Pulumi.ResourceArgs
     {
         [Input("bar")]
+        private Input<string>? _bar;
         public Input<string>? Bar
         {
-            get => Bar;
+            get => _bar;
             set
             {
-                if (value != null)
-                {
-                    // Always mark this field as secret to avoid leaking sensitive values into the state.
-                    // Since we can't directly assign the Output from CreateSecret to the property, use an
-                    // Output.Tuple to enable the secret flag on the data.
-                    var emptySecret = Output.CreateSecret(0);
-                    Bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
-                }
-                else
-                    Bar = null;
+                var emptySecret = Output.CreateSecret(0);
+                _bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
             }
         }
 
