@@ -607,16 +607,21 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 	}
 
 	//
-	// Step 2: Upload the compressed PolicyPack directory to the presigned S3 URL. The PolicyPack is
-	// now published.
+	// Step 2: Upload the compressed PolicyPack directory to the pre-signed object storage service URL.
+	// The PolicyPack is now published.
 	//
 
-	putS3Req, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
+	putReq, err := http.NewRequest(http.MethodPut, resp.UploadURI, dirArchive)
 	if err != nil {
 		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
-	_, err = http.DefaultClient.Do(putS3Req)
+	// Add a custom header for Azure Storage so that if the pre-signed URL is for their
+	// storage service, the request doesn't fail due to it being required.
+	// See x-ms-blob-type on https://docs.microsoft.com/en-us/rest/api/storageservices/put-blob
+	putReq.Header.Add("x-ms-blob-type", "BlockBlob")
+
+	_, err = http.DefaultClient.Do(putReq)
 	if err != nil {
 		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
