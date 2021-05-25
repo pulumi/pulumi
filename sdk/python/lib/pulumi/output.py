@@ -152,6 +152,7 @@ class Output(Generic[T_co]):
 
         # The "run" coroutine actually runs the apply.
         async def run() -> U:
+            resources: Set['Resource'] = set()
             try:
                 # Await this output's details.
                 resources = await self._resources
