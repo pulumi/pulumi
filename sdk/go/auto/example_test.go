@@ -968,6 +968,21 @@ func ExampleStack_Up() {
 	fmt.Println(permalink)
 }
 
+func ExampleStack_UpWithPolicyPack() {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	// create a new stack to update
+	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
+	result, err := stack.Up(ctx, optup.PolicyPacks([]string{
+		"./my-local-pack",
+	}))
+	if err != nil {
+		// return errors.Wrap(err, "up failed due to X")
+	}
+	permalink, _ := result.GetPermalink()
+	fmt.Println(permalink)
+}
+
 func ExampleStack_Up_streamingProgress() {
 	ctx := context.Background()
 	stackName := FullyQualifiedStackName("org", "project", "stack")
@@ -988,6 +1003,16 @@ func ExampleStack_Preview() {
 	// create a new stack and preview changes
 	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
 	stack.Preview(ctx, optpreview.Message("a message to save with the preive operation"))
+}
+
+func ExampleStack_PreviewWithPolicyPack() {
+	ctx := context.Background()
+	stackName := FullyQualifiedStackName("org", "project", "stack")
+	// create a new stack and preview changes when running against a policy pack
+	stack, _ := NewStackLocalSource(ctx, stackName, filepath.Join(".", "program"))
+	stack.Preview(ctx, optpreview.PolicyPacks([]string{
+		"./my-local-policy-pack",
+	}))
 }
 
 func ExampleStack_Refresh() {

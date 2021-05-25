@@ -241,6 +241,12 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	if preOpts.UserAgent != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
 	}
+	for _, policy := range preOpts.PolicyPack {
+		sharedArgs = append(sharedArgs, "--policy-pack %s", policy)
+	}
+	for _, config := range preOpts.PolicyPackConfig {
+		sharedArgs = append(sharedArgs, "--policy-pack-config %s", config)
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -335,6 +341,12 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.UserAgent != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
+	}
+	for _, policy := range upOpts.PolicyPack {
+		sharedArgs = append(sharedArgs, "--policy-pack %s", policy)
+	}
+	for _, config := range upOpts.PolicyPackConfig {
+		sharedArgs = append(sharedArgs, "--policy-pack-config %s", config)
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}

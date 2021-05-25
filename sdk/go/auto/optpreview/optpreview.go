@@ -73,6 +73,21 @@ func TargetDependents() Option {
 	})
 }
 
+// PolicyPacks is the list of policy packs to apply to the preview
+func PolicyPacks(policyPacks []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPack = policyPacks
+	})
+}
+
+// PolicyPackConfig is the list of paths to JSON file containing the config for the
+// policy pack of the corresponding `PolicyPack` flag
+func PolicyPackConfig(policyPackConfig []string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.PolicyPackConfig = policyPackConfig
+	})
+}
+
 // DebugLogging provides options for verbose logging to standard error, and enabling plugin logs.
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
@@ -133,6 +148,10 @@ type Options struct {
 	EventStreams []chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
+	// Paths to the Polocy Packages to run as part of the update
+	PolicyPack []string
+	// Path to JSON file containing the config for the policy pack of the corresponding `PolicyPack` flag
+	PolicyPackConfig []string
 }
 
 type optionFunc func(*Options)
