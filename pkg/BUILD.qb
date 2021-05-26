@@ -1,6 +1,8 @@
 load("//build:version.qb", "get_version")
 load("//build:go_sources.qb", "go_sources")
 
+debug = parse_flag("debug", type=bool, help="run a debug build of the CLI")
+
 version = get_version()
 
 @target(sources=glob(["codegen/docs/bundler.go", "codegen/docs/templates/**"]))
@@ -9,7 +11,8 @@ def gen():
 
 @target(deps=[gen, "//sdk/proto:gen"], sources=go_sources("cmd/pulumi"))
 def build_cli():
-    sh.exec(f"go install -ldflags \"-X github.com/pulumi/pulumi/pkg/v3/version.Version={version}\" github.com/pulumi/pulumi/pkg/v3/cmd/pulumi")
+    gcflags = "-gcflags=\"all=-N -l\"" if debug else ""
+    sh.exec(f"go install {gcflags} -ldflags \"-X github.com/pulumi/pulumi/pkg/v3/version.Version={version}\" github.com/pulumi/pulumi/pkg/v3/cmd/pulumi")
 
 @target(deps=[build_cli])
 def build():

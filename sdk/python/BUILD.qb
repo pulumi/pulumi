@@ -6,12 +6,16 @@ pypi_version = get_version("python")
 pyenv = "./env"
 pyenv_src = f"{pyenv}/src"
 
-@target(sources=["Pipfile", "Pipfile.lock"])
+use_system_zlib="GRPC_PYTHON_BUILD_SYSTEM_ZLIB=true" if host.os == "darwin" else ""
+
+@target(sources=["Pipfile"])
 def pipenv_install():
-    sh.exec("pipenv install --dev")
+    sh.exec(f"{use_system_zlib} pipenv install --dev")
     sh.exec(f"mkdir -p {pyenv_src}")
 
-@target(deps=[pipenv_install, "//sdk/proto:gen"], sources=glob(["lib/**", "../../README.md"]))
+@target(
+    deps=[pipenv_install, "//sdk/proto:gen"],
+    sources=glob(["lib/**", "../../README.md"], exclude=["**/node_modules/**", "**/bin/**", "**/obj/**"]))
 def build_sdk():
     sh.exec(f"rm -rf {pyenv_src} && cp -R ./lib/. {pyenv_src}/")
     sh.exec(f"sed -i.bak \"s/\\${{VERSION}}/{pypi_version}/g\" {pyenv_src}/setup.py && rm {pyenv_src}/setup.py.bak")
@@ -32,7 +36,7 @@ def test_go():
 
 @target(deps=[build])
 def test_install():
-    sh.exec(f"pipenv run pip install {pyenv_src}")
+    sh.exec(f"{use_system_zlib} pipenv run pip install {pyenv_src}")
 
 @target(deps=[test_install])
 def test_sdk():
@@ -46,9 +50,9 @@ def test_sdk():
 def test_fast():
     pass
 
-@target(deps=[test_install])
+@target(deps=[test_install, "//:build"])
 def test_slow():
-    sh.exec("pipenv run pytest lib/test/automation")
+    sh.exec(f"{use_system_zlib} pipenv run pytest lib/test/automation")
 
 @target(deps=[test_fast, test_slow])
 def test_all():

@@ -27,7 +27,7 @@ def build():
 def test_fast():
     sh.exec("go test ./pulumi/... ./common/... ./pulumi-language-go/...")
 
-@target(deps=[build], sources=go_sources("auto"))
+@target(deps=[build, "//:build"], sources=go_sources("auto"))
 def test_slow():
     sh.exec("go test ./auto/...")
 

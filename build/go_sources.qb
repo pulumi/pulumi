@@ -1,3 +1,5 @@
+source_cache = cache()
+
 def go_sources(package_dir=None):
     packages = {}
     visited = set()
@@ -48,19 +50,20 @@ def go_sources(package_dir=None):
     def list_packages(root):
         return json.decode_all(sh.output("go list -json -test -deps ./...", cwd=root))
 
-    def find_sources(package_list):
+    def find_sources(package_dir):
+        mod = json.decode(sh.output("go list -m -json", cwd=package_dir))
+        if mod["Path"] != "command-line-arguments":
+            (source, ok) = contains(mod["GoMod"])
+            if ok:
+                sources.append(source)
+
+        package_list = list_packages(package_dir)
         for p in package_list:
             packages[p["ImportPath"]] = p
         for import_path in packages:
             visit_package(import_path)
 
+        return sources
+
     package_dir = os.path.abs(package_dir or ".")
-
-    mod = json.decode(sh.output("go list -m -json", cwd=package_dir))
-    if mod["Path"] != "command-line-arguments":
-        (source, ok) = contains(mod["GoMod"])
-        if ok:
-            sources.append(source)
-
-    find_sources(list_packages(package_dir))
-    return sources
+    return source_cache.once(package_dir, lambda: find_sources(package_dir))

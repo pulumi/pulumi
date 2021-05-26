@@ -19,7 +19,7 @@ def build():
 def test_fast():
     sh.exec(f"dotnet test --no-build --filter --filter FullyQualifiedName\\!~Pulumi.Automation.Tests /p:Version={version}")
 
-@target(deps=[build])
+@target(deps=[build, "//:build"])
 def test_slow():
     sh.exec(f"dotnet test --no-build --filter --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version={version}")
 

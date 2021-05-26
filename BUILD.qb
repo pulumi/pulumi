@@ -1,3 +1,6 @@
+load("//build:version.qb", "get_version")
+load("//build:go_sources.qb", "go_sources")
+
 @target(deps=[
     "//sdk/dotnet:build",
     "//sdk/go:build",
@@ -5,4 +8,23 @@
     "//pkg:build",
 ])
 def build():
+    """
+    Builds the Pulumi CLI and SDKs.
+    """
+    pass
+
+def lint_targets():
+    dirs = ["pkg", "sdk", "tests"]
+    for dir in dirs:
+        @target(name=f"lint_{dir}", sources=go_sources(dir))
+        def lint():
+            sh.exec(f"pushd {dir}; golangci-lint run -c ../.golangci.yml --timeout 5m; popd;")
+    return [f":lint_{dir}" for dir in dirs]
+
+@target(deps=lint_targets())
+def lint():
+    pass
+
+@target(deps=[build, lint])
+def default():
     pass

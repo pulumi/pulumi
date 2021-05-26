@@ -1,7 +1,8 @@
+version_cache = cache()
+
 def get_version(language = None):
     cmd = "pulumictl get version"
     if language:
         cmd = f"{cmd} --language {language}"
-    return sh.output(cmd, cwd = path("//")).strip()
 
-version = get_version()
+    return version_cache.once(cmd, lambda: sh.output(cmd, cwd = path("//")).strip())
