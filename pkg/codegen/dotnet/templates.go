@@ -86,6 +86,11 @@ namespace {{.Namespace}}
             };
         }
 
+        public static Input<Dictionary<string,T>> ToDict<T>(this InputMap<T> inputList)
+        {
+            return inputList.Apply(v => new Dictionary<string,T>(v));
+        }
+
         public static List<T> ToList<T>(this IEnumerable<T> elements)
         {
             return new List<T>(elements);

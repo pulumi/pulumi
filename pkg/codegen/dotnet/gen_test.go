@@ -84,6 +84,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		"funcWithDefaultValue",
 		"funcWithAllOptionalInputs",
 		"funcWithListParam",
+		"funcWithDictParam",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
@@ -212,6 +213,53 @@ namespace Pulumi.MadeupPackage.Codegentest
             public Task<object> CallAsync(MockCallArgs args)
             {
                 // Create serialized `FuncWithListParamResult`.
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                var argsRepr = ShowMockCallArgs(args);
+                dictBuilder.Add("r", (Object)argsRepr);
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
+            public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
+            {
+                throw new Exception("NewResourceAsync not impl..");
+            }
+        }
+
+        [Test]
+        public async Task FuncWithDictParamApplyWorks()
+        {
+            var r = await Run<FuncWithDictParamMocks,
+                FuncWithDictParamTestStack,
+                FuncWithDictParamResult>();
+            var d = JsonSerializer.Deserialize<ImmutableDictionary<string,ImmutableDictionary<string,string>>>(r.R);
+            d["a"]["one"].Should().Be("1");
+            d["a"]["two"].Should().Be("2");
+        }
+
+        public class FuncWithDictParamTestStack : Stack, HasResult<FuncWithDictParamResult>
+        {
+            public FuncWithDictParamTestStack()
+            {
+                var args = new FuncWithDictParamApplyArgs
+                {
+                    A = new Dictionary<string, string>
+                    {
+                        { "one", "1" },
+                        { "two", "2" }
+                    }
+                };
+                this.Result = FuncWithDictParam.Apply(args);
+            }
+
+            public Output<FuncWithDictParamResult> Result { get; }
+        }
+
+        public class FuncWithDictParamMocks : IMocks
+        {
+            public Task<object> CallAsync(MockCallArgs args)
+            {
+                // Create serialized `FuncWithDictParamResult`.
                 var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
                 var argsRepr = ShowMockCallArgs(args);
                 dictBuilder.Add("r", (Object)argsRepr);
