@@ -87,25 +87,49 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		"funcWithDictParam",
 	}
 
-	gen := func(reader io.Reader, writer io.Writer) error {
+	loadPackage := func(reader io.Reader) (*schema.Package, error) {
 		var pkgSpec schema.PackageSpec
 		err := json.NewDecoder(reader).Decode(&pkgSpec)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		pkg, err := schema.ImportSpec(pkgSpec, nil)
 		if err != nil {
-			return err
+			return nil, err
+		}
+		return pkg, err
+	}
+
+	gen := func(reader io.Reader, writer io.Writer) error {
+		pkg, err := loadPackage(reader)
+		if err != nil {
+			return nil
 		}
 		fun := pkg.Functions[0]
 		mod := &modContext{
 			pkg: pkg,
 			namespaces: map[string]string{
-				"azure-native":   "AzureNative",
 				"madeup-package": "MadeupPackage",
 			},
 		}
 		code, err := mod.genFunctionFileCode(fun)
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(writer, "%s", code)
+		return err
+	}
+
+	genUtilities := func(reader io.Reader, writer io.Writer) error {
+		pkg, err := loadPackage(reader)
+		if err != nil {
+			return nil
+		}
+		mod := &modContext{
+			pkg:           pkg,
+			namespaceName: "Pulumi.MadeupPackage.Codegentest",
+		}
+		code, err := mod.genUtilities()
 		if err != nil {
 			return err
 		}
@@ -118,6 +142,9 @@ func TestGenerateOutputFuncs(t *testing.T) {
 			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
 			expectedOutputFile := filepath.Join(testDir, "dotnet", fmt.Sprintf("%s.cs", ex))
 			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
+
+			utilsFile := filepath.Join(testDir, "dotnet", "Utilities.cs")
+			test.ValidateFileTransformer(t, inputFile, utilsFile, genUtilities)
 		})
 	}
 }
