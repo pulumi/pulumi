@@ -2,6 +2,7 @@ using System;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 using FluentAssertions;
@@ -105,7 +106,9 @@ namespace Pulumi.MadeupPackage.Codegentest
             var r = await Run<FuncWithDefaultValueMocks,
                 FuncWithDefaultValueTestStack,
                 FuncWithDefaultValueResult>();
-            r.R.Should().Be("a=my-a;b=b-default;");
+            var d = JsonSerializer.Deserialize<ImmutableDictionary<string,string>>(r.R);
+            d["a"].Should().Be("my-a");
+            d["b"].Should().Be("b-default");
         }
 
         public class FuncWithDefaultValueTestStack : Stack, HasResult<FuncWithDefaultValueResult>
@@ -146,7 +149,7 @@ namespace Pulumi.MadeupPackage.Codegentest
             var r = await Run<FuncWithAllOptionalInputsMocks,
                 FuncWithAllOptionalInputsTestStack,
                 FuncWithAllOptionalInputsResult>();
-            r.R.Should().Be("a=my-a;");
+            r.R.Should().Be("{\"a\":\"my-a\"}");
         }
 
         public class FuncWithAllOptionalInputsTestStack : Stack, HasResult<FuncWithAllOptionalInputsResult>
@@ -181,16 +184,52 @@ namespace Pulumi.MadeupPackage.Codegentest
             }
         }
 
+        [Test]
+        public async Task FuncWithListParamApplyWorks()
+        {
+            var r = await Run<FuncWithListParamMocks,
+                FuncWithListParamTestStack,
+                FuncWithListParamResult>();
+            r.R.Should().Be("{\"a\":[\"my-a1\",\"my-a2\",\"my-a3\"]}");
+        }
+
+        public class FuncWithListParamTestStack : Stack, HasResult<FuncWithListParamResult>
+        {
+            public FuncWithListParamTestStack()
+            {
+                var args = new FuncWithListParamApplyArgs
+                {
+                    A = {"my-a1", "my-a2", "my-a3"}
+                };
+                this.Result = FuncWithListParam.Apply(args);
+            }
+
+            public Output<FuncWithListParamResult> Result { get; }
+        }
+
+        public class FuncWithListParamMocks : IMocks
+        {
+            public Task<object> CallAsync(MockCallArgs args)
+            {
+                // Create serialized `FuncWithListParamResult`.
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                var argsRepr = ShowMockCallArgs(args);
+                dictBuilder.Add("r", (Object)argsRepr);
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
+            public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
+            {
+                throw new Exception("NewResourceAsync not impl..");
+            }
+        }
+
         // Supporting code
 
         public static string ShowMockCallArgs(MockCallArgs args)
         {
-            var sb = new StringBuilder();
-            foreach (var pair in args.Args.OrderBy(p => p.Key))
-            {
-                sb.AppendFormat("{0}={1};", pair.Key, pair.Value);
-            }
-            return sb.ToString();
+            return JsonSerializer.Serialize(args.Args);
         }
 
         interface HasResult<R>
