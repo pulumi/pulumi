@@ -1136,7 +1136,12 @@ func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function
 
 	var args []string
 	for _, p := range fun.Inputs.Properties {
-		args = append(args, fmt.Sprintf("args.%s.Box()", mod.propertyName(p)))
+		var extraConverter string
+		switch p.Type.(type) {
+		case *schema.ArrayType:
+			extraConverter = ".ToList()"
+		}
+		args = append(args, fmt.Sprintf("args.%s%s.Box()", mod.propertyName(p), extraConverter))
 	}
 
 	indent := "        "

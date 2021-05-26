@@ -81,6 +81,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		"listStorageAccountKeys",
 		"funcWithDefaultValue",
 		"funcWithAllOptionalInputs",
+		"funcWithListParam",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {

@@ -55,6 +55,11 @@ namespace Pulumi.MadeupPackage.Codegentest
 
     static class CollectionExtension
     {
+        public static Input<List<T>> ToList<T>(this InputList<T> inputList)
+        {
+            return inputList.Apply(v => v.ToList());
+        }
+
         public static List<T> ToList<T>(this IEnumerable<T> elements)
         {
             return new List<T>(elements);
