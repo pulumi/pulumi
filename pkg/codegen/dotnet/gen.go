@@ -452,10 +452,9 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	switch prop.Type.(type) {
 	case *schema.ArrayType, *schema.MapType:
 		needsBackingField = true
-	default:
-		if prop.Secret {
-			needsBackingField = true
-		}
+	}
+	if prop.Secret {
+		needsBackingField = true
 	}
 
 	// Next generate the input property itself. The way this is generated depends on the type of the property:
@@ -491,7 +490,8 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 			fmt.Fprintf(w, "%s    set\n", indent)
 			fmt.Fprintf(w, "%s    {\n", indent)
 			// Since we can't directly assign the Output from CreateSecret to the property, use an Output.All or
-			// Output.Tuple to enable the secret flag on the data.
+			// Output.Tuple to enable the secret flag on the data. (If any input to the All/Tuple is secret, then the
+			// Output will also be secret.)
 			switch t := prop.Type.(type) {
 			case *schema.ArrayType:
 				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableArray.Create<%s>());\n", indent, t.ElementType.String())
