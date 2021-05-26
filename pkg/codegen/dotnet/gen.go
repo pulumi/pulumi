@@ -1413,7 +1413,6 @@ func (mod *modContext) genFunctionApplyVersionTypes(w io.Writer, fun *schema.Fun
 	applyArgs := &plainType{
 		mod:                   mod,
 		name:                  className + "ApplyArgs",
-		baseClass:             "InvokeArgs",
 		propertyTypeQualifier: "Inputs",
 		properties:            fun.Inputs.Properties,
 		args:                  true,

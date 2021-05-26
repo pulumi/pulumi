@@ -1,7 +1,7 @@
 {
   "functions": {
-    "azure-native:codegentest:listStorageAccountKeys": {
-      "description": "The response from the ListKeys operation.\nAPI Version: 2021-02-01.",
+    "madeup-package:codegentest:listStorageAccountKeys": {
+      "description": "The response from the ListKeys operation.",
       "inputs": {
         "properties": {
           "accountName": {
@@ -30,7 +30,7 @@
             "type": "array",
             "items": {
               "type": "object",
-              "$ref": "#/types/azure-native:codegentest:StorageAccountKeyResponse"
+              "$ref": "#/types/azure-native:storage/v20210201:StorageAccountKeyResponse"
             },
             "description": "Gets the list of storage account keys and their properties for the specified storage account."
           }
@@ -40,36 +40,6 @@
           "keys"
         ]
       }
-    }
-  },
-  "types": {
-    "azure-native:codegentest:StorageAccountKeyResponse": {
-      "description": "An access key for the storage account.",
-      "properties": {
-        "creationTime": {
-          "type": "string",
-          "description": "Creation time of the key, in round trip date format."
-        },
-        "keyName": {
-          "type": "string",
-          "description": "Name of the key."
-        },
-        "permissions": {
-          "type": "string",
-          "description": "Permissions for the key -- read-only or full permissions."
-        },
-        "value": {
-          "type": "string",
-          "description": "Base 64-encoded value of the key."
-        }
-      },
-      "type": "object",
-      "required": [
-        "creationTime",
-        "keyName",
-        "permissions",
-        "value"
-      ]
     }
   }
 }
