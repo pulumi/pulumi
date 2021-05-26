@@ -242,10 +242,10 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
 	}
 	for _, policy := range preOpts.PolicyPack {
-		sharedArgs = append(sharedArgs, "--policy-pack %s", policy)
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack=%s", policy))
 	}
 	for _, config := range preOpts.PolicyPackConfig {
-		sharedArgs = append(sharedArgs, "--policy-pack-config %s", config)
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack-config=%s", config))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
@@ -263,8 +263,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	args = append(args, sharedArgs...)
 
 	var summaryEvents []apitype.SummaryEvent
+	var policyEvents []apitype.PolicyEvent
 	eventChannel := make(chan events.EngineEvent)
-	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent) {
+	go func(ch chan events.EngineEvent, events *[]apitype.SummaryEvent, pEvents *[]apitype.PolicyEvent) {
 		for {
 			event, ok := <-eventChannel
 			if !ok {
@@ -273,8 +274,11 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 			if event.SummaryEvent != nil {
 				summaryEvents = append(summaryEvents, *event.SummaryEvent)
 			}
+			if event.PolicyEvent != nil {
+				policyEvents = append(policyEvents, *event.PolicyEvent)
+			}
 		}
-	}(eventChannel, &summaryEvents)
+	}(eventChannel, &summaryEvents, &policyEvents)
 
 	eventChannels := []chan<- events.EngineEvent{eventChannel}
 	eventChannels = append(eventChannels, preOpts.EventStreams...)
@@ -285,6 +289,10 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 	defer cleanup(t, eventChannels)
 	args = append(args, "--event-log", t.Filename)
+
+	if len(policyEvents) > 0 {
+		return res, newAutoError(errors.Wrap(err, "Policy Pack Violations"), "", "", 1)
+	}
 
 	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, preOpts.ProgressStreams /* additionalOutput */, args...)
 	if err != nil {
@@ -752,6 +760,7 @@ type PreviewResult struct {
 	StdOut        string
 	StdErr        string
 	ChangeSummary map[apitype.OpType]int
+	PolicySummary []apitype.PolicyEvent
 }
 
 // GetPermalink returns the permalink URL in the Pulumi Console for the preview operation.

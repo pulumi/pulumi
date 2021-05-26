@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/stretchr/testify/assert"
 )
@@ -250,6 +251,49 @@ func TestCompilationErrorDotnet(t *testing.T) {
 		t.Errorf("destroy failed, err: %v", err)
 		t.FailNow()
 	}
+}
+
+func TestX(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, "policy-pack-integration-test", sName)
+
+	// Install project dependencies
+	pDir := filepath.Join(".", "test", "dynamic-resource")
+	cmd := exec.Command("yarn", "install")
+	cmd.Dir = pDir
+	err := cmd.Run()
+	if err != nil {
+		t.Errorf("failed to install project dependencies")
+		t.FailNow()
+	}
+
+	policyDir := filepath.Join(".", "test", "dynamic-resource", "policy-pack")
+	cmd = exec.Command("yarn", "install")
+	cmd.Dir = policyDir
+	err = cmd.Run()
+	if err != nil {
+		t.Errorf("failed to install project dependencies")
+		t.FailNow()
+	}
+
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	result, err := s.Preview(ctx, optpreview.PolicyPacks([]string{
+		policyDir,
+	}))
+	assert.Nil(t, result)
+	assert.NotNil(t, err)
 }
 
 func TestCompilationErrorTypescript(t *testing.T) {
