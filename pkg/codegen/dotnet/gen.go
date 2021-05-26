@@ -1140,6 +1140,8 @@ func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function
 		switch p.Type.(type) {
 		case *schema.ArrayType:
 			extraConverter = ".ToList()"
+		case *schema.MapType:
+			extraConverter = ".ToDict()"
 		}
 		args = append(args, fmt.Sprintf("args.%s%s.Box()", mod.propertyName(p), extraConverter))
 	}

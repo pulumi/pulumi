@@ -55,6 +55,11 @@ namespace Pulumi.MadeupPackage.Codegentest
 
     static class CollectionExtension
     {
+        public static Input<Dictionary<string,T>> ToDict<T>(this InputMap<T> inputList)
+        {
+            return inputList.Apply(v => new Dictionary<string,T>(v));
+        }
+
         public static Input<List<T>> ToList<T>(this InputList<T> inputList)
         {
             return inputList.Apply(v => v.ToList());
