@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 
 using FluentAssertions;
@@ -96,6 +97,59 @@ namespace Pulumi.MadeupPackage.Codegentest
             {
                 throw new Exception("NewResourceAsync not impl..");
             }
+        }
+
+        [Test]
+        public async Task FuncWithDefaultValueApplyWorks()
+        {
+            var r = await Run<FuncWithDefaultValueMocks,
+                FuncWithDefaultValueTestStack,
+                FuncWithDefaultValueResult>();
+            r.R.Should().Be("a=my-a;b=b-default;");
+        }
+
+        public class FuncWithDefaultValueTestStack : Stack, HasResult<FuncWithDefaultValueResult>
+        {
+            public FuncWithDefaultValueTestStack()
+            {
+                var args = new FuncWithDefaultValueApplyArgs
+                {
+                    A = "my-a",
+                };
+                this.Result = FuncWithDefaultValue.Apply(args);
+            }
+
+            public Output<FuncWithDefaultValueResult> Result { get; }
+        }
+
+        public class FuncWithDefaultValueMocks : IMocks
+        {
+            public Task<object> CallAsync(MockCallArgs args)
+            {
+                // Create serialized `FuncWithDefaultValueResult`.
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                var argsRepr = ShowMockCallArgs(args);
+                dictBuilder.Add("r", (Object)argsRepr);
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
+            public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
+            {
+                throw new Exception("NewResourceAsync not impl..");
+            }
+        }
+
+        // Supporting code
+
+        public static string ShowMockCallArgs(MockCallArgs args)
+        {
+            var sb = new StringBuilder();
+            foreach (var pair in args.Args.OrderBy(p => p.Key))
+            {
+                sb.AppendFormat("{0}={1};", pair.Key, pair.Value);
+            }
+            return sb.ToString();
         }
 
         interface HasResult<R>
