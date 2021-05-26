@@ -1,7 +1,7 @@
 package python
 
 import (
-	"crypto/md5"
+	"crypto/md5" //nolint: gosec
 	"encoding/json"
 	"fmt"
 	"testing"
@@ -47,6 +47,10 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 		}
 
 		files, err := GeneratePackage("tool", pkg, nil)
+		if err != nil {
+			t.Error(err)
+			return ""
+		}
 
 		file, haveFile := files["pulumi_aws/__init__.py"]
 		if !haveFile {
@@ -54,7 +58,7 @@ func TestGenResourceMappingsIsDeterministic(t *testing.T) {
 			return ""
 		}
 
-		return fmt.Sprintf("%x", md5.Sum(file))
+		return fmt.Sprintf("%x", md5.Sum(file)) //nolint: gosec
 	}
 
 	h1 := generateInitHash()
