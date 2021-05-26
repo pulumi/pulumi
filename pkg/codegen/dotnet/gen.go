@@ -422,12 +422,11 @@ type plainType struct {
 	state                 bool
 }
 
-func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string) {
-	argsType := pt.args && !prop.IsPlain
+func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string, wrapInput, args bool) {
 
 	wireName := prop.Name
 	propertyName := pt.mod.propertyName(prop)
-	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, false, !prop.IsRequired)
+	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, wrapInput, args, false, !prop.IsRequired)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -454,7 +453,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	case *schema.ArrayType, *schema.MapType:
 		backingFieldName := "_" + prop.Name
 		requireInitializers := !pt.args
-		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, requireInitializers, false)
+		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, wrapInput, args, requireInitializers, false)
 
 		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
 		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
@@ -489,6 +488,12 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 var generatedTypes = codegen.Set{}
 
 func (pt *plainType) genInputType(w io.Writer, level int) error {
+	args := pt.args
+	wrapInput := args
+	return pt.genInputTypeWithFlags(w, level, wrapInput, args)
+}
+
+func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, wrapInput, args bool) error {
 	// The way the legacy codegen for kubernetes is structured, inputs for a resource args type and resource args
 	// subtype could become a single class because of the name + namespace clash. We use a set of generated types
 	// to prevent generating classes with equal full names in multiple files. The check should be removed if we
@@ -516,8 +521,8 @@ func (pt *plainType) genInputType(w io.Writer, level int) error {
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Declare each input property.
-	for _, p := range pt.properties {
-		pt.genInputProperty(w, p, indent)
+	for _, prop := range pt.properties {
+		pt.genInputProperty(w, prop, indent, wrapInput && !prop.IsPlain, args && !prop.IsPlain)
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -982,6 +987,21 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	return nil
 }
 
+func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
+	imports := map[string]codegen.StringSet{}
+	mod.getImports(f, imports)
+	buffer := &bytes.Buffer{}
+	importStrings := pulumiImports
+	for _, i := range imports {
+		importStrings = append(importStrings, i.SortedValues()...)
+	}
+	mod.genHeader(buffer, importStrings)
+	if err := mod.genFunction(buffer, f); err != nil {
+		return "", err
+	}
+	return buffer.String(), nil
+}
+
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	className := tokenToFunctionName(fun.Token)
 
@@ -993,7 +1013,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		typeParameter = fmt.Sprintf("<%sResult>", className)
 	}
 
-	var argsParamDef string
+	var argsParamDef, applyArgsParamDef string
 	argsParamRef := "InvokeArgs.Empty"
 	if fun.Inputs != nil {
 		allOptionalInputs := true
@@ -1008,6 +1028,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		}
 
 		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", className, sigil, argsDefault)
+		applyArgsParamDef = fmt.Sprintf("%sApplyArgs%s args%s, ", className, sigil, argsDefault)
 		argsParamRef = fmt.Sprintf("args ?? new %sArgs()", className)
 	}
 
@@ -1027,6 +1048,9 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
 		typeParameter, fun.Token, argsParamRef)
 
+	// Emit the Apply method if needed.
+	mod.genFunctionApplyVersion(w, fun, applyArgsParamDef)
+
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
 
@@ -1045,6 +1069,9 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			return err
 		}
 	}
+
+	mod.genFunctionApplyVersionTypes(w, fun)
+
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
 
@@ -1054,11 +1081,115 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			propertyTypeQualifier: "Outputs",
 			properties:            fun.Outputs.Properties,
 		}
+
 		res.genOutputType(w, 1)
 	}
 
 	// Close the namespace.
 	fmt.Fprintf(w, "}\n")
+	return nil
+}
+
+func needsApplyVersion(fun *schema.Function) bool {
+
+	// Skip functions that return no value. Arguably we could
+	// support them and return `Task`, but there are no such
+	// functions in `pulumi-azure-native` or `pulumi-aws` so we
+	// omit to simplify.
+	if fun.Outputs == nil {
+		return false
+	}
+
+	// Skip functions that have no inputs. The user can simply
+	// lift the `Task` to `Output` manually.
+	if fun.Inputs == nil {
+		return false
+	}
+
+	// No properties is kind of like no inputs.
+	if len(fun.Inputs.Properties) == 0 {
+		return false
+	}
+
+	return true
+}
+
+// Generates `${fn}Apply(..)` version lifted to work on
+// `Input`-warpped arguments and producing an `Output`-wrapped result.
+func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function, applyArgsParamDef string) error {
+	if !needsApplyVersion(fun) {
+		return nil
+	}
+
+	className := tokenToFunctionName(fun.Token)
+
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "        public static Output<%sResult> Apply(%sInvokeOptions? options = null)\n",
+		className, applyArgsParamDef)
+	fmt.Fprintf(w, "        {\n")
+
+	var args []string
+	for _, p := range fun.Inputs.Properties {
+		args = append(args, fmt.Sprintf("args.%s.Box()", mod.propertyName(p)))
+	}
+
+	indent := "        "
+	indent2 := indent + "    "
+	indent3 := indent2 + "    "
+	indent4 := indent3 + "    "
+
+	var unpackStatements []string
+	for i, p := range fun.Inputs.Properties {
+		fieldName := mod.propertyName(p)
+		stmt := fmt.Sprintf("a[%d].Set(args, nameof(args.%s));", i, fieldName)
+		unpackStatements = append(unpackStatements, stmt)
+	}
+
+	allOptionalInputs := true
+	for _, prop := range fun.Inputs.Properties {
+		allOptionalInputs = allOptionalInputs && !prop.IsRequired
+	}
+
+	if allOptionalInputs {
+		fmt.Fprintf(w, "%sargs = args ?? new %sApplyArgs();\n", indent2, className)
+	}
+
+	fmt.Fprintf(w, "%sreturn Pulumi.Output.All(\n", indent2)
+	fmt.Fprintf(w, "%s%s\n", indent3, strings.Join(args, ",\n"+indent3))
+
+	fmt.Fprintf(w, "%s).Apply(a => {\n", indent2)
+	fmt.Fprintf(w, "%svar args = new %sArgs();\n", indent4, className)
+	for _, s := range unpackStatements {
+		fmt.Fprintf(w, "%s%s\n", indent4, s)
+	}
+	fmt.Fprintf(w, "%sreturn InvokeAsync(args, options);\n", indent4)
+	fmt.Fprintf(w, "%s});\n", indent2)
+	fmt.Fprintf(w, "%s}\n", indent)
+
+	return nil
+}
+
+// Generate helper type definitions referred to in `genFunctionApplyVersion`.
+func (mod *modContext) genFunctionApplyVersionTypes(w io.Writer, fun *schema.Function) error {
+	if !needsApplyVersion(fun) || fun.Inputs == nil {
+		return nil
+	}
+
+	className := tokenToFunctionName(fun.Token)
+
+	applyArgs := &plainType{
+		mod:                   mod,
+		name:                  className + "ApplyArgs",
+		baseClass:             "InvokeArgs",
+		propertyTypeQualifier: "Inputs",
+		properties:            fun.Inputs.Properties,
+		args:                  true,
+	}
+	wrapInput := true
+	args := false
+	if err := applyArgs.genInputTypeWithFlags(w, 1, wrapInput, args); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -1565,21 +1696,11 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Functions
 	for _, f := range mod.functions {
-		imports := map[string]codegen.StringSet{}
-		mod.getImports(f, imports)
-
-		buffer := &bytes.Buffer{}
-		importStrings := pulumiImports
-		for _, i := range imports {
-			importStrings = append(importStrings, i.SortedValues()...)
-		}
-		mod.genHeader(buffer, importStrings)
-
-		if err := mod.genFunction(buffer, f); err != nil {
+		code, err := mod.genFunctionFileCode(f)
+		if err != nil {
 			return err
 		}
-
-		addFile(tokenToName(f.Token)+".cs", buffer.String())
+		addFile(tokenToName(f.Token)+".cs", code)
 	}
 
 	// Nested types
