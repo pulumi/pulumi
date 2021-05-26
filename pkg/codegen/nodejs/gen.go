@@ -1603,7 +1603,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	// Create info that will get serialized into an NPM package.json.
 	npminfo := npmPackage{
 		Name:        packageName,
-		Version:     "${VERSION}",
+		Version:     pkg.Version.String(),
 		Description: info.PackageDescription,
 		Keywords:    pkg.Keywords,
 		Homepage:    pkg.Homepage,
