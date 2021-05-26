@@ -573,7 +573,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		}
 		for _, prop := range r.InputProperties {
-			arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
+			var arg string
+			if prop.Secret {
+				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(args.%[1]s) : undefined", prop.Name)
+			} else {
+				arg = fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
+			}
 
 			prefix := "            "
 			if prop.ConstValue != nil {
@@ -691,15 +696,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, "        const secretOpts = { additionalSecretOutputs: [")
-		for i, sp := range secretProps {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "%q", sp)
-		}
-		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, secretOpts);\n")
+		fmt.Fprintf(w, `        const secretOpts = { additionalSecretOutputs: ["%s"] };`, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
 	// If it's a ComponentResource, set the remote option.

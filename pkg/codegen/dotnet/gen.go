@@ -448,10 +448,18 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 
 	indent = strings.Repeat(indent, 2)
 
-	// Next generate the input property itself. The way this is generated depends on the type of the property:
-	// complex types like lists and maps need a backing field.
+	needsBackingField := false
 	switch prop.Type.(type) {
 	case *schema.ArrayType, *schema.MapType:
+		needsBackingField = true
+	}
+	if prop.Secret {
+		needsBackingField = true
+	}
+
+	// Next generate the input property itself. The way this is generated depends on the type of the property:
+	// complex types like lists and maps need a backing field. Secret properties also require a backing field.
+	if needsBackingField {
 		backingFieldName := "_" + prop.Name
 		requireInitializers := !pt.args
 		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, requireInitializers, false)
@@ -465,15 +473,42 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		}
 		printObsoleteAttribute(w, prop.DeprecationMessage, indent)
 
-		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
-		// ensure that the user does not see warnings when initializing these properties using object or collection
-		// initializers.
-		fmt.Fprintf(w, "%spublic %s %s\n", indent, backingFieldType, propertyName)
-		fmt.Fprintf(w, "%s{\n", indent)
-		fmt.Fprintf(w, "%s    get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
-		fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		switch prop.Type.(type) {
+		case *schema.ArrayType, *schema.MapType:
+			// Note that we use the backing field type--which is just the property type without any nullable annotation--to
+			// ensure that the user does not see warnings when initializing these properties using object or collection
+			// initializers.
+			fmt.Fprintf(w, "%spublic %s %s\n", indent, backingFieldType, propertyName)
+			fmt.Fprintf(w, "%s{\n", indent)
+			fmt.Fprintf(w, "%s    get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
+		default:
+			fmt.Fprintf(w, "%spublic %s? %s\n", indent, backingFieldType, propertyName)
+			fmt.Fprintf(w, "%s{\n", indent)
+			fmt.Fprintf(w, "%s    get => %s;\n", indent, backingFieldName)
+		}
+		if prop.Secret {
+			fmt.Fprintf(w, "%s    set\n", indent)
+			fmt.Fprintf(w, "%s    {\n", indent)
+			// Since we can't directly assign the Output from CreateSecret to the property, use an Output.All or
+			// Output.Tuple to enable the secret flag on the data. (If any input to the All/Tuple is secret, then the
+			// Output will also be secret.)
+			switch t := prop.Type.(type) {
+			case *schema.ArrayType:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableArray.Create<%s>());\n", indent, t.ElementType.String())
+				fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
+			case *schema.MapType:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableDictionary.Create<string, %s>());\n", indent, t.ElementType.String())
+				fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
+			default:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(0);\n", indent)
+				fmt.Fprintf(w, "%s        %s = Output.Tuple<%s?, int>(value, emptySecret).Apply(t => t.Item1);\n", indent, backingFieldName, backingFieldType)
+			}
+			fmt.Fprintf(w, "%s    }\n", indent)
+		} else {
+			fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		}
 		fmt.Fprintf(w, "%s}\n", indent)
-	default:
+	} else {
 		initializer := ""
 		if prop.IsRequired && (!isValueType(prop.Type) || pt.args) {
 			initializer = " = null!;"
