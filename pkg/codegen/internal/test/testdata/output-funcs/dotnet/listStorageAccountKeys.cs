@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.AzureNative.Codegentest
+namespace Pulumi.MadeupPackage.Codegentest
 {
     public static class ListStorageAccountKeys
     {
@@ -15,7 +15,7 @@ namespace Pulumi.AzureNative.Codegentest
         /// The response from the ListKeys operation.
         /// </summary>
         public static Task<ListStorageAccountKeysResult> InvokeAsync(ListStorageAccountKeysArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("azure-native:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("madeup-package:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
 
         public static Output<ListStorageAccountKeysResult> Apply(ListStorageAccountKeysApplyArgs args, InvokeOptions? options = null)
         {
@@ -59,7 +59,7 @@ namespace Pulumi.AzureNative.Codegentest
         }
     }
 
-    public sealed class ListStorageAccountKeysApplyArgs : Pulumi.InvokeArgs
+    public sealed class ListStorageAccountKeysApplyArgs
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.

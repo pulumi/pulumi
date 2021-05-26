@@ -1,6 +1,6 @@
 {
   "functions": {
-    "azure-native:codegentest:listStorageAccountKeys": {
+    "madeup-package:codegentest:listStorageAccountKeys": {
       "description": "The response from the ListKeys operation.",
       "inputs": {
         "properties": {

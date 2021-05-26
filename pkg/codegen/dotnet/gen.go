@@ -517,7 +517,13 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, wrapInput, ar
 
 	// Open the class.
 	printComment(w, pt.comment, indent)
-	fmt.Fprintf(w, "%spublic %sclass %s : Pulumi.%s\n", indent, sealed, pt.name, pt.baseClass)
+
+	var baseClassCode string
+	if pt.baseClass != "" {
+		baseClassCode = fmt.Sprintf(" : Pulumi.%s", pt.baseClass)
+	}
+
+	fmt.Fprintf(w, "%spublic %sclass %s%s\n", indent, sealed, pt.name, baseClassCode)
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Declare each input property.
@@ -1180,7 +1186,6 @@ func (mod *modContext) genFunctionApplyVersionTypes(w io.Writer, fun *schema.Fun
 	applyArgs := &plainType{
 		mod:                   mod,
 		name:                  className + "ApplyArgs",
-		baseClass:             "InvokeArgs",
 		propertyTypeQualifier: "Inputs",
 		properties:            fun.Inputs.Properties,
 		args:                  true,

@@ -79,9 +79,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 
 	examples := []string{
 		"listStorageAccountKeys",
-		"getClientConfig",
-		"getIntegrationRuntimeObjectMetadatum",
-		"funcWithConstInput",
+		"funcWithDefaultValue",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {
@@ -113,7 +111,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 	for _, ex := range examples {
 		t.Run(ex, func(t *testing.T) {
 			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
-			expectedOutputFile := filepath.Join(testDir, fmt.Sprintf("%s.cs", ex))
+			expectedOutputFile := filepath.Join(testDir, "dotnet", fmt.Sprintf("%s.cs", ex))
 			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
 		})
 	}
