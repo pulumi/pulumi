@@ -140,6 +140,47 @@ namespace Pulumi.MadeupPackage.Codegentest
             }
         }
 
+        [Test]
+        public async Task FuncWithAllOptionalInputsApplyWorks()
+        {
+            var r = await Run<FuncWithAllOptionalInputsMocks,
+                FuncWithAllOptionalInputsTestStack,
+                FuncWithAllOptionalInputsResult>();
+            r.R.Should().Be("a=my-a;");
+        }
+
+        public class FuncWithAllOptionalInputsTestStack : Stack, HasResult<FuncWithAllOptionalInputsResult>
+        {
+            public FuncWithAllOptionalInputsTestStack()
+            {
+                var args = new FuncWithAllOptionalInputsApplyArgs
+                {
+                    A = "my-a",
+                };
+                this.Result = FuncWithAllOptionalInputs.Apply(args);
+            }
+
+            public Output<FuncWithAllOptionalInputsResult> Result { get; }
+        }
+
+        public class FuncWithAllOptionalInputsMocks : IMocks
+        {
+            public Task<object> CallAsync(MockCallArgs args)
+            {
+                // Create serialized `FuncWithAllOptionalInputsResult`.
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                var argsRepr = ShowMockCallArgs(args);
+                dictBuilder.Add("r", (Object)argsRepr);
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
+            public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
+            {
+                throw new Exception("NewResourceAsync not impl..");
+            }
+        }
+
         // Supporting code
 
         public static string ShowMockCallArgs(MockCallArgs args)
