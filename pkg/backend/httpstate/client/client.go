@@ -616,10 +616,8 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
-	if resp.RequiredHeaders != nil {
-		for k := range resp.RequiredHeaders {
-			putReq.Header.Add(k, resp.RequiredHeaders[k])
-		}
+	for k := range resp.RequiredHeaders {
+		putReq.Header.Add(k, resp.RequiredHeaders[k])
 	}
 
 	_, err = http.DefaultClient.Do(putReq)
