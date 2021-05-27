@@ -1055,7 +1055,10 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		typeParameter, fun.Token, argsParamRef)
 
 	// Emit the Output method if needed.
-	mod.genFunctionOutputVersion(w, fun, outputArgsParamDef)
+	err := mod.genFunctionOutputVersion(w, fun, outputArgsParamDef)
+	if err != nil {
+		return err
+	}
 
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
@@ -1076,7 +1079,10 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		}
 	}
 
-	mod.genFunctionOutputVersionTypes(w, fun)
+	err = mod.genFunctionOutputVersionTypes(w, fun)
+	if err != nil {
+		return err
+	}
 
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
