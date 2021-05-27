@@ -17,9 +17,9 @@ namespace Pulumi.MadeupPackage.Codegentest
         public static Task<FuncWithListParamResult> InvokeAsync(FuncWithListParamArgs? args = null, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<FuncWithListParamResult>("madeup-package:codegentest:funcWithListParam", args ?? new FuncWithListParamArgs(), options.WithVersion());
 
-        public static Output<FuncWithListParamResult> Apply(FuncWithListParamApplyArgs? args = null, InvokeOptions? options = null)
+        public static Output<FuncWithListParamResult> Invoke(FuncWithListParamOutputArgs? args = null, InvokeOptions? options = null)
         {
-            args = args ?? new FuncWithListParamApplyArgs();
+            args = args ?? new FuncWithListParamOutputArgs();
             return Pulumi.Output.All(
                 args.A.ToList().Box(),
                 args.B.Box()
@@ -51,7 +51,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithListParamApplyArgs
+    public sealed class FuncWithListParamOutputArgs
     {
         [Input("a")]
         private InputList<string>? _a;
@@ -64,7 +64,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         [Input("b")]
         public Input<string>? B { get; set; }
 
-        public FuncWithListParamApplyArgs()
+        public FuncWithListParamOutputArgs()
         {
         }
     }

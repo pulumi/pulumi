@@ -48,13 +48,13 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             public ListStorageAccountKeysTestStack()
             {
-                var args = new ListStorageAccountKeysApplyArgs
+                var args = new ListStorageAccountKeysOutputArgs
                 {
                     AccountName = "my-account-name",
                     ResourceGroupName = "my-resource-group-name",
                     Expand = "my-expand",
                 };
-                this.Result = ListStorageAccountKeys.Apply(args);
+                this.Result = ListStorageAccountKeys.Invoke(args);
             }
 
             public Output<ListStorageAccountKeysResult> Result { get; }
@@ -64,12 +64,12 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             public ListStorageAccountKeysTestStack2()
             {
-                var args = new ListStorageAccountKeysApplyArgs
+                var args = new ListStorageAccountKeysOutputArgs
                 {
                     AccountName = "my-account-name",
                     ResourceGroupName = "my-resource-group-name"
                 };
-                this.Result = ListStorageAccountKeys.Apply(args);
+                this.Result = ListStorageAccountKeys.Invoke(args);
             }
 
             public Output<ListStorageAccountKeysResult> Result { get; }
@@ -116,11 +116,11 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             public FuncWithDefaultValueTestStack()
             {
-                var args = new FuncWithDefaultValueApplyArgs
+                var args = new FuncWithDefaultValueOutputArgs
                 {
                     A = "my-a",
                 };
-                this.Result = FuncWithDefaultValue.Apply(args);
+                this.Result = FuncWithDefaultValue.Invoke(args);
             }
 
             public Output<FuncWithDefaultValueResult> Result { get; }
@@ -157,11 +157,11 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             public FuncWithAllOptionalInputsTestStack()
             {
-                var args = new FuncWithAllOptionalInputsApplyArgs
+                var args = new FuncWithAllOptionalInputsOutputArgs
                 {
                     A = "my-a",
                 };
-                this.Result = FuncWithAllOptionalInputs.Apply(args);
+                this.Result = FuncWithAllOptionalInputs.Invoke(args);
             }
 
             public Output<FuncWithAllOptionalInputsResult> Result { get; }
@@ -198,11 +198,11 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             public FuncWithListParamTestStack()
             {
-                var args = new FuncWithListParamApplyArgs
+                var args = new FuncWithListParamOutputArgs
                 {
                     A = {"my-a1", "my-a2", "my-a3"}
                 };
-                this.Result = FuncWithListParam.Apply(args);
+                this.Result = FuncWithListParam.Invoke(args);
             }
 
             public Output<FuncWithListParamResult> Result { get; }
@@ -241,7 +241,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             public FuncWithDictParamTestStack()
             {
-                var args = new FuncWithDictParamApplyArgs
+                var args = new FuncWithDictParamOutputArgs
                 {
                     A = new Dictionary<string, string>
                     {
@@ -249,7 +249,7 @@ namespace Pulumi.MadeupPackage.Codegentest
                         { "two", "2" }
                     }
                 };
-                this.Result = FuncWithDictParam.Apply(args);
+                this.Result = FuncWithDictParam.Invoke(args);
             }
 
             public Output<FuncWithDictParamResult> Result { get; }
