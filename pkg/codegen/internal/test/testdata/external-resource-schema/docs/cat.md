@@ -333,7 +333,31 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <h4 id="pet">Pet</h4>
 
 {{% choosable language csharp %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredname_csharp">
+<a href="#requiredname_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="requirednamearray_csharp">
+<a href="#requirednamearray_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="requirednamemap_csharp">
+<a href="#requirednamemap_csharp" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_csharp">
 <a href="#age_csharp" style="color: inherit; text-decoration: inherit;">Age</a>
@@ -349,11 +373,51 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Pulumi.<wbr>Random.<wbr>Random<wbr>Pet</span>
     </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="namearray_csharp">
+<a href="#namearray_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">List&lt;Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="namemap_csharp">
+<a href="#namemap_csharp" style="color: inherit; text-decoration: inherit;">Name<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dictionary&lt;string, Pulumi.<wbr>Random.<wbr>Random<wbr>Pet&gt;</span>
+    </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language go %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredname_go">
+<a href="#requiredname_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="requirednamearray_go">
+<a href="#requirednamearray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="requirednamemap_go">
+<a href="#requirednamemap_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Name<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_go">
 <a href="#age_go" style="color: inherit; text-decoration: inherit;">Age</a>
@@ -369,11 +433,51 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
     </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="namearray_go">
+<a href="#namearray_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="namemap_go">
+<a href="#namemap_go" style="color: inherit; text-decoration: inherit;">Name<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language nodejs %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="requiredname_nodejs">
+<a href="#requiredname_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">random<wbr>Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="requirednamearray_nodejs">
+<a href="#requirednamearray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">random<wbr>Random<wbr>Pet[]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="requirednamemap_nodejs">
+<a href="#requirednamemap_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">{[key: string]: random<wbr>Random<wbr>Pet}</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_nodejs">
 <a href="#age_nodejs" style="color: inherit; text-decoration: inherit;">age</a>
@@ -389,11 +493,51 @@ All [input](#inputs) properties are implicitly available as output properties. A
         <span class="property-indicator"></span>
         <span class="property-type">random<wbr>Random<wbr>Pet</span>
     </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="namearray_nodejs">
+<a href="#namearray_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">random<wbr>Random<wbr>Pet[]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="namemap_nodejs">
+<a href="#namemap_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">{[key: string]: random<wbr>Random<wbr>Pet}</span>
+    </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
 
 {{% choosable language python %}}
-<dl class="resources-properties"><dt class="property-optional"
+<dl class="resources-properties"><dt class="property-required"
+            title="Required">
+        <span id="required_name_python">
+<a href="#required_name_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="required_name_array_python">
+<a href="#required_name_array_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
+            title="Required">
+        <span id="required_name_map_python">
+<a href="#required_name_map_python" style="color: inherit; text-decoration: inherit;">required_<wbr>name_<wbr>map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
         <span id="age_python">
 <a href="#age_python" style="color: inherit; text-decoration: inherit;">age</a>
@@ -408,6 +552,22 @@ All [input](#inputs) properties are implicitly available as output properties. A
 </span>
         <span class="property-indicator"></span>
         <span class="property-type">Random<wbr>Pet</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_array_python">
+<a href="#name_array_python" style="color: inherit; text-decoration: inherit;">name_<wbr>array</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet]</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="name_map_python">
+<a href="#name_map_python" style="color: inherit; text-decoration: inherit;">name_<wbr>map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Random<wbr>Pet]</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
