@@ -126,11 +126,14 @@ export class Stack {
             let event: EngineEvent;
             try {
                 event = JSON.parse(line);
+                callback(event);
             } catch (e) {
-                log.error(`failed to parse engine event\nevent: ${line}\n${e.toString()}`);
-                throw e;
+                log.warn(`Failed to parse engine event
+If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
+details about your environment.
+
+Event: ${line}\n${e.toString()}`);
             }
-            callback(event);
         });
 
         return {
