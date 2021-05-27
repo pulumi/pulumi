@@ -910,7 +910,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
 			deref := ""
 			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
-			// to derference it, unless it is a resource type which should remain a pointer.
+			// to dereference it, unless it is a resource type which should remain a pointer.
 			_, isResourceType := p.Type.(*schema.ResourceType)
 			if p.IsRequired && applyType[0] == '*' && !isResourceType {
 				deref = "&"
