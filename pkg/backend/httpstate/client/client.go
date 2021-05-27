@@ -616,10 +616,11 @@ func (pc *Client) PublishPolicyPack(ctx context.Context, orgName string,
 		return "", errors.Wrapf(err, "Failed to upload compressed PolicyPack")
 	}
 
-	// Add a custom header for Azure Storage so that if the pre-signed URL is for their
-	// storage service, the request doesn't fail due to it being required.
-	// See x-ms-blob-type on https://docs.microsoft.com/en-us/rest/api/storageservices/put-blob
-	putReq.Header.Add("x-ms-blob-type", "BlockBlob")
+	if resp.RequiredHeaders != nil {
+		for k := range resp.RequiredHeaders {
+			putReq.Header.Add(k, resp.RequiredHeaders[k])
+		}
+	}
 
 	_, err = http.DefaultClient.Do(putReq)
 	if err != nil {
