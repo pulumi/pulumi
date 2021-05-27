@@ -108,10 +108,11 @@ func TestGenerateOutputFuncs(t *testing.T) {
 	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
 
 	examples := []string{
+		"funcWithAllOptionalInputs",
+		"funcWithDefaultValue",
+		"funcWithDictParam",
+		"funcWithListParam",
 		"listStorageAccountKeys",
-		"getClientConfig",
-		"getIntegrationRuntimeObjectMetadatum",
-		"funcWithConstInput",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {
@@ -126,7 +127,8 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		}
 		fun := pkg.Functions[0]
 
-		writer.Write([]byte(`import * as pulumi from "@pulumi/pulumi";` + "\n"))
+		fmt.Fprintf(writer, `import * as utilities from "./utilities";`+"\n")
+		fmt.Fprintf(writer, `import * as pulumi from "@pulumi/pulumi";`+"\n")
 
 		mod := &modContext{}
 		mod.genFunction(writer, fun)
@@ -136,7 +138,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 	for _, ex := range examples {
 		t.Run(ex, func(t *testing.T) {
 			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
-			expectedOutputFile := filepath.Join(testDir, fmt.Sprintf("%s.ts", ex))
+			expectedOutputFile := filepath.Join(testDir, "nodejs", fmt.Sprintf("%s.ts", ex))
 			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
 		})
 	}

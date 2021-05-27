@@ -919,7 +919,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0)
 	}
 
-	mod.genFunctionApplyVersion(w, fun)
+	mod.genFunctionOutputVersion(w, fun)
 }
 
 func functionArgsOptional(fun *schema.Function) bool {
@@ -946,42 +946,36 @@ func functionReturnType(fun *schema.Function) string {
 	return retty
 }
 
-// Generates `function ${fn}Apply(..)` version lifted to work on
+// Generates `function ${fn}Output(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function) {
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) {
+	if !fun.NeedsOutputVersion() {
+		return
+	}
+
 	originalName := tokenToFunctionName(fun.Token)
-	fnApply := fmt.Sprintf("%sApply", originalName)
-	argTypeName := fmt.Sprintf("%sArgs", title(fnApply))
+	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	argTypeName := fmt.Sprintf("%sArgs", title(fnOutput))
 
 	var argsig string
 	argsOptional := functionArgsOptional(fun)
-	if fun.Inputs != nil {
-		optFlag := ""
-		if argsOptional {
-			optFlag = "?"
-		}
-		argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
+	optFlag := ""
+	if argsOptional {
+		optFlag = "?"
 	}
+	argsig = fmt.Sprintf("args%s: %s, ", optFlag, argTypeName)
 
-	if fun.Inputs != nil {
-		fmt.Fprintf(w, `
+	fmt.Fprintf(w, `
 export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
     return pulumi.output(args).apply(a => %s(a, opts))
 }
-`, fnApply, argsig, functionReturnType(fun), originalName)
-		fmt.Fprintf(w, "\n")
-		input := true
-		arg := true
-		readonly := false
-		level := 0
-		mod.genPlainType(w, argTypeName, fun.Inputs.Comment, fun.Inputs.Properties, input, arg, readonly, level)
-	} else {
-		fmt.Fprintf(w, `
-export function %s(opts?: pulumi.InvokeOptions): pulumi.Output<%s> {
-    return pulumi.output(%s(opts))
-}
-`, fnApply, functionReturnType(fun), originalName)
-	}
+`, fnOutput, argsig, functionReturnType(fun), originalName)
+	fmt.Fprintf(w, "\n")
+	input := true
+	arg := true
+	readonly := false
+	level := 0
+	mod.genPlainType(w, argTypeName, fun.Inputs.Comment, fun.Inputs.Properties, input, arg, readonly, level)
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {

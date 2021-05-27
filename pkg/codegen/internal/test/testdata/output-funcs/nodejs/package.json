@@ -1,0 +1,15 @@
+{
+    "name": "steps",
+    "license": "Apache-2.0",
+    "devDependencies": {
+        "@types/mocha": "^2.2.42",
+        "typescript": "^3.0.0",
+        "mocha": "^3.5.0"
+    },
+    "dependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "scripts": {
+        "test": "mocha -r ts-node/register *Tests.ts"
+    }
+}
