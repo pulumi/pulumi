@@ -46,7 +46,7 @@ type CreatePolicyPackRequest struct {
 type CreatePolicyPackResponse struct {
 	Version   int    `json:"version"`
 	UploadURI string `json:"uploadURI"`
-	// RequiredHeaders represent any headers that the CLI must set in order
+	// RequiredHeaders represents headers that the CLI must set in order
 	// for the upload to succeed.
 	RequiredHeaders map[string]string `json:"headers,omitempty"`
 }
