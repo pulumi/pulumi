@@ -524,6 +524,84 @@ func TestLocalStateLocking(t *testing.T) {
 
 }
 
+func TestLocalStateGzip(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	stackName := addRandomSuffix("gzip-state")
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("integration/stack_dependencies")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", stackName)
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+
+	stacksDir := ".pulumi/stacks"
+	pathStack := stacksDir + "/" + stackName + ".json"
+	pathStackGzip := pathStack + ".gz"
+	pathStackBak := pathStack + ".bak"
+	pathStackBakGzip := pathStack + ".gz.bak"
+	sizeGzip := int64(-1)
+	sizeJson := int64(-1)
+
+	assertStackFilesOk := func(gzip bool) {
+		oneBackupExists := e.PathExists(pathStackBak) != e.PathExists(pathStackBakGzip)
+		gzipStackInfo, err := os.Stat(e.CWD + "/" + pathStackGzip)
+		if err == nil {
+			sizeGzip = gzipStackInfo.Size()
+		}
+		jsonStackInfo, err := os.Stat(e.CWD + "/" + pathStack)
+		if err == nil {
+			sizeJson = jsonStackInfo.Size()
+		}
+
+		ok := true
+		ok = ok && assert.Equal(t, !gzip, e.PathExists(pathStack), "Raw json stack file missing")
+		ok = ok && assert.Equal(t, gzip, e.PathExists(pathStackGzip), "gzip stack file missing")
+		ok = ok && assert.Equal(t, true, oneBackupExists, "One and only one backup shall exist, gzip or not")
+		if sizeGzip != -1 && sizeJson != -1 {
+			ok = ok && assert.Greater(t, sizeJson, sizeGzip, "Json file smaller than gzip")
+		}
+		if !ok {
+			fmt.Printf("Stacks dir state at time of failure (gzip: %t):\n", gzip)
+			files, _ := ioutil.ReadDir(e.CWD + "/" + stacksDir)
+			for _, file := range files {
+				fmt.Println(file.Name(), file.Size())
+			}
+		}
+	}
+
+	// Test "pulumi up" with gzip compression on and off.
+	// Running "pulumi up" 2 times is important because normaly, first the
+	//   `.json` becomes `.json.gz`, then the `.json.bak` becomes `.json.gz.bak`.
+	// Default is no gzip compression
+	assertStackFilesOk(false)
+	// Enable Gzip compression
+	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateGzipEnvVar)})
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+	assertStackFilesOk(true)
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+	assertStackFilesOk(true)
+	// Disable Gzip compression
+	e.SetEnvVars([]string{fmt.Sprintf("%s=0", filestate.PulumiFilestateGzipEnvVar)})
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+	assertStackFilesOk(false)
+	e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
+	assertStackFilesOk(false)
+
+	// Check stack history is still good even with mixed gzip / json files
+	rawHistory, _ := e.RunCommand("pulumi", "stack", "history", "--json")
+	var history []interface{}
+	if err := json.Unmarshal([]byte(rawHistory), &history); err != nil {
+		t.Fatalf("Can't unmarshall history json")
+	}
+	assert.Equal(t, 5, len(history), "Stack history doesn't match reality")
+}
+
 func getFileNames(infos []os.FileInfo) []string {
 	var result []string
 	for _, i := range infos {
