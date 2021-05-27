@@ -119,9 +119,8 @@ namespace Pulumi.MadeupPackage.Codegentest
         static Utilities()
         {
             var assembly = typeof(Utilities).GetTypeInfo().Assembly;
-            var avail = string.Join("; ", assembly.GetManifestResourceNames());
             using var stream = assembly.GetManifestResourceStream("Pulumi.MadeupPackage.Codegentest.version.txt");
-            using var reader = new StreamReader(stream ?? throw new NotSupportedException("Missing embedded version.txt file        " + avail));
+            using var reader = new StreamReader(stream ?? throw new NotSupportedException("Missing embedded version.txt file"));
             version = reader.ReadToEnd().Trim();
             var parts = version.Split("\n");
             if (parts.Length == 2)

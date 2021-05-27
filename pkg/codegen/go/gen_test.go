@@ -286,10 +286,11 @@ func TestGenerateOutputFuncs(t *testing.T) {
 	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
 
 	examples := []string{
+		"funcWithAllOptionalInputs",
+		"funcWithDefaultValue",
+		"funcWithDictParam",
+		"funcWithListParam",
 		"listStorageAccountKeys",
-		"getClientConfig",
-		"getIntegrationRuntimeObjectMetadatum",
-		"funcWithConstInput",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {
@@ -330,7 +331,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 	for _, ex := range examples {
 		t.Run(ex, func(t *testing.T) {
 			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
-			expectedOutputFile := filepath.Join(testDir, fmt.Sprintf("%s.go", ex))
+			expectedOutputFile := filepath.Join(testDir, "go", fmt.Sprintf("%s.go", ex))
 			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
 		})
 	}

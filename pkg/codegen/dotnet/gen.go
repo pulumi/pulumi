@@ -1096,34 +1096,10 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	return nil
 }
 
-func needsApplyVersion(fun *schema.Function) bool {
-
-	// Skip functions that return no value. Arguably we could
-	// support them and return `Task`, but there are no such
-	// functions in `pulumi-azure-native` or `pulumi-aws` so we
-	// omit to simplify.
-	if fun.Outputs == nil {
-		return false
-	}
-
-	// Skip functions that have no inputs. The user can simply
-	// lift the `Task` to `Output` manually.
-	if fun.Inputs == nil {
-		return false
-	}
-
-	// No properties is kind of like no inputs.
-	if len(fun.Inputs.Properties) == 0 {
-		return false
-	}
-
-	return true
-}
-
 // Generates `${fn}Apply(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
 func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function, applyArgsParamDef string) error {
-	if !needsApplyVersion(fun) {
+	if !fun.NeedsOutputVersion() {
 		return nil
 	}
 
@@ -1184,7 +1160,7 @@ func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function
 
 // Generate helper type definitions referred to in `genFunctionApplyVersion`.
 func (mod *modContext) genFunctionApplyVersionTypes(w io.Writer, fun *schema.Function) error {
-	if !needsApplyVersion(fun) || fun.Inputs == nil {
+	if !fun.NeedsOutputVersion() || fun.Inputs == nil {
 		return nil
 	}
 
