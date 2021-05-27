@@ -163,7 +163,7 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 	if err != nil {
 		return nil, err
 	}
-	bytes, err = inflateBytes(bytes)
+	bytes, err = maybeInflateBytes(bytes)
 	if err != nil {
 		return nil, err
 	}
@@ -306,7 +306,7 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	if err != nil {
 		return err
 	}
-	byts, err = inflateBytes(byts)
+	byts, err = maybeInflateBytes(byts)
 	if err != nil {
 		return err
 	}
@@ -419,7 +419,7 @@ func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]
 		if err != nil {
 			return nil, errors.Wrapf(err, "reading history file %s", filepath)
 		}
-		b, err = inflateBytes(b)
+		b, err = maybeInflateBytes(b)
 		if err != nil {
 			return nil, err
 		}
@@ -504,12 +504,17 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
 }
 
-// return plain data from gziped (or plain) data
-func inflateBytes(data []byte) ([]byte, error) {
+// friendly wrapper for inflateBytes
+func maybeInflateBytes(data []byte) ([]byte, error) {
 	if data[0] != 31 || data[1] != 139 {
-		// not gzip
+		// not gzip (doesn't have bagic bytes), don't do anything
 		return data, nil
 	}
+	return inflateBytes(data)
+}
+
+// return plain data from gziped data
+func inflateBytes(data []byte) ([]byte, error) {
 	buf := bytes.NewBuffer(data)
 	reader, err := gzip.NewReader(buf)
 	if err != nil {
@@ -528,10 +533,6 @@ func inflateBytes(data []byte) ([]byte, error) {
 
 // return gziped data from plain data
 func deflateBytes(data []byte) ([]byte, error) {
-	if data[0] == 31 && data[1] == 139 {
-		// already gziped
-		return nil, errors.New("trying to compress already gziped data")
-	}
 	var buf bytes.Buffer
 	writer := gzip.NewWriter(&buf)
 	defer writer.Close()
