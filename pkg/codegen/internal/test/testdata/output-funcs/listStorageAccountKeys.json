@@ -30,7 +30,9 @@
             "type": "array",
             "items": {
               "type": "object",
-              "$ref": "#/types/azure-native:storage/v20210201:StorageAccountKeyResponse"
+              "additionalProperties": {
+                "type": "string"
+              }
             },
             "description": "Gets the list of storage account keys and their properties for the specified storage account."
           }
