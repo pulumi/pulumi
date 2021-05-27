@@ -9,4 +9,9 @@ import * as random from "@pulumi/random";
 export interface PetArgs {
     age?: pulumi.Input<number>;
     name?: pulumi.Input<random.RandomPet>;
+    nameArray?: pulumi.Input<pulumi.Input<random.RandomPet>[]>;
+    nameMap?: pulumi.Input<{[key: string]: pulumi.Input<random.RandomPet>}>;
+    requiredName: pulumi.Input<random.RandomPet>;
+    requiredNameArray: pulumi.Input<pulumi.Input<random.RandomPet>[]>;
+    requiredNameMap: pulumi.Input<{[key: string]: pulumi.Input<random.RandomPet>}>;
 }

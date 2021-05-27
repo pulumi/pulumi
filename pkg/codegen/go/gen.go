@@ -221,22 +221,18 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
 		typ = "[]"
-		if pkg.isExternalReference(t.ElementType) {
-			typ += "*"
-		}
 		typ += pkg.plainType(t.ElementType, false)
 		return typ
 	case *schema.MapType:
 		typ = "map[string]"
-		if pkg.isExternalReference(t.ElementType) {
-			typ += "*"
-		}
 		typ += pkg.plainType(t.ElementType, false)
 		return typ
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
 		typ = pkg.resolveResourceType(t)
+		// Set optional to true because resources are pointers.
+		optional = true
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -914,8 +910,9 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
 			deref := ""
 			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
-			// to derference it.
-			if p.IsRequired && applyType[0] == '*' {
+			// to derference it, unless it is a resource type which should remain a pointer.
+			_, isResourceType := p.Type.(*schema.ResourceType)
+			if p.IsRequired && applyType[0] == '*' && !isResourceType {
 				deref = "&"
 			}
 
