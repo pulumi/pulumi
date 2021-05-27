@@ -18,6 +18,41 @@ namespace Pulumi.Example.Inputs
         [Input("name")]
         public Input<Pulumi.Random.RandomPet>? Name { get; set; }
 
+        [Input("nameArray")]
+        private InputList<Pulumi.Random.RandomPet>? _nameArray;
+        public InputList<Pulumi.Random.RandomPet> NameArray
+        {
+            get => _nameArray ?? (_nameArray = new InputList<Pulumi.Random.RandomPet>());
+            set => _nameArray = value;
+        }
+
+        [Input("nameMap")]
+        private InputMap<Pulumi.Random.RandomPet>? _nameMap;
+        public InputMap<Pulumi.Random.RandomPet> NameMap
+        {
+            get => _nameMap ?? (_nameMap = new InputMap<Pulumi.Random.RandomPet>());
+            set => _nameMap = value;
+        }
+
+        [Input("requiredName", required: true)]
+        public Input<Pulumi.Random.RandomPet> RequiredName { get; set; } = null!;
+
+        [Input("requiredNameArray", required: true)]
+        private InputList<Pulumi.Random.RandomPet>? _requiredNameArray;
+        public InputList<Pulumi.Random.RandomPet> RequiredNameArray
+        {
+            get => _requiredNameArray ?? (_requiredNameArray = new InputList<Pulumi.Random.RandomPet>());
+            set => _requiredNameArray = value;
+        }
+
+        [Input("requiredNameMap", required: true)]
+        private InputMap<Pulumi.Random.RandomPet>? _requiredNameMap;
+        public InputMap<Pulumi.Random.RandomPet> RequiredNameMap
+        {
+            get => _requiredNameMap ?? (_requiredNameMap = new InputMap<Pulumi.Random.RandomPet>());
+            set => _requiredNameMap = value;
+        }
+
         public PetArgs()
         {
         }

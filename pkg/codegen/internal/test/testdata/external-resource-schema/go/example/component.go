@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/meta/v1"
@@ -26,9 +27,18 @@ type Component struct {
 func NewComponent(ctx *pulumi.Context,
 	name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
 	if args == nil {
-		args = &ComponentArgs{}
+		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.RequiredMetadata == nil {
+		return nil, errors.New("invalid value for required argument 'RequiredMetadata'")
+	}
+	if args.RequiredMetadataArray == nil {
+		return nil, errors.New("invalid value for required argument 'RequiredMetadataArray'")
+	}
+	if args.RequiredMetadataMap == nil {
+		return nil, errors.New("invalid value for required argument 'RequiredMetadataMap'")
+	}
 	var resource Component
 	err := ctx.RegisterResource("example::Component", name, args, &resource, opts...)
 	if err != nil {
@@ -67,12 +77,22 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	Metadata *metav1.ObjectMeta `pulumi:"metadata"`
+	Metadata              *metav1.ObjectMeta           `pulumi:"metadata"`
+	MetadataArray         []metav1.ObjectMeta          `pulumi:"metadataArray"`
+	MetadataMap           map[string]metav1.ObjectMeta `pulumi:"metadataMap"`
+	RequiredMetadata      metav1.ObjectMeta            `pulumi:"requiredMetadata"`
+	RequiredMetadataArray []metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
+	RequiredMetadataMap   map[string]metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	Metadata metav1.ObjectMetaPtrInput
+	Metadata              metav1.ObjectMetaPtrInput
+	MetadataArray         metav1.ObjectMetaArrayInput
+	MetadataMap           metav1.ObjectMetaMapInput
+	RequiredMetadata      metav1.ObjectMetaInput
+	RequiredMetadataArray metav1.ObjectMetaArrayInput
+	RequiredMetadataMap   metav1.ObjectMetaMapInput
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
