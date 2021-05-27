@@ -1246,7 +1246,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		typeParameter = fmt.Sprintf("<%sResult>", className)
 	}
 
-	var argsParamDef, applyArgsParamDef string
+	var argsParamDef, outputArgsParamDef string
 	argsParamRef := "InvokeArgs.Empty"
 	if fun.Inputs != nil {
 		allOptionalInputs := true
@@ -1261,7 +1261,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		}
 
 		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", className, sigil, argsDefault)
-		applyArgsParamDef = fmt.Sprintf("%sApplyArgs%s args%s, ", className, sigil, argsDefault)
+		outputArgsParamDef = fmt.Sprintf("%sOutputArgs%s args%s, ", className, sigil, argsDefault)
 		argsParamRef = fmt.Sprintf("args ?? new %sArgs()", className)
 	}
 
@@ -1281,8 +1281,8 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.InvokeAsync%s(\"%s\", %s, options.WithVersion());\n",
 		typeParameter, fun.Token, argsParamRef)
 
-	// Emit the Apply method if needed.
-	mod.genFunctionApplyVersion(w, fun, applyArgsParamDef)
+	// Emit the Output method if needed.
+	mod.genFunctionOutputVersion(w, fun, outputArgsParamDef)
 
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
@@ -1303,7 +1303,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		}
 	}
 
-	mod.genFunctionApplyVersionTypes(w, fun)
+	mod.genFunctionOutputVersionTypes(w, fun)
 
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
@@ -1323,42 +1323,18 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	return nil
 }
 
-func needsApplyVersion(fun *schema.Function) bool {
-
-	// Skip functions that return no value. Arguably we could
-	// support them and return `Task`, but there are no such
-	// functions in `pulumi-azure-native` or `pulumi-aws` so we
-	// omit to simplify.
-	if fun.Outputs == nil {
-		return false
-	}
-
-	// Skip functions that have no inputs. The user can simply
-	// lift the `Task` to `Output` manually.
-	if fun.Inputs == nil {
-		return false
-	}
-
-	// No properties is kind of like no inputs.
-	if len(fun.Inputs.Properties) == 0 {
-		return false
-	}
-
-	return true
-}
-
-// Generates `${fn}Apply(..)` version lifted to work on
+// Generates `${fn}Output(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function, applyArgsParamDef string) error {
-	if !needsApplyVersion(fun) {
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function, outputArgsParamDef string) error {
+	if !fun.NeedsOutputVersion() {
 		return nil
 	}
 
 	className := tokenToFunctionName(fun.Token)
 
 	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "        public static Output<%sResult> Apply(%sInvokeOptions? options = null)\n",
-		className, applyArgsParamDef)
+	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
+		className, outputArgsParamDef)
 	fmt.Fprintf(w, "        {\n")
 
 	var args []string
@@ -1391,7 +1367,7 @@ func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function
 	}
 
 	if allOptionalInputs {
-		fmt.Fprintf(w, "%sargs = args ?? new %sApplyArgs();\n", indent2, className)
+		fmt.Fprintf(w, "%sargs = args ?? new %sOutputArgs();\n", indent2, className)
 	}
 
 	fmt.Fprintf(w, "%sreturn Pulumi.Output.All(\n", indent2)
@@ -1409,9 +1385,9 @@ func (mod *modContext) genFunctionApplyVersion(w io.Writer, fun *schema.Function
 	return nil
 }
 
-// Generate helper type definitions referred to in `genFunctionApplyVersion`.
-func (mod *modContext) genFunctionApplyVersionTypes(w io.Writer, fun *schema.Function) error {
-	if !needsApplyVersion(fun) || fun.Inputs == nil {
+// Generate helper type definitions referred to in `genFunctionOutputVersion`.
+func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Function) error {
+	if !fun.NeedsOutputVersion() || fun.Inputs == nil {
 		return nil
 	}
 
@@ -1419,7 +1395,7 @@ func (mod *modContext) genFunctionApplyVersionTypes(w io.Writer, fun *schema.Fun
 
 	applyArgs := &plainType{
 		mod:                   mod,
-		name:                  className + "ApplyArgs",
+		name:                  className + "OutputArgs",
 		propertyTypeQualifier: "Inputs",
 		properties:            fun.Inputs.Properties,
 		args:                  true,

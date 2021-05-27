@@ -17,7 +17,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         public static Task<ListStorageAccountKeysResult> InvokeAsync(ListStorageAccountKeysArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("madeup-package:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
 
-        public static Output<ListStorageAccountKeysResult> Apply(ListStorageAccountKeysApplyArgs args, InvokeOptions? options = null)
+        public static Output<ListStorageAccountKeysResult> Invoke(ListStorageAccountKeysOutputArgs args, InvokeOptions? options = null)
         {
             return Pulumi.Output.All(
                 args.AccountName.Box(),
@@ -59,7 +59,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class ListStorageAccountKeysApplyArgs
+    public sealed class ListStorageAccountKeysOutputArgs
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.
@@ -79,7 +79,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         [Input("resourceGroupName", required: true)]
         public Input<string> ResourceGroupName { get; set; } = null!;
 
-        public ListStorageAccountKeysApplyArgs()
+        public ListStorageAccountKeysOutputArgs()
         {
         }
     }

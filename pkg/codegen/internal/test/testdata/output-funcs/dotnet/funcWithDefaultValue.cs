@@ -17,7 +17,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         public static Task<FuncWithDefaultValueResult> InvokeAsync(FuncWithDefaultValueArgs args, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDefaultValueResult>("madeup-package:codegentest:funcWithDefaultValue", args ?? new FuncWithDefaultValueArgs(), options.WithVersion());
 
-        public static Output<FuncWithDefaultValueResult> Apply(FuncWithDefaultValueApplyArgs args, InvokeOptions? options = null)
+        public static Output<FuncWithDefaultValueResult> Invoke(FuncWithDefaultValueOutputArgs args, InvokeOptions? options = null)
         {
             return Pulumi.Output.All(
                 args.A.Box(),
@@ -46,7 +46,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithDefaultValueApplyArgs
+    public sealed class FuncWithDefaultValueOutputArgs
     {
         [Input("a", required: true)]
         public Input<string> A { get; set; } = null!;
@@ -54,7 +54,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         [Input("b")]
         public Input<string>? B { get; set; }
 
-        public FuncWithDefaultValueApplyArgs()
+        public FuncWithDefaultValueOutputArgs()
         {
             B = "b-default";
         }

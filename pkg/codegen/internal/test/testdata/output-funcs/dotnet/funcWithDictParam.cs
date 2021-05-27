@@ -17,9 +17,9 @@ namespace Pulumi.MadeupPackage.Codegentest
         public static Task<FuncWithDictParamResult> InvokeAsync(FuncWithDictParamArgs? args = null, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<FuncWithDictParamResult>("madeup-package:codegentest:funcWithDictParam", args ?? new FuncWithDictParamArgs(), options.WithVersion());
 
-        public static Output<FuncWithDictParamResult> Apply(FuncWithDictParamApplyArgs? args = null, InvokeOptions? options = null)
+        public static Output<FuncWithDictParamResult> Invoke(FuncWithDictParamOutputArgs? args = null, InvokeOptions? options = null)
         {
-            args = args ?? new FuncWithDictParamApplyArgs();
+            args = args ?? new FuncWithDictParamOutputArgs();
             return Pulumi.Output.All(
                 args.A.ToDict().Box(),
                 args.B.Box()
@@ -51,7 +51,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithDictParamApplyArgs
+    public sealed class FuncWithDictParamOutputArgs
     {
         [Input("a")]
         private InputMap<string>? _a;
@@ -64,7 +64,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         [Input("b")]
         public Input<string>? B { get; set; }
 
-        public FuncWithDictParamApplyArgs()
+        public FuncWithDictParamOutputArgs()
         {
         }
     }
