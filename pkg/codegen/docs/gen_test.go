@@ -160,12 +160,12 @@ func initTestPackageSpec(t *testing.T) {
 {{% /example %}}
 {{% /examples %}}
 
-## Import 
+## Import
 
 The import docs would be here
 
 ` + codeFence + `sh
-$ pulumi import prov:module/resource:Resource test test		
+$ pulumi import prov:module/resource:Resource test test
 ` + codeFence + `
 `,
 				},
@@ -552,7 +552,7 @@ func TestGeneratePackage(t *testing.T) {
 				filepath.Join(testDir, tt.schemaDir, "schema.json"), generatePackage)
 			assert.NoError(t, err)
 
-			test.RewriteFilesWhenPulumiAccept(t, filepath.Join(testDir, tt.schemaDir), "docs", files)
+			test.RewriteFilesWhenPulumiAccept(t, filepath.Join(testDir, tt.schemaDir), "docs", files, tt.expectedFiles)
 
 			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "docs", tt.expectedFiles)
 			assert.NoError(t, err)

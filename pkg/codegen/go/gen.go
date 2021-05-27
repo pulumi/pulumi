@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -614,21 +614,8 @@ func genResourceContainerInput(w io.Writer, name, receiverType, elementType stri
 }
 
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
-	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
-	if resourceType {
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil))\n", elementType)
-	} else {
-		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
-	}
-	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
-	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
-	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
-	fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
-	fmt.Fprintf(w, "}\n\n")
+	genElementTypeMethod(w, receiverType, elementType, resourceType)
+	genToOutputMethods(w, name, receiverType)
 
 	if ptrMethods {
 		fmt.Fprintf(w, "func (i %s) To%sPtrOutput() %sPtrOutput {\n", receiverType, Title(name), name)
@@ -643,6 +630,26 @@ func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMet
 		}
 		fmt.Fprintf(w, "}\n\n")
 	}
+}
+
+func genElementTypeMethod(w io.Writer, receiverType, elementType string, resourceType bool) {
+	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
+	if resourceType {
+		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil))\n", elementType)
+	} else {
+		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil)).Elem()\n", elementType)
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
+func genToOutputMethods(w io.Writer, name, receiverType string) {
+	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
+	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
+	fmt.Fprintf(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
+	fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
+	fmt.Fprintf(w, "}\n\n")
 }
 
 func (pkg *pkgContext) genEnum(w io.Writer, enum *schema.EnumType) error {
@@ -796,23 +803,15 @@ func (pkg *pkgContext) genPlainType(w io.Writer, name, comment, deprecationMessa
 
 func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) {
 	name := pkg.tokenToType(t.Token)
+	pkg.genInputTypesWithName(w, t, name, name, details)
+}
 
+func (pkg *pkgContext) genInputTypesWithName(w io.Writer, t *schema.ObjectType, name, elementType string, details *typeDetails) {
 	// Generate the plain inputs.
 	pkg.genInputInterface(w, name)
 
-	printComment(w, t.Comment, false)
-	fmt.Fprintf(w, "type %sArgs struct {\n", name)
-	for _, p := range t.Properties {
-		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
-		typ := pkg.inputType(p.Type, !p.IsRequired)
-		if p.IsPlain {
-			typ = pkg.plainType(p.Type, !p.IsRequired)
-		}
-		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), typ, p.Name)
-	}
-	fmt.Fprintf(w, "}\n\n")
-
-	genInputMethods(w, name, name+"Args", name, details.ptrElement, false)
+	pkg.genInputArgsStruct(w, t, name)
+	genInputMethods(w, name, name+"Args", elementType, details.ptrElement, false)
 
 	// Generate the pointer input.
 	if details.ptrElement {
@@ -848,6 +847,28 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	}
 }
 
+func (pkg *pkgContext) genInputArgsStruct(w io.Writer, t *schema.ObjectType, name string) {
+	printComment(w, t.Comment, false)
+	fmt.Fprintf(w, "type %sArgs struct {\n", name)
+	for _, p := range t.Properties {
+		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
+		typ := pkg.inputType(p.Type, !p.IsRequired)
+		if p.IsPlain {
+			typ = pkg.plainType(p.Type, !p.IsRequired)
+		}
+		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), typ, p.Name)
+	}
+	fmt.Fprintf(w, "}\n\n")
+}
+
+func (pkg *pkgContext) genInputArgsStructWithElementTypeMethod(
+	w io.Writer, t *schema.ObjectType, name, elementType string, details *typeDetails) {
+	pkg.genInputArgsStruct(w, t, name)
+	resourceType := false
+	receiverType := name + "Args"
+	genElementTypeMethod(w, receiverType, elementType, resourceType)
+}
+
 func genOutputMethods(w io.Writer, name, elementType string, resourceType bool) {
 	fmt.Fprintf(w, "func (%sOutput) ElementType() reflect.Type {\n", name)
 	if resourceType {
@@ -868,11 +889,16 @@ func genOutputMethods(w io.Writer, name, elementType string, resourceType bool) 
 
 func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details *typeDetails) {
 	name := pkg.tokenToType(t.Token)
+	pkg.genOutputTypesWithName(w, t, name, name, details)
+}
+
+func (pkg *pkgContext) genOutputTypesWithName(
+	w io.Writer, t *schema.ObjectType, name, elementType string, details *typeDetails) {
 
 	printComment(w, t.Comment, false)
 	fmt.Fprintf(w, "type %sOutput struct { *pulumi.OutputState }\n\n", name)
 
-	genOutputMethods(w, name, name, false)
+	genOutputMethods(w, name, elementType, false)
 
 	if details.ptrElement {
 		fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[1]sPtrOutput {\n", name, Title(name))
@@ -896,7 +922,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 			propName = "Get" + propName
 		}
 		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
-		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", name, applyType, Title(p.Name), outputType)
+		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n", elementType, applyType, Title(p.Name), outputType)
 		fmt.Fprintf(w, "}\n\n")
 	}
 
@@ -1359,9 +1385,29 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	return nil
 }
 
+func (pkg *pkgContext) genFunctionCodeFile(f *schema.Function) string {
+	importsAndAliases := map[string]string{}
+	pkg.getImports(f, importsAndAliases)
+	buffer := &bytes.Buffer{}
+
+	var imports []string
+	if f.NeedsOutputVersion() {
+		imports = []string{"context", "reflect"}
+	}
+
+	pkg.genHeader(buffer, imports, importsAndAliases)
+	pkg.genFunction(buffer, f)
+	pkg.genFunctionOutputVersion(buffer, f)
+	return buffer.String()
+}
+
 func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 	// If the function starts with New or Get, it will conflict; so rename them.
-	name := pkg.functionNames[f]
+	name, hasName := pkg.functionNames[f]
+
+	if !hasName {
+		panic(fmt.Sprintf("No function name found for %v", f))
+	}
 
 	printCommentWithDeprecationMessage(w, f.Comment, f.DeprecationMessage, false)
 
@@ -1418,6 +1464,45 @@ func (pkg *pkgContext) genFunction(w io.Writer, f *schema.Function) {
 		fmt.Fprintf(w, "\n")
 		pkg.genPlainType(w, fmt.Sprintf("%sResult", name), f.Outputs.Comment, "", f.Outputs.Properties)
 	}
+}
+
+func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function) {
+	if !f.NeedsOutputVersion() {
+		return
+	}
+
+	originalName, hasName := pkg.functionNames[f]
+	if !hasName {
+		panic(fmt.Sprintf("No function name found for %v", f))
+	}
+
+	fnOutput := fmt.Sprintf("%sOutput", originalName)
+	fnArgsType := fmt.Sprintf("%sArgs", originalName)
+	fnResultType := fmt.Sprintf("%sResult", originalName)
+
+	fmt.Fprintf(w, strings.ReplaceAll(`
+func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${fn}ResultOutput {
+        return pulumi.ToOutputWithContext(context.Background(), args).
+                ApplyT(func(v interface{}) (${fn}Result, error) {
+             		args := v.(${fn}Args)
+                        r, err := ${fn}(ctx, &args, opts...)
+                        return *r, err
+                }).(${fn}ResultOutput)
+}
+
+`, "${fn}", originalName))
+
+	pkg.genInputArgsStructWithElementTypeMethod(w, f.Inputs, fnOutput, fnArgsType, pkg.detailsForType(f.Inputs))
+	pkg.genOutputTypesWithName(w, f.Outputs, fnResultType, fnResultType, pkg.detailsForType(f.Outputs))
+
+	// Assuming the file represented by `w` only has one function,
+	// generate an `init()` for Output type init.
+	fmt.Fprintf(w, strings.ReplaceAll(`
+func init() {
+        pulumi.RegisterOutputType(${fn}ResultOutput{})
+}
+
+`, "${fn}", originalName))
 }
 
 func (pkg *pkgContext) genType(w io.Writer, obj *schema.ObjectType) {
@@ -2051,6 +2136,19 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		scanResource(r)
 	}
 
+	// For fnApply function versions, we need to register any
+	// input or output property type metadata, in case they have
+	// types used in array or pointer element positions.
+	for _, f := range pkg.Functions {
+		parentOptional := false
+		if f.Inputs != nil {
+			populateDetailsForPropertyTypes(seenMap, f.Inputs.Properties, parentOptional)
+		}
+		if f.Outputs != nil {
+			populateDetailsForPropertyTypes(seenMap, f.Outputs.Properties, parentOptional)
+		}
+	}
+
 	for _, f := range pkg.Functions {
 		pkg := getPkgFromToken(f.Token)
 		pkg.functions = append(pkg.functions, f)
@@ -2217,15 +2315,9 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 
 		// Functions
 		for _, f := range pkg.functions {
-			importsAndAliases := map[string]string{}
-			pkg.getImports(f, importsAndAliases)
-
-			buffer := &bytes.Buffer{}
-			pkg.genHeader(buffer, nil, importsAndAliases)
-
-			pkg.genFunction(buffer, f)
-
-			setFile(path.Join(mod, camel(tokenToName(f.Token))+".go"), buffer.String())
+			fileName := path.Join(mod, camel(tokenToName(f.Token))+".go")
+			code := pkg.genFunctionCodeFile(f)
+			setFile(fileName, code)
 		}
 
 		knownTypes := make(map[schema.Type]struct{}, len(pkg.typeDetails))

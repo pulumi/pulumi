@@ -1,0 +1,32 @@
+{
+  "functions": {
+    "madeup-package:codegentest:funcWithListParam": {
+      "description": "Check codegen of functions with a List parameter.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+              "type": "array",
+              "items": {
+                  "type": "string"
+              }
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    }
+  }
+}

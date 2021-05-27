@@ -4,7 +4,10 @@
 package example
 
 import (
-	"github.com/pulumi/pulumi-random/sdk/v2/go/random"
+	"context"
+	"reflect"
+
+	"github.com/pulumi/pulumi-random/sdk/v4/go/random"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -23,4 +26,80 @@ type ArgFunctionArgs struct {
 
 type ArgFunctionResult struct {
 	Age *int `pulumi:"age"`
+}
+
+func ArgFunctionApply(ctx *pulumi.Context, args ArgFunctionApplyInput, opts ...pulumi.InvokeOption) ArgFunctionResultOutput {
+	return args.ToArgFunctionApplyOutput().ApplyT(func(v ArgFunctionArgs) (ArgFunctionResult, error) {
+		r, err := ArgFunction(ctx, &v, opts...)
+		return *r, err
+
+	}).(ArgFunctionResultOutput)
+}
+
+// ArgFunctionApplyInput is an input type that accepts ArgFunctionApplyArgs and ArgFunctionApplyOutput values.
+// You can construct a concrete instance of `ArgFunctionApplyInput` via:
+//
+//          ArgFunctionApplyArgs{...}
+type ArgFunctionApplyInput interface {
+	pulumi.Input
+
+	ToArgFunctionApplyOutput() ArgFunctionApplyOutput
+	ToArgFunctionApplyOutputWithContext(context.Context) ArgFunctionApplyOutput
+}
+
+type ArgFunctionApplyArgs struct {
+	Name random.RandomPetInput `pulumi:"name"`
+}
+
+func (ArgFunctionApplyArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ArgFunctionArgs)(nil)).Elem()
+}
+
+func (i ArgFunctionApplyArgs) ToArgFunctionApplyOutput() ArgFunctionApplyOutput {
+	return i.ToArgFunctionApplyOutputWithContext(context.Background())
+}
+
+func (i ArgFunctionApplyArgs) ToArgFunctionApplyOutputWithContext(ctx context.Context) ArgFunctionApplyOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ArgFunctionApplyOutput)
+}
+
+type ArgFunctionApplyOutput struct{ *pulumi.OutputState }
+
+func (ArgFunctionApplyOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ArgFunctionArgs)(nil)).Elem()
+}
+
+func (o ArgFunctionApplyOutput) ToArgFunctionApplyOutput() ArgFunctionApplyOutput {
+	return o
+}
+
+func (o ArgFunctionApplyOutput) ToArgFunctionApplyOutputWithContext(ctx context.Context) ArgFunctionApplyOutput {
+	return o
+}
+
+func (o ArgFunctionApplyOutput) Name() random.RandomPetOutput {
+	return o.ApplyT(func(v ArgFunctionArgs) *random.RandomPet { return v.Name }).(random.RandomPetOutput)
+}
+
+type ArgFunctionResultOutput struct{ *pulumi.OutputState }
+
+func (ArgFunctionResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ArgFunctionResult)(nil)).Elem()
+}
+
+func (o ArgFunctionResultOutput) ToArgFunctionResultOutput() ArgFunctionResultOutput {
+	return o
+}
+
+func (o ArgFunctionResultOutput) ToArgFunctionResultOutputWithContext(ctx context.Context) ArgFunctionResultOutput {
+	return o
+}
+
+func (o ArgFunctionResultOutput) Age() pulumi.IntPtrOutput {
+	return o.ApplyT(func(v ArgFunctionResult) *int { return v.Age }).(pulumi.IntPtrOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(ArgFunctionApplyOutput{})
+	pulumi.RegisterOutputType(ArgFunctionResultOutput{})
 }

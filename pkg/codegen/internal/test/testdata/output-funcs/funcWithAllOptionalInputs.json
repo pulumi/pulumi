@@ -1,0 +1,29 @@
+{
+  "functions": {
+    "madeup-package:codegentest:funcWithAllOptionalInputs": {
+      "description": "Check codegen of functions with all optional inputs.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "string"
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    }
+  }
+}

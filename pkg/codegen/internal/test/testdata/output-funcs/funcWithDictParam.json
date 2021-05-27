@@ -1,0 +1,32 @@
+{
+  "functions": {
+    "madeup-package:codegentest:funcWithDictParam": {
+      "description": "Check codegen of functions with a Dict<str,str> parameter.",
+      "inputs": {
+        "type": "object",
+        "properties": {
+          "a": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            }
+          },
+          "b": {
+            "type": "string"
+          }
+        }
+      },
+      "outputs": {
+        "properties": {
+          "r": {
+            "type": "string"
+          }
+        },
+        "type": "object",
+        "required": [
+          "r"
+        ]
+      }
+    }
+  }
+}

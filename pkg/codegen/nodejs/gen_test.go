@@ -2,10 +2,14 @@
 package nodejs
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
 	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -72,11 +76,51 @@ func TestGeneratePackage(t *testing.T) {
 			files, err := test.GeneratePackageFilesFromSchema(
 				filepath.Join(testDir, tt.schemaDir, "schema.json"), GeneratePackage)
 			assert.NoError(t, err)
-
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "nodejs", tt.expectedFiles)
+			dir := filepath.Join(testDir, tt.schemaDir)
+			test.RewriteFilesWhenPulumiAccept(t, dir, "nodejs", files, tt.expectedFiles)
+			expectedFiles, err := test.LoadFiles(dir, "nodejs", tt.expectedFiles)
 			assert.NoError(t, err)
-
 			test.ValidateFileEquality(t, files, expectedFiles)
+		})
+	}
+}
+
+func TestGenerateOutputFuncs(t *testing.T) {
+	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
+
+	examples := []string{
+		"funcWithAllOptionalInputs",
+		"funcWithDefaultValue",
+		"funcWithDictParam",
+		"funcWithListParam",
+		"listStorageAccountKeys",
+	}
+
+	gen := func(reader io.Reader, writer io.Writer) error {
+		var pkgSpec schema.PackageSpec
+		err := json.NewDecoder(reader).Decode(&pkgSpec)
+		if err != nil {
+			return err
+		}
+		pkg, err := schema.ImportSpec(pkgSpec, nil)
+		if err != nil {
+			return err
+		}
+		fun := pkg.Functions[0]
+
+		fmt.Fprintf(writer, `import * as utilities from "./utilities";`+"\n")
+		fmt.Fprintf(writer, `import * as pulumi from "@pulumi/pulumi";`+"\n")
+
+		mod := &modContext{}
+		mod.genFunction(writer, fun)
+		return nil
+	}
+
+	for _, ex := range examples {
+		t.Run(ex, func(t *testing.T) {
+			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
+			expectedOutputFile := filepath.Join(testDir, "nodejs", fmt.Sprintf("%s.ts", ex))
+			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
 		})
 	}
 }

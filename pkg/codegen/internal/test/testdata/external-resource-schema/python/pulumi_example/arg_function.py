@@ -52,3 +52,9 @@ def arg_function(name: Optional['pulumi_random.RandomPet'] = None,
 
     return AwaitableArgFunctionResult(
         age=__ret__.age)
+
+
+@_utilities.lift_output_func(arg_function)
+def arg_function_apply(name: Optional[pulumi.Input['pulumi_random.RandomPet']] = None,
+                       opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[ArgFunctionResult]:
+    ...

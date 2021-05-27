@@ -1,0 +1,35 @@
+{
+  "functions": {
+    "azure-native:codegentest:getClientConfig": {
+      "description": "Use this function to access the current configuration of the native Azure provider.",
+      "outputs": {
+        "description": "Configuration values returned by getClientConfig.",
+        "properties": {
+          "clientId": {
+            "type": "string",
+            "description": "Azure Client ID (Application Object ID)."
+          },
+          "objectId": {
+            "type": "string",
+            "description": "Azure Object ID of the current user or service principal."
+          },
+          "subscriptionId": {
+            "type": "string",
+            "description": "Azure Subscription ID"
+          },
+          "tenantId": {
+            "type": "string",
+            "description": "Azure Tenant ID"
+          }
+        },
+        "type": "object",
+        "required": [
+          "clientId",
+          "objectId",
+          "subscriptionId",
+          "tenantId"
+        ]
+      }
+    }
+  }
+}
