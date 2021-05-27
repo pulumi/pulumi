@@ -190,7 +190,8 @@ func (info *PluginInfo) SetFileMetadata(path string) error {
 	}
 
 	// Next, get the size from the directory (or, if there is none, just the file).
-	size, err := getPluginSize(path)
+	// size, err := getPluginSize(path)
+	size, err := int64(0), nil
 	if err != nil {
 		return errors.Wrapf(err, "getting plugin dir %s size", path)
 	}
@@ -536,14 +537,20 @@ func GetPluginDir() (string, error) {
 // GetPlugins returns a list of installed plugins.
 func GetPlugins() ([]PluginInfo, error) {
 	// To get the list of plugins, simply scan the directory in the usual place.
+	t := time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("getting plugin dir, %v", t)
 	dir, err := GetPluginDir()
 	if err != nil {
 		return nil, err
 	}
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done getting plugin dir, %v", t)
 	return getPlugins(dir)
 }
 
 func getPlugins(dir string) ([]PluginInfo, error) {
+	t := time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("reading plugin dir, %v", t)
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -551,12 +558,17 @@ func getPlugins(dir string) ([]PluginInfo, error) {
 		}
 		return nil, err
 	}
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done reading plugin dir, %v", t)
 
 	// Now read the file infos and create the plugin infos.
 	var plugins []PluginInfo
 	for _, file := range files {
+		start := time.Now()
 		// Skip anything that doesn't look like a plugin.
 		if kind, name, version, ok := tryPlugin(file); ok {
+			logging.V(1).Infof("success try plugin: %v", time.Since(start))
+			start = time.Now()
 			plugin := PluginInfo{
 				Name:    name,
 				Kind:    kind,
@@ -569,9 +581,13 @@ func getPlugins(dir string) ([]PluginInfo, error) {
 			} else if !os.IsNotExist(err) {
 				return nil, err
 			}
+			logging.V(1).Infof("checked plugin: %v", time.Since(start))
+			start = time.Now()
 			if err = plugin.SetFileMetadata(path); err != nil {
 				return nil, err
 			}
+			logging.V(1).Infof("set plugin metadata: %v", time.Since(start))
+			start = time.Now()
 			plugins = append(plugins, plugin)
 		}
 	}
@@ -584,6 +600,9 @@ func getPlugins(dir string) ([]PluginInfo, error) {
 // possible to opt out of this behavior by setting PULUMI_IGNORE_AMBIENT_PLUGINS to any non-empty value.
 func GetPluginPath(kind PluginKind, name string, version *semver.Version) (string, string, error) {
 	var filename string
+
+	t := time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("starting plugin path lookup, %v, %v", name, t)
 
 	// If we have a version of the plugin on its $PATH, use it, unless we have opted out of this behavior explicitly.
 	// This supports development scenarios.
@@ -622,12 +641,18 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 		}
 	}
 
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("getting all plugins in cache, %v, %v", name, t)
 	// Otherwise, check the plugin cache.
 	plugins, err := GetPlugins()
 	if err != nil {
 		return "", "", errors.Wrapf(err, "loading plugin list")
 	}
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done getting all plugins in cache, %v, %v", name, t)
 
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("searching for plugin match, %v, %v", name, t)
 	var match *PluginInfo
 	if !enableLegacyPluginBehavior && version != nil {
 		logging.V(6).Infof("GetPluginPath(%s, %s, %s): enabling new plugin behavior", kind, name, version)
@@ -666,6 +691,9 @@ func GetPluginPath(kind PluginKind, name string, version *semver.Version) (strin
 			}
 		}
 	}
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("found plugin match, %v, %v", name, t)
 
 	if match != nil {
 		matchDir, err := match.DirPath()
@@ -803,9 +831,13 @@ var installingPluginRegexp = regexp.MustCompile(`\.tmp[0-9]+$`)
 
 // tryPlugin returns true if a file is a plugin, and extracts information about it.
 func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
+	t := time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	start := time.Now()
+	logging.V(1).Infof("trying plugin, %v", t)
 	// Only directories contain plugins.
 	if !file.IsDir() {
 		logging.V(11).Infof("skipping file in plugin directory: %s", file.Name())
+		logging.V(1).Infof("skipping since dir in: %v", time.Since(start))
 		return "", "", semver.Version{}, false
 	}
 
@@ -815,13 +847,20 @@ func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 		return "", "", semver.Version{}, false
 	}
 
+	logging.V(1).Infof("ran install regexp: %v", time.Since(start))
+	start = time.Now()
+
 	// Filenames must match the plugin regexp.
 	match := pluginRegexp.FindStringSubmatch(file.Name())
+	logging.V(1).Infof("ran plugin regexp: %v", time.Since(start))
+	start = time.Now()
 	if len(match) != len(pluginRegexp.SubexpNames()) {
 		logging.V(11).Infof("skipping plugin %s with missing capture groups: expect=%d, actual=%d",
 			file.Name(), len(pluginRegexp.SubexpNames()), len(match))
 		return "", "", semver.Version{}, false
 	}
+	logging.V(1).Infof("check cap groups: %v", time.Since(start))
+	start = time.Now()
 	var kind PluginKind
 	var name string
 	var version *semver.Version
@@ -847,6 +886,12 @@ func tryPlugin(file os.FileInfo) (PluginKind, string, semver.Version, bool) {
 			}
 		}
 	}
+
+	logging.V(1).Infof("iterate cap groups: %v", time.Since(start))
+	start = time.Now()
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done trying plugin, %v", t)
 
 	// If anything was missing or invalid, skip this plugin.
 	if kind == "" || name == "" || version == nil {

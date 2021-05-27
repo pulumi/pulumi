@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
@@ -72,6 +73,8 @@ type provider struct {
 func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Version,
 	options map[string]interface{}, disableProviderPreview bool) (Provider, error) {
 	// Load the plugin's path by using the standard workspace logic.
+	t := time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("getting plugin path, %v, %v", pkg, t)
 	_, path, err := workspace.GetPluginPath(
 		workspace.ResourcePlugin, strings.Replace(string(pkg), tokens.QNameDelimiter, "_", -1), version)
 	if err != nil {
@@ -83,6 +86,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 			Version: version,
 		})
 	}
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done getting plugin path, %v, %v", pkg, t)
 
 	// Runtime options are passed as environment variables to the provider.
 	env := os.Environ()
@@ -90,11 +95,15 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		env = append(env, fmt.Sprintf("PULUMI_RUNTIME_%s=%v", strings.ToUpper(k), v))
 	}
 
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("newing plugin, %v, %v", pkg, t)
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
 		[]string{host.ServerAddr()}, env)
 	if err != nil {
 		return nil, err
 	}
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done newing plugin, %v, %v", pkg, t)
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
 	return &provider{

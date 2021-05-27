@@ -124,12 +124,16 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 		logging.V(9).Infof("Launching plugin '%v' from '%v' with args: %v", prefix, bin, argstr)
 	}
 
+	t := time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("execing plugin, %v, %v", prefix, t)
 	// Try to execute the binary.
 	plug, err := execPlugin(bin, args, pwd, env)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to load plugin %s", bin)
 	}
 	contract.Assert(plug != nil)
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done newing plugin, %v, %v", prefix, t)
 
 	// If we did not successfully launch the plugin, we still need to wait for stderr and stdout to drain.
 	defer func() {
@@ -137,6 +141,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 			contract.IgnoreError(plug.Close())
 		}
 	}()
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("setup plugin io, %v, %v", prefix, t)
 
 	outStreamID := atomic.AddInt32(&nextStreamID, 1)
 	errStreamID := atomic.AddInt32(&nextStreamID, 1)
@@ -178,6 +185,12 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 	plug.stderrDone = stderrDone
 	go runtrace(plug.Stderr, true, stderrDone)
 
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done setup plugin io, %v, %v", prefix, t)
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("reading plugin port, %v, %v", prefix, t)
+
 	// Now that we have a process, we expect it to write a single line to STDOUT: the port it's listening on.  We only
 	// read a byte at a time so that STDOUT contains everything after the first newline.
 	var port string
@@ -213,10 +226,22 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 			err, "%v plugin [%v] wrote a non-numeric port to stdout ('%v')", prefix, bin, port)
 	}
 
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done reading plugin port, %v, %v", prefix, t)
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("adding plugin stdout io, %v, %v", prefix, t)
+
 	// After reading the port number, set up a tracer on stdout just so other output doesn't disappear.
 	stdoutDone := make(chan bool)
 	plug.stdoutDone = stdoutDone
 	go runtrace(plug.Stdout, false, stdoutDone)
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done adding plugin stdout io, %v, %v", prefix, t)
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("creating grpc plugin client, %v, %v", prefix, t)
 
 	// Now that we have the port, go ahead and create a gRPC client connection to it.
 	conn, err := grpc.Dial(
@@ -228,6 +253,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 	if err != nil {
 		return nil, errors.Wrapf(err, "could not dial plugin [%v] over RPC", bin)
 	}
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("done creating grpc plugin client, %v, %v", prefix, t)
 
 	// Now wait for the gRPC connection to the plugin to become ready.
 	// TODO[pulumi/pulumi#337]: in theory, this should be unnecessary.  gRPC's default WaitForReady behavior
@@ -270,6 +298,9 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 			return nil, errors.Errorf("%v plugin [%v] did not begin responding to RPC connections", prefix, bin)
 		}
 	}
+
+	t = time.Now().UnixNano() / (int64(time.Millisecond) * 1000)
+	logging.V(1).Infof("grpc plugin client alive, %v, %v", prefix, t)
 
 	// Done; store the connection and return the plugin info.
 	plug.Conn = conn
