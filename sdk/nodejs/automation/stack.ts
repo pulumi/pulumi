@@ -126,11 +126,14 @@ export class Stack {
             let event: EngineEvent;
             try {
                 event = JSON.parse(line);
+                callback(event);
             } catch (e) {
-                log.error(`failed to parse engine event\nevent: ${line}\n${e.toString()}`);
-                throw e;
+                log.warn(`Failed to parse engine event
+If you're seeing this warning, please comment on https://github.com/pulumi/pulumi/issues/6768 with the event and any
+details about your environment.
+
+Event: ${line}\n${e.toString()}`);
             }
-            callback(event);
         });
 
         return {
@@ -351,13 +354,13 @@ export class Stack {
         }
 
         if (!summaryEvent) {
-            throw new Error("No summary of changes.");
+            log.warn("Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.");
         }
 
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
-            changeSummary: summaryEvent.resourceChanges,
+            changeSummary: summaryEvent?.resourceChanges || {},
         };
     }
     /**
@@ -675,7 +678,7 @@ export type OpType = "same"
  * A map of operation types and their corresponding counts.
  */
 export type OpMap = {
-    [key in OpType]: number;
+    [key in OpType]?: number;
 };
 
 /**
