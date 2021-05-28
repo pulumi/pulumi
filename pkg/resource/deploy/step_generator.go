@@ -233,6 +233,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		}
 	}
 
+	// register aliases with the provider registry
+	sg.deployment.providers.RegisterAliases(sg.aliased)
+
 	// Create the desired inputs from the goal state
 	inputs := goal.Properties
 	if hasOld {
