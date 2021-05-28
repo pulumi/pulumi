@@ -543,7 +543,7 @@ func GetPlugins() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir /* skipMetadata */, true)
+	return getPlugins(dir, true /* skipMetadata */)
 }
 
 // GetPluginsWithMetadata returns a list of installed plugins with metadata about size,
@@ -556,7 +556,7 @@ func GetPluginsWithMetadata() ([]PluginInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir /* skipMetadata */, false)
+	return getPlugins(dir, false /* skipMetadata */)
 }
 
 func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
