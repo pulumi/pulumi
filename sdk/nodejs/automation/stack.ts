@@ -354,13 +354,13 @@ Event: ${line}\n${e.toString()}`);
         }
 
         if (!summaryEvent) {
-            throw new Error("No summary of changes.");
+            log.warn("Failed to parse summary event, but preview succeeded. PreviewResult `changeSummary` will be empty.");
         }
 
         return {
             stdout: preResult.stdout,
             stderr: preResult.stderr,
-            changeSummary: summaryEvent.resourceChanges,
+            changeSummary: summaryEvent?.resourceChanges || {},
         };
     }
     /**
@@ -678,7 +678,7 @@ export type OpType = "same"
  * A map of operation types and their corresponding counts.
  */
 export type OpMap = {
-    [key in OpType]: number;
+    [key in OpType]?: number;
 };
 
 /**
