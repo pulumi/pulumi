@@ -16,7 +16,7 @@ import os
 import tempfile
 import json
 from datetime import datetime
-from typing import Optional, List, Mapping, Callable
+from typing import Optional, List, Mapping, Callable, overload
 from semver import VersionInfo
 import yaml
 
@@ -310,6 +310,21 @@ def _is_inline_program(**kwargs) -> bool:
 StackInitializer = Callable[[str, Workspace], Stack]
 
 
+@overload
+def create_stack(stack_name: str,
+                 project_name: Optional[str] = None,
+                 program: Optional[PulumiFn] = None,
+                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    ...
+
+
+@overload
+def create_stack(stack_name: str,
+                 work_dir: Optional[str] = None,
+                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    ...
+
+
 def create_stack(stack_name: str,
                  project_name: Optional[str] = None,
                  program: Optional[PulumiFn] = None,
@@ -349,6 +364,21 @@ def create_stack(stack_name: str,
     raise ValueError(f"unexpected args: {' '.join(args)}")
 
 
+@overload
+def select_stack(stack_name: str,
+                 project_name: Optional[str] = None,
+                 program: Optional[PulumiFn] = None,
+                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    ...
+
+
+@overload
+def select_stack(stack_name: str,
+                 work_dir: Optional[str] = None,
+                 opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    ...
+
+
 def select_stack(stack_name: str,
                  project_name: Optional[str] = None,
                  program: Optional[PulumiFn] = None,
@@ -385,6 +415,21 @@ def select_stack(stack_name: str,
     if _is_local_program(**args):
         return _local_source_stack_helper(stack_name, work_dir, Stack.select, opts)  # type: ignore
     raise ValueError(f"unexpected args: {' '.join(args)}")
+
+
+@overload
+def create_or_select_stack(stack_name: str,
+                           project_name: Optional[str] = None,
+                           program: Optional[PulumiFn] = None,
+                           opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    ...
+
+
+@overload
+def create_or_select_stack(stack_name: str,
+                           work_dir: Optional[str] = None,
+                           opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
+    ...
 
 
 def create_or_select_stack(stack_name: str,
