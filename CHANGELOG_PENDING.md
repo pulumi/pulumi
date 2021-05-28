@@ -11,3 +11,6 @@
 
 - [auto/nodejs] - Emit warning instead of breaking on parsing JSON events for automation API.
   [#7162](https://github.com/pulumi/pulumi/pull/7162)
+
+- [auto/python] - Add function overloads for stack creation and selection.
+  [#7167](https://github.com/pulumi/pulumi/pull/7167)

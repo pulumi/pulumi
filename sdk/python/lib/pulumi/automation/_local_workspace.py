@@ -312,20 +312,23 @@ StackInitializer = Callable[[str, Workspace], Stack]
 
 @overload
 def create_stack(stack_name: str,
-                 project_name: Optional[str] = None,
-                 program: Optional[PulumiFn] = None,
+                 *,
+                 project_name: str,
+                 program: PulumiFn,
                  opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
     ...
 
 
 @overload
 def create_stack(stack_name: str,
-                 work_dir: Optional[str] = None,
+                 *,
+                 work_dir: str,
                  opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
     ...
 
 
 def create_stack(stack_name: str,
+                 *,
                  project_name: Optional[str] = None,
                  program: Optional[PulumiFn] = None,
                  work_dir: Optional[str] = None,
@@ -366,20 +369,23 @@ def create_stack(stack_name: str,
 
 @overload
 def select_stack(stack_name: str,
-                 project_name: Optional[str] = None,
-                 program: Optional[PulumiFn] = None,
+                 *,
+                 project_name: str,
+                 program: PulumiFn,
                  opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
     ...
 
 
 @overload
 def select_stack(stack_name: str,
-                 work_dir: Optional[str] = None,
+                 *,
+                 work_dir: str,
                  opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
     ...
 
 
 def select_stack(stack_name: str,
+                 *,
                  project_name: Optional[str] = None,
                  program: Optional[PulumiFn] = None,
                  work_dir: Optional[str] = None,
@@ -419,20 +425,23 @@ def select_stack(stack_name: str,
 
 @overload
 def create_or_select_stack(stack_name: str,
-                           project_name: Optional[str] = None,
-                           program: Optional[PulumiFn] = None,
+                           *,
+                           project_name: str,
+                           program: PulumiFn,
                            opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
     ...
 
 
 @overload
 def create_or_select_stack(stack_name: str,
-                           work_dir: Optional[str] = None,
+                           *,
+                           work_dir: str,
                            opts: Optional[LocalWorkspaceOptions] = None) -> Stack:
     ...
 
 
 def create_or_select_stack(stack_name: str,
+                           *,
                            project_name: Optional[str] = None,
                            program: Optional[PulumiFn] = None,
                            work_dir: Optional[str] = None,
