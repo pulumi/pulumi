@@ -533,17 +533,31 @@ func GetPluginDir() (string, error) {
 	return GetPulumiPath(PluginDir)
 }
 
-// GetPlugins returns a list of installed plugins.
+// GetPlugins returns a list of installed plugins without size info and last accessed metadata.
+// Plugin size requires recursively traversing the plugin directory, which can be extremely expensive with the introduction of
+// nodejs multilang components that have deeply nested node_modules folders.
 func GetPlugins() ([]PluginInfo, error) {
 	// To get the list of plugins, simply scan the directory in the usual place.
 	dir, err := GetPluginDir()
 	if err != nil {
 		return nil, err
 	}
-	return getPlugins(dir)
+	return getPlugins(dir /* skipMetadata */, true)
 }
 
-func getPlugins(dir string) ([]PluginInfo, error) {
+// GetPluginsWithMetadata returns a list of installed plugins with metadata about size, and last access (POOR RUNTIME PERF)
+// Plugin size requires recursively traversing the plugin directory, which can be extremely expensive with the introduction of
+// nodejs multilang components that have deeply nested node_modules folders.
+func GetPluginsWithMetadata() ([]PluginInfo, error) {
+	// To get the list of plugins, simply scan the directory in the usual place.
+	dir, err := GetPluginDir()
+	if err != nil {
+		return nil, err
+	}
+	return getPlugins(dir /* skipMetadata */, false)
+}
+
+func getPlugins(dir string, skipMetadata bool) ([]PluginInfo, error) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -569,8 +583,11 @@ func getPlugins(dir string) ([]PluginInfo, error) {
 			} else if !os.IsNotExist(err) {
 				return nil, err
 			}
-			if err = plugin.SetFileMetadata(path); err != nil {
-				return nil, err
+			// computing plugin sizes can be very expensive (nested node_modules)
+			if !skipMetadata {
+				if err = plugin.SetFileMetadata(path); err != nil {
+					return nil, err
+				}
 			}
 			plugins = append(plugins, plugin)
 		}
