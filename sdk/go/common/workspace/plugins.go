@@ -534,8 +534,9 @@ func GetPluginDir() (string, error) {
 }
 
 // GetPlugins returns a list of installed plugins without size info and last accessed metadata.
-// Plugin size requires recursively traversing the plugin directory, which can be extremely expensive with the introduction of
-// nodejs multilang components that have deeply nested node_modules folders.
+// Plugin size requires recursively traversing the plugin directory, which can be extremely
+// expensive with the introduction of nodejs multilang components that have
+// deeply nested node_modules folders.
 func GetPlugins() ([]PluginInfo, error) {
 	// To get the list of plugins, simply scan the directory in the usual place.
 	dir, err := GetPluginDir()
@@ -545,8 +546,9 @@ func GetPlugins() ([]PluginInfo, error) {
 	return getPlugins(dir /* skipMetadata */, true)
 }
 
-// GetPluginsWithMetadata returns a list of installed plugins with metadata about size, and last access (POOR RUNTIME PERF)
-// Plugin size requires recursively traversing the plugin directory, which can be extremely expensive with the introduction of
+// GetPluginsWithMetadata returns a list of installed plugins with metadata about size,
+// and last access (POOR RUNTIME PERF). Plugin size requires recursively traversing the
+// plugin directory, which can be extremely expensive with the introduction of
 // nodejs multilang components that have deeply nested node_modules folders.
 func GetPluginsWithMetadata() ([]PluginInfo, error) {
 	// To get the list of plugins, simply scan the directory in the usual place.
