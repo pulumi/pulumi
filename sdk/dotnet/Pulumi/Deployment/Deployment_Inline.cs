@@ -16,7 +16,7 @@ namespace Pulumi
             _projectName = settings.Project;
             _stackName = settings.Stack;
             _isDryRun = settings.IsDryRun;
-            SetAllConfig(settings.Config);
+            SetAllConfig(settings.Config, settings.ConfigSecretKeys);
 
             if (string.IsNullOrEmpty(settings.MonitorAddr)
                 || string.IsNullOrEmpty(settings.EngineAddr)
@@ -26,13 +26,15 @@ namespace Pulumi
                 throw new InvalidOperationException("Inline execution was not provided the necessary parameters to run the Pulumi engine.");
             }
 
-            Serilog.Log.Debug("Creating Deployment Engine.");
-            Engine = new GrpcEngine(settings.EngineAddr);
-            Serilog.Log.Debug("Created Deployment Engine.");
+            InitSerilogger();
 
-            Serilog.Log.Debug("Creating Deployment Monitor.");
+            _serilogger.Debug("Creating Deployment Engine.");
+            Engine = new GrpcEngine(settings.EngineAddr);
+            _serilogger.Debug("Created Deployment Engine.");
+
+            _serilogger.Debug("Creating Deployment Monitor.");
             Monitor = new GrpcMonitor(settings.MonitorAddr);
-            Serilog.Log.Debug("Created Deployment Monitor.");
+            _serilogger.Debug("Created Deployment Monitor.");
 
             _runner = new Runner(this);
             _logger = new Logger(this, Engine);

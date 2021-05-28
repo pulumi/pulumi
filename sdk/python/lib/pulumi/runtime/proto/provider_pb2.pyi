@@ -85,3 +85,12 @@ class ConfigureResponse:
     acceptSecrets: bool
     supportsPreview: bool
     acceptResources: bool
+
+
+class GetSchemaRequest:
+    version: int
+
+
+class GetSchemaResponse:
+    def __init__(self, schema: str):
+        pass

@@ -41,18 +41,24 @@ class Provider:
     """
 
     version: str
+    schema: Optional[str]
 
-    def __init__(self, version: str) -> None:
+    def __init__(self, version: str, schema: Optional[str] = None) -> None:
+        """
+        :param str version: The version of the provider. Must be valid semver.
+        :param Optional[str] schema: The JSON-encoded schema for this provider's package.
+        """
         self.version = version
+        self.schema = schema
 
     def construct(self, name: str, resource_type: str, inputs: Inputs,
                   options: Optional[ResourceOptions] = None) -> ConstructResult:
         """Construct creates a new component resource.
 
-        :param name str: The name of the resource to create.
-        :param resource_type str: The type of the resource to create.
-        :param inputs Inputs: The inputs to the resource.
-        :param options Optional[ResourceOptions] The options for the resource.
+        :param str name: The name of the resource to create.
+        :param str resource_type: The type of the resource to create.
+        :param Inputs inputs: The inputs to the resource.
+        :param Optional[ResourceOptions] options: The options for the resource.
         """
 
         raise Exception("Subclass of Provider must implement 'construct'")

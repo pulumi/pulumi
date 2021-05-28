@@ -2,9 +2,13 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
 using Pulumi.Testing;
+using Serilog;
+using Serilog.Events;
 
 namespace Pulumi
 {
@@ -57,6 +61,18 @@ namespace Pulumi
             }
         }
 
+        internal static bool TryGetInternalInstance([NotNullWhen(true)] out IDeploymentInternal? instance)
+        {
+            if (_instance.Value != null)
+            {
+                instance = _instance.Value.Internal;
+                return true;
+            }
+
+            instance = null;
+            return false;
+        }
+
         internal static IDeploymentInternal InternalInstance
             => Instance.Internal;
 
@@ -69,6 +85,7 @@ namespace Pulumi
         private readonly bool _isDryRun;
         private readonly ConcurrentDictionary<string, bool> _featureSupport = new ConcurrentDictionary<string, bool>();
 
+        private Serilog.ILogger _serilogger = null!;
         private readonly ILogger _logger;
         private readonly IRunner _runner;
 
@@ -109,13 +126,15 @@ namespace Pulumi
             _stackName = stack;
             _projectName = project;
 
-            Serilog.Log.Debug("Creating Deployment Engine.");
-            this.Engine = new GrpcEngine(engine);
-            Serilog.Log.Debug("Created Deployment Engine.");
+            InitSerilogger();
 
-            Serilog.Log.Debug("Creating Deployment Monitor.");
+            _serilogger.Debug("Creating Deployment Engine.");
+            this.Engine = new GrpcEngine(engine);
+            _serilogger.Debug("Created Deployment Engine.");
+
+            _serilogger.Debug("Creating Deployment Monitor.");
             this.Monitor = new GrpcMonitor(monitor);
-            Serilog.Log.Debug("Created Deployment Monitor.");
+            _serilogger.Debug("Created Deployment Monitor.");
 
             _runner = new Runner(this);
             _logger = new Logger(this, this.Engine);
@@ -130,6 +149,7 @@ namespace Pulumi
         /// </summary>
         internal Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
+            InitSerilogger();
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
@@ -143,6 +163,7 @@ namespace Pulumi
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
 
+        Serilog.ILogger IDeploymentInternal.Serilogger => _serilogger;
         ILogger IDeploymentInternal.Logger => _logger;
         IRunner IDeploymentInternal.Runner => _runner;
 
@@ -150,6 +171,22 @@ namespace Pulumi
         {
             get => Stack;
             set => Stack = value;
+        }
+
+        private void InitSerilogger()
+        {
+            var verboseLogging = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE"));
+
+            var configRoot = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            _serilogger = new LoggerConfiguration()
+                .MinimumLevel.Is(verboseLogging ? LogEventLevel.Verbose : LogEventLevel.Fatal)
+                .ReadFrom.Configuration(configRoot)
+                .WriteTo.Console()
+                .CreateLogger()
+                .ForContext<Deployment>();
         }
 
         private async Task<bool> MonitorSupportsFeature(string feature)

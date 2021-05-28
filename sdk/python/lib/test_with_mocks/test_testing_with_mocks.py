@@ -15,6 +15,7 @@ import unittest
 import pulumi
 import grpc
 
+
 class GrpcError(grpc.RpcError):
     def __init__(self, code, details):
         self._code = code
@@ -25,6 +26,7 @@ class GrpcError(grpc.RpcError):
 
     def details(self):
         return self._details
+
 
 class MyMocks(pulumi.runtime.Mocks):
     def call(self, args: pulumi.runtime.MockCallArgs):
@@ -58,15 +60,20 @@ class MyMocks(pulumi.runtime.Mocks):
             return ['i-1234567890abcdef0', dict(args.inputs, **state)]
         elif args.typ == 'pkg:index:MyCustom':
             return [args.name + '_id', args.inputs]
+        elif args.typ == 'pulumi:pulumi:StackReference' and 'dns' in args.name:
+            return [args.name, {'outputs': {'haha': 'business'}}]
         else:
             return ['', {}]
+
 
 pulumi.runtime.set_mocks(MyMocks())
 
 # Now actually import the code that creates resources, and then test it.
 import resources
 
+
 class TestingWithMocks(unittest.TestCase):
+    @unittest.skip(reason="Skipping flaky test tracked in https://github.com/pulumi/pulumi/issues/6561")
     @pulumi.runtime.test
     def test_component(self):
         def check_outprop(outprop):
@@ -110,3 +117,8 @@ class TestingWithMocks(unittest.TestCase):
             caught = True
         self.assertTrue(caught)
 
+    @pulumi.runtime.test
+    def test_stack_reference(self):
+        def check_outputs(outputs):
+            self.assertEqual(outputs["haha"], "business")
+        resources.dns_ref.outputs.apply(check_outputs)

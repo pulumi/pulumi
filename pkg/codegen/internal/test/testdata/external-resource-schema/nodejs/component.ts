@@ -35,7 +35,7 @@ export class Component extends pulumi.CustomResource {
     }
 
     public /*out*/ readonly provider!: pulumi.Output<kubernetes.Provider | undefined>;
-    public /*out*/ readonly securityGroup!: pulumi.Output<aws.ec2.SecurityGroup | undefined>;
+    public /*out*/ readonly securityGroup!: pulumi.Output<aws.ec2.SecurityGroup>;
     public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: kubernetes.storage.v1.StorageClass} | undefined>;
 
     /**
@@ -45,11 +45,25 @@ export class Component extends pulumi.CustomResource {
      * @param args The arguments to use to populate this resource's properties.
      * @param opts A bag of options that control this resource's behavior.
      */
-    constructor(name: string, args?: ComponentArgs, opts?: pulumi.CustomResourceOptions) {
+    constructor(name: string, args: ComponentArgs, opts?: pulumi.CustomResourceOptions) {
         let inputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
+            if ((!args || args.requiredMetadata === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'requiredMetadata'");
+            }
+            if ((!args || args.requiredMetadataArray === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'requiredMetadataArray'");
+            }
+            if ((!args || args.requiredMetadataMap === undefined) && !opts.urn) {
+                throw new Error("Missing required property 'requiredMetadataMap'");
+            }
             inputs["metadata"] = args ? args.metadata : undefined;
+            inputs["metadataArray"] = args ? args.metadataArray : undefined;
+            inputs["metadataMap"] = args ? args.metadataMap : undefined;
+            inputs["requiredMetadata"] = args ? args.requiredMetadata : undefined;
+            inputs["requiredMetadataArray"] = args ? args.requiredMetadataArray : undefined;
+            inputs["requiredMetadataMap"] = args ? args.requiredMetadataMap : undefined;
             inputs["provider"] = undefined /*out*/;
             inputs["securityGroup"] = undefined /*out*/;
             inputs["storageClasses"] = undefined /*out*/;
@@ -69,5 +83,10 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    readonly metadata?: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    metadata?: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    metadataArray?: pulumi.Input<pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
+    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
+    requiredMetadata: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    requiredMetadataArray: pulumi.Input<pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
+    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
 }

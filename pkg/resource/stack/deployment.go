@@ -440,6 +440,18 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 		return nil, err
 	}
 
+	if res.URN == "" {
+		return nil, errors.Errorf("resource missing required 'urn' field")
+	}
+
+	if res.Type == "" {
+		return nil, errors.Errorf("resource '%s' missing required 'type' field", res.URN)
+	}
+
+	if !res.Custom && res.ID != "" {
+		return nil, errors.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
+	}
+
 	return resource.NewState(
 		res.Type, res.URN, res.Custom, res.Delete, res.ID,
 		inputs, outputs, res.Parent, res.Protect, res.External, res.Dependencies, res.InitErrors, res.Provider,

@@ -24,9 +24,10 @@ from typing import List, Any, Mapping, MutableMapping, Optional, Callable, Tuple
 import grpc
 
 from ._cmd import CommandResult, _run_pulumi_cmd, OnOutput
-from ._config import ConfigValue, ConfigMap, _SECRET_SENTINEL
+from ._config import ConfigValue, ConfigMap
 from .errors import StackAlreadyExistsError
 from .events import OpMap, EngineEvent, SummaryEvent
+from ._output import OutputMap
 from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
@@ -46,21 +47,6 @@ class StackInitMode(Enum):
     CREATE = "create"
     SELECT = "select"
     CREATE_OR_SELECT = "create_or_select"
-
-
-class OutputValue:
-    value: Any
-    secret: bool
-
-    def __init__(self, value: Any, secret: bool):
-        self.value = value
-        self.secret = secret
-
-    def __repr__(self):
-        return _SECRET_SENTINEL if self.secret else repr(self.value)
-
-
-OutputMap = MutableMapping[str, OutputValue]
 
 
 class UpdateSummary:
@@ -88,7 +74,8 @@ class UpdateSummary:
         self.version = version
         self.config: ConfigMap = {}
         for key in config:
-            self.config[key] = ConfigValue(**config[key])
+            config_value = config[key]
+            self.config[key] = ConfigValue(value=config_value["value"], secret=config_value["secret"])
 
     def __repr__(self):
         return f"UpdateSummary(result={self.result!r}, version={self.version!r}, " \
@@ -151,8 +138,7 @@ class Stack:
     def select(cls, stack_name: str, workspace: Workspace) -> 'Stack':
         """
         Selects stack using the given workspace, and stack name.
-        It returns an error if the given Stack does not exist. All LocalWorkspace operations will call `select` before
-        running.
+        It returns an error if the given Stack does not exist.
 
         :param stack_name: The name identifying the Stack
         :param workspace: The Workspace the Stack was created from.
@@ -242,7 +228,6 @@ class Stack:
         args = ["up", "--yes", "--skip-preview"]
         args.extend(extra_args)
 
-        self.workspace.select_stack(self.name)
         kind = ExecKind.LOCAL.value
         on_exit = None
 
@@ -318,7 +303,6 @@ class Stack:
         args = ["preview"]
         args.extend(extra_args)
 
-        self.workspace.select_stack(self.name)
         kind = ExecKind.LOCAL.value
         on_exit = None
 
@@ -395,8 +379,6 @@ class Stack:
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
         args.extend(["--exec-kind", kind])
 
-        self.workspace.select_stack(self.name)
-
         log_watcher_thread = None
         temp_dir = None
         if on_event:
@@ -441,8 +423,6 @@ class Stack:
 
         kind = ExecKind.INLINE.value if self.workspace.program else ExecKind.LOCAL.value
         args.extend(["--exec-kind", kind])
-
-        self.workspace.select_stack(self.name)
 
         log_watcher_thread = None
         temp_dir = None
@@ -521,17 +501,7 @@ class Stack:
 
         :returns: OutputMap
         """
-        self.workspace.select_stack(self.name)
-
-        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json"])
-        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets"])
-        masked_outputs = json.loads(masked_result.stdout)
-        plaintext_outputs = json.loads(plaintext_result.stdout)
-        outputs: OutputMap = {}
-        for key in plaintext_outputs:
-            secret = masked_outputs[key] == _SECRET_SENTINEL
-            outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
-        return outputs
+        return self.workspace.stack_outputs(self.name)
 
     def history(self,
                 page_size: Optional[int] = None,
@@ -587,7 +557,6 @@ class Stack:
         if a resource operation was pending when the update was canceled.
         This command is not supported for local backends.
         """
-        self.workspace.select_stack(self.name)
         self._run_pulumi_cmd_sync(["cancel", "--yes"])
 
     def export_stack(self) -> Deployment:
@@ -618,7 +587,7 @@ class Stack:
 
         additional_args = self.workspace.serialize_args_for_op(self.name)
         args.extend(additional_args)
-
+        args.extend(["--stack", self.name])
         result = _run_pulumi_cmd(args, self.workspace.work_dir, envs, on_output)
         self.workspace.post_command_callback(self.name)
         return result
@@ -674,12 +643,12 @@ def fully_qualified_stack_name(org: str, project: str, stack: str) -> str:
 
 
 def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
-    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")
+    log_dir = tempfile.TemporaryDirectory(prefix=f"automation-logs-{command}-")  # pylint: disable=consider-using-with
     filepath = os.path.join(log_dir.name, "eventlog.txt")
 
     # Open and close the file to ensure it exists before we start polling for logs
-    f = open(filepath, "w+")
-    f.close()
+    with open(filepath, "w+"):
+        pass
     return filepath, log_dir
 
 

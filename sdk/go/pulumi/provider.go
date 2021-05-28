@@ -66,7 +66,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		if inputDeps, ok := inputDependencies[k]; ok {
 			deps = make([]Resource, len(inputDeps.GetUrns()))
 			for i, depURN := range inputDeps.GetUrns() {
-				deps[i] = newDependencyResource(URN(depURN))
+				deps[i] = pulumiCtx.newDependencyResource(URN(depURN))
 			}
 		}
 
@@ -83,7 +83,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 	dependencies := make([]Resource, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
-		dependencies[i] = newDependencyResource(URN(urn))
+		dependencies[i] = pulumiCtx.newDependencyResource(URN(urn))
 	}
 	providers := make(map[string]ProviderResource, len(req.GetProviders()))
 	for pkg, ref := range req.GetProviders() {
@@ -94,11 +94,11 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		}
 		urn := ref[0:lastSep]
 		id := ref[lastSep+2:]
-		providers[pkg] = newDependencyProviderResource(URN(urn), ID(id))
+		providers[pkg] = pulumiCtx.newDependencyProviderResource(URN(urn), ID(id))
 	}
 	var parent Resource
 	if req.GetParent() != "" {
-		parent = newDependencyResource(URN(req.GetParent()))
+		parent = pulumiCtx.newDependencyResource(URN(req.GetParent()))
 	}
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
@@ -113,10 +113,9 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		return nil, err
 	}
 
-	// Ensure all outstanding RPCs have completed before proceeding. Also, prevent any new RPCs from happening.
-	pulumiCtx.waitForRPCs()
-	if pulumiCtx.rpcError != nil {
-		return nil, errors.Wrap(pulumiCtx.rpcError, "waiting for RPCs")
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
+		return nil, err
 	}
 
 	rpcURN, _, _, err := urn.ToURNOutput().awaitURN(ctx)
@@ -185,7 +184,7 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 			resultType = ot.(reflect.Type)
 		}
 
-		output := newOutput(resultType, ci.deps...)
+		output := ctx.newOutput(resultType, ci.deps...)
 		output.getState().resolve(value, true /*known*/, secret, nil)
 		result[k] = output
 	}
@@ -230,7 +229,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 						}
 					}
 				}
-				output := newOutput(resultType, ci.deps...)
+				output := ctx.newOutput(resultType, ci.deps...)
 				dest := reflect.New(output.ElementType()).Elem()
 				secret, err := unmarshalOutput(ctx, ci.value, dest)
 				if err != nil {

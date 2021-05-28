@@ -1,0 +1,3 @@
+name: config_secrets_go
+runtime: go
+description: A simple Go program that uses configuration secrets.

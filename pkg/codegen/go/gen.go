@@ -32,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -82,14 +83,15 @@ func tokenToPackage(pkg *schema.Package, overrides map[string]string, tok string
 }
 
 type pkgContext struct {
-	pkg            *schema.Package
-	mod            string
-	importBasePath string
-	typeDetails    map[schema.Type]*typeDetails
-	enums          []*schema.EnumType
-	types          []*schema.ObjectType
-	resources      []*schema.Resource
-	functions      []*schema.Function
+	pkg             *schema.Package
+	mod             string
+	importBasePath  string
+	rootPackageName string
+	typeDetails     map[schema.Type]*typeDetails
+	enums           []*schema.EnumType
+	types           []*schema.ObjectType
+	resources       []*schema.Resource
+	functions       []*schema.Function
 	// schemaNames tracks the names of types/resources as specified in the schema
 	schemaNames   codegen.StringSet
 	names         codegen.StringSet
@@ -219,22 +221,18 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
 		typ = "[]"
-		if pkg.isExternalReference(t.ElementType) {
-			typ += "*"
-		}
 		typ += pkg.plainType(t.ElementType, false)
 		return typ
 	case *schema.MapType:
 		typ = "map[string]"
-		if pkg.isExternalReference(t.ElementType) {
-			typ += "*"
-		}
 		typ += pkg.plainType(t.ElementType, false)
 		return typ
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
 		typ = pkg.resolveResourceType(t)
+		// Set optional to true because resources are pointers.
+		optional = true
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -912,8 +910,9 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
 			deref := ""
 			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
-			// to derference it.
-			if p.IsRequired && applyType[0] == '*' {
+			// to dereference it, unless it is a resource type which should remain a pointer.
+			_, isResourceType := p.Type.(*schema.ResourceType)
+			if p.IsRequired && applyType[0] == '*' && !isResourceType {
 				deref = "&"
 			}
 
@@ -1054,13 +1053,13 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\tpulumi.CustomResourceState\n\n")
 	}
 
-	var secretProps []string
+	var secretProps []*schema.Property
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type, !p.IsRequired), p.Name)
 
 		if p.Secret {
-			secretProps = append(secretProps, p.Name)
+			secretProps = append(secretProps, p)
 		}
 	}
 	fmt.Fprintf(w, "}\n\n")
@@ -1179,11 +1178,15 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
 	}
-	// Set any defined additionalSecretOutputs.
 	if len(secretProps) > 0 {
+		for _, p := range secretProps {
+			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type, false))
+			fmt.Fprintf(w, "\t}\n")
+		}
 		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
 		for _, sp := range secretProps {
-			fmt.Fprintf(w, "\t\t\t%q,\n", sp)
+			fmt.Fprintf(w, "\t\t\t%q,\n", sp.Name)
 		}
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
@@ -1699,7 +1702,10 @@ func (pkg *pkgContext) genHeader(w io.Writer, goImports []string, importsAndAlia
 
 	var pkgName string
 	if pkg.mod == "" {
-		pkgName = goPackage(pkg.pkg.Name)
+		pkgName = pkg.rootPackageName
+		if pkgName == "" {
+			pkgName = goPackage(pkg.pkg.Name)
+		}
 	} else {
 		pkgName = path.Base(pkg.mod)
 	}
@@ -1907,6 +1913,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				pkg:              pkg,
 				mod:              mod,
 				importBasePath:   goInfo.ImportBasePath,
+				rootPackageName:  goInfo.RootPackageName,
 				typeDetails:      map[schema.Type]*typeDetails{},
 				names:            codegen.NewStringSet(),
 				schemaNames:      codegen.NewStringSet(),
@@ -2137,9 +2144,16 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 	}
 	sort.Strings(pkgMods)
 
+	name := goPkgInfo.RootPackageName
+	if name == "" {
+		name = goPackage(pkg.Name)
+	}
+
 	files := map[string][]byte{}
 	setFile := func(relPath, contents string) {
-		relPath = path.Join(goPackage(pkg.Name), relPath)
+		if goPkgInfo.RootPackageName == "" {
+			relPath = path.Join(goPackage(name), relPath)
+		}
 		if _, ok := files[relPath]; ok {
 			panic(errors.Errorf("duplicate file: %s", relPath))
 		}
@@ -2154,7 +2168,6 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 		files[relPath] = formattedSource
 	}
 
-	name := goPackage(pkg.Name)
 	for _, mod := range pkgMods {
 		pkg := packages[mod]
 
@@ -2281,7 +2294,12 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 			}
 			pkg.genHeader(buffer, []string{"fmt", "os", "reflect", "regexp", "strconv", "strings"}, importsAndAliases)
 
-			_, err := fmt.Fprintf(buffer, utilitiesFile, pkg.pkg.Name)
+			packageRegex := fmt.Sprintf("^.*/pulumi-%s/sdk(/v\\d+)?", pkg.pkg.Name)
+			if pkg.rootPackageName != "" {
+				packageRegex = fmt.Sprintf("^%s(/v\\d+)?", pkg.importBasePath)
+			}
+
+			_, err := fmt.Fprintf(buffer, utilitiesFile, packageRegex)
 			if err != nil {
 				return nil, err
 			}
@@ -2357,7 +2375,7 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 func PkgVersion() (semver.Version, error) {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
-	re := regexp.MustCompile("^.*/pulumi-%s/sdk(/v\\d+)?")
+	re := regexp.MustCompile(%q)
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.

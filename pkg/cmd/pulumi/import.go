@@ -262,6 +262,7 @@ func newImportCmd() *cobra.Command {
 	var message string
 	var stack string
 	var execKind string
+	var execAgent string
 
 	// Flags for engine.UpdateOptions.
 	var diffDisplay bool
@@ -432,12 +433,12 @@ func newImportCmd() *cobra.Command {
 			}
 
 			// Fetch the current stack.
-			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
+			s, err := requireStack(stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
@@ -576,10 +577,13 @@ func newImportCmd() *cobra.Command {
 			"Log events to a file at this path")
 	}
 
-	// internal flag
+	// internal flags
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
 }

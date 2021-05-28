@@ -131,8 +131,10 @@ type NestedMapArgs struct {
 }
 
 func TestConstructInputsCopyTo(t *testing.T) {
+	var ctx Context
+
 	bar := "bar"
-	dep := newDependencyResource(URN(resource.NewURN("stack", "project", "", "test:index:custom", "test")))
+	dep := ctx.newDependencyResource(URN(resource.NewURN("stack", "project", "", "test:index:custom", "test")))
 	tests := []struct {
 		input          resource.PropertyValue
 		deps           []Resource
@@ -372,6 +374,8 @@ func TestConstructInputsCopyTo(t *testing.T) {
 }
 
 func TestConstructInputsCopyToError(t *testing.T) {
+	var ctx Context
+
 	tests := []struct {
 		input         resource.PropertyValue
 		deps          []Resource
@@ -406,7 +410,7 @@ func TestConstructInputsCopyToError(t *testing.T) {
 				"bar": 42,
 			})),
 			deps: []Resource{
-				newDependencyResource(URN(resource.NewURN("stack", "project", "", "test:index:custom", "test"))),
+				ctx.newDependencyResource(URN(resource.NewURN("stack", "project", "", "test:index:custom", "test"))),
 			},
 			args: &NestedArgs{},
 			expectedError: "pulumi.NestedArgs.Value is typed as pulumi.Nested but must be typed as Input or " +

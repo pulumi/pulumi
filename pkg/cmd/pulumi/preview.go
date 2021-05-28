@@ -31,6 +31,7 @@ func newPreviewCmd() *cobra.Command {
 	var expectNop bool
 	var message string
 	var execKind string
+	var execAgent string
 	var stack string
 	var configArray []string
 	var configPath bool
@@ -114,7 +115,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			s, err := requireStack(stack, true, displayOpts, true /*setCurrent*/)
+			s, err := requireStack(stack, true, displayOpts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -129,7 +130,7 @@ func newPreviewCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root, execKind)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
@@ -285,10 +286,13 @@ func newPreviewCmd() *cobra.Command {
 			"Log events to a file at this path")
 	}
 
-	// internal flag
+	// internal flags
 	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
 
 	return cmd
 }

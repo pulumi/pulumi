@@ -20,16 +20,19 @@ from typing import Optional, List, Mapping, Callable
 from semver import VersionInfo
 import yaml
 
-from ._config import ConfigMap, ConfigValue
+from ._config import ConfigMap, ConfigValue, _SECRET_SENTINEL
 from ._project_settings import ProjectSettings
 from ._stack_settings import StackSettings
 from ._workspace import Workspace, PluginInfo, StackSummary, WhoAmIResult, PulumiFn, Deployment
 from ._stack import _DATETIME_FORMAT, Stack
+from ._output import OutputMap, OutputValue
 from ._cmd import _run_pulumi_cmd, CommandResult, OnOutput
 from ._minimum_version import _MINIMUM_VERSION
 from .errors import InvalidVersionError
 
 _setting_extensions = [".yaml", ".yml", ".json"]
+
+_SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
 
 
 class LocalWorkspaceOptions:
@@ -85,7 +88,10 @@ class LocalWorkspace(Workspace):
         self.work_dir = work_dir or tempfile.mkdtemp(dir=tempfile.gettempdir(), prefix="automation-")
 
         pulumi_version = self._get_pulumi_version()
-        _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version)
+        opt_out = os.getenv(_SKIP_VERSION_CHECK_VAR) is not None
+        if env_vars:
+            opt_out = opt_out or env_vars.get(_SKIP_VERSION_CHECK_VAR) is not None
+        _validate_pulumi_version(_MINIMUM_VERSION, pulumi_version, opt_out)
         self.pulumi_version = str(pulumi_version)
 
         if project_settings:
@@ -152,14 +158,12 @@ class LocalWorkspace(Workspace):
         return
 
     def get_config(self, stack_name: str, key: str) -> ConfigValue:
-        self.select_stack(stack_name)
-        result = self._run_pulumi_cmd_sync(["config", "get", key, "--json"])
+        result = self._run_pulumi_cmd_sync(["config", "get", key, "--json", "--stack", stack_name])
         val = json.loads(result.stdout)
         return ConfigValue(value=val["value"], secret=val["secret"])
 
     def get_all_config(self, stack_name: str) -> ConfigMap:
-        self.select_stack(stack_name)
-        result = self._run_pulumi_cmd_sync(["config", "--show-secrets", "--json"])
+        result = self._run_pulumi_cmd_sync(["config", "--show-secrets", "--json", "--stack", stack_name])
         config_json = json.loads(result.stdout)
         config_map: ConfigMap = {}
         for key in config_json:
@@ -168,9 +172,8 @@ class LocalWorkspace(Workspace):
         return config_map
 
     def set_config(self, stack_name: str, key: str, value: ConfigValue) -> None:
-        self.select_stack(stack_name)
         secret_arg = "--secret" if value.secret else "--plaintext"
-        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg])
+        self._run_pulumi_cmd_sync(["config", "set", key, value.value, secret_arg, "--stack", stack_name])
 
     def set_all_config(self, stack_name: str, config: ConfigMap) -> None:
         args = ["config", "set-all", "--stack", stack_name]
@@ -182,8 +185,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def remove_config(self, stack_name: str, key: str) -> None:
-        self.select_stack(stack_name)
-        self._run_pulumi_cmd_sync(["config", "rm", key])
+        self._run_pulumi_cmd_sync(["config", "rm", key, "--stack", stack_name])
 
     def remove_all_config(self, stack_name: str, keys: List[str]) -> None:
         args = ["config", "rm-all", "--stack", stack_name]
@@ -191,8 +193,7 @@ class LocalWorkspace(Workspace):
         self._run_pulumi_cmd_sync(args)
 
     def refresh_config(self, stack_name: str) -> None:
-        self.select_stack(stack_name)
-        self._run_pulumi_cmd_sync(["config", "refresh", "--force"])
+        self._run_pulumi_cmd_sync(["config", "refresh", "--force", "--stack", stack_name])
         self.get_all_config(stack_name)
 
     def who_am_i(self) -> WhoAmIResult:
@@ -265,18 +266,26 @@ class LocalWorkspace(Workspace):
         return plugin_list
 
     def export_stack(self, stack_name: str) -> Deployment:
-        self.select_stack(stack_name)
-        result = self._run_pulumi_cmd_sync(["stack", "export", "--show-secrets"])
+        result = self._run_pulumi_cmd_sync(["stack", "export", "--show-secrets", "--stack", stack_name])
         state_json = json.loads(result.stdout)
         return Deployment(**state_json)
 
     def import_stack(self, stack_name: str, state: Deployment) -> None:
-        self.select_stack(stack_name)
-        file = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        json.dump(state.__dict__, file, indent=4)
-        file.close()
-        self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name])
+        with tempfile.NamedTemporaryFile(mode="w", delete=False) as file:
+            json.dump(state.__dict__, file, indent=4)
+        self._run_pulumi_cmd_sync(["stack", "import", "--file", file.name, "--stack", stack_name])
         os.remove(file.name)
+
+    def stack_outputs(self, stack_name: str) -> OutputMap:
+        masked_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--stack", stack_name])
+        plaintext_result = self._run_pulumi_cmd_sync(["stack", "output", "--json", "--show-secrets", "--stack", stack_name])
+        masked_outputs = json.loads(masked_result.stdout)
+        plaintext_outputs = json.loads(plaintext_result.stdout)
+        outputs: OutputMap = {}
+        for key in plaintext_outputs:
+            secret = masked_outputs[key] == _SECRET_SENTINEL
+            outputs[key] = OutputValue(value=plaintext_outputs[key], secret=secret)
+        return outputs
 
     def _get_pulumi_version(self) -> VersionInfo:
         result = self._run_pulumi_cmd_sync(["version"])
@@ -464,7 +473,9 @@ def get_stack_settings_name(name: str) -> str:
     return parts[-1]
 
 
-def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo):
+def _validate_pulumi_version(min_version: VersionInfo, current_version: VersionInfo, opt_out: bool):
+    if opt_out:
+        return
     if min_version.major < current_version.major:
         raise InvalidVersionError(f"Major version mismatch. You are using Pulumi CLI version {current_version} with "
                                   f"Automation SDK v{min_version.major}. Please update the SDK.")

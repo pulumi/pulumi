@@ -46,30 +46,29 @@ def _run_pulumi_cmd(args: List[str],
     cmd = ["pulumi"]
     cmd.extend(args)
 
-    stderr_file = tempfile.TemporaryFile()
     stdout_chunks: List[str] = []
 
-    with subprocess.Popen(cmd,
-                          stdout=subprocess.PIPE,
-                          stderr=stderr_file,
-                          cwd=cwd,
-                          env=env) as process:
-        assert process.stdout is not None
-        while True:
-            output = process.stdout.readline().decode(encoding="utf-8")
-            if output == "" and process.poll() is not None:
-                break
-            if output:
-                text = output.strip()
-                if on_output:
-                    on_output(text)
-                stdout_chunks.append(text)
+    with tempfile.TemporaryFile() as stderr_file:
+        with subprocess.Popen(cmd,
+                              stdout=subprocess.PIPE,
+                              stderr=stderr_file,
+                              cwd=cwd,
+                              env=env) as process:
+            assert process.stdout is not None
+            while True:
+                output = process.stdout.readline().decode(encoding="utf-8")
+                if output == "" and process.poll() is not None:
+                    break
+                if output:
+                    text = output.strip()
+                    if on_output:
+                        on_output(text)
+                    stdout_chunks.append(text)
 
-        code = process.returncode
+            code = process.returncode
 
-    stderr_file.seek(0)
-    stderr_contents = stderr_file.read().decode("utf-8")
-    stderr_file.close()
+        stderr_file.seek(0)
+        stderr_contents = stderr_file.read().decode("utf-8")
 
     result = CommandResult(stderr=stderr_contents, stdout='\n'.join(stdout_chunks), code=code)
     if code != 0:

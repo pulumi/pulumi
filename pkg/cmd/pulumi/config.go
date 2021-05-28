@@ -390,7 +390,7 @@ func newConfigRefreshCmd(stack *string) *cobra.Command {
 			}
 
 			// Ensure the stack exists.
-			s, err := requireStack(*stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(*stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

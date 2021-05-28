@@ -77,9 +77,9 @@ This command displays data about previous updates for a stack.`,
 	cmd.PersistentFlags().BoolVar(
 		&showFullDates, "full-dates", false, "Show full dates, instead of relative dates")
 	cmd.PersistentFlags().IntVar(
-		&pageSize, "page-size", 0, "Used with 'page' to control number of results returned")
+		&pageSize, "page-size", 10, "Used with 'page' to control number of results returned")
 	cmd.PersistentFlags().IntVar(
-		&page, "page", 0, "Used with 'page-size' to paginate results")
+		&page, "page", 1, "Used with 'page-size' to paginate results")
 	return cmd
 }
 

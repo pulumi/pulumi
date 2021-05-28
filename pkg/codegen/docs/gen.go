@@ -122,6 +122,9 @@ var (
 		"wavefront":     "Wavefront",
 		"equinix-metal": "Equinix Metal",
 		"splunk":        "Splunk",
+		"yandex":        "Yandex",
+		"rke":           "Rancher RKE",
+		"sumologic":     "SumoLogic",
 	}
 	// Property anchor tag separator, used in a property anchor tag id to separate the
 	// property and language (e.g. property~lang).

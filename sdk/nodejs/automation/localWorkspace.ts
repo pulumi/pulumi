@@ -22,9 +22,11 @@ import { CommandResult, runPulumiCmd } from "./cmd";
 import { ConfigMap, ConfigValue } from "./config";
 import { minimumVersion } from "./minimumVersion";
 import { ProjectSettings } from "./projectSettings";
-import { Stack } from "./stack";
+import { OutputMap, Stack } from "./stack";
 import { StackSettings, stackSettingsSerDeKeys } from "./stackSettings";
 import { Deployment, PluginInfo, PulumiFn, StackSummary, WhoAmIResult, Workspace } from "./workspace";
+
+const SKIP_VERSION_CHECK_VAR = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
 
 /**
  * LocalWorkspace is a default implementation of the Workspace interface.
@@ -379,8 +381,7 @@ export class LocalWorkspace implements Workspace {
      * @param key The key to use for the config lookup
      */
     async getConfig(stackName: string, key: string): Promise<ConfigValue> {
-        await this.selectStack(stackName);
-        const result = await this.runPulumiCmd(["config", "get", key, "--json"]);
+        const result = await this.runPulumiCmd(["config", "get", key, "--json", "--stack", stackName]);
         return JSON.parse(result.stdout);
     }
     /**
@@ -390,8 +391,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to read config from
      */
     async getAllConfig(stackName: string): Promise<ConfigMap> {
-        await this.selectStack(stackName);
-        const result = await this.runPulumiCmd(["config", "--show-secrets", "--json"]);
+        const result = await this.runPulumiCmd(["config", "--show-secrets", "--json", "--stack", stackName]);
         return JSON.parse(result.stdout);
     }
     /**
@@ -403,9 +403,8 @@ export class LocalWorkspace implements Workspace {
      * @param value The value to set
      */
     async setConfig(stackName: string, key: string, value: ConfigValue): Promise<void> {
-        await this.selectStack(stackName);
         const secretArg = value.secret ? "--secret" : "--plaintext";
-        await this.runPulumiCmd(["config", "set", key, value.value, secretArg]);
+        await this.runPulumiCmd(["config", "set", key, value.value, secretArg, "--stack", stackName]);
     }
     /**
      * Sets all values in the provided config map for the specified stack name.
@@ -431,8 +430,7 @@ export class LocalWorkspace implements Workspace {
      * @param key The config key to remove
      */
     async removeConfig(stackName: string, key: string): Promise<void> {
-        await this.selectStack(stackName);
-        await this.runPulumiCmd(["config", "rm", key]);
+        await this.runPulumiCmd(["config", "rm", key, "--stack", stackName]);
     }
     /**
      *
@@ -452,8 +450,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName The stack to refresh
      */
     async refreshConfig(stackName: string): Promise<ConfigMap> {
-        await this.selectStack(stackName);
-        await this.runPulumiCmd(["config", "refresh", "--force"]);
+        await this.runPulumiCmd(["config", "refresh", "--force", "--stack", stackName]);
         return this.getAllConfig(stackName);
     }
     /**
@@ -531,8 +528,7 @@ export class LocalWorkspace implements Workspace {
      * @param stackName the name of the stack.
      */
     async exportStack(stackName: string): Promise<Deployment> {
-        await this.selectStack(stackName);
-        const result = await this.runPulumiCmd(["stack", "export", "--show-secrets"]);
+        const result = await this.runPulumiCmd(["stack", "export", "--show-secrets", "--stack", stackName]);
         return JSON.parse(result.stdout);
     }
     /**
@@ -543,14 +539,33 @@ export class LocalWorkspace implements Workspace {
      * @param state the stack state to import.
      */
     async importStack(stackName: string, state: Deployment): Promise<void> {
-        await this.selectStack(stackName);
         const randomSuffix = Math.floor(100000 + Math.random() * 900000);
         const filepath = upath.joinSafe(os.tmpdir(), `automation-${randomSuffix}`);
         const contents = JSON.stringify(state, null, 4);
         fs.writeFileSync(filepath, contents);
-        await this.runPulumiCmd(["stack", "import", "--file", filepath]);
+        await this.runPulumiCmd(["stack", "import", "--file", filepath, "--stack", stackName]);
         fs.unlinkSync(filepath);
     }
+    /**
+     * Gets the current set of Stack outputs from the last Stack.up().
+     * @param stackName the name of the stack.
+     */
+    async stackOutputs(stackName: string): Promise<OutputMap> {
+        // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
+        const maskedResult = await this.runPulumiCmd(["stack", "output", "--json", "--stack", stackName]);
+        const plaintextResult = await this.runPulumiCmd(["stack", "output", "--json", "--show-secrets", "--stack", stackName]);
+        const maskedOuts = JSON.parse(maskedResult.stdout);
+        const plaintextOuts = JSON.parse(plaintextResult.stdout);
+        const outputs: OutputMap = {};
+
+        for (const [key, value] of Object.entries(plaintextOuts)) {
+            const secret = maskedOuts[key] === "[secret]";
+            outputs[key] = { value, secret };
+        }
+
+        return outputs;
+    }
+
     /**
      * serializeArgsForOp is hook to provide additional args to every CLI commands before they are executed.
      * Provided with stack name,
@@ -573,7 +588,8 @@ export class LocalWorkspace implements Workspace {
     private async getPulumiVersion(minVersion: semver.SemVer) {
         const result = await this.runPulumiCmd(["version"]);
         const version = new semver.SemVer(result.stdout.trim());
-        validatePulumiVersion(minVersion, version);
+        const optOut = !!this.envVars[SKIP_VERSION_CHECK_VAR] || !!process.env[SKIP_VERSION_CHECK_VAR];
+        validatePulumiVersion(minVersion, version, optOut);
         this._pulumiVersion = version;
     }
     private async runPulumiCmd(
@@ -702,7 +718,10 @@ function loadProjectSettings(workDir: string) {
 }
 
 /** @internal */
-export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer) {
+export function validatePulumiVersion(minVersion: semver.SemVer, currentVersion: semver.SemVer, optOut: boolean) {
+    if (optOut) {
+        return;
+    }
     if (minVersion.major < currentVersion.major) {
         throw new Error(`Major version mismatch. You are using Pulumi CLI version ${currentVersion.toString()} with Automation SDK v${minVersion.major}. Please update the SDK.`);
     }

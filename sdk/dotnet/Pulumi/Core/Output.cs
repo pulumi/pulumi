@@ -138,8 +138,14 @@ namespace Pulumi
     {
         internal Task<OutputData<T>> DataTask { get; private set; }
 
-        internal Output(Task<OutputData<T>> dataTask)
-            => DataTask = dataTask;
+        internal Output(Task<OutputData<T>> dataTask) {
+            this.DataTask = dataTask;
+
+            if (Deployment.TryGetInternalInstance(out var instance))
+            {
+                instance.Runner.RegisterTask("Output<>", dataTask);
+            }
+        }
 
         internal async Task<T> GetValueAsync()
         {

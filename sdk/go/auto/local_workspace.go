@@ -53,6 +53,8 @@ type LocalWorkspace struct {
 
 var settingsExtensions = []string{".yaml", ".yml", ".json"}
 
+var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK"
+
 // ProjectSettings returns the settings object for the current project if any
 // LocalWorkspace reads settings from the Pulumi.yaml in the workspace.
 // A workspace can contain only a single project at a time.
@@ -73,7 +75,7 @@ func (l *LocalWorkspace) SaveProjectSettings(ctx context.Context, settings *work
 func (l *LocalWorkspace) StackSettings(ctx context.Context, stackName string) (*workspace.ProjectStack, error) {
 	name := getStackSettingsName(stackName)
 	for _, ext := range settingsExtensions {
-		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi.%s%s", name, ext))
+		stackPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s%s", name, ext))
 		if _, err := os.Stat(stackPath); err != nil {
 			proj, err := workspace.LoadProjectStack(stackPath)
 			if err != nil {
@@ -93,7 +95,7 @@ func (l *LocalWorkspace) SaveStackSettings(
 	settings *workspace.ProjectStack,
 ) error {
 	name := getStackSettingsName(stackName)
-	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("pulumi.%s.yaml:", name))
+	stackYamlPath := filepath.Join(l.WorkDir(), fmt.Sprintf("Pulumi.%s.yaml", name))
 	err := settings.Save(stackYamlPath)
 	if err != nil {
 		return errors.Wrapf(err, "failed to save stack setttings for %s", stackName)
@@ -122,11 +124,7 @@ func (l *LocalWorkspace) PostCommandCallback(ctx context.Context, stackName stri
 // scoped to the current workspace. LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetConfig(ctx context.Context, stackName string, key string) (ConfigValue, error) {
 	var val ConfigValue
-	err := l.SelectStack(ctx, stackName)
-	if err != nil {
-		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", stackName)
-	}
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--json")
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "get", key, "--json", "--stack", stackName)
 	if err != nil {
 		return val, newAutoError(errors.Wrap(err, "unable to read config"), stdout, stderr, errCode)
 	}
@@ -141,13 +139,9 @@ func (l *LocalWorkspace) GetConfig(ctx context.Context, stackName string, key st
 // LocalWorkspace reads this config from the matching Pulumi.stack.yaml file.
 func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (ConfigMap, error) {
 	var val ConfigMap
-	err := l.SelectStack(ctx, stackName)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json", "--stack", stackName)
 	if err != nil {
-		return val, errors.Wrapf(err, "could not get config, unable to select stack %s", stackName)
-	}
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "--show-secrets", "--json")
-	if err != nil {
-		return val, newAutoError(errors.Wrap(err, "unable read config"), stdout, stderr, errCode)
+		return val, newAutoError(errors.Wrap(err, "unable to read config"), stdout, stderr, errCode)
 	}
 	err = json.Unmarshal([]byte(stdout), &val)
 	if err != nil {
@@ -159,19 +153,15 @@ func (l *LocalWorkspace) GetAllConfig(ctx context.Context, stackName string) (Co
 // SetConfig sets the specified key-value pair on the provided stack name.
 // LocalWorkspace writes this value to the matching Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) SetConfig(ctx context.Context, stackName string, key string, val ConfigValue) error {
-	err := l.SelectStack(ctx, stackName)
-	if err != nil {
-		return errors.Wrapf(err, "could not set config, unable to select stack %s", stackName)
-	}
-
 	secretArg := "--plaintext"
 	if val.Secret {
 		secretArg = "--secret"
 	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "set", key, val.Value, secretArg)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx,
+		"config", "set", key, val.Value, secretArg, "--stack", stackName)
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "unable set config"), stdout, stderr, errCode)
+		return newAutoError(errors.Wrap(err, "unable to set config"), stdout, stderr, errCode)
 	}
 	return nil
 }
@@ -199,12 +189,7 @@ func (l *LocalWorkspace) SetAllConfig(ctx context.Context, stackName string, con
 // RemoveConfig removes the specified key-value pair on the provided stack name.
 // It will remove any matching values in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RemoveConfig(ctx context.Context, stackName string, key string) error {
-	err := l.SelectStack(ctx, stackName)
-	if err != nil {
-		return errors.Wrapf(err, "could not remove config, unable to select stack %s", stackName)
-	}
-
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "rm", key)
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "rm", key, "--stack", stackName)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "could not remove config"), stdout, stderr, errCode)
 	}
@@ -226,12 +211,7 @@ func (l *LocalWorkspace) RemoveAllConfig(ctx context.Context, stackName string, 
 // RefreshConfig gets and sets the config map used with the last Update for Stack matching stack name.
 // It will overwrite all configuration in the Pulumi.<stack>.yaml file in Workspace.WorkDir().
 func (l *LocalWorkspace) RefreshConfig(ctx context.Context, stackName string) (ConfigMap, error) {
-	err := l.SelectStack(ctx, stackName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not refresh config, unable to select stack %s", stackName)
-	}
-
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "refresh", "--force")
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "config", "refresh", "--force", "--stack", stackName)
 	if err != nil {
 		return nil, newAutoError(errors.Wrap(err, "could not refresh config"), stdout, stderr, errCode)
 	}
@@ -425,12 +405,8 @@ func (l *LocalWorkspace) SetProgram(fn pulumi.RunFunc) {
 // This can be combined with ImportStack to edit a stack's state (such as recovery from failed deployments).
 func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (apitype.UntypedDeployment, error) {
 	var state apitype.UntypedDeployment
-	err := l.SelectStack(ctx, stackName)
-	if err != nil {
-		return state, errors.Wrapf(err, "could not export stack, unable to select stack %s.", stackName)
-	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets")
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "export", "--show-secrets", "--stack", stackName)
 	if err != nil {
 		return state, newAutoError(errors.Wrap(err, "could not export stack."), stdout, stderr, errCode)
 	}
@@ -448,11 +424,6 @@ func (l *LocalWorkspace) ExportStack(ctx context.Context, stackName string) (api
 // ImportStack imports the specified deployment state into a pre-existing stack.
 // This can be combined with ExportStack to edit a stack's state (such as recovery from failed deployments).
 func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, state apitype.UntypedDeployment) error {
-	err := l.SelectStack(ctx, stackName)
-	if err != nil {
-		return errors.Wrapf(err, "could not import stack, failed to select stack %s.", stackName)
-	}
-
 	f, err := ioutil.TempFile(os.TempDir(), "")
 	if err != nil {
 		return errors.Wrap(err, "could not import stack. failed to allocate temp file.")
@@ -469,12 +440,51 @@ func (l *LocalWorkspace) ImportStack(ctx context.Context, stackName string, stat
 		return errors.Wrap(err, "could not import stack. failed to write out stack intermediate.")
 	}
 
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "import", "--file", f.Name())
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "import", "--file", f.Name(), "--stack", stackName)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "could not import stack."), stdout, stderr, errCode)
 	}
 
 	return nil
+}
+
+// Outputs get the current set of Stack outputs from the last Stack.Up().
+func (l *LocalWorkspace) StackOutputs(ctx context.Context, stackName string) (OutputMap, error) {
+	// standard outputs
+	outStdout, outStderr, code, err := l.runPulumiCmdSync(ctx, "stack", "output", "--json", "--stack", stackName)
+	if err != nil {
+		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
+	}
+
+	// secret outputs
+	secretStdout, secretStderr, code, err := l.runPulumiCmdSync(ctx,
+		"stack", "output", "--json", "--show-secrets", "--stack", stackName,
+	)
+	if err != nil {
+		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
+	}
+
+	var outputs map[string]interface{}
+	var secrets map[string]interface{}
+
+	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
+	}
+
+	if err = json.Unmarshal([]byte(secretStdout), &secrets); err != nil {
+		return nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr)
+	}
+
+	res := make(OutputMap)
+	for k, v := range secrets {
+		isSecret := outputs[k] == secretSentinel
+		res[k] = OutputValue{
+			Value:  v,
+			Secret: isSecret,
+		}
+	}
+
+	return res, nil
 }
 
 func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, error) {
@@ -490,7 +500,10 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, 
 }
 
 //nolint:lll
-func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version) error {
+func validatePulumiVersion(minVersion semver.Version, currentVersion semver.Version, optOut bool) error {
+	if optOut {
+		return nil
+	}
 	if minVersion.Major < currentVersion.Major {
 		return errors.New(fmt.Sprintf("Major version mismatch. You are using Pulumi CLI version %s with Automation SDK v%v. Please update the SDK.", currentVersion, minVersion.Major))
 	}
@@ -565,8 +578,12 @@ func NewLocalWorkspace(ctx context.Context, opts ...LocalWorkspaceOption) (Works
 		return nil, errors.Wrap(err, "failed to create workspace, unable to get pulumi version")
 	}
 	l.pulumiVersion = v
+	optOut := os.Getenv(skipVersionCheckVar) != ""
+	if val, ok := lwOpts.EnvVars[skipVersionCheckVar]; ok {
+		optOut = optOut || val != ""
+	}
 
-	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion); err != nil {
+	if err = validatePulumiVersion(minimumVersion, l.pulumiVersion, optOut); err != nil {
 		return nil, err
 	}
 

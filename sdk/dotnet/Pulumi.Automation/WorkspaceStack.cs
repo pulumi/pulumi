@@ -19,6 +19,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -208,7 +209,6 @@ namespace Pulumi.Automation
             UpOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
             var args = new List<string>()
@@ -311,7 +311,6 @@ namespace Pulumi.Automation
             PreviewOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
             var args = new List<string>() { "preview" };
@@ -424,7 +423,6 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var args = new List<string>()
             {
                 "refresh",
@@ -480,7 +478,6 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            await this.Workspace.SelectStackAsync(this.Name, cancellationToken).ConfigureAwait(false);
             var args = new List<string>()
             {
                 "destroy",
@@ -530,32 +527,8 @@ namespace Pulumi.Automation
         /// <summary>
         /// Gets the current set of Stack outputs from the last <see cref="UpAsync(UpOptions?, CancellationToken)"/>.
         /// </summary>
-        public async Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
-        {
-            await this.Workspace.SelectStackAsync(this.Name).ConfigureAwait(false);
-
-            // TODO: do this in parallel after this is fixed https://github.com/pulumi/pulumi/issues/6050
-            var maskedResult = await this.RunCommandAsync(new[] { "stack", "output", "--json" }, null, null, null, cancellationToken).ConfigureAwait(false);
-            var plaintextResult = await this.RunCommandAsync(new[] { "stack", "output", "--json", "--show-secrets" }, null, null, null, cancellationToken).ConfigureAwait(false);
-            var jsonOptions = LocalSerializer.BuildJsonSerializerOptions();
-
-            var maskedOutput = string.IsNullOrWhiteSpace(maskedResult.StandardOutput)
-                ? new Dictionary<string, object>()
-                : JsonSerializer.Deserialize<Dictionary<string, object>>(maskedResult.StandardOutput, jsonOptions);
-
-            var plaintextOutput = string.IsNullOrWhiteSpace(plaintextResult.StandardOutput)
-                ? new Dictionary<string, object>()
-                : JsonSerializer.Deserialize<Dictionary<string, object>>(plaintextResult.StandardOutput, jsonOptions);
-
-            var output = new Dictionary<string, OutputValue>();
-            foreach (var (key, value) in plaintextOutput)
-            {
-                var secret = maskedOutput[key] is string maskedValue && maskedValue == "[secret]";
-                output[key] = new OutputValue(value, secret);
-            }
-
-            return output.ToImmutableDictionary();
-        }
+        public Task<ImmutableDictionary<string, OutputValue>> GetOutputsAsync(CancellationToken cancellationToken = default)
+            => this.Workspace.GetStackOutputsAsync(this.Name, cancellationToken);
 
         /// <summary>
         /// Returns a list summarizing all previews and current results from Stack lifecycle operations (up/preview/refresh/destroy).
@@ -642,13 +615,17 @@ namespace Pulumi.Automation
                 .ConfigureAwait(false);
         }
 
-        private Task<CommandResult> RunCommandAsync(
+        private async Task<CommandResult> RunCommandAsync(
             IEnumerable<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
-            => this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
+        {
+            var argsList = args.ToList();
+            argsList.AddRange(new List<string>() { "--stack", this.Name });
+            return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
+        }
 
         public void Dispose()
             => this.Workspace.Dispose();
@@ -689,10 +666,19 @@ namespace Pulumi.Automation
                                     listenOptions.Protocols = HttpProtocols.Http2;
                                 });
                             })
+                            .ConfigureAppConfiguration((context, config) =>
+                            {
+                                // clear so we don't read appsettings.json
+                                // note that we also won't read environment variables for config
+                                config.Sources.Clear();
+                            })
+                            .ConfigureLogging(loggingBuilder =>
+                            {
+                                // disable default logging
+                                loggingBuilder.ClearProviders();
+                            })
                             .ConfigureServices(services =>
                             {
-                                services.AddLogging();
-
                                 // to be injected into LanguageRuntimeService
                                 var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
                                 services.AddSingleton(callerContext);

@@ -16,8 +16,7 @@
 // without the CLI.
 // Generally this can be thought of as encapsulating the functionality of the CLI (`pulumi up`, `pulumi preview`,
 // pulumi destroy`, `pulumi stack init`, etc.) but with more flexibility. This still requires a
-// CLI binary to be installed and available on your $PATH. The Automation API is in Alpha (experimental package/x)
-// breaking changes (mostly additive) will be made. You can pin to a specific commit version if you need stability.
+// CLI binary to be installed and available on your $PATH.
 //
 // In addition to fine-grained building blocks, Automation API provides three out of the box ways to work with Stacks:
 //
@@ -157,8 +156,7 @@ func NewStack(ctx context.Context, stackName string, ws Workspace) (Stack, error
 }
 
 // SelectStack selects stack using the given workspace, and stack name.
-// It returns an error if the given Stack does not exist. All LocalWorkspace operations will call SelectStack()
-// before running.
+// It returns an error if the given Stack does not exist.
 func SelectStack(ctx context.Context, stackName string, ws Workspace) (Stack, error) {
 	var s Stack
 	s = Stack{
@@ -211,11 +209,6 @@ func (s *Stack) Workspace() Workspace {
 func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
 	var res PreviewResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to run preview")
-	}
-
 	preOpts := &optpreview.Options{}
 	for _, o := range opts {
 		o.ApplyOption(preOpts)
@@ -244,6 +237,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 	if preOpts.Parallel > 0 {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", preOpts.Parallel))
+	}
+	if preOpts.UserAgent != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
@@ -307,10 +303,6 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 // https://www.pulumi.com/docs/reference/cli/pulumi_up/
 func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) {
 	var res UpResult
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to run update")
-	}
 
 	upOpts := &optup.Options{}
 	for _, o := range opts {
@@ -340,6 +332,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	}
 	if upOpts.Parallel > 0 {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
+	}
+	if upOpts.UserAgent != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
@@ -398,11 +393,6 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (RefreshResult, error) {
 	var res RefreshResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to refresh stack")
-	}
-
 	refreshOpts := &optrefresh.Options{}
 	for _, o := range opts {
 		o.ApplyOption(refreshOpts)
@@ -423,6 +413,9 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 	}
 	if refreshOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", refreshOpts.Parallel))
+	}
+	if refreshOpts.UserAgent != "" {
+		args = append(args, fmt.Sprintf("--exec-agent=%s", refreshOpts.UserAgent))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -468,11 +461,6 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (DestroyResult, error) {
 	var res DestroyResult
 
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return res, errors.Wrap(err, "failed to destroy stack")
-	}
-
 	destroyOpts := &optdestroy.Options{}
 	for _, o := range opts {
 		o.ApplyOption(destroyOpts)
@@ -493,6 +481,9 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 	}
 	if destroyOpts.Parallel > 0 {
 		args = append(args, fmt.Sprintf("--parallel=%d", destroyOpts.Parallel))
+	}
+	if destroyOpts.UserAgent != "" {
+		args = append(args, fmt.Sprintf("--exec-agent=%s", destroyOpts.UserAgent))
 	}
 	execKind := constant.ExecKindAutoLocal
 	if s.Workspace().Program() != nil {
@@ -536,48 +527,7 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 
 // Outputs get the current set of Stack outputs from the last Stack.Up().
 func (s *Stack) Outputs(ctx context.Context) (OutputMap, error) {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to get stack outputs")
-	}
-
-	// standard outputs
-	outStdout, outStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json",
-	)
-	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not get outputs"), outStdout, outStderr, code)
-	}
-
-	// secret outputs
-	secretStdout, secretStderr, code, err := s.runPulumiCmdSync(ctx, nil, /* additionalOutputs */
-		"stack", "output", "--json", "--show-secrets",
-	)
-	if err != nil {
-		return nil, newAutoError(errors.Wrap(err, "could not get secret outputs"), outStdout, outStderr, code)
-	}
-
-	var outputs map[string]interface{}
-	var secrets map[string]interface{}
-
-	if err = json.Unmarshal([]byte(outStdout), &outputs); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling outputs: %s", secretStderr)
-	}
-
-	if err = json.Unmarshal([]byte(secretStdout), &secrets); err != nil {
-		return nil, errors.Wrapf(err, "error unmarshalling secret outputs: %s", secretStderr)
-	}
-
-	res := make(OutputMap)
-	for k, v := range secrets {
-		isSecret := outputs[k] == secretSentinel
-		res[k] = OutputValue{
-			Value:  v,
-			Secret: isSecret,
-		}
-	}
-
-	return res, nil
+	return s.Workspace().StackOutputs(ctx, s.Name())
 }
 
 // History returns a list summarizing all previous and current results from Stack lifecycle operations
@@ -670,12 +620,10 @@ func (s *Stack) Info(ctx context.Context) (StackSummary, error) {
 // if a resource operation was pending when the update was canceled.
 // This command is not supported for local backends.
 func (s *Stack) Cancel(ctx context.Context) error {
-	err := s.Workspace().SelectStack(ctx, s.Name())
-	if err != nil {
-		return errors.Wrap(err, "failed to cancel update")
-	}
-
-	stdout, stderr, errCode, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, "cancel", "--yes")
+	stdout, stderr, errCode, err := s.runPulumiCmdSync(
+		ctx,
+		nil, /* additionalOutput */
+		"cancel", "--yes")
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to cancel update"), stdout, stderr, errCode)
 	}
@@ -730,6 +678,9 @@ func (ur *UpResult) GetPermalink() (string, error) {
 	return GetPermalink(ur.StdOut)
 }
 
+// ErrParsePermalinkFailed occurs when the the generated permalink URL can't be found in the op result
+var ErrParsePermalinkFailed = errors.New("failed to get permalink")
+
 // GetPermalink returns the permalink URL in the Pulumi Console for the update
 // or refresh operation. This will error for alternate, local backends.
 func GetPermalink(stdout string) (string, error) {
@@ -740,14 +691,14 @@ func GetPermalink(stdout string) (string, error) {
 	// Find the start of the permalink in the output.
 	start := startRegex.FindStringIndex(stdout)
 	if start == nil {
-		return "", errors.New(fmt.Sprintf("failed to get permalink for update"))
+		return "", ErrParsePermalinkFailed
 	}
 	permalinkStart := stdout[start[1]:]
 
 	// Find the end of the permalink.
 	end := endRegex.FindStringIndex(permalinkStart)
 	if end == nil {
-		return "", errors.New(fmt.Sprintf("failed to get permalink for update"))
+		return "", ErrParsePermalinkFailed
 	}
 	permalink := permalinkStart[:end[1]-1]
 	return permalink, nil
@@ -791,6 +742,11 @@ type PreviewResult struct {
 	ChangeSummary map[apitype.OpType]int
 }
 
+// GetPermalink returns the permalink URL in the Pulumi Console for the preview operation.
+func (pr *PreviewResult) GetPermalink() (string, error) {
+	return GetPermalink(pr.StdOut)
+}
+
 // RefreshResult is the output of a successful Stack.Refresh operation
 type RefreshResult struct {
 	StdOut  string
@@ -798,11 +754,21 @@ type RefreshResult struct {
 	Summary UpdateSummary
 }
 
+// GetPermalink returns the permalink URL in the Pulumi Console for the refresh operation.
+func (rr *RefreshResult) GetPermalink() (string, error) {
+	return GetPermalink(rr.StdOut)
+}
+
 // DestroyResult is the output of a successful Stack.Destroy operation
 type DestroyResult struct {
 	StdOut  string
 	StdErr  string
 	Summary UpdateSummary
+}
+
+// GetPermalink returns the permalink URL in the Pulumi Console for the destroy operation.
+func (dr *DestroyResult) GetPermalink() (string, error) {
+	return GetPermalink(dr.StdOut)
 }
 
 // secretSentinel represents the CLI response for an output marked as "secret"
@@ -831,6 +797,8 @@ func (s *Stack) runPulumiCmdSync(
 		return "", "", -1, errors.Wrap(err, "failed to exec command, error getting additional args")
 	}
 	args = append(args, additionalArgs...)
+	args = append(args, "--stack", s.Name())
+
 	stdout, stderr, errCode, err := runPulumiCommandSync(ctx, s.Workspace().WorkDir(), additionalOutput, env, args...)
 	if err != nil {
 		return stdout, stderr, errCode, err
@@ -951,13 +919,14 @@ func (s *languageRuntimeServer) Run(ctx context.Context, req *pulumirpc.RunReque
 		engineAddress = req.Args[0]
 	}
 	runInfo := pulumi.RunInfo{
-		EngineAddr:  engineAddress,
-		MonitorAddr: req.GetMonitorAddress(),
-		Config:      req.GetConfig(),
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
+		EngineAddr:       engineAddress,
+		MonitorAddr:      req.GetMonitorAddress(),
+		Config:           req.GetConfig(),
+		ConfigSecretKeys: req.GetConfigSecretKeys(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Parallel:         int(req.GetParallel()),
+		DryRun:           req.GetDryRun(),
 	}
 
 	pulumiCtx, err := pulumi.NewContext(ctx, runInfo)

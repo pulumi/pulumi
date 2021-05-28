@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,7 +37,7 @@ func assertApplied(t *testing.T, out Output) {
 }
 
 func newIntOutput() IntOutput {
-	return IntOutput{newOutputState(reflect.TypeOf(42))}
+	return IntOutput{newOutputState(nil, reflect.TypeOf(42))}
 }
 
 func TestBasicOutputs(t *testing.T) {
@@ -66,7 +67,7 @@ func TestBasicOutputs(t *testing.T) {
 }
 
 func TestArrayOutputs(t *testing.T) {
-	out := ArrayOutput{newOutputState(reflect.TypeOf([]interface{}{}))}
+	out := ArrayOutput{newOutputState(nil, reflect.TypeOf([]interface{}{}))}
 	go func() {
 		out.resolve([]interface{}{nil, 0, "x"}, true, false, nil)
 	}()
@@ -84,7 +85,7 @@ func TestArrayOutputs(t *testing.T) {
 }
 
 func TestBoolOutputs(t *testing.T) {
-	out := BoolOutput{newOutputState(reflect.TypeOf(false))}
+	out := BoolOutput{newOutputState(nil, reflect.TypeOf(false))}
 	go func() {
 		out.resolve(true, true, false, nil)
 	}()
@@ -97,7 +98,7 @@ func TestBoolOutputs(t *testing.T) {
 }
 
 func TestMapOutputs(t *testing.T) {
-	out := MapOutput{newOutputState(reflect.TypeOf(map[string]interface{}{}))}
+	out := MapOutput{newOutputState(nil, reflect.TypeOf(map[string]interface{}{}))}
 	go func() {
 		out.resolve(map[string]interface{}{
 			"x": 1,
@@ -117,7 +118,7 @@ func TestMapOutputs(t *testing.T) {
 }
 
 func TestNumberOutputs(t *testing.T) {
-	out := Float64Output{newOutputState(reflect.TypeOf(float64(0)))}
+	out := Float64Output{newOutputState(nil, reflect.TypeOf(float64(0)))}
 	go func() {
 		out.resolve(42.345, true, false, nil)
 	}()
@@ -130,7 +131,7 @@ func TestNumberOutputs(t *testing.T) {
 }
 
 func TestStringOutputs(t *testing.T) {
-	out := StringOutput{newOutputState(reflect.TypeOf(""))}
+	out := StringOutput{newOutputState(nil, reflect.TypeOf(""))}
 	go func() {
 		out.resolve("a stringy output", true, false, nil)
 	}()
@@ -299,19 +300,19 @@ func TestToOutputAnyDeps(t *testing.T) {
 	}
 
 	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
-	stringOut := StringOutput{newOutputState(reflect.TypeOf(""), stringDep1)}
+	stringOut := StringOutput{newOutputState(nil, reflect.TypeOf(""), stringDep1)}
 	go func() {
 		stringOut.resolve("a stringy output", true, false, []Resource{stringDep2})
 	}()
 
 	intDep1, intDep2 := &ResourceState{}, &ResourceState{}
-	intOut := IntOutput{newOutputState(reflect.TypeOf(0), intDep1)}
+	intOut := IntOutput{newOutputState(nil, reflect.TypeOf(0), intDep1)}
 	go func() {
 		intOut.resolve(42, true, false, []Resource{intDep2})
 	}()
 
 	boolDep1, boolDep2 := &ResourceState{}, &ResourceState{}
-	boolOut := BoolOutput{newOutputState(reflect.TypeOf(true), boolDep1)}
+	boolOut := BoolOutput{newOutputState(nil, reflect.TypeOf(true), boolDep1)}
 	go func() {
 		boolOut.resolve(true, true, false, []Resource{boolDep2})
 	}()
@@ -570,14 +571,14 @@ func TestNil(t *testing.T) {
 // Test that dependencies flow through all/apply.
 func TestDeps(t *testing.T) {
 	stringDep1, stringDep2 := &ResourceState{}, &ResourceState{}
-	stringOut := StringOutput{newOutputState(reflect.TypeOf(""), stringDep1)}
+	stringOut := StringOutput{newOutputState(nil, reflect.TypeOf(""), stringDep1)}
 	assert.ElementsMatch(t, []Resource{stringDep1}, stringOut.deps)
 	go func() {
 		stringOut.resolve("hello", true, false, []Resource{stringDep2})
 	}()
 
 	boolDep1, boolDep2 := &ResourceState{}, &ResourceState{}
-	boolOut := BoolOutput{newOutputState(reflect.TypeOf(true), boolDep1)}
+	boolOut := BoolOutput{newOutputState(nil, reflect.TypeOf(true), boolDep1)}
 	assert.ElementsMatch(t, []Resource{boolDep1}, boolOut.deps)
 	go func() {
 		boolOut.resolve(true, true, false, []Resource{boolDep2})
@@ -595,4 +596,57 @@ func TestDeps(t *testing.T) {
 	assert.False(t, secret)
 	assert.ElementsMatch(t, []Resource{stringDep1, stringDep2, boolDep1, boolDep2}, deps)
 	assert.NoError(t, err)
+}
+
+func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
+	var wg1, wg2 sync.WaitGroup
+
+	o1 := newOutput(&wg1, anyOutputType)
+	o2 := newOutput(&wg2, anyOutputType)
+
+	gate := make(chan chan bool)
+	combine(o1, o2).ApplyT(func(_ interface{}) interface{} {
+		<-gate <- true
+		return 0
+	})
+
+	wg1Done, wg2Done := false, false
+	go func() {
+		wg1.Wait()
+		wg1Done = true
+		wg2.Wait()
+		wg2Done = true
+	}()
+
+	o1.getState().resolve(0, true, true, nil)
+	o2.getState().resolve(0, true, true, nil)
+
+	c := make(chan bool)
+	gate <- c
+	assert.False(t, wg1Done)
+	assert.False(t, wg2Done)
+	<-c
+	wg1.Wait()
+	wg2.Wait()
+
+}
+
+func TestMixedWaitGroupsAll(t *testing.T) {
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return All(o1, o2)
+	})
+}
+
+func TestMixedWaitGroupsAny(t *testing.T) {
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return Any(struct{ O1, O2 Output }{o1, o2})
+	})
+}
+
+func TestMixedWaitGroupsApply(t *testing.T) {
+	testMixedWaitGroups(t, func(o1, o2 Output) Output {
+		return o1.ApplyT(func(_ interface{}) interface{} {
+			return o2
+		})
+	})
 }

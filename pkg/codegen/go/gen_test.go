@@ -122,6 +122,19 @@ func TestGeneratePackage(t *testing.T) {
 			},
 			false,
 		},
+		{
+			"Simple schema with root package set",
+			"simple-plain-schema-with-root-package",
+			[]string{
+				filepath.Join("doc.go"),
+				filepath.Join("init.go"),
+				filepath.Join("component.go"),
+				filepath.Join("provider.go"),
+				filepath.Join("pulumiTypes.go"),
+				filepath.Join("pulumiUtilities.go"),
+			},
+			false,
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
@@ -133,7 +146,12 @@ func TestGeneratePackage(t *testing.T) {
 				})
 			assert.NoError(t, err)
 
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "go", tt.expectedFiles)
+			dir := filepath.Join(testDir, tt.schemaDir)
+			lang := "go"
+
+			test.RewriteFilesWhenPulumiAccept(t, dir, lang, files)
+
+			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), lang, tt.expectedFiles)
 			assert.NoError(t, err)
 			test.ValidateFileEquality(t, files, expectedFiles)
 			test.CheckAllFilesGenerated(t, files, expectedFiles)

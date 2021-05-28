@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as log from "../../log";
+
 // The very first thing we do is set up unhandled exception and rejection hooks to ensure that these
 // events cause us to exit with a non-zero code. It is critically important that we do this early:
 // if we do not, unhandled rejections in particular may cause us to exit with a 0 exit code, which
@@ -32,8 +34,10 @@ const loggedErrors = new Set<Error>();
 let programRunning = false;
 const uncaughtHandler = (err: Error) => {
     uncaughtErrors.add(err);
-    if (!programRunning) {
-        console.error(err.stack || err.message || ("" + err));
+    if (!programRunning && !loggedErrors.has(err)) {
+        log.error(err.stack || err.message || ("" + err));
+        // dedupe errors that we're reporting when the program is not running
+        loggedErrors.add(err);
     }
 };
 
@@ -154,7 +158,8 @@ function main(args: string[]): void {
         const promise: Promise<void> = require("./run").run(
             argv,
             /*programStarted:   */ () => programRunning = true,
-            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err));
+            /*reportLoggedError:*/ (err: Error) => loggedErrors.add(err),
+            /*isErrorReported:  */ (err: Error) => loggedErrors.has(err));
 
         // when the user's program completes successfully, set programRunning back to false.  That way, if the Pulumi
         // scaffolding code ends up throwing an exception during teardown, it will get printed directly to the console.

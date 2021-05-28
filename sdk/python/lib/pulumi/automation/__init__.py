@@ -17,8 +17,7 @@ The automation module contains the Pulumi Automation API, the programmatic inter
 without the CLI.
 Generally this can be thought of as encapsulating the functionality of the CLI (`pulumi up`, `pulumi preview`,
 `pulumi destroy`, `pulumi stack init`, etc.) but with more flexibility. This still requires a
-CLI binary to be installed and available on your $PATH. The Automation API is in Alpha (experimental package/x)
-breaking changes (mostly additive) will be made.
+CLI binary to be installed and available on your $PATH.
 
 In addition to fine-grained building blocks, Automation API provides two out of the box ways to work with Stacks:
 
@@ -147,7 +146,13 @@ from ._workspace import (
     Deployment,
 )
 
+from ._output import (
+    OutputMap,
+    OutputValue
+)
+
 from ._project_settings import (
+    ProjectBackend,
     ProjectSettings,
     ProjectRuntimeInfo,
 )
@@ -219,7 +224,12 @@ __all__ = [
     "Deployment",
     "WhoAmIResult",
 
+    # _output
+    "OutputMap",
+    "OutputValue",
+
     # _project_settings
+    "ProjectBackend",
     "ProjectSettings",
     "ProjectRuntimeInfo",
 

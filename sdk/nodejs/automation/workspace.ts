@@ -14,6 +14,7 @@
 
 import { ConfigMap, ConfigValue } from "./config";
 import { ProjectSettings } from "./projectSettings";
+import { OutputMap } from "./stack";
 import { StackSettings } from "./stackSettings";
 
 /**
@@ -206,6 +207,11 @@ export interface Workspace {
      * @param state the stack state to import.
      */
     importStack(stackName: string, state: Deployment): Promise<void>;
+    /**
+     * Gets the current set of Stack outputs from the last Stack.up().
+     * @param stackName the name of the stack.
+     */
+    stackOutputs(stackName: string): Promise<OutputMap>;
 }
 
 /**

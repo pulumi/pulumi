@@ -43,15 +43,18 @@ from pulumi.automation._local_workspace import _validate_pulumi_version
 extensions = ["json", "yaml", "yml"]
 
 version_tests = [
-    ("100.0.0", True),
-    ("1.0.0", True),
-    ("2.22.0", False),
-    ("2.1.0", True),
-    ("2.21.2", False),
-    ("2.21.1", False),
-    ("2.21.0", True),
+    ("100.0.0", True, False),
+    ("1.0.0", True, False),
+    ("2.22.0", False, False),
+    ("2.1.0", True, False),
+    ("2.21.2", False, False),
+    ("2.21.1", False, False),
+    ("2.21.0", True, False),
     # Note that prerelease < release so this case will error
-    ("2.21.1-alpha.1234", True)
+    ("2.21.1-alpha.1234", True, False),
+    # Test opting out of version check
+    ("2.20.0", False, True),
+    ("2.22.0", False, True)
 ]
 test_min_version = VersionInfo.parse("2.21.1")
 
@@ -60,8 +63,16 @@ def test_path(*paths):
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), *paths)
 
 
-def stack_namer():
-    return f"int_test_{get_test_suffix()}"
+def get_test_org():
+    test_org = "pulumi-test"
+    env_var = os.getenv("PULUMI_TEST_ORG")
+    if env_var is not None:
+        test_org = env_var
+    return test_org
+
+
+def stack_namer(project_name):
+    return fully_qualified_stack_name(get_test_org(), project_name, f"int_test_{get_test_suffix()}")
 
 
 def normalize_config_key(key: str, project_name: str):
@@ -198,9 +209,10 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertIsNotNone(result.user)
 
     def test_stack_init(self):
-        project_settings = ProjectSettings(name="python_test", runtime="python")
+        project_name = "python_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
 
         Stack.create(stack_name, ws)
         # Trying to create the stack again throws an error
@@ -215,7 +227,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
@@ -252,7 +264,7 @@ class TestLocalWorkspace(unittest.TestCase):
         project_name = "python_test"
         project_settings = ProjectSettings(project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
         config: ConfigMap = {
@@ -273,6 +285,8 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_nested_config(self):
+        if get_test_org() != "pulumi-test":
+            return
         stack_name = fully_qualified_stack_name("pulumi-test", "nested_config", "dev")
         project_dir = test_path("data", "nested_config")
         stack = create_or_select_stack(stack_name, work_dir=project_dir)
@@ -295,9 +309,10 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertEqual(arr.value, "[\"one\",\"two\",\"three\"]")
 
     def test_stack_status_methods(self):
-        project_settings = ProjectSettings(name="python_test", runtime="python")
+        project_name = "python_test"
+        project_settings = ProjectSettings(name=project_name, runtime="python")
         ws = LocalWorkspace(project_settings=project_settings)
-        stack_name = stack_namer()
+        stack_name = stack_namer(project_name)
         stack = Stack.create(stack_name, ws)
 
         history = stack.history()
@@ -308,8 +323,9 @@ class TestLocalWorkspace(unittest.TestCase):
         ws.remove_stack(stack_name)
 
     def test_stack_lifecycle_local_program(self):
-        stack_name = stack_namer()
-        work_dir = test_path("data", "testproj")
+        project_name = "testproj"
+        stack_name = stack_namer(project_name)
+        work_dir = test_path("data", project_name)
         stack = create_stack(stack_name, work_dir=work_dir)
 
         config: ConfigMap = {
@@ -347,8 +363,8 @@ class TestLocalWorkspace(unittest.TestCase):
         stack.workspace.remove_stack(stack_name)
 
     def test_stack_lifecycle_inline_program(self):
-        stack_name = stack_namer()
         project_name = "inline_python"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
@@ -388,8 +404,8 @@ class TestLocalWorkspace(unittest.TestCase):
             stack.workspace.remove_stack(stack_name)
 
     def test_supports_stack_outputs(self):
-        stack_name = stack_namer()
         project_name = "inline_python"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
@@ -437,7 +453,7 @@ class TestLocalWorkspace(unittest.TestCase):
         self.assertRegex(ws.pulumi_version, r"(\d+\.)(\d+\.)(\d+)(-.*)?")
 
     def test_validate_pulumi_version(self):
-        for current_version, expect_error in version_tests:
+        for current_version, expect_error, opt_out in version_tests:
             with self.subTest():
                 current_version = VersionInfo.parse(current_version)
                 if expect_error:
@@ -449,25 +465,24 @@ class TestLocalWorkspace(unittest.TestCase):
                             error_regex,
                             msg=f"min_version:{test_min_version}, current_version:{current_version}"
                     ):
-                        _validate_pulumi_version(test_min_version, current_version)
+                        _validate_pulumi_version(test_min_version, current_version, opt_out)
                 else:
-                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version))
+                    self.assertIsNone(_validate_pulumi_version(test_min_version, current_version, opt_out))
 
     def test_project_settings_respected(self):
-        stack_name = stack_namer()
-        project_name = "project_was_overwritten"
+        project_name = "correct_project"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name,
                              program=pulumi_program,
                              project_name=project_name,
-                             opts=LocalWorkspaceOptions(work_dir=test_path("data", "correct_project")))
+                             opts=LocalWorkspaceOptions(work_dir=test_path("data", project_name)))
         project_settings = stack.workspace.project_settings()
-        self.assertEqual(project_settings.name, "correct_project")
         self.assertEqual(project_settings.description, "This is a description")
         stack.workspace.remove_stack(stack_name)
 
     def test_structured_events(self):
-        stack_name = stack_namer()
         project_name = "structured_events"
+        stack_name = stack_namer(project_name)
         stack = create_stack(stack_name, program=pulumi_program, project_name=project_name)
 
         stack_config: ConfigMap = {
@@ -510,6 +525,187 @@ class TestLocalWorkspace(unittest.TestCase):
             self.assertEqual(seen_summary_event[0], True, "No SummaryEvent for `destroy`")
             self.assertEqual(destroy_res.summary.kind, "destroy")
             self.assertEqual(destroy_res.summary.result, "succeeded")
+        finally:
+            stack.workspace.remove_stack(stack_name)
+
+    # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+    @unittest.skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
+    def test_secret_config_warnings(self):
+        def program():
+            config = Config()
+
+            config.get("plainstr1")
+            config.require("plainstr2")
+            config.get_secret("plainstr3")
+            config.require_secret("plainstr4")
+
+            config.get_bool("plainbool1")
+            config.require_bool("plainbool2")
+            config.get_secret_bool("plainbool3")
+            config.require_secret_bool("plainbool4")
+
+            config.get_int("plainint1")
+            config.require_int("plainint2")
+            config.get_secret_int("plainint3")
+            config.require_secret_int("plainint4")
+
+            config.get_float("plainfloat1")
+            config.require_float("plainfloat2")
+            config.get_secret_float("plainfloat3")
+            config.require_secret_float("plainfloat4")
+
+            config.get_object("plainobj1")
+            config.require_object("plainobj2")
+            config.get_secret_object("plainobj3")
+            config.require_secret_object("plainobj4")
+
+            config.get("str1")
+            config.require("str2")
+            config.get_secret("str3")
+            config.require_secret("str4")
+
+            config.get_bool("bool1")
+            config.require_bool("bool2")
+            config.get_secret_bool("bool3")
+            config.require_secret_bool("bool4")
+
+            config.get_int("int1")
+            config.require_int("int2")
+            config.get_secret_int("int3")
+            config.require_secret_int("int4")
+
+            config.get_float("float1")
+            config.require_float("float2")
+            config.get_secret_float("float3")
+            config.require_secret_float("float4")
+
+            config.get_object("obj1")
+            config.require_object("obj2")
+            config.get_secret_object("obj3")
+            config.require_secret_object("obj4")
+
+        project_name = "inline_python"
+        stack_name = stack_namer(project_name)
+        stack = create_stack(stack_name, program=program, project_name=project_name)
+
+        stack_config: ConfigMap = {
+            "plainstr1": ConfigValue(value="1"),
+            "plainstr2": ConfigValue(value="2"),
+            "plainstr3": ConfigValue(value="3"),
+            "plainstr4": ConfigValue(value="4"),
+            "plainbool1": ConfigValue(value="true"),
+            "plainbool2": ConfigValue(value="true"),
+            "plainbool3": ConfigValue(value="true"),
+            "plainbool4": ConfigValue(value="true"),
+            "plainint1": ConfigValue(value="1"),
+            "plainint2": ConfigValue(value="2"),
+            "plainint3": ConfigValue(value="3"),
+            "plainint4": ConfigValue(value="4"),
+            "plainfloat1": ConfigValue(value="1.1"),
+            "plainfloat2": ConfigValue(value="2.2"),
+            "plainfloat3": ConfigValue(value="3.3"),
+            "plainfloat4": ConfigValue(value="4.3"),
+            "plainobj1": ConfigValue(value="{}"),
+            "plainobj2": ConfigValue(value="{}"),
+            "plainobj3": ConfigValue(value="{}"),
+            "plainobj4": ConfigValue(value="{}"),
+            "str1": ConfigValue(value="1", secret=True),
+            "str2": ConfigValue(value="2", secret=True),
+            "str3": ConfigValue(value="3", secret=True),
+            "str4": ConfigValue(value="4", secret=True),
+            "bool1": ConfigValue(value="true", secret=True),
+            "bool2": ConfigValue(value="true", secret=True),
+            "bool3": ConfigValue(value="true", secret=True),
+            "bool4": ConfigValue(value="true", secret=True),
+            "int1": ConfigValue(value="1", secret=True),
+            "int2": ConfigValue(value="2", secret=True),
+            "int3": ConfigValue(value="3", secret=True),
+            "int4": ConfigValue(value="4", secret=True),
+            "float1": ConfigValue(value="1.1", secret=True),
+            "float2": ConfigValue(value="2.2", secret=True),
+            "float3": ConfigValue(value="3.3", secret=True),
+            "float4": ConfigValue(value="4.4", secret=True),
+            "obj1": ConfigValue(value="{}", secret=True),
+            "obj2": ConfigValue(value="{}", secret=True),
+            "obj3": ConfigValue(value="{}", secret=True),
+            "obj4": ConfigValue(value="{}", secret=True),
+        }
+
+        try:
+            stack.set_all_config(stack_config)
+
+            events: List[str] = []
+            def find_diagnostic_events(event: EngineEvent):
+                if event.diagnostic_event and event.diagnostic_event.severity == "warning":
+                    events.append(event.diagnostic_event.message)
+
+            expected_warnings = [
+                "Configuration 'inline_python:str1' value is a secret; use `get_secret` instead of `get`",
+                "Configuration 'inline_python:str2' value is a secret; use `require_secret` instead of `require`",
+                "Configuration 'inline_python:bool1' value is a secret; use `get_secret_bool` instead of `get_bool`",
+                "Configuration 'inline_python:bool2' value is a secret; use `require_secret_bool` instead of `require_bool`",
+                "Configuration 'inline_python:int1' value is a secret; use `get_secret_int` instead of `get_int`",
+                "Configuration 'inline_python:int2' value is a secret; use `require_secret_int` instead of `require_int`",
+                "Configuration 'inline_python:float1' value is a secret; use `get_secret_float` instead of `get_float`",
+                "Configuration 'inline_python:float2' value is a secret; use `require_secret_float` instead of `require_float`",
+                "Configuration 'inline_python:obj1' value is a secret; use `get_secret_object` instead of `get_object`",
+                "Configuration 'inline_python:obj2' value is a secret; use `require_secret_object` instead of `require_object`",
+            ]
+
+            # These keys should not be in any warning messages.
+            unexpected_warnings = [
+                "plainstr1",
+                "plainstr2",
+                "plainstr3",
+                "plainstr4",
+                "plainbool1",
+                "plainbool2",
+                "plainbool3",
+                "plainbool4",
+                "plainint1",
+                "plainint2",
+                "plainint3",
+                "plainint4",
+                "plainfloat1",
+                "plainfloat2",
+                "plainfloat3",
+                "plainfloat4",
+                "plainobj1",
+                "plainobj2",
+                "plainobj3",
+                "plainobj4",
+                "str3",
+                "str4",
+                "bool3",
+                "bool4",
+                "int3",
+                "int4",
+                "float3",
+                "float4",
+                "obj3",
+                "obj4",
+            ]
+
+            def validate(warnings: List[str]):
+                for expected in expected_warnings:
+                    found = False
+                    for warning in warnings:
+                        if expected in warning:
+                            found = True
+                            break
+                    self.assertTrue(found, "expected warning not found")
+                for unexpected in unexpected_warnings:
+                    for warning in warnings:
+                        self.assertFalse(unexpected in warning, f"Unexpected ${unexpected}' found in warning")
+
+            # pulumi preview
+            stack.preview(on_event=find_diagnostic_events)
+            validate(events)
+
+            # pulumi up
+            events = []
+            stack.up(on_event=find_diagnostic_events)
+            validate(events)
         finally:
             stack.workspace.remove_stack(stack_name)
 

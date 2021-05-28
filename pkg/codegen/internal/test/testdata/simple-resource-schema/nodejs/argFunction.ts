@@ -22,7 +22,7 @@ export function argFunction(args?: ArgFunctionArgs, opts?: pulumi.InvokeOptions)
 }
 
 export interface ArgFunctionArgs {
-    readonly arg1?: Resource;
+    arg1?: Resource;
 }
 
 export interface ArgFunctionResult {

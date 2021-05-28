@@ -44,13 +44,15 @@ export class Resource extends pulumi.CustomResource {
         let inputs: pulumi.Inputs = {};
         opts = opts || {};
         if (!opts.id) {
-            inputs["bar"] = args ? args.bar : undefined;
+            inputs["bar"] = args?.bar ? pulumi.secret(args.bar) : undefined;
         } else {
             inputs["bar"] = undefined /*out*/;
         }
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
+        const secretOpts = { additionalSecretOutputs: ["bar"] };
+        opts = pulumi.mergeOptions(opts, secretOpts);
         super(Resource.__pulumiType, name, inputs, opts);
     }
 }
@@ -59,5 +61,5 @@ export class Resource extends pulumi.CustomResource {
  * The set of arguments for constructing a Resource resource.
  */
 export interface ResourceArgs {
-    readonly bar?: pulumi.Input<string>;
+    bar?: pulumi.Input<string>;
 }

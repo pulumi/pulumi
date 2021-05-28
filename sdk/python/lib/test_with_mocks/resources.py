@@ -61,6 +61,8 @@ invoke_result = do_invoke()
 for x in range(5):
     MyCustom(f"mycustom{x}", {"instance": myinstance})
 
+dns_ref = pulumi.StackReference("dns")
+
 pulumi.export("hello", "world")
 pulumi.export("outprop", mycomponent.outprop)
 pulumi.export("public_ip", myinstance.public_ip)
