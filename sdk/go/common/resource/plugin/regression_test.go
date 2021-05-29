@@ -10,6 +10,19 @@ import (
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
+/*
+   In the wild the 7132 situation looked like this:
+
+   - Python provider calling monitor.Invoke
+   - func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
+   - plugin.UnmarshalProperties(req.GetArgs(), MarshalOptions{KeepUnknowns/Secrets/Resources: true}
+   - func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
+   - MarshalProperties(args, MarshalOptions{})
+   - Network hop to AWS provider
+   - Invoke(), UnmarshalProperties fails
+
+   This test reproduces the sequence from the gRPC request.
+*/
 func Test7132(t *testing.T) {
 	reqStr := "Cithd3M6aWFtL2dldFBvbGljeURvY3VtZW50OmdldFBvbGljeURvY3VtZW50En8KfQoKc3RhdGVtZW50cxJvMm0KayppCjcKCXJlc291cmNlcxIqMigKJhokMDRkYTZiNTQtODBlNC00NmY3LTk2ZWMtYjU2ZmYwMzMxYmE5Ci4KB2FjdGlvbnMSIzIhCh8aHXNlY3JldHNtYW5hZ2VyOkdldFNlY3JldFZhbHVlKAE="
 	req := readRequest(t, reqStr)
