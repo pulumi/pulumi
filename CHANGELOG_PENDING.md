@@ -11,3 +11,6 @@
 
 - [auto/nodejs] - Emit warning instead of breaking on parsing JSON events for automation API.
   [#7162](https://github.com/pulumi/pulumi/pull/7162)
+
+- [sdk/python] Improve performance of `Output.from_input` and `Output.all` on nested objects.
+  [#7175](https://github.com/pulumi/pulumi/pull/7175)
