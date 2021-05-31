@@ -565,12 +565,10 @@ namespace Pulumi.Automation.Tests
         public async Task StackReferenceDestroyDiscardsWithTwoInlinePrograms()
         {
             var programA = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
+                new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
-                };
-            });
+                });
 
             var programB = PulumiFn.Create(() =>
             {
@@ -661,12 +659,10 @@ namespace Pulumi.Automation.Tests
         public async Task OutputStreamAndDelegateIsWritten()
         {
             var program = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
+                new Dictionary<string, object?>
                 {
                     ["test"] = "test",
-                };
-            });
+                });
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_output";
@@ -716,12 +712,10 @@ namespace Pulumi.Automation.Tests
         public async Task HandlesEvents()
         {
             var program = PulumiFn.Create(() =>
-            {
-                return new Dictionary<string, object?>
+                new Dictionary<string, object?>
                 {
                     ["exp_static"] = "foo",
-                };
-            });
+                });
             var projectName = "event_test";
             var stackName = $"inline_events{GetTestSuffix()}";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
@@ -1053,7 +1047,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task StackLifecycleInlineProgramWithServiceProvider()
         {
-            using var provider = new ServiceCollection()
+            await using var provider = new ServiceCollection()
                 .AddTransient<ValidStack>() // must be transient so it is instantiated each time
                 .BuildServiceProvider();
 
@@ -1182,7 +1176,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task InlineProgramExceptionPropagatesToCallerWithServiceProvider()
         {
-            using var provider = new ServiceCollection()
+            await using var provider = new ServiceCollection()
                 .AddTransient<FileNotFoundStack>() // must be transient so it is instantiated each time
                 .BuildServiceProvider();
 
@@ -1422,8 +1416,8 @@ namespace Pulumi.Automation.Tests
             var testMinVersion = SemVersion.Parse("2.21.1");
             if (errorExpected)
             {
-                Action act = () => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
-                Assert.Throws<InvalidOperationException>(act);
+                void ValidatePulumiVersion() => LocalWorkspace.ValidatePulumiVersion(testMinVersion, currentVersion, optOut);
+                Assert.Throws<InvalidOperationException>(ValidatePulumiVersion);
             }
             else
             {

@@ -37,12 +37,7 @@ namespace Pulumi.Automation.Tests
         [Fact]
         public async Task PropagatesUserExceptionsToCaller()
         {
-            using var fx = new Fixture();
-
-            fx.Action = ev =>
-            {
-                throw new MyException();
-            };
+            using var fx = new Fixture { Action = ev => throw new MyException() };
 
             await fx.Write("{}");
 

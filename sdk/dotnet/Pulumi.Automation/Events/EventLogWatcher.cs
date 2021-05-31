@@ -91,10 +91,7 @@ namespace Pulumi.Automation.Events
                 return;
             }
 
-            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-            {
-                Position = this._position
-            };
+            await using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite) { Position = this._position };
             using var reader = new StreamReader(fs);
             string? line;
             while (reader.Peek() >= 0)

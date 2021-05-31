@@ -32,11 +32,7 @@ namespace Pulumi
         /// </summary>
         public Config(string? name = null)
         {
-            if (name == null)
-            {
-                name = Deployment.Instance.ProjectName;
-            }
-
+            name ??= Deployment.Instance.ProjectName;
             if (name.EndsWith(":config", StringComparison.Ordinal))
             {
                 name = name[0..^":config".Length];

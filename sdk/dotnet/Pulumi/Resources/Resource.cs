@@ -193,8 +193,7 @@ namespace Pulumi
                     this._parentResource.ChildResources.Add(this);
                 }
 
-                if (options.Protect == null)
-                    options.Protect = options.Parent._protect;
+                options.Protect ??= options.Parent._protect;
 
                 // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
                 options.Aliases = options.Aliases.ToList();

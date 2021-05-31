@@ -13,8 +13,7 @@ namespace Pulumi
     internal static class ResourcePackages
     {
         private static Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> ResourceTypes
-            = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(
-                () => DiscoverResourceTypes());
+            = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(DiscoverResourceTypes);
 
         internal static bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
         {

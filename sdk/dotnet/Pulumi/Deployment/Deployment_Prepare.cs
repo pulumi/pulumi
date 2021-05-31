@@ -53,25 +53,21 @@ namespace Pulumi
             }
 
             var providerRefs = new Dictionary<string, string>();
-            if (remote)
+            if (remote && options is ComponentResourceOptions componentOpts)
             {
-                var componentOpts = options as ComponentResourceOptions;
-                if (componentOpts != null)
+                // If only the Provider opt is set, move it to the Providers list for further processing.
+                if (componentOpts.Provider != null && componentOpts.Providers.Count == 0)
                 {
-                    // If only the Provider opt is set, move it to the Providers list for further processing.
-                    if (componentOpts.Provider != null && componentOpts.Providers.Count == 0)
-                    {
-                        componentOpts.Providers.Add(componentOpts.Provider);
-                        componentOpts.Provider = null;
-                    }
+                    componentOpts.Providers.Add(componentOpts.Provider);
+                    componentOpts.Provider = null;
+                }
 
-                    foreach (var provider in componentOpts.Providers)
+                foreach (var provider in componentOpts.Providers)
+                {
+                    var pref = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
+                    if (pref != null)
                     {
-                        var pref = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
-                        if (pref != null)
-                        {
-                            providerRefs.Add(provider.Package, pref);
-                        }
+                        providerRefs.Add(provider.Package, pref);
                     }
                 }
             }

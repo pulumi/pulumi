@@ -40,13 +40,13 @@ namespace Pulumi.Automation
         /// <param name="program">An asynchronous pulumi program that takes in a <see cref="CancellationToken"/>.</param>
         public static PulumiFn Create(Func<CancellationToken, Task> program)
         {
-            Func<CancellationToken, Task<IDictionary<string, object?>>> wrapper = async cancellationToken =>
+            async Task<IDictionary<string, object?>> Wrapper(CancellationToken cancellationToken)
             {
                 await program(cancellationToken).ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
-            };
+            }
 
-            return new PulumiFnInline(wrapper);
+            return new PulumiFnInline(Wrapper);
         }
 
         /// <summary>
@@ -55,13 +55,13 @@ namespace Pulumi.Automation
         /// <param name="program">An asynchronous pulumi program.</param>
         public static PulumiFn Create(Func<Task> program)
         {
-            Func<CancellationToken, Task<IDictionary<string, object?>>> wrapper = async cancellationToken =>
+            async Task<IDictionary<string, object?>> Wrapper(CancellationToken cancellationToken)
             {
                 await program().ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
-            };
+            }
 
-            return new PulumiFnInline(wrapper);
+            return new PulumiFnInline(Wrapper);
         }
 
         /// <summary>
@@ -70,13 +70,13 @@ namespace Pulumi.Automation
         /// <param name="program">A pulumi program that returns an output.</param>
         public static PulumiFn Create(Func<IDictionary<string, object?>> program)
         {
-            Func<CancellationToken, Task<IDictionary<string, object?>>> wrapper = cancellationToken =>
+            Task<IDictionary<string, object?>> Wrapper(CancellationToken cancellationToken)
             {
                 var output = program();
                 return Task.FromResult(output);
-            };
+            }
 
-            return new PulumiFnInline(wrapper);
+            return new PulumiFnInline(Wrapper);
         }
 
         /// <summary>

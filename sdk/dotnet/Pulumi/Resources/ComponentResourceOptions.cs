@@ -20,7 +20,7 @@ namespace Pulumi
         /// </summary>
         public List<ProviderResource> Providers
         {
-            get => _providers ?? (_providers = new List<ProviderResource>());
+            get => _providers ??= new List<ProviderResource>();
             set => _providers = value;
         }
 

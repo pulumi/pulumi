@@ -48,11 +48,8 @@ namespace Pulumi.Automation
         {
         }
 
-        internal static ProjectSettings Default(string name) {
-            var defaultSettings = new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.Dotnet));
-            defaultSettings.Main = Directory.GetCurrentDirectory();
-            return defaultSettings;
-        }
+        internal static ProjectSettings Default(string name) =>
+            new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.Dotnet)) { Main = Directory.GetCurrentDirectory() };
 
         internal bool IsDefault
         {

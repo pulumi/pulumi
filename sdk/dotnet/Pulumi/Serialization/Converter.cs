@@ -191,20 +191,18 @@ namespace Pulumi.Serialization
         private static (object?, InvalidOperationException?) TryConvertJsonElement(
             string context, object val)
         {
-            using (var stream = new MemoryStream())
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
             {
-                using (var writer = new Utf8JsonWriter(stream))
-                {
-                    var exception = TryWriteJson(context, writer, val);
-                    if (exception != null)
-                        return (null, exception);
-                }
-
-                stream.Position = 0;
-                var document = JsonDocument.Parse(stream);
-                var element = document.RootElement;
-                return (element, null);
+                var exception = TryWriteJson(context, writer, val);
+                if (exception != null)
+                    return (null, exception);
             }
+
+            stream.Position = 0;
+            var document = JsonDocument.Parse(stream);
+            var element = document.RootElement;
+            return (element, null);
         }
 
         private static InvalidOperationException? TryWriteJson(string context, Utf8JsonWriter writer, object? val)

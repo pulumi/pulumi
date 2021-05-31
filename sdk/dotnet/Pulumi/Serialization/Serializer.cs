@@ -374,7 +374,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 double d => Value.ForNumber(d),
                 bool b => Value.ForBool(b),
                 string s => Value.ForString(s),
-                ImmutableArray<object> list => Value.ForList(list.Select(v => CreateValue(v)).ToArray()),
+                ImmutableArray<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
                 ImmutableDictionary<string, object> dict => Value.ForStruct(CreateStruct(dict)),
                 _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
             };

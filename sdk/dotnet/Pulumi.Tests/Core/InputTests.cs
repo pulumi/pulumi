@@ -1,11 +1,7 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Threading.Tasks;
-using Pulumi.Serialization;
 using Xunit;
 
 namespace Pulumi.Tests.Core
@@ -16,14 +12,18 @@ namespace Pulumi.Tests.Core
         public Task MergeInputMaps()
             => RunInPreview(async () =>
             {
-                var map1 = new InputMap<string>();
-                map1.Add("K1", "V1");
-                map1.Add("K2", Output.Create("V2"));
-                map1.Add("K3", Output.Create("V3_wrong"));
+                var map1 = new InputMap<string>
+                {
+                    { "K1", "V1" },
+                    { "K2", Output.Create("V2") },
+                    { "K3", Output.Create("V3_wrong") }
+                };
 
-                var map2 = new InputMap<string>();
-                map2.Add("K3", Output.Create("V3"));
-                map2.Add("K4", "V4");
+                var map2 = new InputMap<string>
+                {
+                    { "K3", Output.Create("V3") }, 
+                    { "K4", "V4" }
+                };
 
                 var result = InputMap<string>.Merge(map1, map2);
 
