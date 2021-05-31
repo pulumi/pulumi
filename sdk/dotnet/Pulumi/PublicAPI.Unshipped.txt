@@ -1,1 +1,0 @@
-static Pulumi.Utilities.OutputUtilities.GetValueAsync<T>(Pulumi.Output<T> output) -> System.Threading.Tasks.Task<T>
