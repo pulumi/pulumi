@@ -129,7 +129,7 @@ namespace Pulumi.Tests.Serialization
             var res = resources.OfType<MyCustomResource>().FirstOrDefault();
             Assert.NotNull(res);
 
-            var urn = (await res.Urn.DataTask).Value;
+            var urn = (await res!.Urn.DataTask).Value;
             var id = (await res.Id.DataTask).Value;
 
             var v = await SerializeToValueAsync(res);
@@ -145,7 +145,7 @@ namespace Pulumi.Tests.Serialization
             var res = resources.OfType<MyCustomResource>().FirstOrDefault();
             Assert.NotNull(res);
 
-            var id = await SerializeToValueAsync(res.Id);
+            var id = await SerializeToValueAsync(res!.Id);
 
             var v = await SerializeToValueAsync(res, false);
             Assert.Equal(id, v);
@@ -154,7 +154,7 @@ namespace Pulumi.Tests.Serialization
         public class DeserializeCustomResourceStack : Stack
         {
             [Output("values")]
-            public Output<ImmutableDictionary<string, string>> Values { get; private set; } = null!;
+            public Output<ImmutableDictionary<string, string>> Values { get; private set; }
 
             public DeserializeCustomResourceStack()
             {
@@ -184,7 +184,7 @@ namespace Pulumi.Tests.Serialization
             var stack = resources.OfType<DeserializeCustomResourceStack>().FirstOrDefault();
             Assert.NotNull(stack);
 
-            var values = (await stack.Values.DataTask).Value;
+            var values = (await stack!.Values.DataTask).Value;
             Assert.Equal(values["expectedUrn"], values["actualUrn"]);
             Assert.Equal(values["expectedId"], values["actualId"]);
         }
@@ -192,7 +192,7 @@ namespace Pulumi.Tests.Serialization
         public class DeserializeMissingCustomResourceStack : Stack
         {
             [Output("values")]
-            public Output<ImmutableDictionary<string, string>> Values { get; private set; } = null!;
+            public Output<ImmutableDictionary<string, string>> Values { get; private set; }
 
             public DeserializeMissingCustomResourceStack()
             {
@@ -219,7 +219,7 @@ namespace Pulumi.Tests.Serialization
             var stack = resources.OfType<DeserializeMissingCustomResourceStack>().FirstOrDefault();
             Assert.NotNull(stack);
 
-            var values = (await stack.Values.DataTask).Value;
+            var values = (await stack!.Values.DataTask).Value;
             Assert.Equal(values["expectedUrn"], values["actualUrn"]);
         }
 
@@ -232,7 +232,7 @@ namespace Pulumi.Tests.Serialization
             var res = resources.OfType<MyComponentResource>().FirstOrDefault();
             Assert.NotNull(res);
 
-            var urn = (await res.Urn.DataTask).Value;
+            var urn = (await res!.Urn.DataTask).Value;
 
             var v = await SerializeToValueAsync(res);
             Assert.Equal(CreateComponentResourceReference(urn), v);
@@ -247,7 +247,7 @@ namespace Pulumi.Tests.Serialization
             var res = resources.OfType<MyComponentResource>().FirstOrDefault();
             Assert.NotNull(res);
 
-            var urn = await SerializeToValueAsync(res.Urn);
+            var urn = await SerializeToValueAsync(res!.Urn);
 
             var v = await SerializeToValueAsync(res, false);
             Assert.Equal(urn, v);
@@ -256,7 +256,7 @@ namespace Pulumi.Tests.Serialization
         public class DeserializeComponentResourceStack : Stack
         {
             [Output("values")]
-            public Output<ImmutableDictionary<string, string>> Values { get; private set; } = null!;
+            public Output<ImmutableDictionary<string, string>> Values { get; private set; }
 
             public DeserializeComponentResourceStack()
             {
@@ -283,14 +283,14 @@ namespace Pulumi.Tests.Serialization
             var stack = resources.OfType<DeserializeComponentResourceStack>().FirstOrDefault();
             Assert.NotNull(stack);
 
-            var values = (await stack.Values.DataTask).Value;
+            var values = (await stack!.Values.DataTask).Value;
             Assert.Equal(values["expectedUrn"], values["actualUrn"]);
         }
 
         public class DeserializeMissingComponentResourceStack : Stack
         {
             [Output("values")]
-            public Output<ImmutableDictionary<string, string>> Values { get; private set; } = null!;
+            public Output<ImmutableDictionary<string, string>> Values { get; private set; }
 
             public DeserializeMissingComponentResourceStack()
             {
@@ -317,7 +317,7 @@ namespace Pulumi.Tests.Serialization
             var stack = resources.OfType<DeserializeMissingComponentResourceStack>().FirstOrDefault();
             Assert.NotNull(stack);
 
-            var values = (await stack.Values.DataTask).Value;
+            var values = (await stack!.Values.DataTask).Value;
             Assert.Equal(values["expectedUrn"], values["actualUrn"]);
         }
     }

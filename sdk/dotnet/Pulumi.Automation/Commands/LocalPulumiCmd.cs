@@ -20,7 +20,7 @@ namespace Pulumi.Automation.Commands
     {
 
         public async Task<CommandResult> RunAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             string workingDir,
             IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
@@ -47,7 +47,7 @@ namespace Pulumi.Automation.Commands
         }
 
         private async Task<CommandResult> RunAsyncInner(
-            IEnumerable<string> args,
+            IList<string> args,
             string workingDir,
             IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
@@ -108,18 +108,18 @@ namespace Pulumi.Automation.Commands
             return env;
         }
 
-        private static IEnumerable<string> PulumiArgs(IEnumerable<string> args, EventLogFile? eventLogFile)
+        private static IList<string> PulumiArgs(IList<string> args, EventLogFile? eventLogFile)
         {
             // all commands should be run in non-interactive mode.
             // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
             if (!args.Contains("--non-interactive"))
             {
-                args = args.Concat(new[] { "--non-interactive" });
+                args = args.Concat(new[] { "--non-interactive" }).ToList();
             }
 
             if (eventLogFile != null)
             {
-                args = args.Concat(new[] { "--event-log", eventLogFile.FilePath });
+                args = args.Concat(new[] { "--event-log", eventLogFile.FilePath }).ToList();
             }
 
             return args;

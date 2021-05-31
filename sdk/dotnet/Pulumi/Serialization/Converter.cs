@@ -8,6 +8,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
+// ReSharper disable TailRecursiveCall
 
 namespace Pulumi.Serialization
 {

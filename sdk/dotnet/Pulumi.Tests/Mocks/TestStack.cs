@@ -38,7 +38,7 @@ namespace Pulumi.Tests.Mocks
     public class MyStack : Stack
     {
         [Output("publicIp")]
-        public Output<string> PublicIp { get; private set; } = null!;
+        public Output<string> PublicIp { get; private set; }
 
         public MyStack()
         {

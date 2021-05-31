@@ -174,7 +174,7 @@ namespace Pulumi
             return engine.Errors.Count switch
             {
                 1 => throw new RunException(engine.Errors.Single()),
-                int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                var v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
                 _ => monitor.Resources.ToImmutableArray()
             };
         }

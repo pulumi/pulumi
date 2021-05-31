@@ -276,7 +276,7 @@ namespace Pulumi.Automation
 
         internal async Task<CommandResult> RunStackCommandAsync(
             string stackName,
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
@@ -291,12 +291,12 @@ namespace Pulumi.Automation
         }
 
         internal Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             CancellationToken cancellationToken)
             => this.RunCommandAsync(args, onStandardOutput: null, onStandardError: null, onEngineEvent: null, cancellationToken);
 
         internal Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,

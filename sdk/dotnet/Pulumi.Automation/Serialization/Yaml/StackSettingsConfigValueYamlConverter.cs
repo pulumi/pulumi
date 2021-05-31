@@ -14,7 +14,7 @@ namespace Pulumi.Automation.Serialization.Yaml
         public bool Accepts(Type type)
             => type == Type;
 
-        public object? ReadYaml(IParser parser, Type type)
+        public object ReadYaml(IParser parser, Type type)
         {
             // check if plain string
             if (parser.Accept<Scalar>(out var stringValue))

@@ -24,7 +24,7 @@ namespace Pulumi.Automation.Serialization.Yaml
         public bool Accepts(Type type)
             => type == Type;
 
-        public object? ReadYaml(IParser parser, Type type)
+        public object ReadYaml(IParser parser, Type type)
         {
             if (!parser.TryConsume<MappingStart>(out _))
                 throw new YamlException($"Unable to deserialize [{type.FullName}]. Expecting object.");

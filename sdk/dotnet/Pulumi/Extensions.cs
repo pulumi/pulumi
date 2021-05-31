@@ -43,6 +43,7 @@ namespace Pulumi
         {
             _ = response.ContinueWith(t =>
             {
+                // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
                 switch (t.Status)
                 {
                     default: throw new InvalidOperationException("Task was not complete: " + t.Status);

@@ -144,7 +144,7 @@ namespace Pulumi.Automation.Tests
             stacks = await workspace.ListStacksAsync();
             var newStack = stacks.FirstOrDefault(s => s.Name == stackName);
             Assert.NotNull(newStack);
-            Assert.True(newStack.IsCurrent);
+            Assert.True(newStack!.IsCurrent);
 
             await workspace.SelectStackAsync(stackName);
             await workspace.RemoveStackAsync(stackName);
@@ -1221,6 +1221,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameOne, Deployment.Instance.StackName);
                 hasReachedSemaphoreOne = true;
+                // ReSharper disable once AccessToDisposedClosure
                 semaphoreOne.Wait();
                 Assert.Equal(projectNameOne, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameOne, Deployment.Instance.StackName);
@@ -1241,6 +1242,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameTwo, Deployment.Instance.StackName);
                 hasReachedSemaphoreTwo = true;
+                // ReSharper disable once AccessToDisposedClosure
                 semaphoreTwo.Wait();
                 Assert.Equal(projectNameTwo, Deployment.Instance.ProjectName);
                 Assert.Equal(stackNameTwo, Deployment.Instance.StackName);

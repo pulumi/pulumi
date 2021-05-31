@@ -609,14 +609,13 @@ namespace Pulumi.Automation
         }
 
         private async Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
         {
-            var argsList = args.ToList();
-            argsList.AddRange(new List<string>() { "--stack", this.Name });
+            args = args.Concat(new[] { "--stack", this.Name }).ToList();
             return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
         }
 

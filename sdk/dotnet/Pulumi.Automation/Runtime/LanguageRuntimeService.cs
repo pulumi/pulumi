@@ -56,6 +56,7 @@ namespace Pulumi.Automation
 
             this._callerContext.ExceptionDispatchInfo = await Deployment.RunInlineAsync(
                 settings,
+                // ReSharper disable once AccessToDisposedClosure
                 runner => this._callerContext.Program.InvokeAsync(runner, cts.Token))
                 .ConfigureAwait(false);
 

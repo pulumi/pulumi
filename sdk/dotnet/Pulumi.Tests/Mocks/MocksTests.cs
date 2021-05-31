@@ -36,7 +36,7 @@ namespace Pulumi.Tests.Mocks
             var instance = resources.OfType<Instance>().FirstOrDefault();
             Assert.NotNull(instance);
 
-            var ip = await instance.PublicIp.GetValueAsync();
+            var ip = await instance!.PublicIp.GetValueAsync();
             Assert.Equal("203.0.113.12", ip);
         }
 
@@ -45,10 +45,10 @@ namespace Pulumi.Tests.Mocks
         {
             var resources = await Testing.RunAsync<MyStack>();
 
-            var mycustom = resources.OfType<MyCustom>().FirstOrDefault();
-            Assert.NotNull(mycustom);
+            var myCustom = resources.OfType<MyCustom>().FirstOrDefault();
+            Assert.NotNull(myCustom);
 
-            var instance = await mycustom.Instance.GetValueAsync();
+            var instance = await myCustom!.Instance.GetValueAsync();
             Assert.IsType<Instance>(instance);
 
             var ip = await instance.PublicIp.GetValueAsync();
@@ -63,7 +63,7 @@ namespace Pulumi.Tests.Mocks
             var stack = resources.OfType<MyStack>().FirstOrDefault();
             Assert.NotNull(stack);
 
-            var ip = await stack.PublicIp.GetValueAsync();
+            var ip = await stack!.PublicIp.GetValueAsync();
             Assert.Equal("203.0.113.12", ip);
         }
     }

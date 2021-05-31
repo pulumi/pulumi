@@ -82,6 +82,7 @@ namespace Pulumi.Automation.Events
                 await ReadEventsOnce();
                 await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token);
             }
+            // ReSharper disable once FunctionNeverReturns
         }
 
         private async Task ReadEventsOnce()

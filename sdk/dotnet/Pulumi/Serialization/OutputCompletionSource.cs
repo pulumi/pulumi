@@ -89,9 +89,9 @@ namespace Pulumi.Serialization
 
                 var ocsType = typeof(OutputCompletionSource<>).MakeGenericType(outputTypeArg);
                 var ocsContructor = ocsType.GetConstructors().Single();
-                var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new[] { resource });
+                var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new object?[] { resource });
 
-                setMethod.Invoke(resource, new[] { completionSource.Output });
+                setMethod.Invoke(resource, new object?[] { completionSource.Output });
 
                 var outputName = attrName ?? prop.Name;
                 result.Add(outputName, completionSource);
