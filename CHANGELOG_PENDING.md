@@ -1,5 +1,8 @@
 ### Improvements
 
+- [dotnet/sdk] Add get value async to output utilities.
+  [#7170](https://github.com/pulumi/pulumi/pull/7170)
+
 - [codegen] - Encrypt input args for secret properties.
   [#7128](https://github.com/pulumi/pulumi/pull/7128)
 
