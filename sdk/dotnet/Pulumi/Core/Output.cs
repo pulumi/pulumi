@@ -191,6 +191,12 @@ namespace Pulumi
             return new Output<T>(tcs.Task);
         }
 
+        internal static Output<T> CreateUnknown(T value)
+            => Unknown(value);
+
+        internal static Output<T> CreateUnknown(Func<Task<T>> valueFactory)
+            => Unknown().Apply(_ => valueFactory());
+
         /// <summary>
         /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
@@ -327,5 +333,12 @@ namespace Pulumi
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
         }
+
+        internal static Output<T> Unknown() => Unknown(default!);
+
+        internal static Output<T> Unknown(T value) => new Output<T>(UnknownHelperAsync(value));
+
+        private static Task<OutputData<T>> UnknownHelperAsync(T value)
+            => Task.FromResult(new OutputData<T>(ImmutableHashSet<Resource>.Empty, value, isKnown: false, isSecret: false));
     }
 }

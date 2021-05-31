@@ -4,6 +4,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 using Xunit;
 
 namespace Pulumi.Tests.Core
@@ -350,6 +351,16 @@ namespace Pulumi.Tests.Core
                     Assert.False(notSecretData.IsSecret);
                     Assert.Equal(2, notSecretData.Value);
                 });
+
+            [Fact]
+            public Task CreateUnknownSkipsValueFactory()
+                => RunInPreview(async () =>
+                {
+                    var output = OutputUtilities.CreateUnknown(() => Task.FromResult("value"));
+                    var data = await output.DataTask.ConfigureAwait(false);
+                    Assert.False(data.IsKnown);
+                    Assert.Null(data.Value);
+                });
         }
 
         public class NormalTests
@@ -584,6 +595,16 @@ namespace Pulumi.Tests.Core
                     Assert.False(data.IsKnown);
                     Assert.True(data.IsSecret);
                     Assert.Equal("inner", data.Value);
+                });
+
+            [Fact]
+            public Task CreateUnknownRunsValueFactory()
+                => RunInNormal(async () =>
+                {
+                    var output = OutputUtilities.CreateUnknown(() => Task.FromResult("value"));
+                    var data = await output.DataTask.ConfigureAwait(false);
+                    Assert.False(data.IsKnown);
+                    Assert.Equal("value", data.Value);
                 });
         }
     }
