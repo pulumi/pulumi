@@ -17,20 +17,13 @@ namespace Pulumi.Tests.Mocks
             return Task.FromResult<object>(args);
         }
 
-        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
-        {
-            switch (args.Type)
+        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args) =>
+            args.Type switch
             {
-                case "aws:ec2/instance:Instance":
-                    return Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
-                        { "publicIp", "203.0.113.12" },
-                    }));
-                case "pkg:index:MyCustom":
-                    return Task.FromResult<(string?, object)>((args.Name + "_id",  args.Inputs));
-                default:
-                    throw new Exception($"Unknown resource {args.Type}");
-            }
-        }
+                "aws:ec2/instance:Instance" => Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> { { "publicIp", "203.0.113.12" }, })),
+                "pkg:index:MyCustom" => Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs)),
+                _ => throw new Exception($"Unknown resource {args.Type}")
+            };
     }
 
     public partial class MocksTests

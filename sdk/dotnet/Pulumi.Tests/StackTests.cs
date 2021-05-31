@@ -38,7 +38,7 @@ namespace Pulumi.Tests
         private class NullOutputStack : Stack
         {
             [Output("foo")]
-            public Output<string>? Foo { get; }
+            public Output<string>? Foo { get; } = null;
         }
 
         [Fact]

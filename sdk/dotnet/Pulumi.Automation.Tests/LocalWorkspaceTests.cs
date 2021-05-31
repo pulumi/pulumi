@@ -166,8 +166,6 @@ namespace Pulumi.Automation.Tests
                 ProjectSettings = projectSettings
             });
 
-            StackDeployment deployment;
-
             var stackName = $"{RandomStackName()}";
             try
             {
@@ -178,7 +176,7 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
                 Assert.Equal(3, upResult.Outputs.Count);
 
-                deployment = await workspace.ExportStackAsync(stackName);
+                var deployment = await workspace.ExportStackAsync(stackName);
                 Assert.True(deployment.Version > 0);
 
                 var previewBeforeDestroy = await stack.PreviewAsync();

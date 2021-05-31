@@ -12,7 +12,7 @@ using Google.Protobuf.WellKnownTypes;
 
 namespace Pulumi.Serialization
 {
-    internal struct Serializer
+    internal readonly struct Serializer
     {
         public readonly HashSet<Resource> DependentResources;
 
@@ -230,7 +230,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             var propType = prop.GetType();
             if (propType.IsValueType && propType.GetCustomAttribute<EnumTypeAttribute>() != null)
             {
-                MethodInfo? mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
+                var mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
                 if (mi == null || (mi.ReturnType != typeof(string) && mi.ReturnType != typeof(double)))
                 {
                     throw new InvalidOperationException($"Expected {propType.FullName} to have an explicit conversion operator to String or Double.\n\t{ctx}");

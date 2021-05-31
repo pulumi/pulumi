@@ -117,30 +117,23 @@ namespace Pulumi.Automation
             this.Name = name;
             this.Workspace = workspace;
 
-            switch (mode)
+            this._readyTask = mode switch
             {
-                case WorkspaceStackInitMode.Create:
-                    this._readyTask = workspace.CreateStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.Select:
-                    this._readyTask = workspace.SelectStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.CreateOrSelect:
-                    this._readyTask = Task.Run(async () =>
+                WorkspaceStackInitMode.Create => workspace.CreateStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.Select => workspace.SelectStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.CreateOrSelect => Task.Run(async () =>
+                {
+                    try
                     {
-                        try
-                        {
-                            await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (StackAlreadyExistsException)
-                        {
-                            await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                    });
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}");
-            }
+                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (StackAlreadyExistsException)
+                    {
+                        await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                }),
+                _ => throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}")
+            };
         }
 
         /// <summary>

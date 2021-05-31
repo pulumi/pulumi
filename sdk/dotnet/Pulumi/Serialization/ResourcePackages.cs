@@ -12,7 +12,7 @@ namespace Pulumi
 {
     internal static class ResourcePackages
     {
-        private static Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> ResourceTypes
+        private static readonly Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> ResourceTypes
             = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(DiscoverResourceTypes);
 
         internal static bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
@@ -92,7 +92,7 @@ namespace Pulumi
 
             while (assembliesToCheck.Any())
             {
-                Assembly assemblyToCheck = assembliesToCheck.Dequeue();
+                var assemblyToCheck = assembliesToCheck.Dequeue();
                 if (yieldedAssemblies.Contains(assemblyToCheck.FullName!))
                     continue;
 

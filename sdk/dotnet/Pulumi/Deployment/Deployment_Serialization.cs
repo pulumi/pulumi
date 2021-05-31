@@ -65,7 +65,7 @@ namespace Pulumi
                 propertyToDependentResources.ToImmutable());
         }
 
-        private struct SerializationResult
+        private readonly struct SerializationResult
         {
             public readonly Struct Serialized;
             public readonly ImmutableDictionary<string, HashSet<Resource>> PropertyToDependentResources;

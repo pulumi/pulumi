@@ -186,7 +186,7 @@ namespace Pulumi
             }
         }
 
-        private struct PrepareResult
+        private readonly struct PrepareResult
         {
             public readonly Struct SerializedProps;
             public readonly string ParentUrn;

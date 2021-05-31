@@ -93,10 +93,9 @@ namespace Pulumi.Automation.Events
 
             await using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite) { Position = this._position };
             using var reader = new StreamReader(fs);
-            string? line;
             while (reader.Peek() >= 0)
             {
-                line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync();
                 this._position = fs.Position;
                 if (!string.IsNullOrWhiteSpace(line))
                 {

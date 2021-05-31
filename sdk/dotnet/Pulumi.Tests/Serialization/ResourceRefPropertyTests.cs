@@ -59,7 +59,7 @@ namespace Pulumi.Tests.Serialization
 
         class MyMocks : IMocks
         {
-            bool isPreview;
+            private readonly bool isPreview;
 
             public MyMocks(bool isPreview)
             {

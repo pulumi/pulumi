@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 using Xunit;
@@ -65,7 +66,7 @@ namespace Pulumi.Tests.Serialization
             [EditorBrowsable(EditorBrowsableState.Never)]
             public override int GetHashCode() => _value.GetHashCode();
 
-            public override string ToString() => _value.ToString();
+            public override string ToString() => _value.ToString(CultureInfo.InvariantCulture);
         }
 
         public enum ContainerSize

@@ -614,7 +614,7 @@ namespace Pulumi.Automation
             var tempFileName = Path.GetTempFileName();
             try
             {
-                File.WriteAllText(tempFileName, state.Json.GetRawText());
+                await File.WriteAllTextAsync(tempFileName, state.Json.GetRawText(), cancellationToken);
                 await this.RunCommandAsync(new[] { "stack", "import", "--file", tempFileName, "--stack", stackName },
                                            cancellationToken).ConfigureAwait(false);
             }

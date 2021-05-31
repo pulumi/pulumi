@@ -9,7 +9,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class ProjectRuntimeJsonConverterTests
     {
-        private static LocalSerializer _serializer = new LocalSerializer();
+        private static readonly LocalSerializer _serializer = new LocalSerializer();
 
         [Theory]
         [InlineData(ProjectRuntimeName.NodeJS)]

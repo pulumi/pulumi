@@ -80,9 +80,13 @@ namespace Pulumi
         private bool? GetBooleanImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
         {
             var v = GetImpl(key, use, insteadOf);
-            return v == null ? default(bool?) :
-                   v == "true" ? true :
-                   v == "false" ? false : throw new ConfigTypeException(FullKey(key), v, nameof(Boolean));
+            return v switch
+            {
+                null => default(bool?),
+                "true" => true,
+                "false" => false,
+                _ => throw new ConfigTypeException(FullKey(key), v, nameof(Boolean))
+            };
         }
 
         /// <summary>

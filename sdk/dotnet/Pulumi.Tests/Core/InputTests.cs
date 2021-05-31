@@ -31,7 +31,7 @@ namespace Pulumi.Tests.Core
                 var data = await result.ToOutput().DataTask.ConfigureAwait(false);
                 Assert.True(data.IsKnown);
                 Assert.Equal(4, data.Value.Count);
-                for (int i = 1; i <=4; i++)
+                for (var i = 1; i <=4; i++)
                     Assert.True(data.Value.Contains($"K{i}", $"V{i}"));
 
                 // Check that the input maps haven't changed
