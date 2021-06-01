@@ -27,7 +27,7 @@ namespace Pulumi.Automation.Commands.Exceptions
         internal static CommandException CreateFromResult(CommandResult result)
             => NotFoundRegexPattern.IsMatch(result.StandardError) ? new StackNotFoundException(result)
             : AlreadyExistsRegexPattern.IsMatch(result.StandardError) ? new StackAlreadyExistsException(result)
-            : result.StandardError?.IndexOf(ConflictText) >= 0 ? new ConcurrentUpdateException(result)
+            : result.StandardError.IndexOf(ConflictText, StringComparison.Ordinal) >= 0 ? new ConcurrentUpdateException(result)
             : new CommandException(result);
     }
 }

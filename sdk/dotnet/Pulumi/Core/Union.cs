@@ -2,6 +2,7 @@
 
 using System;
 using OneOf;
+
 // ReSharper disable PossiblyImpureMethodCallOnReadonlyVariable
 
 namespace Pulumi

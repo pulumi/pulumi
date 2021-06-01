@@ -1,7 +1,5 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;

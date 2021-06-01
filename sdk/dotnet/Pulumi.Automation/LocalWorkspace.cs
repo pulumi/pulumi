@@ -1,16 +1,16 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using Semver;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Pulumi.Automation.Commands;
+using Pulumi.Automation.Exceptions;
 using Pulumi.Automation.Serialization;
+using Semver;
 
 namespace Pulumi.Automation
 {
@@ -358,11 +358,11 @@ namespace Pulumi.Automation
                      !ProjectSettings.Comparer.Equals(projectSettings, existingSettings))
             {
                 var path = this.FindSettingsFile();
-                throw new Exceptions.ProjectSettingsConflictException(path);
+                throw new ProjectSettingsConflictException(path);
             }
         }
 
-        private static readonly string[] SettingsExtensions = new string[] { ".yaml", ".yml", ".json" };
+        private static readonly string[] SettingsExtensions = { ".yaml", ".yml", ".json" };
 
         private async Task PopulatePulumiVersionAsync(CancellationToken cancellationToken)
         {
@@ -376,7 +376,7 @@ namespace Pulumi.Automation
             var skipVersionCheckVar = "PULUMI_AUTOMATION_API_SKIP_VERSION_CHECK";
             var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(skipVersionCheckVar) ?? false;
             var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(skipVersionCheckVar) != null;
-            LocalWorkspace.ValidatePulumiVersion(LocalWorkspace._minimumVersion, version, optOut);
+            ValidatePulumiVersion(_minimumVersion, version, optOut);
             this.pulumiVersion = version;
         }
 
@@ -410,12 +410,8 @@ namespace Pulumi.Automation
             {
                 return this._serializer.DeserializeJson<ProjectSettings>(content);
             }
-            else
-            {
-
-                var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
-                return model.Convert();
-            }
+            var model = this._serializer.DeserializeYaml<ProjectSettingsModel>(content);
+            return model.Convert();
         }
 
         /// <inheritdoc/>
@@ -567,7 +563,7 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override Task CreateStackAsync(string stackName, CancellationToken cancellationToken)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "stack",
                 "init",
@@ -631,7 +627,7 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override Task RemovePluginAsync(string? name = null, string? versionRange = null, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "plugin",
                 "rm",

@@ -12,7 +12,7 @@ namespace Pulumi
     public partial class Deployment
     {
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
+        /// <see cref="RunAsync(Func{Task{IDictionary{string,object}}}, StackOptions)"/> for more details.
         /// </summary>
         /// <param name="action">Callback that creates stack resources.</param>
         public static Task<int> RunAsync(Action action)

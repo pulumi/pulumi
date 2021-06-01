@@ -35,7 +35,7 @@ namespace Pulumi.Serialization
             Output = new Output<T>(_taskCompletionSource.Task);
         }
 
-        public System.Type TargetType => typeof(T);
+        public Type TargetType => typeof(T);
 
         IOutput IOutputCompletionSource.Output => Output;
 

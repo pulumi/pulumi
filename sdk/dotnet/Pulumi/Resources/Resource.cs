@@ -330,7 +330,6 @@ $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '
             if (value != null)
             {
                 ThrowAliasPropertyConflict(name);
-                return;
             }
         }
 

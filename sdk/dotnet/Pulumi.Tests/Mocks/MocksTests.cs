@@ -26,7 +26,7 @@ namespace Pulumi.Tests.Mocks
             };
     }
 
-    public partial class MocksTests
+    public class MocksTests
     {
         [Fact]
         public async Task TestCustom()

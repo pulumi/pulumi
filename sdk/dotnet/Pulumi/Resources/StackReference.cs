@@ -4,7 +4,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
-using Pulumi.Serialization;
 
 namespace Pulumi
 {
@@ -152,6 +151,6 @@ namespace Pulumi
         /// The name of the stack to reference.
         /// </summary>
         [Input("name", required: true)]
-        public Input<string>? Name { get; set; } = null!;
+        public Input<string>? Name { get; set; }
     }
 }

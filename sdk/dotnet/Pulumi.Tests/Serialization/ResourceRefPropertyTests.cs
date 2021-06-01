@@ -14,7 +14,7 @@ namespace Pulumi.Tests.Serialization
 {
     public class ResourceRefPropertyTests : ConverterTests
     {
-        public sealed class MyArgs : Pulumi.ResourceArgs
+        public sealed class MyArgs : ResourceArgs
         {
         }
 
@@ -52,8 +52,8 @@ namespace Pulumi.Tests.Serialization
         {
             public MyStack()
             {
-                var customResource = new MyCustomResource("test", null, null);
-                var componentResource = new MyComponentResource("test", null, null);
+                var customResource = new MyCustomResource("test", null);
+                var componentResource = new MyComponentResource("test", null);
             }
         }
 
@@ -77,10 +77,10 @@ namespace Pulumi.Tests.Serialization
                 {
                     case "test:index:resource":
                     case "test:missing:resource":
-                        return Task.FromResult<(string?, object)>((this.isPreview ? null : "id", new Dictionary<string, object> {}));
+                        return Task.FromResult<(string?, object)>((this.isPreview ? null : "id", new Dictionary<string, object>()));
                     case "test:index:component":
                     case "test:missing:component":
-                        return Task.FromResult<(string?, object)>((null, new Dictionary<string, object> {}));
+                        return Task.FromResult<(string?, object)>((null, new Dictionary<string, object>()));
                     default:
                         throw new Exception($"Unknown resource {args.Type}");
                 }
@@ -158,7 +158,7 @@ namespace Pulumi.Tests.Serialization
 
             public DeserializeCustomResourceStack()
             {
-                var res = new MyCustomResource("test", null, null);
+                var res = new MyCustomResource("test", null);
 
                 var urn = res.Urn.DataTask.Result.Value;
                 var id = res.Id.DataTask.Result.Value;
@@ -196,7 +196,7 @@ namespace Pulumi.Tests.Serialization
 
             public DeserializeMissingCustomResourceStack()
             {
-                var res = new MissingCustomResource("test", null, null);
+                var res = new MissingCustomResource("test", null);
 
                 var urn = res.Urn.DataTask.Result.Value;
 
@@ -260,7 +260,7 @@ namespace Pulumi.Tests.Serialization
 
             public DeserializeComponentResourceStack()
             {
-                var res = new MyComponentResource("test", null, null);
+                var res = new MyComponentResource("test", null);
 
                 var urn = res.Urn.DataTask.Result.Value;
 
@@ -294,7 +294,7 @@ namespace Pulumi.Tests.Serialization
 
             public DeserializeMissingComponentResourceStack()
             {
-                var res = new MissingComponentResource("test", null, null);
+                var res = new MissingComponentResource("test", null);
 
                 var urn = res.Urn.DataTask.Result.Value;
 

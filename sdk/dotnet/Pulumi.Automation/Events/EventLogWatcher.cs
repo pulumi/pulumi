@@ -15,7 +15,7 @@ namespace Pulumi.Automation.Events
         private const int _pollingIntervalMilliseconds = 100;
 
         // We keep track of the last position in the file.
-        private long _position = 0;
+        private long _position;
         public string LogFile { get; }
         private readonly Task _pollingTask;
         private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();

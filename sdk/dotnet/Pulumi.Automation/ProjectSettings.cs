@@ -55,7 +55,7 @@ namespace Pulumi.Automation
         {
             get
             {
-                return ProjectSettings.Comparer.Equals(this, ProjectSettings.Default(this.Name));
+                return Comparer.Equals(this, Default(this.Name));
             }
         }
 
@@ -70,7 +70,7 @@ namespace Pulumi.Automation
 
                 if (y == null)
                 {
-                    return x == null;
+                    return false;
                 }
 
                 if (ReferenceEquals(x, y))

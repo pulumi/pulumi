@@ -26,7 +26,7 @@ namespace Pulumi.Serialization
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)assetOrArchive, isKnown: true, isSecret);
             }
-            else if (TryDeserializeResource(value, out var resource))
+            if (TryDeserializeResource(value, out var resource))
             {
                 return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)(object)resource, isKnown: true, isSecret);
             }
@@ -155,7 +155,7 @@ namespace Pulumi.Serialization
                     assetOrArchive = DeserializeAsset(value);
                     return true;
                 }
-                else if (sig == Constants.SpecialArchiveSig)
+                if (sig == Constants.SpecialArchiveSig)
                 {
                     assetOrArchive = DeserializeArchive(value);
                     return true;

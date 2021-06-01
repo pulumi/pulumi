@@ -91,7 +91,7 @@ namespace Pulumi.Automation
         /// </summary>
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
         public static PulumiFn Create<TStack>()
-            where TStack : Pulumi.Stack, new()
+            where TStack : Stack, new()
             => new PulumiFn<TStack>(() => new TStack());
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace Pulumi.Automation
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
         /// <param name="serviceProvider">The service provider that will be used to resolve an instance of <typeparamref name="TStack"/>.</param>
         public static PulumiFn Create<TStack>(IServiceProvider serviceProvider)
-            where TStack : Pulumi.Stack
+            where TStack : Stack
             => new PulumiFnServiceProvider(serviceProvider, typeof(TStack));
 
         /// <summary>

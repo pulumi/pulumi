@@ -2,10 +2,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xunit;
-using Pulumi.Automation.Commands;
 using System.Linq;
+using System.Threading.Tasks;
+using Pulumi.Automation.Commands;
+using Xunit;
 
 namespace Pulumi.Automation.Tests
 {

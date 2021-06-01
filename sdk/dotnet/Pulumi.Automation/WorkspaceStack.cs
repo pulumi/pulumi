@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.ExceptionServices;
@@ -204,7 +203,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "up",
                 "--yes",
@@ -306,7 +305,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string>() { "preview" };
+            var args = new List<string> { "preview" };
 
             if (options != null)
             {
@@ -416,7 +415,7 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "refresh",
                 "--yes",
@@ -471,7 +470,7 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "destroy",
                 "--yes",
@@ -532,7 +531,7 @@ namespace Pulumi.Automation
             HistoryOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "stack",
                 "history",

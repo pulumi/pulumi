@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-
 using CliWrap;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -40,10 +39,7 @@ namespace Pulumi.Automation.Commands
                     await eventLogWatcher.Stop();
                 }
             }
-            else
-            {
-                return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken);
-            }
+            return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken);
         }
 
         private async Task<CommandResult> RunAsyncInner(
@@ -88,10 +84,7 @@ namespace Pulumi.Automation.Commands
             {
                 throw CommandException.CreateFromResult(result);
             }
-            else
-            {
-                return result;
-            }
+            return result;
         }
 
         private static IReadOnlyDictionary<string, string?> PulumiEnvironment(IDictionary<string, string?> additionalEnv, bool debugCommands)
@@ -132,10 +125,7 @@ namespace Pulumi.Automation.Commands
             {
                 return "event-log";
             }
-            else
-            {
-                return alphaNumWord.IsMatch(firstArgument) ? firstArgument : "event-log";
-            }
+            return alphaNumWord.IsMatch(firstArgument) ? firstArgument : "event-log";
         }
 
         private class EventLogFile : IDisposable

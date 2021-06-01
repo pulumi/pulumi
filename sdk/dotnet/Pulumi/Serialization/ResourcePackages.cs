@@ -28,7 +28,7 @@ namespace Pulumi
             var constructorInfo = resourceType.GetConstructors().Single(c => c.GetParameters().Length == 3);
 
             var resourceOptions = typeof(CustomResource).IsAssignableFrom(resourceType) ?
-                (ResourceOptions)new CustomResourceOptions { Urn = urn } :
+                new CustomResourceOptions { Urn = urn } :
                 (ResourceOptions)new ComponentResourceOptions { Urn = urn };
 
             resource = (Resource)constructorInfo.Invoke(new[] { urnName, (object?)null, resourceOptions });

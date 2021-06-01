@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Enum = System.Enum;
 
 namespace Pulumi.Serialization
 {
@@ -222,7 +223,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             if (prop is IList list)
                 return await SerializeListAsync(ctx, list, keepResources).ConfigureAwait(false);
 
-            if (prop is System.Enum e && e.GetTypeCode() == TypeCode.Int32)
+            if (prop is Enum e && e.GetTypeCode() == TypeCode.Int32)
             {
                 return (int)prop;
             }
@@ -235,7 +236,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 {
                     throw new InvalidOperationException($"Expected {propType.FullName} to have an explicit conversion operator to String or Double.\n\t{ctx}");
                 }
-                return mi.Invoke(null, new object[] { prop });
+                return mi.Invoke(null, new[] { prop });
             }
 
             throw new InvalidOperationException($"{propType.FullName} is not a supported argument type.\n\t{ctx}");

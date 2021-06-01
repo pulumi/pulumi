@@ -43,10 +43,7 @@ namespace Pulumi.Automation.Serialization.Yaml
                 parser.MoveNext();
                 return new StackSettingsConfigValue(securePropertyValue.Value, true);
             }
-            else
-            {
-                throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
-            }
+            throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
         }
 
         public void WriteYaml(IEmitter emitter, object? value, Type type)

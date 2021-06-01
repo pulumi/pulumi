@@ -1,6 +1,5 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
 
 namespace Pulumi

@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -213,10 +214,9 @@ namespace Pulumi
                 }
                 else
                 {
-                    var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-                    await _deployment.Logger.ErrorAsync(
-    $@"Running program '{location}' failed with an unhandled exception:
-{exception.ToString()}").ConfigureAwait(false);
+                    var location = Assembly.GetEntryAssembly()?.Location;
+                    await _deployment.Logger.ErrorAsync($@"Running program '{location}' failed with an unhandled exception:
+{exception}").ConfigureAwait(false);
                 }
 
                 _deployment.Serilogger.Debug("Wrote last error.  Returning from program.");

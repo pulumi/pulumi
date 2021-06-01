@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace Pulumi.Automation
 {
-    internal class PulumiFn<TStack> : PulumiFn where TStack : Pulumi.Stack
+    internal class PulumiFn<TStack> : PulumiFn where TStack : Stack
     {
         private readonly Func<TStack> _stackFactory;
 

@@ -1,6 +1,5 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
@@ -35,7 +34,7 @@ namespace Pulumi
                 Parent = prepareResult.ParentUrn,
                 Provider = prepareResult.ProviderRef,
                 Properties = prepareResult.SerializedProps,
-                Version = options?.Version ?? "",
+                Version = options.Version ?? "",
                 AcceptSecrets = true,
                 AcceptResources = !_disableResourceReferences,
             };

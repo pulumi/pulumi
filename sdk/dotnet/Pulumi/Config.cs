@@ -1,7 +1,6 @@
 // Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
@@ -35,7 +34,7 @@ namespace Pulumi
             name ??= Deployment.Instance.ProjectName;
             if (name.EndsWith(":config", StringComparison.Ordinal))
             {
-                name = name[0..^":config".Length];
+                name = name[..^":config".Length];
             }
 
             _name = name;

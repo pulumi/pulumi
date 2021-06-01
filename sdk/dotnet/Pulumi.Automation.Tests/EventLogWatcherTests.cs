@@ -1,9 +1,9 @@
 // Copyright 2016-2021, Pulumi Corporation
 
+using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
-using System.IO;
-using System;
 using Pulumi.Automation.Events;
 using Xunit;
 

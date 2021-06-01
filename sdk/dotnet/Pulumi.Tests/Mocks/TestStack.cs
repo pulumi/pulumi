@@ -3,7 +3,7 @@
 namespace Pulumi.Tests.Mocks
 {
     [ResourceType("aws:ec2/instance:Instance", null)]
-    public partial class Instance : Pulumi.CustomResource
+    public class Instance : CustomResource
     {
         [Output("publicIp")]
         public Output<string> PublicIp { get; private set; } = null!;
@@ -14,11 +14,11 @@ namespace Pulumi.Tests.Mocks
         }
     }
 
-    public sealed class InstanceArgs : Pulumi.ResourceArgs
+    public sealed class InstanceArgs : ResourceArgs
     {
     }
 
-    public partial class MyCustom : Pulumi.CustomResource
+    public class MyCustom : CustomResource
     {
         [Output("instance")]
         public Output<Instance> Instance { get; private set; } = null!;
@@ -29,7 +29,7 @@ namespace Pulumi.Tests.Mocks
         }
     }
 
-    public sealed class MyCustomArgs : Pulumi.ResourceArgs
+    public sealed class MyCustomArgs : ResourceArgs
     {
         [Input("instance")]
         public Input<Instance>? Instance { get; set; }
