@@ -117,6 +117,31 @@ func (i FooArray) ToFooArrayOutputWithContext(ctx context.Context) FooArrayOutpu
 	return pulumi.ToOutputWithContext(ctx, i).(FooArrayOutput)
 }
 
+// FooMapInput is an input type that accepts FooMap and FooMapOutput values.
+// You can construct a concrete instance of `FooMapInput` via:
+//
+//          FooMap{ "key": FooArgs{...} }
+type FooMapInput interface {
+	pulumi.Input
+
+	ToFooMapOutput() FooMapOutput
+	ToFooMapOutputWithContext(context.Context) FooMapOutput
+}
+
+type FooMap map[string]FooInput
+
+func (FooMap) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Foo)(nil)).Elem()
+}
+
+func (i FooMap) ToFooMapOutput() FooMapOutput {
+	return i.ToFooMapOutputWithContext(context.Background())
+}
+
+func (i FooMap) ToFooMapOutputWithContext(ctx context.Context) FooMapOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(FooMapOutput)
+}
+
 type FooOutput struct{ *pulumi.OutputState }
 
 func (FooOutput) ElementType() reflect.Type {
@@ -256,8 +281,29 @@ func (o FooArrayOutput) Index(i pulumi.IntInput) FooOutput {
 	}).(FooOutput)
 }
 
+type FooMapOutput struct{ *pulumi.OutputState }
+
+func (FooMapOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*map[string]Foo)(nil)).Elem()
+}
+
+func (o FooMapOutput) ToFooMapOutput() FooMapOutput {
+	return o
+}
+
+func (o FooMapOutput) ToFooMapOutputWithContext(ctx context.Context) FooMapOutput {
+	return o
+}
+
+func (o FooMapOutput) MapIndex(k pulumi.StringInput) FooOutput {
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) Foo {
+		return vs[0].(map[string]Foo)[vs[1].(string)]
+	}).(FooOutput)
+}
+
 func init() {
 	pulumi.RegisterOutputType(FooOutput{})
 	pulumi.RegisterOutputType(FooPtrOutput{})
 	pulumi.RegisterOutputType(FooArrayOutput{})
+	pulumi.RegisterOutputType(FooMapOutput{})
 }

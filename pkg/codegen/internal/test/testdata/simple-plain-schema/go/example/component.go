@@ -41,28 +41,30 @@ func NewComponent(ctx *pulumi.Context,
 }
 
 type componentArgs struct {
-	A   bool    `pulumi:"a"`
-	B   *bool   `pulumi:"b"`
-	Bar *Foo    `pulumi:"bar"`
-	Baz []Foo   `pulumi:"baz"`
-	C   int     `pulumi:"c"`
-	D   *int    `pulumi:"d"`
-	E   string  `pulumi:"e"`
-	F   *string `pulumi:"f"`
-	Foo *Foo    `pulumi:"foo"`
+	A      bool           `pulumi:"a"`
+	B      *bool          `pulumi:"b"`
+	Bar    *Foo           `pulumi:"bar"`
+	Baz    []Foo          `pulumi:"baz"`
+	BazMap map[string]Foo `pulumi:"bazMap"`
+	C      int            `pulumi:"c"`
+	D      *int           `pulumi:"d"`
+	E      string         `pulumi:"e"`
+	F      *string        `pulumi:"f"`
+	Foo    *Foo           `pulumi:"foo"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	A   bool
-	B   *bool
-	Bar *Foo
-	Baz []Foo
-	C   int
-	D   *int
-	E   string
-	F   *string
-	Foo FooPtrInput
+	A      bool
+	B      *bool
+	Bar    *Foo
+	Baz    []Foo
+	BazMap map[string]Foo
+	C      int
+	D      *int
+	E      string
+	F      *string
+	Foo    FooPtrInput
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
