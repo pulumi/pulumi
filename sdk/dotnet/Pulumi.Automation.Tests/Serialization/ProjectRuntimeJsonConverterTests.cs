@@ -3,12 +3,19 @@
 using System.Text.Json;
 using Pulumi.Automation.Serialization;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Pulumi.Automation.Tests.Serialization
 {
     public class ProjectRuntimeJsonConverterTests
     {
+        private readonly ITestOutputHelper _output;
         private static readonly LocalSerializer _serializer = new LocalSerializer();
+
+        public ProjectRuntimeJsonConverterTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
 
         [Theory]
         [InlineData(ProjectRuntimeName.NodeJS)]
@@ -70,7 +77,7 @@ namespace Pulumi.Automation.Tests.Serialization
             var runtime = new ProjectRuntime(ProjectRuntimeName.Dotnet);
 
             var json = _serializer.SerializeJson(runtime);
-            Console.WriteLine(json);
+            _output.WriteLine(json);
 
             using var document = JsonDocument.Parse(json);
             Assert.NotNull(document);
@@ -90,7 +97,7 @@ namespace Pulumi.Automation.Tests.Serialization
             };
 
             var json = _serializer.SerializeJson(runtime);
-            Console.WriteLine(json);
+            _output.WriteLine(json);
 
             using var document = JsonDocument.Parse(json);
             Assert.NotNull(document);
