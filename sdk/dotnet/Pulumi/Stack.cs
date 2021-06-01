@@ -30,7 +30,9 @@ namespace Pulumi
         /// may look a bit confusing and may incorrectly look like something that could be removed
         /// without changing semantics.
         /// </summary>
+#pragma warning disable 414
         internal static readonly Resource? Root = null;
+#pragma warning restore 414
 
         /// <summary>
         /// <see cref="_rootPulumiStackTypeName"/> is the type name that should be used to construct

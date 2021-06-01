@@ -192,19 +192,19 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, U> func)
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, Task<U>> func)
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, Input<U>?> func)
             => Apply(t => func(t).ToOutput());
@@ -303,6 +303,7 @@ namespace Pulumi
             var isKnown = true;
             var isSecret = false;
 
+#pragma warning disable 8601
             Update(await GetData(item1).ConfigureAwait(false), ref tuple.Item1);
             Update(await GetData(item2).ConfigureAwait(false), ref tuple.Item2);
             Update(await GetData(item3).ConfigureAwait(false), ref tuple.Item3);
@@ -311,6 +312,7 @@ namespace Pulumi
             Update(await GetData(item6).ConfigureAwait(false), ref tuple.Item6);
             Update(await GetData(item7).ConfigureAwait(false), ref tuple.Item7);
             Update(await GetData(item8).ConfigureAwait(false), ref tuple.Item8);
+#pragma warning restore 8601
 
             return OutputData.Create(resources.ToImmutable(), tuple, isKnown, isSecret);
 
