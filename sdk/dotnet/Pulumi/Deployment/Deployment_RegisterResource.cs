@@ -54,12 +54,12 @@ namespace Pulumi
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
             request.Aliases.AddRange(prepareResult.Aliases);
-            request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
+            request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
-            foreach (var (key, resourceURNs) in prepareResult.PropertyToDirectDependencyURNs)
+            foreach (var (key, resourceUrns) in prepareResult.PropertyToDirectDependencyUrns)
             {
                 var deps = new RegisterResourceRequest.Types.PropertyDependencies();
-                deps.Urns.AddRange(resourceURNs);
+                deps.Urns.AddRange(resourceUrns);
                 request.PropertyDependencies.Add(key, deps);
             }
         }

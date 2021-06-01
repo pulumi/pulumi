@@ -39,7 +39,7 @@ namespace Pulumi
                 AcceptResources = !_disableResourceReferences,
             };
 
-            request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
+            request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
             // Now run the operation, serializing the invocation if necessary.
             var response = await this.Monitor.ReadResourceAsync(resource, request);

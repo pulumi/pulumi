@@ -56,7 +56,7 @@ namespace Pulumi
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
         /// </summary>
-        internal readonly HashSet<Resource> ChildResources = new HashSet<Resource>();
+        internal HashSet<Resource> ChildResources { get; } = new HashSet<Resource>();
 
         /// <summary>
         /// Urn is the stable logical URN used to distinctly address a resource, both before and

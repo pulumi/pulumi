@@ -12,7 +12,7 @@ namespace Pulumi
     /// </summary>
     public class ProviderResource : CustomResource
     {
-        internal readonly string Package;
+        internal string Package { get; }
 
         private string? _registrationId;
 
@@ -53,14 +53,14 @@ namespace Pulumi
 
             if (provider._registrationId == null)
             {
-                var providerURN = await provider.Urn.GetValueAsync().ConfigureAwait(false);
-                var providerID = await provider.Id.GetValueAsync().ConfigureAwait(false);
-                if (string.IsNullOrEmpty(providerID))
+                var providerUrn = await provider.Urn.GetValueAsync().ConfigureAwait(false);
+                var providerId = await provider.Id.GetValueAsync().ConfigureAwait(false);
+                if (string.IsNullOrEmpty(providerId))
                 {
-                    providerID = Constants.UnknownValue;
+                    providerId = Constants.UnknownValue;
                 }
 
-                provider._registrationId = $"{providerURN}::{providerID}";
+                provider._registrationId = $"{providerUrn}::{providerId}";
             }
 
             return provider._registrationId;

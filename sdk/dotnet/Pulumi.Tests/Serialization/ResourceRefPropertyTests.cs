@@ -59,11 +59,11 @@ namespace Pulumi.Tests.Serialization
 
         class MyMocks : IMocks
         {
-            private readonly bool isPreview;
+            private readonly bool _isPreview;
 
             public MyMocks(bool isPreview)
             {
-                this.isPreview = isPreview;
+                this._isPreview = isPreview;
             }
 
             public Task<object> CallAsync(MockCallArgs args)
@@ -77,7 +77,7 @@ namespace Pulumi.Tests.Serialization
                 {
                     case "test:index:resource":
                     case "test:missing:resource":
-                        return Task.FromResult<(string?, object)>((this.isPreview ? null : "id", new Dictionary<string, object>()));
+                        return Task.FromResult<(string?, object)>((this._isPreview ? null : "id", new Dictionary<string, object>()));
                     case "test:index:component":
                     case "test:missing:component":
                         return Task.FromResult<(string?, object)>((null, new Dictionary<string, object>()));

@@ -39,7 +39,7 @@ namespace Pulumi
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
             LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
-            var parentURN = options.Parent != null
+            var parentUrn = options.Parent != null
                 ? await options.Parent.Urn.GetValueAsync().ConfigureAwait(false)
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
             LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
@@ -77,16 +77,16 @@ namespace Pulumi
             // The list of all dependencies (implicit or explicit).
             var allDirectDependencies = new HashSet<Resource>(explicitDirectDependencies);
 
-            var allDirectDependencyURNs = await GetAllTransitivelyReferencedCustomResourceURNsAsync(explicitDirectDependencies).ConfigureAwait(false);
-            var propertyToDirectDependencyURNs = new Dictionary<string, HashSet<string>>();
+            var allDirectDependencyUrns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(explicitDirectDependencies).ConfigureAwait(false);
+            var propertyToDirectDependencyUrns = new Dictionary<string, HashSet<string>>();
 
             foreach (var (propertyName, directDependencies) in propertyToDirectDependencies)
             {
                 allDirectDependencies.AddRange(directDependencies);
 
-                var urns = await GetAllTransitivelyReferencedCustomResourceURNsAsync(directDependencies).ConfigureAwait(false);
-                allDirectDependencyURNs.AddRange(urns);
-                propertyToDirectDependencyURNs[propertyName] = urns;
+                var urns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(directDependencies).ConfigureAwait(false);
+                allDirectDependencyUrns.AddRange(urns);
+                propertyToDirectDependencyUrns[propertyName] = urns;
             }
 
             // Wait for all aliases. Note that we use 'res._aliases' instead of 'options.aliases' as
@@ -106,11 +106,11 @@ namespace Pulumi
 
             return new PrepareResult(
                 serializedProps,
-                parentURN ?? "",
+                parentUrn ?? "",
                 providerRef ?? "",
                 providerRefs,
-                allDirectDependencyURNs,
-                propertyToDirectDependencyURNs,
+                allDirectDependencyUrns,
+                propertyToDirectDependencyUrns,
                 aliases);
 
             void LogExcessive(string message)
@@ -123,7 +123,7 @@ namespace Pulumi
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync();
 
-        private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
+        private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceUrnsAsync(
             HashSet<Resource> resources)
         {
             // Go through 'resources', but transitively walk through **Component** resources,
@@ -191,18 +191,18 @@ namespace Pulumi
             public readonly string ParentUrn;
             public readonly string ProviderRef;
             public readonly Dictionary<string, string> ProviderRefs;
-            public readonly HashSet<string> AllDirectDependencyURNs;
-            public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyURNs;
+            public readonly HashSet<string> AllDirectDependencyUrns;
+            public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyUrns;
             public readonly List<string> Aliases;
 
-            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
                 ProviderRef = providerRef;
                 ProviderRefs = providerRefs;
-                AllDirectDependencyURNs = allDirectDependencyURNs;
-                PropertyToDirectDependencyURNs = propertyToDirectDependencyURNs;
+                AllDirectDependencyUrns = allDirectDependencyUrns;
+                PropertyToDirectDependencyUrns = propertyToDirectDependencyUrns;
                 Aliases = aliases;
             }
         }

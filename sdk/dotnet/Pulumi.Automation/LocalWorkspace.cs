@@ -43,9 +43,9 @@ namespace Pulumi.Automation
         /// <inheritdoc/>
         public override string? PulumiHome { get; }
 
-        private SemVersion? pulumiVersion;
+        private SemVersion? _pulumiVersion;
         /// <inheritdoc/>
-        public override string PulumiVersion => pulumiVersion?.ToString() ?? throw new InvalidOperationException("Failed to get Pulumi version.");
+        public override string PulumiVersion => _pulumiVersion?.ToString() ?? throw new InvalidOperationException("Failed to get Pulumi version.");
 
         /// <inheritdoc/>
         public override string? SecretsProvider { get; }
@@ -362,7 +362,7 @@ namespace Pulumi.Automation
             }
         }
 
-        private static readonly string[] SettingsExtensions = { ".yaml", ".yml", ".json" };
+        private static readonly string[] _settingsExtensions = { ".yaml", ".yml", ".json" };
 
         private async Task PopulatePulumiVersionAsync(CancellationToken cancellationToken)
         {
@@ -377,7 +377,7 @@ namespace Pulumi.Automation
             var hasSkipEnvVar = this.EnvironmentVariables?.ContainsKey(skipVersionCheckVar) ?? false;
             var optOut = hasSkipEnvVar || Environment.GetEnvironmentVariable(skipVersionCheckVar) != null;
             ValidatePulumiVersion(_minimumVersion, version, optOut);
-            this.pulumiVersion = version;
+            this._pulumiVersion = version;
         }
 
         internal static void ValidatePulumiVersion(SemVersion minVersion, SemVersion currentVersion, bool optOut)
@@ -425,7 +425,7 @@ namespace Pulumi.Automation
 
         private string FindSettingsFile()
         {
-            foreach (var ext in SettingsExtensions)
+            foreach (var ext in _settingsExtensions)
             {
                 var testPath = Path.Combine(this.WorkDir, $"Pulumi{ext}");
                 if (File.Exists(testPath))
@@ -451,7 +451,7 @@ namespace Pulumi.Automation
         {
             var settingsName = GetStackSettingsName(stackName);
 
-            foreach (var ext in SettingsExtensions)
+            foreach (var ext in _settingsExtensions)
             {
                 var isJson = ext == ".json";
                 var path = Path.Combine(this.WorkDir, $"Pulumi.{settingsName}{ext}");
@@ -471,7 +471,7 @@ namespace Pulumi.Automation
             var settingsName = GetStackSettingsName(stackName);
 
             var foundExt = ".yaml";
-            foreach (var ext in SettingsExtensions)
+            foreach (var ext in _settingsExtensions)
             {
                 var testPath = Path.Combine(this.WorkDir, $"Pulumi.{settingsName}{ext}");
                 if (File.Exists(testPath))

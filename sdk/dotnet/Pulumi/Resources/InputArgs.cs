@@ -84,6 +84,7 @@ namespace Pulumi
         private readonly struct InputInfo
         {
             public readonly InputAttribute Attribute;
+            // ReSharper disable once NotAccessedField.Local
             public readonly Type MemberType;
             public readonly string MemberName;
             public readonly Func<object, object?> GetValue;

@@ -12,7 +12,7 @@ namespace Pulumi
 {
     internal static class ResourcePackages
     {
-        private static readonly Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> ResourceTypes
+        private static readonly Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>> _resourceTypes
             = new Lazy<ImmutableDictionary<string, ImmutableList<(string?, Type)>>>(DiscoverResourceTypes);
 
         internal static bool TryConstruct(string type, string version, string urn, [NotNullWhen(true)] out Resource? resource)
@@ -38,7 +38,7 @@ namespace Pulumi
         internal static bool TryGetResourceType(string name, string? version, [NotNullWhen(true)] out Type? type)
         {
             var minimalVersion = !string.IsNullOrEmpty(version) ? SemVersion.Parse(version) : new SemVersion(0);
-            var yes = ResourceTypes.Value.TryGetValue(name, out var types);
+            var yes = _resourceTypes.Value.TryGetValue(name, out var types);
             if (!yes)
             {
                 type = null;

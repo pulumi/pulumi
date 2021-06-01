@@ -9,10 +9,9 @@ namespace Pulumi.Automation.Serialization.Yaml
 {
     internal class StackSettingsConfigValueYamlConverter : IYamlTypeConverter
     {
-        private static readonly Type Type = typeof(StackSettingsConfigValue);
+        private static readonly Type _type = typeof(StackSettingsConfigValue);
 
-        public bool Accepts(Type type)
-            => type == Type;
+        public bool Accepts(Type type) => type == _type;
 
         public object ReadYaml(IParser parser, Type type)
         {
