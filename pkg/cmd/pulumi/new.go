@@ -599,7 +599,7 @@ func nodeInstallDependencies() (string, error) {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
 
-	bin, err := npm.Install("", os.Stdout, os.Stderr)
+	bin, err := npm.Install("", false /*production*/, os.Stdout, os.Stderr)
 	if err != nil {
 		return bin, err
 	}

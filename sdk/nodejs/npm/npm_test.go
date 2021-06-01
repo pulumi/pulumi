@@ -24,15 +24,17 @@ import (
 )
 
 func TestNPMInstall(t *testing.T) {
-	testInstall(t, "npm")
+	testInstall(t, "npm", false /*production*/)
+	testInstall(t, "npm", true /*production*/)
 }
 
 func TestYarnInstall(t *testing.T) {
 	os.Setenv("PULUMI_PREFER_YARN", "true")
-	testInstall(t, "yarn")
+	testInstall(t, "yarn", false /*production*/)
+	testInstall(t, "yarn", true /*production*/)
 }
 
-func testInstall(t *testing.T, expectedBin string) {
+func testInstall(t *testing.T, expectedBin string, production bool) {
 	// Skip during short test runs since this test involves downloading dependencies.
 	if testing.Short() {
 		t.Skip("Skipped in short test run")
@@ -59,7 +61,7 @@ func testInstall(t *testing.T, expectedBin string) {
 
 	// Install dependencies, passing nil for stdout and stderr, which connects
 	// them to the file descriptor for the null device (os.DevNull).
-	bin, err := Install(pkgdir, nil, nil)
+	bin, err := Install(pkgdir, production, nil, nil)
 	assert.NoError(t, err)
 	assert.Equal(t, expectedBin, bin)
 }
