@@ -5,7 +5,6 @@ go 1.16
 replace (
 	github.com/Sirupsen/logrus => github.com/sirupsen/logrus v1.5.0
 	github.com/pulumi/pulumi/sdk/v3 => ../sdk
-	gocloud.dev => github.com/pulumi/go-cloud v0.18.1-0.20210602172610-9acf41b15dcc
 )
 
 require (
@@ -16,7 +15,7 @@ require (
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/djherbis/times v1.2.0
-	github.com/docker/docker v0.0.0-20170504205632-89658bed64c2
+	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
 	github.com/dustin/go-humanize v1.0.0
 	github.com/gedex/inflector v0.0.0-20170307190818-16278e9db813
 	github.com/gofrs/uuid v3.3.0+incompatible
@@ -24,7 +23,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-querystring v1.0.0
 	github.com/gorilla/mux v1.7.4
-	github.com/hashicorp/go-multierror v1.1.0
+	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd
 	github.com/json-iterator/go v1.1.9
@@ -45,8 +44,8 @@ require (
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/zclconf/go-cty v1.3.1
-	gocloud.dev v0.22.0
-	gocloud.dev/secrets/hashivault v0.22.0
+	gocloud.dev v0.23.0
+	gocloud.dev/secrets/hashivault v0.23.0
 	golang.org/x/crypto v0.0.0-20210506145944-38f3c27a63bf
 	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c

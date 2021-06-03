@@ -16,6 +16,6 @@ require (
 	github.com/pulumi/pulumi/pkg/v3 v3.3.0
 	github.com/pulumi/pulumi/sdk/v3 v3.3.1
 	github.com/stretchr/testify v1.7.0
-	gocloud.dev v0.22.0 // indirect
+	go.opencensus.io v0.23.0 // indirect
 	google.golang.org/grpc v1.37.0
 )
