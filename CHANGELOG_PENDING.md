@@ -8,6 +8,9 @@
 - [cli] - Send plugin install output to stderr, so that it doesn't
   clutter up --json, automation API scenarios, and so on.
   [#7115](https://github.com/pulumi/pulumi/pull/7115)
+  
+- [cli] Protect against panics when using the wrong resource type with `pulumi import`
+  [#7202](https://github.com/pulumi/pulumi/pull/7202)
 
 - [auto/nodejs] - Emit warning instead of breaking on parsing JSON events for automation API.
   [#7162](https://github.com/pulumi/pulumi/pull/7162)
