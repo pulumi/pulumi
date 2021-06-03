@@ -14,3 +14,7 @@
 
 - [sdk/python] Improve performance of `Output.from_input` and `Output.all` on nested objects.
   [#7175](https://github.com/pulumi/pulumi/pull/7175)
+
+### Misc
+- Update version of go-cloud used by Pulumi to `0.23.0`.
+  [#7204](https://github.com/pulumi/pulumi/pull/7204)
