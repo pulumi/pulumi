@@ -287,7 +287,7 @@ jobs:
       - name: Run Pulumi Tests
         run: |
           cd src\github.com\${{ github.repository }}
-          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+          dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi" /p:CollectCoverage=true
   verify-containers:
     name: Run Container Tests
     needs: [publish-binaries, publish-sdks]
