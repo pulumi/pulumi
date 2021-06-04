@@ -1,12 +1,18 @@
 package plugin
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"testing"
 
+	empty "github.com/golang/protobuf/ptypes/empty"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
+	grpc "google.golang.org/grpc"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 func TestAnnotateSecrets(t *testing.T) {
@@ -216,4 +222,144 @@ func TestNestedSecret(t *testing.T) {
 	annotateSecrets(to, from)
 
 	assert.Truef(t, reflect.DeepEqual(to, expected), "did not match expected after annotation")
+}
+
+func TestInvokeWithUnknowns(t *testing.T) {
+	// Create an example with list-nested unknowns that used to panic.
+	proto := pbStruct("resources", pbList(pbString(UnknownStringValue)))
+	propsWithUnknowns, err := UnmarshalProperties(proto, MarshalOptions{KeepUnknowns: true})
+	if err != nil {
+		t.Error(err)
+	}
+
+	// Invoke dynamically executes a built-in function in the provider.
+	p := initProviderForTesting(t, &TestInvokeWithUnknownsClient{})
+	resultPropertyMap, failures, err := p.Invoke("a:b:c", propsWithUnknowns)
+	if err != nil {
+		t.Error(err)
+	}
+
+	assert.Equal(t, 0, len(failures))
+	assert.Equal(t, 0, len(resultPropertyMap))
+}
+
+type TestInvokeWithUnknownsClient struct {
+	t *testing.T
+	UnimplementedResourceProviderClient
+}
+
+func (*TestInvokeWithUnknownsClient) Configure(ctx context.Context, in *pulumirpc.ConfigureRequest, opts ...grpc.CallOption) (*pulumirpc.ConfigureResponse, error) {
+	return &pulumirpc.ConfigureResponse{}, nil
+}
+
+func (m *TestInvokeWithUnknownsClient) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest, opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
+	_, err := UnmarshalProperties(in.GetArgs(), MarshalOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return &pulumirpc.InvokeResponse{}, nil
+}
+
+var _ pulumirpc.ResourceProviderClient = &TestInvokeWithUnknownsClient{}
+
+func initProviderForTesting(t *testing.T, client pulumirpc.ResourceProviderClient) *provider {
+	p := &provider{
+		cfgdone:   make(chan bool),
+		clientRaw: client,
+	}
+	err := p.Configure(resource.PropertyMap{})
+	if err != nil {
+		t.Error(err)
+		return nil
+	}
+	return p
+}
+
+// Boilerplate to simplify implementing a large interface. This
+// probably needs to move somewhere else.
+
+type UnimplementedResourceProviderClient struct{}
+
+func (*UnimplementedResourceProviderClient) GetSchema(ctx context.Context, in *pulumirpc.GetSchemaRequest, opts ...grpc.CallOption) (*pulumirpc.GetSchemaResponse, error) {
+	return nil, fmt.Errorf("Not implemented: GetSchema")
+}
+
+func (*UnimplementedResourceProviderClient) CheckConfig(ctx context.Context, in *pulumirpc.CheckRequest, opts ...grpc.CallOption) (*pulumirpc.CheckResponse, error) {
+	return nil, fmt.Errorf("Not implemented: CheckConfig")
+}
+
+func (*UnimplementedResourceProviderClient) DiffConfig(ctx context.Context, in *pulumirpc.DiffRequest, opts ...grpc.CallOption) (*pulumirpc.DiffResponse, error) {
+	return nil, fmt.Errorf("Not implemented: DiffConfig")
+}
+
+func (*UnimplementedResourceProviderClient) Configure(ctx context.Context, in *pulumirpc.ConfigureRequest, opts ...grpc.CallOption) (*pulumirpc.ConfigureResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Configure")
+}
+
+func (*UnimplementedResourceProviderClient) Invoke(ctx context.Context, in *pulumirpc.InvokeRequest, opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Invoke")
+}
+
+func (*UnimplementedResourceProviderClient) StreamInvoke(ctx context.Context, in *pulumirpc.InvokeRequest, opts ...grpc.CallOption) (pulumirpc.ResourceProvider_StreamInvokeClient, error) {
+	return nil, fmt.Errorf("Not implemented: StreamInvoke")
+}
+
+func (*UnimplementedResourceProviderClient) Check(ctx context.Context, in *pulumirpc.CheckRequest, opts ...grpc.CallOption) (*pulumirpc.CheckResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Check")
+}
+
+func (*UnimplementedResourceProviderClient) Diff(ctx context.Context, in *pulumirpc.DiffRequest, opts ...grpc.CallOption) (*pulumirpc.DiffResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Diff")
+}
+
+func (*UnimplementedResourceProviderClient) Create(ctx context.Context, in *pulumirpc.CreateRequest, opts ...grpc.CallOption) (*pulumirpc.CreateResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Create")
+}
+
+func (*UnimplementedResourceProviderClient) Read(ctx context.Context, in *pulumirpc.ReadRequest, opts ...grpc.CallOption) (*pulumirpc.ReadResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Read")
+}
+
+func (*UnimplementedResourceProviderClient) Update(ctx context.Context, in *pulumirpc.UpdateRequest, opts ...grpc.CallOption) (*pulumirpc.UpdateResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Update")
+}
+
+func (*UnimplementedResourceProviderClient) Delete(ctx context.Context, in *pulumirpc.DeleteRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+	return nil, fmt.Errorf("Not implemented: Delete")
+}
+
+func (*UnimplementedResourceProviderClient) Construct(ctx context.Context, in *pulumirpc.ConstructRequest, opts ...grpc.CallOption) (*pulumirpc.ConstructResponse, error) {
+	return nil, fmt.Errorf("Not implemented: Construct")
+}
+
+func (*UnimplementedResourceProviderClient) Cancel(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error) {
+	return nil, fmt.Errorf("Not implemented: Cancel")
+}
+
+func (*UnimplementedResourceProviderClient) GetPluginInfo(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*pulumirpc.PluginInfo, error) {
+	return nil, fmt.Errorf("Not implemented: GetPluginInfo")
+}
+
+var _ pulumirpc.ResourceProviderClient = &UnimplementedResourceProviderClient{}
+
+// Protobuf value constructor utilities
+
+func pbString(x string) *structpb.Value {
+	return MarshalString(x, MarshalOptions{})
+}
+
+func pbStruct(name string, value *structpb.Value) *structpb.Struct {
+	return &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			name: value,
+		},
+	}
+}
+
+func pbList(elems ...*structpb.Value) *structpb.Value {
+	return &structpb.Value{
+		Kind: &structpb.Value_ListValue{
+			ListValue: &structpb.ListValue{Values: elems},
+		},
+	}
 }

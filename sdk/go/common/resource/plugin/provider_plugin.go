@@ -1172,6 +1172,7 @@ func (p *provider) Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (r
 		Label:         fmt.Sprintf("%s.args", label),
 		KeepSecrets:   p.acceptSecrets,
 		KeepResources: p.acceptResources,
+		KeepUnknowns:  true,
 	})
 	if err != nil {
 		return nil, nil, err
