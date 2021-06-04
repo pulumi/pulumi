@@ -13,13 +13,13 @@ namespace Pulumi.Example.Inputs
     public sealed class FooArgs : Pulumi.ResourceArgs
     {
         [Input("a", required: true)]
-        public bool A { get; set; } = null!;
+        public bool A { get; set; }
 
         [Input("b")]
         public bool? B { get; set; }
 
         [Input("c", required: true)]
-        public int C { get; set; } = null!;
+        public int C { get; set; }
 
         [Input("d")]
         public int? D { get; set; }
