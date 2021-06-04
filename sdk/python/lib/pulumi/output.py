@@ -253,28 +253,19 @@ class Output(Generic[T]):
         # Is it an input type (i.e. args class)? Recurse into the values within.
         typ = type(val)
         if _types.is_input_type(typ):
-            # Since Output.all works on lists early, serialize the class's __dict__ into a list of lists first.
-            # Once we have a output of the list of properties, we can use an apply to re-hydrate it back as an instance.
-            items = [[k, Output.from_input(v)] for k, v in val.__dict__.items()]
-
-            # pylint: disable=unnecessary-comprehension
-            fn = cast(Callable[[List[Any]], T], lambda props: typ(**{k: v for k, v in props})) # type: ignore
-            return Output.all(*items).apply(fn, True)
+            # We know that any input type can safely be decomposed into it's `__dict__`, and then reconstructed
+            # via `type(**d)` from the (unwrapped) properties.
+            o_typ: Output[typ] = Output.all(**val.__dict__).apply(lambda d: typ(**d)) # type:ignore
+            return cast(Output[T], o_typ)
 
         # Is a dict or list? Recurse into the values within them.
         if isinstance(val, dict):
-            # Since Output.all works on lists early, serialize this dictionary into a list of lists first.
-            # Once we have a output of the list of properties, we can use an apply to re-hydrate it back into a dict.
-            dict_items = [[k, Output.from_input(v)] for k, v in val.items()]
-            # type checker doesn't like returning a Dict in the apply callback
-            fn = cast(Callable[[List[Any]], T], lambda props: {k: v for k, v in props}) # pylint: disable=unnecessary-comprehension
-            return Output.all(*dict_items).apply(fn, True)
+            o_dict: Output[dict] = Output.all(**val)
+            return cast(Output[T], o_dict)
 
         if isinstance(val, list):
-            list_items: List[Union[Any, Awaitable[Any], Output[Any]]] = [Output.from_input(v) for v in val]
-            # invariant: http://mypy.readthedocs.io/en/latest/common_issues.html#variance
-            output: Output[T] = cast(Output[T], Output.all(*list(list_items))) # type: ignore
-            return output
+            o_list: Output[list] = Output.all(*val)
+            return cast(Output[T], o_list)
 
         # If it's not an output, list, or dict, it must be known and not secret
         is_known_fut: asyncio.Future[bool] = asyncio.Future()
