@@ -65,6 +65,21 @@ func TestGeneratePackage(t *testing.T) {
 				"types/index.ts",
 			},
 		},
+		{
+			"Nested modules in schema",
+			"nested-schema",
+			[]string{
+				"a/index.ts",
+				"a/b/index.ts",
+				"a/b/c/index.ts",
+				"a/b/c/resource.ts",
+				"a/b/c/d/index.ts",
+				"a/b/c/d/argFunction.ts",
+				"types/index.ts",
+				"types/input.ts",
+				"types/output.ts",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {
