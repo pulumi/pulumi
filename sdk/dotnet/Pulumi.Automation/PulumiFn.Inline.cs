@@ -1,8 +1,8 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,6 +16,7 @@ namespace Pulumi.Automation
         public PulumiFnInline(Func<CancellationToken, Task<IDictionary<string, object?>>> program)
         {
             this._program = program;
+            this.DiscoveryAssembly = Assembly.GetEntryAssembly();
         }
 
         internal override async Task<ExceptionDispatchInfo?> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
