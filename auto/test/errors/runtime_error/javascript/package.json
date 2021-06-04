@@ -1,0 +1,7 @@
+{
+    "name": "lsjafas",
+    "main": "index.js",
+    "dependencies": {
+        "@pulumi/pulumi": "^2.0.0"
+    }
+}

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,24 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package main
+package auto
 
-import (
-	"fmt"
+import "github.com/blang/semver"
 
-	pulumiCmd "github.com/pulumi/pulumi/pkg/v3/cmd"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/spf13/cobra"
-)
+var minimumVersion = calculateMinVersion()
 
-func newVersionCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "version",
-		Short: "Print Pulumi's version number",
-		Args:  cmdutil.NoArgs,
-		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-			fmt.Printf(pulumiCmd.GetVersion())
-			return nil
-		}),
-	}
+func calculateMinVersion() semver.Version {
+	v, _ := semver.ParseTolerant("3.2.0-alpha")
+	return v
 }
