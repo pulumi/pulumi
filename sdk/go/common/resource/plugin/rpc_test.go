@@ -384,7 +384,11 @@ func assertValidProtobufValue(t *testing.T, value *structpb.Value) {
 	}
 }
 
-func walkValueSelfWithDescendants(v *structpb.Value, path string, visit func(path string, v *structpb.Value) error) error {
+func walkValueSelfWithDescendants(
+	v *structpb.Value,
+	path string,
+	visit func(path string, v *structpb.Value) error) error {
+
 	if v == nil {
 		return fmt.Errorf("Bad *structpb.Value nil at %s", path)
 	}
