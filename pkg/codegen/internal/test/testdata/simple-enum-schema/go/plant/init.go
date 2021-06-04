@@ -31,7 +31,7 @@ func (p *pkg) ConstructProvider(ctx *pulumi.Context, name, typ, urn string) (pul
 func init() {
 	version, err := PkgVersion()
 	if err != nil {
-		fmt.Println("failed to determine package version. defaulting to v1: %v", err)
+		fmt.Printf("failed to determine package version. defaulting to v1: %v\n", err)
 	}
 	pulumi.RegisterResourcePackage(
 		"plant",

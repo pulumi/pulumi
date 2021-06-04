@@ -461,7 +461,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	// complex types like lists and maps need a backing field. Secret properties also require a backing field.
 	if needsBackingField {
 		backingFieldName := "_" + prop.Name
-		requireInitializers := !pt.args
+		requireInitializers := !pt.args || prop.IsPlain
 		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, requireInitializers, false)
 
 		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
@@ -510,7 +510,7 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		fmt.Fprintf(w, "%s}\n", indent)
 	} else {
 		initializer := ""
-		if prop.IsRequired && (!isValueType(prop.Type) || pt.args) {
+		if prop.IsRequired && (!isValueType(prop.Type) || (pt.args && !prop.IsPlain)) {
 			initializer = " = null!;"
 		}
 

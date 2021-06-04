@@ -29,6 +29,7 @@ meta_desc: "Documentation for the example.Component resource with examples, inpu
               <span class="nx">b</span><span class="p">:</span> <span class="nx">Optional[bool]</span> = None<span class="p">,</span>
               <span class="nx">bar</span><span class="p">:</span> <span class="nx">Optional[FooArgs]</span> = None<span class="p">,</span>
               <span class="nx">baz</span><span class="p">:</span> <span class="nx">Optional[Sequence[FooArgs]]</span> = None<span class="p">,</span>
+              <span class="nx">baz_map</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, FooArgs]]</span> = None<span class="p">,</span>
               <span class="nx">c</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">d</span><span class="p">:</span> <span class="nx">Optional[int]</span> = None<span class="p">,</span>
               <span class="nx">e</span><span class="p">:</span> <span class="nx">Optional[str]</span> = None<span class="p">,</span>
@@ -211,6 +212,14 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
+        <span id="bazmap_csharp">
+<a href="#bazmap_csharp" style="color: inherit; text-decoration: inherit;">Baz<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dictionary&lt;string, Foo<wbr>Args&gt;</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
         <span id="d_csharp">
 <a href="#d_csharp" style="color: inherit; text-decoration: inherit;">D</a>
 </span>
@@ -284,6 +293,14 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">[]Foo</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="bazmap_go">
+<a href="#bazmap_go" style="color: inherit; text-decoration: inherit;">Baz<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">map[string]Foo</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -363,6 +380,14 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
+        <span id="bazmap_nodejs">
+<a href="#bazmap_nodejs" style="color: inherit; text-decoration: inherit;">baz<wbr>Map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">{[key: string]: Foo<wbr>Args}</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
         <span id="d_nodejs">
 <a href="#d_nodejs" style="color: inherit; text-decoration: inherit;">d</a>
 </span>
@@ -436,6 +461,14 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 </span>
         <span class="property-indicator"></span>
         <span class="property-type"><a href="#foo">Sequence[Foo<wbr>Args]</a></span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="baz_map_python">
+<a href="#baz_map_python" style="color: inherit; text-decoration: inherit;">baz_<wbr>map</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Mapping[str, Foo<wbr>Args]</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

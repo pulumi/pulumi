@@ -96,6 +96,14 @@ class OutputFromInputTests(unittest.TestCase):
         x_val = await x.future()
         self.assertEqual(x_val, ["hello", {"foo": "bar"}])
 
+    @pulumi_test
+    async def test_deeply_nested_objects(self):
+        o1 = {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": Output.from_input("a")}}}}}}}}}}}
+        o2 = {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": "a"}}}}}}}}}}}
+        x = Output.from_input(o1)
+        x_val = await x.future()
+        self.assertEqual(x_val, o2)
+
     @pulumi.input_type
     class FooArgs:
         def __init__(self, *,
