@@ -578,8 +578,9 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
 	}
 	mret, err := plugin.MarshalProperties(ret, plugin.MarshalOptions{
-		Label:         label,
-		KeepUnknowns:  true,
+		Label:        label,
+		KeepUnknowns: true,
+		// RejectUnknowns: true  //  should we just fail fast here if we see unknowns?
 		KeepResources: true,
 	})
 	if err != nil {
