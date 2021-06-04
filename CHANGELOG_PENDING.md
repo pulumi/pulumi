@@ -13,6 +13,9 @@
   
 - [cli] Protect against panics when using the wrong resource type with `pulumi import`
   [#7202](https://github.com/pulumi/pulumi/pull/7202)
+  
+- [cli] Prevent a panic in python programs when incorrect use of `apply` is included in pulumi program
+  [#7210](https://github.com/pulumi/pulumi/pull/7210)
 
 - [auto/nodejs] - Emit warning instead of breaking on parsing JSON events for automation API.
   [#7162](https://github.com/pulumi/pulumi/pull/7162)

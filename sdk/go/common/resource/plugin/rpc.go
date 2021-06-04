@@ -17,6 +17,7 @@ package plugin
 import (
 	"reflect"
 	"sort"
+	"strings"
 
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
@@ -414,7 +415,8 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 
 			var ref resource.PropertyValue
 			if hasID {
-				ref = resource.MakeCustomResourceReference(resource.URN(urn.StringValue()), resource.ID(id), packageVersion)
+				ref = resource.MakeCustomResourceReference(resource.URN(urn.StringValue()),
+					resource.ID(id), packageVersion)
 			} else {
 				ref = resource.MakeComponentResourceReference(resource.URN(urn.StringValue()), packageVersion)
 			}
@@ -424,8 +426,20 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		}
 
 	default:
-		contract.Failf("Unrecognized structpb value kind in RPC[%s]: %v", opts.Label, reflect.TypeOf(v.Kind))
-		return nil, nil
+		if opts.Label != "" && strings.Contains(opts.Label, ".Invoke") {
+			// we believe this is an issue with an apply being used incorrectly
+			// and thus should point the user at some specific documentation to help
+			// them understand the apply
+			// the check for the invoke is due to an unhandled exception in Python when the apply is incorrect
+			// in NodeJS / Go etc, this is caught at build time but in Python it is not caught until runtime
+			// the structure of the opts.Label will be
+			// tf.Provider[aws].Invoke(aws:iam/getPolicyDocument:getPolicyDocument).args (as an example)
+			return nil, errors.New("\nIncorrect use of `apply`. Please refer to " +
+				"https://www.pulumi.com/docs/intro/concepts/inputs-outputs/#apply for further details on " +
+				"how to use `apply`")
+		}
+		return nil, errors.Errorf("Unrecognized structpb value kind in RPC[%s]: %v",
+			opts.Label, reflect.TypeOf(v.Kind))
 	}
 }
 
