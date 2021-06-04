@@ -12,7 +12,7 @@ namespace Pulumi.Utilities
     public static class OutputUtilities
     {
         /// <summary>
-        /// Retrieve the Is Known status of the given output.
+        /// Retrieve the known status of the given output.
         /// Note: generally, this should never be used in combination with await for
         /// a program control flow to avoid deadlock situations.
         /// </summary>
@@ -22,6 +22,15 @@ namespace Pulumi.Utilities
             var data = await output.DataTask.ConfigureAwait(false);
             return data.IsKnown;
         }
+
+        /// <summary>
+        /// Retrieve the value of the given output.
+        /// Note: generally, this should never be used in combination with await for
+        /// a program control flow to avoid deadlock situations.
+        /// </summary>
+        /// <param name="output">The <see cref="Output{T}"/> to evaluate.</param>
+        public static Task<T> GetValueAsync<T>(Output<T> output)
+            => output.GetValueAsync();
 
         /// <summary>
         /// Retrieve a set of resources that the given output depends on.
