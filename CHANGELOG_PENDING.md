@@ -1,5 +1,7 @@
 ### Improvements
 
+- [codegen] - Fix Go init.go codegen to be govet compliant.
+
 - [codegen] - Encrypt input args for secret properties.
   [#7128](https://github.com/pulumi/pulumi/pull/7128)
 
