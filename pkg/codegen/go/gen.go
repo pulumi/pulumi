@@ -1819,7 +1819,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		imports[basePath] = ""
 	}
 
-	pkg.genHeader(w, []string{"fmt"}, imports)
+	pkg.genHeader(w, []string{"fmt", "os"}, imports)
 
 	var provider *schema.Resource
 	registrations := codegen.StringSet{}
@@ -1883,7 +1883,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
-	fmt.Fprintf(w, "\t\tfmt.Printf(\"failed to determine package version. defaulting to v1: %%v\\n\", err)\n")
+	fmt.Fprintf(w, "\t\tfmt.Fprintln(os.Stderr, err)\n")
 	fmt.Fprintf(w, "\t}\n")
 	if len(registrations) > 0 {
 		for _, mod := range registrations.SortedValues() {
