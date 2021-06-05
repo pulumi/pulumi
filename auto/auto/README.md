@@ -5,7 +5,7 @@ Programmatic infrastructure.
 ## Godocs
 See the full godocs for the most extensive and up to date information including full examples coverage: 
 
-https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/auto?tab=doc
+https://pkg.go.dev/github.com/pulumi/pulumi/auto/v3/auto?tab=doc
 
 ## Examples
 
@@ -106,7 +106,7 @@ This repo has extensive examples and godoc content. To test out your changes loc
 1. enlist in the appropriate pulumi branch:
 2. cd $GOPATH/src/github.com/pulumi/pulumi/sdk/go/auto
 3. godoc -http=:6060
-4. Navigate to http://localhost:6060/pkg/github.com/pulumi/pulumi/sdk/v3/go/auto/
+4. Navigate to http://localhost:6060/pkg/github.com/pulumi/pulumi/auto/v3/auto/
 
 ## Known Issues
 

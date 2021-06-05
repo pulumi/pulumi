@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package optup contains functional options to be used with stack updates
-// github.com/sdk/v2/go/x/auto Stack.Up(...optup.Option)
-package optup
+// Package optpreview contains functional options to be used with stack preview operations
+// github.com/sdk/v2/go/x/auto Stack.Preview(...optpreview.Option)
+package optpreview
 
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/auto/v3/auto/debug"
+	"github.com/pulumi/pulumi/auto/v3/auto/events"
 )
 
 // Parallel is the number of resource operations to run in parallel at once during the update
@@ -31,14 +31,14 @@ func Parallel(n int) Option {
 	})
 }
 
-// Message (optional) to associate with the update operation
+// Message (optional) to associate with the preview operation
 func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Message = message
 	})
 }
 
-// ExpectNoChanges will cause the update to return an error if any changes occur
+// ExpectNoChanges will cause the preview to return an error if any changes occur
 func ExpectNoChanges() Option {
 	return optionFunc(func(opts *Options) {
 		opts.ExpectNoChanges = true
@@ -52,7 +52,7 @@ func Diff() Option {
 	})
 }
 
-// Replace specifies an array of resource URNs to explicitly replace during the update
+// Replace specifies an array of resource URNs to explicitly replace during the preview
 func Replace(urns []string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Replace = urns
@@ -73,17 +73,17 @@ func TargetDependents() Option {
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
-func ProgressStreams(writers ...io.Writer) Option {
-	return optionFunc(func(opts *Options) {
-		opts.ProgressStreams = writers
-	})
-}
-
 // DebugLogging provides options for verbose logging to standard error, and enabling plugin logs.
 func DebugLogging(debugOpts debug.LoggingOptions) Option {
 	return optionFunc(func(opts *Options) {
 		opts.DebugLogOpts = debugOpts
+	})
+}
+
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+func ProgressStreams(writers ...io.Writer) Option {
+	return optionFunc(func(opts *Options) {
+		opts.ProgressStreams = writers
 	})
 }
 
@@ -101,7 +101,7 @@ func UserAgent(agent string) Option {
 	})
 }
 
-// Option is a parameter to be applied to a Stack.Up() operation
+// Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
 }
@@ -113,9 +113,9 @@ type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 	Parallel int
-	// Message (optional) to associate with the update operation
+	// Message (optional) to associate with the preview operation
 	Message string
-	// Return an error if any changes occur during this update
+	// Return an error if any changes occur during this preview
 	ExpectNoChanges bool
 	// Diff displays operation as a rich diff showing the overall change
 	Diff bool
@@ -127,7 +127,7 @@ type Options struct {
 	TargetDependents bool
 	// DebugLogOpts specifies additional settings for debug logging
 	DebugLogOpts debug.LoggingOptions
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental update output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
 	ProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent

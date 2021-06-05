@@ -313,13 +313,14 @@ func (l *LocalWorkspace) Stack(ctx context.Context) (*StackSummary, error) {
 
 // CreateStack creates and sets a new stack with the stack name, failing if one already exists.
 func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) error {
-	args := []string{"stack", "init", stackName}
-	if l.secretsProvider != "" {
-		args = append(args, "--secrets-provider", l.secretsProvider)
-	}
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
+	_, err := cmd.UseSpecifiedDir(l.WorkDir())
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to create stack"), stdout, stderr, errCode)
+		return err
+	}
+	_, err = cmd.StackInit(stackName, l.secretsProvider)
+
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "failed to create stack"), err.Error(), err.Error(), -1)
 	}
 
 	return nil
@@ -327,9 +328,13 @@ func (l *LocalWorkspace) CreateStack(ctx context.Context, stackName string) erro
 
 // SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
 func (l *LocalWorkspace) SelectStack(ctx context.Context, stackName string) error {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "select", stackName)
+	_, err := cmd.UseSpecifiedDir(l.WorkDir())
 	if err != nil {
-		return newAutoError(errors.Wrap(err, "failed to select stack"), stdout, stderr, errCode)
+		return err
+	}
+	_, err = cmd.StackSelect(stackName)
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "failed to select stack"), err.Error(), err.Error(), -1)
 	}
 
 	return nil
@@ -492,7 +497,7 @@ func (l *LocalWorkspace) getPulumiVersion(ctx context.Context) (semver.Version, 
 	versionStr := cmd.GetVersion()
 	version, err := semver.ParseTolerant(versionStr)
 	if err != nil {
-		return semver.Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), stdout, stderr, errCode)
+		return semver.Version{}, newAutoError(errors.Wrap(err, "could not determine pulumi version"), err.Error(), err.Error(), -1)
 	}
 	return version, nil
 }

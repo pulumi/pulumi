@@ -20,6 +20,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	pulumiCmd "github.com/pulumi/pulumi/pkg/v3/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -59,17 +60,12 @@ func newStackSelectCmd() *cobra.Command {
 			}
 
 			if stack != "" {
-				// A stack was given, ask the backend about it.
-				stackRef, stackErr := b.ParseStackReference(stack)
-				if stackErr != nil {
-					return stackErr
-				}
+				s, stackErr := pulumiCmd.StackSelect(stack)
 
-				s, stackErr := b.GetStack(commandContext(), stackRef)
 				if stackErr != nil {
 					return stackErr
 				} else if s != nil {
-					return state.SetCurrentStack(stackRef.String())
+					return nil
 				}
 				// If create flag was passed and stack was not found, create it and select it.
 				if create && stack != "" {
@@ -80,7 +76,7 @@ func newStackSelectCmd() *cobra.Command {
 					return state.SetCurrentStack(s.Ref().String())
 				}
 
-				return errors.Errorf("no stack named '%s' found", stackRef)
+				return errors.Errorf("no stack named '%s' found", stack)
 			}
 
 			// If no stack was given, prompt the user to select a name from the available ones.

@@ -104,12 +104,13 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
+	"github.com/pulumi/pulumi/auto/v3/auto/debug"
+	"github.com/pulumi/pulumi/auto/v3/auto/events"
+	"github.com/pulumi/pulumi/auto/v3/auto/optdestroy"
+	"github.com/pulumi/pulumi/auto/v3/auto/optpreview"
+	"github.com/pulumi/pulumi/auto/v3/auto/optrefresh"
+	"github.com/pulumi/pulumi/auto/v3/auto/optup"
+	"github.com/pulumi/pulumi/pkg/v3/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -301,43 +302,33 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 
 // Up creates or updates the resources in a stack by executing the program in the Workspace.
 // https://www.pulumi.com/docs/reference/cli/pulumi_up/
-func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) {
+func (s *Stack) Up(ctx context.Context, upopts ...optup.Option) (UpResult, error) {
 	var res UpResult
 
 	upOpts := &optup.Options{}
-	for _, o := range opts {
+	for _, o := range upopts {
 		o.ApplyOption(upOpts)
 	}
 
-	var sharedArgs []string
+	opts := cmd.UpdateOptions{}
 
-	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
-	if upOpts.Message != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", upOpts.Message))
-	}
-	if upOpts.ExpectNoChanges {
-		sharedArgs = append(sharedArgs, "--expect-no-changes")
-	}
-	if upOpts.Diff {
-		sharedArgs = append(sharedArgs, "--diff")
-	}
-	for _, rURN := range upOpts.Replace {
-		sharedArgs = append(sharedArgs, "--replace %s", rURN)
-	}
-	for _, tURN := range upOpts.Target {
-		sharedArgs = append(sharedArgs, "--target %s", tURN)
-	}
-	if upOpts.TargetDependents {
-		sharedArgs = append(sharedArgs, "--target-dependents")
-	}
+	// sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
+
+	opts.Message = upOpts.Message
+	opts.ExpectNop = upOpts.ExpectNoChanges
+	opts.DiffDisplay = upOpts.Diff
+	opts.Replaces = upOpts.Replace
+	opts.Targets = upOpts.Target
+	opts.TargetDependents = upOpts.TargetDependents
 	if upOpts.Parallel > 0 {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--parallel=%d", upOpts.Parallel))
+		opts.Parallel = upOpts.Parallel
 	}
-	if upOpts.UserAgent != "" {
-		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
-	}
+	opts.ExecAgent = upOpts.UserAgent
+	opts.ExecKind = constant.ExecKindAutoLocal
+	opts.Yes = true
+	opts.SkipPreview = true
 
-	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
+	kind := constant.ExecKindAutoLocal
 	if program := s.Workspace().Program(); program != nil {
 		server, err := startLanguageRuntimeServer(program)
 		if err != nil {
@@ -345,9 +336,10 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		}
 		defer contract.IgnoreClose(server)
 
-		kind, args = constant.ExecKindAutoInline, append(args, "--client="+server.address)
+		kind = constant.ExecKindAutoInline
+		opts.Client = server.address
 	}
-	args = append(args, fmt.Sprintf("--exec-kind=%s", kind))
+	opts.ExecKind = kind
 
 	if len(upOpts.EventStreams) > 0 {
 		eventChannels := upOpts.EventStreams
@@ -356,33 +348,34 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 			return res, errors.Wrap(err, "failed to tail logs")
 		}
 		defer cleanup(t, eventChannels)
-		args = append(args, "--event-log", t.Filename)
+		opts.EventLogPath = t.Filename
 	}
 
-	args = append(args, sharedArgs...)
-	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, upOpts.ProgressStreams, args...)
+	result := cmd.UpWorkingDirectory(opts)
+	var err error
+	if result != nil {
+		err = result.Error()
+	}
 	if err != nil {
-		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
+		return res, newAutoError(errors.Wrap(err, "failed to run update"), err.Error(), err.Error(), -1)
 	}
 
-	outs, err := s.Outputs(ctx)
-	if err != nil {
-		return res, err
-	}
+	// TODO
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
-	if err != nil {
-		return res, err
-	}
+	// outs, err := s.Outputs(ctx)
+	// if err != nil {
+	// 	return res, err
+	// }
+
+	// history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+	// if err != nil {
+	// 	return res, err
+	// }
 
 	res = UpResult{
-		Outputs: outs,
-		StdOut:  stdout,
-		StdErr:  stderr,
-	}
-
-	if len(history) > 0 {
-		res.Summary = history[0]
+		// Outputs: outs,
+		StdOut: "",
+		StdErr: "",
 	}
 
 	return res, nil

@@ -12,18 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package optrefresh contains functional options to be used with stack refresh operations
-// github.com/sdk/v2/go/x/auto Stack.Refresh(...optrefresh.Option)
-package optrefresh
+// Package optdestroy contains functional options to be used with stack destroy operations
+// github.com/sdk/v2/go/x/auto Stack.Destroy(...optdestroy.Option)
+package optdestroy
 
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/auto/v3/auto/debug"
+	"github.com/pulumi/pulumi/auto/v3/auto/events"
 )
 
-// Parallel is the number of resource operations to run in parallel at once during the refresh
+// Parallel is the number of resource operations to run in parallel at once during the destroy
 // (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 func Parallel(n int) Option {
 	return optionFunc(func(opts *Options) {
@@ -31,28 +31,28 @@ func Parallel(n int) Option {
 	})
 }
 
-// ExpectNoChanges will cause the preview to return an error if any changes occur
-func ExpectNoChanges() Option {
-	return optionFunc(func(opts *Options) {
-		opts.ExpectNoChanges = true
-	})
-}
-
-// Message (optional) to associate with the refresh operation
+// Message (optional) to associate with the destroy operation
 func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Message = message
 	})
 }
 
-// Target specifies an exclusive list of resource URNs to refresh
+// Target specifies an exclusive list of resource URNs to destroy
 func Target(urns []string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Target = urns
 	})
 }
 
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
+// TargetDependents allows updating of dependent targets discovered but not specified in the Target list
+func TargetDependents() Option {
+	return optionFunc(func(opts *Options) {
+		opts.TargetDependents = true
+	})
+}
+
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
@@ -80,7 +80,7 @@ func UserAgent(agent string) Option {
 	})
 }
 
-// Option is a parameter to be applied to a Stack.Refresh() operation
+// Option is a parameter to be applied to a Stack.Destroy() operation
 type Option interface {
 	ApplyOption(*Options)
 }
@@ -92,13 +92,13 @@ type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 	Parallel int
-	// Message (optional) to associate with the refresh operation
+	// Message (optional) to associate with the destroy operation
 	Message string
-	// Return an error if any changes occur during this preview
-	ExpectNoChanges bool
-	// Specify an exclusive list of resource URNs to re
+	// Specify an exclusive list of resource URNs to update
 	Target []string
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
+	// Allows updating of dependent targets discovered but not specified in the Target list
+	TargetDependents bool
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental destroy output
 	ProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent

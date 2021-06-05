@@ -68,7 +68,7 @@ func IsCreateStack409Error(e error) bool {
 		return false
 	}
 
-	regex := regexp.MustCompile(`stack.*already exists`)
+	regex := regexp.MustCompile(`already exists`)
 	return regex.MatchString(ae.stderr)
 }
 

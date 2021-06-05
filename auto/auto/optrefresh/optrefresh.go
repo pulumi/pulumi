@@ -12,29 +12,22 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package optpreview contains functional options to be used with stack preview operations
-// github.com/sdk/v2/go/x/auto Stack.Preview(...optpreview.Option)
-package optpreview
+// Package optrefresh contains functional options to be used with stack refresh operations
+// github.com/sdk/v2/go/x/auto Stack.Refresh(...optrefresh.Option)
+package optrefresh
 
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/debug"
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/auto/v3/auto/debug"
+	"github.com/pulumi/pulumi/auto/v3/auto/events"
 )
 
-// Parallel is the number of resource operations to run in parallel at once during the update
+// Parallel is the number of resource operations to run in parallel at once during the refresh
 // (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 func Parallel(n int) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Parallel = n
-	})
-}
-
-// Message (optional) to associate with the preview operation
-func Message(message string) Option {
-	return optionFunc(func(opts *Options) {
-		opts.Message = message
 	})
 }
 
@@ -45,42 +38,21 @@ func ExpectNoChanges() Option {
 	})
 }
 
-// Diff displays operation as a rich diff showing the overall change
-func Diff() Option {
+// Message (optional) to associate with the refresh operation
+func Message(message string) Option {
 	return optionFunc(func(opts *Options) {
-		opts.Diff = true
+		opts.Message = message
 	})
 }
 
-// Replace specifies an array of resource URNs to explicitly replace during the preview
-func Replace(urns []string) Option {
-	return optionFunc(func(opts *Options) {
-		opts.Replace = urns
-	})
-}
-
-// Target specifies an exclusive list of resource URNs to update
+// Target specifies an exclusive list of resource URNs to refresh
 func Target(urns []string) Option {
 	return optionFunc(func(opts *Options) {
 		opts.Target = urns
 	})
 }
 
-// TargetDependents allows updating of dependent targets discovered but not specified in the Target list
-func TargetDependents() Option {
-	return optionFunc(func(opts *Options) {
-		opts.TargetDependents = true
-	})
-}
-
-// DebugLogging provides options for verbose logging to standard error, and enabling plugin logs.
-func DebugLogging(debugOpts debug.LoggingOptions) Option {
-	return optionFunc(func(opts *Options) {
-		opts.DebugLogOpts = debugOpts
-	})
-}
-
-// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
 func ProgressStreams(writers ...io.Writer) Option {
 	return optionFunc(func(opts *Options) {
 		opts.ProgressStreams = writers
@@ -94,6 +66,13 @@ func EventStreams(channels ...chan<- events.EngineEvent) Option {
 	})
 }
 
+// DebugLogging provides options for verbose logging to standard error, and enabling plugin logs.
+func DebugLogging(debugOpts debug.LoggingOptions) Option {
+	return optionFunc(func(opts *Options) {
+		opts.DebugLogOpts = debugOpts
+	})
+}
+
 // UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 func UserAgent(agent string) Option {
 	return optionFunc(func(opts *Options) {
@@ -101,7 +80,7 @@ func UserAgent(agent string) Option {
 	})
 }
 
-// Option is a parameter to be applied to a Stack.Preview() operation
+// Option is a parameter to be applied to a Stack.Refresh() operation
 type Option interface {
 	ApplyOption(*Options)
 }
@@ -113,24 +92,18 @@ type Options struct {
 	// Parallel is the number of resource operations to run in parallel at once
 	// (1 for no parallelism). Defaults to unbounded. (default 2147483647)
 	Parallel int
-	// Message (optional) to associate with the preview operation
+	// Message (optional) to associate with the refresh operation
 	Message string
 	// Return an error if any changes occur during this preview
 	ExpectNoChanges bool
-	// Diff displays operation as a rich diff showing the overall change
-	Diff bool
-	// Specify resources to replace
-	Replace []string
-	// Specify an exclusive list of resource URNs to update
+	// Specify an exclusive list of resource URNs to re
 	Target []string
-	// Allows updating of dependent targets discovered but not specified in the Target list
-	TargetDependents bool
-	// DebugLogOpts specifies additional settings for debug logging
-	DebugLogOpts debug.LoggingOptions
-	// ProgressStreams allows specifying one or more io.Writers to redirect incremental preview output
+	// ProgressStreams allows specifying one or more io.Writers to redirect incremental refresh output
 	ProgressStreams []io.Writer
 	// EventStreams allows specifying one or more channels to receive the Pulumi event stream
 	EventStreams []chan<- events.EngineEvent
+	// DebugLogOpts specifies additional settings for debug logging
+	DebugLogOpts debug.LoggingOptions
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
 }

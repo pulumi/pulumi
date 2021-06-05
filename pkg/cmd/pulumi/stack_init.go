@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	pulumiCmd "github.com/pulumi/pulumi/pkg/v3/cmd"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -107,17 +108,7 @@ func newStackInitCmd() *cobra.Command {
 				return errors.New("missing stack name")
 			}
 
-			if err := b.ValidateStackName(stackName); err != nil {
-				return err
-			}
-
-			stackRef, err := b.ParseStackReference(stackName)
-			if err != nil {
-				return err
-			}
-
-			var createOpts interface{} // Backend-specific config options, none currently.
-			newStack, err := createStack(b, stackRef, createOpts, true /*setCurrent*/, secretsProvider)
+			newStack, err := pulumiCmd.StackInit(stackName, secretsProvider)
 			if err != nil {
 				return err
 			}

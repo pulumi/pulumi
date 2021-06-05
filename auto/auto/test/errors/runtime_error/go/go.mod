@@ -1,4 +1,4 @@
-module github.com/pulumi/pulumi/sdk/v3/go/auto/test/testproj
+module github.com/pulumi/pulumi/auto/v3/auto/test/errors/runtime_error/go
 
 go 1.16
 

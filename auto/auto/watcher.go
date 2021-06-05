@@ -17,7 +17,7 @@ import (
 	"encoding/json"
 	"github.com/nxadm/tail"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/auto/events"
+	"github.com/pulumi/pulumi/auto/v3/auto/events"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 )
 
