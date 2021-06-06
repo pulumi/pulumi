@@ -9,7 +9,7 @@ namespace Pulumi.Tests.Mocks
         public Output<string> PublicIp { get; private set; } = null!;
 
         public Instance(string name, InstanceArgs args, CustomResourceOptions? options = null)
-            : base("aws:ec2/instance:Instance", name, args ?? new InstanceArgs(), options)
+            : base("aws:ec2/instance:Instance", name, args, options)
         {
         }
     }
@@ -24,7 +24,7 @@ namespace Pulumi.Tests.Mocks
         public Output<Instance> Instance { get; private set; } = null!;
 
         public MyCustom(string name, MyCustomArgs args, CustomResourceOptions? options = null)
-            : base("pkg:index:MyCustom", name, args ?? new MyCustomArgs(), options)
+            : base("pkg:index:MyCustom", name, args, options)
         {
         }
     }
@@ -43,10 +43,7 @@ namespace Pulumi.Tests.Mocks
         public MyStack()
         {
             var myInstance = new Instance("instance", new InstanceArgs());
-            var myCustom = new MyCustom("mycustom", new MyCustomArgs
-            {
-                Instance = myInstance,
-            });
+            var myCustom = new MyCustom("mycustom", new MyCustomArgs { Instance = myInstance });
             this.PublicIp = myInstance.PublicIp;
         }
     }

@@ -453,7 +453,7 @@ namespace Pulumi.Serialization
     The only generic types allowed are ImmutableArray<...> and ImmutableDictionary<string, ...>");
             }
 
-            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<OutputTypeAttribute>();
+            var propertyTypeAttribute = targetType.GetCustomAttribute<OutputTypeAttribute>();
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
@@ -476,8 +476,8 @@ $@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contai
             }
         }
 
-        private static ConstructorInfo GetPropertyConstructor(Type outputTypeArg)
+        private static ConstructorInfo? GetPropertyConstructor(Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
+                c => c.GetCustomAttribute<OutputConstructorAttribute>() != null);
     }
 }

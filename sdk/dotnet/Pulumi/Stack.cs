@@ -112,12 +112,10 @@ namespace Pulumi
             this.RegisterOutputs(this.Outputs);
         }
 
-        private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)
+        private static async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)
         {
             var dictionary = await init().ConfigureAwait(false);
-            return dictionary == null
-                ? ImmutableDictionary<string, object?>.Empty
-                : dictionary.ToImmutableDictionary();
+            return dictionary.ToImmutableDictionary();
         }
         
         private static ComponentResourceOptions? ConvertOptions(StackOptions? options)

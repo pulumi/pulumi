@@ -22,7 +22,9 @@ namespace Pulumi.Automation.Serialization
             new SummaryEvent(
                 this.MaybeCorrupt,
                 this.DurationSeconds,
+                // ReSharper disable once ConstantNullCoalescingCondition
                 this.ResourceChanges ?? new Dictionary<OperationType, int>(),
+                // ReSharper disable once ConstantNullCoalescingCondition
                 this.PolicyPacks ?? new Dictionary<string, string>());
     }
 }

@@ -17,11 +17,6 @@ namespace Pulumi
         private readonly string _name;
 
         /// <summary>
-        /// The optional parent of this resource.
-        /// </summary>
-        private readonly Resource? _parentResource;
-
-        /// <summary>
         /// The child resources of this resource.  We use these (only from a ComponentResource) to
         /// allow code to dependOn a ComponentResource and have that effectively mean that it is
         /// depending on all the CustomResource children of that component.
@@ -187,10 +182,10 @@ namespace Pulumi
 
             if (options.Parent != null)
             {
-                this._parentResource = options.Parent;
-                lock (this._parentResource.ChildResources)
+                var parentResource = options.Parent;
+                lock (parentResource.ChildResources)
                 {
-                    this._parentResource.ChildResources.Add(this);
+                    parentResource.ChildResources.Add(this);
                 }
 
                 options.Protect ??= options.Parent._protect;

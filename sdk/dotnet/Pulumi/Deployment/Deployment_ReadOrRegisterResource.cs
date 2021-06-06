@@ -92,6 +92,7 @@ namespace Pulumi
                 completionSources[Constants.UrnPropertyName].SetStringValue(response.urn, isKnown: true);
                 if (resource is CustomResource customResource)
                 {
+                    // ReSharper disable once ConstantNullCoalescingCondition
                     var id = response.id ?? "";
                     completionSources[Constants.IdPropertyName].SetStringValue(id, isKnown: id != "");
                 }
