@@ -63,6 +63,7 @@ namespace Pulumi.Tests.Serialization
 
             [EditorBrowsable(EditorBrowsableState.Never)]
             public override bool Equals(object? obj) => obj is ContainerBrightness other && Equals(other);
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
             public bool Equals(ContainerBrightness other) => _value == other._value;
 
             [EditorBrowsable(EditorBrowsableState.Never)]

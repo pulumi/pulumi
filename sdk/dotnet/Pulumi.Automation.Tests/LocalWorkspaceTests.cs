@@ -222,12 +222,6 @@ namespace Pulumi.Automation.Tests
             var stackName = $"{RandomStackName()}";
             var stack = await WorkspaceStack.CreateAsync(stackName, workspace);
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                ["plain"] = new ConfigValue("abc"),
-                ["secret"] = new ConfigValue("def", isSecret: true),
-            };
-
             var plainKey = NormalizeConfigKey("plain", projectName);
             var secretKey = NormalizeConfigKey("secret", projectName);
 
@@ -239,7 +233,13 @@ namespace Pulumi.Automation.Tests
                 var values = await stack.GetAllConfigAsync();
                 Assert.Empty(values);
 
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["plain"] = new ConfigValue("abc"),
+                    ["secret"] = new ConfigValue("def", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
+
                 values = await stack.GetAllConfigAsync();
                 Assert.True(values.TryGetValue(plainKey, out var plainValue));
                 Assert.Equal("abc", plainValue!.Value);
@@ -353,13 +353,13 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -429,13 +429,13 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -504,14 +504,13 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
-
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 var initialOutputs = await stack.GetOutputsAsync();
@@ -822,6 +821,7 @@ namespace Pulumi.Automation.Tests
                 config.GetSecretObject<JsonElement>("obj3");
                 config.RequireSecretObject<JsonElement>("obj4");
             });
+
             var projectName = "inline_dotnet";
             var stackName = $"inline_dotnet{GetTestSuffix()}";
             using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
@@ -832,44 +832,43 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                { "plainstr1", new ConfigValue("1") },
-                { "plainstr2", new ConfigValue("2") },
-                { "plainstr3", new ConfigValue("3") },
-                { "plainstr4", new ConfigValue("4") },
-                { "plainbool1", new ConfigValue("true") },
-                { "plainbool2", new ConfigValue("true") },
-                { "plainbool3", new ConfigValue("true") },
-                { "plainbool4", new ConfigValue("true") },
-                { "plainint1", new ConfigValue("1") },
-                { "plainint2", new ConfigValue("2") },
-                { "plainint3", new ConfigValue("3") },
-                { "plainint4", new ConfigValue("4") },
-                { "plainobj1", new ConfigValue("{}") },
-                { "plainobj2", new ConfigValue("{}") },
-                { "plainobj3", new ConfigValue("{}") },
-                { "plainobj4", new ConfigValue("{}") },
-                { "str1", new ConfigValue("1", isSecret: true) },
-                { "str2", new ConfigValue("2", isSecret: true) },
-                { "str3", new ConfigValue("3", isSecret: true) },
-                { "str4", new ConfigValue("4", isSecret: true) },
-                { "bool1", new ConfigValue("true", isSecret: true) },
-                { "bool2", new ConfigValue("true", isSecret: true) },
-                { "bool3", new ConfigValue("true", isSecret: true) },
-                { "bool4", new ConfigValue("true", isSecret: true) },
-                { "int1", new ConfigValue("1", isSecret: true) },
-                { "int2", new ConfigValue("2", isSecret: true) },
-                { "int3", new ConfigValue("3", isSecret: true) },
-                { "int4", new ConfigValue("4", isSecret: true) },
-                { "obj1", new ConfigValue("{}", isSecret: true) },
-                { "obj2", new ConfigValue("{}", isSecret: true) },
-                { "obj3", new ConfigValue("{}", isSecret: true) },
-                { "obj4", new ConfigValue("{}", isSecret: true) },
-            };
-
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    { "plainstr1", new ConfigValue("1") },
+                    { "plainstr2", new ConfigValue("2") },
+                    { "plainstr3", new ConfigValue("3") },
+                    { "plainstr4", new ConfigValue("4") },
+                    { "plainbool1", new ConfigValue("true") },
+                    { "plainbool2", new ConfigValue("true") },
+                    { "plainbool3", new ConfigValue("true") },
+                    { "plainbool4", new ConfigValue("true") },
+                    { "plainint1", new ConfigValue("1") },
+                    { "plainint2", new ConfigValue("2") },
+                    { "plainint3", new ConfigValue("3") },
+                    { "plainint4", new ConfigValue("4") },
+                    { "plainobj1", new ConfigValue("{}") },
+                    { "plainobj2", new ConfigValue("{}") },
+                    { "plainobj3", new ConfigValue("{}") },
+                    { "plainobj4", new ConfigValue("{}") },
+                    { "str1", new ConfigValue("1", isSecret: true) },
+                    { "str2", new ConfigValue("2", isSecret: true) },
+                    { "str3", new ConfigValue("3", isSecret: true) },
+                    { "str4", new ConfigValue("4", isSecret: true) },
+                    { "bool1", new ConfigValue("true", isSecret: true) },
+                    { "bool2", new ConfigValue("true", isSecret: true) },
+                    { "bool3", new ConfigValue("true", isSecret: true) },
+                    { "bool4", new ConfigValue("true", isSecret: true) },
+                    { "int1", new ConfigValue("1", isSecret: true) },
+                    { "int2", new ConfigValue("2", isSecret: true) },
+                    { "int3", new ConfigValue("3", isSecret: true) },
+                    { "int4", new ConfigValue("4", isSecret: true) },
+                    { "obj1", new ConfigValue("{}", isSecret: true) },
+                    { "obj2", new ConfigValue("{}", isSecret: true) },
+                    { "obj3", new ConfigValue("{}", isSecret: true) },
+                    { "obj4", new ConfigValue("{}", isSecret: true) },
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi preview
@@ -990,13 +989,13 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
@@ -1061,13 +1060,13 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>
-            {
-                ["bar"] = new ConfigValue("abc"),
-                ["buzz"] = new ConfigValue("secret", isSecret: true),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["bar"] = new ConfigValue("abc"),
+                    ["buzz"] = new ConfigValue("secret", isSecret: true),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up
