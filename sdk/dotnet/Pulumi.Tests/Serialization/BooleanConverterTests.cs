@@ -52,7 +52,7 @@ namespace Pulumi.Tests.Serialization
         {
             Assert.Throws<InvalidOperationException>(() =>
             {
-                var data = Converter.ConvertValue<bool>("", new Value { StringValue = "" });
+                Converter.ConvertValue<bool>("", new Value { StringValue = "" });
             });
         }
 
@@ -94,7 +94,7 @@ namespace Pulumi.Tests.Serialization
         {
             Assert.Throws<InvalidOperationException>(() =>
             {
-                var data = Converter.ConvertValue<bool>("", new Value { StringValue = "" });
+                Converter.ConvertValue<bool>("", new Value { StringValue = "" });
             });
         }
 

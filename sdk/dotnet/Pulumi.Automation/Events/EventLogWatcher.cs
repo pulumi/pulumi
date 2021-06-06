@@ -8,7 +8,7 @@ using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation.Events
 {
-    internal class EventLogWatcher : IDisposable
+    internal sealed class EventLogWatcher : IDisposable
     {
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
         private readonly Action<EngineEvent> _onEvent;

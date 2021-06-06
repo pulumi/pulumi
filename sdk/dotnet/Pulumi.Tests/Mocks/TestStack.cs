@@ -43,7 +43,7 @@ namespace Pulumi.Tests.Mocks
         public MyStack()
         {
             var myInstance = new Instance("instance", new InstanceArgs());
-            var myCustom = new MyCustom("mycustom", new MyCustomArgs { Instance = myInstance });
+            new MyCustom("mycustom", new MyCustomArgs { Instance = myInstance });
             this.PublicIp = myInstance.PublicIp;
         }
     }

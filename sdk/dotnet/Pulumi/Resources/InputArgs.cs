@@ -35,7 +35,7 @@ namespace Pulumi
 
             var all = fieldQuery.Concat(propQuery).ToList();
 
-            foreach (var (attr, memberName, memberType, getValue) in all)
+            foreach (var (_, memberName, memberType, _) in all)
             {
                 var fullName = $"[Input] {this.GetType().FullName}.{memberName}";
                 // ReSharper disable once VirtualMemberCallInConstructor

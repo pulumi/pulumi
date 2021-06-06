@@ -128,9 +128,9 @@ namespace Pulumi.Automation.Commands
             return alphaNumWord.IsMatch(firstArgument) ? firstArgument : "event-log";
         }
 
-        private class EventLogFile : IDisposable
+        private sealed class EventLogFile : IDisposable
         {
-            private bool _disposedValue;
+            public string FilePath { get; }
 
             public EventLogFile(string command)
             {
@@ -139,37 +139,21 @@ namespace Pulumi.Automation.Commands
                 this.FilePath = Path.Combine(logDir, "eventlog.txt");
             }
 
-            public string FilePath { get; }
-
-            protected virtual void Dispose(bool disposing)
-            {
-                if (!_disposedValue)
-                {
-                    if (disposing)
-                    {
-                        var dir = Path.GetDirectoryName(this.FilePath);
-                        try
-                        {
-                            Directory.Delete(dir, recursive: true);
-                        }
-                        catch (Exception e)
-                        {
-                            // allow graceful exit if for some reason
-                            // we're not able to delete the directory
-                            // will rely on OS to clean temp directory
-                            // in this case.
-                            Trace.TraceWarning("Ignoring exception during cleanup of {0} folder: {1}", dir, e);
-                        }
-                    }
-                    _disposedValue = true;
-                }
-            }
-
             public void Dispose()
             {
-                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-                Dispose(disposing: true);
-                GC.SuppressFinalize(this);
+                var dir = Path.GetDirectoryName(this.FilePath);
+                try
+                {
+                    Directory.Delete(dir, recursive: true);
+                }
+                catch (Exception e)
+                {
+                    // allow graceful exit if for some reason
+                    // we're not able to delete the directory
+                    // will rely on OS to clean temp directory
+                    // in this case.
+                    Trace.TraceWarning("Ignoring exception during cleanup of {0} folder: {1}", dir, e);
+                }
             }
         }
     }

@@ -3,7 +3,6 @@
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi
@@ -21,7 +20,6 @@ namespace Pulumi
             var prepareResult = await this.PrepareResourceAsync(
                 label, resource, custom: true, remote: false, args, options).ConfigureAwait(false);
 
-            var serializer = new Serializer(_excessiveDebugOutput);
             Log.Debug($"ReadResource RPC prepared: id={id}, t={type}, name={name}" +
                 (_excessiveDebugOutput ? $", obj={prepareResult.SerializedProps}" : ""));
 

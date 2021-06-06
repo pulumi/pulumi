@@ -90,7 +90,7 @@ namespace Pulumi
                     resource, remote, newDependency, args, options).ConfigureAwait(false);
 
                 completionSources[Constants.UrnPropertyName].SetStringValue(response.urn, isKnown: true);
-                if (resource is CustomResource customResource)
+                if (resource is CustomResource)
                 {
                     // ReSharper disable once ConstantNullCoalescingCondition
                     var id = response.id ?? "";

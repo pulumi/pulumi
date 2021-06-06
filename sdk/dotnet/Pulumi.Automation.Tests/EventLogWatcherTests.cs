@@ -57,7 +57,7 @@ namespace Pulumi.Automation.Tests
 
         private class MyException : Exception { }
 
-        private class Fixture : IDisposable
+        private sealed class Fixture : IDisposable
         {
             public int EventCounter;
             public string LogFileName { get; }

@@ -102,6 +102,7 @@ namespace Pulumi
 
         private Deployment()
         {
+            // ReSharper disable UnusedVariable
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
             var engine = Environment.GetEnvironmentVariable("PULUMI_ENGINE");
             var project = Environment.GetEnvironmentVariable("PULUMI_PROJECT");
@@ -122,6 +123,7 @@ namespace Pulumi
             {
                 throw new InvalidOperationException("Program run without the Pulumi engine available; re-run using the `pulumi` CLI");
             }
+            // ReSharper restore UnusedVariable
 
             _isDryRun = dryRunValue;
             _stackName = stack;

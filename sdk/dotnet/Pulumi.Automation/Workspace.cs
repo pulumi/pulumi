@@ -9,6 +9,8 @@ using System.Threading.Tasks;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
+// ReSharper disable UnusedMemberInSuper.Global
+// ReSharper disable VirtualMemberNeverOverridden.Global
 
 namespace Pulumi.Automation
 {

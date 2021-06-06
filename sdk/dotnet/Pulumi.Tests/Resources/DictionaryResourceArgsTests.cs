@@ -20,7 +20,7 @@ namespace Pulumi.Tests.Resources
                 { "dictionary", new Dictionary<string, object?> { {"foo", "bar"} }.ToImmutableDictionary() },
                 { "output", Output.CreateSecret("secret") },
             };
-            var args = new DictionaryResourceArgs(dict.ToImmutableDictionary());
+            new DictionaryResourceArgs(dict.ToImmutableDictionary());
         }
 
         [Fact]

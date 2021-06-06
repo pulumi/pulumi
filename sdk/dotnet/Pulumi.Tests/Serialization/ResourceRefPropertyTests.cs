@@ -52,8 +52,8 @@ namespace Pulumi.Tests.Serialization
         {
             public MyStack()
             {
-                var customResource = new MyCustomResource("test", null);
-                var componentResource = new MyComponentResource("test", null);
+                new MyCustomResource("test", null);
+                new MyComponentResource("test", null);
             }
         }
 

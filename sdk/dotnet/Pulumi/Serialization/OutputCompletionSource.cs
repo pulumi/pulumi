@@ -59,9 +59,6 @@ namespace Pulumi.Serialization
     {
         public static ImmutableDictionary<string, IOutputCompletionSource> InitializeOutputs(Resource resource)
         {
-            var name = resource.GetResourceName();
-            var type = resource.GetResourceType();
-
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
                         let attr = property.GetCustomAttribute<OutputAttribute>()
                         where attr != null
