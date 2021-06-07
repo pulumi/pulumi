@@ -7,7 +7,7 @@ namespace Pulumi.Utilities
 {
     /// <summary>
     /// Allows extracting some internal insights about an instance of
-    /// <see cref="Output{T}"/>. 
+    /// <see cref="Output{T}"/>.
     /// </summary>
     public static class OutputUtilities
     {
@@ -25,8 +25,15 @@ namespace Pulumi.Utilities
 
         /// <summary>
         /// Retrieve the value of the given output.
-        /// Note: generally, this should never be used in combination with await for
-        /// a program control flow to avoid deadlock situations.
+        ///
+        /// Danger: this facility is intended for use in test and
+        /// debugging scenarios. In normal Pulumi programs, please
+        /// consider using `.Apply` instead to chain `Output[T]`
+        /// transformations without unpacking the underlying T. Doing
+        /// so preserves metadata such as resource dependencies that
+        /// is used by Pulumi engine to operate correctly. Using
+        /// `await o.GetValueAsync()` directly opens up a possibility
+        /// to introduce issues with lost metadata.
         /// </summary>
         /// <param name="output">The <see cref="Output{T}"/> to evaluate.</param>
         public static Task<T> GetValueAsync<T>(Output<T> output)
