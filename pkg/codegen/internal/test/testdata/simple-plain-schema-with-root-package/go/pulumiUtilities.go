@@ -62,16 +62,16 @@ func getEnvOrDefault(def interface{}, parser envParser, vars ...string) interfac
 }
 
 // PkgVersion uses reflection to determine the version of the current package.
-func PkgVersion() (semver.Version, error) {
+func PkgVersion() semver.Version {
 	type sentinal struct{}
 	pkgPath := reflect.TypeOf(sentinal{}).PkgPath()
 	re := regexp.MustCompile("^github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-plain-schema-with-root-package/go/example(/v\\d+)?")
 	if match := re.FindStringSubmatch(pkgPath); match != nil {
 		vStr := match[1]
 		if len(vStr) == 0 { // If the version capture group was empty, default to v1.
-			return semver.Version{Major: 1}, nil
+			return semver.Version{Major: 1}
 		}
-		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:])), nil
+		return semver.MustParse(fmt.Sprintf("%s.0.0", vStr[2:]))
 	}
-	return semver.Version{}, fmt.Errorf("failed to determine the package version from %s", pkgPath)
+	return semver.Version{Major: 1}
 }
