@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"path"
+	"strings"
 	"time"
 
 	"github.com/rjeczalik/notify"
@@ -57,7 +58,8 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 				if _, shownAlready := shown[logEntry]; !shownAlready {
 					eventTime := time.Unix(0, logEntry.Timestamp*1000000)
 
-					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", logEntry.Message)
+					message := strings.TrimRight(logEntry.Message, "\n")
+					display.PrintfWithWatchPrefix(eventTime, logEntry.ID, "%s\n", message)
 
 					shown[logEntry] = true
 				}
