@@ -19,6 +19,10 @@ namespace Pulumi.Automation
 
         public PulumiFn? Program { get; set; }
 
+        /// <summary>
+        /// A custom logger implementation that will be used for the action. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
         public IDeploymentLogger? Logger { get; set; }
     }
 }
