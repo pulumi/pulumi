@@ -25,6 +25,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
@@ -56,18 +57,10 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		})
 	}
 
-	var args []string
-	for k, v := range options {
-		args = append(args, fmt.Sprintf("-%s=%v", k, v))
-	}
-
-	root, err := filepath.Abs(ctx.Root)
+	args, err := buildArgsForNewPlugin(host, ctx, options)
 	if err != nil {
 		return nil, err
 	}
-	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
-
-	args = append(args, host.ServerAddr())
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, runtime, args, nil /*env*/)
 	if err != nil {
@@ -81,6 +74,29 @@ func NewLanguageRuntime(host Host, ctx *Context, runtime string,
 		plug:    plug,
 		client:  pulumirpc.NewLanguageRuntimeClient(plug.Conn),
 	}, nil
+}
+
+func buildArgsForNewPlugin(host Host, ctx *Context, options map[string]interface{}) ([]string, error) {
+	root, err := filepath.Abs(ctx.Root)
+	if err != nil {
+		return nil, err
+	}
+	var args []string
+
+	for k, v := range options {
+		args = append(args, fmt.Sprintf("-%s=%v", k, v))
+	}
+
+	args = append(args, fmt.Sprintf("-root=%s", filepath.Clean(root)))
+
+	if cmdutil.IsTracingEnabled() {
+		args = append(args, fmt.Sprintf("-tracing=%s", cmdutil.TracingEndpoint))
+	}
+
+	// NOTE: positional argument for the server addresss must come last
+	args = append(args, host.ServerAddr())
+
+	return args, nil
 }
 
 func NewLanguageRuntimeClient(ctx *Context, runtime string, client pulumirpc.LanguageRuntimeClient) LanguageRuntime {

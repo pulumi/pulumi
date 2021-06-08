@@ -4,15 +4,19 @@
 package ints
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"sourcegraph.com/sourcegraph/appdash"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -585,4 +589,67 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 		path += ".exe"
 	}
 	testComponentProviderSchema(t, path)
+}
+
+// TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
+func TestTracePropagationGo(t *testing.T) {
+
+	// Allocate a temp file location for file tracing.
+	dir := os.TempDir()
+	file, err := ioutil.TempFile(dir, "trace")
+	fullPath := file.Name()
+	if err != nil {
+		t.Fatal(err)
+		return
+	}
+	defer os.Remove(file.Name())
+
+	// Detect a special trace coming from Go language plugin.
+	isGoListTrace := func(t *appdash.Trace) bool {
+		m := t.Span.Annotations.StringMap()
+
+		if m["operation"] == "exec.Command" &&
+			m["args"] == "[list -m -json -mod=mod all]" &&
+			strings.HasSuffix(m["command"], "go") {
+			return true
+		}
+
+		return false
+	}
+
+	var foundTrace *appdash.Trace
+
+	// Check that the temp file has a trace mathching `isGoListTrace`.
+	assertHasGoListTrace := func() error {
+		store, err := ReadMemoryStoreFromFile(fullPath)
+		if err != nil {
+			return err
+		}
+
+		foundTrace, err = FindTrace(store, isGoListTrace)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("empty", "go"),
+		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
+		SkipRefresh:            true,
+		SkipPreview:            false,
+		SkipUpdate:             true,
+		SkipExportImport:       true,
+		SkipEmptyPreviewUpdate: true,
+		Quick:                  false,
+		Tracing:                fmt.Sprintf("file://%s", fullPath),
+		PreviewCompletedHook:   assertHasGoListTrace,
+	}
+
+	integration.ProgramTest(t, opts)
+
+	if foundTrace == nil {
+		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
+	}
 }
