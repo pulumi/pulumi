@@ -619,8 +619,9 @@ func TestTracePropagationGo(t *testing.T) {
 
 	var foundTrace *appdash.Trace
 
-	// Check that the temp file has a trace mathching `isGoListTrace`.
-	assertHasGoListTrace := func() error {
+	// Look for trace mathching `isGoListTrace` in the trace file
+	// and store to `foundTrace`.
+	searchForGoListTrace := func() error {
 		store, err := ReadMemoryStoreFromFile(fullPath)
 		if err != nil {
 			return err
@@ -644,7 +645,7 @@ func TestTracePropagationGo(t *testing.T) {
 		SkipEmptyPreviewUpdate: true,
 		Quick:                  false,
 		Tracing:                fmt.Sprintf("file://%s", fullPath),
-		PreviewCompletedHook:   assertHasGoListTrace,
+		PreviewCompletedHook:   searchForGoListTrace,
 	}
 
 	integration.ProgramTest(t, opts)
