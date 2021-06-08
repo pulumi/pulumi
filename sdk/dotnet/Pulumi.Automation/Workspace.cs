@@ -6,6 +6,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -64,10 +65,10 @@ namespace Pulumi.Automation
         public abstract IDictionary<string, string?>? EnvironmentVariables { get; set; }
 
         /// <summary>
-        /// A custom logger implementation that will be used for the action. Note that it will only be used
+        /// A custom logger instance that will be used for the action. Note that it will only be used
         /// if <see cref="Program"/> is also provided.
         /// </summary>
-        public IDeploymentLogger? Logger { get; set; }
+        public ILogger? Logger { get; set; }
 
         /// <summary>
         /// Returns project settings for the current project if any.

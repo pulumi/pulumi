@@ -3,6 +3,7 @@
 using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi
 {
@@ -26,15 +27,15 @@ namespace Pulumi
                 throw new InvalidOperationException("Inline execution was not provided the necessary parameters to run the Pulumi engine.");
             }
 
-            var deploymentLogger = settings.Logger ?? SerilogDeploymentLogger.Create();
+            var deploymentLogger = settings.Logger ?? CreateDefaultLogger();
 
-            deploymentLogger.Debug("Creating Deployment Engine.");
+            deploymentLogger.LogDebug("Creating Deployment Engine.");
             Engine = new GrpcEngine(settings.EngineAddr);
-            deploymentLogger.Debug("Created Deployment Engine.");
+            deploymentLogger.LogDebug("Created Deployment Engine.");
 
-            deploymentLogger.Debug("Creating Deployment Monitor.");
+            deploymentLogger.LogDebug("Creating Deployment Monitor.");
             Monitor = new GrpcMonitor(settings.MonitorAddr);
-            deploymentLogger.Debug("Created Deployment Monitor.");
+            deploymentLogger.LogDebug("Created Deployment Monitor.");
 
             _runner = new Runner(this, deploymentLogger);
             _logger = new EngineLogger(this, deploymentLogger, Engine);

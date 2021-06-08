@@ -6,9 +6,11 @@ using System.Diagnostics.CodeAnalysis;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using Pulumi.Testing;
 using Serilog;
 using Serilog.Events;
+using Serilog.Extensions.Logging;
 
 namespace Pulumi
 {
@@ -125,15 +127,15 @@ namespace Pulumi
             _stackName = stack;
             _projectName = project;
 
-            var deploymentLogger = SerilogDeploymentLogger.Create();
+            var deploymentLogger = CreateDefaultLogger();
 
-            deploymentLogger.Debug("Creating Deployment Engine.");
+            deploymentLogger.LogDebug("Creating Deployment Engine.");
             this.Engine = new GrpcEngine(engine);
-            deploymentLogger.Debug("Created Deployment Engine.");
+            deploymentLogger.LogDebug("Created Deployment Engine.");
 
-            deploymentLogger.Debug("Creating Deployment Monitor.");
+            deploymentLogger.LogDebug("Creating Deployment Monitor.");
             this.Monitor = new GrpcMonitor(monitor);
-            deploymentLogger.Debug("Created Deployment Monitor.");
+            deploymentLogger.LogDebug("Created Deployment Monitor.");
 
             _runner = new Runner(this, deploymentLogger);
             _logger = new EngineLogger(this, deploymentLogger, this.Engine);
@@ -148,7 +150,7 @@ namespace Pulumi
         /// </summary>
         internal Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
-            var deploymentLogger = SerilogDeploymentLogger.Create();
+            var deploymentLogger = CreateDefaultLogger();
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
@@ -185,6 +187,24 @@ namespace Pulumi
         internal Task<bool> MonitorSupportsResourceReferences()
         {
             return MonitorSupportsFeature("resourceReferences");
+        }
+
+        private static Microsoft.Extensions.Logging.ILogger CreateDefaultLogger()
+        {
+            var verboseLogging = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE"));
+
+            var configRoot = new ConfigurationBuilder()
+                .AddEnvironmentVariables()
+                .Build();
+
+            var logger = new LoggerConfiguration()
+                .MinimumLevel.Is(verboseLogging ? LogEventLevel.Verbose : LogEventLevel.Fatal)
+                .ReadFrom.Configuration(configRoot)
+                .WriteTo.Console()
+                .CreateLogger();
+
+            var loggerFactory = new SerilogLoggerFactory(logger: logger);
+            return loggerFactory.CreateLogger<Deployment>();
         }
     }
 }

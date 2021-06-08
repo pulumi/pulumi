@@ -14,6 +14,7 @@ using Pulumi.Automation.Events;
 using Xunit;
 using System.Collections.Immutable;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi.Automation.Tests
 {
@@ -1485,7 +1486,7 @@ namespace Pulumi.Automation.Tests
             });
 
             var loggerWasInvoked = false;
-            var logger = new CustomDeploymentLogger(_ => loggerWasInvoked = true);
+            var logger = new CustomLogger(() => loggerWasInvoked = true);
 
             var stackName = $"{RandomStackName()}";
             var projectName = "inline_logger_override";
@@ -1526,29 +1527,25 @@ namespace Pulumi.Automation.Tests
             return Path.Combine(dir, path);
         }
 
-        private class CustomDeploymentLogger : IDeploymentLogger
+        private class CustomLogger : Microsoft.Extensions.Logging.ILogger
         {
-            private readonly Action<string> _action;
+            private readonly Action _action;
 
-            public CustomDeploymentLogger(Action<string> action)
+            public CustomLogger(Action action)
             {
                 _action = action;
             }
 
-            public void Debug(string message)
-                => _action(message);
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                throw new NotImplementedException();
+            }
 
-            public void Error(string message)
-                => _action(message);
+            public bool IsEnabled(LogLevel logLevel)
+                => true;
 
-            public void Error(Exception exception, string message)
-                => _action(message);
-
-            public void Info(string message)
-                => _action(message);
-
-            public void Warn(string message)
-                => _action(message);
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+                => _action();
         }
     }
 }

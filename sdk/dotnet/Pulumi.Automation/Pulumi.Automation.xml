@@ -658,7 +658,7 @@
         </member>
         <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Logger">
             <summary>
-            A custom logger implementation that will be used for inline programs. Note that it will only be used
+            A custom logger instance that will be used for inline programs. Note that it will only be used
             if <see cref="P:Pulumi.Automation.LocalWorkspaceOptions.Program"/> is also provided.
             </summary>
         </member>
@@ -669,7 +669,7 @@
         </member>
         <member name="P:Pulumi.Automation.PreviewOptions.Logger">
             <summary>
-            A custom logger implementation that will be used for the action. Note that it will only be used
+            A custom logger instance that will be used for the action. Note that it will only be used
             if <see cref="P:Pulumi.Automation.PreviewOptions.Program"/> is also provided.
             </summary>
         </member>
@@ -876,7 +876,7 @@
         </member>
         <member name="P:Pulumi.Automation.UpOptions.Logger">
             <summary>
-            A custom logger implementation that will be used for the action. Note that it will only be used
+            A custom logger instance that will be used for the action. Note that it will only be used
             if <see cref="P:Pulumi.Automation.UpOptions.Program"/> is also provided.
             </summary>
         </member>
@@ -926,7 +926,7 @@
         </member>
         <member name="P:Pulumi.Automation.Workspace.Logger">
             <summary>
-            A custom logger implementation that will be used for the action. Note that it will only be used
+            A custom logger instance that will be used for the action. Note that it will only be used
             if <see cref="P:Pulumi.Automation.Workspace.Program"/> is also provided.
             </summary>
         </member>

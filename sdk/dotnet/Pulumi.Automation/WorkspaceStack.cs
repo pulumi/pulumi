@@ -661,7 +661,7 @@ namespace Pulumi.Automation
             public InlineLanguageHost(
                 PulumiFn program,
                 CancellationToken cancellationToken,
-                IDeploymentLogger? logger)
+                ILogger? logger)
             {
                 this._cancelToken = cancellationToken;
                 this._host = Host.CreateDefaultBuilder()

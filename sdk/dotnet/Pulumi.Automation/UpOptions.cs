@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi.Automation
 {
@@ -20,9 +21,9 @@ namespace Pulumi.Automation
         public PulumiFn? Program { get; set; }
 
         /// <summary>
-        /// A custom logger implementation that will be used for the action. Note that it will only be used
+        /// A custom logger instance that will be used for the action. Note that it will only be used
         /// if <see cref="Program"/> is also provided.
         /// </summary>
-        public IDeploymentLogger? Logger { get; set; }
+        public ILogger? Logger { get; set; }
     }
 }

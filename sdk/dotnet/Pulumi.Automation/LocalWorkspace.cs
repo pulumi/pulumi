@@ -307,6 +307,7 @@ namespace Pulumi.Automation
 
                 this.PulumiHome = options.PulumiHome;
                 this.Program = options.Program;
+                this.Logger = options.Logger;
                 this.SecretsProvider = options.SecretsProvider;
 
                 if (options.EnvironmentVariables != null)

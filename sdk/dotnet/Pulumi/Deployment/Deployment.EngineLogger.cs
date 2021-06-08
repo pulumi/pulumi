@@ -3,6 +3,7 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumirpc;
 
 namespace Pulumi
@@ -13,7 +14,7 @@ namespace Pulumi
         {
             private readonly object _logGate = new object();
             private readonly IDeploymentInternal _deployment;
-            private readonly IDeploymentLogger _deploymentLogger;
+            private readonly ILogger _deploymentLogger;
             private readonly IEngine _engine;
 
             // We serialize all logging tasks so that the engine doesn't hear about them out of order.
@@ -23,7 +24,7 @@ namespace Pulumi
 
             public EngineLogger(
                 IDeploymentInternal deployment,
-                IDeploymentLogger deploymentLogger,
+                ILogger deploymentLogger,
                 IEngine engine)
             {
                 _deployment = deployment;
@@ -47,7 +48,7 @@ namespace Pulumi
             /// </summary>
             Task IEngineLogger.DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                _deploymentLogger.Debug(message);
+                _deploymentLogger.LogDebug(message);
                 return LogImplAsync(LogSeverity.Debug, message, resource, streamId, ephemeral);
             }
 
@@ -57,7 +58,7 @@ namespace Pulumi
             /// </summary>
             Task IEngineLogger.InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                _deploymentLogger.Info(message);
+                _deploymentLogger.LogInformation(message);
                 return LogImplAsync(LogSeverity.Info, message, resource, streamId, ephemeral);
             }
 
@@ -66,7 +67,7 @@ namespace Pulumi
             /// </summary>
             Task IEngineLogger.WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                _deploymentLogger.Warn(message);
+                _deploymentLogger.LogWarning(message);
                 return LogImplAsync(LogSeverity.Warning, message, resource, streamId, ephemeral);
             }
 
@@ -79,7 +80,7 @@ namespace Pulumi
 
             private Task ErrorAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
             {
-                _deploymentLogger.Error(message);
+                _deploymentLogger.LogError(message);
                 return LogImplAsync(LogSeverity.Error, message, resource, streamId, ephemeral);
             }
 

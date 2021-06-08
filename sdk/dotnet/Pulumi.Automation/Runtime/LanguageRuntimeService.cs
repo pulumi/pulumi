@@ -1,12 +1,11 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Pulumirpc;
 
 namespace Pulumi.Automation
@@ -69,14 +68,14 @@ namespace Pulumi.Automation
 
             public CancellationToken CancellationToken { get; }
 
-            public IDeploymentLogger? Logger { get; }
+            public ILogger? Logger { get; }
 
             public ExceptionDispatchInfo? ExceptionDispatchInfo { get; set; }
 
             public CallerContext(
                 PulumiFn program,
                 CancellationToken cancellationToken,
-                IDeploymentLogger? logger)
+                ILogger? logger)
             {
                 this.Program = program;
                 this.CancellationToken = cancellationToken;

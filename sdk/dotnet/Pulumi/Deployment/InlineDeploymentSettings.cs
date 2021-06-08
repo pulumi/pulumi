@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi
 {
@@ -20,7 +21,7 @@ namespace Pulumi
 
         public bool IsDryRun { get; }
         
-        public IDeploymentLogger? Logger { get; }
+        public ILogger? Logger { get; }
 
         public InlineDeploymentSettings(
             string engineAddr,
@@ -31,7 +32,7 @@ namespace Pulumi
             string stack,
             int parallel,
             bool isDryRun,
-            IDeploymentLogger? logger)
+            ILogger? logger)
         {
             EngineAddr = engineAddr;
             MonitorAddr = monitorAddr;
