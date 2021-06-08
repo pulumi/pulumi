@@ -64,6 +64,12 @@ namespace Pulumi.Automation
         public abstract IDictionary<string, string?>? EnvironmentVariables { get; set; }
 
         /// <summary>
+        /// A custom logger implementation that will be used for the action. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
+        public IDeploymentLogger? Logger { get; set; }
+
+        /// <summary>
         /// Returns project settings for the current project if any.
         /// </summary>
         public abstract Task<ProjectSettings?> GetProjectSettingsAsync(CancellationToken cancellationToken = default);

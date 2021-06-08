@@ -1475,10 +1475,80 @@ namespace Pulumi.Automation.Tests
             );
         }
 
+        [Fact]
+        public async Task InlineProgramLoggerCanBeOverridden()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                Log.Debug("test");
+            });
+
+            var loggerWasInvoked = false;
+            var logger = new CustomDeploymentLogger(_ => loggerWasInvoked = true);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_logger_override";
+
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    Logger = logger,
+                });
+
+            // make sure workspace logger is used
+            await stack.PreviewAsync();
+            Assert.True(loggerWasInvoked);
+
+            // preview logger is used
+            loggerWasInvoked = false;
+            stack.Workspace.Logger = null;
+            await stack.PreviewAsync(new PreviewOptions
+            {
+                Logger = logger,
+            });
+            Assert.True(loggerWasInvoked);
+
+            // up logger is used
+            loggerWasInvoked = false;
+            await stack.UpAsync(new UpOptions
+            {
+                Logger = logger,
+            });
+            Assert.True(loggerWasInvoked);
+
+            await stack.DestroyAsync();
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";
             return Path.Combine(dir, path);
+        }
+
+        private class CustomDeploymentLogger : IDeploymentLogger
+        {
+            private readonly Action<string> _action;
+
+            public CustomDeploymentLogger(Action<string> action)
+            {
+                _action = action;
+            }
+
+            public void Debug(string message)
+                => _action(message);
+
+            public void Error(string message)
+                => _action(message);
+
+            public void Error(Exception exception, string message)
+                => _action(message);
+
+            public void Info(string message)
+                => _action(message);
+
+            public void Warn(string message)
+                => _action(message);
         }
     }
 }

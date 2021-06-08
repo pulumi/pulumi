@@ -57,5 +57,11 @@ namespace Pulumi.Automation
         /// <see cref="LocalWorkspace.SaveStackSettingsAsync(string, Automation.StackSettings, System.Threading.CancellationToken)"/>.
         /// </summary>
         public IDictionary<string, StackSettings>? StackSettings { get; set; }
+
+        /// <summary>
+        /// A custom logger implementation that will be used for inline programs. Note that it will only be used
+        /// if <see cref="Program"/> is also provided.
+        /// </summary>
+        public IDeploymentLogger? Logger { get; set; }
     }
 }

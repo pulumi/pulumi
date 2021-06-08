@@ -211,6 +211,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var logger = this.Workspace.Logger;
             var args = new List<string>()
             {
                 "up",
@@ -222,6 +223,9 @@ namespace Pulumi.Automation
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -270,7 +274,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken, options?.Logger);
+                    inlineHost = new InlineLanguageHost(program, cancellationToken, logger);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -313,12 +317,16 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var logger = this.Workspace.Logger;
             var args = new List<string>() { "preview" };
 
             if (options != null)
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -381,7 +389,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken, options?.Logger);
+                    inlineHost = new InlineLanguageHost(program, cancellationToken, logger);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
