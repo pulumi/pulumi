@@ -85,8 +85,7 @@ namespace Pulumi
         private readonly bool _isDryRun;
         private readonly ConcurrentDictionary<string, bool> _featureSupport = new ConcurrentDictionary<string, bool>();
 
-        private Serilog.ILogger _serilogger = null!;
-        private readonly ILogger _logger;
+        private readonly IEngineLogger _logger;
         private readonly IRunner _runner;
 
         internal IEngine Engine { get; }
@@ -126,18 +125,18 @@ namespace Pulumi
             _stackName = stack;
             _projectName = project;
 
-            InitSerilogger();
+            var deploymentLogger = SerilogDeploymentLogger.Create();
 
-            _serilogger.Debug("Creating Deployment Engine.");
+            deploymentLogger.Debug("Creating Deployment Engine.");
             this.Engine = new GrpcEngine(engine);
-            _serilogger.Debug("Created Deployment Engine.");
+            deploymentLogger.Debug("Created Deployment Engine.");
 
-            _serilogger.Debug("Creating Deployment Monitor.");
+            deploymentLogger.Debug("Creating Deployment Monitor.");
             this.Monitor = new GrpcMonitor(monitor);
-            _serilogger.Debug("Created Deployment Monitor.");
+            deploymentLogger.Debug("Created Deployment Monitor.");
 
-            _runner = new Runner(this);
-            _logger = new Logger(this, this.Engine);
+            _runner = new Runner(this, deploymentLogger);
+            _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
         /// <summary>
@@ -149,44 +148,27 @@ namespace Pulumi
         /// </summary>
         internal Deployment(IEngine engine, IMonitor monitor, TestOptions? options)
         {
-            InitSerilogger();
+            var deploymentLogger = SerilogDeploymentLogger.Create();
             _isDryRun = options?.IsPreview ?? true;
             _stackName = options?.StackName ?? "stack";
             _projectName = options?.ProjectName ?? "project";
             this.Engine = engine;
             this.Monitor = monitor;
-            _runner = new Runner(this);
-            _logger = new Logger(this, this.Engine);
+            _runner = new Runner(this, deploymentLogger);
+            _logger = new EngineLogger(this, deploymentLogger, this.Engine);
         }
 
         string IDeployment.ProjectName => _projectName;
         string IDeployment.StackName => _stackName;
         bool IDeployment.IsDryRun => _isDryRun;
 
-        Serilog.ILogger IDeploymentInternal.Serilogger => _serilogger;
-        ILogger IDeploymentInternal.Logger => _logger;
+        IEngineLogger IDeploymentInternal.Logger => _logger;
         IRunner IDeploymentInternal.Runner => _runner;
 
         Stack IDeploymentInternal.Stack
         {
             get => Stack;
             set => Stack = value;
-        }
-
-        private void InitSerilogger()
-        {
-            var verboseLogging = !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE"));
-
-            var configRoot = new ConfigurationBuilder()
-                .AddEnvironmentVariables()
-                .Build();
-
-            _serilogger = new LoggerConfiguration()
-                .MinimumLevel.Is(verboseLogging ? LogEventLevel.Verbose : LogEventLevel.Fatal)
-                .ReadFrom.Configuration(configRoot)
-                .WriteTo.Console()
-                .CreateLogger()
-                .ForContext<Deployment>();
         }
 
         private async Task<bool> MonitorSupportsFeature(string feature)

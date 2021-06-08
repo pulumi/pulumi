@@ -1,0 +1,6 @@
+Pulumi.IDeploymentLogger
+Pulumi.IDeploymentLogger.Debug(string message) -> void
+Pulumi.IDeploymentLogger.Error(System.Exception exception, string message) -> void
+Pulumi.IDeploymentLogger.Error(string message) -> void
+Pulumi.IDeploymentLogger.Info(string message) -> void
+Pulumi.IDeploymentLogger.Warn(string message) -> void

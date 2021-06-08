@@ -44,11 +44,12 @@ namespace Pulumi.Automation
                 engineAddr,
                 request.MonitorAddress,
                 request.Config,
+                request.ConfigSecretKeys,
                 request.Project,
                 request.Stack,
                 request.Parallel,
                 request.DryRun,
-                request.ConfigSecretKeys);
+                this._callerContext.Logger);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(
                 this._callerContext.CancellationToken,
@@ -68,14 +69,18 @@ namespace Pulumi.Automation
 
             public CancellationToken CancellationToken { get; }
 
+            public IDeploymentLogger? Logger { get; }
+
             public ExceptionDispatchInfo? ExceptionDispatchInfo { get; set; }
 
             public CallerContext(
                 PulumiFn program,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken,
+                IDeploymentLogger? logger)
             {
                 this.Program = program;
                 this.CancellationToken = cancellationToken;
+                this.Logger = logger;
             }
         }
     }

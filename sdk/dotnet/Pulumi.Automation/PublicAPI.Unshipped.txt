@@ -1,0 +1,4 @@
+Pulumi.Automation.PreviewOptions.Logger.get -> Pulumi.IDeploymentLogger
+Pulumi.Automation.PreviewOptions.Logger.set -> void
+Pulumi.Automation.UpOptions.Logger.get -> Pulumi.IDeploymentLogger
+Pulumi.Automation.UpOptions.Logger.set -> void

@@ -18,5 +18,7 @@ namespace Pulumi.Automation
         public bool? TargetDependents { get; set; }
 
         public PulumiFn? Program { get; set; }
+
+        public IDeploymentLogger? Logger { get; set; }
     }
 }

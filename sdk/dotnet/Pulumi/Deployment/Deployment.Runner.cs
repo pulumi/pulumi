@@ -12,6 +12,7 @@ namespace Pulumi
         private class Runner : IRunner
         {
             private readonly IDeploymentInternal _deployment;
+            private readonly IDeploymentLogger _deploymentLogger;
 
             /// <summary>
             /// The set of tasks that we have fired off.  We issue tasks in a Fire-and-Forget manner
@@ -26,8 +27,13 @@ namespace Pulumi
             /// </summary>
             private readonly Dictionary<Task, List<string>> _inFlightTasks = new Dictionary<Task, List<string>>();
 
-            public Runner(IDeploymentInternal deployment)
-                => _deployment = deployment;
+            public Runner(
+                IDeploymentInternal deployment,
+                IDeploymentLogger deploymentLogger)
+            {
+                _deployment = deployment;
+                _deploymentLogger = deploymentLogger;
+            }
 
             public Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
             {
@@ -69,7 +75,7 @@ namespace Pulumi
 
             public void RegisterTask(string description, Task task)
             {
-                _deployment.Serilogger.Information($"Registering task: {description}");
+                _deploymentLogger.Info($"Registering task: {description}");
 
                 lock (_inFlightTasks)
                 {
@@ -138,7 +144,7 @@ namespace Pulumi
                             }
                             foreach (var description in descriptions)
                             {
-                                _deployment.Serilogger.Information($"Completed task: {description}");
+                                _deploymentLogger.Info($"Completed task: {description}");
                             }
 
                             // Check if all the tasks are completed and signal the completion source if so.
@@ -188,7 +194,7 @@ namespace Pulumi
                 {
                     // We got an error while logging itself.  Nothing to do here but print some errors
                     // and fail entirely.
-                    _deployment.Serilogger.Error(exception, "Error occurred trying to send logging message to engine.");
+                    _deploymentLogger.Error(exception, "Error occurred trying to send logging message to engine.");
                     await Console.Error.WriteLineAsync("Error occurred trying to send logging message to engine:\n" + exception).ConfigureAwait(false);
                     return 1;
                 }
@@ -220,7 +226,7 @@ namespace Pulumi
 {exception.ToString()}").ConfigureAwait(false);
                 }
 
-                _deployment.Serilogger.Debug("Wrote last error.  Returning from program.");
+                _deploymentLogger.Debug("Wrote last error. Returning from program.");
                 return _processExitedAfterLoggingUserActionableMessage;
             }
         }

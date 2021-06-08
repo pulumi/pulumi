@@ -19,25 +19,29 @@ namespace Pulumi
         public int Parallel { get; }
 
         public bool IsDryRun { get; }
+        
+        public IDeploymentLogger? Logger { get; }
 
         public InlineDeploymentSettings(
             string engineAddr,
             string monitorAddr,
             IDictionary<string, string> config,
+            IEnumerable<string>? configSecretKeys,
             string project,
             string stack,
             int parallel,
             bool isDryRun,
-            IEnumerable<string>? configSecretKeys = null)
+            IDeploymentLogger? logger)
         {
             EngineAddr = engineAddr;
             MonitorAddr = monitorAddr;
             Config = config;
+            ConfigSecretKeys = configSecretKeys;
             Project = project;
             Stack = stack;
             Parallel = parallel;
             IsDryRun = isDryRun;
-            ConfigSecretKeys = configSecretKeys;
+            Logger = logger;
         }
     }
 }

@@ -270,7 +270,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, cancellationToken, options?.Logger);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -381,7 +381,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, cancellationToken, options?.Logger);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -652,7 +652,8 @@ namespace Pulumi.Automation
 
             public InlineLanguageHost(
                 PulumiFn program,
-                CancellationToken cancellationToken)
+                CancellationToken cancellationToken,
+                IDeploymentLogger? logger)
             {
                 this._cancelToken = cancellationToken;
                 this._host = Host.CreateDefaultBuilder()
@@ -680,7 +681,7 @@ namespace Pulumi.Automation
                             .ConfigureServices(services =>
                             {
                                 // to be injected into LanguageRuntimeService
-                                var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
+                                var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken, logger);
                                 services.AddSingleton(callerContext);
 
                                 services.AddGrpc(grpcOptions =>
