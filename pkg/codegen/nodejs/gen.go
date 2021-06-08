@@ -1411,7 +1411,12 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 		fmt.Fprintf(w, "// Export sub-modules:\n")
 
-		sorted := children.SortedValues()
+		directChildren := codegen.NewStringSet()
+		for _, child := range children.SortedValues() {
+			directChildren.Add(path.Base(child))
+		}
+		sorted := directChildren.SortedValues()
+
 		for _, mod := range sorted {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
@@ -1535,7 +1540,12 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 		if len(children) > 0 {
 			fmt.Fprintf(buffer, "// Export sub-modules:\n")
 
-			sorted := children.SortedValues()
+			directChildren := codegen.NewStringSet()
+			for _, child := range children.SortedValues() {
+				directChildren.Add(path.Base(child))
+			}
+			sorted := directChildren.SortedValues()
+
 			for _, mod := range sorted {
 				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
 			}
