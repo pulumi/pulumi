@@ -3,6 +3,11 @@
 - [codegen] - Encrypt input args for secret properties.
   [#7128](https://github.com/pulumi/pulumi/pull/7128)
 
+- [cli] - Added support for passing custom paths that need
+  to be watched by the `pulumi watch` command.
+  [#7115](https://github.com/pulumi/pulumi/pull/7247)
+
+
 ### Bug Fixes
 
 - [cli] - Send plugin install output to stderr, so that it doesn't
