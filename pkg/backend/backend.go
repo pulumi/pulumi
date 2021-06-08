@@ -245,6 +245,9 @@ type UpdateOptions struct {
 	AutoApprove bool
 	// SkipPreview, when true, causes the preview step to be skipped.
 	SkipPreview bool
+
+	// WatchPaths, allows specifying paths that need to be watched (instead of the whole project).
+	WatchPaths []string
 }
 
 // QueryOptions configures a query to operate against a backend and the engine.
