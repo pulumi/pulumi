@@ -69,9 +69,19 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 	}()
 
 	events := make(chan notify.EventInfo, 1)
-	if err := notify.Watch(path.Join(op.Root, "..."), events, notify.All); err != nil {
-		return result.FromError(err)
+
+	if len(op.Opts.WatchPaths) > 0 {
+		for _, element := range op.Opts.WatchPaths {
+			if err := notify.Watch(path.Join(op.Root, element, "..."), events, notify.All); err != nil {
+				return result.FromError(err)
+			}
+		}
+	} else {
+		if err := notify.Watch(path.Join(op.Root, "..."), events, notify.All); err != nil {
+			return result.FromError(err)
+		}
 	}
+
 	defer notify.Stop(events)
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
