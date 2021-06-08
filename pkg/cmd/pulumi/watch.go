@@ -35,6 +35,7 @@ func newWatchCmd() *cobra.Command {
 	var execKind string
 	var stack string
 	var configArray []string
+	var pathArray []string
 	var configPath bool
 
 	// Flags for engine.UpdateOptions.
@@ -123,6 +124,8 @@ func newWatchCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 			}
 
+			opts.WatchPaths = pathArray
+
 			res := s.Watch(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -143,6 +146,9 @@ func newWatchCmd() *cobra.Command {
 		}),
 	}
 
+	cmd.PersistentFlags().StringArrayVarP(
+		&pathArray, "path", "", []string{},
+		"Specify one or more paths that need to be watched. Defaults to working directory")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
