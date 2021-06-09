@@ -55,6 +55,12 @@ class OutputSecretTests(unittest.TestCase):
 
 class OutputFromInputTests(unittest.TestCase):
     @pulumi_test
+    async def test_unwrap_empty_dict(self):
+        x = Output.from_input({})
+        x_val = await x.future()
+        self.assertEqual(x_val, {})
+
+    @pulumi_test
     async def test_unwrap_dict(self):
         x = Output.from_input({"hello": Output.from_input("world")})
         x_val = await x.future()
@@ -77,6 +83,12 @@ class OutputFromInputTests(unittest.TestCase):
         x = Output.from_input({"hello": ["foo", Output.from_input("bar")]})
         x_val = await x.future()
         self.assertEqual(x_val, {"hello": ["foo", "bar"]})
+
+    @pulumi_test
+    async def test_unwrap_empty_list(self):
+        x = Output.from_input([])
+        x_val = await x.future()
+        self.assertEqual(x_val, [])
 
     @pulumi_test
     async def test_unwrap_list(self):
