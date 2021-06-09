@@ -36,7 +36,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 func init() {
 	version, err := plant.PkgVersion()
 	if err != nil {
-		fmt.Println("failed to determine package version. defaulting to v1: %v", err)
+		fmt.Printf("failed to determine package version. defaulting to v1: %v\n", err)
 	}
 	pulumi.RegisterResourceModule(
 		"plant",

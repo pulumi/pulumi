@@ -55,6 +55,12 @@ class OutputSecretTests(unittest.TestCase):
 
 class OutputFromInputTests(unittest.TestCase):
     @pulumi_test
+    async def test_unwrap_empty_dict(self):
+        x = Output.from_input({})
+        x_val = await x.future()
+        self.assertEqual(x_val, {})
+
+    @pulumi_test
     async def test_unwrap_dict(self):
         x = Output.from_input({"hello": Output.from_input("world")})
         x_val = await x.future()
@@ -79,6 +85,12 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertEqual(x_val, {"hello": ["foo", "bar"]})
 
     @pulumi_test
+    async def test_unwrap_empty_list(self):
+        x = Output.from_input([])
+        x_val = await x.future()
+        self.assertEqual(x_val, [])
+
+    @pulumi_test
     async def test_unwrap_list(self):
         x = Output.from_input(["hello", Output.from_input("world")])
         x_val = await x.future()
@@ -95,6 +107,14 @@ class OutputFromInputTests(unittest.TestCase):
         x = Output.from_input(["hello", {"foo": Output.from_input("bar")}])
         x_val = await x.future()
         self.assertEqual(x_val, ["hello", {"foo": "bar"}])
+
+    @pulumi_test
+    async def test_deeply_nested_objects(self):
+        o1 = {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": Output.from_input("a")}}}}}}}}}}}
+        o2 = {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": {"a": "a"}}}}}}}}}}}
+        x = Output.from_input(o1)
+        x_val = await x.future()
+        self.assertEqual(x_val, o2)
 
     @pulumi.input_type
     class FooArgs:

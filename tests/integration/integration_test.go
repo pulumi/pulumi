@@ -3,6 +3,8 @@
 package ints
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,11 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 const WindowsOS = "windows"
@@ -624,4 +631,67 @@ func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
 	}
 	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
 	return r
+}
+
+// nolint: unused,deadcode
+func testComponentProviderSchema(t *testing.T, path string, env ...string) {
+	tests := []struct {
+		name          string
+		env           []string
+		version       int32
+		expected      string
+		expectedError string
+	}{
+		{
+			name:     "Default",
+			expected: "{}",
+		},
+		{
+			name:     "Schema",
+			env:      []string{"INCLUDE_SCHEMA=true"},
+			expected: `{"hello": "world"}`,
+		},
+		{
+			name:          "Invalid Version",
+			version:       15,
+			expectedError: "unsupported schema version 15",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Start the plugin binary.
+			cmd := exec.Command(path, "ignored")
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, env...)
+			cmd.Env = append(cmd.Env, test.env...)
+			stdout, err := cmd.StdoutPipe()
+			assert.NoError(t, err)
+			err = cmd.Start()
+			assert.NoError(t, err)
+			defer func() {
+				// Ignore the error as it may fail with access denied on Windows.
+				cmd.Process.Kill() // nolint: errcheck
+			}()
+
+			// Read the port from standard output.
+			reader := bufio.NewReader(stdout)
+			bytes, err := reader.ReadBytes('\n')
+			assert.NoError(t, err)
+			port := strings.TrimSpace(string(bytes))
+
+			// Create a connection to the server.
+			conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), rpcutil.GrpcChannelOptions())
+			assert.NoError(t, err)
+			client := pulumirpc.NewResourceProviderClient(conn)
+
+			// Call GetSchema and verify the results.
+			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
+			if test.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedError)
+			} else {
+				assert.Equal(t, test.expected, resp.GetSchema())
+			}
+		})
+	}
 }

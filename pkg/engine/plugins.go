@@ -16,6 +16,7 @@ package engine
 
 import (
 	"fmt"
+	"os"
 	"sort"
 
 	"github.com/blang/semver"
@@ -176,7 +177,7 @@ func installPlugin(plugin workspace.PluginInfo) error {
 		return err
 	}
 
-	fmt.Printf("[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
+	fmt.Fprintf(os.Stderr, "[%s plugin %s-%s] installing\n", plugin.Kind, plugin.Name, plugin.Version)
 	stream = workspace.ReadCloserProgressBar(stream, size, "Downloading plugin", cmdutil.GetGlobalColorization())
 
 	logging.V(preparePluginVerboseLog).Infof(

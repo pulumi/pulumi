@@ -311,7 +311,7 @@ func installRequiredPolicy(finalDir string, tgz io.ReadCloser) error {
 }
 
 func completeNodeJSInstall(finalDir string) error {
-	if bin, err := npm.Install(finalDir, nil, os.Stderr); err != nil {
+	if bin, err := npm.Install(finalDir, false /*production*/, nil, os.Stderr); err != nil {
 		return errors.Wrapf(
 			err,
 			"failed to install dependencies of policy pack; you may need to re-run `%s install` "+

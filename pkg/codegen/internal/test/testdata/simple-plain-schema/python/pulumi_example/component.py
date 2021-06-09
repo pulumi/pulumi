@@ -21,6 +21,7 @@ class ComponentArgs:
                  b: Optional[bool] = None,
                  bar: Optional['Foo'] = None,
                  baz: Optional[Sequence['Foo']] = None,
+                 baz_map: Optional[Mapping[str, 'Foo']] = None,
                  d: Optional[int] = None,
                  f: Optional[str] = None,
                  foo: Optional[pulumi.Input['FooArgs']] = None):
@@ -36,6 +37,8 @@ class ComponentArgs:
             pulumi.set(__self__, "bar", bar)
         if baz is not None:
             pulumi.set(__self__, "baz", baz)
+        if baz_map is not None:
+            pulumi.set(__self__, "baz_map", baz_map)
         if d is not None:
             pulumi.set(__self__, "d", d)
         if f is not None:
@@ -98,6 +101,15 @@ class ComponentArgs:
         pulumi.set(self, "baz", value)
 
     @property
+    @pulumi.getter(name="bazMap")
+    def baz_map(self) -> Optional[Mapping[str, 'Foo']]:
+        return pulumi.get(self, "baz_map")
+
+    @baz_map.setter
+    def baz_map(self, value: Optional[Mapping[str, 'Foo']]):
+        pulumi.set(self, "baz_map", value)
+
+    @property
     @pulumi.getter
     def d(self) -> Optional[int]:
         return pulumi.get(self, "d")
@@ -134,6 +146,7 @@ class Component(pulumi.ComponentResource):
                  b: Optional[bool] = None,
                  bar: Optional[pulumi.InputType['Foo']] = None,
                  baz: Optional[Sequence[pulumi.InputType['Foo']]] = None,
+                 baz_map: Optional[Mapping[str, pulumi.InputType['Foo']]] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
@@ -172,6 +185,7 @@ class Component(pulumi.ComponentResource):
                  b: Optional[bool] = None,
                  bar: Optional[pulumi.InputType['Foo']] = None,
                  baz: Optional[Sequence[pulumi.InputType['Foo']]] = None,
+                 baz_map: Optional[Mapping[str, pulumi.InputType['Foo']]] = None,
                  c: Optional[int] = None,
                  d: Optional[int] = None,
                  e: Optional[str] = None,
@@ -197,6 +211,7 @@ class Component(pulumi.ComponentResource):
             __props__.__dict__["b"] = b
             __props__.__dict__["bar"] = bar
             __props__.__dict__["baz"] = baz
+            __props__.__dict__["baz_map"] = baz_map
             if c is None and not opts.urn:
                 raise TypeError("Missing required property 'c'")
             __props__.__dict__["c"] = c

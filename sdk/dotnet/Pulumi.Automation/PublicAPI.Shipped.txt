@@ -351,6 +351,7 @@ abstract Pulumi.Automation.Workspace.EnvironmentVariables.set -> void
 abstract Pulumi.Automation.Workspace.GetAllConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
 abstract Pulumi.Automation.Workspace.GetConfigAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
 abstract Pulumi.Automation.Workspace.GetProjectSettingsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ProjectSettings>
+abstract Pulumi.Automation.Workspace.GetStackOutputsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
 abstract Pulumi.Automation.Workspace.GetStackSettingsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSettings>
 abstract Pulumi.Automation.Workspace.InstallPluginAsync(string name, string version, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 abstract Pulumi.Automation.Workspace.ListPluginsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.PluginInfo>>
@@ -381,6 +382,7 @@ override Pulumi.Automation.LocalWorkspace.EnvironmentVariables.set -> void
 override Pulumi.Automation.LocalWorkspace.GetAllConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
 override Pulumi.Automation.LocalWorkspace.GetConfigAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
 override Pulumi.Automation.LocalWorkspace.GetProjectSettingsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ProjectSettings>
+override Pulumi.Automation.LocalWorkspace.GetStackOutputsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
 override Pulumi.Automation.LocalWorkspace.GetStackSettingsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSettings>
 override Pulumi.Automation.LocalWorkspace.InstallPluginAsync(string name, string version, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
 override Pulumi.Automation.LocalWorkspace.ListPluginsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.PluginInfo>>
@@ -423,6 +425,7 @@ static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Cancellati
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task> program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> program) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task> program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.IServiceProvider serviceProvider, System.Type stackType) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>() -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.PulumiFn.Create<TStack>(System.IServiceProvider serviceProvider) -> Pulumi.Automation.PulumiFn
 static Pulumi.Automation.WorkspaceStack.CreateAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
@@ -440,5 +443,6 @@ override Pulumi.Automation.LocalWorkspace.ExportStackAsync(string stackName, Sys
 Pulumi.Automation.StackDeployment
 Pulumi.Automation.StackDeployment.Version.get -> int
 Pulumi.Automation.StackDeployment.Json.get -> System.Text.Json.JsonElement
+static Pulumi.Automation.StackDeployment.FromJsonString(string jsonString) -> Pulumi.Automation.StackDeployment
 Pulumi.Automation.WorkspaceStack.ExportStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
 Pulumi.Automation.WorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task

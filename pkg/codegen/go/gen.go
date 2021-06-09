@@ -221,22 +221,18 @@ func (pkg *pkgContext) plainType(t schema.Type, optional bool) string {
 		return pkg.plainType(t.ElementType, optional)
 	case *schema.ArrayType:
 		typ = "[]"
-		if pkg.isExternalReference(t.ElementType) {
-			typ += "*"
-		}
 		typ += pkg.plainType(t.ElementType, false)
 		return typ
 	case *schema.MapType:
 		typ = "map[string]"
-		if pkg.isExternalReference(t.ElementType) {
-			typ += "*"
-		}
 		typ += pkg.plainType(t.ElementType, false)
 		return typ
 	case *schema.ObjectType:
 		typ = pkg.resolveObjectType(t)
 	case *schema.ResourceType:
 		typ = pkg.resolveResourceType(t)
+		// Set optional to true because resources are pointers.
+		optional = true
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -914,8 +910,9 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, t *schema.ObjectType, details
 			outputType, applyType := pkg.outputType(p.Type, true), pkg.plainType(p.Type, true)
 			deref := ""
 			// If the property was required, but the type it needs to return is an explicit pointer type, then we need
-			// to derference it.
-			if p.IsRequired && applyType[0] == '*' {
+			// to dereference it, unless it is a resource type which should remain a pointer.
+			_, isResourceType := p.Type.(*schema.ResourceType)
+			if p.IsRequired && applyType[0] == '*' && !isResourceType {
 				deref = "&"
 			}
 
@@ -1056,13 +1053,13 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\tpulumi.CustomResourceState\n\n")
 	}
 
-	var secretProps []string
+	var secretProps []*schema.Property
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type, !p.IsRequired), p.Name)
 
 		if p.Secret {
-			secretProps = append(secretProps, p.Name)
+			secretProps = append(secretProps, p)
 		}
 	}
 	fmt.Fprintf(w, "}\n\n")
@@ -1181,11 +1178,15 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
 	}
-	// Set any defined additionalSecretOutputs.
 	if len(secretProps) > 0 {
+		for _, p := range secretProps {
+			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\targs.%[1]s = pulumi.ToSecret(args.%[1]s).(%[2]s)\n", Title(p.Name), pkg.outputType(p.Type, false))
+			fmt.Fprintf(w, "\t}\n")
+		}
 		fmt.Fprintf(w, "\tsecrets := pulumi.AdditionalSecretOutputs([]string{\n")
 		for _, sp := range secretProps {
-			fmt.Fprintf(w, "\t\t\t%q,\n", sp)
+			fmt.Fprintf(w, "\t\t\t%q,\n", sp.Name)
 		}
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
@@ -1882,7 +1883,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
-	fmt.Fprintf(w, "\t\tfmt.Println(\"failed to determine package version. defaulting to v1: %%v\", err)\n")
+	fmt.Fprintf(w, "\t\tfmt.Printf(\"failed to determine package version. defaulting to v1: %%v\\n\", err)\n")
 	fmt.Fprintf(w, "\t}\n")
 	if len(registrations) > 0 {
 		for _, mod := range registrations.SortedValues() {

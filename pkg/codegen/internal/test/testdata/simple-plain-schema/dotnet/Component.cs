@@ -68,7 +68,7 @@ namespace Pulumi.Example
     public sealed class ComponentArgs : Pulumi.ResourceArgs
     {
         [Input("a", required: true)]
-        public bool A { get; set; } = null!;
+        public bool A { get; set; }
 
         [Input("b")]
         public bool? B { get; set; }
@@ -77,15 +77,23 @@ namespace Pulumi.Example
         public Inputs.Foo? Bar { get; set; }
 
         [Input("baz")]
-        private ImmutableArray<Inputs.Foo>? _baz;
-        public ImmutableArray<Inputs.Foo> Baz
+        private List<Inputs.Foo>? _baz;
+        public List<Inputs.Foo> Baz
         {
-            get => _baz ?? (_baz = new ImmutableArray<Inputs.Foo>());
+            get => _baz ?? (_baz = new List<Inputs.Foo>());
             set => _baz = value;
         }
 
+        [Input("bazMap")]
+        private Dictionary<string, Inputs.Foo>? _bazMap;
+        public Dictionary<string, Inputs.Foo> BazMap
+        {
+            get => _bazMap ?? (_bazMap = new Dictionary<string, Inputs.Foo>());
+            set => _bazMap = value;
+        }
+
         [Input("c", required: true)]
-        public int C { get; set; } = null!;
+        public int C { get; set; }
 
         [Input("d")]
         public int? D { get; set; }

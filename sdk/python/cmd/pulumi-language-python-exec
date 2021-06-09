@@ -40,8 +40,15 @@ if __name__ == "__main__":
 
     # If any config variables are present, parse and set them, so subsequent accesses are fast.
     config_env = pulumi.runtime.get_config_env()
-    for k, v in config_env.items():
-        pulumi.runtime.set_config(k, v)
+    if hasattr(pulumi.runtime, "get_config_secret_keys_env") and hasattr(pulumi.runtime, "set_all_config"):
+        # If the pulumi SDK has `get_config_secret_keys_env` and `set_all_config`, use them
+        # to set the config and secret keys.
+        config_secret_keys_env = pulumi.runtime.get_config_secret_keys_env()
+        pulumi.runtime.set_all_config(config_env, config_secret_keys_env)
+    else:
+        # Otherwise, fallback to setting individual config values.
+        for k, v in config_env.items():
+            pulumi.runtime.set_config(k, v)
 
     # Configure the runtime so that the user program hooks up to Pulumi as appropriate.
     pulumi.runtime.configure(

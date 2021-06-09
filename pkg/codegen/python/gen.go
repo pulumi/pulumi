@@ -1100,7 +1100,12 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.IsProvider && !isStringType(prop.Type) {
 			arg = fmt.Sprintf("pulumi.Output.from_input(%s).apply(pulumi.runtime.to_json) if %s is not None else None", arg, arg)
 		}
-		fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", PyName(prop.Name), arg)
+		name := PyName(prop.Name)
+		if prop.Secret {
+			fmt.Fprintf(w, "            __props__.__dict__[%[1]q] = None if %[2]s is None else pulumi.Output.secret(%[2]s)\n", name, arg)
+		} else {
+			fmt.Fprintf(w, "            __props__.__dict__[%q] = %s\n", name, arg)
+		}
 
 		ins.Add(prop.Name)
 	}
@@ -1133,17 +1138,8 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	}
 
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=[`)
-
-		for i, sp := range secretProps {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "%q", sp)
-		}
-
-		fmt.Fprintf(w, "])\n")
-		fmt.Fprintf(w, "        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
+		fmt.Fprintf(w, `        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["%s"])`, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}
 
 	// Finally, chain to the base constructor, which will actually register the resource.
@@ -1556,8 +1552,11 @@ func genPackageMetadata(
 	// Generate a readme method which will load README.rst, we use this to fill out the
 	// long_description field in the setup call.
 	fmt.Fprintf(w, "def readme():\n")
-	fmt.Fprintf(w, "    with open('README.md', encoding='utf-8') as f:\n")
-	fmt.Fprintf(w, "        return f.read()\n")
+	fmt.Fprintf(w, "    try:\n")
+	fmt.Fprintf(w, "        with open('README.md', encoding='utf-8') as f:\n")
+	fmt.Fprintf(w, "            return f.read()\n")
+	fmt.Fprintf(w, "    except FileNotFoundError:\n")
+	fmt.Fprintf(w, "            return \"%s Pulumi Package - Development Version\"\n", pkg.Name)
 	fmt.Fprintf(w, "\n\n")
 
 	// Finally, the actual setup part.

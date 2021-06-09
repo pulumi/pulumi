@@ -94,10 +94,16 @@
           "items": {
             "$ref": "#/types/example::Foo"
           }
+        },
+        "bazMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/types/example::Foo"
+          }
         }
       },
       "requiredInputs": ["a", "c", "e"],
-      "plainInputs": ["a", "b", "c", "d", "e", "f", "bar", "baz"],
+      "plainInputs": ["a", "b", "c", "d", "e", "f", "bar", "baz", "bazMap"],
       "type": "object"
     }
   },

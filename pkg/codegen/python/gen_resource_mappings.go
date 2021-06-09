@@ -18,6 +18,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"sort"
 )
 
 // Generates code to build and regsiter ResourceModule and
@@ -79,6 +80,10 @@ type resourceModuleInfo struct {
 	Classes map[string]string `json:"classes"`
 }
 
+func (rmi *resourceModuleInfo) Token() string {
+	return fmt.Sprintf("%s:%s", rmi.Pkg, rmi.Mod)
+}
+
 func makeResourceModuleInfo(pkg, mod, fqn string) resourceModuleInfo {
 	return resourceModuleInfo{pkg, mod, fqn, make(map[string]string)}
 }
@@ -88,6 +93,9 @@ func allResourceModuleInfos(root *modContext) []resourceModuleInfo {
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourceModuleInfos(mctx)...)
 	}
+	sort.Slice(result, func(i, j int) bool {
+		return result[i].Token() < result[j].Token()
+	})
 	return result
 }
 
@@ -141,6 +149,9 @@ func allResourcePackageInfos(root *modContext) []resourcePackageInfo {
 	for _, mctx := range root.walkSelfWithDescendants() {
 		result = append(result, collectResourcePackageInfos(mctx)...)
 	}
+	sort.Slice(result, func(i int, j int) bool {
+		return result[i].Token < result[j].Token
+	})
 	return result
 }
 

@@ -16,7 +16,7 @@ namespace Pulumi.Example
         public Output<Pulumi.Kubernetes.Provider?> Provider { get; private set; } = null!;
 
         [Output("securityGroup")]
-        public Output<Pulumi.Aws.Ec2.SecurityGroup?> SecurityGroup { get; private set; } = null!;
+        public Output<Pulumi.Aws.Ec2.SecurityGroup> SecurityGroup { get; private set; } = null!;
 
         [Output("storageClasses")]
         public Output<ImmutableDictionary<string, Pulumi.Kubernetes.Storage.V1.StorageClass>?> StorageClasses { get; private set; } = null!;
@@ -29,7 +29,7 @@ namespace Pulumi.Example
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public Component(string name, ComponentArgs? args = null, CustomResourceOptions? options = null)
+        public Component(string name, ComponentArgs args, CustomResourceOptions? options = null)
             : base("example::Component", name, args ?? new ComponentArgs(), MakeResourceOptions(options, ""))
         {
         }
@@ -68,6 +68,41 @@ namespace Pulumi.Example
     {
         [Input("metadata")]
         public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? Metadata { get; set; }
+
+        [Input("metadataArray")]
+        private InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? _metadataArray;
+        public InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> MetadataArray
+        {
+            get => _metadataArray ?? (_metadataArray = new InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>());
+            set => _metadataArray = value;
+        }
+
+        [Input("metadataMap")]
+        private InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? _metadataMap;
+        public InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> MetadataMap
+        {
+            get => _metadataMap ?? (_metadataMap = new InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>());
+            set => _metadataMap = value;
+        }
+
+        [Input("requiredMetadata", required: true)]
+        public Input<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> RequiredMetadata { get; set; } = null!;
+
+        [Input("requiredMetadataArray", required: true)]
+        private InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? _requiredMetadataArray;
+        public InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> RequiredMetadataArray
+        {
+            get => _requiredMetadataArray ?? (_requiredMetadataArray = new InputList<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>());
+            set => _requiredMetadataArray = value;
+        }
+
+        [Input("requiredMetadataMap", required: true)]
+        private InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>? _requiredMetadataMap;
+        public InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs> RequiredMetadataMap
+        {
+            get => _requiredMetadataMap ?? (_requiredMetadataMap = new InputMap<Pulumi.Kubernetes.Types.Inputs.Meta.V1.ObjectMetaArgs>());
+            set => _requiredMetadataMap = value;
+        }
 
         public ComponentArgs()
         {

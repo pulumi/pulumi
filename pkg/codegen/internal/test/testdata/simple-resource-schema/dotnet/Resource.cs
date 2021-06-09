@@ -38,6 +38,10 @@ namespace Pulumi.Example
             var defaultOptions = new CustomResourceOptions
             {
                 Version = Utilities.Version,
+                AdditionalSecretOutputs =
+                {
+                    "bar",
+                },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
             // Override the ID if one was specified for consistency with other language SDKs.
@@ -61,7 +65,16 @@ namespace Pulumi.Example
     public sealed class ResourceArgs : Pulumi.ResourceArgs
     {
         [Input("bar")]
-        public Input<string>? Bar { get; set; }
+        private Input<string>? _bar;
+        public Input<string>? Bar
+        {
+            get => _bar;
+            set
+            {
+                var emptySecret = Output.CreateSecret(0);
+                _bar = Output.Tuple<Input<string>?, int>(value, emptySecret).Apply(t => t.Item1);
+            }
+        }
 
         public ResourceArgs()
         {

@@ -4,9 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using Serilog;
 using Pulumi.Testing;
 
 namespace Pulumi
@@ -184,19 +182,11 @@ namespace Pulumi
         // this method *must* remain marked async
         // in order to protect the scope of the AsyncLocal Deployment.Instance we cannot elide the task (return it early)
         // if the task is returned early and not awaited, than it is possible for any code that runs before the eventual await
-        // to be executed synchronously and thus have multiple calls to one of the Run methods affecting eachothers Deployment.Instance
+        // to be executed synchronously and thus have multiple calls to one of the Run methods affecting each others Deployment.Instance
         internal static async Task<int> CreateRunnerAndRunAsync(
             Func<Deployment> deploymentFactory,
             Func<IRunner, Task<int>> runAsync)
         {
-            var enableVerboseLogging = Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE");
-            if (enableVerboseLogging != null && enableVerboseLogging != "")
-            {
-                Serilog.Log.Logger = new Serilog.LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
-            }
-
-            Serilog.Log.Debug("Deployment.Run called.");
-            Serilog.Log.Debug("Creating new Deployment.");
             var deployment = deploymentFactory();
             Instance = new DeploymentInstance(deployment);
             return await runAsync(deployment._runner).ConfigureAwait(false);

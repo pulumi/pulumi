@@ -58,6 +58,8 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component_slow/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_plain/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_plain/testcomponent-go && go build -o pulumi-resource-testcomponent
+	cd tests/integration/component_provider_schema/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/component_provider_schema/testcomponent-go && go build -o pulumi-resource-testcomponent
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}

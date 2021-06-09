@@ -10,6 +10,7 @@ blobs:
   folder: releases/sdk/
   ids:
     - pulumi-unix
+    - pulumi-windows
   provider: s3
   region: us-west-2
 builds:
@@ -186,7 +187,7 @@ brews:
     conflicts:
       - pulumi
     install: |-
-      bin.install "pulumi"
+      bin.install Dir["*"]
 
       # Install shell completions
       (bash_completion/"pulumi.bash").write Utils.safe_popen_read("#{bin}/pulumi gen-completion bash")

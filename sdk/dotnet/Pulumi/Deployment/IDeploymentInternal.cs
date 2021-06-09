@@ -8,9 +8,11 @@ namespace Pulumi
     internal interface IDeploymentInternal : IDeployment
     {
         string? GetConfig(string fullKey);
+        bool IsConfigSecret(string fullKey);
 
         Stack Stack { get; set; }
 
+        Serilog.ILogger Serilogger { get; }
         ILogger Logger { get; }
         IRunner Runner { get; }
 
