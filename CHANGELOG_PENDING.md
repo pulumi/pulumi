@@ -5,4 +5,4 @@
 
 ### Bug Fixes
 
-
+- [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
