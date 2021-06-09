@@ -195,7 +195,7 @@ namespace Pulumi
             => Unknown(value);
 
         internal static Output<T> CreateUnknown(Func<Task<T>> valueFactory)
-            => Unknown().Apply(_ => valueFactory());
+            => Unknown(default!).Apply(_ => valueFactory());
 
         /// <summary>
         /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
@@ -333,8 +333,6 @@ namespace Pulumi
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
         }
-
-        internal static Output<T> Unknown() => Unknown(default!);
 
         internal static Output<T> Unknown(T value) => new Output<T>(UnknownHelperAsync(value));
 
