@@ -553,7 +553,8 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
 def translate_output_properties(output: Any,
                                 output_transformer: Callable[[str], str],
                                 typ: Optional[type] = None,
-                                transform_using_type_metadata: bool = False) -> Any:
+                                transform_using_type_metadata: bool = False,
+                                path: Optional[Any] = None) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
     convention specified by `output_transformer`. If `transform_using_type_metadata` is
@@ -582,7 +583,40 @@ def translate_output_properties(output: Any,
     :param Optional[type] typ: The output's target type.
     :param bool transform_using_type_metadata: Set to True to use the metadata from `typ` to do name translation instead
                                                of using `output_transformer`.
+
+    :param Optional[Any]: Used internally to track recursive descent and enhance error messages.
     """
+
+
+    def sub_path(prop_name: str) -> Any:
+        return {'prop': prop_name, 'parent': path, 'typ': typ}
+
+
+    def format_path(path: Any) -> str:
+        chain = []
+        p = path
+        resource = None
+
+        while p is not None:
+            chain.append(p['prop'])
+            resource = p.get('resource', None) or resource
+            p = p.get('parent', None)
+
+        chain.reverse()
+
+        coordinates = []
+
+        if resource is not None:
+            coordinates.append(f'resource `{resource}`')
+
+        if chain:
+            coordinates.append(f'property `{".".join(chain)}`')
+
+        if coordinates:
+            return f' at {", ".join(coordinates)}'
+
+        return ''
+
 
     # If it's a secret, unwrap the value so the output is in alignment with the expected type, call
     # translate_output_properties with the unwrapped value, and then rewrap the result as a secret.
@@ -615,7 +649,11 @@ def translate_output_properties(output: Any,
                 get_type = types.get
 
                 translated_values = {
-                    k: translate_output_properties(v, output_transformer, get_type(k), transform_using_type_metadata)
+                    k: translate_output_properties(v,
+                                                   output_transformer,
+                                                   get_type(k),
+                                                   transform_using_type_metadata,
+                                                   path=sub_path(k))
                     for k, v in output.items()
                 }
                 return _types.output_type_from_dict(typ, translated_values)
@@ -631,19 +669,29 @@ def translate_output_properties(output: Any,
                     if transform_using_type_metadata:
                         translate = lambda k: k
             else:
-                raise AssertionError(f"Unexpected type; expected 'dict' got '{typ}'")
+                raise AssertionError((f"Unexpected type; expected a value of type `{typ}`"
+                                      f" but got a value of type `{dict}`{format_path(path)}:"
+                                      f" {output}"))
 
         return {
             translate(k):
-                translate_output_properties(v, output_transformer, get_type(k), transform_using_type_metadata)
+                translate_output_properties(v,
+                                            output_transformer,
+                                            get_type(k),
+                                            transform_using_type_metadata,
+                                            path=sub_path(k))
             for k, v in output.items()
         }
 
     if isinstance(output, list):
         element_type = _get_list_element_type(typ)
         return [
-            translate_output_properties(v, output_transformer, element_type, transform_using_type_metadata)
-            for v in output
+            translate_output_properties(v,
+                                        output_transformer,
+                                        element_type,
+                                        transform_using_type_metadata,
+                                        path=sub_path(str(i)))
+            for i, v in enumerate(output)
         ]
 
     if typ and isinstance(output, (int, float, str)) and inspect.isclass(typ) and issubclass(typ, Enum):
@@ -694,8 +742,12 @@ def resolve_outputs(res: 'Resource',
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
         translated_key = translate(key)
+
         translated_value = translate_output_properties(value, translate_to_pass, types.get(key),
-                                                       transform_using_type_metadata)
+                                                       transform_using_type_metadata,
+                                                       path={'prop': translated_key,
+                                                             'resource': f'{res._name}'})
+
         log.debug(f"incoming output property translated: {key} -> {translated_key}")
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
@@ -709,7 +761,9 @@ def resolve_outputs(res: 'Resource',
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value),
                                                                              translate_to_pass,
                                                                              types.get(key),
-                                                                             transform_using_type_metadata)
+                                                                             transform_using_type_metadata,
+                                                                             path={'prop': translated_key,
+                                                                                   'resource': f'{res._name}'})
 
     resolve_properties(resolvers, all_properties, deps)
 
