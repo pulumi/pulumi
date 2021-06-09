@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -980,4 +981,23 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 		path += ".cmd"
 	}
 	testComponentProviderSchema(t, path, pulumiRuntimeVirtualEnv(t, filepath.Join("..", "..")))
+}
+
+// Regresses an issue with Pulumi hanging when buggy dynamic providers
+// emit outputs that do not match the advertised type.
+func TestBrokenDynamicProvider(t *testing.T) {
+
+	go func() {
+		<-time.After(60 * time.Second)
+		panic("Test timed out after 60 seconds")
+	}()
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-broken"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:         true,
+		ExpectFailure: true,
+	})
 }
