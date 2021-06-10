@@ -597,9 +597,12 @@ func TestTracePropagationGo(t *testing.T) {
 	isGoListTrace := func(t *appdash.Trace) bool {
 		m := t.Span.Annotations.StringMap()
 
+		isGoCmd := strings.HasSuffix(m["command"], "go") ||
+			strings.HasSuffix(m["command"], "go.exe")
+
 		if m["operation"] == "exec.Command" &&
 			m["args"] == "[list -m -json -mod=mod all]" &&
-			strings.HasSuffix(m["command"], "go") {
+			isGoCmd {
 			return true
 		}
 
