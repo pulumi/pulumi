@@ -988,8 +988,8 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 func TestBrokenDynamicProvider(t *testing.T) {
 
 	go func() {
-		<-time.After(60 * time.Second)
-		panic("Test timed out after 60 seconds")
+		<-time.After(120 * time.Second)
+		panic("TestBrokenDynamicProvider: test timed out after 120 seconds, suspect pulumi hanging")
 	}()
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
