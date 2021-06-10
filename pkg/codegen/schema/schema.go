@@ -321,6 +321,15 @@ type Resource struct {
 	Language map[string]interface{}
 	// IsComponent indicates whether the resource is a ComponentResource.
 	IsComponent bool
+	// Methods is the list of methods for the resource.
+	Methods []*Method
+}
+
+type Method struct {
+	// Name is the name of the method.
+	Name string
+	// Function is the function definition for the method.
+	Function *Function
 }
 
 // Function describes a Pulumi function.
@@ -339,6 +348,8 @@ type Function struct {
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the function.
 	Language map[string]interface{}
+	// IsMethod indicates whether the function is a method of a resource.
+	IsMethod bool
 }
 
 // Package describes a Pulumi package.
@@ -767,6 +778,8 @@ type ResourceSpec struct {
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 	// IsComponent indicates whether the resource is a ComponentResource.
 	IsComponent bool `json:"isComponent,omitempty"`
+	// Methods maps method names to functions in this schema.
+	Methods map[string]string `json:"methods,omitempty"`
 }
 
 // FunctionSpec is the serializable form of a function description.
@@ -893,19 +906,19 @@ func importSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 		return nil, errors.Wrap(err, "binding config")
 	}
 
-	provider, err := bindProvider(spec.Name, spec.Provider, types)
+	functions, functionTable, err := bindFunctions(spec.Functions, types)
+	if err != nil {
+		return nil, errors.Wrap(err, "binding functions")
+	}
+
+	provider, err := bindProvider(spec.Name, spec.Provider, types, functionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding provider")
 	}
 
-	resources, resourceTable, err := bindResources(spec.Resources, types)
+	resources, resourceTable, err := bindResources(spec.Resources, types, functionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding resources")
-	}
-
-	functions, functionTable, err := bindFunctions(spec.Functions, types)
-	if err != nil {
-		return nil, errors.Wrap(err, "binding functions")
 	}
 
 	// Build the type list.
@@ -1605,12 +1618,41 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 	return typs, nil
 }
 
+func bindMethods(resourceToken string, methods map[string]string,
+	functionTable map[string]*Function) ([]*Method, error) {
+	var result []*Method
+	for name, token := range methods {
+		function, ok := functionTable[token]
+		if !ok {
+			return nil, errors.Errorf("unknown function %s for method %s", token, name)
+		}
+		if function.IsMethod {
+			return nil, errors.Errorf("function %s for method %s is already a method", token, name)
+		}
+		idx := strings.LastIndex(function.Token, "/")
+		if idx == -1 || function.Token[:idx] != resourceToken {
+			return nil, errors.Errorf("invalid function token format %s for method %s", token, name)
+		}
+		if function.Inputs == nil || function.Inputs.Properties == nil || len(function.Inputs.Properties) == 0 ||
+			function.Inputs.Properties[0].Name != "__self__" {
+			return nil, errors.Errorf("function %s for method %s is missing __self__ parameter", token, name)
+		}
+		function.IsMethod = true
+		result = append(result, &Method{
+			Name:     name,
+			Function: function,
+		})
+	}
+	return result, nil
+}
+
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
 	properties, _, err := types.bindProperties(spec.Variables, spec.Required, nil)
 	return properties, err
 }
 
-func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
+func bindResource(token string, spec ResourceSpec, types *types,
+	functionTable map[string]*Function) (*Resource, error) {
 	if len(spec.Plain) > 0 {
 		return nil, errors.New("plain cannot be specified on resources")
 	}
@@ -1626,6 +1668,17 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs, spec.PlainInputs)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
+	}
+
+	methods, err := bindMethods(token, spec.Methods, functionTable)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to bind methods")
+	}
+
+	for _, method := range methods {
+		if _, ok := spec.Properties[method.Name]; ok {
+			return nil, errors.Errorf("property and method have the same name %s", method.Name)
+		}
 	}
 
 	var stateInputs *ObjectType
@@ -1658,11 +1711,13 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		DeprecationMessage: spec.DeprecationMessage,
 		Language:           language,
 		IsComponent:        spec.IsComponent,
+		Methods:            methods,
 	}, nil
 }
 
-func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, error) {
-	res, err := bindResource("pulumi:providers:"+pkgName, spec, types)
+func bindProvider(pkgName string, spec ResourceSpec, types *types,
+	functionTable map[string]*Function) (*Resource, error) {
+	res, err := bindResource("pulumi:providers:"+pkgName, spec, types, functionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "error binding provider")
 	}
@@ -1696,11 +1751,12 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, e
 	return res, nil
 }
 
-func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, map[string]*Resource, error) {
+func bindResources(specs map[string]ResourceSpec, types *types,
+	functionTable map[string]*Function) ([]*Resource, map[string]*Resource, error) {
 	resourceTable := map[string]*Resource{}
 	var resources []*Resource
 	for token, spec := range specs {
-		res, err := bindResource(token, spec, types)
+		res, err := bindResource(token, spec, types, functionTable)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "error binding resource %v", token)
 		}
