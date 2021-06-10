@@ -1,6 +1,5 @@
 // Copyright 2016-2020, Pulumi Corporation
 
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 

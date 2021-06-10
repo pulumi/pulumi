@@ -544,6 +544,14 @@ func TestGeneratePackage(t *testing.T) {
 				"component.md",
 			},
 		},
+		{
+			"Resource args with same named resource and type",
+			"resource-args-python",
+			[]string{
+				"person.md",
+				"pet.md",
+			},
+		},
 	}
 	testDir := filepath.Join("..", "internal", "test", "testdata")
 	for _, tt := range tests {

@@ -9,12 +9,11 @@ namespace Pulumi.Automation.Serialization.Yaml
 {
     internal class StackSettingsConfigValueYamlConverter : IYamlTypeConverter
     {
-        private static readonly Type Type = typeof(StackSettingsConfigValue);
+        private static readonly Type _type = typeof(StackSettingsConfigValue);
 
-        public bool Accepts(Type type)
-            => type == Type;
+        public bool Accepts(Type type) => type == _type;
 
-        public object? ReadYaml(IParser parser, Type type)
+        public object ReadYaml(IParser parser, Type type)
         {
             // check if plain string
             if (parser.Accept<Scalar>(out var stringValue))
@@ -43,10 +42,7 @@ namespace Pulumi.Automation.Serialization.Yaml
                 parser.MoveNext();
                 return new StackSettingsConfigValue(securePropertyValue.Value, true);
             }
-            else
-            {
-                throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
-            }
+            throw new NotSupportedException("Automation API does not currently support deserializing complex objects from stack settings.");
         }
 
         public void WriteYaml(IEmitter emitter, object? value, Type type)

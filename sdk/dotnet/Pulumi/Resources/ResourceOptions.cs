@@ -26,7 +26,7 @@ namespace Pulumi
         /// </summary>
         public InputList<Resource> DependsOn
         {
-            get => _dependsOn ?? (_dependsOn = new InputList<Resource>());
+            get => _dependsOn ??= new InputList<Resource>();
             set => _dependsOn = value;
         }
 
@@ -42,7 +42,7 @@ namespace Pulumi
         /// </summary>
         public List<string> IgnoreChanges
         {
-            get => _ignoreChanges ?? (_ignoreChanges = new List<string>());
+            get => _ignoreChanges ??= new List<string>();
             set => _ignoreChanges = value;
         }
 
@@ -78,7 +78,7 @@ namespace Pulumi
         /// </summary>
         public List<ResourceTransformation> ResourceTransformations
         {
-            get => _resourceTransformations ?? (_resourceTransformations = new List<ResourceTransformation>());
+            get => _resourceTransformations ??= new List<ResourceTransformation>();
             set => _resourceTransformations = value;
         }
 

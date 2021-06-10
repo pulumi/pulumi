@@ -1,10 +1,8 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
-using Pulumi.Serialization;
 using Pulumirpc;
 
 namespace Pulumi
@@ -22,7 +20,6 @@ namespace Pulumi
             var prepareResult = await this.PrepareResourceAsync(
                 label, resource, custom: true, remote: false, args, options).ConfigureAwait(false);
 
-            var serializer = new Serializer(_excessiveDebugOutput);
             Log.Debug($"ReadResource RPC prepared: id={id}, t={type}, name={name}" +
                 (_excessiveDebugOutput ? $", obj={prepareResult.SerializedProps}" : ""));
 
@@ -35,12 +32,12 @@ namespace Pulumi
                 Parent = prepareResult.ParentUrn,
                 Provider = prepareResult.ProviderRef,
                 Properties = prepareResult.SerializedProps,
-                Version = options?.Version ?? "",
+                Version = options.Version ?? "",
                 AcceptSecrets = true,
                 AcceptResources = !_disableResourceReferences,
             };
 
-            request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
+            request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
             // Now run the operation, serializing the invocation if necessary.
             var response = await this.Monitor.ReadResourceAsync(resource, request);

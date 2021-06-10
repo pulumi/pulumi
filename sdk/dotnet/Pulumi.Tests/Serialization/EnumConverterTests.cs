@@ -3,9 +3,12 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
 using System.Threading.Tasks;
+using Google.Protobuf.WellKnownTypes;
 using Pulumi.Serialization;
 using Xunit;
+using Type = System.Type;
 
 namespace Pulumi.Tests.Serialization
 {
@@ -35,7 +38,7 @@ namespace Pulumi.Tests.Serialization
             public bool Equals(ContainerColor other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
             [EditorBrowsable(EditorBrowsableState.Never)]
-            public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+            public override int GetHashCode() => _value.GetHashCode();
 
             public override string ToString() => _value;
         }
@@ -60,12 +63,13 @@ namespace Pulumi.Tests.Serialization
 
             [EditorBrowsable(EditorBrowsableState.Never)]
             public override bool Equals(object? obj) => obj is ContainerBrightness other && Equals(other);
+            // ReSharper disable once CompareOfFloatsByEqualityOperator
             public bool Equals(ContainerBrightness other) => _value == other._value;
 
             [EditorBrowsable(EditorBrowsableState.Never)]
             public override int GetHashCode() => _value.GetHashCode();
 
-            public override string ToString() => _value.ToString();
+            public override string ToString() => _value.ToString(CultureInfo.InvariantCulture);
         }
 
         public enum ContainerSize
@@ -196,14 +200,14 @@ namespace Pulumi.Tests.Serialization
         public static IEnumerable<object[]> EnumsWithUnconvertibleValues()
             => new[]
             {
-                new object[] { typeof(ContainerColor), new Google.Protobuf.WellKnownTypes.Value { NumberValue = 1.0 } },
-                new object[] { typeof(ContainerBrightness), new Google.Protobuf.WellKnownTypes.Value { StringValue = "hello" } },
-                new object[] { typeof(ContainerSize), new Google.Protobuf.WellKnownTypes.Value { StringValue = "hello" } },
+                new object[] { typeof(ContainerColor), new Value { NumberValue = 1.0 } },
+                new object[] { typeof(ContainerBrightness), new Value { StringValue = "hello" } },
+                new object[] { typeof(ContainerSize), new Value { StringValue = "hello" } },
             };
 
         [Theory]
         [MemberData(nameof(EnumsWithUnconvertibleValues))]
-        public void ConvertingUnconvertibleValuesThrows(Type targetType, Google.Protobuf.WellKnownTypes.Value value)
+        public void ConvertingUnconvertibleValuesThrows(Type targetType, Value value)
         {
             Assert.Throws<InvalidOperationException>(() =>
             {

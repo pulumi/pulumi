@@ -17,11 +17,6 @@ namespace Pulumi
         private readonly string _name;
 
         /// <summary>
-        /// The optional parent of this resource.
-        /// </summary>
-        private readonly Resource? _parentResource;
-
-        /// <summary>
         /// The child resources of this resource.  We use these (only from a ComponentResource) to
         /// allow code to dependOn a ComponentResource and have that effectively mean that it is
         /// depending on all the CustomResource children of that component.
@@ -56,7 +51,7 @@ namespace Pulumi
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
         /// </summary>
-        internal readonly HashSet<Resource> ChildResources = new HashSet<Resource>();
+        internal HashSet<Resource> ChildResources { get; } = new HashSet<Resource>();
 
         /// <summary>
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
@@ -187,14 +182,13 @@ namespace Pulumi
 
             if (options.Parent != null)
             {
-                this._parentResource = options.Parent;
-                lock (this._parentResource.ChildResources)
+                var parentResource = options.Parent;
+                lock (parentResource.ChildResources)
                 {
-                    this._parentResource.ChildResources.Add(this);
+                    parentResource.ChildResources.Add(this);
                 }
 
-                if (options.Protect == null)
-                    options.Protect = options.Parent._protect;
+                options.Protect ??= options.Parent._protect;
 
                 // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
                 options.Aliases = options.Aliases.ToList();
@@ -331,7 +325,6 @@ $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '
             if (value != null)
             {
                 ThrowAliasPropertyConflict(name);
-                return;
             }
         }
 

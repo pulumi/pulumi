@@ -151,7 +151,7 @@ namespace Pulumi.Testing
                 var parentType = qualifiedType.Split("$").First();
                 type = parentType + "$" + type;
             }
-            return "urn:pulumi:" + string.Join("::", new[] { Deployment.Instance.StackName, Deployment.Instance.ProjectName, type, name });
+            return "urn:pulumi:" + string.Join("::", Deployment.Instance.StackName, Deployment.Instance.ProjectName, type, name);
         }
 
         private static ImmutableDictionary<string, object> ToDictionary(Struct s)

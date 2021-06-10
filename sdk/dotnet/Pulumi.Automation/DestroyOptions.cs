@@ -1,7 +1,5 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
-
 namespace Pulumi.Automation
 {
     /// <summary>

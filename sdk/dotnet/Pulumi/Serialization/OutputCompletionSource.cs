@@ -35,7 +35,7 @@ namespace Pulumi.Serialization
             Output = new Output<T>(_taskCompletionSource.Task);
         }
 
-        public System.Type TargetType => typeof(T);
+        public Type TargetType => typeof(T);
 
         IOutput IOutputCompletionSource.Output => Output;
 
@@ -59,9 +59,6 @@ namespace Pulumi.Serialization
     {
         public static ImmutableDictionary<string, IOutputCompletionSource> InitializeOutputs(Resource resource)
         {
-            var name = resource.GetResourceName();
-            var type = resource.GetResourceType();
-
             var query = from property in resource.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance)
                         let attr = property.GetCustomAttribute<OutputAttribute>()
                         where attr != null
@@ -89,9 +86,9 @@ namespace Pulumi.Serialization
 
                 var ocsType = typeof(OutputCompletionSource<>).MakeGenericType(outputTypeArg);
                 var ocsContructor = ocsType.GetConstructors().Single();
-                var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new[] { resource });
+                var completionSource = (IOutputCompletionSource)ocsContructor.Invoke(new object?[] { resource });
 
-                setMethod.Invoke(resource, new[] { completionSource.Output });
+                setMethod.Invoke(resource, new object?[] { completionSource.Output });
 
                 var outputName = attrName ?? prop.Name;
                 result.Add(outputName, completionSource);
