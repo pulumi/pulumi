@@ -584,7 +584,7 @@ def translate_output_properties(output: Any,
     :param bool transform_using_type_metadata: Set to True to use the metadata from `typ` to do name translation instead
                                                of using `output_transformer`.
 
-    :param Optional[Any]: Used internally to track recursive descent and enhance error messages.
+    :param Optional[Any] path: Used internally to track recursive descent and enhance error messages.
     """
 
 
