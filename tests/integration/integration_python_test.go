@@ -987,9 +987,14 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 // emit outputs that do not match the advertised type.
 func TestBrokenDynamicProvider(t *testing.T) {
 
+	// NOTE: this had some trouble on Windows CI runner with 120
+	// sec max, but passed on a Windows VM locally. IF this
+	// continues to blow the deadline, or be flaky, we should skip
+	// on Windows.
+
 	go func() {
-		<-time.After(120 * time.Second)
-		panic("TestBrokenDynamicProvider: test timed out after 120 seconds, suspect pulumi hanging")
+		<-time.After(600 * time.Second)
+		panic("TestBrokenDynamicProvider: test timed out after 600 seconds, suspect pulumi hanging")
 	}()
 
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
