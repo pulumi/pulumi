@@ -203,7 +203,7 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
 		fmt.Sprintf("%s %s", gobin, strings.Join(args, " ")),
-		opentracing.Tag{Key: "operation", Value: "exec.Command"},
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
 		opentracing.Tag{Key: "command", Value: gobin},
 		opentracing.Tag{Key: "args", Value: args})
 

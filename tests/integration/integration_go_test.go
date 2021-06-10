@@ -600,7 +600,7 @@ func TestTracePropagationGo(t *testing.T) {
 		isGoCmd := strings.HasSuffix(m["command"], "go") ||
 			strings.HasSuffix(m["command"], "go.exe")
 
-		if m["operation"] == "exec.Command" &&
+		if m["component"] == "exec.Command" &&
 			m["args"] == "[list -m -json -mod=mod all]" &&
 			isGoCmd {
 			return true
