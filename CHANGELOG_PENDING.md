@@ -11,3 +11,6 @@
 ### Bug Fixes
 
 - [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
+
+- [codegen/python] - Rename conflicting ResourceArgs classes
+  [#7171](https://github.com/pulumi/pulumi/pull/7171)
