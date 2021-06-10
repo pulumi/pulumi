@@ -16,13 +16,13 @@ namespace Pulumi
         public DependencyProviderResource(string reference)
             : base(package: "", name: "", args: ResourceArgs.Empty, dependency: true)
         {
-            int lastSep = reference.LastIndexOf("::", StringComparison.Ordinal);
+            var lastSep = reference.LastIndexOf("::", StringComparison.Ordinal);
             if (lastSep == -1)
             {
                 throw new ArgumentException($"Expected \"::\" in provider reference ${reference}.");
             }
-            string urn = reference.Substring(0, lastSep);
-            string id = reference.Substring(lastSep + 2);
+            var urn = reference.Substring(0, lastSep);
+            var id = reference.Substring(lastSep + 2);
 
             var resources = ImmutableHashSet.Create<Resource>(this);
 

@@ -258,12 +258,12 @@ class Output(Generic[T]):
             o_typ: Output[typ] = Output.all(**val.__dict__).apply(lambda d: typ(**d)) # type:ignore
             return cast(Output[T], o_typ)
 
-        # Is a dict or list? Recurse into the values within them.
-        if isinstance(val, dict):
+        # Is a (non-empty) dict or list? Recurse into the values within them.
+        if val and isinstance(val, dict):
             o_dict: Output[dict] = Output.all(**val)
             return cast(Output[T], o_dict)
 
-        if isinstance(val, list):
+        if val and isinstance(val, list):
             o_list: Output[list] = Output.all(*val)
             return cast(Output[T], o_list)
 

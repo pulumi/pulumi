@@ -9,7 +9,7 @@ namespace Pulumi
     public partial class Deployment
     {
         private Task<string>? _rootResource;
-        private object _rootResourceLock = new object();
+        private readonly object _rootResourceLock = new object();
 
         /// <summary>
         /// Returns a root resource URN that will automatically become the default parent of all

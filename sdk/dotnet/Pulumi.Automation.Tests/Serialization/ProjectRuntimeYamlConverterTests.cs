@@ -4,12 +4,19 @@ using System;
 using System.Text;
 using Pulumi.Automation.Serialization;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Pulumi.Automation.Tests.Serialization
 {
     public class ProjectRuntimeYamlConverterTests
     {
-        private static LocalSerializer _serializer = new LocalSerializer();
+        private readonly ITestOutputHelper _output;
+        private static readonly LocalSerializer _serializer = new LocalSerializer();
+
+        public ProjectRuntimeYamlConverterTests(ITestOutputHelper output)
+        {
+            _output = output;
+        }
 
         [Theory]
         [InlineData(ProjectRuntimeName.NodeJS)]
@@ -67,7 +74,7 @@ runtime:
             var runtime = new ProjectRuntime(ProjectRuntimeName.Dotnet);
 
             var yaml = _serializer.SerializeYaml(runtime);
-            Console.WriteLine(yaml);
+            _output.WriteLine(yaml);
 
             Assert.Equal("dotnet" + Environment.NewLine, yaml);
         }
@@ -84,7 +91,7 @@ runtime:
             };
 
             var yaml = _serializer.SerializeYaml(runtime);
-            Console.WriteLine(yaml);
+            _output.WriteLine(yaml);
 
             var expected = new StringBuilder();
             expected.AppendLine("name: dotnet");

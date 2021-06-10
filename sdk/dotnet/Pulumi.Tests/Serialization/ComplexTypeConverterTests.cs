@@ -35,7 +35,7 @@ namespace Pulumi.Tests.Serialization
             public override bool Equals(object? obj) => obj is ContainerColor other && Equals(other);
             public bool Equals(ContainerColor other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
-            public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+            public override int GetHashCode() => _value.GetHashCode();
 
             public override string ToString() => _value;
         }

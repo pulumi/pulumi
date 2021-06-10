@@ -25,7 +25,7 @@ namespace Pulumi.Automation
 
                 if (y == null)
                 {
-                    return x == null;
+                    return false;
                 }
 
                 if (ReferenceEquals(x, y))

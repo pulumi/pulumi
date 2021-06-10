@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.ExceptionServices;
@@ -117,30 +116,23 @@ namespace Pulumi.Automation
             this.Name = name;
             this.Workspace = workspace;
 
-            switch (mode)
+            this._readyTask = mode switch
             {
-                case WorkspaceStackInitMode.Create:
-                    this._readyTask = workspace.CreateStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.Select:
-                    this._readyTask = workspace.SelectStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.CreateOrSelect:
-                    this._readyTask = Task.Run(async () =>
+                WorkspaceStackInitMode.Create => workspace.CreateStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.Select => workspace.SelectStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.CreateOrSelect => Task.Run(async () =>
+                {
+                    try
                     {
-                        try
-                        {
-                            await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (StackAlreadyExistsException)
-                        {
-                            await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                    });
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}");
-            }
+                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (StackAlreadyExistsException)
+                    {
+                        await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                }),
+                _ => throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}")
+            };
         }
 
         /// <summary>
@@ -211,7 +203,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "up",
                 "--yes",
@@ -313,7 +305,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
-            var args = new List<string>() { "preview" };
+            var args = new List<string> { "preview" };
 
             if (options != null)
             {
@@ -423,7 +415,7 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "refresh",
                 "--yes",
@@ -478,7 +470,7 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "destroy",
                 "--yes",
@@ -539,7 +531,7 @@ namespace Pulumi.Automation
             HistoryOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "stack",
                 "history",
@@ -616,14 +608,13 @@ namespace Pulumi.Automation
         }
 
         private async Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
         {
-            var argsList = args.ToList();
-            argsList.AddRange(new List<string>() { "--stack", this.Name });
+            args = args.Concat(new[] { "--stack", this.Name }).ToList();
             return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
         }
 
