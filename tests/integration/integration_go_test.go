@@ -5,7 +5,6 @@ package ints
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -594,16 +593,6 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 // TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
 func TestTracePropagationGo(t *testing.T) {
 
-	// Allocate a temp file location for file tracing.
-	dir := os.TempDir()
-	file, err := ioutil.TempFile(dir, "trace")
-	fullPath := file.Name()
-	if err != nil {
-		t.Fatal(err)
-		return
-	}
-	defer os.Remove(file.Name())
-
 	// Detect a special trace coming from Go language plugin.
 	isGoListTrace := func(t *appdash.Trace) bool {
 		m := t.Span.Annotations.StringMap()
@@ -621,8 +610,9 @@ func TestTracePropagationGo(t *testing.T) {
 
 	// Look for trace mathching `isGoListTrace` in the trace file
 	// and store to `foundTrace`.
-	searchForGoListTrace := func() error {
-		store, err := ReadMemoryStoreFromFile(fullPath)
+	searchForGoListTrace := func(dir string) error {
+
+		store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi.trace"))
 		if err != nil {
 			return err
 		}
@@ -644,7 +634,7 @@ func TestTracePropagationGo(t *testing.T) {
 		SkipExportImport:       true,
 		SkipEmptyPreviewUpdate: true,
 		Quick:                  false,
-		Tracing:                fmt.Sprintf("file://%s", fullPath),
+		Tracing:                fmt.Sprintf("file:./pulumi.trace"),
 		PreviewCompletedHook:   searchForGoListTrace,
 	}
 

@@ -266,7 +266,7 @@ type ProgramTestOptions struct {
 	UsePipenv bool
 
 	// If set, this hook is called after the `pulumi preview` command has completed.
-	PreviewCompletedHook func() error
+	PreviewCompletedHook func(dir string) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1264,7 +1264,7 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 			return err
 		}
 		if pt.opts.PreviewCompletedHook != nil {
-			if err := pt.opts.PreviewCompletedHook(); err != nil {
+			if err := pt.opts.PreviewCompletedHook(dir); err != nil {
 				return err
 			}
 		}
