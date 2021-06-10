@@ -17,23 +17,16 @@ namespace Pulumi.Tests.Mocks
             return Task.FromResult<object>(args);
         }
 
-        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
-        {
-            switch (args.Type)
+        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args) =>
+            args.Type switch
             {
-                case "aws:ec2/instance:Instance":
-                    return Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> {
-                        { "publicIp", "203.0.113.12" },
-                    }));
-                case "pkg:index:MyCustom":
-                    return Task.FromResult<(string?, object)>((args.Name + "_id",  args.Inputs));
-                default:
-                    throw new Exception($"Unknown resource {args.Type}");
-            }
-        }
+                "aws:ec2/instance:Instance" => Task.FromResult<(string?, object)>(("i-1234567890abcdef0", new Dictionary<string, object> { { "publicIp", "203.0.113.12" }, })),
+                "pkg:index:MyCustom" => Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs)),
+                _ => throw new Exception($"Unknown resource {args.Type}")
+            };
     }
 
-    public partial class MocksTests
+    public class MocksTests
     {
         [Fact]
         public async Task TestCustom()
@@ -43,7 +36,7 @@ namespace Pulumi.Tests.Mocks
             var instance = resources.OfType<Instance>().FirstOrDefault();
             Assert.NotNull(instance);
 
-            var ip = await instance.PublicIp.GetValueAsync();
+            var ip = await instance!.PublicIp.GetValueAsync();
             Assert.Equal("203.0.113.12", ip);
         }
 
@@ -52,10 +45,10 @@ namespace Pulumi.Tests.Mocks
         {
             var resources = await Testing.RunAsync<MyStack>();
 
-            var mycustom = resources.OfType<MyCustom>().FirstOrDefault();
-            Assert.NotNull(mycustom);
+            var myCustom = resources.OfType<MyCustom>().FirstOrDefault();
+            Assert.NotNull(myCustom);
 
-            var instance = await mycustom.Instance.GetValueAsync();
+            var instance = await myCustom!.Instance.GetValueAsync();
             Assert.IsType<Instance>(instance);
 
             var ip = await instance.PublicIp.GetValueAsync();
@@ -70,7 +63,7 @@ namespace Pulumi.Tests.Mocks
             var stack = resources.OfType<MyStack>().FirstOrDefault();
             Assert.NotNull(stack);
 
-            var ip = await stack.PublicIp.GetValueAsync();
+            var ip = await stack!.PublicIp.GetValueAsync();
             Assert.Equal("203.0.113.12", ip);
         }
     }

@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
+// ReSharper disable NotAccessedField.Global
 namespace Pulumi
 {
     internal class Options

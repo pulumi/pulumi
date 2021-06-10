@@ -50,7 +50,7 @@ namespace Pulumi.Tests.Serialization
         {
             Assert.Throws<InvalidOperationException>(() =>
             {
-                var data = Converter.ConvertValue<Union<int, string>>("", new Value { BoolValue = true });
+                Converter.ConvertValue<Union<int, string>>("", new Value { BoolValue = true });
             });
         }
     }

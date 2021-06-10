@@ -8,7 +8,7 @@ using Xunit;
 
 namespace Pulumi.Tests.Core
 {
-    public partial class OutputTests : PulumiTest
+    public class OutputTests : PulumiTest
     {
         private static Output<T> CreateOutput<T>(T value, bool isKnown, bool isSecret = false)
             => new Output<T>(Task.FromResult(OutputData.Create(

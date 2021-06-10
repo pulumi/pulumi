@@ -9,10 +9,11 @@ using System.Reflection;
 using System.Text.Json;
 using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
+using Enum = System.Enum;
 
 namespace Pulumi.Serialization
 {
-    internal struct Serializer
+    internal readonly struct Serializer
     {
         public readonly HashSet<Resource> DependentResources;
 
@@ -222,7 +223,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             if (prop is IList list)
                 return await SerializeListAsync(ctx, list, keepResources).ConfigureAwait(false);
 
-            if (prop is System.Enum e && e.GetTypeCode() == TypeCode.Int32)
+            if (prop is Enum e && e.GetTypeCode() == TypeCode.Int32)
             {
                 return (int)prop;
             }
@@ -230,12 +231,12 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
             var propType = prop.GetType();
             if (propType.IsValueType && propType.GetCustomAttribute<EnumTypeAttribute>() != null)
             {
-                MethodInfo? mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
+                var mi = propType.GetMethod("op_Explicit", BindingFlags.Public | BindingFlags.Static, null, new[] { propType }, null);
                 if (mi == null || (mi.ReturnType != typeof(string) && mi.ReturnType != typeof(double)))
                 {
                     throw new InvalidOperationException($"Expected {propType.FullName} to have an explicit conversion operator to String or Double.\n\t{ctx}");
                 }
-                return mi.Invoke(null, new object[] { prop });
+                return mi.Invoke(null, new[] { prop });
             }
 
             throw new InvalidOperationException($"{propType.FullName} is not a supported argument type.\n\t{ctx}");
@@ -374,7 +375,7 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 double d => Value.ForNumber(d),
                 bool b => Value.ForBool(b),
                 string s => Value.ForString(s),
-                ImmutableArray<object> list => Value.ForList(list.Select(v => CreateValue(v)).ToArray()),
+                ImmutableArray<object> list => Value.ForList(list.Select(CreateValue).ToArray()),
                 ImmutableDictionary<string, object> dict => Value.ForStruct(CreateStruct(dict)),
                 _ => throw new InvalidOperationException("Unsupported value when converting to protobuf: " + value.GetType().FullName),
             };

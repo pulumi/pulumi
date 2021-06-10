@@ -235,6 +235,60 @@ jobs:
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+  language-sdk-lint:
+    name: Lint Language SDKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Set up DotNet ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Set up Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install pipenv
+        uses: dschep/install-pipenv-action@v1
+      - name: Setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+      - name: Update path
+        run: |
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Set Go Dep path
+        run: |
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Ensure
+        run: |
+          make ensure
+      - name: Lint Node
+        run: |
+          cd sdk/nodejs && make lint
+      - name: Lint Python
+        run: |
+          cd sdk/python && make lint
+      - name: Lint .NET
+        run: |
+          cd sdk/dotnet && make lint
   build-and-test:
     name: Build & Test
     strategy:

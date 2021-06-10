@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -29,7 +30,7 @@ namespace Pulumi
             public Runner(IDeploymentInternal deployment)
                 => _deployment = deployment;
 
-            public Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
+            Task<int> IRunner.RunAsync<TStack>(IServiceProvider serviceProvider)
             {
                 if (serviceProvider == null)
                 {
@@ -40,8 +41,7 @@ namespace Pulumi
                     ?? throw new ApplicationException($"Failed to resolve instance of type {typeof(TStack)} from service provider. Register the type with the service provider before calling {nameof(RunAsync)}."));
             }
 
-            public Task<int> RunAsync<TStack>() where TStack : Stack, new()
-                => RunAsync(() => new TStack());
+            Task<int> IRunner.RunAsync<TStack>() => RunAsync(() => new TStack());
 
             public Task<int> RunAsync<TStack>(Func<TStack> stackFactory) where TStack : Stack
             {
@@ -60,7 +60,7 @@ namespace Pulumi
                 return WhileRunningAsync();
             }
 
-            public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options)
+            Task<int> IRunner.RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options)
             {
                 var stack = new Stack(func, options);
                 RegisterTask("User program code.", stack.Outputs.DataTask);
@@ -214,10 +214,9 @@ namespace Pulumi
                 }
                 else
                 {
-                    var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-                    await _deployment.Logger.ErrorAsync(
-    $@"Running program '{location}' failed with an unhandled exception:
-{exception.ToString()}").ConfigureAwait(false);
+                    var location = Assembly.GetEntryAssembly()?.Location;
+                    await _deployment.Logger.ErrorAsync($@"Running program '{location}' failed with an unhandled exception:
+{exception}").ConfigureAwait(false);
                 }
 
                 _deployment.Serilogger.Debug("Wrote last error.  Returning from program.");

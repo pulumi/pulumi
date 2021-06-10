@@ -23,7 +23,7 @@ namespace Pulumi.Automation
             if (stackType is null)
                 throw new ArgumentNullException(nameof(stackType));
 
-            var pulumiStackType = typeof(Pulumi.Stack);
+            var pulumiStackType = typeof(Stack);
             if (!pulumiStackType.IsAssignableFrom(stackType) || pulumiStackType == stackType)
                 throw new ArgumentException($"Provided stack type must derive from {pulumiStackType.FullName}.", nameof(stackType));
 
@@ -42,7 +42,7 @@ namespace Pulumi.Automation
                     if (this._serviceProvider is null)
                         throw new ArgumentNullException(nameof(this._serviceProvider), $"The provided service provider was null by the time this {nameof(PulumiFn)} was invoked.");
 
-                    return this._serviceProvider.GetService(this._stackType) as Pulumi.Stack
+                    return this._serviceProvider.GetService(this._stackType) as Stack
                         ?? throw new ApplicationException(
                             $"Failed to resolve instance of type {this._stackType.FullName} from service provider. Register the type with the service provider before this {nameof(PulumiFn)} is invoked.");
                 }

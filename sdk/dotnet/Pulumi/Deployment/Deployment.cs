@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Pulumi.Testing;
+using Pulumirpc;
 using Serilog;
 using Serilog.Events;
 
@@ -30,7 +31,7 @@ namespace Pulumi
     /// </para>
     /// Importantly: Cloud resources cannot be created outside of the lambda passed to any of the
     /// <see cref="Deployment.RunAsync(Action)"/> overloads.  Because cloud Resource construction is
-    /// inherently asynchronous, the result of this function is a <see cref="Task{T}"/> which should
+    /// inherently asynchronous, the result of this function is a <see cref="Task{TResult}"/> which should
     /// then be returned or awaited.  This will ensure that any problems that are encountered during
     /// the running of the program are properly reported.  Failure to do this may lead to the
     /// program ending early before all resources are properly registered.
@@ -38,7 +39,7 @@ namespace Pulumi
     public sealed partial class Deployment : IDeploymentInternal
     {
         private static readonly object _instanceLock = new object();
-        private static AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
+        private static readonly AsyncLocal<DeploymentInstance?> _instance = new AsyncLocal<DeploymentInstance?>();
 
         /// <summary>
         /// The current running deployment instance. This is only available from inside the function
@@ -101,6 +102,7 @@ namespace Pulumi
 
         private Deployment()
         {
+            // ReSharper disable UnusedVariable
             var monitor = Environment.GetEnvironmentVariable("PULUMI_MONITOR");
             var engine = Environment.GetEnvironmentVariable("PULUMI_ENGINE");
             var project = Environment.GetEnvironmentVariable("PULUMI_PROJECT");
@@ -121,6 +123,7 @@ namespace Pulumi
             {
                 throw new InvalidOperationException("Program run without the Pulumi engine available; re-run using the `pulumi` CLI");
             }
+            // ReSharper restore UnusedVariable
 
             _isDryRun = dryRunValue;
             _stackName = stack;
@@ -193,7 +196,7 @@ namespace Pulumi
         {
             if (!this._featureSupport.ContainsKey(feature))
             {
-                var request = new Pulumirpc.SupportsFeatureRequest {Id = feature };
+                var request = new SupportsFeatureRequest {Id = feature };
                 var response = await this.Monitor.SupportsFeatureAsync(request).ConfigureAwait(false);
                 this._featureSupport[feature] = response.HasSupport;
             }
