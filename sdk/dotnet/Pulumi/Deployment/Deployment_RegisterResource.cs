@@ -54,12 +54,12 @@ namespace Pulumi
             request.Provider = prepareResult.ProviderRef;
             request.Providers.Add(prepareResult.ProviderRefs);
             request.Aliases.AddRange(prepareResult.Aliases);
-            request.Dependencies.AddRange(prepareResult.AllDirectDependencyURNs);
+            request.Dependencies.AddRange(prepareResult.AllDirectDependencyUrns);
 
-            foreach (var (key, resourceURNs) in prepareResult.PropertyToDirectDependencyURNs)
+            foreach (var (key, resourceUrns) in prepareResult.PropertyToDirectDependencyUrns)
             {
                 var deps = new RegisterResourceRequest.Types.PropertyDependencies();
-                deps.Urns.AddRange(resourceURNs);
+                deps.Urns.AddRange(resourceUrns);
                 request.PropertyDependencies.Add(key, deps);
             }
         }
@@ -70,7 +70,7 @@ namespace Pulumi
             var customOpts = options as CustomResourceOptions;
             var deleteBeforeReplace = customOpts?.DeleteBeforeReplace;
 
-            var request = new RegisterResourceRequest()
+            var request = new RegisterResourceRequest
             {
                 Type = type,
                 Name = name,
@@ -113,7 +113,7 @@ namespace Pulumi
             // Simply put, we simply convert our ticks to the integral number of nanoseconds
             // corresponding to it.  Since each tick is 100ns, this can trivialy be done just by
             // appending "00" to it.
-            return timeSpan.Value.Ticks.ToString() + "00ns";
+            return timeSpan.Value.Ticks + "00ns";
         }
     }
 }

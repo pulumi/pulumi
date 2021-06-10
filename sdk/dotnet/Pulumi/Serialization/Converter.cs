@@ -8,6 +8,10 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 using Google.Protobuf.WellKnownTypes;
+using Enum = System.Enum;
+using Type = System.Type;
+
+// ReSharper disable TailRecursiveCall
 
 namespace Pulumi.Serialization
 {
@@ -19,15 +23,15 @@ namespace Pulumi.Serialization
             return new OutputData<T>(ImmutableHashSet<Resource>.Empty, (T)data!, isKnown, isSecret);
         }
 
-        public static OutputData<object?> ConvertValue(string context, Value value, System.Type targetType)
+        public static OutputData<object?> ConvertValue(string context, Value value, Type targetType)
         {
             return ConvertValue(context, value, targetType, ImmutableHashSet<Resource>.Empty);
         }
 
         public static OutputData<object?> ConvertValue(
-            string context, Value value, System.Type targetType, ImmutableHashSet<Resource> resources)
+            string context, Value value, Type targetType, ImmutableHashSet<Resource> resources)
         {
-            CheckTargetType(context, targetType, new HashSet<System.Type>());
+            CheckTargetType(context, targetType, new HashSet<Type>());
 
             var (deserialized, isKnown, isSecret) = Deserializer.Deserialize(value);
             var converted = ConvertObject(context, deserialized, targetType);
@@ -35,7 +39,7 @@ namespace Pulumi.Serialization
             return new OutputData<object?>(resources, converted, isKnown, isSecret);
         }
 
-        private static object? ConvertObject(string context, object? val, System.Type targetType)
+        private static object? ConvertObject(string context, object? val, Type targetType)
         {
             var (result, exception) = TryConvertObject(context, val, targetType);
             if (exception != null)
@@ -44,7 +48,7 @@ namespace Pulumi.Serialization
             return result;
         }
 
-        private static (object?, InvalidOperationException?) TryConvertObject(string context, object? val, System.Type targetType)
+        private static (object?, InvalidOperationException?) TryConvertObject(string context, object? val, Type targetType)
         {
             var targetIsNullable = targetType.IsGenericType && targetType.GetGenericTypeDefinition() == typeof(Nullable<>);
 
@@ -116,7 +120,7 @@ namespace Pulumi.Serialization
                 if (exception != null || value is null)
                     return (null, exception);
 
-                return (System.Enum.ToObject(targetType, value), null);
+                return (Enum.ToObject(targetType, value), null);
             }
 
             if (targetType.IsValueType && targetType.GetCustomAttribute<EnumTypeAttribute>() != null)
@@ -136,7 +140,7 @@ namespace Pulumi.Serialization
                     return (null, new InvalidOperationException(
                         $"Expected target type {targetType.FullName} to have a constructor with a single {valType.FullName} parameter."));
                 }
-                return (enumTypeConstructor.Invoke(new object[] { val }), null);
+                return (enumTypeConstructor.Invoke(new[] { val }), null);
             }
 
             if (targetType.IsConstructedGenericType)
@@ -154,14 +158,14 @@ namespace Pulumi.Serialization
                     $"Unexpected generic target type {targetType.FullName} when deserializing {context}");
             }
 
-            if (targetType.GetCustomAttribute<Pulumi.OutputTypeAttribute>() == null)
+            if (targetType.GetCustomAttribute<OutputTypeAttribute>() == null)
                 return (null, new InvalidOperationException(
                     $"Unexpected target type {targetType.FullName} when deserializing {context}"));
 
             var constructor = GetPropertyConstructor(targetType);
             if (constructor == null)
                 return (null, new InvalidOperationException(
-                    $"Expected target type {targetType.FullName} to have [{nameof(Pulumi.OutputConstructorAttribute)}] constructor when deserializing {context}"));
+                    $"Expected target type {targetType.FullName} to have [{nameof(OutputConstructorAttribute)}] constructor when deserializing {context}"));
 
             var (dictionary, tempException) = TryEnsureType<ImmutableDictionary<string, object>>(context, val);
             if (tempException != null)
@@ -191,20 +195,18 @@ namespace Pulumi.Serialization
         private static (object?, InvalidOperationException?) TryConvertJsonElement(
             string context, object val)
         {
-            using (var stream = new MemoryStream())
+            using var stream = new MemoryStream();
+            using (var writer = new Utf8JsonWriter(stream))
             {
-                using (var writer = new Utf8JsonWriter(stream))
-                {
-                    var exception = TryWriteJson(context, writer, val);
-                    if (exception != null)
-                        return (null, exception);
-                }
-
-                stream.Position = 0;
-                var document = JsonDocument.Parse(stream);
-                var element = document.RootElement;
-                return (element, null);
+                var exception = TryWriteJson(context, writer, val);
+                if (exception != null)
+                    return (null, exception);
             }
+
+            stream.Position = 0;
+            var document = JsonDocument.Parse(stream);
+            var element = document.RootElement;
+            return (element, null);
         }
 
         private static InvalidOperationException? TryWriteJson(string context, Utf8JsonWriter writer, object? val)
@@ -252,7 +254,7 @@ namespace Pulumi.Serialization
         private static (T, InvalidOperationException?) TryEnsureType<T>(string context, object val)
             => val is T t ? (t, null) : (default(T)!, new InvalidOperationException($"Expected {typeof(T).FullName} but got {val.GetType().FullName} deserializing {context}"));
 
-        private static (object?, InvalidOperationException?) TryConvertOneOf(string context, object val, System.Type oneOfType)
+        private static (object?, InvalidOperationException?) TryConvertOneOf(string context, object val, Type oneOfType)
         {
             var firstType = oneOfType.GenericTypeArguments[0];
             var secondType = oneOfType.GenericTypeArguments[1];
@@ -275,14 +277,14 @@ namespace Pulumi.Serialization
         }
 
         private static (object?, InvalidOperationException?) TryConvertArray(
-            string fieldName, object val, System.Type targetType)
+            string fieldName, object val, Type targetType)
         {
             if (!(val is ImmutableArray<object> array))
                 return (null, new InvalidOperationException(
                     $"Expected {typeof(ImmutableArray<object>).FullName} but got {val.GetType().FullName} deserializing {fieldName}"));
 
             var builder =
-                typeof(ImmutableArray).GetMethod(nameof(ImmutableArray.CreateBuilder), Array.Empty<System.Type>())!
+                typeof(ImmutableArray).GetMethod(nameof(ImmutableArray.CreateBuilder), Array.Empty<Type>())!
                                       .MakeGenericMethod(targetType.GenericTypeArguments)
                                       .Invoke(obj: null, parameters: null)!;
 
@@ -303,7 +305,7 @@ namespace Pulumi.Serialization
         }
 
         private static (object?, InvalidOperationException?) TryConvertDictionary(
-            string fieldName, object val, System.Type targetType)
+            string fieldName, object val, Type targetType)
         {
             if (!(val is ImmutableDictionary<string, object> dictionary))
                 return (null, new InvalidOperationException(
@@ -319,7 +321,7 @@ namespace Pulumi.Serialization
                     $"Unexpected type {targetType.FullName} when deserializing {fieldName}. ImmutableDictionary's TKey type was not {typeof(string).FullName}"));
 
             var builder =
-                typeof(ImmutableDictionary).GetMethod(nameof(ImmutableDictionary.CreateBuilder), Array.Empty<System.Type>())!
+                typeof(ImmutableDictionary).GetMethod(nameof(ImmutableDictionary.CreateBuilder), Array.Empty<Type>())!
                                            .MakeGenericMethod(targetType.GenericTypeArguments)
                                            .Invoke(obj: null, parameters: null)!;
 
@@ -341,7 +343,7 @@ namespace Pulumi.Serialization
             return (builderToImmutable.Invoke(builder, null), null);
         }
 
-        public static void CheckTargetType(string context, System.Type targetType, HashSet<System.Type> seenTypes)
+        public static void CheckTargetType(string context, Type targetType, HashSet<Type> seenTypes)
         {
             // types can be recursive.  So only dive into a type if it's the first time we're seeing it.
             if (!seenTypes.Add(targetType))
@@ -398,7 +400,7 @@ namespace Pulumi.Serialization
                 throw new InvalidOperationException(
                     $"{targetType.FullName} had [{nameof(EnumTypeAttribute)}], but did not contain constructor with a single String or Double parameter.");
 
-                static bool CheckEnumType(System.Type targetType, System.Type underlyingType)
+                static bool CheckEnumType(Type targetType, Type underlyingType)
                 {
                     var constructor = targetType.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, new[] { underlyingType }, null);
                     if (constructor == null)
@@ -424,39 +426,34 @@ namespace Pulumi.Serialization
                     CheckTargetType(context, targetType.GenericTypeArguments.Single(), seenTypes);
                     return;
                 }
-                else if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
+                if (targetType.GetGenericTypeDefinition() == typeof(Union<,>))
                 {
                     CheckTargetType(context, targetType.GenericTypeArguments[0], seenTypes);
                     CheckTargetType(context, targetType.GenericTypeArguments[1], seenTypes);
                     return;
                 }
-                else if (targetType.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
+                if (targetType.GetGenericTypeDefinition() == typeof(ImmutableArray<>))
                 {
                     CheckTargetType(context, targetType.GenericTypeArguments.Single(), seenTypes);
                     return;
                 }
-                else if (targetType.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
+                if (targetType.GetGenericTypeDefinition() == typeof(ImmutableDictionary<,>))
                 {
                     var dictTypeArgs = targetType.GenericTypeArguments;
                     if (dictTypeArgs[0] != typeof(string))
                     {
-                        throw new InvalidOperationException(
-$@"{context} contains invalid type {targetType.FullName}:
+                        throw new InvalidOperationException($@"{context} contains invalid type {targetType.FullName}:
     The only allowed ImmutableDictionary 'TKey' type is 'String'.");
                     }
 
                     CheckTargetType(context, dictTypeArgs[1], seenTypes);
                     return;
                 }
-                else
-                {
-                    throw new InvalidOperationException(
-$@"{context} contains invalid type {targetType.FullName}:
+                throw new InvalidOperationException($@"{context} contains invalid type {targetType.FullName}:
     The only generic types allowed are ImmutableArray<...> and ImmutableDictionary<string, ...>");
-                }
             }
 
-            var propertyTypeAttribute = (Attribute?)targetType.GetCustomAttribute<OutputTypeAttribute>();
+            var propertyTypeAttribute = targetType.GetCustomAttribute<OutputTypeAttribute>();
             if (propertyTypeAttribute == null)
             {
                 throw new InvalidOperationException(
@@ -479,8 +476,8 @@ $@"{targetType.FullName} had [{nameof(OutputTypeAttribute)}], but did not contai
             }
         }
 
-        private static ConstructorInfo GetPropertyConstructor(System.Type outputTypeArg)
+        private static ConstructorInfo? GetPropertyConstructor(Type outputTypeArg)
             => outputTypeArg.GetConstructors(BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance).FirstOrDefault(
-                c => c.GetCustomAttributes<OutputConstructorAttribute>() != null);
+                c => c.GetCustomAttribute<OutputConstructorAttribute>() != null);
     }
 }

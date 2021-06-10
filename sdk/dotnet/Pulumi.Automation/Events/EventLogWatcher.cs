@@ -8,14 +8,14 @@ using Pulumi.Automation.Serialization;
 
 namespace Pulumi.Automation.Events
 {
-    internal class EventLogWatcher : IDisposable
+    internal sealed class EventLogWatcher : IDisposable
     {
         private readonly LocalSerializer _localSerializer = new LocalSerializer();
         private readonly Action<EngineEvent> _onEvent;
         private const int _pollingIntervalMilliseconds = 100;
 
         // We keep track of the last position in the file.
-        private long _position = 0;
+        private long _position;
         public string LogFile { get; }
         private readonly Task _pollingTask;
         private readonly CancellationTokenSource _internalCancellationTokenSource = new CancellationTokenSource();
@@ -82,6 +82,7 @@ namespace Pulumi.Automation.Events
                 await ReadEventsOnce();
                 await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token);
             }
+            // ReSharper disable once FunctionNeverReturns
         }
 
         private async Task ReadEventsOnce()
@@ -91,15 +92,11 @@ namespace Pulumi.Automation.Events
                 return;
             }
 
-            using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite)
-            {
-                Position = this._position
-            };
+            await using var fs = new FileStream(LogFile, FileMode.Open, FileAccess.Read, FileShare.ReadWrite) { Position = this._position };
             using var reader = new StreamReader(fs);
-            string? line;
             while (reader.Peek() >= 0)
             {
-                line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync();
                 this._position = fs.Position;
                 if (!string.IsNullOrWhiteSpace(line))
                 {

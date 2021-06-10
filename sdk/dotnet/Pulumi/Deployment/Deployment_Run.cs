@@ -12,7 +12,7 @@ namespace Pulumi
     public partial class Deployment
     {
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
+        /// <see cref="RunAsync(Func{Task{IDictionary{string,object}}}, StackOptions)"/> for more details.
         /// </summary>
         /// <param name="action">Callback that creates stack resources.</param>
         public static Task<int> RunAsync(Action action)
@@ -174,7 +174,7 @@ namespace Pulumi
             return engine.Errors.Count switch
             {
                 1 => throw new RunException(engine.Errors.Single()),
-                int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                var v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
                 _ => monitor.Resources.ToImmutableArray()
             };
         }

@@ -40,13 +40,13 @@ namespace Pulumi.Automation
         /// <param name="program">An asynchronous pulumi program that takes in a <see cref="CancellationToken"/>.</param>
         public static PulumiFn Create(Func<CancellationToken, Task> program)
         {
-            Func<CancellationToken, Task<IDictionary<string, object?>>> wrapper = async cancellationToken =>
+            async Task<IDictionary<string, object?>> Wrapper(CancellationToken cancellationToken)
             {
                 await program(cancellationToken).ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
-            };
+            }
 
-            return new PulumiFnInline(wrapper);
+            return new PulumiFnInline(Wrapper);
         }
 
         /// <summary>
@@ -55,13 +55,13 @@ namespace Pulumi.Automation
         /// <param name="program">An asynchronous pulumi program.</param>
         public static PulumiFn Create(Func<Task> program)
         {
-            Func<CancellationToken, Task<IDictionary<string, object?>>> wrapper = async cancellationToken =>
+            async Task<IDictionary<string, object?>> Wrapper(CancellationToken cancellationToken)
             {
                 await program().ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
-            };
+            }
 
-            return new PulumiFnInline(wrapper);
+            return new PulumiFnInline(Wrapper);
         }
 
         /// <summary>
@@ -70,13 +70,13 @@ namespace Pulumi.Automation
         /// <param name="program">A pulumi program that returns an output.</param>
         public static PulumiFn Create(Func<IDictionary<string, object?>> program)
         {
-            Func<CancellationToken, Task<IDictionary<string, object?>>> wrapper = cancellationToken =>
+            Task<IDictionary<string, object?>> Wrapper(CancellationToken cancellationToken)
             {
                 var output = program();
                 return Task.FromResult(output);
-            };
+            }
 
-            return new PulumiFnInline(wrapper);
+            return new PulumiFnInline(Wrapper);
         }
 
         /// <summary>
@@ -91,7 +91,7 @@ namespace Pulumi.Automation
         /// </summary>
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
         public static PulumiFn Create<TStack>()
-            where TStack : Pulumi.Stack, new()
+            where TStack : Stack, new()
             => new PulumiFn<TStack>(() => new TStack());
 
         /// <summary>
@@ -104,7 +104,7 @@ namespace Pulumi.Automation
         /// <typeparam name="TStack">The <see cref="Pulumi.Stack"/> type.</typeparam>
         /// <param name="serviceProvider">The service provider that will be used to resolve an instance of <typeparamref name="TStack"/>.</param>
         public static PulumiFn Create<TStack>(IServiceProvider serviceProvider)
-            where TStack : Pulumi.Stack
+            where TStack : Stack
             => new PulumiFnServiceProvider(serviceProvider, typeof(TStack));
 
         /// <summary>

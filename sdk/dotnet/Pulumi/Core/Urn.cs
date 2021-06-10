@@ -66,10 +66,7 @@ namespace Pulumi
             if (childName!.StartsWith(parentName, StringComparison.Ordinal))
             {
                 aliasName = parentAlias.ToOutput().Apply<string>(parentAliasUrn =>
-                {
-                    return parentAliasUrn.Substring(parentAliasUrn.LastIndexOf("::", StringComparison.Ordinal) + 2)
-                    + childName.Substring(parentName.Length);
-                });
+                    parentAliasUrn.Substring(parentAliasUrn.LastIndexOf("::", StringComparison.Ordinal) + 2) + childName.Substring(parentName.Length));
             }
 
             var urn = Create(

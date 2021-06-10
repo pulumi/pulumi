@@ -127,13 +127,13 @@ namespace Pulumi
         #region construct from Output of some list type.
 
         public static implicit operator InputList<T>(Output<T[]> values)
-            => values.Apply(a => ImmutableArray.CreateRange(a));
+            => values.Apply(ImmutableArray.CreateRange);
 
         public static implicit operator InputList<T>(Output<List<T>> values)
-            => values.Apply(a => ImmutableArray.CreateRange(a));
+            => values.Apply(ImmutableArray.CreateRange);
 
         public static implicit operator InputList<T>(Output<IEnumerable<T>> values)
-            => values.Apply(a => ImmutableArray.CreateRange(a));
+            => values.Apply(ImmutableArray.CreateRange);
 
         public static implicit operator InputList<T>(Output<ImmutableArray<T>> values)
             => new InputList<T>(values);

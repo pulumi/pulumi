@@ -23,7 +23,7 @@ namespace Pulumi.Automation.Serialization.Json
 
             if (reader.TokenType == JsonTokenType.Number)
             {
-                if (reader.TryGetInt64(out long l))
+                if (reader.TryGetInt64(out var l))
                 {
                     return l;
                 }
@@ -33,7 +33,7 @@ namespace Pulumi.Automation.Serialization.Json
 
             if (reader.TokenType == JsonTokenType.String)
             {
-                if (reader.TryGetDateTime(out DateTime datetime))
+                if (reader.TryGetDateTime(out var datetime))
                 {
                     return datetime;
                 }

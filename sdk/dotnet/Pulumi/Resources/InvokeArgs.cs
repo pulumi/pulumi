@@ -11,10 +11,6 @@ namespace Pulumi
     {
         public static readonly InvokeArgs Empty = new EmptyInvokeArgs();
 
-        protected InvokeArgs()
-        {
-        }
-
         private protected override void ValidateMember(Type memberType, string fullName)
         {
             if (typeof(IInput).IsAssignableFrom(memberType))

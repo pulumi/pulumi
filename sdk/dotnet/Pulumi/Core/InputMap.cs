@@ -13,7 +13,7 @@ namespace Pulumi
     /// <see cref="Resource"/>. The individual values are themselves <see cref="Input{T}"/>s.  i.e.
     /// the individual values can be concrete values or <see cref="Output{T}"/>s.
     /// <para/>
-    /// <see cref="InputMap{V}"/> differs from a normal <see cref="IDictionary{K,V}"/> in that it is
+    /// <see cref="InputMap{V}"/> differs from a normal <see cref="IDictionary{TKey,TValue}"/> in that it is
     /// itself an <see cref="Input{T}"/>.  For example, a <see cref="Resource"/> that accepts an
     /// <see cref="InputMap{V}"/> will accept not just a dictionary but an <see cref="Output{T}"/>
     /// of a dictionary as well.  This is important for cases where the <see cref="Output{T}"/>
@@ -96,10 +96,10 @@ namespace Pulumi
             => Output.Create(values);
 
         public static implicit operator InputMap<V>(Output<Dictionary<string, V>> values)
-            => values.Apply(d => ImmutableDictionary.CreateRange(d));
+            => values.Apply(ImmutableDictionary.CreateRange);
 
         public static implicit operator InputMap<V>(Output<IDictionary<string, V>> values)
-            => values.Apply(d => ImmutableDictionary.CreateRange(d));
+            => values.Apply(ImmutableDictionary.CreateRange);
 
         public static implicit operator InputMap<V>(Output<ImmutableDictionary<string, V>> values)
             => new InputMap<V>(values);
