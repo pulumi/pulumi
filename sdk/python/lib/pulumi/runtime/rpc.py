@@ -554,7 +554,7 @@ def translate_output_properties(output: Any,
                                 output_transformer: Callable[[str], str],
                                 typ: Optional[type] = None,
                                 transform_using_type_metadata: bool = False,
-                                path: Optional[Any] = None) -> Any:
+                                path: Optional['_Path'] = None) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
     convention specified by `output_transformer`. If `transform_using_type_metadata` is
@@ -586,36 +586,6 @@ def translate_output_properties(output: Any,
 
     :param Optional[Any] path: Used internally to track recursive descent and enhance error messages.
     """
-
-
-    def sub_path(prop_name: str) -> Any:
-        return {'prop': prop_name, 'parent': path, 'typ': typ}
-
-
-    def format_path(path: Any) -> str:
-        chain = []
-        p = path
-        resource = None
-
-        while p is not None:
-            chain.append(p['prop'])
-            resource = p.get('resource', None) or resource
-            p = p.get('parent', None)
-
-        chain.reverse()
-
-        coordinates = []
-
-        if resource is not None:
-            coordinates.append(f'resource `{resource}`')
-
-        if chain:
-            coordinates.append(f'property `{".".join(chain)}`')
-
-        if coordinates:
-            return f' at {", ".join(coordinates)}'
-
-        return ''
 
 
     # If it's a secret, unwrap the value so the output is in alignment with the expected type, call
@@ -653,7 +623,7 @@ def translate_output_properties(output: Any,
                                                    output_transformer,
                                                    get_type(k),
                                                    transform_using_type_metadata,
-                                                   path=sub_path(k))
+                                                   path=_Path(k, parent=path))
                     for k, v in output.items()
                 }
                 return _types.output_type_from_dict(typ, translated_values)
@@ -670,7 +640,7 @@ def translate_output_properties(output: Any,
                         translate = lambda k: k
             else:
                 raise AssertionError((f"Unexpected type; expected a value of type `{typ}`"
-                                      f" but got a value of type `{dict}`{format_path(path)}:"
+                                      f" but got a value of type `{dict}`{_Path.format(path)}:"
                                       f" {output}"))
 
         return {
@@ -679,7 +649,7 @@ def translate_output_properties(output: Any,
                                             output_transformer,
                                             get_type(k),
                                             transform_using_type_metadata,
-                                            path=sub_path(k))
+                                            path=_Path(k, parent=path))
             for k, v in output.items()
         }
 
@@ -690,7 +660,7 @@ def translate_output_properties(output: Any,
                                         output_transformer,
                                         element_type,
                                         transform_using_type_metadata,
-                                        path=sub_path(str(i)))
+                                        path=_Path(str(i), parent=path))
             for i, v in enumerate(output)
         ]
 
@@ -701,6 +671,49 @@ def translate_output_properties(output: Any,
         return int(output)
 
     return output
+
+
+class _Path:
+    """Internal helper for `translate_output_properties` error reporting,
+    essentially an immutable linked list of prop names with an
+    additional context resource name slot.
+
+    """
+
+    prop: str
+    resource: Optional[str]
+    parent: Optional['_Path']
+
+    def __init__(self, prop: str, parent: Optional['_Path'] = None, resource: Optional[str] = None) -> None:
+        self.prop = prop
+        self.parent = parent
+        self.resource = resource
+
+    @staticmethod
+    def format(path: Optional['_Path']) -> str:
+        chain: List[str] = []
+        p: Optional[_Path] = path
+        resource: Optional[str] = None
+
+        while p is not None:
+            chain.append(p.prop)
+            resource = p.resource or resource
+            p = p.parent
+
+        chain.reverse()
+
+        coordinates = []
+
+        if resource is not None:
+            coordinates.append(f'resource `{resource}`')
+
+        if chain:
+            coordinates.append(f'property `{".".join(chain)}`')
+
+        if coordinates:
+            return f' at {", ".join(coordinates)}'
+
+        return ''
 
 
 def contains_unknowns(val: Any) -> bool:
@@ -745,8 +758,8 @@ def resolve_outputs(res: 'Resource',
 
         translated_value = translate_output_properties(value, translate_to_pass, types.get(key),
                                                        transform_using_type_metadata,
-                                                       path={'prop': translated_key,
-                                                             'resource': f'{res._name}'})
+                                                       path=_Path(translated_key,
+                                                                  resource=f'{res._name}'))
 
         log.debug(f"incoming output property translated: {key} -> {translated_key}")
         log.debug(f"incoming output value translated: {value} -> {translated_value}")
@@ -762,8 +775,8 @@ def resolve_outputs(res: 'Resource',
                                                                              translate_to_pass,
                                                                              types.get(key),
                                                                              transform_using_type_metadata,
-                                                                             path={'prop': translated_key,
-                                                                                   'resource': f'{res._name}'})
+                                                                             path=_Path(translated_key,
+                                                                                        resource=f'{res._name}'))
 
     resolve_properties(resolvers, all_properties, deps)
 
