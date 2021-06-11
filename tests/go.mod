@@ -18,4 +18,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	go.opencensus.io v0.23.0 // indirect
 	google.golang.org/grpc v1.37.0
+	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0 // indirect
 )

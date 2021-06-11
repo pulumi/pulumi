@@ -15,8 +15,11 @@
 package cmdutil
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"net"
 	"net/url"
 	"os"
 
@@ -55,13 +58,11 @@ func IsTracingEnabled() bool {
 
 // InitTracing initializes tracing
 func InitTracing(name, rootSpanName, tracingEndpoint string) {
+
 	// If no tracing endpoint was provided, just return. The default global tracer is already a no-op tracer.
 	if tracingEndpoint == "" {
 		return
 	}
-
-	// Store the tracing endpoint
-	TracingEndpoint = tracingEndpoint
 
 	endpointURL, err := url.Parse(tracingEndpoint)
 	if err != nil {
@@ -90,12 +91,33 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 
 		collector := appdash.NewLocalCollector(store.store)
 		tracer = appdash_opentracing.NewTracer(collector)
+
+		proxyEndpoint, err := startProxyAppDashServer(collector)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Instead of storing the original endpoint, store the
+		// proxy endpoint. The TracingEndpoint global var is
+		// consumed by code forking off sub-processes, and we
+		// want those sending data to the proxy endpoint, so
+		// it cleanly lands in the file managed by the parent
+		// process.
+		TracingEndpoint = proxyEndpoint
+
 	case endpointURL.Scheme == "tcp":
+		// Store the tracing endpoint
+		TracingEndpoint = tracingEndpoint
+
 		// If the endpoint scheme is tcp, use an Appdash endpoint.
-		collector := appdash.NewRemoteCollector(tracingEndpoint)
+		collector := appdash.NewRemoteCollector(endpointURL.Host)
 		traceCloser = collector
 		tracer = appdash_opentracing.NewTracer(collector)
+
 	default:
+		// Store the tracing endpoint
+		TracingEndpoint = tracingEndpoint
+
 		// Jaeger tracer can be initialized with a transport that will
 		// report tracing Spans to a Zipkin backend
 		transport, err := zipkin.NewHTTPTransport(
@@ -136,4 +158,29 @@ func CloseTracing() {
 	}
 
 	contract.IgnoreClose(traceCloser)
+}
+
+// Starts an AppDash server listening on any available TCP port
+// locally and sends the spans and annotations to the given collector.
+// Returns a Pulumi-formatted tracing endpoint pointing to this
+// server.
+//
+// See https://github.com/sourcegraph/appdash/blob/master/cmd/appdash/example_app.go
+func startProxyAppDashServer(collector appdash.Collector) (string, error) {
+	l, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
+	if err != nil {
+		return "", err
+	}
+	collectorPort := l.Addr().(*net.TCPAddr).Port
+
+	cs := appdash.NewServer(l, collector)
+	cs.Debug = true
+	cs.Trace = true
+	go cs.Start()
+
+	// The default sends to stderr, which is unfortunate for
+	// end-users. Discard for now.
+	cs.Log = log.New(ioutil.Discard, "appdash", 0)
+
+	return fmt.Sprintf("tcp://127.0.0.1:%d", collectorPort), nil
 }

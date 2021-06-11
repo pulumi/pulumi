@@ -264,6 +264,9 @@ type ProgramTestOptions struct {
 	UseAutomaticVirtualEnv bool
 	// Use the Pipenv tool to manage the virtual environment.
 	UsePipenv bool
+
+	// If set, this hook is called after the `pulumi preview` command has completed.
+	PreviewCompletedHook func(dir string) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -1259,6 +1262,11 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 				return nil
 			}
 			return err
+		}
+		if pt.opts.PreviewCompletedHook != nil {
+			if err := pt.opts.PreviewCompletedHook(dir); err != nil {
+				return err
+			}
 		}
 	}
 

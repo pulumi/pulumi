@@ -4,15 +4,18 @@
 package ints
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"sourcegraph.com/sourcegraph/appdash"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -585,4 +588,62 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 		path += ".exe"
 	}
 	testComponentProviderSchema(t, path)
+}
+
+// TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
+func TestTracePropagationGo(t *testing.T) {
+
+	// Detect a special trace coming from Go language plugin.
+	isGoListTrace := func(t *appdash.Trace) bool {
+		m := t.Span.Annotations.StringMap()
+
+		isGoCmd := strings.HasSuffix(m["command"], "go") ||
+			strings.HasSuffix(m["command"], "go.exe")
+
+		if m["component"] == "exec.Command" &&
+			m["args"] == "[list -m -json -mod=mod all]" &&
+			isGoCmd {
+			return true
+		}
+
+		return false
+	}
+
+	var foundTrace *appdash.Trace
+
+	// Look for trace mathching `isGoListTrace` in the trace file
+	// and store to `foundTrace`.
+	searchForGoListTrace := func(dir string) error {
+
+		store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi.trace"))
+		if err != nil {
+			return err
+		}
+
+		foundTrace, err = FindTrace(store, isGoListTrace)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("empty", "go"),
+		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
+		SkipRefresh:            true,
+		SkipPreview:            false,
+		SkipUpdate:             true,
+		SkipExportImport:       true,
+		SkipEmptyPreviewUpdate: true,
+		Quick:                  false,
+		Tracing:                fmt.Sprintf("file:./pulumi.trace"),
+		PreviewCompletedHook:   searchForGoListTrace,
+	}
+
+	integration.ProgramTest(t, opts)
+
+	if foundTrace == nil {
+		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
+	}
 }
