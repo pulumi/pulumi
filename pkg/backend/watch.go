@@ -70,8 +70,8 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 
 	events := make(chan notify.EventInfo, 1)
 
-	for _, element := range op.Opts.WatchPaths {
-		if err := notify.Watch(path.Join(op.Root, element, "..."), events, notify.All); err != nil {
+	for _, currentPath := range paths {
+		if err := notify.Watch(path.Join(op.Root, currentPath, "..."), events, notify.All); err != nil {
 			return result.FromError(err)
 		}
 	}
