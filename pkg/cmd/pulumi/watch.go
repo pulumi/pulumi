@@ -147,7 +147,7 @@ func newWatchCmd() *cobra.Command {
 	}
 
 	cmd.PersistentFlags().StringArrayVarP(
-		&pathArray, "path", "", []string{},
+		&pathArray, "path", "", []string{""},
 		"Specify one or more paths that need to be watched. Defaults to working directory")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
