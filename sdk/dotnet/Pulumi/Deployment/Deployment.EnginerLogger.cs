@@ -3,16 +3,18 @@
 using System;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 using Pulumirpc;
 
 namespace Pulumi
 {
     public sealed partial class Deployment
     {
-        private class Logger : ILogger
+        private class EngineLogger : IEngineLogger
         {
             private readonly object _logGate = new object();
             private readonly IDeploymentInternal _deployment;
+            private readonly ILogger _deploymentLogger;
             private readonly IEngine _engine;
 
             // We serialize all logging tasks so that the engine doesn't hear about them out of order.
@@ -20,9 +22,10 @@ namespace Pulumi
             private Task _lastLogTask = Task.CompletedTask;
             private int _errorCount;
 
-            public Logger(IDeploymentInternal deployment, IEngine engine)
+            public EngineLogger(IDeploymentInternal deployment, ILogger deploymentLogger, IEngine engine)
             {
                 _deployment = deployment;
+                _deploymentLogger = deploymentLogger;
                 _engine = engine;
             }
 
@@ -40,9 +43,9 @@ namespace Pulumi
             /// <summary>
             /// Logs a debug-level message that is generally hidden from end-users.
             /// </summary>
-            Task ILogger.DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
+            Task IEngineLogger.DebugAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                _deployment.Serilogger.Debug(message);
+                _deploymentLogger.LogDebug(message);
                 return LogImplAsync(LogSeverity.Debug, message, resource, streamId, ephemeral);
             }
 
@@ -50,18 +53,18 @@ namespace Pulumi
             /// Logs an informational message that is generally printed to stdout during resource
             /// operations.
             /// </summary>
-            Task ILogger.InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
+            Task IEngineLogger.InfoAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                _deployment.Serilogger.Information(message);
+                _deploymentLogger.LogInformation(message);
                 return LogImplAsync(LogSeverity.Info, message, resource, streamId, ephemeral);
             }
 
             /// <summary>
             /// Warn logs a warning to indicate that something went wrong, but not catastrophically so.
             /// </summary>
-            Task ILogger.WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
+            Task IEngineLogger.WarnAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
             {
-                _deployment.Serilogger.Warning(message);
+                _deploymentLogger.LogWarning(message);
                 return LogImplAsync(LogSeverity.Warning, message, resource, streamId, ephemeral);
             }
 
@@ -69,12 +72,12 @@ namespace Pulumi
             /// Logs a fatal condition. Consider raising an exception
             /// after calling this method to stop the Pulumi program.
             /// </summary>
-            Task ILogger.ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
+            Task IEngineLogger.ErrorAsync(string message, Resource? resource, int? streamId, bool? ephemeral)
                 => ErrorAsync(message, resource, streamId, ephemeral);
 
             private Task ErrorAsync(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
             {
-                _deployment.Serilogger.Error(message);
+                _deploymentLogger.LogError(message);
                 return LogImplAsync(LogSeverity.Error, message, resource, streamId, ephemeral);
             }
 
@@ -95,7 +98,7 @@ namespace Pulumi
                     task = _lastLogTask;
                 }
 
-                _deployment.Runner.RegisterTask($"Log: {severity}: {message}", task);
+                _deployment.Runner.RegisterTask(message, task);
                 return task;
             }
 

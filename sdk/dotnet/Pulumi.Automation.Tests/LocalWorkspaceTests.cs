@@ -10,11 +10,16 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
 using Pulumi.Automation.Exceptions;
 using Semver;
+using Serilog;
+using Serilog.Extensions.Logging;
 using Xunit;
+using Xunit.Abstractions;
+using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Pulumi.Automation.Tests
 {
@@ -48,6 +53,20 @@ namespace Pulumi.Automation.Tests
                 return $"{projectName}:{key}";
 
             return string.Empty;
+        }
+
+        private ILogger TestLogger { get; }
+
+        public LocalWorkspaceTests(ITestOutputHelper output)
+        {
+            var logger = new LoggerConfiguration()
+                .MinimumLevel.Verbose()
+                .WriteTo.TestOutput(output, outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj}{NewLine}{Exception}")
+                .CreateLogger();
+
+            var loggerFactory = new SerilogLoggerFactory(logger);
+
+            TestLogger = loggerFactory.CreateLogger<LocalWorkspaceTests>();
         }
 
         [Theory]
@@ -725,27 +744,27 @@ namespace Pulumi.Automation.Tests
             try
             {
                 // pulumi preview
-                var previewResult = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                var previewResult = await RunCommand(stack.PreviewAsync, "preview", new PreviewOptions());
                 Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Create, out var createCount));
                 Assert.Equal(1, createCount);
 
                 // pulumi up
-                var upResult = await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+                var upResult = await RunCommand(stack.UpAsync, "up", new UpOptions());
                 Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
 
                 // pulumi preview
-                var previewResultAgain = await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                var previewResultAgain = await RunCommand(stack.PreviewAsync, "preview", new PreviewOptions());
                 Assert.True(previewResultAgain.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
                 Assert.Equal(1, sameCount);
 
                 // pulumi refresh
-                var refreshResult = await RunCommand<UpdateResult, RefreshOptions>(stack.RefreshAsync, "refresh");
+                var refreshResult = await RunCommand(stack.RefreshAsync, "refresh", new RefreshOptions());
                 Assert.Equal(UpdateKind.Refresh, refreshResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, refreshResult.Summary.Result);
 
                 // pulumi destroy
-                var destroyResult = await RunCommand<UpdateResult, DestroyOptions>(stack.DestroyAsync, "destroy");
+                var destroyResult = await RunCommand(stack.DestroyAsync, "destroy", new DestroyOptions());
                 Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
             }
@@ -754,12 +773,12 @@ namespace Pulumi.Automation.Tests
                 await stack.Workspace.RemoveStackAsync(stackName);
             }
 
-            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command, TOptions options)
                 where TOptions : UpdateOptions, new()
             {
                 var events = new List<EngineEvent>();
-
-                var result = await func(new TOptions { OnEvent = events.Add }, CancellationToken.None);
+                options.OnEvent = events.Add;
+                var result = await func(options, CancellationToken.None);
 
                 var seenSummaryEvent = events.Any(@event => @event.SummaryEvent != null);
                 var seenCancelEvent = events.Any(@event => @event.CancelEvent != null);
@@ -872,17 +891,17 @@ namespace Pulumi.Automation.Tests
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi preview
-                await RunCommand<PreviewResult, PreviewOptions>(stack.PreviewAsync, "preview");
+                await RunCommand(stack.PreviewAsync, "preview", new PreviewOptions());
 
                 // pulumi up
-                await RunCommand<UpResult, UpOptions>(stack.UpAsync, "up");
+                await RunCommand(stack.UpAsync, "up", new UpOptions());
             }
             finally
             {
                 await stack.Workspace.RemoveStackAsync(stackName);
             }
 
-            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command)
+            static async Task<T> RunCommand<T, TOptions>(Func<TOptions, CancellationToken, Task<T>> func, string command, TOptions options)
                 where TOptions : UpdateOptions, new()
             {
                 var expectedWarnings = new[]
@@ -927,17 +946,14 @@ namespace Pulumi.Automation.Tests
                 };
 
                 var events = new List<DiagnosticEvent>();
-
-                var result = await func(new TOptions
+                options.OnEvent = @event =>
                 {
-                    OnEvent = @event =>
+                    if (@event.DiagnosticEvent?.Severity == "warning")
                     {
-                        if (@event.DiagnosticEvent?.Severity == "warning")
-                        {
-                            events.Add(@event.DiagnosticEvent);
-                        }
+                        events.Add(@event.DiagnosticEvent);
                     }
-                }, CancellationToken.None);
+                };
+                var result = await func(options, CancellationToken.None);
 
                 foreach (var expected in expectedWarnings)
                 {
@@ -1467,10 +1483,102 @@ namespace Pulumi.Automation.Tests
             );
         }
 
+        [Fact]
+        public async Task InlineProgramLoggerCanBeOverridden()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                Log.Debug("test");
+            });
+
+            var loggerWasInvoked = false;
+            var logger = new CustomLogger(() => loggerWasInvoked = true);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_logger_override";
+
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    Logger = logger,
+                });
+
+            // make sure workspace logger is used
+            await stack.PreviewAsync();
+            Assert.True(loggerWasInvoked);
+
+            // preview logger is used
+            loggerWasInvoked = false;
+            stack.Workspace.Logger = null;
+            await stack.PreviewAsync(new PreviewOptions
+            {
+                Logger = logger,
+            });
+            Assert.True(loggerWasInvoked);
+
+            // up logger is used
+            loggerWasInvoked = false;
+            await stack.UpAsync(new UpOptions
+            {
+                Logger = logger,
+            });
+            Assert.True(loggerWasInvoked);
+
+            await stack.DestroyAsync();
+        }
+
+        [Fact]
+        public async Task InlineProgramLoggerCanRedirectToTestOutput()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                Log.Info("Pulumi.Log calls appear in test output");
+            });
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "inline_logger_test_output";
+
+            using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
+                new InlineProgramArgs(projectName, stackName, program)
+                {
+                    Logger = TestLogger
+                });
+
+            TestLogger.LogInformation("Previewing stack...");
+            await stack.PreviewAsync();
+
+            TestLogger.LogInformation("Updating stack...");
+            await stack.UpAsync();
+
+            TestLogger.LogInformation("Destroying stack...");
+            await stack.DestroyAsync();
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";
             return Path.Combine(dir, path);
+        }
+
+        private class CustomLogger : ILogger
+        {
+            private readonly Action _action;
+
+            public CustomLogger(Action action)
+            {
+                _action = action;
+            }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                throw new NotImplementedException();
+            }
+
+            public bool IsEnabled(LogLevel logLevel)
+                => true;
+
+            public void Log<TState>(LogLevel logLevel, EventId eventId, TState state, Exception exception, Func<TState, Exception, string> formatter)
+                => _action();
         }
     }
 }
