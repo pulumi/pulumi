@@ -124,8 +124,6 @@ func newWatchCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 			}
 
-			opts.WatchPaths = pathArray
-
 			res := s.Watch(commandContext(), backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
@@ -134,7 +132,8 @@ func newWatchCmd() *cobra.Command {
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
-			})
+			}, pathArray)
+
 			switch {
 			case res != nil && res.Error() == context.Canceled:
 				return result.FromError(errors.New("update cancelled"))
