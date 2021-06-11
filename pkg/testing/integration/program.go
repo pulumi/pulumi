@@ -222,7 +222,7 @@ type ProgramTestOptions struct {
 	//
 	// Template `{command}` syntax will be expanded to the current
 	// command name such as `pulumi-stack-rm`. This is useful for
-	// file-based tracing since `ProgramTest` performs mutliple
+	// file-based tracing since `ProgramTest` performs multiple
 	// CLI invocations that can inadvertently overwrite the trace
 	// file.
 	Tracing string
