@@ -35,7 +35,7 @@ import (
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
-func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier) result.Result {
+func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier, paths []string) result.Result {
 
 	opts := ApplierOptions{
 		DryRun:   false,
