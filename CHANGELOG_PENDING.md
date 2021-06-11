@@ -8,7 +8,7 @@
 
 - [codegen] - Include properties with an underlying type of string on Go provider instances.
 
-- [cli] - Provide a more useful error instead of panicking when codegen fails during import.
+- [cli] - Provide a more helpful error instead of panicking when codegen fails during import.
   [#7265](https://github.com/pulumi/pulumi/pull/7265)
 
 ### Bug Fixes
