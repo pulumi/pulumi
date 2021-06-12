@@ -68,8 +68,16 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 
 	events := make(chan notify.EventInfo, 1)
 
-	for _, currentPath := range paths {
-		if err := notify.Watch(path.Join(op.Root, currentPath, "..."), events, notify.All); err != nil {
+	for _, p := range paths {
+		// Provided paths can be both relative and absolute.
+		watchPath := ""
+		if path.IsAbs(p) {
+			watchPath = path.Join(p, "...")
+		} else {
+			watchPath = path.Join(op.Root, p, "...")
+		}
+
+		if err := notify.Watch(watchPath, events, notify.All); err != nil {
 			return result.FromError(err)
 		}
 	}
