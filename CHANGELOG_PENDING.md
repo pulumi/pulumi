@@ -16,6 +16,9 @@
 
 - [codegen/python] - Cache package version for improved performance.
   [#7293](https://github.com/pulumi/pulumi/pull/7293)
+ 
+- [sdk/python] - Reduce `log.debug` calls for improved performance
+  [#7295](https://github.com/pulumi/pulumi/pull/7295)
 
 ### Bug Fixes
 

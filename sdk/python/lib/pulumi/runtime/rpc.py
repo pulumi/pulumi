@@ -126,7 +126,8 @@ async def serialize_properties(inputs: 'Inputs',
             translated_name = k
             if translate is not None:
                 translated_name = translate(k)
-                log.debug(f"top-level input property translated: {k} -> {translated_name}")
+                if settings.excessive_debug_output:
+                    log.debug(f"top-level input property translated: {k} -> {translated_name}")
             # pylint: disable=unsupported-assignment-operation
             struct[translated_name] = result
             property_deps[translated_name] = deps
@@ -316,7 +317,8 @@ async def serialize_property(value: 'Input[Any]',
             transformed_key = k
             if translate is not None:
                 transformed_key = translate(k)
-                log.debug(f"transforming input property: {k} -> {transformed_key}")
+                if settings.excessive_debug_output:
+                    log.debug(f"transforming input property: {k} -> {transformed_key}")
             obj[transformed_key] = await serialize_property(value[k], deps, input_transformer, get_type(transformed_key))
 
         return obj
@@ -543,7 +545,6 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
         # Important to note here is that the resolver's future is assigned to the resource object using the
         # name before translation. When properties are returned from the engine, we must first translate the name
         # from the Pulumi name to the Python name and then use *that* name to index into the resolvers table.
-        log.debug(f"adding resolver {name}")
         resolvers[name] = functools.partial(do_resolve, res, resolve_value, resolve_is_known, resolve_is_secret, resolve_deps)
         res.__dict__[name] = Output(resolve_deps, resolve_value, resolve_is_known, resolve_is_secret)
 
@@ -696,8 +697,9 @@ def resolve_outputs(res: 'Resource',
         translated_key = translate(key)
         translated_value = translate_output_properties(value, translate_to_pass, types.get(key),
                                                        transform_using_type_metadata)
-        log.debug(f"incoming output property translated: {key} -> {translated_key}")
-        log.debug(f"incoming output value translated: {value} -> {translated_value}")
+        if settings.excessive_debug_output:
+            log.debug(f"incoming output property translated: {key} -> {translated_key}")
+            log.debug(f"incoming output value translated: {value} -> {translated_value}")
         all_properties[translated_key] = translated_value
 
     if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
@@ -721,7 +723,8 @@ def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str,
             continue
 
         # Otherwise, unmarshal the value, and store it on the resource object.
-        log.debug(f"looking for resolver using translated name {key}")
+        if settings.excessive_debug_output:
+            log.debug(f"looking for resolver using translated name {key}")
         resolve = resolvers.get(key)
         if resolve is None:
             # engine returned a property that was not in our initial property-map.  This can happen
@@ -773,7 +776,8 @@ def resolve_outputs_due_to_exception(resolvers: Dict[str, Resolver], exn: Except
     :param exn: The exception that occurred when trying (and failing) to create this resource.
     """
     for key, resolve in resolvers.items():
-        log.debug(f"sending exception to resolver for {key}")
+        if settings.excessive_debug_output:
+            log.debug(f"sending exception to resolver for {key}")
         resolve(None, False, False, None, exn)
 
 
@@ -811,7 +815,8 @@ def register_resource_package(pkg: str, package: ResourcePackage):
         resource_packages = []
         _RESOURCE_PACKAGES[pkg] = resource_packages
 
-    log.debug(f"registering package {pkg}@{package.version()}")
+    if settings.excessive_debug_output:
+        log.debug(f"registering package {pkg}@{package.version()}")
     resource_packages.append(package)
 
 
@@ -857,7 +862,8 @@ def register_resource_module(pkg: str, mod: str, module: ResourceModule):
         resource_modules = []
         _RESOURCE_MODULES[key] = resource_modules
 
-    log.debug(f"registering module {key}@{module.version()}")
+    if settings.excessive_debug_output:
+        log.debug(f"registering module {key}@{module.version()}")
     resource_modules.append(module)
 
 
