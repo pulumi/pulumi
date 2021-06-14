@@ -18,5 +18,8 @@
 
 - [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
 
+- [sdk/python] - Prevent infinite loops when iterating `Output` objects
+  [#7288](https://github.com/pulumi/pulumi/pull/7288)
+
 - [codegen/python] - Rename conflicting ResourceArgs classes
   [#7171](https://github.com/pulumi/pulumi/pull/7171)
