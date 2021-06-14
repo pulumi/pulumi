@@ -193,3 +193,33 @@ class OutputFromInputTests(unittest.TestCase):
         self.assertIsInstance(x_val, OutputFromInputTests.FooArgs)
         self.assertIsInstance(x_val.nested, OutputFromInputTests.NestedArgs)
         self.assertEqual(x_val.nested.hello, "world")
+
+class Obj:
+    def __init__(self, x: str):
+        self.x = x
+
+class OutputHoistingTests(unittest.TestCase):
+    @pulumi_test
+    async def test_item(self):
+        o = Output.from_input([1,2,3])
+        x = o[0]
+        x_val = await x.future()
+        self.assertEqual(x_val, 1)
+
+    @pulumi_test
+    async def test_attr(self):
+        o = Output.from_input(Obj("hello"))
+        x = o.x
+        x_val = await x.future()
+        self.assertEqual(x_val, "hello")
+
+    @pulumi_test
+    async def test_no_iter(self):
+        x = Output.from_input([1,2,3])
+        errored = False
+        try:
+            for i in x:
+                print(i)
+        except TypeError:
+            errored = True
+        self.assertTrue(errored)    

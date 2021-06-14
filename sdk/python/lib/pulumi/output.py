@@ -235,6 +235,13 @@ class Output(Generic[T]):
         """
         return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key], True)
 
+    def __iter__(self) -> Any:
+        """
+        Output instances are not iterable, but since they implement __getitem__ we need to explicitly prevent
+        iteration by implementing __iter__ to raise a TypeError.
+        """
+        raise TypeError("'Output' object is not iterable, consider iterating the underlying value inside an 'apply'")
+
     @staticmethod
     def from_input(val: Input[T]) -> 'Output[T]':
         """
