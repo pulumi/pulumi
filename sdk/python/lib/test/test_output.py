@@ -216,10 +216,6 @@ class OutputHoistingTests(unittest.TestCase):
     @pulumi_test
     async def test_no_iter(self):
         x = Output.from_input([1,2,3])
-        errored = False
-        try:
+        with self.assertRaises(TypeError):
             for i in x:
                 print(i)
-        except TypeError:
-            errored = True
-        self.assertTrue(errored)    
