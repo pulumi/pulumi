@@ -14,6 +14,9 @@
 - [cli] - Provide a more helpful error instead of panicking when codegen fails during import.
   [#7265](https://github.com/pulumi/pulumi/pull/7265)
 
+- [sdk/python] - Reduce `log.debug` calls for improved performance
+  [#7295](https://github.com/pulumi/pulumi/pull/7295)
+
 ### Bug Fixes
 
 - [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
