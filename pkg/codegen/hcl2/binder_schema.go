@@ -168,7 +168,7 @@ func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]mode
 		seen[src] = objType
 		for _, prop := range src.Properties {
 			t := b.schemaTypeToTypeImpl(prop.Type, seen)
-			if !prop.IsRequired {
+			if !prop.IsRequired || b.options.allowMissingProperties {
 				t = model.NewOptionalType(t)
 			}
 			if prop.ConstValue != nil {

@@ -29,9 +29,10 @@ import (
 )
 
 type bindOptions struct {
-	allowMissingVariables bool
-	loader                schema.Loader
-	packageCache          *PackageCache
+	allowMissingVariables  bool
+	allowMissingProperties bool
+	loader                 schema.Loader
+	packageCache           *PackageCache
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -56,6 +57,10 @@ type BindOption func(*bindOptions)
 
 func AllowMissingVariables(options *bindOptions) {
 	options.allowMissingVariables = true
+}
+
+func AllowMissingProperties(options *bindOptions) {
+	options.allowMissingProperties = true
 }
 
 func PluginHost(host plugin.Host) BindOption {
