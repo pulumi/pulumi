@@ -1554,6 +1554,80 @@ namespace Pulumi.Automation.Tests
             await stack.DestroyAsync();
         }
 
+        [Fact]
+        public async Task InlineProgramExceptionDuringUpShouldNotDeleteResources()
+        {
+            var program = PulumiFn.Create(() =>
+            {
+                var config = new Config();
+                var a = new ComponentResource("test:res:a", "a", null);
+
+                if (config.GetBoolean("ShouldFail") == true)
+                    throw new FileNotFoundException("ShouldFail");
+
+                var b = new ComponentResource("test:res:b", "b", null);
+                var c = new ComponentResource("test:res:c", "c", null);
+            });
+            Assert.IsType<PulumiFnInline>(program);
+
+            var stackName = $"{RandomStackName()}";
+            var projectName = "test_optionally_failing_stack";
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var config = new Dictionary<string, ConfigValue>()
+            {
+                ["ShouldFail"] = new ConfigValue("false"),
+            };
+            try
+            {
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi up
+                var upResult = await stack.UpAsync();
+                Assert.Equal(UpdateKind.Update, upResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, upResult.Summary.Result);
+                Assert.True(upResult.Summary.ResourceChanges!.TryGetValue(OperationType.Create, out var upCount));
+                Assert.Equal(4, upCount);
+
+                config["ShouldFail"] = new ConfigValue("true");
+
+                await stack.SetAllConfigAsync(config);
+                var sb = new System.Text.StringBuilder();
+
+                await Assert.ThrowsAsync<FileNotFoundException>(
+                    () => stack.UpAsync(new UpOptions()
+                    {
+                        OnStandardOutput = msg => sb.AppendLine(msg),
+                    }));
+
+                var upOutput = sb.ToString();
+                Assert.DoesNotContain("test:res:b b deleted", upOutput);
+                Assert.DoesNotContain("test:res:c c deleted", upOutput);
+
+                config["ShouldFail"] = new ConfigValue("false");
+
+                await stack.SetAllConfigAsync(config);
+
+                // pulumi preview
+                var previewResult = await stack.PreviewAsync(new PreviewOptions() { OnStandardOutput = Console.WriteLine });
+                Assert.True(previewResult.ChangeSummary.TryGetValue(OperationType.Same, out var sameCount));
+                Assert.Equal(4, sameCount);
+            }
+            finally
+            {
+                var destroyResult = await stack.DestroyAsync();
+                Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
+                Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
+                await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
         private string ResourcePath(string path, [CallerFilePath] string pathBase = "LocalWorkspaceTests.cs")
         {
             var dir = Path.GetDirectoryName(pathBase) ?? ".";

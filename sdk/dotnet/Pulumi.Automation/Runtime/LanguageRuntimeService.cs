@@ -1,5 +1,6 @@
 ﻿// Copyright 2016-2021, Pulumi Corporation
 
+using System;
 using System.Linq;
 using System.Runtime.ExceptionServices;
 using System.Threading;
@@ -60,7 +61,14 @@ namespace Pulumi.Automation
                 runner => this._callerContext.Program.InvokeAsync(runner, cts.Token))
                 .ConfigureAwait(false);
 
-            return new RunResponse();
+            if (this._callerContext.ExceptionDispatchInfo is null)
+                return new RunResponse();
+
+            return new RunResponse()
+            {
+                Bail = true,
+                Error = this._callerContext.ExceptionDispatchInfo.SourceException.Message,
+            };
         }
 
         public class CallerContext
