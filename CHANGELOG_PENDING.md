@@ -22,6 +22,9 @@
 
 ### Bug Fixes
 
+- [sdk/dotnet] - Fix resources destroyed after exception thrown during inline program
+  [#7299](https://github.com/pulumi/pulumi/pull/7299)
+  
 - [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
 
 - [sdk/python] - Prevent infinite loops when iterating `Output` objects
