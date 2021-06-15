@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -29,8 +29,7 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "environment",
 		Short: "Display diagnostic environment information",
-		Long: "Display the Pulumi version, OS, \n" +
-			"console and backend URLs",
+		Long:  "Display the Pulumi version, OS, runtime info, backend URL and stack data",
 		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
