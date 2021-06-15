@@ -20,7 +20,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
@@ -36,8 +35,9 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			var os string = runtime.GOOS
+			// OS Info
 			// TODO: See how to get actual OS version numbers
+			var os string = runtime.GOOS
 			switch os {
 		    case "windows":
 		        os = "Windows"
@@ -47,20 +47,55 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 		        os = "Linux"
 		    }
 
+		    // Console URL Info
 			b, err := currentBackend(opts)
 			if err != nil {
 				return err
 			}
 
-			cloudURL, err := workspace.GetCurrentCloudURL()
+			// Stack Info
+			s, err := requireStack("", true, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}
 
+			snap, err := s.Snapshot(commandContext())
+			if err != nil {
+				return err
+			}
+
+			var rescnt int
+			if snap != nil {
+				rescnt = len(snap.Resources)
+			}
+
+			// Outputs
 			fmt.Printf("Pulumi Version: %s\n", version.Version)
 			fmt.Printf("OS: %s %s\n", os, runtime.GOARCH)
 			fmt.Printf("Console URL: %s\n", b.URL())
-			fmt.Printf("Backend URL: %s\n", cloudURL)
+			fmt.Printf("Current stack resources (%d):\n", rescnt)
+			if rescnt == 0 {
+				fmt.Printf("    No resources currently in this stack\n")
+			} else {
+				rows, ok := renderTree(snap, false /*showURNs*/, false /*showIDs*/)
+				if !ok {
+					for _, res := range snap.Resources {
+						rows = append(rows, renderResourceRow(res, "", "    ", false /*showURNs*/, false /*showIDs*/))
+					}
+				}
+
+				cmdutil.PrintTable(cmdutil.Table{
+					Headers: []string{"TYPE", "NAME"},
+					Rows:    rows,
+					Prefix:  "    ",
+				})
+
+				outputs, err := getStackOutputs(snap, false /*showSecrets*/)
+				if err == nil {
+					fmt.Printf("\n")
+					printStackOutputs(outputs)
+				}
+			}
 
 			return nil
 		}),
