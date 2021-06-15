@@ -275,9 +275,25 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
-                    exceptionInfo.Throw();
+                CommandResult upResult;
+                try
+                {
+                    upResult = await this.RunCommandAsync(
+                        args,
+                        options?.OnStandardOutput,
+                        options?.OnStandardError,
+                        options?.OnEvent,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                        exceptionInfo.Throw();
+
+                    // this won't be hit if we have an inline
+                    // program exception
+                    throw;
+                }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
                 var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -390,9 +406,25 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, OnPreviewEvent, cancellationToken).ConfigureAwait(false);
-                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
-                    exceptionInfo.Throw();
+                CommandResult result;
+                try
+                {
+                    result = await this.RunCommandAsync(
+                        args,
+                        options?.OnStandardOutput,
+                        options?.OnStandardError,
+                        OnPreviewEvent,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                        exceptionInfo.Throw();
+
+                    // this won't be hit if we have an inline
+                    // program exception
+                    throw;
+                }
 
                 if (summaryEvent is null)
                 {

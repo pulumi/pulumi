@@ -84,6 +84,7 @@ namespace Pulumi.Automation.Commands
             {
                 throw CommandException.CreateFromResult(result);
             }
+
             return result;
         }
 
