@@ -198,6 +198,20 @@ func generateImportedDefinitions(out io.Writer, stackName tokens.QName, projectN
 	snap *deploy.Snapshot, programGenerator programGeneratorFunc, names importer.NameTable,
 	imports []deploy.Import, protectResources bool) (bool, error) {
 
+	defer func() {
+		v := recover()
+		if v != nil {
+			errMsg := strings.Builder{}
+			errMsg.WriteString("Your resource has been imported into Pulumi state, but there was an error generating the import code.\n") //nolint:lll
+			errMsg.WriteString("\n")
+			if strings.Contains(fmt.Sprintf("%v", v), "invalid Go source code:") {
+				errMsg.WriteString("You will need to copy and paste the generated code into your Pulumi application and manually edit it to correct any errors.\n\n") //nolint:lll
+			}
+			errMsg.WriteString(fmt.Sprintf("%v\n", v))
+			fmt.Print(errMsg.String())
+		}
+	}()
+
 	resourceTable := map[resource.URN]*resource.State{}
 	for _, r := range snap.Resources {
 		if !r.Delete {
@@ -499,7 +513,7 @@ func newImportCmd() *cobra.Command {
 						return result.FromError(err)
 					}
 					if protectResources {
-						_, err := helperWriter.Write([]byte("Please note, that the imported resources are marked as protected. " +
+						_, err := helperWriter.Write([]byte("Please note that the imported resources are marked as protected. " +
 							"To destroy them\n" +
 							"you will need to remove the `protect` option and run `pulumi update` *before*\n" +
 							"the destroy will take effect.\n\n"))

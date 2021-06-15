@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 
 namespace Pulumi
 {
-    internal interface ILogger
+    internal interface IEngineLogger
     {
         bool LoggedErrors { get; }
 

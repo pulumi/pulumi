@@ -345,6 +345,9 @@
         <member name="P:Pulumi.Automation.LocalWorkspace.Program">
             <inheritdoc/>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.Logger">
+            <inheritdoc/>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.EnvironmentVariables">
             <inheritdoc/>
         </member>
@@ -632,6 +635,12 @@
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for inline programs. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.LocalWorkspaceOptions.Program"/> is also provided.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspaceOptions.EnvironmentVariables">
             <summary>
             Environment values scoped to the current workspace. These will be supplied to every
@@ -659,6 +668,12 @@
         <member name="T:Pulumi.Automation.PreviewOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.PreviewOptions.Program"/> is also provided.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.ProjectBackend">
@@ -862,6 +877,12 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.UpOptions.Program"/> is also provided.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Workspace">
             <summary>
             Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -899,6 +920,12 @@
             The inline program <see cref="T:Pulumi.Automation.PulumiFn"/> to be used for Preview/Update operations if any.
             <para/>
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Workspace.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.Workspace.Program"/> is also provided.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Workspace.EnvironmentVariables">

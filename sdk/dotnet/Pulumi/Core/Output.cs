@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
@@ -143,7 +144,7 @@ namespace Pulumi
 
             if (Deployment.TryGetInternalInstance(out var instance))
             {
-                instance.Runner.RegisterTask("Output<>", dataTask);
+                instance.Runner.RegisterTask(TypeNameHelper.GetTypeDisplayName(GetType(), false), dataTask);
             }
         }
 

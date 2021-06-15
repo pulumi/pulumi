@@ -81,7 +81,6 @@ async def prepare_resource(res: 'Resource',
                            opts: Optional['ResourceOptions'],
                            typ: Optional[type] = None) -> ResourceResolverOperations:
     from .. import Output  # pylint: disable=import-outside-toplevel
-    log.debug(f"resource {props} preparing to wait for dependencies")
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
     if opts is not None and opts.depends_on is not None:
@@ -154,7 +153,6 @@ async def prepare_resource(res: 'Resource',
         if not alias_val in aliases:
             aliases.append(alias_val)
 
-    log.debug(f"resource {props} prepared")
     return ResourceResolverOperations(
         parent_urn,
         serialized_props,
@@ -311,7 +309,6 @@ def read_resource(res: 'CustomResource',
     # that we are populating the Resource object with properties associated with an already-live resource.
     #
     # Same as below, we initialize the URN property on the resource, which will always be resolved.
-    log.debug("preparing read resource for RPC")
     (resolve_urn, res.__dict__["urn"]) = resource_output(res)
 
     # Furthermore, since resources being Read must always be custom resources (enforced in the
@@ -328,7 +325,6 @@ def read_resource(res: 'CustomResource',
 
     async def do_read():
         try:
-            log.debug(f"preparing read: ty={ty}, name={name}, id={opts.id}")
             resolver = await prepare_resource(res, ty, True, False, props, opts, typ)
 
             # Resolve the ID that we were given. Note that we are explicitly discarding the list of
@@ -419,7 +415,6 @@ def register_resource(res: 'Resource',
     # Simply initialize the URN property and get prepared to resolve it later on.
     # Note: a resource urn will always get a value, and thus the output property
     # for it can always run .apply calls.
-    log.debug("preparing resource for RPC")
     (resolve_urn, res.__dict__["urn"]) = resource_output(res)
 
     # If a custom resource, make room for the ID property.
@@ -434,7 +429,6 @@ def register_resource(res: 'Resource',
 
     async def do_register():
         try:
-            log.debug(f"preparing resource registration: ty={ty}, name={name}")
             resolver = await prepare_resource(res, ty, custom, remote, props, opts, typ)
             log.debug(f"resource registration prepared: ty={ty}, name={name}")
 

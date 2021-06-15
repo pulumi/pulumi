@@ -1,9 +1,12 @@
 ﻿using System.Collections.Generic;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi
 {
     internal class InlineDeploymentSettings
     {
+        public ILogger? Logger { get; }
+
         public string EngineAddr { get; }
 
         public string MonitorAddr { get; }
@@ -21,23 +24,25 @@ namespace Pulumi
         public bool IsDryRun { get; }
 
         public InlineDeploymentSettings(
+            ILogger? logger,
             string engineAddr,
             string monitorAddr,
             IDictionary<string, string> config,
+            IEnumerable<string>? configSecretKeys,
             string project,
             string stack,
             int parallel,
-            bool isDryRun,
-            IEnumerable<string>? configSecretKeys = null)
+            bool isDryRun)
         {
+            Logger = logger;
             EngineAddr = engineAddr;
             MonitorAddr = monitorAddr;
             Config = config;
+            ConfigSecretKeys = configSecretKeys;
             Project = project;
             Stack = stack;
             Parallel = parallel;
             IsDryRun = isDryRun;
-            ConfigSecretKeys = configSecretKeys;
         }
     }
 }
