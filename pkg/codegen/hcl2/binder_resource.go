@@ -264,7 +264,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	}
 
 	// Typecheck the attributes.
-	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+	if objectType, ok := node.InputType.(*model.ObjectType); ok && !b.options.skipResourceTypecheck {
 		attrNames := codegen.StringSet{}
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)
