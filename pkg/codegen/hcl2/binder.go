@@ -31,6 +31,7 @@ import (
 type bindOptions struct {
 	allowMissingVariables  bool
 	allowMissingProperties bool
+	skipResourceTypecheck  bool
 	loader                 schema.Loader
 	packageCache           *PackageCache
 }
@@ -61,6 +62,10 @@ func AllowMissingVariables(options *bindOptions) {
 
 func AllowMissingProperties(options *bindOptions) {
 	options.allowMissingProperties = true
+}
+
+func SkipResourceTypechecking(options *bindOptions) {
+	options.skipResourceTypecheck = true
 }
 
 func PluginHost(host plugin.Host) BindOption {
