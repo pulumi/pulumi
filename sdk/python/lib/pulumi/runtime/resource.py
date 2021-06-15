@@ -505,13 +505,33 @@ def register_resource(res: 'Resource',
                     return None
 
             resp = await asyncio.get_event_loop().run_in_executor(None, do_rpc_call)
+        except Exception as exn:
+            log.debug(f"exception when preparing or executing rpc: {traceback.format_exc()}")
+            rpc.resolve_outputs_due_to_exception(resolvers, exn)
+            resolve_urn(None, True, False, exn)
+            if resolve_id is not None:
+                resolve_id(None, True, False, exn)
+            raise
 
-            if resp is None:
-                return
+        if resp is None:
+            return
 
+        # At this point we would like to return successfully and call
+        # `rpc.resolve_outputs`, but unfortunately that itself can
+        # throw an exception sometimes. This was causing Pulumi
+        # program to hang, so the additional try..except block is used
+        # to propagate this exception into `rpc.resolve_outputs` which
+        # causes it to display.
+
+        resolve_outputs_called = False
+        resolve_id_called = False
+        resolve_urn_called = False
+
+        try:
             log.debug(f"resource registration successful: ty={ty}, urn={resp.urn}")
+
             resolve_urn(resp.urn, True, False, None)
-            resolved_urn = True
+            resolve_urn_called = True
 
             if resolve_id is not None:
                 # The ID is known if (and only if) it is a non-empty string. If it's either None or an
@@ -519,7 +539,7 @@ def register_resource(res: 'Resource',
                 # the empty string as an ID when doing a preview.
                 is_known = bool(resp.id)
                 resolve_id(resp.id, is_known, False, None)
-                resolved_id = True
+                resolve_id_called = True
 
             deps = {}
             rpc_deps = resp.propertyDependencies
@@ -529,15 +549,20 @@ def register_resource(res: 'Resource',
                     deps[k] = set(map(new_dependency, urns))
 
             rpc.resolve_outputs(res, resolver.serialized_props, resp.object, deps, resolvers, transform_using_type_metadata)
+            resolve_outputs_called = True
 
         except Exception as exn:
-            log.debug(
-                f"exception when preparing or executing rpc: {traceback.format_exc()}")
-            rpc.resolve_outputs_due_to_exception(resolvers, exn)
-            if not resolved_urn:
+            log.debug(f"exception after executing rpc: {traceback.format_exc()}")
+
+            if not resolve_outputs_called:
+                rpc.resolve_outputs_due_to_exception(resolvers, exn)
+
+            if not resolve_urn_called:
                 resolve_urn(None, True, False, exn)
-            if resolve_id is not None and not resolved_id:
+
+            if resolve_id is not None and not resolve_id_called:
                 resolve_id(None, True, False, exn)
+
             raise
 
     asyncio.ensure_future(RPC_MANAGER.do_rpc(
