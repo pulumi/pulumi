@@ -16,15 +16,16 @@ package main
 
 import (
 	"fmt"
-	//"os"
 	"runtime"
 	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/spf13/cobra"
 )
 
 func newDiagnosticEnvironmentCmd() *cobra.Command {
+
 	cmd := &cobra.Command{
 		Use:   "environment",
 		Short: "Display diagnostic environment information",
@@ -52,15 +53,19 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 				return err
 			}
 
+			cloudURL, err := workspace.GetCurrentCloudURL()
+			if err != nil {
+				return err
+			}
+
 			fmt.Printf("Pulumi Version: %s\n", version.Version)
 			fmt.Printf("OS: %s %s\n", os, runtime.GOARCH)
-			fmt.Printf("Backend URL: %s\n", b.URL())
-
+			fmt.Printf("Console URL: %s\n", b.URL())
+			fmt.Printf("Backend URL: %s\n", cloudURL)
 
 			return nil
 		}),
 	}
-
 
 	return cmd
 }
