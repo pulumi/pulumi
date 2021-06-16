@@ -12,6 +12,7 @@ require (
 	cloud.google.com/go/storage v1.15.0
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/blang/semver v3.5.1+incompatible
+	github.com/davecgh/go-spew v1.1.1
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
 	github.com/dustin/go-humanize v1.0.0
@@ -22,6 +23,7 @@ require (
 	github.com/google/go-querystring v1.0.0
 	github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5
 	github.com/gorilla/mux v1.7.4
+	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/hcl/v2 v2.3.0
 	github.com/ijc/Gotty v0.0.0-20170406111628-a8b993ba6abd

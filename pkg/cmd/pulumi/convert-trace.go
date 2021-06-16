@@ -15,7 +15,9 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
+	"regexp"
 	"sort"
 	"strings"
 	"time"
@@ -24,6 +26,7 @@ import (
 	"github.com/spf13/cobra"
 	"sourcegraph.com/sourcegraph/appdash"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
@@ -55,6 +58,67 @@ func (s *traceSample) key() string {
 	return strings.Join(s.where, "<")
 }
 
+func findGRPCPayload(t *appdash.Trace) string {
+	for _, a := range t.Annotations {
+		if a.Key == "Msg" {
+			var msg map[string]interface{}
+			if err := json.Unmarshal(a.Value, &msg); err == nil {
+				if req, ok := msg["gRPC request"]; ok {
+					s, _ := req.(string)
+					return s
+				}
+			}
+		}
+	}
+	return ""
+}
+
+var urnFieldRe = regexp.MustCompile(`urn:"([^"]+)"`)
+var tokFieldRe = regexp.MustCompile(`tok:"([^"]+)"`)
+
+func extractResourceType(t *appdash.Trace) string {
+	grpcPayload := findGRPCPayload(t)
+	matches := urnFieldRe.FindStringSubmatch(grpcPayload)
+	if len(matches) == 0 {
+		return ""
+	}
+	urn := resource.URN(matches[1])
+	if !urn.IsValid() {
+		return ""
+	}
+	return string(urn.Type())
+}
+
+func extractFunctionToken(t *appdash.Trace) string {
+	grpcPayload := findGRPCPayload(t)
+	matches := tokFieldRe.FindStringSubmatch(grpcPayload)
+	if len(matches) == 0 {
+		return ""
+	}
+	return matches[1]
+}
+
+func getDecorator(t *appdash.Trace) string {
+	for _, a := range t.Annotations {
+		if a.Key == "pulumi-decorator" && len(a.Value) != 0 {
+			return string(a.Value)
+		}
+	}
+
+	switch t.Name() {
+	case "/pulumirpc.ResourceMonitor/Invoke", "/pulumirpc.ResourceProvider/Invoke":
+		return extractFunctionToken(t)
+	case "/pulumirpc.ResourceMonitor/ReadResource", "/pulumirpc.ResourceMonitor/RegisterResource",
+		"/pulumirpc.ResourceProvider/Check", "/pulumirpc.ResourceProvider/CheckConfig",
+		"/pulumirpc.ResourceProvider/Diff", "/pulumirpc.ResourceProvider/DiffConfig",
+		"/pulumirpc.ResourceProvider/Create", "/pulumirpc.ResourceProvider/Update",
+		"/pulumirpc.ResourceProvider/Delete":
+		return extractResourceType(t)
+	default:
+		return ""
+	}
+}
+
 func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) ([]traceSample, error) {
 	timespanEvent, err := root.TimespanEvent()
 	if err != nil {
@@ -65,6 +129,9 @@ func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) (
 	name := root.Name()
 	if name == "" {
 		name = "span-" + root.ID.String()
+	}
+	if decorator := getDecorator(root); decorator != "" {
+		name += "(" + decorator + ")"
 	}
 
 	// convert each subspan
@@ -92,6 +159,10 @@ func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) (
 
 	// quantize the trace
 	n := int(timespanEvent.End().Sub(start.Add(when)) / quantum)
+	if n == 0 {
+		n = 1
+	}
+
 	result := make([]traceSample, n)
 	for i := 0; i < n; i, when = i+1, when+quantum {
 		if len(samples) == 0 || when < samples[0].when {
@@ -131,7 +202,7 @@ func newConvertTraceCmd() *cobra.Command {
 				return err
 			}
 
-			const quantum = 1 * time.Millisecond
+			const quantum = 500 * time.Microsecond
 
 			var start time.Time
 			for _, t := range roots {
