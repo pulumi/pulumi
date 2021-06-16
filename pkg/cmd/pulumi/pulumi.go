@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +28,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	user "github.com/tweekmonster/luser"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
@@ -198,6 +199,8 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newWhoAmICmd())
 	//     - Policy Management Commands:
 	cmd.AddCommand(newPolicyCmd())
+	//     - Package Commands
+	cmd.AddCommand(newPackageCmd())
 	//     - Advanced Commands:
 	cmd.AddCommand(newCancelCmd())
 	cmd.AddCommand(newImportCmd())
