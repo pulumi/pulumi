@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
@@ -29,6 +30,9 @@ namespace Pulumi
             /// exiting once the set becomes empty.
             /// </summary>
             private readonly Dictionary<Task, List<string>> _inFlightTasks = new Dictionary<Task, List<string>>();
+            private readonly List<Exception> _exceptions = new List<Exception>();
+
+            public ImmutableList<Exception> SwallowedExceptions => this._exceptions.ToImmutableList();
 
             public Runner(IDeploymentInternal deployment, ILogger deploymentLogger)
             {
@@ -190,6 +194,8 @@ namespace Pulumi
 
             private async Task<int> HandleExceptionAsync(Exception exception)
             {
+                this._exceptions.Add(exception);
+
                 if (exception is LogException)
                 {
                     // We got an error while logging itself.  Nothing to do here but print some errors

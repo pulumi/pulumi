@@ -17,11 +17,11 @@ namespace Pulumi.Automation
             this._stackFactory = stackFactory;
         }
 
-        internal override async Task<ExceptionDispatchInfo?> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
+        internal override async Task<InlineDeploymentResult> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
         {
-            ExceptionDispatchInfo? info = null;
+            var result = new InlineDeploymentResult();
 
-            await runner.RunAsync(() =>
+            result.ExitCode = await runner.RunAsync(() =>
             {
                 try
                 {
@@ -34,17 +34,17 @@ namespace Pulumi.Automation
                 // we want to throw to the consumer.
                 catch (TargetInvocationException ex) when (ex.InnerException != null)
                 {
-                    info = ExceptionDispatchInfo.Capture(ex.InnerException);
+                    result.ExceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex.InnerException);
                     throw;
                 }
                 catch (Exception ex)
                 {
-                    info = ExceptionDispatchInfo.Capture(ex);
+                    result.ExceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
                     throw;
                 }
             }).ConfigureAwait(false);
 
-            return info;
+            return result;
         }
     }
 }

@@ -17,11 +17,11 @@ namespace Pulumi.Automation
             this._program = program;
         }
 
-        internal override async Task<ExceptionDispatchInfo?> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
+        internal override async Task<InlineDeploymentResult> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
         {
-            ExceptionDispatchInfo? info = null;
+            var result = new InlineDeploymentResult();
 
-            await runner.RunAsync(async () =>
+            result.ExitCode = await runner.RunAsync(async () =>
             {
                 try
                 {
@@ -29,12 +29,12 @@ namespace Pulumi.Automation
                 }
                 catch (Exception ex)
                 {
-                    info = ExceptionDispatchInfo.Capture(ex);
+                    result.ExceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
                     throw;
                 }
             }, null).ConfigureAwait(false);
 
-            return info;
+            return result;
         }
     }
 }
