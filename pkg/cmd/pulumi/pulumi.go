@@ -226,7 +226,8 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newConvertTraceCmd())
 
 	if !hasDebugCommands() {
-		cmd.PersistentFlags().MarkHidden("tracing-header")
+		err := cmd.PersistentFlags().MarkHidden("tracing-header")
+		contract.IgnoreError(err)
 	}
 
 	return cmd
