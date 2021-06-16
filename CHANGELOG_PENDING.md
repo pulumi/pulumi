@@ -22,6 +22,9 @@
 
 ### Bug Fixes
 
+- [sdk/dotnet] - Fix swallowed nested exceptions with inline program so they correctly bubble to consumer
+  [#7323](https://github.com/pulumi/pulumi/pull/7323)
+
 - [sdk/dotnet] - Fix resources destroyed after exception thrown during inline program
   [#7299](https://github.com/pulumi/pulumi/pull/7299)
   
