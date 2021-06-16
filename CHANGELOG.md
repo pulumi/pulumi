@@ -1,7 +1,9 @@
 CHANGELOG
 =========
 
-## 3.5.0 (2021-06-16)
+## 3.5.1 (2021-06-16)
+
+**Please Note:** Release v3.5.0 failed in our build pipeline so will be rebuilt with a new tag of v3.5.1
 
 ### Improvements
 
