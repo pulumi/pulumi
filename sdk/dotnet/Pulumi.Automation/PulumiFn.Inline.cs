@@ -2,7 +2,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -17,24 +16,7 @@ namespace Pulumi.Automation
             this._program = program;
         }
 
-        internal override async Task<InlineDeploymentResult> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
-        {
-            var result = new InlineDeploymentResult();
-
-            result.ExitCode = await runner.RunAsync(async () =>
-            {
-                try
-                {
-                    return await this._program(cancellationToken).ConfigureAwait(false);
-                }
-                catch (Exception ex)
-                {
-                    result.ExceptionDispatchInfo = ExceptionDispatchInfo.Capture(ex);
-                    throw;
-                }
-            }, null).ConfigureAwait(false);
-
-            return result;
-        }
+        internal override Task<int> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
+            => runner.RunAsync(() => this._program(cancellationToken), null);
     }
 }

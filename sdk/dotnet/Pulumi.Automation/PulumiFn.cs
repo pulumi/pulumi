@@ -17,7 +17,7 @@ namespace Pulumi.Automation
         {
         }
 
-        internal abstract Task<InlineDeploymentResult> InvokeAsync(IRunner runner, CancellationToken cancellationToken);
+        internal abstract Task<int> InvokeAsync(IRunner runner, CancellationToken cancellationToken);
 
         /// <summary>
         /// Creates an asynchronous inline (in process) pulumi program.
