@@ -72,7 +72,7 @@ var (
 		"alicloud":      "AliCloud",
 		"auth0":         "Auth0",
 		"aws":           "AWS",
-		"azure":         "Azure",
+		"azure":         "Azure Classic",
 		"azure-native":  "Azure Native",
 		"azuread":       "Azure AD",
 		"azuredevops":   "Azure DevOps",
@@ -89,8 +89,8 @@ var (
 		"eks":           "EKS",
 		"f5bigip":       "f5 BIG-IP",
 		"fastly":        "Fastly",
-		"gcp":           "GCP",
-		"google-native": "Google Native (preview)",
+		"gcp":           "Google Cloud Classic",
+		"google-native": "Google Cloud Native (preview)",
 		"github":        "GitHub",
 		"gitlab":        "GitLab",
 		"hcloud":        "Hetzner Cloud",
@@ -1583,6 +1583,7 @@ type indexData struct {
 	Title              string
 	TitleTag           string
 	PackageDescription string
+	Provider           string
 	// Menu indicates if an index page should be part of the TOC menu.
 	Menu bool
 
@@ -1636,6 +1637,7 @@ func (mod *modContext) genIndex() indexData {
 
 	modName := mod.getModuleFileName()
 	title := modName
+	provider := mod.pkg.Name
 	menu := false
 	if title == "" {
 		title = formatTitleText(mod.pkg.Name)
@@ -1699,6 +1701,7 @@ func (mod *modContext) genIndex() indexData {
 		PackageDescription: packageDescription,
 		Title:              title,
 		TitleTag:           titleTag,
+		Provider:           provider,
 		Menu:               menu,
 		Resources:          resources,
 		Functions:          functions,
