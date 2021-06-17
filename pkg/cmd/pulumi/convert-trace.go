@@ -180,6 +180,7 @@ func convertTrace(root *appdash.Trace, start time.Time, quantum time.Duration) (
 }
 
 func newConvertTraceCmd() *cobra.Command {
+	var quantum time.Duration
 	var cmd = &cobra.Command{
 		Use:   "convert-trace [trace-file]",
 		Short: "Convert a trace from the Pulumi CLI to Google's pprof format",
@@ -201,8 +202,6 @@ func newConvertTraceCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
-
-			const quantum = 500 * time.Microsecond
 
 			var start time.Time
 			for _, t := range roots {
@@ -279,6 +278,8 @@ func newConvertTraceCmd() *cobra.Command {
 			return p.Write(os.Stdout)
 		}),
 	}
+
+	cmd.Flags().DurationVarP(&quantum, "granularity", "g", 500*time.Millisecond, "the sample granularity")
 
 	return cmd
 }
