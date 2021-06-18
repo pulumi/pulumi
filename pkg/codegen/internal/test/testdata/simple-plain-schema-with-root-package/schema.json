@@ -5,26 +5,25 @@
     "example::Foo": {
       "properties": {
         "a": {
-          "type": "boolean"
+          "type": "boolean", "plain": true
         },
         "b": {
-          "type": "boolean"
+          "type": "boolean", "plain": true
         },
         "c": {
-          "type": "integer"
+          "type": "integer", "plain": true
         },
         "d": {
-          "type": "integer"
+          "type": "integer", "plain": true
         },
         "e": {
-          "type": "string"
+          "type": "string", "plain": true
         },
         "f": {
-          "type": "string"
+          "type": "string", "plain": true
         }
       },
       "required": ["a", "c", "e"],
-      "plain": ["a", "b", "c", "d", "e", "f"],
       "type": "object"
     }
   },
@@ -66,38 +65,38 @@
       "required": ["a", "c", "e"],
       "inputProperties": {
         "a": {
-          "type": "boolean"
+          "type": "boolean", "plain": true
         },
         "b": {
-          "type": "boolean"
+          "type": "boolean", "plain": true
         },
         "c": {
-          "type": "integer"
+          "type": "integer", "plain": true
         },
         "d": {
-          "type": "integer"
+          "type": "integer", "plain": true
         },
         "e": {
-          "type": "string"
+          "type": "string", "plain": true
         },
         "f": {
-          "type": "string"
+          "type": "string", "plain": true
         },
         "foo": {
           "$ref": "#/types/example::Foo"
         },
         "bar": {
-          "$ref": "#/types/example::Foo"
+          "$ref": "#/types/example::Foo", "plain": true
         },
         "baz": {
           "type": "array",
           "items": {
             "$ref": "#/types/example::Foo"
-          }
+          },
+          "plain": true
         }
       },
       "requiredInputs": ["a", "c", "e"],
-      "plainInputs": ["a", "b", "c", "d", "e", "f", "bar", "baz"],
       "type": "object"
     }
   },
