@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type packageSchema struct {
@@ -167,12 +168,25 @@ func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]mode
 		objType := model.NewObjectType(properties, src)
 		seen[src] = objType
 		for _, prop := range src.Properties {
-			t := b.schemaTypeToTypeImpl(prop.Type, seen)
-			if !prop.IsRequired || b.options.allowMissingProperties {
-				t = model.NewOptionalType(t)
+			typ := prop.Type
+			if b.options.allowMissingProperties {
+				typ = &schema.OptionalType{ElementType: typ}
 			}
+
+			t := b.schemaTypeToTypeImpl(typ, seen)
 			if prop.ConstValue != nil {
-				t = model.NewConstType(t, prop.ConstValue)
+				var value cty.Value
+				switch v := prop.ConstValue.(type) {
+				case bool:
+					value = cty.BoolVal(v)
+				case float64:
+					value = cty.NumberFloatVal(v)
+				case string:
+					value = cty.StringVal(v)
+				default:
+					contract.Failf("unexpected constant type %T", v)
+				}
+				t = model.NewConstType(t, value)
 			}
 			properties[prop.Name] = t
 		}
@@ -190,6 +204,12 @@ func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]mode
 			return model.NewUnionType(t, underlyingType)
 		}
 		return t
+	case *schema.InputType:
+		elementType := b.schemaTypeToTypeImpl(src.ElementType, seen)
+		return model.NewUnionTypeAnnotated([]model.Type{elementType, model.NewOutputType(elementType)}, src)
+	case *schema.OptionalType:
+		elementType := b.schemaTypeToTypeImpl(src.ElementType, seen)
+		return model.NewOptionalType(elementType)
 	case *schema.UnionType:
 		types := make([]model.Type, len(src.ElementTypes))
 		for i, src := range src.ElementTypes {
@@ -256,8 +276,11 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		return GetSchemaForType(t.ElementType)
 	case *model.UnionType:
 		for _, a := range t.Annotations {
-			if t, ok := a.(*schema.UnionType); ok {
-				return t, true
+			switch a := a.(type) {
+			case *schema.UnionType:
+				return a, true
+			case *schema.InputType:
+				return a, true
 			}
 		}
 		schemas := codegen.Set{}

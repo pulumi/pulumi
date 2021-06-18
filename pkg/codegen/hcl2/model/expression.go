@@ -1311,7 +1311,8 @@ func (x *LiteralValueExpression) NodeTokens() syntax.NodeTokens {
 // Type returns the type of the literal value expression.
 func (x *LiteralValueExpression) Type() Type {
 	if x.exprType == nil {
-		x.exprType = ctyTypeToType(x.Value.Type(), false)
+		typ := ctyTypeToType(x.Value.Type(), false)
+		x.exprType = NewConstType(typ, x.Value)
 	}
 	return x.exprType
 }
@@ -1327,6 +1328,7 @@ func (x *LiteralValueExpression) Typecheck(typecheckOperands bool) hcl.Diagnosti
 	switch {
 	case typ == NoneType || typ == StringType || typ == IntType || typ == NumberType || typ == BoolType:
 		// OK
+		typ = NewConstType(typ, x.Value)
 	default:
 		var rng hcl.Range
 		if x.Syntax != nil {
@@ -2211,7 +2213,7 @@ func (x *TemplateExpression) print(w io.Writer, p *printer) {
 
 	// Print the expressions.
 	for _, part := range x.Parts {
-		if lit, ok := part.(*LiteralValueExpression); ok && lit.Type() == StringType {
+		if lit, ok := part.(*LiteralValueExpression); ok && StringType.AssignableFrom(lit.Type()) {
 			lit.printLit(w, p, !isHeredoc)
 		} else {
 			p.fprintf(w, "%v", part)

@@ -24,8 +24,6 @@ const (
 	IntrinsicApply = "__apply"
 	// IntrinsicConvert is the name of the conversion intrinsic.
 	IntrinsicConvert = "__convert"
-	// IntrinsicInput is the name of the input intrinsic.
-	IntrinsicInput = "__input"
 )
 
 func isOutput(t model.Type) bool {

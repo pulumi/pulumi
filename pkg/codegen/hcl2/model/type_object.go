@@ -179,50 +179,60 @@ func (u *objectTypeUnifier) unify(t *ObjectType) {
 // This conversion is always unsafe, and may fail if the map does not contain an appropriate set of keys for the
 // destination type.
 func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
 			if seen != nil {
 				if _, ok := seen[t]; ok {
-					return NoConversion
+					return NoConversion, hcl.Diagnostics{invalidRecursiveType(t)}
 				}
 			} else {
 				seen = map[Type]struct{}{}
 			}
 			seen[t] = struct{}{}
+			defer delete(seen, t)
 
 			if unifying {
 				var unifier objectTypeUnifier
 				unifier.unify(t)
 				unifier.unify(src)
-				return unifier.conversionKind
+				return unifier.conversionKind, nil
 			}
 
 			conversionKind := SafeConversion
+			var diags hcl.Diagnostics
 			for k, dst := range t.Properties {
 				src, ok := src.Properties[k]
 				if !ok {
 					src = NoneType
 				}
-				if ck := dst.conversionFrom(src, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := dst.conversionFrom(src, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		case *MapType:
 			conversionKind := UnsafeConversion
+			var diags hcl.Diagnostics
 			for _, dst := range t.Properties {
-				if ck := dst.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := dst.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		}
-		return NoConversion
+		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
 	})
 }
 
@@ -282,7 +292,8 @@ func (t *ObjectType) unify(other Type) (Type, ConversionKind) {
 			return NewObjectType(unifier.properties), unifier.conversionKind
 		default:
 			// Otherwise, prefer the object type.
-			return t, t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

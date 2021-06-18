@@ -84,7 +84,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 	node.Token = token
 
 	// Create input and output types for the schema.
-	inputType := model.InputType(b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties}))
+	inputType := b.schemaTypeToType(&schema.ObjectType{Properties: inputProperties})
 
 	outputProperties := map[string]model.Type{
 		"id":  model.NewOutputType(model.StringType),
@@ -281,7 +281,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 		for _, k := range codegen.SortedKeys(objectType.Properties) {
 			if !model.IsOptionalType(objectType.Properties[k]) && !attrNames.Has(k) {
 				diagnostics = append(diagnostics,
-					missingRequiredAttribute(k, node.Definition.Body.Syntax.MissingItemRange()))
+					missingRequiredAttribute(k, block.Body.Syntax.MissingItemRange()))
 			}
 		}
 	}
