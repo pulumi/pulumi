@@ -216,7 +216,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#requiredmetadata_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -224,7 +224,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#requiredmetadataarray_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -232,7 +232,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#requiredmetadatamap_go" style="color: inherit; text-decoration: inherit;">Required<wbr>Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta</span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -240,7 +240,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#metadata_go" style="color: inherit; text-decoration: inherit;">Metadata</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -248,7 +248,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#metadataarray_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta</a></span>
+        <span class="property-type"><a href="#objectmeta">Object<wbr>Meta<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -256,7 +256,7 @@ The Component resource accepts the following [input]({{< relref "/docs/intro/con
 <a href="#metadatamap_go" style="color: inherit; text-decoration: inherit;">Metadata<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Object<wbr>Meta</span>
+        <span class="property-type">Object<wbr>Meta<wbr>Args</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
