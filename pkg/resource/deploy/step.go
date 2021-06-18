@@ -919,7 +919,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, errors.Errorf("unknown resource type '%v'", s.new.Type)
 		}
 		for _, p := range r.InputProperties {
-			if p.IsRequired {
+			if p.IsRequired() {
 				k := resource.PropertyKey(p.Name)
 				s.new.Inputs[k] = s.old.Inputs[k]
 			}
