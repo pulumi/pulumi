@@ -71,6 +71,11 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
 		assert.Contains(t, actual, name)
 		assert.Equal(t, string(file), string(actual[name]), name)
 	}
+	for name := range actual {
+		if _, ok := expected[name]; !ok {
+			t.Logf("missing data for %s", name)
+		}
+	}
 }
 
 // If PULUMI_ACCEPT is set, writes out actual output to th expected

@@ -82,16 +82,16 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
 	modPkg, ok := d.packages[moduleName]
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
 		os.Exit(1)
 	}
 	if _, ok := t.(*schema.EnumType); ok {
-		return modPkg.inputType(t, optional)
+		return modPkg.inputType(t)
 	}
-	return modPkg.plainType(t, optional)
+	return modPkg.typeString(t)
 }
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.

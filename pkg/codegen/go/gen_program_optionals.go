@@ -5,6 +5,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
@@ -63,26 +64,18 @@ func (os *optionalSpiller) spillExpressionHelper(
 				var optionalPrimitives []string
 				for _, v := range schemaType.Properties {
 					isPrimitive := false
-					primitives := []schema.Type{
-						schema.NumberType,
-						schema.BoolType,
-						schema.IntType,
-						schema.StringType,
+					switch codegen.UnwrapType(v.Type) {
+					case schema.NumberType, schema.BoolType, schema.IntType, schema.StringType:
+						isPrimitive = true
 					}
-					for _, p := range primitives {
-						if p == v.Type {
-							isPrimitive = true
-							break
-						}
-					}
-					if isPrimitive && !v.IsRequired {
+					if isPrimitive && !v.IsRequired() {
 						optionalPrimitives = append(optionalPrimitives, v.Name)
 					}
 				}
 				for i, item := range x.Items {
 					// keys for schematized objects should be simple strings
 					if key, ok := item.Key.(*model.LiteralValueExpression); ok {
-						if key.Type() == model.StringType {
+						if model.StringType.AssignableFrom(key.Type()) {
 							strKey := key.Value.AsString()
 							for _, op := range optionalPrimitives {
 								if strKey == op {
