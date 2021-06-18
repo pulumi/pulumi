@@ -52,6 +52,15 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				"Inputs/FooArgs.cs",
 				"Component.cs",
+				"DoFoo.cs",
+			},
+		},
+		{
+			"Repro for #6957",
+			"plain-schema-gh6957",
+			[]string{
+				"StaticPage.cs",
+				"Inputs/FooArgs.cs",
 			},
 		},
 	}
