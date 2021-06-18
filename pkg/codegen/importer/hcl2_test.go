@@ -133,6 +133,24 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.Proper
 
 func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.PropertyValue {
 	switch x.Name {
+	case "fileArchive":
+		if !assert.Len(t, x.Args, 1) {
+			return resource.NewNullProperty()
+		}
+		path, ok := renderExpr(t, x.Args[0]).V.(string)
+		if !assert.True(t, ok) {
+			return resource.NewNullProperty()
+		}
+		return resource.NewStringProperty(path)
+	case "fileAsset":
+		if !assert.Len(t, x.Args, 1) {
+			return resource.NewNullProperty()
+		}
+		path, ok := renderExpr(t, x.Args[0]).V.(string)
+		if !assert.True(t, ok) {
+			return resource.NewNullProperty()
+		}
+		return resource.NewStringProperty(path)
 	case "secret":
 		if !assert.Len(t, x.Args, 1) {
 			return resource.NewNullProperty()
@@ -291,32 +309,28 @@ func TestSimplerType(t *testing.T) {
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.BoolType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.BoolType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.IntType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.IntType,
 				},
 				{
-					Name:       "bar",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "bar",
+					Type: schema.IntType,
 				},
 			},
 		},
