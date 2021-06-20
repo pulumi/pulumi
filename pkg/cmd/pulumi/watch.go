@@ -54,9 +54,9 @@ func newWatchCmd() *cobra.Command {
 		Short:      "[PREVIEW] Continuously update the resources in a stack",
 		Long: "Continuously update the resources in a stack.\n" +
 			"\n" +
-			"This command watches the working directory or specified paths for the current project and updates the active stack whenever\n" +
-			"the project changes.  In parallel, logs are collected for all resources in the stack and displayed along\n" +
-			"with update progress.\n" +
+			"This command watches the working directory or specified paths for the current project and updates\n" +
+			"the active stack whenever the project changes.  In parallel, logs are collected for all resources\n" +
+			"in the stack and displayed along with update progress.\n" +
 			"\n" +
 			"The program to watch is loaded from the project in the current directory by default. Use the `-C` or\n" +
 			"`--cwd` flag to use a different directory.",
@@ -147,7 +147,8 @@ func newWatchCmd() *cobra.Command {
 
 	cmd.PersistentFlags().StringArrayVarP(
 		&pathArray, "path", "", []string{""},
-		"Specify one or more relative or absolute paths that need to be watched. A path can point to a folder or a file. Defaults to working directory")
+		"Specify one or more relative or absolute paths that need to be watched. "+
+			"A path can point to a folder or a file. Defaults to working directory")
 	cmd.PersistentFlags().BoolVarP(
 		&debug, "debug", "d", false,
 		"Print detailed debugging output during resource operations")
