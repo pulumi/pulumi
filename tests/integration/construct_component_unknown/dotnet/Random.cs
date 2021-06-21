@@ -1,7 +1,7 @@
 // Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
 
 // Exposes the Random resource from the testprovider.
-// Requires running `make test_buidl` and having the built provider on PATH.
+// Requires running `make test_build` and having the built provider on PATH.
 
 using Pulumi;
 
