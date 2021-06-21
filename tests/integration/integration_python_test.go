@@ -681,6 +681,11 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 	}
 }
 
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownPython(t *testing.T) {
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
 func TestGetResourcePython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")

@@ -568,6 +568,11 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...str
 	}
 }
 
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownGo(t *testing.T) {
+	testConstructUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
 func TestGetResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{

@@ -473,6 +473,11 @@ func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
 	}
 }
 
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownDotnet(t *testing.T) {
+	testConstructUnknown(t, "dotnet", "Pulumi")
+}
+
 func TestGetResourceDotnet(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies:             []string{"Pulumi"},

@@ -986,6 +986,11 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 	}
 }
 
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownNode(t *testing.T) {
+	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
+}
+
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),
