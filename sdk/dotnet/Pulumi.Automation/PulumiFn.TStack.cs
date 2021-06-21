@@ -15,6 +15,7 @@ namespace Pulumi.Automation
             this._stackFactory = stackFactory;
         }
 
+        /// <inheritdoc/>
         internal override Task<int> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
             => runner.RunAsync(this._stackFactory);
     }

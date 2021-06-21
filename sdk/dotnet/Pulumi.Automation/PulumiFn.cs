@@ -17,6 +17,10 @@ namespace Pulumi.Automation
         {
         }
 
+        /// <summary>
+        /// Invoke the appropriate run function on the <see cref="IRunner"/> instance. The exit code returned
+        /// from the appropriate run function should be forwarded here as well.
+        /// </summary>
         internal abstract Task<int> InvokeAsync(IRunner runner, CancellationToken cancellationToken);
 
         /// <summary>

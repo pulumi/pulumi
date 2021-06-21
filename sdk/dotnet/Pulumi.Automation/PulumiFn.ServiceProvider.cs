@@ -29,6 +29,7 @@ namespace Pulumi.Automation
             this._stackType = stackType;
         }
 
+        /// <inheritdoc/>
         internal override Task<int> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
             => runner.RunAsync(() =>
             {

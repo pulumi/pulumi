@@ -16,6 +16,7 @@ namespace Pulumi.Automation
             this._program = program;
         }
 
+        /// <inheritdoc/>
         internal override Task<int> InvokeAsync(IRunner runner, CancellationToken cancellationToken)
             => runner.RunAsync(() => this._program(cancellationToken), null);
     }
