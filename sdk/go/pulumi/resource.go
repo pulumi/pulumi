@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package pulumi
 
 import (
+	//"context"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -198,7 +199,7 @@ type resourceOptions struct {
 	// options.
 	Import IDInput
 	// Parent is an optional parent resource to which this resource belongs.
-	Parent Resource
+	Parent ResourceInput
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
@@ -401,4 +402,23 @@ func Version(o string) ResourceOrInvokeOption {
 			io.Version = o
 		}
 	})
+}
+
+type ResourceInput interface {
+	// Input
+
+	// ToResourceOutput() ResourceOutput
+	// ToResourceOutputWithContext(context.Context) ResourceOutput
+}
+
+// TODO eventually we can just have Resource implement ResourceInput
+// interface, so this is a no-op.
+func resourceAsInputMagic(r Resource) ResourceInput {
+	return nil
+}
+
+// TODO - helps incremental refactoring, but can we completely remove
+// this function?
+func awaitResourceInputMAGIC(ri ResourceInput) Resource {
+	return nil
 }
