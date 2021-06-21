@@ -534,8 +534,8 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 }
 
 func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply)
+	op backend.UpdateOperation, paths []string) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply, paths)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
