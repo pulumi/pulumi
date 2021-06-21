@@ -8,3 +8,6 @@
 
 
 ### Bug Fixes
+
+- [sdk/go] - Specify known when creating outputs for construct.
+  [#7343](https://github.com/pulumi/pulumi/pull/7343)
