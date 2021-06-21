@@ -9,5 +9,8 @@
 
 ### Bug Fixes
 
+- [sdk/dotnet] - Fix swallowed nested exceptions with inline program so they correctly bubble to consumer
+  [#7323](https://github.com/pulumi/pulumi/pull/7323)
+  
 - [sdk/go] - Specify known when creating outputs for construct.
   [#7343](https://github.com/pulumi/pulumi/pull/7343)

@@ -1131,11 +1131,10 @@ namespace Pulumi.Automation.Tests
         public async Task InlineProgramExceptionPropagatesToCaller()
         {
             const string projectName = "exception_inline_node";
-            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create((Action)(() => throw new FileNotFoundException()));
             Assert.IsType<PulumiFnInline>(program);
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), program)
             {
                 EnvironmentVariables = new Dictionary<string, string?>
                 {
@@ -1150,6 +1149,34 @@ namespace Pulumi.Automation.Tests
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
+
+            // verify also propagates for output delegates
+            var outputTask = Task.Run((Func<string>)(() => throw new FileNotFoundException()));
+            var programWithOutput = PulumiFn.Create(() =>
+            {
+                var output = Output.Create(outputTask);
+                return new Dictionary<string, object?>
+                {
+                    ["output"] = output,
+                };
+            });
+            Assert.IsType<PulumiFnInline>(programWithOutput);
+
+            using var stackWithOutput = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), programWithOutput)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTaskWithOutput = stackWithOutput.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTaskWithOutput);
+
+            var upTaskWithOutput = stackWithOutput.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTaskWithOutput);
         }
 
         private class FileNotFoundStack : Stack
@@ -1160,15 +1187,27 @@ namespace Pulumi.Automation.Tests
             }
         }
 
+        private class FileNotFoundOutputStack : Stack
+        {
+            public FileNotFoundOutputStack()
+            {
+                var outputTask = Task.Run((Func<string>)(() => throw new FileNotFoundException()));
+                var output = Output.Create(outputTask);
+                this.RegisterOutputs(new Dictionary<string, object?>
+                {
+                    ["output"] = output,
+                });
+            }
+        }
+
         [Fact]
         public async Task InlineProgramExceptionPropagatesToCallerWithTStack()
         {
             const string projectName = "exception_inline_tstack_node";
-            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>();
             Assert.IsType<PulumiFn<FileNotFoundStack>>(program);
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), program)
             {
                 EnvironmentVariables = new Dictionary<string, string?>
                 {
@@ -1183,6 +1222,26 @@ namespace Pulumi.Automation.Tests
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
+
+            // verify also propagates for output delegates
+            var programWithOutput = PulumiFn.Create<FileNotFoundOutputStack>();
+            Assert.IsType<PulumiFn<FileNotFoundOutputStack>>(programWithOutput);
+
+            using var stackWithOutput = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), programWithOutput)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTaskWithOutput = stackWithOutput.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTaskWithOutput);
+
+            var upTaskWithOutput = stackWithOutput.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTaskWithOutput);
         }
 
         [Fact]
@@ -1190,14 +1249,14 @@ namespace Pulumi.Automation.Tests
         {
             await using var provider = new ServiceCollection()
                 .AddTransient<FileNotFoundStack>() // must be transient so it is instantiated each time
+                .AddTransient<FileNotFoundOutputStack>()
                 .BuildServiceProvider();
 
             const string projectName = "exception_inline_serviceprovider_node";
-            var stackName = $"{RandomStackName()}";
             var program = PulumiFn.Create<FileNotFoundStack>(provider);
             Assert.IsType<PulumiFnServiceProvider>(program);
 
-            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, stackName, program)
+            using var stack = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), program)
             {
                 EnvironmentVariables = new Dictionary<string, string?>
                 {
@@ -1212,6 +1271,26 @@ namespace Pulumi.Automation.Tests
             var upTask = stack.UpAsync();
             await Assert.ThrowsAsync<FileNotFoundException>(
                 () => upTask);
+
+            // verify also propagates for output delegates
+            var programWithOutput = PulumiFn.Create<FileNotFoundOutputStack>(provider);
+            Assert.IsType<PulumiFnServiceProvider>(programWithOutput);
+
+            using var stackWithOutput = await LocalWorkspace.CreateStackAsync(new InlineProgramArgs(projectName, RandomStackName(), programWithOutput)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+
+            var previewTaskWithOutput = stackWithOutput.PreviewAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => previewTaskWithOutput);
+
+            var upTaskWithOutput = stackWithOutput.UpAsync();
+            await Assert.ThrowsAsync<FileNotFoundException>(
+                () => upTaskWithOutput);
         }
 
         [Fact]

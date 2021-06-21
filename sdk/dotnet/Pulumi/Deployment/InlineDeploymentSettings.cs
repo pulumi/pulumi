@@ -1,4 +1,6 @@
-﻿using System.Collections.Generic;
+﻿// Copyright 2016-2020, Pulumi Corporation
+
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
 namespace Pulumi

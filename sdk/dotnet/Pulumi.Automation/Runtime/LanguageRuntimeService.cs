@@ -55,20 +55,22 @@ namespace Pulumi.Automation
                 this._callerContext.CancellationToken,
                 context.CancellationToken);
 
-            this._callerContext.ExceptionDispatchInfo = await Deployment.RunInlineAsync(
+            var result = await Deployment.RunInlineAsync(
                 settings,
-                // ReSharper disable once AccessToDisposedClosure
                 runner => this._callerContext.Program.InvokeAsync(runner, cts.Token))
                 .ConfigureAwait(false);
 
-            if (this._callerContext.ExceptionDispatchInfo is null)
-                return new RunResponse();
-
-            return new RunResponse()
+            if (result.ExitCode != 0 || result.ExceptionDispatchInfo != null)
             {
-                Bail = true,
-                Error = this._callerContext.ExceptionDispatchInfo.SourceException.Message,
-            };
+                this._callerContext.ExceptionDispatchInfo = result.ExceptionDispatchInfo;
+                return new RunResponse()
+                {
+                    Bail = true,
+                    Error = result.ExceptionDispatchInfo?.SourceException.Message ?? "One or more errors occurred.",
+                };
+            }
+
+            return new RunResponse();
         }
 
         public class CallerContext
