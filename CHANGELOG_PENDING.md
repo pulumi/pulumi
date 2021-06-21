@@ -2,4 +2,9 @@
 
 ### Improvements
 
+- [cli] - Added support for passing custom paths that need
+  to be watched by the `pulumi watch` command.
+  [#7115](https://github.com/pulumi/pulumi/pull/7247)
+
+
 ### Bug Fixes

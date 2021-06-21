@@ -85,8 +85,8 @@ func (s *localStack) Destroy(ctx context.Context, op backend.UpdateOperation) (e
 	return backend.DestroyStack(ctx, s, op)
 }
 
-func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation) result.Result {
-	return backend.WatchStack(ctx, s, op)
+func (s *localStack) Watch(ctx context.Context, op backend.UpdateOperation, paths []string) result.Result {
+	return backend.WatchStack(ctx, s, op, paths)
 }
 
 func (s *localStack) GetLogs(ctx context.Context, cfg backend.StackConfiguration,

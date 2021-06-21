@@ -35,7 +35,8 @@ import (
 
 // Watch watches the project's working directory for changes and automatically updates the active
 // stack.
-func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, apply Applier) result.Result {
+func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation,
+	apply Applier, paths []string) result.Result {
 
 	opts := ApplierOptions{
 		DryRun:   false,
@@ -69,9 +70,21 @@ func Watch(ctx context.Context, b Backend, stack Stack, op UpdateOperation, appl
 	}()
 
 	events := make(chan notify.EventInfo, 1)
-	if err := notify.Watch(path.Join(op.Root, "..."), events, notify.All); err != nil {
-		return result.FromError(err)
+
+	for _, p := range paths {
+		// Provided paths can be both relative and absolute.
+		watchPath := ""
+		if path.IsAbs(p) {
+			watchPath = path.Join(p, "...")
+		} else {
+			watchPath = path.Join(op.Root, p, "...")
+		}
+
+		if err := notify.Watch(watchPath, events, notify.All); err != nil {
+			return result.FromError(err)
+		}
 	}
+
 	defer notify.Stop(events)
 
 	fmt.Printf(op.Opts.Display.Color.Colorize(
