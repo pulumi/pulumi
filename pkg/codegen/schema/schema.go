@@ -1620,8 +1620,16 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 
 func bindMethods(resourceToken string, methods map[string]string,
 	functionTable map[string]*Function) ([]*Method, error) {
-	var result []*Method
-	for name, token := range methods {
+
+	names := make([]string, 0, len(methods))
+	for name := range methods {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	result := make([]*Method, 0, len(methods))
+	for _, name := range names {
+		token := methods[name]
 		function, ok := functionTable[token]
 		if !ok {
 			return nil, errors.Errorf("unknown function %s for method %s", token, name)
