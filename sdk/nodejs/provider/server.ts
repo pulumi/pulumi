@@ -308,6 +308,8 @@ class Server implements grpc.UntypedServiceImplementation {
                     inputs[k] = input;
                 } else {
                     // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
+                    // Note: If the value is or contains an unknown value, the Output will mark its value as
+                    // unknown automatically, so we just pass true for isKnown here.
                     inputs[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
                         Promise.resolve(isSecret), Promise.resolve([]));
                 }

@@ -875,7 +875,7 @@ func TestConstructNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -965,7 +965,7 @@ func TestConstructPlainNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -984,6 +984,11 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownNode(t *testing.T) {
+	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
 func TestGetResourceNode(t *testing.T) {

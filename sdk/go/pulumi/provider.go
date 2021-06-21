@@ -174,6 +174,7 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 	for k, v := range inputs {
 		ci := v.(*constructInput)
 
+		known := !ci.value.ContainsUnknowns()
 		value, secret, err := unmarshalPropertyValue(ctx, ci.value)
 		if err != nil {
 			return nil, errors.Wrapf(err, "unmarshaling input %s", k)
@@ -185,7 +186,7 @@ func constructInputsMap(ctx *Context, inputs map[string]interface{}) (Map, error
 		}
 
 		output := ctx.newOutput(resultType, ci.deps...)
-		output.getState().resolve(value, true /*known*/, secret, nil)
+		output.getState().resolve(value, known, secret, nil)
 		result[k] = output
 	}
 	return result, nil
@@ -231,11 +232,13 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				}
 				output := ctx.newOutput(resultType, ci.deps...)
 				dest := reflect.New(output.ElementType()).Elem()
+				known := !ci.value.ContainsUnknowns()
 				secret, err := unmarshalOutput(ctx, ci.value, dest)
 				if err != nil {
 					return err
 				}
-				output.getState().resolve(dest.Interface(), true /*known*/, secret, nil)
+
+				output.getState().resolve(dest.Interface(), known, secret, nil)
 				fieldV.Set(reflect.ValueOf(output))
 				continue
 			}

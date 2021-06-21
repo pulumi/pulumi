@@ -705,7 +705,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		}
 	}
 
-	contract.Assert(valueType.AssignableTo(resolved.Type()))
+	contract.Assertf(valueType.AssignableTo(resolved.Type()), "%s not assignable to %s", valueType.String(), resolved.Type().String())
 
 	// If the resolved type is an interface, make an appropriate destination from the value's type.
 	if resolved.Kind() == reflect.Interface {
