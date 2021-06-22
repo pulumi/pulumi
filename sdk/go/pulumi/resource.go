@@ -16,6 +16,7 @@ package pulumi
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -437,6 +438,19 @@ func NewResourceInput(resource Resource) ResourceInput {
 
 // TODO - helps incremental refactoring, but can we completely remove
 // this function?
-func awaitResourceInputMAGIC(ri ResourceInput) Resource {
-	return nil
+func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, error) {
+	result, known, _, _, err := ri.ToResourceOutput().await(ctx)
+
+	if !known {
+		return nil, fmt.Errorf("Encountred unknown ResourceInput, this is currently not supported")
+	}
+
+	resource, isResource := result.(Resource)
+
+	if !isResource {
+		return nil, fmt.Errorf("ResourceInput resolved to a value that is not a Resource but a %v",
+			reflect.TypeOf(result))
+	}
+
+	return resource, err
 }
