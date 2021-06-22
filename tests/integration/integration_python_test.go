@@ -546,7 +546,7 @@ func TestConstructPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -657,7 +657,7 @@ func TestConstructPlainPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -679,6 +679,11 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownPython(t *testing.T) {
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
 func TestGetResourcePython(t *testing.T) {

@@ -25,7 +25,9 @@ import (
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	_struct "github.com/golang/protobuf/ptypes/struct"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
 
@@ -91,7 +93,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 
 	plug, err := newPlugin(ctx, ctx.Pwd, path, fmt.Sprintf("%v (resource)", pkg),
-		[]string{host.ServerAddr()}, env)
+		[]string{host.ServerAddr()}, env, otgrpc.SpanDecorator(decorateProviderSpans))
 	if err != nil {
 		return nil, err
 	}
@@ -1445,4 +1447,31 @@ func (ie *InitError) Error() string {
 		err = multierror.Append(err, errors.New(reason))
 	}
 	return err.Error()
+}
+
+func decorateSpanWithType(span opentracing.Span, urn string) {
+	if urn := resource.URN(urn); urn.IsValid() {
+		span.SetTag("pulumi-decorator", urn.Type())
+	}
+}
+
+func decorateProviderSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+	if req == nil {
+		return
+	}
+
+	switch method {
+	case "/pulumirpc.ResourceProvider/Check", "/pulumirpc.ResourceProvider/CheckConfig":
+		decorateSpanWithType(span, req.(*pulumirpc.CheckRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Diff", "/pulumirpc.ResourceProvider/DiffConfig":
+		decorateSpanWithType(span, req.(*pulumirpc.DiffRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Create":
+		decorateSpanWithType(span, req.(*pulumirpc.CreateRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Update":
+		decorateSpanWithType(span, req.(*pulumirpc.UpdateRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Delete":
+		decorateSpanWithType(span, req.(*pulumirpc.DeleteRequest).Urn)
+	case "/pulumirpc.ResourceProvider/Invoke":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+	}
 }

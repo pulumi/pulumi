@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -442,7 +443,7 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-	}, tracingSpan)
+	}, tracingSpan, otgrpc.SpanDecorator(decorateResourceSpans))
 	if err != nil {
 		return nil, err
 	}
@@ -1119,4 +1120,19 @@ func generateTimeoutInSeconds(timeout string) (float64, error) {
 	}
 
 	return duration.Seconds(), nil
+}
+
+func decorateResourceSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+	if req == nil {
+		return
+	}
+
+	switch method {
+	case "/pulumirpc.ResourceMonitor/Invoke":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+	case "/pulumirpc.ResourceMonitor/ReadResource":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.ReadResourceRequest).Type)
+	case "/pulumirpc.ResourceMonitor/RegisterResource":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.RegisterResourceRequest).Type)
+	}
 }
