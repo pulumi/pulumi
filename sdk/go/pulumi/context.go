@@ -365,9 +365,13 @@ func (ctx *Context) ReadResource(
 		return err
 	}
 
-	parent, err := awaitResourceInputMAGIC(ctx.ctx, options.Parent)
-	if err != nil {
-		return err
+	var parent Resource
+
+	if options.Parent != nil {
+		parent, err = awaitResourceInputMAGIC(ctx.ctx, options.Parent)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Collapse aliases to URNs.
@@ -547,9 +551,12 @@ func (ctx *Context) registerResource(
 		return err
 	}
 
-	parent, err := awaitResourceInputMAGIC(ctx.ctx, options.Parent)
-	if err != nil {
-		return err
+	var parent Resource
+	if options.Parent != nil {
+		parent, err = awaitResourceInputMAGIC(ctx.ctx, options.Parent)
+		if err != nil {
+			return err
+		}
 	}
 
 	// Collapse aliases to URNs.
@@ -672,12 +679,14 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 	transformations := options.Transformations
 
 	// nullable
-	optionsParent, err := awaitResourceInputMAGIC(context.TODO(), options.Parent)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	var optionsParent Resource
 
-	if optionsParent != nil {
+	if options.Parent != nil {
+		var err error
+		optionsParent, err = awaitResourceInputMAGIC(context.TODO(), options.Parent)
+		if err != nil {
+			return nil, nil, nil, err
+		}
 		transformations = append(transformations, optionsParent.getTransformations()...)
 	}
 
@@ -694,9 +703,14 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 		if res != nil {
 			resOptions := merge(res.Opts...)
 
-			resOptionsParent, err := awaitResourceInputMAGIC(context.TODO(), resOptions.Parent)
-			if err != nil {
-				return nil, nil, nil, err
+			var resOptionsParent Resource
+
+			if resOptions.Parent != nil {
+				var err error
+				resOptionsParent, err = awaitResourceInputMAGIC(context.TODO(), resOptions.Parent)
+				if err != nil {
+					return nil, nil, nil, err
+				}
 			}
 
 			unchangedParent := (resOptionsParent == nil && optionsParent == nil) ||
@@ -1069,8 +1083,8 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 
 	var parentURN URN
 	if opts.Parent != nil {
-		ctx := context.TODO()
 
+		ctx := context.TODO()
 		parent, err := awaitResourceInputMAGIC(ctx, opts.Parent)
 		if err != nil {
 			return "", nil, false, "", nil, false, "", nil, nil, "", err
