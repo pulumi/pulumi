@@ -26,10 +26,10 @@ meta_desc: "Documentation for the plant.tree/v1.RubberTree resource with example
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
                <span class="nx">container</span><span class="p">:</span> <span class="nx">Optional[_root_inputs.ContainerArgs]</span> = None<span class="p">,</span>
-               <span class="nx">diameter</span><span class="p">:</span> <span class="nx">Optional[_tree_v1.Diameter]</span> = None<span class="p">,</span>
-               <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[_tree_v1.Farm, str]]</span> = None<span class="p">,</span>
-               <span class="nx">size</span><span class="p">:</span> <span class="nx">Optional[_tree_v1.TreeSize]</span> = None<span class="p">,</span>
-               <span class="nx">type</span><span class="p">:</span> <span class="nx">Optional[_tree_v1.RubberTreeVariety]</span> = None<span class="p">)</span>
+               <span class="nx">diameter</span><span class="p">:</span> <span class="nx">Optional[Diameter]</span> = None<span class="p">,</span>
+               <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[Farm, str]]</span> = None<span class="p">,</span>
+               <span class="nx">size</span><span class="p">:</span> <span class="nx">Optional[TreeSize]</span> = None<span class="p">,</span>
+               <span class="nx">type</span><span class="p">:</span> <span class="nx">Optional[RubberTreeVariety]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">RubberTree</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
                <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">RubberTreeArgs</a></span><span class="p">,</span>
@@ -403,7 +403,7 @@ Get an existing RubberTree resource's state with the given name, ID, and optiona
 <span class="k">def </span><span class="nf">get</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">id</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
         <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-        <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[_tree_v1.Farm, str]]</span> = None<span class="p">) -&gt;</span> RubberTree</code></pre></div>
+        <span class="nx">farm</span><span class="p">:</span> <span class="nx">Optional[Union[Farm, str]]</span> = None<span class="p">) -&gt;</span> RubberTree</code></pre></div>
 {{% /choosable %}}
 
 {{% choosable language go %}}

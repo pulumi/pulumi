@@ -291,10 +291,18 @@ func tokenToName(tok string) string {
 }
 
 func tokenToModule(tok string, pkg *schema.Package, moduleNameOverrides map[string]string) string {
+	// See if there's a manually-overridden module name.
 	canonicalModName := pkg.TokenToModule(tok)
-	modName := PyName(strings.ToLower(canonicalModName))
 	if override, ok := moduleNameOverrides[canonicalModName]; ok {
-		modName = override
+		return override
+	}
+	// A module can include fileparts, which we want to preserve.
+	var modName string
+	for i, part := range strings.Split(strings.ToLower(canonicalModName), "/") {
+		if i > 0 {
+			modName += "/"
+		}
+		modName += PyName(part)
 	}
 	return modName
 }

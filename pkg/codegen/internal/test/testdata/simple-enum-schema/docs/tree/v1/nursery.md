@@ -25,8 +25,8 @@ meta_desc: "Documentation for the plant.tree/v1.Nursery resource with examples, 
 <div class="highlight"><pre class="chroma"><code class="language-python" data-lang="python"><span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
             <span class="nx">opts</span><span class="p">:</span> <span class="nx"><a href="/docs/reference/pkg/python/pulumi/#pulumi.ResourceOptions">Optional[ResourceOptions]</a></span> = None<span class="p">,</span>
-            <span class="nx">sizes</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, _tree_v1.TreeSize]]</span> = None<span class="p">,</span>
-            <span class="nx">varieties</span><span class="p">:</span> <span class="nx">Optional[Sequence[_tree_v1.RubberTreeVariety]]</span> = None<span class="p">)</span>
+            <span class="nx">sizes</span><span class="p">:</span> <span class="nx">Optional[Mapping[str, TreeSize]]</span> = None<span class="p">,</span>
+            <span class="nx">varieties</span><span class="p">:</span> <span class="nx">Optional[Sequence[RubberTreeVariety]]</span> = None<span class="p">)</span>
 <span class=nd>@overload</span>
 <span class="k">def </span><span class="nx">Nursery</span><span class="p">(</span><span class="nx">resource_name</span><span class="p">:</span> <span class="nx">str</span><span class="p">,</span>
             <span class="nx">args</span><span class="p">:</span> <span class="nx"><a href="#inputs">NurseryArgs</a></span><span class="p">,</span>
@@ -220,7 +220,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <a href="#varieties_python" style="color: inherit; text-decoration: inherit;">varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">Rubber<wbr>Tree<wbr>Variety]</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">Sequence[Rubber<wbr>Tree<wbr>Variety]</a></span>
     </dt>
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -228,7 +228,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <a href="#sizes_python" style="color: inherit; text-decoration: inherit;">sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Tree<wbr>Size]</span>
+        <span class="property-type">Mapping[str, Tree<wbr>Size]</span>
     </dt>
     <dd>{{% md %}}The sizes of trees available{{% /md %}}</dd></dl>
 {{% /choosable %}}

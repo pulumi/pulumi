@@ -17,3 +17,6 @@
 
 - [cli] - Fix passphrase rotation.
   [#7347](https://github.com/pulumi/pulumi/pull/7347)
+  
+- [multilang/python] - Fix nested module generation.
+  [#7353](https://github.com/pulumi/pulumi/pull/7353)

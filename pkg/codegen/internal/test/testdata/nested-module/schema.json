@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "name": "foo",
+  "resources": {
+    "foo:nested/module:Resource": {
+      "properties": {
+        "bar": {
+          "type": "string",
+          "secret": true
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "string",
+          "secret": true
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/nested-module/go/foo"
+    },
+    "nodejs": {},
+    "python": {}
+  }
+}
