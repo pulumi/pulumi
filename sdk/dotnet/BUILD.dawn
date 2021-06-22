@@ -1,9 +1,9 @@
-load("//build:version.qb", "get_version")
-load("//build:go_sources.qb", "go_sources")
+load("//build:version.dawn", "get_version")
+load("//build:go_sources.dawn", "go_sources")
 
 version = get_version("dotnet")
 
-@target(deps=["//sdk/proto:gen"], sources=glob(["**"], exclude=["**/bin/**", "**/obj/**"]))
+@target(deps=["//sdk/proto:gen"], sources=os.glob(["**"], exclude=["**/bin/**", "**/obj/**"]))
 def build_sdk():
     sh.exec(f"dotnet build dotnet.sln /p:Version={version}")
 

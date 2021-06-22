@@ -1,5 +1,5 @@
-load("//build:version.qb", "get_version")
-load("//build:go_sources.qb", "go_sources")
+load("//build:version.dawn", "get_version")
+load("//build:go_sources.dawn", "go_sources")
 
 @target(deps=[
     "//sdk/dotnet:build",

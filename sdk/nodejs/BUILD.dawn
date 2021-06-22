@@ -1,5 +1,5 @@
-load("//build:version.qb", "get_version")
-load("//build:go_sources.qb", "go_sources")
+load("//build:version.dawn", "get_version")
+load("//build:go_sources.dawn", "go_sources")
 
 version = get_version("javascript")
 
@@ -9,13 +9,13 @@ def yarn_install():
 
 @target(
     deps=[yarn_install],
-    sources=glob(["tsconfig.json", "**.ts"], exclude=["node_modules/**", "bin/**"]))
+    sources=os.glob(["tsconfig.json", "**.ts"], exclude=["node_modules/**", "bin/**"]))
 def run_tsc():
     sh.exec("./node_modules/.bin/tsc")
 
 @target(
     deps=[run_tsc, "//sdk/proto:gen"],
-    sources=glob([
+    sources=os.glob([
         "tests/runtime/jsClosureCases_8.js",
         "tests/runtime/jsClosureCases_10_4.js",
         "tests/automation/data/**",

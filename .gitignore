@@ -10,7 +10,7 @@
 coverage.cov
 *.coverprofile
 **/obj/
-.qb
+.dawn
 
 **/.idea/
 *.iml

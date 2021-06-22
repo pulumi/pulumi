@@ -1,11 +1,11 @@
-load("//build:version.qb", "get_version")
-load("//build:go_sources.qb", "go_sources")
+load("//build:version.dawn", "get_version")
+load("//build:go_sources.dawn", "go_sources")
 
 debug = parse_flag("debug", type=bool, help="run a debug build of the CLI")
 
 version = get_version()
 
-@target(sources=glob(["codegen/docs/bundler.go", "codegen/docs/templates/**"]))
+@target(sources=os.glob(["codegen/docs/bundler.go", "codegen/docs/templates/**"]))
 def gen():
     sh.exec("go generate ./codegen/docs/gen.go")
 

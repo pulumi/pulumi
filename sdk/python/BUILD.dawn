@@ -1,5 +1,5 @@
-load("//build:version.qb", "get_version")
-load("//build:go_sources.qb", "go_sources")
+load("//build:version.dawn", "get_version")
+load("//build:go_sources.dawn", "go_sources")
 
 version = get_version()
 pypi_version = get_version("python")
@@ -15,7 +15,7 @@ def pipenv_install():
 
 @target(
     deps=[pipenv_install, "//sdk/proto:gen"],
-    sources=glob(["lib/**", "../../README.md"], exclude=["**/node_modules/**", "**/bin/**", "**/obj/**"]))
+    sources=os.glob(["lib/**", "../../README.md"], exclude=["**/node_modules/**", "**/bin/**", "**/obj/**"]))
 def build_sdk():
     sh.exec(f"rm -rf {pyenv_src} && cp -R ./lib/. {pyenv_src}/")
     sh.exec(f"sed -i.bak \"s/\\${{VERSION}}/{pypi_version}/g\" {pyenv_src}/setup.py && rm {pyenv_src}/setup.py.bak")

@@ -325,6 +325,7 @@ function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     return copy;
 }
 
+// add a comment
 async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown: boolean, isSecret: boolean) {
     if (!Output.isInstance(value)) {
         // 'value' itself wasn't an output, no need to transform any of the data we got.
