@@ -16,12 +16,12 @@ package main
 
 import (
 	"fmt"
-	"runtime"
-	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
 	"os/exec"
+	"runtime"
 )
 
 func newDiagnosticEnvironmentCmd() *cobra.Command {
@@ -30,7 +30,7 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 		Use:   "environment",
 		Short: "Display diagnostic environment information",
 		Long:  "Display the Pulumi version, OS, runtime info, backend URL and stack data",
-		Args: cmdutil.NoArgs,
+		Args:  cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
@@ -40,15 +40,15 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 			// TODO: See how to get actual OS version numbers
 			var os string = runtime.GOOS
 			switch os {
-		    case "windows":
-		        os = "Windows"
-		    case "darwin":
-		        os = "MacOs"
-		    case "linux":
-		        os = "Linux"
-		    }
+			case "windows":
+				os = "Windows"
+			case "darwin":
+				os = "MacOs"
+			case "linux":
+				os = "Linux"
+			}
 
-		    // Console URL Info
+			// Console URL Info
 			b, err := currentBackend(opts)
 			if err != nil {
 				return err
