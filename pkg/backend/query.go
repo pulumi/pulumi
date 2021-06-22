@@ -5,9 +5,9 @@ import (
 
 	opentracing "github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 type MakeQuery func(context.Context, QueryOperation) (engine.QueryInfo, error)

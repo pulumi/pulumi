@@ -16,6 +16,8 @@ package pulumi
 
 import (
 	"reflect"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type (
@@ -72,6 +74,13 @@ func (s *ResourceState) addTransformation(t ResourceTransformation) {
 
 func (ResourceState) isResource() {}
 
+func (ctx *Context) newDependencyResource(urn URN) Resource {
+	var res ResourceState
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
+	res.urn.resolve(urn, true, false, nil)
+	return &res
+}
+
 type CustomResourceState struct {
 	ResourceState
 
@@ -84,6 +93,15 @@ func (s CustomResourceState) ID() IDOutput {
 
 func (CustomResourceState) isCustomResource() {}
 
+func (ctx *Context) newDependencyCustomResource(urn URN, id ID) CustomResource {
+	var res CustomResourceState
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
+	res.urn.resolve(urn, true, false, nil)
+	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
+	res.id.resolve(id, id != "", false, nil)
+	return &res
+}
+
 type ProviderResourceState struct {
 	CustomResourceState
 
@@ -92,6 +110,16 @@ type ProviderResourceState struct {
 
 func (s ProviderResourceState) getPackage() string {
 	return s.pkg
+}
+
+func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResource {
+	var res ProviderResourceState
+	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
+	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
+	res.urn.resolve(urn, true, false, nil)
+	res.id.resolve(id, id != "", false, nil)
+	res.pkg = string(resource.URN(urn).Type().Name())
+	return &res
 }
 
 // Resource represents a cloud resource managed by Pulumi.
@@ -152,38 +180,40 @@ type CustomTimeouts struct {
 }
 
 type resourceOptions struct {
-	// Parent is an optional parent resource to which this resource belongs.
-	Parent Resource
+	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
+	AdditionalSecretOutputs []string
+	// Aliases is an optional list of identifiers used to find and use existing resources.
+	Aliases []Alias
+	// CustomTimeouts is an optional configuration block used for CRUD operations
+	CustomTimeouts *CustomTimeouts
+	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
+	DeleteBeforeReplace bool
 	// DependsOn is an optional array of explicit dependencies on other resources.
 	DependsOn []Resource
+	// IgnoreChanges ignores changes to any of the specified properties.
+	IgnoreChanges []string
+	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
+	// the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
+	// current state. Once a resource has been imported, the import property must be removed from the resource's
+	// options.
+	Import IDInput
+	// Parent is an optional parent resource to which this resource belongs.
+	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
 	Provider ProviderResource
 	// Providers is an optional map of package to provider resource for a component resource.
 	Providers map[string]ProviderResource
-	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
-	DeleteBeforeReplace bool
-	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
-	// the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
-	// current state. Once a resource has been imported, the import property must be removed from the resource's
-	// options.
-	Import IDInput
-	// CustomTimeouts is an optional configuration block used for CRUD operations
-	CustomTimeouts *CustomTimeouts
-	// Ignore changes to any of the specified properties.
-	IgnoreChanges []string
-	// Aliases is an optional list of identifiers used to find and use existing resources.
-	Aliases []Alias
-	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
-	AdditionalSecretOutputs []string
 	// Transformations is an optional list of transformations to apply to this resource during construction.
 	// The transformations are applied in order, and are applied prior to transformation and to parents
 	// walking from the resource up to the stack.
 	Transformations []ResourceTransformation
-	// An optional version, corresponding to the version of the provider plugin that should be used when operating on
-	// this resource. This version overrides the version information inferred from the current package and should
-	// rarely be used.
+	// URN is an optional URN of a previously-registered resource of this type to read from the engine.
+	URN string
+	// Version is an optional version, corresponding to the version of the provider plugin that should be used when
+	// operating on this resource. This version overrides the version information inferred from the current package and
+	// should rarely be used.
 	Version string
 }
 
@@ -192,6 +222,8 @@ type invokeOptions struct {
 	Parent Resource
 	// Provider is an optional provider resource to use for this invoke.
 	Provider ProviderResource
+	// Version is an optional version of the provider plugin to use for the invoke.
+	Version string
 }
 
 type ResourceOption interface {
@@ -224,14 +256,61 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 }
 
 // merging is handled by each functional options call
-// properties that are arrays/maps are always appened/merged together
+// properties that are arrays/maps are always appended/merged together
 // last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
 func merge(opts ...ResourceOption) *resourceOptions {
 	options := &resourceOptions{}
 	for _, o := range opts {
-		o.applyResourceOption(options)
+		if o != nil {
+			o.applyResourceOption(options)
+		}
 	}
 	return options
+}
+
+// AdditionalSecretOutputs specifies a list of output properties to mark as secret.
+func AdditionalSecretOutputs(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, o...)
+	})
+}
+
+// Aliases applies a list of identifiers to find and use existing resources.
+func Aliases(o []Alias) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Aliases = append(ro.Aliases, o...)
+	})
+}
+
+// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
+func DeleteBeforeReplace(o bool) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.DeleteBeforeReplace = o
+	})
+}
+
+// DependsOn is an optional array of explicit dependencies on other resources.
+func DependsOn(o []Resource) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.DependsOn = append(ro.DependsOn, o...)
+	})
+}
+
+// Ignore changes to any of the specified properties.
+func IgnoreChanges(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
+	})
+}
+
+// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
+// the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
+// current state. Once a resource has been imported, the import property must be removed from the resource's
+// options.
+func Import(o IDInput) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Import = o
+	})
 }
 
 // Parent sets the parent resource to which this resource or invoke belongs.
@@ -246,6 +325,13 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	})
 }
 
+// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
+func Protect(o bool) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Protect = o
+	})
+}
+
 // Provider sets the provider resource to use for a resource's CRUD operations or an invoke's call.
 func Provider(r ProviderResource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
@@ -256,29 +342,6 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 			io.Provider = r
 		}
 	})
-}
-
-// DependsOn is an optional array of explicit dependencies on other resources.
-func DependsOn(o []Resource) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, o...)
-	})
-}
-
-// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
-func Protect(o bool) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.Protect = o
-	})
-}
-
-// Providers is an optional list of providers to use for a resource's children.
-func Providers(o ...ProviderResource) ResourceOption {
-	m := map[string]ProviderResource{}
-	for _, p := range o {
-		m[p.getPackage()] = p
-	}
-	return ProviderMap(m)
 }
 
 // ProviderMap is an optional map of package to provider resource for a component resource.
@@ -295,21 +358,13 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 	})
 }
 
-// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
-func DeleteBeforeReplace(o bool) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DeleteBeforeReplace = o
-	})
-}
-
-// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
-// the cloud resource with the given ID. The inputs to the resource's constructor must align with the resource's
-// current state. Once a resource has been imported, the import property must be removed from the resource's
-// options.
-func Import(o IDInput) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.Import = o
-	})
+// Providers is an optional list of providers to use for a resource's children.
+func Providers(o ...ProviderResource) ResourceOption {
+	m := map[string]ProviderResource{}
+	for _, p := range o {
+		m[p.getPackage()] = p
+	}
+	return ProviderMap(m)
 }
 
 // Timeouts is an optional configuration block used for CRUD operations
@@ -319,39 +374,31 @@ func Timeouts(o *CustomTimeouts) ResourceOption {
 	})
 }
 
-// An optional version, corresponding to the version of the provider plugin that should be used when operating on
-// this resource. This version overrides the version information inferred from the current package and should
-// rarely be used.
-func Version(o string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.Version = o
-	})
-}
-
-// Ignore changes to any of the specified properties.
-func IgnoreChanges(o []string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
-	})
-}
-
-// Aliases applies a list of identifiers to find and use existing resources.
-func Aliases(o []Alias) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.Aliases = append(ro.Aliases, o...)
-	})
-}
-
-// AdditionalSecretOutputs specifies a list of output properties to mark as secret.
-func AdditionalSecretOutputs(o []string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, o...)
-	})
-}
-
 // Transformations is an optional list of transformations to be applied to the resource.
 func Transformations(o []ResourceTransformation) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.Transformations = append(ro.Transformations, o...)
+	})
+}
+
+// URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
+//nolint: golint
+func URN_(o string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.URN = o
+	})
+}
+
+// Version is an optional version, corresponding to the version of the provider plugin that should be used when
+// operating on this resource. This version overrides the version information inferred from the current package and
+// should rarely be used.
+func Version(o string) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		switch {
+		case ro != nil:
+			ro.Version = o
+		case io != nil:
+			io.Version = o
+		}
 	})
 }

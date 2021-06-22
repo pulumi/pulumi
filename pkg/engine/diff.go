@@ -25,11 +25,11 @@ import (
 
 	"github.com/sergi/go-diff/diffmatchpatch"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // GetIndent computes a step's parent indentation.
@@ -230,6 +230,18 @@ func PrintObject(
 			printPropertyValue(b, v, planning, indent, op, prefix, debug)
 		}
 	}
+}
+
+func PrintResourceReference(
+	b *bytes.Buffer, resRef resource.ResourceReference, planning bool,
+	indent int, op deploy.StepOp, prefix bool, debug bool) {
+
+	printPropertyTitle(b, "URN", 3, indent, op, prefix)
+	write(b, op, "%q\n", resRef.URN)
+	printPropertyTitle(b, "ID", 3, indent, op, prefix)
+	printPropertyValue(b, resRef.ID, planning, indent, op, prefix, debug)
+	printPropertyTitle(b, "PackageVersion", 3, indent, op, prefix)
+	write(b, op, "%q\n", resRef.PackageVersion)
 }
 
 func massageStackPreviewAdd(p resource.PropertyValue) resource.PropertyValue {
@@ -453,9 +465,10 @@ func printPropertyValue(
 	b *bytes.Buffer, v resource.PropertyValue, planning bool,
 	indent int, op deploy.StepOp, prefix bool, debug bool) {
 
-	if isPrimitive(v) {
+	switch {
+	case isPrimitive(v) || v.IsSecret():
 		printPrimitivePropertyValue(b, v, planning, op)
-	} else if v.IsArray() {
+	case v.IsArray():
 		arr := v.ArrayValue()
 		if len(arr) == 0 {
 			writeVerbatim(b, op, "[]")
@@ -467,7 +480,7 @@ func printPropertyValue(
 			}
 			writeWithIndentNoPrefix(b, indent, op, "]")
 		}
-	} else if v.IsAsset() {
+	case v.IsAsset():
 		a := v.AssetValue()
 		if a.IsText() {
 			write(b, op, "asset(text:%s) {\n", shortHash(a.Hash))
@@ -488,7 +501,7 @@ func printPropertyValue(
 			contract.Assert(a.IsURI())
 			write(b, op, "asset(uri:%s) { %s }", shortHash(a.Hash), a.URI)
 		}
-	} else if v.IsArchive() {
+	case v.IsArchive():
 		a := v.ArchiveValue()
 		if assets, has := a.GetAssets(); has {
 			write(b, op, "archive(assets:%s) {\n", shortHash(a.Hash))
@@ -507,8 +520,7 @@ func printPropertyValue(
 			contract.Assert(a.IsURI())
 			write(b, op, "archive(uri:%s) { %v }", shortHash(a.Hash), a.URI)
 		}
-	} else {
-		contract.Assert(v.IsObject())
+	case v.IsObject():
 		obj := v.ObjectValue()
 		if len(obj) == 0 {
 			writeVerbatim(b, op, "{}")
@@ -517,6 +529,13 @@ func printPropertyValue(
 			PrintObject(b, obj, planning, indent+1, op, prefix, debug)
 			writeWithIndentNoPrefix(b, indent, op, "}")
 		}
+	case v.IsResourceReference():
+		resRef := v.ResourceReferenceValue()
+		writeVerbatim(b, op, "{\n")
+		PrintResourceReference(b, resRef, planning, indent+1, op, prefix, debug)
+		writeWithIndentNoPrefix(b, indent, op, "}")
+	default:
+		contract.Failf("Unknown PropertyValue type %v", v)
 	}
 	writeVerbatim(b, op, "\n")
 }
@@ -710,7 +729,7 @@ func printPrimitivePropertyValue(b io.StringWriter, v resource.PropertyValue, pl
 			write(b, op, "undefined")
 		}
 	} else {
-		contract.Failf("Unexpected property value kind")
+		contract.Failf("Unexpected property value kind '%v'", v)
 	}
 }
 

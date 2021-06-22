@@ -17,31 +17,48 @@ package main
 import (
 	cryptorand "crypto/rand"
 	"encoding/base64"
-	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"path/filepath"
+	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func readPassphrase(prompt string) (string, error) {
+func readPassphrase(prompt string) (phrase string, interactive bool, err error) {
 	if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
-		return phrase, nil
+		return phrase, false, nil
+	}
+	if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
+		phraseFilePath, err := filepath.Abs(phraseFile)
+		if err != nil {
+			return "", false, errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
+		}
+		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+		if err != nil {
+			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+		}
+		return strings.TrimSpace(string(phraseDetails)), false, nil
 	}
 	if !cmdutil.Interactive() {
-		return "", errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE environment variable")
+		return "", false, errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE or " +
+			"PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
 	}
-	return cmdutil.ReadConsoleNoEcho(prompt)
+	phrase, err = cmdutil.ReadConsoleNoEcho(prompt)
+	return phrase, true, err
 }
 
-func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (secrets.Manager, error) {
+func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
+	rotatePassphraseSecretsProvider bool) (secrets.Manager, error) {
 	contract.Assertf(stackName != "", "stackName %s", "!= \"\"")
 
 	if configFile == "" {
@@ -57,18 +74,29 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 		return nil, err
 	}
 
+	if rotatePassphraseSecretsProvider {
+		info.EncryptionSalt = ""
+	}
+
+	// If there are any other secrets providers set in the config, remove them, as the passphrase
+	// provider deals only with EncryptionSalt, not EncryptedKey or SecretsProvider.
+	if info.EncryptedKey != "" || info.SecretsProvider != "" {
+		info.EncryptedKey = ""
+		info.SecretsProvider = ""
+	}
+
 	// If we have a salt, we can just use it.
 	if info.EncryptionSalt != "" {
 		for {
-			phrase, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
-				"    (set PULUMI_CONFIG_PASSPHRASE to remember)")
+			phrase, interactive, phraseErr := readPassphrase("Enter your passphrase to unlock config/secrets\n" +
+				"    (set PULUMI_CONFIG_PASSPHRASE or PULUMI_CONFIG_PASSPHRASE_FILE to remember)")
 			if phraseErr != nil {
 				return nil, phraseErr
 			}
 
 			sm, smerr := passphrase.NewPassphaseSecretsManager(phrase, info.EncryptionSalt)
 			switch {
-			case smerr == passphrase.ErrIncorrectPassphrase:
+			case interactive && smerr == passphrase.ErrIncorrectPassphrase:
 				cmdutil.Diag().Errorf(diag.Message("", "incorrect passphrase"))
 				continue
 			case smerr != nil:
@@ -83,12 +111,20 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string) (sec
 
 	// Get a the passphrase from the user, ensuring that they match.
 	for {
+		firstMessage := "Enter your passphrase to protect config/secrets"
+		if rotatePassphraseSecretsProvider {
+			firstMessage = "Enter your new passphrase to protect config/secrets"
+		}
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
-		first, err := readPassphrase("Enter your passphrase to protect config/secrets")
+		first, _, err := readPassphrase(firstMessage)
 		if err != nil {
 			return nil, err
 		}
-		second, err := readPassphrase("Re-enter your passphrase to confirm")
+		secondMessage := "Re-enter your passphrase to confirm"
+		if rotatePassphraseSecretsProvider {
+			secondMessage = "Re-enter your new passphrase to confirm"
+		}
+		second, _, err := readPassphrase(secondMessage)
 		if err != nil {
 			return nil, err
 		}

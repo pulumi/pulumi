@@ -17,14 +17,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 func newCancelCmd() *cobra.Command {
@@ -56,7 +56,7 @@ func newCancelCmd() *cobra.Command {
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -70,7 +70,7 @@ func newCancelCmd() *cobra.Command {
 			// Ensure the user really wants to do this.
 			stackName := string(s.Ref().Name())
 			prompt := fmt.Sprintf("This will irreversibly cancel the currently running update for '%s'!", stackName)
-			if !yes && !confirmPrompt(prompt, stackName, opts) {
+			if cmdutil.Interactive() && (!yes && !confirmPrompt(prompt, stackName, opts)) {
 				fmt.Println("confirmation declined")
 				return result.Bail()
 			}

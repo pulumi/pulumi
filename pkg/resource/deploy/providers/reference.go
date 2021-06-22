@@ -19,10 +19,10 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // A provider reference is (URN, ID) tuple that refers to a particular provider instance. A provider reference's
@@ -89,6 +89,10 @@ func (r Reference) ID() resource.ID {
 
 // String returns the string representation of this provider reference.
 func (r Reference) String() string {
+	if r.urn == "" && r.id == "" {
+		return ""
+	}
+
 	return string(r.urn) + resource.URNNameDelimiter + string(r.id)
 }
 

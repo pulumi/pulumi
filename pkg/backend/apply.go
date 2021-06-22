@@ -25,21 +25,21 @@ import (
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 // ApplierOptions is a bag of configuration settings for an Applier.
 type ApplierOptions struct {
 	// DryRun indicates if the update should not change any resource state and instead just preview changes.
 	DryRun bool
-	// ShowLink indicates if a link to the update persisted result should be displayed.
+	// ShowLink indicates if a link to the update persisted result can be displayed.
 	ShowLink bool
 }
 
@@ -63,11 +63,12 @@ var updateTextMap = map[apitype.UpdateKind]struct {
 	previewText string
 	text        string
 }{
-	apitype.PreviewUpdate: {"update", "Previewing"},
-	apitype.UpdateUpdate:  {"update", "Updating"},
-	apitype.RefreshUpdate: {"refresh", "Refreshing"},
-	apitype.DestroyUpdate: {"destroy", "Destroying"},
-	apitype.ImportUpdate:  {"import", "Importing"},
+	apitype.PreviewUpdate:        {"update", "Previewing"},
+	apitype.UpdateUpdate:         {"update", "Updating"},
+	apitype.RefreshUpdate:        {"refresh", "Refreshing"},
+	apitype.DestroyUpdate:        {"destroy", "Destroying"},
+	apitype.StackImportUpdate:    {"stack import", "Importing"},
+	apitype.ResourceImportUpdate: {"import", "Importing"},
 }
 
 type response string
@@ -108,7 +109,7 @@ func PreviewThenPrompt(ctx context.Context, kind apitype.UpdateKind, stack Stack
 	// confirm the prompt.
 	opts := ApplierOptions{
 		DryRun:   true,
-		ShowLink: false,
+		ShowLink: true,
 	}
 
 	changes, res := apply(ctx, kind, stack, op, opts, eventsChannel)
@@ -154,7 +155,7 @@ func confirmBeforeUpdating(kind apitype.UpdateKind, stack Stack,
 		// Create a prompt. If this is a refresh, we'll add some extra text so it's clear we aren't updating resources.
 		prompt := "\b" + opts.Display.Color.Colorize(
 			colors.SpecPrompt+fmt.Sprintf("Do you want to perform this %s%s?",
-				kind, previewWarning)+colors.Reset)
+				updateTextMap[kind].previewText, previewWarning)+colors.Reset)
 		if kind == apitype.RefreshUpdate {
 			prompt += "\n" +
 				opts.Display.Color.Colorize(colors.SpecImportant+

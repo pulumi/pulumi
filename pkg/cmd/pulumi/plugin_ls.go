@@ -22,8 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPluginLsCmd() *cobra.Command {
@@ -42,7 +42,7 @@ func newPluginLsCmd() *cobra.Command {
 					return errors.Wrapf(err, "loading project plugins")
 				}
 			} else {
-				if plugins, err = workspace.GetPlugins(); err != nil {
+				if plugins, err = workspace.GetPluginsWithMetadata(); err != nil {
 					return errors.Wrapf(err, "loading plugins")
 				}
 			}

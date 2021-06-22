@@ -6,6 +6,16 @@ if [ $# -eq 0 ]; then
     exit 1
 fi
 
+## PLEASE NOTE: This script is used primarily for use with homebrew and the "make brew" build target
+## the logic to determine the version of pulumi at build time is now controlled via
+## https://github.com/pulumi/pulumictl and the `pulumictl get version` command
+
+# Allow version to be set manually when building outside of git repo
+if [ -n "${PULUMI_VERSION+x}" ]; then
+    echo "${PULUMI_VERSION}"
+    exit 0
+fi
+
 COMMITISH=$1
 DIRTY_TAG=""
 EXACT=0
@@ -38,7 +48,7 @@ fi
 IFS='/'
 read -a tagsplit <<< "${TAG}"
 
-if echo "${#tagsplit[@]}" > /dev/null 2>&1 -gt 1; 
+if echo "${#tagsplit[@]}" > /dev/null 2>&1 -gt 1;
 then
     TAG=${tagsplit[${#tagsplit[@]}-1]}
 fi

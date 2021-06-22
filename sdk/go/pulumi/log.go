@@ -18,8 +18,9 @@ package pulumi
 
 import (
 	"strings"
+	"sync"
 
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
 )
 
@@ -36,6 +37,7 @@ type Log interface {
 type logState struct {
 	engine pulumirpc.EngineClient
 	ctx    context.Context
+	join   *sync.WaitGroup
 }
 
 // LogArgs may be used to specify arguments to be used for logging.
@@ -56,26 +58,30 @@ type LogArgs struct {
 
 // Debug logs a debug-level message that is generally hidden from end-users.
 func (log *logState) Debug(msg string, args *LogArgs) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_DEBUG, msg, args)
+	return log._log(pulumirpc.LogSeverity_DEBUG, msg, args)
 }
 
 // Logs an informational message that is generally printed to stdout during resource
 func (log *logState) Info(msg string, args *LogArgs) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_INFO, msg, args)
+	return log._log(pulumirpc.LogSeverity_INFO, msg, args)
 }
 
 // Logs a warning to indicate that something went wrong, but not catastrophically so.
 func (log *logState) Warn(msg string, args *LogArgs) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_WARNING, msg, args)
+	return log._log(pulumirpc.LogSeverity_WARNING, msg, args)
 }
 
-// Logs a fatal error to indicate that the tool should stop processing resource
+// Logs a fatal condition. Consider returning a non-nil error object
+// after calling Error to stop the Pulumi program.
 func (log *logState) Error(msg string, args *LogArgs) error {
-	return _log(log.ctx, log.engine, pulumirpc.LogSeverity_ERROR, msg, args)
+	return log._log(pulumirpc.LogSeverity_ERROR, msg, args)
 }
 
-func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc.LogSeverity,
-	message string, args *LogArgs) error {
+func (log *logState) _log(severity pulumirpc.LogSeverity, message string, args *LogArgs) error {
+	if log.join != nil {
+		log.join.Add(1)
+		defer log.join.Done()
+	}
 
 	if args == nil {
 		args = &LogArgs{}
@@ -83,7 +89,7 @@ func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc
 
 	var urn string
 	if args.Resource != nil {
-		resolvedUrn, _, _, err := args.Resource.URN().awaitURN(ctx)
+		resolvedUrn, _, _, err := args.Resource.URN().awaitURN(log.ctx)
 		if err != nil {
 			return err
 		}
@@ -97,6 +103,6 @@ func _log(ctx context.Context, engine pulumirpc.EngineClient, severity pulumirpc
 		StreamId:  args.StreamID,
 		Ephemeral: args.Ephemeral,
 	}
-	_, err := engine.Log(ctx, logRequest)
+	_, err := log.engine.Log(log.ctx, logRequest)
 	return err
 }

@@ -1,8 +1,0 @@
-{{ define "language_sdk_links" }}
-<dl class="tabular">
-{{ range $key,$value := . }}
-    <dt>{{ $key }}</dt>
-    <dd>{{ htmlSafe $value }}</dd>
-{{ end }}
-</dl>
-{{ end }}

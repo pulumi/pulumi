@@ -283,6 +283,11 @@ func TestProjectNames(t *testing.T) {
 			projectName: "Pulumi.Test",
 			expectError: true,
 		},
+		{
+			testName:    "Empty Project Name",
+			projectName: "",
+			expectError: true,
+		},
 	}
 
 	for _, tt := range tests {

@@ -30,7 +30,6 @@ export interface SerializeFunctionArgs {
      * prevent potential cycles.
      */
     serialize?: (o: any) => boolean;
-
     /**
      * If this is a function which, when invoked, will produce the actual entrypoint function.
      * Useful for when serializing a function that has high startup cost that only wants to be
@@ -42,11 +41,17 @@ export interface SerializeFunctionArgs {
      * be what is exported.
      */
     isFactoryFunction?: boolean;
-
     /**
      * The resource to log any errors we encounter against.
      */
     logResource?: Resource;
+    /**
+     * If true, allow secrets to be serialized into the function. This should only be set to true if the calling
+     * code will handle this and propoerly wrap the resulting text in a Secret before passing it into any Resources
+     * or serializing it to any other output format. If set, the `containsSecrets` property on the returned
+     * SerializedFunction object will indicate whether secrets were serialized into the function text.
+     */
+    allowSecrets?: boolean;
 }
 
 /**
@@ -63,6 +68,10 @@ export interface SerializedFunction {
      * The name of the exported module member.
      */
     exportName: string;
+    /**
+     * True if the serialized function text includes serialization of secret
+     */
+    containsSecrets: boolean;
 }
 
 /**
@@ -90,8 +99,11 @@ export async function serializeFunction(
     const serialize = args.serialize || (_ => true);
     const isFactoryFunction = args.isFactoryFunction === undefined ? false : args.isFactoryFunction;
 
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, args.logResource);
-    return serializeJavaScriptText(functionInfo, exportName, isFactoryFunction);
+    const closureInfo = await closure.createClosureInfoAsync(func, serialize, args.logResource);
+    if (!args.allowSecrets && closureInfo.containsSecrets) {
+        throw new Error("Secret outputs cannot be captured by a closure.");
+    }
+    return serializeJavaScriptText(closureInfo, exportName, isFactoryFunction);
 }
 
 /**
@@ -103,8 +115,11 @@ export async function serializeFunctionAsync(
     log.warn("'function serializeFunctionAsync' is deprecated.  Please use 'serializeFunction' instead.");
 
     serialize = serialize || (_ => true);
-    const functionInfo = await closure.createFunctionInfoAsync(func, serialize, /*logResource:*/ undefined);
-    return serializeJavaScriptText(functionInfo, "handler", /*isFactoryFunction*/ false).text;
+    const closureInfo = await closure.createClosureInfoAsync(func, serialize, /*logResource:*/ undefined);
+    if (closureInfo.containsSecrets) {
+        throw new Error("Secret outputs cannot be captured by a closure.");
+    }
+    return serializeJavaScriptText(closureInfo, "handler", /*isFactoryFunction*/ false).text;
 }
 
 /**
@@ -114,7 +129,7 @@ export async function serializeFunctionAsync(
  * @param c The FunctionInfo to be serialized into a module string.
  */
 function serializeJavaScriptText(
-        outerFunction: closure.FunctionInfo,
+        outerClosure: closure.ClosureInfo,
         exportName: string,
         isFactoryFunction: boolean): SerializedFunction {
 
@@ -137,7 +152,7 @@ function serializeJavaScriptText(
     let environmentText = "";
     let functionText = "";
 
-    const outerFunctionName = emitFunctionAndGetName(outerFunction);
+    const outerFunctionName = emitFunctionAndGetName(outerClosure.func);
 
     if (environmentText) {
         environmentText = "\n" + environmentText;
@@ -157,7 +172,7 @@ function serializeJavaScriptText(
         text = exportText + "\n" + environmentText + functionText;
     }
 
-    return { text, exportName };
+    return { text, exportName, containsSecrets: outerClosure.containsSecrets };
 
     function emitFunctionAndGetName(functionInfo: closure.FunctionInfo): string {
         // If this is the first time seeing this function, then actually emit the function code for

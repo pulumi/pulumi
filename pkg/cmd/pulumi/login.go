@@ -23,12 +23,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newLoginCmd() *cobra.Command {
@@ -116,6 +116,11 @@ func newLoginCmd() *cobra.Command {
 				if err != nil {
 					return errors.Wrap(err, "could not determine current cloud")
 				}
+			} else {
+				// Ensure we have the correct cloudurl type before logging in
+				if err := validateCloudBackendType(cloudURL); err != nil {
+					return err
+				}
 			}
 
 			var be backend.Backend
@@ -143,4 +148,19 @@ func newLoginCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVarP(&localMode, "local", "l", false, "Use Pulumi in local-only mode")
 
 	return cmd
+}
+
+func validateCloudBackendType(typ string) error {
+	kind := strings.SplitN(typ, ":", 2)[0]
+	supportedKinds := []string{"azblob", "gs", "s3", "file", "https", "http"}
+	for _, supportedKind := range supportedKinds {
+		if kind == supportedKind {
+			return nil
+		}
+	}
+	return errors.Errorf(
+		"unknown backend cloudUrl format '%s' (supported Url formats are: "+
+			"azblob://, gs://, s3://, file://, https:// and http://)",
+		kind,
+	)
 }

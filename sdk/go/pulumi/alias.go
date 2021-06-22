@@ -82,19 +82,19 @@ func (a Alias) collapseToURN(defaultName, defaultType string, defaultParent Reso
 func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 	var parentPrefix StringInput
 	if parent != nil {
-		parentPrefix = parent.ToStringOutput().ApplyString(func(p string) string {
+		parentPrefix = parent.ToStringOutput().ApplyT(func(p string) string {
 			return p[0:strings.LastIndex(p, "::")] + "$"
-		})
+		}).(StringOutput)
 	} else {
-		parentPrefix = All(stack, project).ApplyString(func(a []interface{}) string {
+		parentPrefix = All(stack, project).ApplyT(func(a []interface{}) string {
 			return "urn:pulumi:" + a[0].(string) + "::" + a[1].(string) + "::"
-		})
+		}).(StringOutput)
 
 	}
 
-	return All(parentPrefix, t, name).ApplyURN(func(a []interface{}) URN {
+	return All(parentPrefix, t, name).ApplyT(func(a []interface{}) URN {
 		return URN(a[0].(string) + a[1].(string) + "::" + a[2].(string))
-	})
+	}).(URNOutput)
 }
 
 // inheritedChildAlias computes the alias that should be applied to a child based on an alias applied to it's parent.
@@ -103,10 +103,10 @@ func CreateURN(name, t, parent, project, stack StringInput) URNOutput {
 func inheritedChildAlias(childName, parentName, childType, project, stack string, parentURN URNOutput) URNOutput {
 	aliasName := StringInput(String(childName))
 	if strings.HasPrefix(childName, parentName) {
-		aliasName = parentURN.ApplyString(func(urn URN) string {
+		aliasName = parentURN.ApplyT(func(urn URN) string {
 			parentPrefix := urn[strings.LastIndex(string(urn), "::")+2:]
 			return string(parentPrefix) + childName[len(parentName):]
-		})
+		}).(StringOutput)
 	}
 	return CreateURN(aliasName, String(childType), parentURN, String(project), String(stack))
 }

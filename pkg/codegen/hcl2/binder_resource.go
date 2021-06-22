@@ -18,11 +18,11 @@ package hcl2
 import (
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -76,6 +76,7 @@ func (b *binder) bindResourceTypes(node *Resource) hcl.Diagnostics {
 		if !ok {
 			return hcl.Diagnostics{unknownResourceType(token, tokenRange)}
 		}
+		node.Schema = res
 		inputProperties, properties = res.InputProperties, res.Properties
 	} else {
 		inputProperties, properties = pkgSchema.schema.Config, pkgSchema.schema.Config
@@ -263,7 +264,7 @@ func (b *binder) bindResourceBody(node *Resource) hcl.Diagnostics {
 	}
 
 	// Typecheck the attributes.
-	if objectType, ok := node.InputType.(*model.ObjectType); ok {
+	if objectType, ok := node.InputType.(*model.ObjectType); ok && !b.options.skipResourceTypecheck {
 		attrNames := codegen.StringSet{}
 		for _, attr := range node.Inputs {
 			attrNames.Add(attr.Name)

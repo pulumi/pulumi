@@ -4,11 +4,12 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
+using Pulumi.Utilities;
 using Xunit;
 
 namespace Pulumi.Tests.Core
 {
-    public partial class OutputTests : PulumiTest
+    public class OutputTests : PulumiTest
     {
         private static Output<T> CreateOutput<T>(T value, bool isKnown, bool isSecret = false)
             => new Output<T>(Task.FromResult(OutputData.Create(
@@ -293,6 +294,73 @@ namespace Pulumi.Tests.Core
                     var data = await o.DataTask.ConfigureAwait(false);
                     Assert.Equal(new[] { 1, 2 }, data.Value);
                 });
+            
+            [Fact]
+            public Task IsSecretAsyncOnKnownOutput()
+                => RunInPreview(async () =>
+                {
+                    var o1 = CreateOutput(0, isKnown: true, isSecret: true);
+                    var o2 = CreateOutput(1, isKnown: true, isSecret: false);
+                    var isSecret1 = await Output.IsSecretAsync(o1).ConfigureAwait(false);
+                    var isSecret2 = await Output.IsSecretAsync(o2).ConfigureAwait(false);
+                    Assert.True(isSecret1);
+                    Assert.False(isSecret2);
+                });
+            
+            [Fact]
+            public Task IsSecretAsyncOnAwaitableOutput()
+                => RunInPreview(async () =>
+                {
+                    var o1 = CreateOutput(0, isKnown: true, isSecret: true).Apply(a => Task.FromResult("inner1"));
+                    var o2 = CreateOutput(1, isKnown: true, isSecret: false).Apply(a => Task.FromResult("inner2"));
+                    var isSecret1 = await Output.IsSecretAsync(o1).ConfigureAwait(false);
+                    var isSecret2 = await Output.IsSecretAsync(o2).ConfigureAwait(false);
+                    Assert.True(isSecret1);
+                    Assert.False(isSecret2);
+                });
+            
+            [Fact]
+            public Task UnsecretOnKnownSecretValue()
+                => RunInPreview(async () =>
+                {
+                    var secret = CreateOutput(1, isKnown: true, isSecret: true);
+                    var notSecret = Output.Unsecret(secret);
+                    var notSecretData = await notSecret.DataTask.ConfigureAwait(false);
+                    Assert.False(notSecretData.IsSecret);
+                    Assert.Equal(1, notSecretData.Value);
+                });
+            
+            [Fact]
+            public Task UnsecretOnAwaitableSecretValue()
+                => RunInPreview(async () =>
+                {
+                    var secret = CreateOutput(0, isKnown: true, isSecret: true).Apply(a => Task.FromResult("inner"));
+                    var notSecret = Output.Unsecret(secret);
+                    var notSecretData = await notSecret.DataTask.ConfigureAwait(false);
+                    Assert.False(notSecretData.IsSecret);
+                    Assert.Equal("inner", notSecretData.Value);
+                });
+            
+            [Fact]
+            public Task UnsecretOnNonSecretValue()
+                => RunInPreview(async () =>
+                {
+                    var secret = CreateOutput(2, isKnown: true, isSecret: false);
+                    var notSecret = Output.Unsecret(secret);
+                    var notSecretData = await notSecret.DataTask.ConfigureAwait(false);
+                    Assert.False(notSecretData.IsSecret);
+                    Assert.Equal(2, notSecretData.Value);
+                });
+
+            [Fact]
+            public Task CreateUnknownSkipsValueFactory()
+                => RunInPreview(async () =>
+                {
+                    var output = OutputUtilities.CreateUnknown(() => Task.FromResult("value"));
+                    var data = await output.DataTask.ConfigureAwait(false);
+                    Assert.False(data.IsKnown);
+                    Assert.Null(data.Value);
+                });
         }
 
         public class NormalTests
@@ -527,6 +595,16 @@ namespace Pulumi.Tests.Core
                     Assert.False(data.IsKnown);
                     Assert.True(data.IsSecret);
                     Assert.Equal("inner", data.Value);
+                });
+
+            [Fact]
+            public Task CreateUnknownRunsValueFactory()
+                => RunInNormal(async () =>
+                {
+                    var output = OutputUtilities.CreateUnknown(() => Task.FromResult("value"));
+                    var data = await output.DataTask.ConfigureAwait(false);
+                    Assert.False(data.IsKnown);
+                    Assert.Equal("value", data.Value);
                 });
         }
     }

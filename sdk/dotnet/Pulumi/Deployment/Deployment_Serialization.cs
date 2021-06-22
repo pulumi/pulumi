@@ -1,7 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -12,7 +11,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        internal static bool _excessiveDebugOutput = true;
+        internal static bool _excessiveDebugOutput = false;
 
         /// <summary>
         /// <see cref="SerializeResourcePropertiesAsync"/> walks the props object passed in,
@@ -21,16 +20,16 @@ namespace Pulumi
         /// to registerResource.
         /// </summary>
         private static Task<SerializationResult> SerializeResourcePropertiesAsync(
-            string label, IDictionary<string, object?> args)
+            string label, IDictionary<string, object?> args, bool keepResources)
         {
             return SerializeFilteredPropertiesAsync(
-                label, args, key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName);
+                label, args, key => key != Constants.IdPropertyName && key != Constants.UrnPropertyName, keepResources);
         }
 
         private static async Task<Struct> SerializeAllPropertiesAsync(
-            string label, IDictionary<string, object?> args)
+            string label, IDictionary<string, object?> args, bool keepResources)
         {
-            var result = await SerializeFilteredPropertiesAsync(label, args, _ => true).ConfigureAwait(false);
+            var result = await SerializeFilteredPropertiesAsync(label, args, _ => true, keepResources).ConfigureAwait(false);
             return result.Serialized;
         }
 
@@ -40,7 +39,7 @@ namespace Pulumi
         /// creating a reasonable POCO object that can be remoted over to registerResource.
         /// </summary>
         private static async Task<SerializationResult> SerializeFilteredPropertiesAsync(
-            string label, IDictionary<string, object?> args, Predicate<string> acceptKey)
+            string label, IDictionary<string, object?> args, Predicate<string> acceptKey, bool keepResources)
         {
             var propertyToDependentResources = ImmutableDictionary.CreateBuilder<string, HashSet<Resource>>();
             var result = ImmutableDictionary.CreateBuilder<string, object>();
@@ -51,7 +50,7 @@ namespace Pulumi
                 {
                     // We treat properties with null values as if they do not exist.
                     var serializer = new Serializer(_excessiveDebugOutput);
-                    var v = await serializer.SerializeAsync($"{label}.{key}", val).ConfigureAwait(false);
+                    var v = await serializer.SerializeAsync($"{label}.{key}", val, keepResources).ConfigureAwait(false);
                     if (v != null)
                     {
                         result[key] = v;
@@ -65,7 +64,7 @@ namespace Pulumi
                 propertyToDependentResources.ToImmutable());
         }
 
-        private struct SerializationResult
+        private readonly struct SerializationResult
         {
             public readonly Struct Serialized;
             public readonly ImmutableDictionary<string, HashSet<Resource>> PropertyToDependentResources;

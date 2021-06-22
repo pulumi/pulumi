@@ -21,14 +21,14 @@ import (
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // A Host hosts provider plugins and makes them easily accessible by package name.
@@ -73,8 +73,6 @@ type Host interface {
 	// EnsurePlugins ensures all plugins in the given array are loaded and ready to use.  If any plugins are missing,
 	// and/or there are errors loading one or more plugins, a non-nil error is returned.
 	EnsurePlugins(plugins []workspace.PluginInfo, kinds Flags) error
-	// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-	GetRequiredPlugins(info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error)
 
 	// SignalCancellation asks all resource providers to gracefully shut down and abort any ongoing
 	// operations. Operation aborted in this way will return an error (e.g., `Update` and `Create`
@@ -88,7 +86,9 @@ type Host interface {
 }
 
 // NewDefaultHost implements the standard plugin logic, using the standard installation root to find them.
-func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{}) (Host, error) {
+func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string]interface{},
+	disableProviderPreview bool) (Host, error) {
+
 	host := &defaultHost{
 		ctx:                     ctx,
 		config:                  config,
@@ -98,6 +98,7 @@ func NewDefaultHost(ctx *Context, config ConfigSource, runtimeOptions map[string
 		resourcePlugins:         make(map[Provider]*resourcePlugin),
 		reportedResourcePlugins: make(map[string]struct{}),
 		loadRequests:            make(chan pluginLoadRequest),
+		disableProviderPreview:  disableProviderPreview,
 	}
 
 	// Fire up a gRPC server to listen for requests.  This acts as a RPC interface that plugins can use
@@ -142,6 +143,7 @@ type defaultHost struct {
 	plugins                 []workspace.PluginInfo           // a list of plugins allocated by this host.
 	loadRequests            chan pluginLoadRequest           // a channel used to satisfy plugin load requests.
 	server                  *hostServer                      // the server's RPC machinery.
+	disableProviderPreview  bool                             // true if provider plugins should disable provider preview
 }
 
 var _ Host = (*defaultHost)(nil)
@@ -258,7 +260,7 @@ func (host *defaultHost) ListAnalyzers() []Analyzer {
 func (host *defaultHost) Provider(pkg tokens.Package, version *semver.Version) (Provider, error) {
 	plugin, err := host.loadPlugin(func() (interface{}, error) {
 		// Try to load and bind to a plugin.
-		plug, err := NewProvider(host, host.ctx, pkg, version, host.runtimeOptions)
+		plug, err := NewProvider(host, host.ctx, pkg, version, host.runtimeOptions, host.disableProviderPreview)
 		if err == nil && plug != nil {
 			info, infoerr := plug.GetPluginInfo()
 			if infoerr != nil {
@@ -371,42 +373,6 @@ func (host *defaultHost) EnsurePlugins(plugins []workspace.PluginInfo, kinds Fla
 	return result
 }
 
-// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
-func (host *defaultHost) GetRequiredPlugins(info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error) {
-	var plugins []workspace.PluginInfo
-
-	if kinds&LanguagePlugins != 0 {
-		// First make sure the language plugin is present.  We need this to load the required resource plugins.
-		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
-		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
-		if err != nil {
-			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
-		}
-		plugins = append(plugins, workspace.PluginInfo{
-			Name: info.Proj.Runtime.Name(),
-			Kind: workspace.LanguagePlugin,
-		})
-
-		if kinds&ResourcePlugins != 0 {
-			// Use the language plugin to compute this project's set of plugin dependencies.
-			// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
-			//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
-			//     later than we do (right now, we do it up front, but at that point we don't know the version).
-			deps, err := lang.GetRequiredPlugins(info)
-			if err != nil {
-				return nil, errors.Wrapf(err, "failed to discover plugin requirements")
-			}
-			plugins = append(plugins, deps...)
-		}
-	} else {
-		// If we can't load the language plugin, we can't discover the resource plugins.
-		contract.Assertf(kinds&ResourcePlugins != 0,
-			"cannot load resource plugins without also loading the language plugin")
-	}
-
-	return plugins, nil
-}
-
 func (host *defaultHost) SignalCancellation() error {
 	// NOTE: we're abusing loadPlugin in order to ensure proper synchronization.
 	_, err := host.loadPlugin(func() (interface{}, error) {
@@ -478,3 +444,39 @@ const (
 
 // AllPlugins uses flags to ensure that all plugin kinds are loaded.
 var AllPlugins = AnalyzerPlugins | LanguagePlugins | ResourcePlugins
+
+// GetRequiredPlugins lists a full set of plugins that will be required by the given program.
+func GetRequiredPlugins(host Host, info ProgInfo, kinds Flags) ([]workspace.PluginInfo, error) {
+	var plugins []workspace.PluginInfo
+
+	if kinds&LanguagePlugins != 0 {
+		// First make sure the language plugin is present.  We need this to load the required resource plugins.
+		// TODO: we need to think about how best to version this.  For now, it always picks the latest.
+		lang, err := host.LanguageRuntime(info.Proj.Runtime.Name())
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to load language plugin %s", info.Proj.Runtime.Name())
+		}
+		plugins = append(plugins, workspace.PluginInfo{
+			Name: info.Proj.Runtime.Name(),
+			Kind: workspace.LanguagePlugin,
+		})
+
+		if kinds&ResourcePlugins != 0 {
+			// Use the language plugin to compute this project's set of plugin dependencies.
+			// TODO: we want to support loading precisely what the project needs, rather than doing a static scan of resolved
+			//     packages.  Doing this requires that we change our RPC interface and figure out how to configure plugins
+			//     later than we do (right now, we do it up front, but at that point we don't know the version).
+			deps, err := lang.GetRequiredPlugins(info)
+			if err != nil {
+				return nil, errors.Wrapf(err, "failed to discover plugin requirements")
+			}
+			plugins = append(plugins, deps...)
+		}
+	} else {
+		// If we can't load the language plugin, we can't discover the resource plugins.
+		contract.Assertf(kinds&ResourcePlugins != 0,
+			"cannot load resource plugins without also loading the language plugin")
+	}
+
+	return plugins, nil
+}

@@ -2,7 +2,7 @@
 # Interim container so we can copy pulumi binaries
 # Must be defined first
 ARG PULUMI_VERSION=latest
-ARG RUNTIME_VERSION=3.7.7
+ARG RUNTIME_VERSION=3.9
 ARG PULUMI_IMAGE=pulumi/pulumi-base
 FROM ${PULUMI_IMAGE}:${PULUMI_VERSION} as pulumi
 

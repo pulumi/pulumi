@@ -19,45 +19,84 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 	"github.com/stretchr/testify/assert"
 	yaml "gopkg.in/yaml.v2"
 )
 
-func TestMarshalMapJSON(t *testing.T) {
-	m := Map{
-		MustMakeKey("my", "testKey"):        NewValue("testValue"),
-		MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+func TestMarshalMap(t *testing.T) {
+	tests := []struct {
+		Value        Map
+		ExpectedYAML string
+		ExpectedJSON string
+	}{
+		{
+			Value: Map{
+				MustMakeKey("my", "testKey"):        NewValue("testValue"),
+				MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+			},
+			ExpectedYAML: "my:anotherTestKey: anotherTestValue\nmy:testKey: testValue\n",
+			ExpectedJSON: `{"my:anotherTestKey":"anotherTestValue","my:testKey":"testValue"}`,
+		},
+		{
+			Value: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":12321123131}`),
+			},
+			ExpectedYAML: "my:parent:\n  nested: 12321123131\n",
+			ExpectedJSON: `{"my:parent":{"nested":12321123131}}`,
+		},
+		{
+			Value: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":[12321123131]}`),
+			},
+			ExpectedYAML: "my:parent:\n  nested:\n  - 12321123131\n",
+			ExpectedJSON: `{"my:parent":{"nested":[12321123131]}}`,
+		},
+		{
+			Value: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":{"foo":12321123131}}`),
+			},
+			ExpectedYAML: "my:parent:\n  nested:\n    foo: 12321123131\n",
+			ExpectedJSON: `{"my:parent":{"nested":{"foo":12321123131}}}`,
+		},
+		{
+			Value: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":4.2}`),
+			},
+			ExpectedYAML: "my:parent:\n  nested: 4.2\n",
+			ExpectedJSON: `{"my:parent":{"nested":4.2}}`,
+		},
+		{
+			Value: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":[4.2]}`),
+			},
+			ExpectedYAML: "my:parent:\n  nested:\n  - 4.2\n",
+			ExpectedJSON: `{"my:parent":{"nested":[4.2]}}`,
+		},
+		{
+			Value: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":{"foo":4.2}}`),
+			},
+			ExpectedYAML: "my:parent:\n  nested:\n    foo: 4.2\n",
+			ExpectedJSON: `{"my:parent":{"nested":{"foo":4.2}}}`,
+		},
 	}
+	for _, test := range tests {
+		t.Run(test.ExpectedYAML, func(t *testing.T) {
+			yamlBytes, err := yaml.Marshal(test.Value)
+			assert.NoError(t, err)
+			assert.Equal(t, test.ExpectedYAML, string(yamlBytes))
+			newYAMLMap, err := roundtripMapYAML(test.Value)
+			assert.NoError(t, err)
+			assert.Equal(t, test.Value, newYAMLMap)
 
-	b, err := json.Marshal(m)
-	assert.NoError(t, err)
-	assert.Equal(t,
-		[]byte("{\"my:anotherTestKey\":\"anotherTestValue\",\"my:testKey\":\"testValue\"}"),
-		b)
-
-	newM, err := roundtripMapJSON(m)
-	assert.NoError(t, err)
-	assert.Equal(t, m, newM)
-
-}
-
-func TestMarshalMapYAML(t *testing.T) {
-	m := Map{
-		MustMakeKey("my", "testKey"):        NewValue("testValue"),
-		MustMakeKey("my", "anotherTestKey"): NewValue("anotherTestValue"),
+			jsonBytes, err := json.Marshal(test.Value)
+			assert.NoError(t, err)
+			assert.Equal(t, test.ExpectedJSON, string(jsonBytes))
+			newJSONMap, err := roundtripMapJSON(test.Value)
+			assert.NoError(t, err)
+			assert.Equal(t, test.Value, newJSONMap)
+		})
 	}
-
-	b, err := yaml.Marshal(m)
-	assert.NoError(t, err)
-
-	s1 := string(b)
-	contract.Ignore(s1)
-	assert.Equal(t, []byte("my:anotherTestKey: anotherTestValue\nmy:testKey: testValue\n"), b)
-
-	newM, err := roundtripMapYAML(m)
-	assert.NoError(t, err)
-	assert.Equal(t, m, newM)
 }
 
 func TestMarshalling(t *testing.T) {
@@ -420,6 +459,22 @@ func TestGetSuccess(t *testing.T) {
 				MustMakeKey("my", "outer"): NewObjectValue(`{"inner":"hi"}`),
 			},
 			ExpectNotFound: true,
+		},
+		{
+			Key:  `my:parent.nested`,
+			Path: true,
+			Config: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":12321123131}`),
+			},
+			Expected: NewValue("12321123131"),
+		},
+		{
+			Key:  `my:parent.nested`,
+			Path: true,
+			Config: Map{
+				MustMakeKey("my", "parent"): NewObjectValue(`{"nested":4.2}`),
+			},
+			Expected: NewValue("4.2"),
 		},
 	}
 

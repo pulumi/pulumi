@@ -20,11 +20,13 @@ package docs
 
 import (
 	"encoding/json"
+	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -66,56 +68,64 @@ func initTestPackageSpec(t *testing.T) {
 		Meta: &schema.MetadataSpec{
 			ModuleFormat: "(.*)(?:/[^/]*)",
 		},
-		Types: map[string]schema.ObjectTypeSpec{
+		Types: map[string]schema.ComplexTypeSpec{
 			// Package-level types.
 			"prov:/getPackageResourceOptions:getPackageResourceOptions": {
-				Description: "Options object for the package-level function getPackageResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "Options object for the package-level function getPackageResource.",
+					Type:        "object",
+					Properties:  simpleProperties,
+				},
 			},
 
 			// Module-level types.
 			"prov:module/getModuleResourceOptions:getModuleResourceOptions": {
-				Description: "Options object for the module-level function getModuleResource.",
-				Type:        "object",
-				Properties:  simpleProperties,
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "Options object for the module-level function getModuleResource.",
+					Type:        "object",
+					Properties:  simpleProperties,
+				},
 			},
 			"prov:module/ResourceOptions:ResourceOptions": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties: map[string]schema.PropertySpec{
-					"stringProp": {
-						Description: "A string prop.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "string",
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "The resource options object.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"stringProp": {
+							Description: "A string prop.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "string",
+							},
 						},
-					},
-					"boolProp": {
-						Description: "A bool prop.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "boolean",
+						"boolProp": {
+							Description: "A bool prop.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "boolean",
+							},
 						},
-					},
-					"recursiveType": {
-						Description: "I am a recursive type.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+						"recursiveType": {
+							Description: "I am a recursive type.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Ref: "#/types/prov:module/ResourceOptions:ResourceOptions",
+							},
 						},
 					},
 				},
 			},
 			"prov:module/ResourceOptions2:ResourceOptions2": {
-				Description: "The resource options object.",
-				Type:        "object",
-				Properties: map[string]schema.PropertySpec{
-					"uniqueProp": {
-						Description: "This is a property unique to this type.",
-						Language:    pythonMapCase,
-						TypeSpec: schema.TypeSpec{
-							Type: "number",
+				ObjectTypeSpec: schema.ObjectTypeSpec{
+					Description: "The resource options object.",
+					Type:        "object",
+					Properties: map[string]schema.PropertySpec{
+						"uniqueProp": {
+							Description: "This is a property unique to this type.",
+							Language:    pythonMapCase,
+							TypeSpec: schema.TypeSpec{
+								Type: "number",
+							},
 						},
 					},
 				},
@@ -149,6 +159,14 @@ func initTestPackageSpec(t *testing.T) {
 ` + codeFence + `
 {{% /example %}}
 {{% /examples %}}
+
+## Import 
+
+The import docs would be here
+
+` + codeFence + `sh
+$ pulumi import prov:module/resource:Resource test test		
+` + codeFence + `
 `,
 				},
 				InputProperties: map[string]schema.PropertySpec{
@@ -266,7 +284,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 		}
 
 		t.Run("InputPropertiesAreSnakeCased", func(t *testing.T) {
-			props := mod.getProperties(r.InputProperties, "python", true, false)
+			props := mod.getProperties(r.InputProperties, "python", true, true, false, false)
 			for _, p := range props {
 				assert.True(t, strings.Contains(p.Name, "_"), "input property name in python must use snake_case")
 			}
@@ -300,9 +318,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 			}
 		})
 
-		// Unique nested properties are those that only appear inside a nested object and therefore
-		// are never mapped to their snake_case. Therefore, such properties must be rendered with a
-		// camelCase.
+		// Unique nested properties are those that only appear inside a nested object and should also be snake_cased.
 		t.Run("UniqueNestedProperties", func(t *testing.T) {
 			n := nestedTypes[1]
 			assert.Equal(t, "Resource<wbr>Options2", n.Name, "got %v instead of Resource<wbr>Options2", n.Name)
@@ -316,8 +332,9 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 
 			for name := range nestedObject.Properties {
 				found := false
+				pyName := python.PyName(name)
 				for _, prop := range pyProps {
-					if prop.Name == name {
+					if prop.Name == pyName {
 						found = true
 						break
 					}
@@ -339,6 +356,62 @@ func getResourceFromModule(resource string, mod *modContext) *schema.Resource {
 	return nil
 }
 
+func getFunctionFromModule(function string, mod *modContext) *schema.Function {
+	for _, f := range mod.functions {
+		if tokenToName(f.Token) != function {
+			continue
+		}
+		return f
+	}
+	return nil
+}
+
+func TestFunctionHeaders(t *testing.T) {
+	initTestPackageSpec(t)
+
+	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
+	assert.NoError(t, err, "importing spec")
+
+	tests := []struct {
+		ExpectedTitleTag string
+		FunctionName     string
+		ModuleName       string
+		ExpectedMetaDesc string
+	}{
+		{
+			FunctionName: "getPackageResource",
+			// Empty string indicates the package-level root module.
+			ModuleName:       "",
+			ExpectedTitleTag: "prov.getPackageResource",
+			ExpectedMetaDesc: "Documentation for the prov.getPackageResource function with examples, input properties, output properties, and supporting types.",
+		},
+		{
+			FunctionName:     "getModuleResource",
+			ModuleName:       "module",
+			ExpectedTitleTag: "prov.module.getModuleResource",
+			ExpectedMetaDesc: "Documentation for the prov.module.getModuleResource function with examples, input properties, output properties, and supporting types.",
+		},
+	}
+
+	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
+	for _, test := range tests {
+		t.Run(test.FunctionName, func(t *testing.T) {
+			mod, ok := modules[test.ModuleName]
+			if !ok {
+				t.Fatalf("could not find the module %s in modules map", test.ModuleName)
+			}
+
+			f := getFunctionFromModule(test.FunctionName, mod)
+			if f == nil {
+				t.Fatalf("could not find %s in modules", test.FunctionName)
+			}
+			h := mod.genFunctionHeader(f)
+			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
+			assert.Equal(t, test.ExpectedMetaDesc, h.MetaDesc)
+		})
+	}
+}
+
 func TestResourceDocHeader(t *testing.T) {
 	initTestPackageSpec(t)
 
@@ -350,19 +423,22 @@ func TestResourceDocHeader(t *testing.T) {
 		ExpectedTitleTag string
 		ResourceName     string
 		ModuleName       string
+		ExpectedMetaDesc string
 	}{
 		{
 			Name:         "PackageLevelResourceHeader",
 			ResourceName: "PackageLevelResource",
 			// Empty string indicates the package-level root module.
 			ModuleName:       "",
-			ExpectedTitleTag: "Resource PackageLevelResource | Package prov",
+			ExpectedTitleTag: "prov.PackageLevelResource",
+			ExpectedMetaDesc: "Documentation for the prov.PackageLevelResource resource with examples, input properties, output properties, lookup functions, and supporting types.",
 		},
 		{
 			Name:             "ModuleLevelResourceHeader",
 			ResourceName:     "Resource",
 			ModuleName:       "module",
-			ExpectedTitleTag: "Resource Resource | Module module | Package prov",
+			ExpectedTitleTag: "prov.module.Resource",
+			ExpectedMetaDesc: "Documentation for the prov.module.Resource resource with examples, input properties, output properties, lookup functions, and supporting types.",
 		},
 	}
 
@@ -380,6 +456,7 @@ func TestResourceDocHeader(t *testing.T) {
 			}
 			h := mod.genResourceHeader(r)
 			assert.Equal(t, test.ExpectedTitleTag, h.TitleTag)
+			assert.Equal(t, test.ExpectedMetaDesc, h.MetaDesc)
 		})
 	}
 }
@@ -390,6 +467,9 @@ func TestExamplesProcessing(t *testing.T) {
 	description := testPackageSpec.Resources["prov:module/resource:Resource"].Description
 	docInfo := decomposeDocstring(description)
 	examplesSection := docInfo.examples
+	importSection := docInfo.importDetails
+
+	assert.NotEmpty(t, importSection)
 
 	// The resource under test has two examples and both have TS and Python examples.
 	assert.Equal(t, 2, len(examplesSection))
@@ -407,5 +487,85 @@ func TestExamplesProcessing(t *testing.T) {
 			assert.True(t, ok, "Expected to find default placeholders for other languages")
 			assert.Contains(t, "Coming soon!", snippet)
 		}
+	}
+}
+
+func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	return GeneratePackage(tool, pkg)
+}
+
+func TestGeneratePackage(t *testing.T) {
+	tests := []struct {
+		name          string
+		schemaDir     string
+		expectedFiles []string
+	}{
+		{
+			"Simple schema with local resource properties",
+			"simple-resource-schema",
+			[]string{
+				"provider.md",
+				"otherresource.md",
+				"resource.md",
+				"argfunction.md",
+				"_index.md",
+			},
+		},
+		{
+			"Simple schema with enum types",
+			"simple-enum-schema",
+			[]string{
+				"provider.md",
+				"_index.md",
+				"tree/_index.md",
+				"tree/v1/nursery.md",
+				"tree/v1/rubbertree.md",
+				"tree/v1/_index.md",
+			},
+		},
+		{
+			"External resource schema",
+			"external-resource-schema",
+			[]string{
+				"workload.md",
+				"argfunction.md",
+				"_index.md",
+				"provider.md",
+				"cat.md",
+				"component.md",
+			},
+		},
+		{
+			"Simple schema with plain properties",
+			"simple-plain-schema",
+			[]string{
+				"_index.md",
+				"provider.md",
+				"component.md",
+			},
+		},
+		{
+			"Resource args with same named resource and type",
+			"resource-args-python",
+			[]string{
+				"person.md",
+				"pet.md",
+			},
+		},
+	}
+	testDir := filepath.Join("..", "internal", "test", "testdata")
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			files, err := test.GeneratePackageFilesFromSchema(
+				filepath.Join(testDir, tt.schemaDir, "schema.json"), generatePackage)
+			assert.NoError(t, err)
+
+			test.RewriteFilesWhenPulumiAccept(t, filepath.Join(testDir, tt.schemaDir), "docs", files)
+
+			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "docs", tt.expectedFiles)
+			assert.NoError(t, err)
+
+			test.ValidateFileEquality(t, files, expectedFiles)
+		})
 	}
 }

@@ -20,19 +20,6 @@ import (
 	"reflect"
 )
 
-{{range .Builtins}}
-// Apply{{.Name}} is like ApplyT, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}(applier interface{}) {{.Name}}Output {
-	return o.ApplyT(applier).({{.Name}}Output)
-}
-
-// Apply{{.Name}}WithContext is like ApplyTWithContext, but returns a {{.Name}}Output.
-func (o *OutputState) Apply{{.Name}}WithContext(ctx context.Context, applier interface{}) {{.Name}}Output {
-	return o.ApplyTWithContext(ctx, applier).({{.Name}}Output)
-}
-{{end}}
-
-
 {{with $builtins := .Builtins}}
 {{range $builtins}}
 var {{.Name | Unexported}}Type = reflect.TypeOf((*{{.ElementType}})(nil)).Elem()
@@ -134,25 +121,75 @@ func (o {{.Name}}Output) To{{.Name}}PtrOutputWithContext(ctx context.Context) {{
 {{end}}
 {{end}}
 {{if .DefineElem}}
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
 func (o {{.Name}}Output) Elem() {{.ElemReturnType}}Output {
 	return o.ApplyT(func (v {{.ElementType}}) {{.ElemElementType}} {
-		return *v
+		var ret {{.ElemElementType}}
+		if v != nil {
+			ret = *v
+		}
+		return ret
 	}).({{.ElemReturnType}}Output)
 }
 {{end}}
 {{if .DefineIndex}}
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
 func (o {{.Name}}Output) Index(i IntInput) {{.IndexReturnType}}Output {
 	return All(o, i).ApplyT(func(vs []interface{}) {{.IndexElementType}} {
-		return vs[0].({{.ElementType}})[vs[1].(int)]
+		arr := vs[0].({{.ElementType}})
+		idx := vs[1].(int)
+		var ret {{.IndexElementType}}
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
 	}).({{.IndexReturnType}}Output)
 }
+
+{{if .DefineToFunction}}
+func To{{.Name}}(in {{.ElementType}}) {{.Name}} {
+	a := make({{.Name}}, len(in))
+	for i, v := range in {
+		a[i] = {{.IndexConversion}}(v)
+	}
+	return a
+}
+
+func To{{.Name}}Output(in []{{.IndexReturnType}}Output) {{.Name}}Output {
+	a := make({{.Name}}, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.To{{.Name}}Output()
+}
+{{end}}
 {{end}}
 {{if .DefineMapIndex}}
+// MapIndex looks up the key k in the map.
 func (o {{.Name}}Output) MapIndex(k StringInput) {{.MapIndexReturnType}}Output {
 	return All(o, k).ApplyT(func(vs []interface{}) {{.MapIndexElementType}} {
 		return vs[0].({{.ElementType}})[vs[1].(string)]
 	}).({{.MapIndexReturnType}}Output)
 }
+
+{{if .DefineToFunction}}
+func To{{.Name}}(in {{.ElementType}}) {{.Name}} {
+ 	m := make({{.Name}})
+ 	for k, v := range in {
+ 		m[k] = {{.IndexConversion}}(v)
+ 	}
+ 	return m
+}
+
+func To{{.Name}}Output(in map[string]{{.MapIndexReturnType}}Output) {{.Name}}Output {
+	m := make({{.Name}})
+ 	for k, v := range in {
+ 		m[k] = v
+ 	}
+ 	return m.To{{.Name}}Output()
+}
+{{end}}
 {{end}}
 {{end}}
 {{end}}

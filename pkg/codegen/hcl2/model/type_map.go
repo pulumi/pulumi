@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // MapType represents maps from strings to particular element types.
@@ -52,12 +52,16 @@ func (*MapType) SyntaxNode() hclsyntax.Node {
 
 // Equals returns true if this type has the same identity as the given type.
 func (t *MapType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *MapType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 
 	otherMap, ok := other.(*MapType)
-	return ok && t.ElementType.Equals(otherMap.ElementType)
+	return ok && t.ElementType.equals(otherMap.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A map(T) is assignable
@@ -85,18 +89,18 @@ func (t *MapType) AssignableFrom(src Type) bool {
 // convertible to T. If any element type is unsafely convertible to T and no element type is safely convertible to T,
 // the conversion is unsafe. Otherwise, no conversion exists.
 func (t *MapType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
-func (t *MapType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		switch src := src.(type) {
 		case *MapType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying)
+			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ObjectType:
 			conversionKind := SafeConversion
 			for _, src := range src.Properties {
-				if ck := t.ElementType.conversionFrom(src, unifying); ck < conversionKind {
+				if ck := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
 					conversionKind = ck
 				}
 			}
@@ -107,7 +111,11 @@ func (t *MapType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *MapType) String() string {
-	return fmt.Sprintf("map(%v)", t.ElementType)
+	return t.string(nil)
+}
+
+func (t *MapType) string(seen map[Type]struct{}) string {
+	return fmt.Sprintf("map(%s)", t.ElementType.string(seen))
 }
 
 func (t *MapType) unify(other Type) (Type, ConversionKind) {
@@ -130,7 +138,7 @@ func (t *MapType) unify(other Type) (Type, ConversionKind) {
 			return NewMapType(elementType), conversionKind
 		default:
 			// Prefer the map type.
-			return t, t.conversionFrom(other, true)
+			return t, t.conversionFrom(other, true, nil)
 		}
 	})
 }

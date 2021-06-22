@@ -49,10 +49,10 @@ describe("config", () => {
         assert.strictEqual(42.333, config.getNumber("num"));
         assert.strictEqual(42.333, config.requireNumber("num"));
         assert.strictEqual(undefined, config.getNumber("nummissing"));
-        assert.deepEqual([ 0, false, 2, "foo" ], config.getObject<any>("array"));
-        assert.deepEqual([ 0, false, 2, "foo" ], config.requireObject<any>("array"));
-        assert.deepEqual({ "foo": "bar", "mim": [] }, config.getObject<any>("struct"));
-        assert.deepEqual({ "foo": "bar", "mim": [] }, config.requireObject<any>("struct"));
+        assert.deepStrictEqual([ 0, false, 2, "foo" ], config.getObject<any>("array"));
+        assert.deepStrictEqual([ 0, false, 2, "foo" ], config.requireObject<any>("array"));
+        assert.deepStrictEqual({ "foo": "bar", "mim": [] }, config.getObject<any>("struct"));
+        assert.deepStrictEqual({ "foo": "bar", "mim": [] }, config.requireObject<any>("struct"));
         assert.strictEqual(undefined, config.getObject<any>("complexmissing"));
         // ensure requireX throws when missing:
         assert.throws(() => { config.requireBoolean("missing"); });

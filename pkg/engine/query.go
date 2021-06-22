@@ -18,13 +18,13 @@ import (
 	"context"
 
 	"github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 type QueryOptions struct {
@@ -71,7 +71,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 	contract.Assert(proj != nil)
 
 	pwd, main, plugctx, err := ProjectInfoContext(&Projinfo{Proj: proj, Root: q.GetRoot()},
-		opts.host, nil, diag, statusDiag, tracingSpan)
+		opts.Host, nil, diag, statusDiag, false, tracingSpan)
 	if err != nil {
 		return result.FromError(err)
 	}
@@ -81,7 +81,7 @@ func Query(ctx *Context, q QueryInfo, opts UpdateOptions) result.Result {
 		Events:      emitter,
 		Diag:        diag,
 		StatusDiag:  statusDiag,
-		host:        opts.host,
+		host:        opts.Host,
 		pwd:         pwd,
 		main:        main,
 		plugctx:     plugctx,
@@ -93,7 +93,7 @@ func newQuerySource(cancel context.Context, client deploy.BackendClient, q Query
 	opts QueryOptions) (deploy.QuerySource, error) {
 
 	allPlugins, defaultProviderVersions, err := installPlugins(q.GetProject(), opts.pwd, opts.main,
-		nil, opts.plugctx)
+		nil, opts.plugctx, false /*returnInstallErrors*/)
 	if err != nil {
 		return nil, err
 	}

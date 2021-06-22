@@ -161,6 +161,11 @@ interface Context {
      * The resource to log any errors we encounter against.
      */
     logResource: resource.Resource | undefined;
+
+    /**
+     * Indicates whether any secret values were serialized during this function serialization.
+     */
+    containsSecrets: boolean;
 }
 
 interface FunctionLocation {
@@ -216,6 +221,11 @@ class SerializedOutput<T> {
     }
 }
 
+export interface ClosureInfo {
+    func: FunctionInfo;
+    containsSecrets: boolean;
+}
+
 /**
  * createFunctionInfo serializes a function and its closure environment into a form that is
  * amenable to persistence as simple JSON.  Like toString, it includes the full text of the
@@ -224,8 +234,8 @@ class SerializedOutput<T> {
  *
  * @internal
  */
-export async function createFunctionInfoAsync(
-    func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<FunctionInfo> {
+export async function createClosureInfoAsync(
+    func: Function, serialize: (o: any) => boolean, logResource: resource.Resource | undefined): Promise<ClosureInfo> {
 
     // Initialize our Context object.  It is effectively used to keep track of the work we're doing
     // as well as to keep track of the graph as we're walking it so we don't infinitely recurse.
@@ -236,6 +246,7 @@ export async function createFunctionInfoAsync(
         frames: [],
         simpleFunctions: [],
         logResource,
+        containsSecrets: false,
     };
 
     // Pre-populate our context's cache with global well-known values.  These are values for things
@@ -251,7 +262,10 @@ export async function createFunctionInfoAsync(
 
     entry.function = await analyzeFunctionInfoAsync(func, context, serialize);
 
-    return entry.function;
+    return {
+        func: entry.function,
+        containsSecrets: context.containsSecrets,
+    };
 
     async function addEntriesForWellKnownGlobalObjectsAsync() {
         const seenGlobalObjects = new Set<any>();
@@ -341,7 +355,7 @@ export async function createFunctionInfoAsync(
 
 // This function ends up capturing many external modules that cannot themselves be serialized.
 // Do not allow it to be captured.
-(<any>createFunctionInfoAsync).doNotCapture = true;
+(<any>createClosureInfoAsync).doNotCapture = true;
 
 /**
  * analyzeFunctionInfoAsync does the work to create an asynchronous dataflow graph that resolves to a
@@ -897,7 +911,7 @@ async function getOrCreateEntryAsync(
         }
         else if (Output.isInstance(obj)) {
             if (await isSecretOutput(obj)) {
-                throw new Error("Secret outputs cannot be captured by a closure.");
+                context.containsSecrets = true;
             }
             entry.output = await createOutputEntryAsync(obj);
         }

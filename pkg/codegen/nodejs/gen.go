@@ -26,25 +26,22 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-// Match k8s version suffix. Examples include "/v1beta1" and "/v1alpha2".
-var k8sVersionSuffix = regexp.MustCompile(`/(v\d+((alpha|beta)\d+)?)$`)
-
 type typeDetails struct {
-	outputType   bool
-	inputType    bool
-	functionType bool
+	outputType bool
+	inputType  bool
+	argsType   bool
+	plainType  bool
 }
 
 func title(s string) string {
@@ -75,6 +72,7 @@ type modContext struct {
 	pkg              *schema.Package
 	mod              string
 	types            []*schema.ObjectType
+	enums            []*schema.EnumType
 	resources        []*schema.Resource
 	functions        []*schema.Function
 	typeDetails      map[*schema.ObjectType]*typeDetails
@@ -86,6 +84,10 @@ type modContext struct {
 	modToPkg                map[string]string // Module name -> package name
 	compatibility           string            // Toggle compatibility mode for a specified target.
 	disableUnionOutputTypes bool              // Disable unions in output types.
+}
+
+func (mod *modContext) String() string {
+	return mod.mod
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -100,28 +102,83 @@ func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
 	return details
 }
 
-func (mod *modContext) tokenToType(tok string, input bool) string {
-	// token := pkg : module : member
-	// module := path/to/module
-
+func (mod *modContext) tokenToModName(tok string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
 
-	modName, name := mod.pkg.TokenToModule(tok), title(components[2])
+	modName := mod.pkg.TokenToModule(tok)
 	if override, ok := mod.modToPkg[modName]; ok {
 		modName = override
-	}
-
-	root := "outputs."
-	if input {
-		root = "inputs."
 	}
 
 	if modName != "" {
 		modName = strings.Replace(modName, "/", ".", -1) + "."
 	}
 
-	return root + modName + title(name)
+	return modName
+}
+
+func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext, pkgName string, external bool) {
+	namingCtx = mod
+	if pkg != nil && pkg != mod.pkg {
+		external = true
+		pkgName = pkg.Name + "."
+
+		var info NodePackageInfo
+		contract.AssertNoError(pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}))
+		if v, ok := pkg.Language["nodejs"].(NodePackageInfo); ok {
+			info = v
+		}
+		namingCtx = &modContext{
+			pkg:           pkg,
+			modToPkg:      info.ModuleToPackage,
+			compatibility: info.Compatibility,
+		}
+	}
+	return
+}
+
+func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, enum bool) string {
+	root := "outputs."
+	if input {
+		root = "inputs."
+	}
+
+	namingCtx, pkgName, external := mod.namingContext(pkg)
+	if external {
+		root = "types.output."
+		if input {
+			root = "types.input."
+		}
+	}
+
+	modName, name := namingCtx.tokenToModName(tok), tokenToName(tok)
+
+	if enum {
+		return "enums." + modName + title(name)
+	}
+
+	if args && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
+		name += "Args"
+	}
+	return pkgName + root + modName + title(name)
+}
+
+func (mod *modContext) resourceType(r *schema.ResourceType) string {
+	if strings.HasPrefix(r.Token, "pulumi:providers:") {
+		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+		return fmt.Sprintf("%s.Provider", pkgName)
+	}
+
+	pkg := mod.pkg
+	if r.Resource != nil {
+		pkg = r.Resource.Package
+	}
+	namingCtx, pkgName, _ := mod.namingContext(pkg)
+
+	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
+
+	return pkgName + modName + title(name)
 }
 
 func tokenToName(tok string) string {
@@ -137,32 +194,44 @@ func resourceName(r *schema.Resource) string {
 	return tokenToName(r.Token)
 }
 
+func (mod *modContext) resourceFileName(r *schema.Resource) string {
+	fileName := camel(resourceName(r)) + ".ts"
+	if mod.isReservedSourceFileName(fileName) {
+		fileName = camel(resourceName(r)) + "_.ts"
+	}
+	return fileName
+}
+
 func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input, wrapInput, optional bool, constValue interface{}) string {
+func (mod *modContext) typeString(t schema.Type, input, wrapInput, args, optional bool, constValue interface{}) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		typ = mod.objectType(nil, t.Token, input, args, true)
 	case *schema.ArrayType:
-		typ = mod.typeString(t.ElementType, input, wrapInput, false, constValue) + "[]"
+		typ = mod.typeString(t.ElementType, input, wrapInput, args, false, constValue) + "[]"
 	case *schema.MapType:
-		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, false, constValue))
+		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, args, false, constValue))
 	case *schema.ObjectType:
-		typ = mod.tokenToType(t.Token, input)
+		typ = mod.objectType(t.Package, t.Token, input, args, false)
+	case *schema.ResourceType:
+		typ = mod.resourceType(t)
 	case *schema.TokenType:
 		typ = tokenToName(t.Token)
 	case *schema.UnionType:
 		if !input && mod.disableUnionOutputTypes {
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, wrapInput, optional, constValue)
+				return mod.typeString(t.DefaultType, input, wrapInput, args, optional, constValue)
 			}
 			typ = "any"
 		} else {
 			var elements []string
 			for _, e := range t.ElementTypes {
-				t := mod.typeString(e, input, wrapInput, false, constValue)
-				if wrapInput && strings.HasPrefix(t, "pulumi.Input<") {
+				t := mod.typeString(e, input, wrapInput, args, false, constValue)
+				if args && strings.HasPrefix(t, "pulumi.Input<") {
 					contract.Assert(t[len(t)-1] == '>')
 					// Strip off the leading `pulumi.Input<` and the trailing `>`
 					t = t[len("pulumi.Input<") : len(t)-1]
@@ -240,7 +309,7 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	fmt.Fprintf(w, "%s */\n", indent)
 }
 
-func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, wrapInput, readonly bool, level int) {
+func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, arg, readonly bool, level int) {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
@@ -259,7 +328,8 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			sigil = "?"
 		}
 
-		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, mod.typeString(p.Type, input, wrapInput, false, p.ConstValue))
+		typ := mod.typeString(p.Type, input, arg && !p.IsPlain, arg && !p.IsPlain, false, p.ConstValue)
+		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
 }
@@ -339,7 +409,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 func (mod *modContext) genAlias(w io.Writer, alias *schema.Alias) {
 	fmt.Fprintf(w, "{ ")
 
-	parts := []string{}
+	var parts []string
 	if alias.Name != nil {
 		parts = append(parts, fmt.Sprintf("name: \"%v\"", *alias.Name))
 	}
@@ -368,17 +438,22 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Write the TypeDoc/JSDoc for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "typescript"), r.DeprecationMessage, "")
 
-	baseType := "CustomResource"
-	if r.IsProvider {
-		baseType = "ProviderResource"
+	var baseType, optionsType string
+	switch {
+	case r.IsComponent:
+		baseType, optionsType = "ComponentResource", "ComponentResourceOptions"
+	case r.IsProvider:
+		baseType, optionsType = "ProviderResource", "ResourceOptions"
+	default:
+		baseType, optionsType = "CustomResource", "CustomResourceOptions"
 	}
 
 	// Begin defining the class.
 	fmt.Fprintf(w, "export class %s extends pulumi.%s {\n", name, baseType)
 
-	// Emit a static factory to read instances of this resource unless this is a provider resource.
+	// Emit a static factory to read instances of this resource unless this is a provider resource or ComponentResource.
 	stateType := name + "State"
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "    /**\n")
 		fmt.Fprintf(w, "     * Get an existing %s resource's state with the given name, ID, and optional extra\n", name)
 		fmt.Fprintf(w, "     * properties used to qualify the lookup.\n")
@@ -392,12 +467,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "     * @param opts Optional settings to control the behavior of the CustomResource.\n")
 		fmt.Fprintf(w, "     */\n")
 
-		stateParam, stateRef := "", "undefined, "
+		stateParam, stateRef := "", "undefined as any, "
 		if r.StateInputs != nil {
 			stateParam, stateRef = fmt.Sprintf("state?: %s, ", stateType), "<any>state, "
 		}
 
-		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.CustomResourceOptions): %s {\n", stateParam, name)
+		fmt.Fprintf(w, "    public static get(name: string, id: pulumi.Input<pulumi.ID>, %sopts?: pulumi.%s): %s {\n",
+			stateParam, optionsType, name)
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
@@ -447,7 +523,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		if mod.compatibility == kubernetes20 {
 			required = true
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, !required, prop.ConstValue))
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, false, !required, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -474,9 +550,12 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsFlags = "?"
 	}
 	argsType := name + "Args"
-	trailingBrace, optionsType := "", "CustomResourceOptions"
-	if r.IsProvider {
-		trailingBrace, optionsType = " {", "ResourceOptions"
+	var trailingBrace string
+	switch {
+	case r.IsProvider, r.StateInputs == nil:
+		trailingBrace = " {"
+	default:
+		trailingBrace = ""
 	}
 
 	if r.DeprecationMessage != "" {
@@ -485,91 +564,113 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "    constructor(name: string, args%s: %s, opts?: pulumi.%s)%s\n", argsFlags, argsType,
 		optionsType, trailingBrace)
 
+	genInputProps := func() error {
+		for _, prop := range r.InputProperties {
+			if prop.IsRequired {
+				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
+				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
+				fmt.Fprintf(w, "            }\n")
+			}
+		}
+		for _, prop := range r.InputProperties {
+			var arg string
+			if prop.Secret {
+				arg = fmt.Sprintf("args?.%[1]s ? pulumi.secret(args.%[1]s) : undefined", prop.Name)
+			} else {
+				arg = fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
+			}
+
+			prefix := "            "
+			if prop.ConstValue != nil {
+				cv, err := mod.getConstValue(prop.ConstValue)
+				if err != nil {
+					return err
+				}
+				arg = cv
+			} else {
+				if prop.DefaultValue != nil {
+					dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
+					if err != nil {
+						return err
+					}
+
+					arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
+				}
+
+				// provider properties must be marshaled as JSON strings.
+				if r.IsProvider && !isStringType(prop.Type) {
+					arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+				}
+			}
+			fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
+		}
+
+		for _, prop := range r.Properties {
+			prefix := "            "
+			if !ins.Has(prop.Name) {
+				fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
+			}
+		}
+
+		return nil
+	}
+
 	if !r.IsProvider {
 		if r.StateInputs != nil {
 			if r.DeprecationMessage != "" {
 				fmt.Fprintf(w, "    /** @deprecated %s */\n", r.DeprecationMessage)
 			}
+
 			// Now write out a general purpose constructor implementation that can handle the public signature as well as the
 			// signature to support construction via `.get`.  And then emit the body preamble which will pluck out the
 			// conditional state into sensible variables using dynamic type tests.
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.CustomResourceOptions) {\n",
-				argsType, stateType)
-		} else {
-			// Otherwise, write out a constructor with no state and required opts, then another with all optional params.
-			fmt.Fprintf(w, "    constructor(name: string, state: undefined, opts: pulumi.CustomResourceOptions)\n")
-			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s, opts?: pulumi.CustomResourceOptions) {\n",
-				argsType)
+			fmt.Fprintf(w, "    constructor(name: string, argsOrState?: %s | %s, opts?: pulumi.%s) {\n",
+				argsType, stateType, optionsType)
 		}
 		if r.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 			fmt.Fprintf(w, "        pulumi.log.warn(\"%s is deprecated: %s\")\n", name, r.DeprecationMessage)
 		}
 		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        opts = opts || {};\n")
 
 		if r.StateInputs != nil {
 			// The lookup case:
-			fmt.Fprintf(w, "        if (opts && opts.id) {\n")
+			fmt.Fprintf(w, "        if (opts.id) {\n")
 			fmt.Fprintf(w, "            const state = argsOrState as %[1]s | undefined;\n", stateType)
 			for _, prop := range r.StateInputs.Properties {
 				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = state ? state.%[1]s : undefined;\n", prop.Name)
 			}
 			// The creation case (with args):
 			fmt.Fprintf(w, "        } else {\n")
-		} else {
-			// The creation case:
-			fmt.Fprintf(w, "        if (!(opts && opts.id)) {\n")
-		}
-		fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
-	} else {
-		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
-		fmt.Fprintf(w, "        {\n")
-	}
-	for _, prop := range r.InputProperties {
-		if prop.IsRequired {
-			fmt.Fprintf(w, "            if (!args || args.%s === undefined) {\n", prop.Name)
-			fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
-			fmt.Fprintf(w, "            }\n")
-		}
-	}
-	for _, prop := range r.InputProperties {
-		arg := fmt.Sprintf("args ? args.%[1]s : undefined", prop.Name)
-
-		prefix := "            "
-		if prop.ConstValue != nil {
-			cv, err := mod.getConstValue(prop.ConstValue)
+			fmt.Fprintf(w, "            const args = argsOrState as %s | undefined;\n", argsType)
+			err := genInputProps()
 			if err != nil {
 				return err
 			}
-			arg = cv
 		} else {
-			if prop.DefaultValue != nil {
-				dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
-				if err != nil {
-					return err
-				}
-				// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
-				// Specifically, this doesn't work right if the first value is set to false but the default value
-				// is true. The Kubernetes provider didn't include this logic, so use the correct ?? operator there.
-				arg = fmt.Sprintf("(%s) || %s", arg, dv)
-				if mod.compatibility == kubernetes20 {
-					arg = fmt.Sprintf("(%s) ?? %s", arg, dv)
-				}
+			// The creation case:
+			fmt.Fprintf(w, "        if (!opts.id) {\n")
+			err := genInputProps()
+			if err != nil {
+				return err
 			}
-
-			// provider properties must be marshaled as JSON strings.
-			if r.IsProvider && !isStringType(prop.Type) {
-				arg = fmt.Sprintf("pulumi.output(%s).apply(JSON.stringify)", arg)
+			// The get case:
+			fmt.Fprintf(w, "        } else {\n")
+			for _, prop := range r.Properties {
+				fmt.Fprintf(w, "            inputs[\"%[1]s\"] = undefined /*out*/;\n", prop.Name)
 			}
 		}
-		fmt.Fprintf(w, "%sinputs[\"%s\"] = %s;\n", prefix, prop.Name, arg)
+	} else {
+		fmt.Fprintf(w, "        let inputs: pulumi.Inputs = {};\n")
+		fmt.Fprintf(w, "        opts = opts || {};\n")
+		fmt.Fprintf(w, "        {\n")
+		err := genInputProps()
+		if err != nil {
+			return err
+		}
 	}
 	var secretProps []string
 	for _, prop := range r.Properties {
-		prefix := "            "
-		if !ins.Has(prop.Name) {
-			fmt.Fprintf(w, "%sinputs[\"%s\"] = undefined /*out*/;\n", prefix, prop.Name)
-		}
-
 		if prop.Secret {
 			secretProps = append(secretProps, prop.Name)
 		}
@@ -577,12 +678,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        }\n")
 
 	// If the caller didn't request a specific version, supply one using the version of this library.
-	fmt.Fprintf(w, "        if (!opts) {\n")
-	fmt.Fprintf(w, "            opts = {}\n")
-	fmt.Fprintf(w, "        }\n")
-	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "        if (!opts.version) {\n")
-	fmt.Fprintf(w, "            opts.version = utilities.getVersion();\n")
+	fmt.Fprintf(w, "            opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});\n")
 	fmt.Fprintf(w, "        }\n")
 
 	// Now invoke the super constructor with the type, name, and a property map.
@@ -595,22 +692,20 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			mod.genAlias(w, alias)
 		}
 		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, aliasOpts) : aliasOpts;\n")
+		fmt.Fprintf(w, "        opts = pulumi.mergeOptions(opts, aliasOpts);\n")
 	}
 
 	if len(secretProps) > 0 {
-		fmt.Fprintf(w, "        const secretOpts = { additionalSecretOutputs: [")
-		for i, sp := range secretProps {
-			if i > 0 {
-				fmt.Fprintf(w, ", ")
-			}
-			fmt.Fprintf(w, "%q", sp)
-		}
-		fmt.Fprintf(w, "] };\n")
-		fmt.Fprintf(w, "        opts = opts ? pulumi.mergeOptions(opts, secretOpts) : secretOpts;\n")
+		fmt.Fprintf(w, `        const secretOpts = { additionalSecretOutputs: ["%s"] };`, strings.Join(secretProps, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
-	fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+	// If it's a ComponentResource, set the remote option.
+	if r.IsComponent {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts, true /*remote*/);\n", name)
+	} else {
+		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
+	}
 
 	// Finish the class.
 	fmt.Fprintf(w, "    }\n")
@@ -619,13 +714,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the state type for get methods.
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, true, true, 0)
+		mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, true, false, 0)
 	}
 
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, true, true, 0)
+	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, true, false, 0)
 
 	return nil
 }
@@ -696,7 +791,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, true, 0)
+		mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, false, 0)
 	}
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
@@ -704,26 +799,12 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	}
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType), seen codegen.Set) {
-	if seen.Has(t) {
-		return
-	}
-	seen.Add(t)
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		visitObjectTypes(t.ElementType, visitor, seen)
-	case *schema.MapType:
-		visitObjectTypes(t.ElementType, visitor, seen)
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			visitObjectTypes(p.Type, visitor, seen)
+func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType, bool)) {
+	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
+		if o, ok := t.Type.(*schema.ObjectType); ok {
+			visitor(o, t.Plain)
 		}
-		visitor(t)
-	case *schema.UnionType:
-		for _, e := range t.ElementTypes {
-			visitObjectTypes(e, visitor, seen)
-		}
-	}
+	})
 }
 
 func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, level int) {
@@ -752,24 +833,34 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 		}
 	}
 
-	wrapInput := input && !mod.details(obj).functionType
-	mod.genPlainType(w, tokenToName(obj.Token), obj.Comment, properties, input, wrapInput, false, level)
+	name := tokenToName(obj.Token)
+	if mod.compatibility == tfbridge20 || mod.compatibility == kubernetes20 {
+		wrapInput := input && !mod.details(obj).plainType
+		mod.genPlainType(w, name, obj.Comment, properties, input, wrapInput, false, level)
+		return
+	}
+
+	if input {
+		if mod.details(obj).plainType {
+			mod.genPlainType(w, name, obj.Comment, properties, true, false, false, level)
+		}
+		if mod.details(obj).argsType {
+			mod.genPlainType(w, name+"Args", obj.Comment, properties, true, true, false, level)
+		}
+		return
+	}
+
+	mod.genPlainType(w, name, obj.Comment, properties, false, false, false, level)
 }
 
-func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) bool {
+func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set) bool {
 	if seen.Has(t) {
 		return false
 	}
 	seen.Add(t)
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
-	case *schema.MapType:
-		return mod.getTypeImports(t.ElementType, recurse, imports, seen)
-	case *schema.ObjectType:
-		return true
-	case *schema.TokenType:
-		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), "./index"
+
+	resourceOrTokenImport := func(tok string) bool {
+		modName, name, modPath := mod.pkg.TokenToModule(tok), tokenToName(tok), "./index"
 		if override, ok := mod.modToPkg[modName]; ok {
 			modName = override
 		}
@@ -786,10 +877,42 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		}
 		imports[modPath].Add(name)
 		return false
+	}
+
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+	case *schema.MapType:
+		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+	case *schema.EnumType:
+		return true
+	case *schema.ObjectType:
+		// If it's from another package, add an import for the external package.
+		if t.Package != nil && t.Package != mod.pkg {
+			pkg := t.Package.Name
+			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			return false
+		}
+
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, externalImports, imports, seen)
+		}
+		return true
+	case *schema.ResourceType:
+		// If it's from another package, add an import for the external package.
+		if t.Resource != nil && t.Resource.Package != mod.pkg {
+			pkg := t.Resource.Package.Name
+			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			return false
+		}
+
+		return resourceOrTokenImport(t.Token)
+	case *schema.TokenType:
+		return resourceOrTokenImport(t.Token)
 	case *schema.UnionType:
 		needsTypes := false
 		for _, e := range t.ElementTypes {
-			needsTypes = mod.getTypeImports(e, recurse, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(e, recurse, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	default:
@@ -797,37 +920,40 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 	}
 }
 
-func (mod *modContext) getImports(member interface{}, imports map[string]codegen.StringSet) bool {
+func (mod *modContext) getImports(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, true, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, true, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
+	case *schema.ResourceType:
+		mod.getTypeImports(member, true, externalImports, imports, seen)
+		return false
 	case *schema.Resource:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 		}
 		for _, p := range member.InputProperties {
-			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case *schema.Function:
 		needsTypes := false
 		if member.Inputs != nil {
-			needsTypes = mod.getTypeImports(member.Inputs, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(member.Inputs, false, externalImports, imports, seen) || needsTypes
 		}
 		if member.Outputs != nil {
-			needsTypes = mod.getTypeImports(member.Outputs, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(member.Outputs, false, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	case []*schema.Property:
 		needsTypes := false
 		for _, p := range member {
-			needsTypes = mod.getTypeImports(p.Type, false, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
 		}
 		return needsTypes
 	default:
@@ -835,12 +961,19 @@ func (mod *modContext) getImports(member interface{}, imports map[string]codegen
 	}
 }
 
-func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes map[string]codegen.StringSet) {
+func (mod *modContext) genHeader(w io.Writer, imports []string, externalImports codegen.StringSet, importedTypes map[string]codegen.StringSet) {
 	fmt.Fprintf(w, "// *** WARNING: this file was generated by %v. ***\n", mod.tool)
 	fmt.Fprintf(w, "// *** Do not edit by hand unless you're certain you know what you are doing! ***\n\n")
 
 	if len(imports) > 0 {
 		for _, i := range imports {
+			fmt.Fprintf(w, "%s\n", i)
+		}
+		fmt.Fprintf(w, "\n")
+	}
+
+	if externalImports.Any() {
+		for _, i := range externalImports.SortedValues() {
 			fmt.Fprintf(w, "%s\n", i)
 		}
 		fmt.Fprintf(w, "\n")
@@ -854,20 +987,14 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, importedTypes ma
 		sort.Strings(modules)
 
 		for _, module := range modules {
-			var names []string
-			for name := range importedTypes[module] {
-				names = append(names, name)
-			}
-			sort.Strings(names)
-
 			fmt.Fprintf(w, "import {")
-			for i, name := range names {
+			for i, name := range importedTypes[module].SortedValues() {
 				if i > 0 {
 					fmt.Fprint(w, ", ")
 				}
 				fmt.Fprint(w, name)
 			}
-			fmt.Fprintf(w, "} from \"%v\";\n", module)
+			fmt.Fprintf(w, "} from \"%s\";\n", module)
 		}
 		fmt.Fprintf(w, "\n")
 	}
@@ -881,18 +1008,18 @@ func (mod *modContext) configGetter(v *schema.Property) (string, string) {
 	}
 
 	if tok, ok := v.Type.(*schema.TokenType); ok && tok.UnderlyingType == schema.StringType {
-		return "get", fmt.Sprintf("<%s>", mod.typeString(v.Type, false, false, false, nil))
+		return "get", fmt.Sprintf("<%s>", mod.typeString(v.Type, false, false, false, false, nil))
 	}
 
 	// Only try to parse a JSON object if the config isn't a straight string.
-	return fmt.Sprintf("getObject<%s>", mod.typeString(v.Type, false, false, false, nil)), ""
+	return fmt.Sprintf("getObject<%s>", mod.typeString(v.Type, false, false, false, false, nil)), ""
 }
 
 func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
-	imports := map[string]codegen.StringSet{}
-	referencesNestedTypes := mod.getImports(variables, imports)
+	externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+	referencesNestedTypes := mod.getImports(variables, externalImports, imports)
 
-	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), imports)
+	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
 	// Create a config bag for the variables to pull from.
 	fmt.Fprintf(w, "let __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
@@ -918,22 +1045,31 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		}
 
 		fmt.Fprintf(w, "export let %s: %s = %s;\n",
-			p.Name, mod.typeString(p.Type, false, false, true, nil), configFetch)
+			p.Name, mod.typeString(p.Type, false, false, false, true, nil), configFetch)
 	}
 
 	return nil
 }
 
+func (mod *modContext) getRelativePath() string {
+	rel, err := filepath.Rel(mod.mod, "")
+	contract.Assert(err == nil)
+	return path.Dir(filepath.ToSlash(rel))
+}
+
 func (mod *modContext) sdkImports(nested, utilities bool) []string {
 	imports := []string{"import * as pulumi from \"@pulumi/pulumi\";"}
 
-	rel, err := filepath.Rel(mod.mod, "")
-	contract.Assert(err == nil)
-	relRoot := path.Dir(filepath.ToSlash(rel))
+	relRoot := mod.getRelativePath()
 	if nested {
-		imports = append(imports, fmt.Sprintf("import * as inputs from \"%s/types/input\";", relRoot))
-		imports = append(imports, fmt.Sprintf("import * as outputs from \"%s/types/output\";", relRoot))
+		enumsImport := ""
+		containsEnums := mod.pkg.Language["nodejs"].(NodePackageInfo).ContainsEnums
+		if containsEnums {
+			enumsImport = ", enums"
+		}
+		imports = append(imports, fmt.Sprintf(`import { input as inputs, output as outputs%s } from "%s/types";`, enumsImport, relRoot))
 	}
+
 	if utilities {
 		imports = append(imports, fmt.Sprintf("import * as utilities from \"%s/utilities\";", relRoot))
 	}
@@ -942,24 +1078,32 @@ func (mod *modContext) sdkImports(nested, utilities bool) []string {
 }
 
 func (mod *modContext) genTypes() (string, string) {
-	imports := map[string]codegen.StringSet{}
+	externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
 	for _, t := range mod.types {
-		mod.getImports(t, imports)
+		mod.getImports(t, externalImports, imports)
 	}
 
 	inputs, outputs := &bytes.Buffer{}, &bytes.Buffer{}
 
-	mod.genHeader(inputs, mod.sdkImports(true, false), imports)
-	mod.genHeader(outputs, mod.sdkImports(true, false), imports)
+	mod.genHeader(inputs, mod.sdkImports(true, false), externalImports, imports)
+	mod.genHeader(outputs, mod.sdkImports(true, false), externalImports, imports)
 
 	// Build a namespace tree out of the types, then emit them.
+	namespaces := mod.getNamespaces()
+	mod.genNamespace(inputs, namespaces[""], true, 0)
+	mod.genNamespace(outputs, namespaces[""], false, 0)
 
-	type namespace struct {
-		name     string
-		types    []*schema.ObjectType
-		children []*namespace
-	}
+	return inputs.String(), outputs.String()
+}
 
+type namespace struct {
+	name     string
+	types    []*schema.ObjectType
+	enums    []*schema.EnumType
+	children []*namespace
+}
+
+func (mod *modContext) getNamespaces() map[string]*namespace {
 	namespaces := map[string]*namespace{}
 	var getNamespace func(string) *namespace
 	getNamespace = func(mod string) *namespace {
@@ -994,38 +1138,69 @@ func (mod *modContext) genTypes() (string, string) {
 		ns.types = append(ns.types, t)
 	}
 
-	var genNamespace func(io.Writer, *namespace, bool, int)
-	genNamespace = func(w io.Writer, ns *namespace, input bool, level int) {
-		indent := strings.Repeat("    ", level)
+	return namespaces
+}
 
-		sort.Slice(ns.types, func(i, j int) bool {
-			return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
-		})
-		for i, t := range ns.types {
-			if input && mod.details(t).inputType || !input && mod.details(t).outputType {
-				mod.genType(w, t, input, level)
-				if i != len(ns.types)-1 {
-					fmt.Fprintf(w, "\n")
-				}
-			}
-		}
+func (mod *modContext) genNamespace(w io.Writer, ns *namespace, input bool, level int) {
+	indent := strings.Repeat("    ", level)
 
-		sort.Slice(ns.children, func(i, j int) bool {
-			return ns.children[i].name < ns.children[j].name
-		})
-		for i, ns := range ns.children {
-			fmt.Fprintf(w, "%sexport namespace %s {\n", indent, ns.name)
-			genNamespace(w, ns, input, level+1)
-			fmt.Fprintf(w, "%s}\n", indent)
-			if i != len(ns.children)-1 {
+	sort.Slice(ns.types, func(i, j int) bool {
+		return tokenToName(ns.types[i].Token) < tokenToName(ns.types[j].Token)
+	})
+	sort.Slice(ns.enums, func(i, j int) bool {
+		return tokenToName(ns.enums[i].Token) < tokenToName(ns.enums[j].Token)
+	})
+	for i, t := range ns.types {
+		if input && mod.details(t).inputType || !input && mod.details(t).outputType {
+			mod.genType(w, t, input, level)
+			if i != len(ns.types)-1 {
 				fmt.Fprintf(w, "\n")
 			}
 		}
 	}
-	genNamespace(inputs, namespaces[""], true, 0)
-	genNamespace(outputs, namespaces[""], false, 0)
 
-	return inputs.String(), outputs.String()
+	sort.Slice(ns.children, func(i, j int) bool {
+		return ns.children[i].name < ns.children[j].name
+	})
+	for i, child := range ns.children {
+		fmt.Fprintf(w, "%sexport namespace %s {\n", indent, child.name)
+		mod.genNamespace(w, child, input, level+1)
+		fmt.Fprintf(w, "%s}\n", indent)
+		if i != len(ns.children)-1 {
+			fmt.Fprintf(w, "\n")
+		}
+	}
+}
+
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
+	indent := "    "
+	enumName := tokenToName(enum.Token)
+	fmt.Fprintf(w, "export const %s = {\n", enumName)
+	for _, e := range enum.Elements {
+		// If the enum doesn't have a name, set the value as the name.
+		if e.Name == "" {
+			e.Name = fmt.Sprintf("%v", e.Value)
+		}
+		safeName, err := makeSafeEnumName(e.Name, enumName)
+		if err != nil {
+			return err
+		}
+		e.Name = safeName
+
+		printComment(w, e.Comment, e.DeprecationMessage, indent)
+		fmt.Fprintf(w, "%s%s: ", indent, e.Name)
+		if val, ok := e.Value.(string); ok {
+			fmt.Fprintf(w, "%q,\n", val)
+		} else {
+			fmt.Fprintf(w, "%v,\n", e.Value)
+		}
+	}
+	fmt.Fprintf(w, "} as const;\n")
+	fmt.Fprintf(w, "\n")
+
+	printComment(w, enum.Comment, "", "")
+	fmt.Fprintf(w, "export type %[1]s = (typeof %[1]s)[keyof typeof %[1]s];\n", enumName)
+	return nil
 }
 
 type fs map[string][]byte
@@ -1066,7 +1241,7 @@ func (mod *modContext) gen(fs fs) error {
 	switch mod.mod {
 	case "":
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, nil, nil)
+		mod.genHeader(buffer, nil, nil, nil)
 		fmt.Fprintf(buffer, "%s", utilitiesFile)
 		fs.add(path.Join(modDir, "utilities.ts"), buffer.Bytes())
 
@@ -1100,30 +1275,27 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Resources
 	for _, r := range mod.resources {
-		imports := map[string]codegen.StringSet{}
-		referencesNestedTypes := mod.getImports(r, imports)
+		externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+		referencesNestedTypes := mod.getImports(r, externalImports, imports)
 
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), imports)
+		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
 		if err := mod.genResource(buffer, r); err != nil {
 			return err
 		}
 
-		fileName := camel(resourceName(r)) + ".ts"
-		if mod.isReservedSourceFileName(fileName) {
-			fileName = camel(resourceName(r)) + "_.ts"
-		}
+		fileName := mod.resourceFileName(r)
 		addFile(fileName, buffer.String())
 	}
 
 	// Functions
 	for _, f := range mod.functions {
-		imports := map[string]codegen.StringSet{}
-		referencesNestedTypes := mod.getImports(f, imports)
+		externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
+		referencesNestedTypes := mod.getImports(f, externalImports, imports)
 
 		buffer := &bytes.Buffer{}
-		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), imports)
+		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
 		mod.genFunction(buffer, f)
 
@@ -1132,6 +1304,25 @@ func (mod *modContext) gen(fs fs) error {
 			fileName = camel(tokenToName(f.Token)) + "_.ts"
 		}
 		addFile(fileName, buffer.String())
+	}
+
+	if mod.hasEnums() {
+		buffer := &bytes.Buffer{}
+		mod.genHeader(buffer, []string{}, nil, nil)
+
+		err := mod.genEnums(buffer, mod.enums)
+		if err != nil {
+			return err
+		}
+
+		var fileName string
+		if modDir == "" {
+			fileName = "index.ts"
+		} else {
+			fileName = path.Join(modDir, "index.ts")
+		}
+		fileName = path.Join("types", "enums", fileName)
+		fs.add(fileName, buffer.Bytes())
 	}
 
 	// Nested types
@@ -1146,10 +1337,27 @@ func (mod *modContext) gen(fs fs) error {
 	return nil
 }
 
+func getChildMod(modName string) string {
+	child := strings.ToLower(modName)
+	// Extract version suffix from child modules. Nested versions will have their own index.ts file.
+	// Example: apps/v1beta1 -> v1beta1
+	parts := strings.SplitN(child, "/", 2)
+	if len(parts) == 2 {
+		child = parts[1]
+	}
+	return child
+}
+
 // genIndex emits an index module, optionally re-exporting other members or submodules.
 func (mod *modContext) genIndex(exports []string) string {
 	w := &bytes.Buffer{}
-	mod.genHeader(w, nil, nil)
+
+	var imports []string
+	// Include the SDK import if we'll be registering module resources.
+	if len(mod.resources) != 0 {
+		imports = mod.sdkImports(false /*nested*/, true /*utilities*/)
+	}
+	mod.genHeader(w, imports, nil, nil)
 
 	// Export anything flatly that is a direct export rather than sub-module.
 	if len(exports) > 0 {
@@ -1169,14 +1377,7 @@ func (mod *modContext) genIndex(exports []string) string {
 	children := codegen.NewStringSet()
 
 	for _, mod := range mod.children {
-		child := strings.ToLower(mod.mod)
-		if mod.compatibility == kubernetes20 {
-			// Extract version suffix from child modules. Nested versions will have their own index.ts file.
-			// Example: apps/v1beta1 -> v1beta1
-			if match := k8sVersionSuffix.FindStringSubmatchIndex(child); len(match) != 0 {
-				child = child[match[2]:match[3]]
-			}
-		}
+		child := getChildMod(mod.mod)
 		children.Add(child)
 	}
 
@@ -1185,7 +1386,25 @@ func (mod *modContext) genIndex(exports []string) string {
 		children.Add("output")
 	}
 
-	// Finally, if there are submodules, export them.
+	info, _ := mod.pkg.Language["nodejs"].(NodePackageInfo)
+	if info.ContainsEnums {
+		if mod.mod == "types" {
+			children.Add("enums")
+		} else if len(mod.enums) > 0 {
+			fmt.Fprintf(w, "\n")
+			fmt.Fprintf(w, "// Export enums:\n")
+			rel := mod.getRelativePath()
+			var filePath string
+			if mod.mod == "" {
+				filePath = ""
+			} else {
+				filePath = fmt.Sprintf("/%s", mod.mod)
+			}
+			fmt.Fprintf(w, "export * from \"%s/types/enums%s\";\n", rel, filePath)
+		}
+	}
+
+	// If there are submodules, export them.
 	if len(children) > 0 {
 		if len(exports) > 0 {
 			fmt.Fprintf(w, "\n")
@@ -1197,17 +1416,145 @@ func (mod *modContext) genIndex(exports []string) string {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
 
-		fmt.Fprintf(w, "export {")
-		for i, mod := range sorted {
-			if i > 0 {
-				fmt.Fprint(w, ", ")
-			}
-			fmt.Fprint(w, mod)
-		}
-		fmt.Fprintf(w, "};\n")
+		printExports(w, sorted)
+	}
+
+	// If there are resources in this module, register the module with the runtime.
+	if len(mod.resources) != 0 {
+		mod.genResourceModule(w)
 	}
 
 	return w.String()
+}
+
+// genResourceModule generates a ResourceModule definition and the code to register an instance thereof with the
+// Pulumi runtime. The generated ResourceModule supports the deserialization of resource references into fully-
+// hydrated Resource instances. If this is the root module, this function also generates a ResourcePackage
+// definition and its registration to support rehydrating providers.
+func (mod *modContext) genResourceModule(w io.Writer) {
+	contract.Assert(len(mod.resources) != 0)
+
+	// Check for provider-only modules.
+	var provider *schema.Resource
+	if providerOnly := len(mod.resources) == 1 && mod.resources[0].IsProvider; providerOnly {
+		provider = mod.resources[0]
+	} else {
+		registrations, first := codegen.StringSet{}, true
+		for _, r := range mod.resources {
+			if r.IsProvider {
+				contract.Assert(provider == nil)
+				provider = r
+				continue
+			}
+
+			registrations.Add(mod.pkg.TokenToRuntimeModule(r.Token))
+
+			if first {
+				first = false
+				fmt.Fprintf(w, "\n// Import resources to register:\n")
+			}
+			fileName := strings.TrimSuffix(mod.resourceFileName(r), ".ts")
+			fmt.Fprintf(w, "import { %s } from \"./%s\";\n", resourceName(r), fileName)
+		}
+
+		fmt.Fprintf(w, "\nconst _module = {\n")
+		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
+		fmt.Fprintf(w, "    construct: (name: string, type: string, urn: string): pulumi.Resource => {\n")
+		fmt.Fprintf(w, "        switch (type) {\n")
+
+		for _, r := range mod.resources {
+			if r.IsProvider {
+				continue
+			}
+
+			fmt.Fprintf(w, "            case \"%v\":\n", r.Token)
+			fmt.Fprintf(w, "                return new %v(name, <any>undefined, { urn })\n", resourceName(r))
+		}
+
+		fmt.Fprintf(w, "            default:\n")
+		fmt.Fprintf(w, "                throw new Error(`unknown resource type ${type}`);\n")
+		fmt.Fprintf(w, "        }\n")
+		fmt.Fprintf(w, "    },\n")
+		fmt.Fprintf(w, "};\n")
+		for _, name := range registrations.SortedValues() {
+			fmt.Fprintf(w, "pulumi.runtime.registerResourceModule(\"%v\", \"%v\", _module)\n", mod.pkg.Name, name)
+		}
+	}
+
+	if provider != nil {
+		fmt.Fprintf(w, "\nimport { Provider } from \"./provider\";\n\n")
+		fmt.Fprintf(w, "pulumi.runtime.registerResourcePackage(\"%v\", {\n", mod.pkg.Name)
+		fmt.Fprintf(w, "    version: utilities.getVersion(),\n")
+		fmt.Fprintf(w, "    constructProvider: (name: string, type: string, urn: string): pulumi.ProviderResource => {\n")
+		fmt.Fprintf(w, "        if (type !== \"%v\") {\n", provider.Token)
+		fmt.Fprintf(w, "            throw new Error(`unknown provider type ${type}`);\n")
+		fmt.Fprintf(w, "        }\n")
+		fmt.Fprintf(w, "        return new Provider(name, <any>undefined, { urn });\n")
+		fmt.Fprintf(w, "    },\n")
+		fmt.Fprintf(w, "});\n")
+	}
+}
+
+func printExports(w io.Writer, exports []string) {
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "export {\n")
+	for _, mod := range exports {
+		fmt.Fprintf(w, "    %s,\n", mod)
+	}
+	fmt.Fprintf(w, "};\n")
+}
+
+func (mod *modContext) hasEnums() bool {
+	if mod.mod == "types" {
+		return false
+	}
+	if len(mod.enums) > 0 {
+		return true
+	}
+	if len(mod.children) > 0 {
+		for _, mod := range mod.children {
+			if mod.hasEnums() {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) error {
+	if len(mod.children) > 0 {
+		children := codegen.NewStringSet()
+
+		for _, mod := range mod.children {
+			child := getChildMod(mod.mod)
+			if mod.hasEnums() {
+				children.Add(child)
+			}
+		}
+
+		if len(children) > 0 {
+			fmt.Fprintf(buffer, "// Export sub-modules:\n")
+
+			sorted := children.SortedValues()
+			for _, mod := range sorted {
+				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
+			}
+			printExports(buffer, sorted)
+		}
+	}
+	if len(enums) > 0 {
+		fmt.Fprintf(buffer, "\n")
+		for i, enum := range enums {
+			err := mod.genEnum(buffer, enum)
+			if err != nil {
+				return err
+			}
+			if i != len(enums)-1 {
+				fmt.Fprintf(buffer, "\n")
+			}
+		}
+	}
+	return nil
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
@@ -1236,7 +1583,8 @@ type npmPackage struct {
 }
 
 type npmPulumiManifest struct {
-	Resource bool `json:"resource,omitempty"`
+	Resource          bool   `json:"resource,omitempty"`
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
 }
 
 func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
@@ -1268,7 +1616,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 		},
 		DevDependencies: devDependencies,
 		Pulumi: npmPulumiManifest{
-			Resource: true,
+			Resource:          true,
+			PluginDownloadURL: pkg.PluginDownloadURL,
 		},
 	}
 
@@ -1358,7 +1707,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 
 // generateModuleContextMap groups resources, types, and functions into NodeJS packages.
 func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackageInfo,
-	extraFiles map[string][]byte) (map[string]*modContext, error) {
+	extraFiles map[string][]byte) (map[string]*modContext, NodePackageInfo, error) {
 
 	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
@@ -1406,28 +1755,32 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		_ = getMod("config")
 	}
 
-	outputSeen := codegen.Set{}
-	inputSeen := codegen.Set{}
-	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
-	}
+	visitObjectTypes(pkg.Config, func(t *schema.ObjectType, plain bool) {
+		types.details(t).outputType = true
+	})
 
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
-		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) { types.details(t).outputType = true }, outputSeen)
-		}
-		for _, p := range r.InputProperties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				if r.IsProvider {
-					types.details(t).outputType = true
-				}
-				types.details(t).inputType = true
-			}, inputSeen)
-		}
+		visitObjectTypes(r.Properties, func(t *schema.ObjectType, _ bool) {
+			types.details(t).outputType = true
+		})
+		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType, plain bool) {
+			if r.IsProvider {
+				types.details(t).outputType = true
+			}
+			types.details(t).inputType = true
+			if plain {
+				types.details(t).plainType = true
+			} else {
+				types.details(t).argsType = true
+			}
+		})
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) { types.details(t).inputType = true }, inputSeen)
+			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType, _ bool) {
+				types.details(t).inputType = true
+				types.details(t).argsType = true
+			})
 		}
 	}
 
@@ -1436,31 +1789,40 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		scanResource(r)
 	}
 
+	// Clear the input and outputs sets: we want the visitors below to touch the transitive closure of types reachable
+	// from function inputs and outputs, including types that have already been visited.
 	for _, f := range pkg.Functions {
 		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
+			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType, _ bool) {
 				types.details(t).inputType = true
-				types.details(t).functionType = true
-			}, inputSeen)
+				types.details(t).plainType = true
+			})
 		}
 		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
+			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType, _ bool) {
 				types.details(t).outputType = true
-				types.details(t).functionType = true
-			}, outputSeen)
+				types.details(t).plainType = true
+			})
 		}
 	}
 
 	if _, ok := modules["types"]; ok {
-		return nil, errors.New("this provider has a `types` module which is reserved for input/output types")
+		return nil, info, errors.New("this provider has a `types` module which is reserved for input/output types")
 	}
 
 	// Create the types module.
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*schema.ObjectType); ok {
-			types.types = append(types.types, obj)
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			types.types = append(types.types, typ)
+		case *schema.EnumType:
+			info.ContainsEnums = true
+			mod := getModFromToken(typ.Token)
+			mod.enums = append(mod.enums, typ)
+		default:
+			continue
 		}
 	}
 	if len(types.types) > 0 {
@@ -1484,7 +1846,7 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		mod.extraSourceFiles = append(mod.extraSourceFiles, p)
 	}
 
-	return modules, nil
+	return modules, info, nil
 }
 
 // LanguageResource holds information about a resource to be used by downstream codegen.
@@ -1513,7 +1875,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap("", pkg, info, nil)
+	modules, _, err := generateModuleContextMap("", pkg, info, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -1531,9 +1893,9 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 					Name: p.Name,
 				}
 				if p.ConstValue != nil {
-					lp.ConstValue = mod.typeString(p.Type, false, false, false, p.ConstValue)
+					lp.ConstValue = mod.typeString(p.Type, false, false, false, false, p.ConstValue)
 				} else {
-					lp.Package = mod.typeString(p.Type, false, false, false, nil)
+					lp.Package = mod.typeString(p.Type, false, false, false, false, nil)
 				}
 				lr.Properties = append(lr.Properties, lp)
 			}
@@ -1551,10 +1913,11 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 	}
 	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
-	modules, err := generateModuleContextMap(tool, pkg, info, extraFiles)
+	modules, info, err := generateModuleContextMap(tool, pkg, info, extraFiles)
 	if err != nil {
 		return nil, err
 	}
+	pkg.Language["nodejs"] = info
 
 	files := fs{}
 	for p, f := range extraFiles {

@@ -160,7 +160,8 @@ disable=print-statement,
         no-self-use,
         unused-import,
         unsubscriptable-object,
-        line-too-long
+        line-too-long,
+        too-many-lines
 
 
 # Enable the message, report, category or checker with the given id(s). You can

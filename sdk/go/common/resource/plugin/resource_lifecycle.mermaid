@@ -1,0 +1,47 @@
+%% regenerate using https://github.com/mermaid-js/mermaid-cli
+
+flowchart TD
+	start("Resource registration")
+
+	read_read("Read(reg.URN, reg.ID, reg.State)")
+
+	import_read("Read(reg.URN, reg.ID)")
+	import_check("Check(reg.URN, reg.Inputs, read.Inputs)")
+	import_diff("Diff(reg.URN, check.Inputs, read.State)")
+
+	manage_check("Check(reg.URN, reg.Inputs, last?.Inputs)")
+	manage_create("Create(reg.URN, check.Inputs)")
+	manage_diff("Diff(reg.URN, check.Inputs, last.ID, last.State)")
+	manage_update("Update(reg.URN, last.ID, last.State)")
+	manage_replace_check("Check(reg.URN, reg.Inputs)")
+	manage_replace_create_before_delete("Create(reg.URN, reg.Inputs)")
+	manage_replace_delete_after_create("Delete(reg.URN, last.ID, last.State)")
+	manage_replace_delete_dependents("Delete dependents")
+	manage_replace_delete_before_create("Delete(reg.URN, last.ID, last.State)")
+	manage_replace_create_after_delete("Create(reg.URN, check.Inputs)")
+
+	done("Return new inputs and state")
+
+	start-- read -->read_read
+	start-- import -->import_read
+	start-- manage -->manage_check
+
+	read_read-->done
+
+	import_read-->import_check
+	import_check-->import_diff
+	import_diff-->done
+
+	manage_check-- no last state -->manage_create
+	manage_check-- has last state -->manage_diff
+	manage_diff-- can be updated -->manage_update
+	manage_diff-- must be replaced -->manage_replace_check
+	manage_replace_check-- create before delete -->manage_replace_create_before_delete
+	manage_replace_check-- delete after craete -->manage_replace_delete_dependents
+	manage_replace_create_before_delete-->manage_replace_delete_after_create
+	manage_replace_delete_dependents-->manage_replace_delete_before_create
+	manage_replace_delete_before_create-->manage_replace_create_after_delete
+	manage_create-->done
+	manage_update-->done
+	manage_replace_delete_after_create-->done
+	manage_replace_create_after_delete-->done

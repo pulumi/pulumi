@@ -1,0 +1,21 @@
+{
+  "types": {
+    "fake-provider:module1:BadEnum": {
+      "type": "string",
+      "enum": [
+        {
+          "value": "chocolate"
+        },
+        {
+          "value": "marshmallow"
+        },
+        {
+          "value": true
+        },
+        {
+          "value": "cookie"
+        }
+      ]
+    }
+  }
+}

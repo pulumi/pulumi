@@ -22,11 +22,12 @@ import (
 	"strings"
 
 	"github.com/dustin/go-humanize/english"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type Row interface {
@@ -342,7 +343,7 @@ func (data *resourceRowData) getInfoColumn() string {
 		diagMsg += msg
 	}
 
-	changes := getDiffInfo(step)
+	changes := getDiffInfo(step, data.display.action)
 	if colors.Never.Colorize(changes) != "" {
 		appendDiagMessage("[" + changes + "]")
 	}
@@ -397,8 +398,8 @@ func (data *resourceRowData) getInfoColumn() string {
 	return diagMsg
 }
 
-func getDiffInfo(step engine.StepEventMetadata) string {
-	diffOutputs := step.Op == deploy.OpRefresh
+func getDiffInfo(step engine.StepEventMetadata, action apitype.UpdateKind) string {
+	diffOutputs := action == apitype.RefreshUpdate
 	changesBuf := &bytes.Buffer{}
 	if step.Old != nil && step.New != nil {
 		var diff *resource.ObjectDiff

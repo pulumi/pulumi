@@ -14,7 +14,7 @@ RUN --mount=target=/var/cache/yum,type=cache \
     microdnf install -y \
     ca-certificates \
     tar \
-    dotnet \
+    dotnet-sdk-3.1 \
     git
 
 # Uses the workdir, copies from pulumi interim container

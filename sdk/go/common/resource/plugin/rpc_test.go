@@ -22,8 +22,8 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 func setProperty(s *structpb.Value, k string, v interface{}) {
@@ -284,4 +284,145 @@ func TestSkipInternalKeys(t *testing.T) {
 	actual, err := MarshalProperties(props, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, expected, actual)
+}
+
+func TestResourceReference(t *testing.T) {
+	// Test round-trip
+	opts := MarshalOptions{KeepResources: true}
+	rawProp := resource.MakeCustomResourceReference("fakeURN", "fakeID", "fakeVersion")
+	prop, err := MarshalPropertyValue(rawProp, opts)
+	assert.NoError(t, err)
+	actual, err := UnmarshalPropertyValue(prop, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, rawProp, *actual)
+
+	// Test unmarshaling as an ID
+	opts.KeepResources = false
+	actual, err = UnmarshalPropertyValue(prop, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
+
+	// Test marshaling as an ID
+	prop, err = MarshalPropertyValue(rawProp, opts)
+	assert.NoError(t, err)
+	opts.KeepResources = true
+	actual, err = UnmarshalPropertyValue(prop, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
+
+	// Test unmarshaling as a URN
+	rawProp = resource.MakeComponentResourceReference("fakeURN", "fakeVersion")
+	prop, err = MarshalPropertyValue(rawProp, opts)
+	assert.NoError(t, err)
+	opts.KeepResources = false
+	actual, err = UnmarshalPropertyValue(prop, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
+
+	// Test marshaling as a URN
+	prop, err = MarshalPropertyValue(rawProp, opts)
+	assert.NoError(t, err)
+	opts.KeepResources = true
+	actual, err = UnmarshalPropertyValue(prop, opts)
+	assert.NoError(t, err)
+	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
+}
+
+func TestMarshalPropertiesDiscardsListNestedUnknowns(t *testing.T) {
+	proto := pbStruct("resources", pbList(pbString(UnknownStringValue)))
+
+	propsWithUnknowns, err := UnmarshalProperties(proto, MarshalOptions{KeepUnknowns: true})
+	if err != nil {
+		t.Errorf("UnmarhsalProperties failed: %w", err)
+	}
+
+	protobufStruct, err := MarshalProperties(propsWithUnknowns, MarshalOptions{KeepUnknowns: false})
+	if err != nil {
+		t.Error(err)
+		return
+	}
+
+	protobufValue := &structpb.Value{
+		Kind: &structpb.Value_StructValue{
+			StructValue: protobufStruct,
+		},
+	}
+
+	assertValidProtobufValue(t, protobufValue)
+}
+
+func pbString(s string) *structpb.Value {
+	return &structpb.Value{
+		Kind: &structpb.Value_StringValue{
+			StringValue: s,
+		},
+	}
+}
+
+func pbStruct(name string, value *structpb.Value) *structpb.Struct {
+	return &structpb.Struct{
+		Fields: map[string]*structpb.Value{
+			name: value,
+		},
+	}
+}
+
+func pbList(elems ...*structpb.Value) *structpb.Value {
+	return &structpb.Value{
+		Kind: &structpb.Value_ListValue{
+			ListValue: &structpb.ListValue{Values: elems},
+		},
+	}
+}
+
+func assertValidProtobufValue(t *testing.T, value *structpb.Value) {
+	err := walkValueSelfWithDescendants(value, "", func(path string, v *structpb.Value) error {
+		return nil
+	})
+	if err != nil {
+		t.Errorf("This is not a valid *structpb.Value: %v\n%w", value, err)
+	}
+}
+
+func walkValueSelfWithDescendants(
+	v *structpb.Value,
+	path string,
+	visit func(path string, v *structpb.Value) error) error {
+
+	if v == nil {
+		return fmt.Errorf("Bad *structpb.Value nil at %s", path)
+	}
+	err := visit(path, v)
+	if err != nil {
+		return err
+	}
+	switch v.Kind.(type) {
+	case *structpb.Value_ListValue:
+		values := v.GetListValue().GetValues()
+		for i, v := range values {
+			err = walkValueSelfWithDescendants(v, fmt.Sprintf("%s[%d]", path, i), visit)
+			if err != nil {
+				return err
+			}
+		}
+	case *structpb.Value_StructValue:
+		s := v.GetStructValue()
+		for fn, fv := range s.Fields {
+			err = walkValueSelfWithDescendants(fv, fmt.Sprintf(`%s["%s"]`, path, fn), visit)
+			if err != nil {
+				return err
+			}
+		}
+	case *structpb.Value_NumberValue:
+		return nil
+	case *structpb.Value_StringValue:
+		return nil
+	case *structpb.Value_BoolValue:
+		return nil
+	case *structpb.Value_NullValue:
+		return nil
+	default:
+		return fmt.Errorf("Bad *structpb.Value of unknown type at %s: %v", path, v)
+	}
+	return nil
 }

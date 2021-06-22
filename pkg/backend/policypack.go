@@ -18,9 +18,9 @@ import (
 	"context"
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // PublishOperation publishes a PolicyPack to the backend.
@@ -39,7 +39,7 @@ type PolicyPackOperation struct {
 	Config     map[string]*json.RawMessage
 }
 
-// PolicyPack is a set of policies associated with a particular backend implementation.
+// PolicyPack is used to manage policy against a pluggable backend.
 type PolicyPack interface {
 	// Ref returns a reference to this PolicyPack.
 	Ref() PolicyPackReference

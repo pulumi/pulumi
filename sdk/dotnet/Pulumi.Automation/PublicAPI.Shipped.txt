@@ -1,0 +1,458 @@
+﻿Pulumi.Automation.Commands.Exceptions.CommandException
+Pulumi.Automation.Commands.Exceptions.CommandException.Name.get -> string
+Pulumi.Automation.Commands.Exceptions.ConcurrentUpdateException
+Pulumi.Automation.Commands.Exceptions.StackAlreadyExistsException
+Pulumi.Automation.Commands.Exceptions.StackNotFoundException
+Pulumi.Automation.ConfigValue
+Pulumi.Automation.ConfigValue.ConfigValue(string value, bool isSecret = false) -> void
+Pulumi.Automation.ConfigValue.IsSecret.get -> bool
+Pulumi.Automation.ConfigValue.IsSecret.set -> void
+Pulumi.Automation.ConfigValue.Value.get -> string
+Pulumi.Automation.ConfigValue.Value.set -> void
+Pulumi.Automation.DestroyOptions
+Pulumi.Automation.DestroyOptions.DestroyOptions() -> void
+Pulumi.Automation.DestroyOptions.TargetDependents.get -> bool?
+Pulumi.Automation.DestroyOptions.TargetDependents.set -> void
+Pulumi.Automation.Events.CancelEvent
+Pulumi.Automation.Events.DiagnosticEvent
+Pulumi.Automation.Events.DiagnosticEvent.Color.get -> string
+Pulumi.Automation.Events.DiagnosticEvent.Ephemeral.get -> bool?
+Pulumi.Automation.Events.DiagnosticEvent.Message.get -> string
+Pulumi.Automation.Events.DiagnosticEvent.Prefix.get -> string
+Pulumi.Automation.Events.DiagnosticEvent.Severity.get -> string
+Pulumi.Automation.Events.DiagnosticEvent.StreamId.get -> string
+Pulumi.Automation.Events.DiagnosticEvent.Urn.get -> string
+Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.DiffKind.Add = 0 -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.DiffKind.AddReplace = 1 -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.DiffKind.Delete = 2 -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.DiffKind.DeleteReplace = 3 -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.DiffKind.Update = 4 -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.DiffKind.UpdateReplace = 5 -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.EngineEvent
+Pulumi.Automation.Events.EngineEvent.CancelEvent.get -> Pulumi.Automation.Events.CancelEvent
+Pulumi.Automation.Events.EngineEvent.DiagnosticEvent.get -> Pulumi.Automation.Events.DiagnosticEvent
+Pulumi.Automation.Events.EngineEvent.PolicyEvent.get -> Pulumi.Automation.Events.PolicyEvent
+Pulumi.Automation.Events.EngineEvent.PreludeEvent.get -> Pulumi.Automation.Events.PreludeEvent
+Pulumi.Automation.Events.EngineEvent.ResourceOperationFailedEvent.get -> Pulumi.Automation.Events.ResourceOperationFailedEvent
+Pulumi.Automation.Events.EngineEvent.ResourceOutputsEvent.get -> Pulumi.Automation.Events.ResourceOutputsEvent
+Pulumi.Automation.Events.EngineEvent.ResourcePreEvent.get -> Pulumi.Automation.Events.ResourcePreEvent
+Pulumi.Automation.Events.EngineEvent.Sequence.get -> int
+Pulumi.Automation.Events.EngineEvent.StandardOutputEvent.get -> Pulumi.Automation.Events.StandardOutputEngineEvent
+Pulumi.Automation.Events.EngineEvent.SummaryEvent.get -> Pulumi.Automation.Events.SummaryEvent
+Pulumi.Automation.Events.EngineEvent.Timestamp.get -> int
+Pulumi.Automation.Events.PolicyEvent
+Pulumi.Automation.Events.PolicyEvent.Color.get -> string
+Pulumi.Automation.Events.PolicyEvent.EnforcementLevel.get -> string
+Pulumi.Automation.Events.PolicyEvent.Message.get -> string
+Pulumi.Automation.Events.PolicyEvent.PolicyName.get -> string
+Pulumi.Automation.Events.PolicyEvent.PolicyPackName.get -> string
+Pulumi.Automation.Events.PolicyEvent.PolicyPackVersion.get -> string
+Pulumi.Automation.Events.PolicyEvent.PolicyPackVersionTag.get -> string
+Pulumi.Automation.Events.PolicyEvent.ResourceUrn.get -> string
+Pulumi.Automation.Events.PreludeEvent
+Pulumi.Automation.Events.PreludeEvent.Config.get -> System.Collections.Immutable.IImmutableDictionary<string, string>
+Pulumi.Automation.Events.PropertyDiff
+Pulumi.Automation.Events.PropertyDiff.InputDiff.get -> bool
+Pulumi.Automation.Events.PropertyDiff.Kind.get -> Pulumi.Automation.Events.DiffKind
+Pulumi.Automation.Events.ResourceOperationFailedEvent
+Pulumi.Automation.Events.ResourceOperationFailedEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
+Pulumi.Automation.Events.ResourceOperationFailedEvent.Status.get -> int
+Pulumi.Automation.Events.ResourceOperationFailedEvent.Steps.get -> int
+Pulumi.Automation.Events.ResourceOutputsEvent
+Pulumi.Automation.Events.ResourceOutputsEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
+Pulumi.Automation.Events.ResourceOutputsEvent.Planning.get -> bool?
+Pulumi.Automation.Events.ResourcePreEvent
+Pulumi.Automation.Events.ResourcePreEvent.Metadata.get -> Pulumi.Automation.Events.StepEventMetadata
+Pulumi.Automation.Events.ResourcePreEvent.Planning.get -> bool?
+Pulumi.Automation.Events.StandardOutputEngineEvent
+Pulumi.Automation.Events.StandardOutputEngineEvent.Color.get -> string
+Pulumi.Automation.Events.StandardOutputEngineEvent.Message.get -> string
+Pulumi.Automation.Events.StepEventMetadata
+Pulumi.Automation.Events.StepEventMetadata.DetailedDiff.get -> System.Collections.Immutable.IImmutableDictionary<string, Pulumi.Automation.Events.PropertyDiff>
+Pulumi.Automation.Events.StepEventMetadata.Diffs.get -> System.Collections.Immutable.ImmutableArray<string>?
+Pulumi.Automation.Events.StepEventMetadata.Keys.get -> System.Collections.Immutable.ImmutableArray<string>?
+Pulumi.Automation.Events.StepEventMetadata.Logical.get -> bool?
+Pulumi.Automation.Events.StepEventMetadata.New.get -> Pulumi.Automation.Events.StepEventStateMetadata
+Pulumi.Automation.Events.StepEventMetadata.Old.get -> Pulumi.Automation.Events.StepEventStateMetadata
+Pulumi.Automation.Events.StepEventMetadata.Op.get -> Pulumi.Automation.OperationType
+Pulumi.Automation.Events.StepEventMetadata.Provider.get -> string
+Pulumi.Automation.Events.StepEventMetadata.Type.get -> string
+Pulumi.Automation.Events.StepEventMetadata.Urn.get -> string
+Pulumi.Automation.Events.StepEventStateMetadata
+Pulumi.Automation.Events.StepEventStateMetadata.Custom.get -> bool?
+Pulumi.Automation.Events.StepEventStateMetadata.Delete.get -> bool?
+Pulumi.Automation.Events.StepEventStateMetadata.Id.get -> string
+Pulumi.Automation.Events.StepEventStateMetadata.InitErrors.get -> System.Collections.Immutable.ImmutableArray<string>?
+Pulumi.Automation.Events.StepEventStateMetadata.Inputs.get -> System.Collections.Immutable.IImmutableDictionary<string, object>
+Pulumi.Automation.Events.StepEventStateMetadata.Outputs.get -> System.Collections.Immutable.IImmutableDictionary<string, object>
+Pulumi.Automation.Events.StepEventStateMetadata.Parent.get -> string
+Pulumi.Automation.Events.StepEventStateMetadata.Protect.get -> bool?
+Pulumi.Automation.Events.StepEventStateMetadata.Provider.get -> string
+Pulumi.Automation.Events.StepEventStateMetadata.Type.get -> string
+Pulumi.Automation.Events.StepEventStateMetadata.Urn.get -> string
+Pulumi.Automation.Events.SummaryEvent
+Pulumi.Automation.Events.SummaryEvent.DurationSeconds.get -> int
+Pulumi.Automation.Events.SummaryEvent.MaybeCorrupt.get -> bool
+Pulumi.Automation.Events.SummaryEvent.PolicyPacks.get -> System.Collections.Immutable.IImmutableDictionary<string, string>
+Pulumi.Automation.Events.SummaryEvent.ResourceChanges.get -> System.Collections.Immutable.IImmutableDictionary<Pulumi.Automation.OperationType, int>
+Pulumi.Automation.Exceptions.MissingExpectedEventException
+Pulumi.Automation.Exceptions.MissingExpectedEventException.Name.get -> string
+Pulumi.Automation.Exceptions.NoSummaryEventException
+Pulumi.Automation.HistoryOptions
+Pulumi.Automation.HistoryOptions.HistoryOptions() -> void
+Pulumi.Automation.HistoryOptions.Page.get -> int?
+Pulumi.Automation.HistoryOptions.Page.set -> void
+Pulumi.Automation.HistoryOptions.PageSize.get -> int?
+Pulumi.Automation.HistoryOptions.PageSize.set -> void
+Pulumi.Automation.InlineProgramArgs
+Pulumi.Automation.InlineProgramArgs.InlineProgramArgs(string projectName, string stackName, Pulumi.Automation.PulumiFn program) -> void
+Pulumi.Automation.InlineProgramArgs.StackName.get -> string
+Pulumi.Automation.LocalProgramArgs
+Pulumi.Automation.LocalProgramArgs.LocalProgramArgs(string stackName, string workDir) -> void
+Pulumi.Automation.LocalProgramArgs.StackName.get -> string
+Pulumi.Automation.LocalWorkspace
+Pulumi.Automation.LocalWorkspaceOptions
+Pulumi.Automation.LocalWorkspaceOptions.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
+Pulumi.Automation.LocalWorkspaceOptions.EnvironmentVariables.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.LocalWorkspaceOptions() -> void
+Pulumi.Automation.LocalWorkspaceOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger
+Pulumi.Automation.LocalWorkspaceOptions.Logger.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.Program.get -> Pulumi.Automation.PulumiFn
+Pulumi.Automation.LocalWorkspaceOptions.Program.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.ProjectSettings.get -> Pulumi.Automation.ProjectSettings
+Pulumi.Automation.LocalWorkspaceOptions.ProjectSettings.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.PulumiHome.get -> string
+Pulumi.Automation.LocalWorkspaceOptions.PulumiHome.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.SecretsProvider.get -> string
+Pulumi.Automation.LocalWorkspaceOptions.SecretsProvider.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.StackSettings.get -> System.Collections.Generic.IDictionary<string, Pulumi.Automation.StackSettings>
+Pulumi.Automation.LocalWorkspaceOptions.StackSettings.set -> void
+Pulumi.Automation.LocalWorkspaceOptions.WorkDir.get -> string
+Pulumi.Automation.LocalWorkspaceOptions.WorkDir.set -> void
+Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Create = 1 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.CreateReplacement = 5 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Delete = 3 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.DeleteReplaced = 6 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.DiscardReplaced = 11 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Import = 13 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.ImportReplacement = 14 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Read = 7 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.ReadDiscard = 10 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.ReadReplacement = 8 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Refresh = 9 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.RemovePendingReplace = 12 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Replace = 4 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Same = 0 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OperationType.Update = 2 -> Pulumi.Automation.OperationType
+Pulumi.Automation.OutputValue
+Pulumi.Automation.OutputValue.IsSecret.get -> bool
+Pulumi.Automation.OutputValue.Value.get -> object
+Pulumi.Automation.PluginInfo
+Pulumi.Automation.PluginInfo.InstallTime.get -> System.DateTimeOffset
+Pulumi.Automation.PluginInfo.Kind.get -> Pulumi.Automation.PluginKind
+Pulumi.Automation.PluginInfo.LastUsedTime.get -> System.DateTimeOffset
+Pulumi.Automation.PluginInfo.Name.get -> string
+Pulumi.Automation.PluginInfo.Path.get -> string
+Pulumi.Automation.PluginInfo.ServerUrl.get -> string
+Pulumi.Automation.PluginInfo.Size.get -> long
+Pulumi.Automation.PluginInfo.Version.get -> string
+Pulumi.Automation.PluginKind
+Pulumi.Automation.PluginKind.Analyzer = 0 -> Pulumi.Automation.PluginKind
+Pulumi.Automation.PluginKind.Language = 1 -> Pulumi.Automation.PluginKind
+Pulumi.Automation.PluginKind.Resource = 2 -> Pulumi.Automation.PluginKind
+Pulumi.Automation.PreviewOptions
+Pulumi.Automation.PreviewOptions.ExpectNoChanges.get -> bool?
+Pulumi.Automation.PreviewOptions.ExpectNoChanges.set -> void
+Pulumi.Automation.PreviewOptions.Diff.get -> bool?
+Pulumi.Automation.PreviewOptions.Diff.set -> void
+Pulumi.Automation.PreviewOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger
+Pulumi.Automation.PreviewOptions.Logger.set -> void
+Pulumi.Automation.PreviewOptions.PreviewOptions() -> void
+Pulumi.Automation.PreviewOptions.Program.get -> Pulumi.Automation.PulumiFn
+Pulumi.Automation.PreviewOptions.Program.set -> void
+Pulumi.Automation.PreviewOptions.Replace.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.PreviewOptions.Replace.set -> void
+Pulumi.Automation.PreviewOptions.TargetDependents.get -> bool?
+Pulumi.Automation.PreviewOptions.TargetDependents.set -> void
+Pulumi.Automation.PreviewResult
+Pulumi.Automation.PreviewResult.ChangeSummary.get -> System.Collections.Immutable.IImmutableDictionary<Pulumi.Automation.OperationType, int>
+Pulumi.Automation.PreviewResult.StandardError.get -> string
+Pulumi.Automation.PreviewResult.StandardOutput.get -> string
+Pulumi.Automation.ProjectBackend
+Pulumi.Automation.ProjectBackend.ProjectBackend() -> void
+Pulumi.Automation.ProjectBackend.Url.get -> string
+Pulumi.Automation.ProjectBackend.Url.set -> void
+Pulumi.Automation.ProjectRuntime
+Pulumi.Automation.ProjectRuntime.Name.get -> Pulumi.Automation.ProjectRuntimeName
+Pulumi.Automation.ProjectRuntime.Name.set -> void
+Pulumi.Automation.ProjectRuntime.Options.get -> Pulumi.Automation.ProjectRuntimeOptions
+Pulumi.Automation.ProjectRuntime.Options.set -> void
+Pulumi.Automation.ProjectRuntime.ProjectRuntime(Pulumi.Automation.ProjectRuntimeName name) -> void
+Pulumi.Automation.ProjectRuntimeName
+Pulumi.Automation.ProjectRuntimeName.Dotnet = 3 -> Pulumi.Automation.ProjectRuntimeName
+Pulumi.Automation.ProjectRuntimeName.Go = 1 -> Pulumi.Automation.ProjectRuntimeName
+Pulumi.Automation.ProjectRuntimeName.NodeJS = 0 -> Pulumi.Automation.ProjectRuntimeName
+Pulumi.Automation.ProjectRuntimeName.Python = 2 -> Pulumi.Automation.ProjectRuntimeName
+Pulumi.Automation.ProjectRuntimeOptions
+Pulumi.Automation.ProjectRuntimeOptions.Binary.get -> string
+Pulumi.Automation.ProjectRuntimeOptions.Binary.set -> void
+Pulumi.Automation.ProjectRuntimeOptions.ProjectRuntimeOptions() -> void
+Pulumi.Automation.ProjectRuntimeOptions.TypeScript.get -> bool?
+Pulumi.Automation.ProjectRuntimeOptions.TypeScript.set -> void
+Pulumi.Automation.ProjectRuntimeOptions.VirtualEnv.get -> string
+Pulumi.Automation.ProjectRuntimeOptions.VirtualEnv.set -> void
+Pulumi.Automation.ProjectSettings
+Pulumi.Automation.ProjectSettings.Author.get -> string
+Pulumi.Automation.ProjectSettings.Author.set -> void
+Pulumi.Automation.ProjectSettings.Backend.get -> Pulumi.Automation.ProjectBackend
+Pulumi.Automation.ProjectSettings.Backend.set -> void
+Pulumi.Automation.ProjectSettings.Config.get -> string
+Pulumi.Automation.ProjectSettings.Config.set -> void
+Pulumi.Automation.ProjectSettings.Description.get -> string
+Pulumi.Automation.ProjectSettings.Description.set -> void
+Pulumi.Automation.ProjectSettings.License.get -> string
+Pulumi.Automation.ProjectSettings.License.set -> void
+Pulumi.Automation.ProjectSettings.Main.get -> string
+Pulumi.Automation.ProjectSettings.Main.set -> void
+Pulumi.Automation.ProjectSettings.Name.get -> string
+Pulumi.Automation.ProjectSettings.Name.set -> void
+Pulumi.Automation.ProjectSettings.ProjectSettings(string name, Pulumi.Automation.ProjectRuntime runtime) -> void
+Pulumi.Automation.ProjectSettings.ProjectSettings(string name, Pulumi.Automation.ProjectRuntimeName runtime) -> void
+Pulumi.Automation.ProjectSettings.Runtime.get -> Pulumi.Automation.ProjectRuntime
+Pulumi.Automation.ProjectSettings.Runtime.set -> void
+Pulumi.Automation.ProjectSettings.Template.get -> Pulumi.Automation.ProjectTemplate
+Pulumi.Automation.ProjectSettings.Template.set -> void
+Pulumi.Automation.ProjectSettings.Website.get -> string
+Pulumi.Automation.ProjectSettings.Website.set -> void
+Pulumi.Automation.ProjectTemplate
+Pulumi.Automation.ProjectTemplate.Config.get -> System.Collections.Generic.IDictionary<string, Pulumi.Automation.ProjectTemplateConfigValue>
+Pulumi.Automation.ProjectTemplate.Config.set -> void
+Pulumi.Automation.ProjectTemplate.Description.get -> string
+Pulumi.Automation.ProjectTemplate.Description.set -> void
+Pulumi.Automation.ProjectTemplate.Important.get -> bool?
+Pulumi.Automation.ProjectTemplate.Important.set -> void
+Pulumi.Automation.ProjectTemplate.ProjectTemplate() -> void
+Pulumi.Automation.ProjectTemplate.QuickStart.get -> string
+Pulumi.Automation.ProjectTemplate.QuickStart.set -> void
+Pulumi.Automation.ProjectTemplateConfigValue
+Pulumi.Automation.ProjectTemplateConfigValue.Default.get -> string
+Pulumi.Automation.ProjectTemplateConfigValue.Default.set -> void
+Pulumi.Automation.ProjectTemplateConfigValue.Description.get -> string
+Pulumi.Automation.ProjectTemplateConfigValue.Description.set -> void
+Pulumi.Automation.ProjectTemplateConfigValue.ProjectTemplateConfigValue() -> void
+Pulumi.Automation.ProjectTemplateConfigValue.Secret.get -> bool?
+Pulumi.Automation.ProjectTemplateConfigValue.Secret.set -> void
+Pulumi.Automation.PulumiFn
+Pulumi.Automation.RefreshOptions
+Pulumi.Automation.RefreshOptions.ExpectNoChanges.get -> bool?
+Pulumi.Automation.RefreshOptions.ExpectNoChanges.set -> void
+Pulumi.Automation.RefreshOptions.RefreshOptions() -> void
+Pulumi.Automation.StackSettings
+Pulumi.Automation.StackSettings.Config.get -> System.Collections.Generic.IDictionary<string, Pulumi.Automation.StackSettingsConfigValue>
+Pulumi.Automation.StackSettings.Config.set -> void
+Pulumi.Automation.StackSettings.EncryptedKey.get -> string
+Pulumi.Automation.StackSettings.EncryptedKey.set -> void
+Pulumi.Automation.StackSettings.EncryptionSalt.get -> string
+Pulumi.Automation.StackSettings.EncryptionSalt.set -> void
+Pulumi.Automation.StackSettings.SecretsProvider.get -> string
+Pulumi.Automation.StackSettings.SecretsProvider.set -> void
+Pulumi.Automation.StackSettings.StackSettings() -> void
+Pulumi.Automation.StackSettingsConfigValue
+Pulumi.Automation.StackSettingsConfigValue.IsSecure.get -> bool
+Pulumi.Automation.StackSettingsConfigValue.StackSettingsConfigValue(string value, bool isSecure) -> void
+Pulumi.Automation.StackSettingsConfigValue.Value.get -> string
+Pulumi.Automation.StackSummary
+Pulumi.Automation.StackSummary.IsCurrent.get -> bool
+Pulumi.Automation.StackSummary.IsUpdateInProgress.get -> bool
+Pulumi.Automation.StackSummary.LastUpdate.get -> System.DateTimeOffset?
+Pulumi.Automation.StackSummary.Name.get -> string
+Pulumi.Automation.StackSummary.ResourceCount.get -> int?
+Pulumi.Automation.StackSummary.Url.get -> string
+Pulumi.Automation.UpOptions
+Pulumi.Automation.UpOptions.ExpectNoChanges.get -> bool?
+Pulumi.Automation.UpOptions.ExpectNoChanges.set -> void
+Pulumi.Automation.UpOptions.Diff.get -> bool?
+Pulumi.Automation.UpOptions.Diff.set -> void
+Pulumi.Automation.UpOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger
+Pulumi.Automation.UpOptions.Logger.set -> void
+Pulumi.Automation.UpOptions.Program.get -> Pulumi.Automation.PulumiFn
+Pulumi.Automation.UpOptions.Program.set -> void
+Pulumi.Automation.UpOptions.Replace.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.UpOptions.Replace.set -> void
+Pulumi.Automation.UpOptions.TargetDependents.get -> bool?
+Pulumi.Automation.UpOptions.TargetDependents.set -> void
+Pulumi.Automation.UpOptions.UpOptions() -> void
+Pulumi.Automation.UpResult
+Pulumi.Automation.UpResult.Outputs.get -> System.Collections.Immutable.IImmutableDictionary<string, Pulumi.Automation.OutputValue>
+Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateKind.Destroy = 4 -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateKind.Import = 5 -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateKind.Preview = 1 -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateKind.Refresh = 2 -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateKind.Rename = 3 -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateKind.Update = 0 -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateOptions
+Pulumi.Automation.UpdateOptions.Message.get -> string
+Pulumi.Automation.UpdateOptions.Message.set -> void
+Pulumi.Automation.UpdateOptions.OnEvent.get -> System.Action<Pulumi.Automation.Events.EngineEvent>
+Pulumi.Automation.UpdateOptions.OnEvent.set -> void
+Pulumi.Automation.UpdateOptions.OnStandardError.get -> System.Action<string>
+Pulumi.Automation.UpdateOptions.OnStandardError.set -> void
+Pulumi.Automation.UpdateOptions.OnStandardOutput.get -> System.Action<string>
+Pulumi.Automation.UpdateOptions.OnStandardOutput.set -> void
+Pulumi.Automation.UpdateOptions.Parallel.get -> int?
+Pulumi.Automation.UpdateOptions.Parallel.set -> void
+Pulumi.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>
+Pulumi.Automation.UpdateOptions.Target.set -> void
+Pulumi.Automation.UpdateOptions.UpdateOptions() -> void
+Pulumi.Automation.UpdateResult
+Pulumi.Automation.UpdateResult.StandardError.get -> string
+Pulumi.Automation.UpdateResult.StandardOutput.get -> string
+Pulumi.Automation.UpdateResult.Summary.get -> Pulumi.Automation.UpdateSummary
+Pulumi.Automation.UpdateState
+Pulumi.Automation.UpdateState.Failed = 3 -> Pulumi.Automation.UpdateState
+Pulumi.Automation.UpdateState.InProgress = 1 -> Pulumi.Automation.UpdateState
+Pulumi.Automation.UpdateState.NotStarted = 0 -> Pulumi.Automation.UpdateState
+Pulumi.Automation.UpdateState.Succeeded = 2 -> Pulumi.Automation.UpdateState
+Pulumi.Automation.UpdateSummary
+Pulumi.Automation.UpdateSummary.Config.get -> System.Collections.Immutable.IImmutableDictionary<string, Pulumi.Automation.ConfigValue>
+Pulumi.Automation.UpdateSummary.Deployment.get -> string
+Pulumi.Automation.UpdateSummary.EndTime.get -> System.DateTimeOffset
+Pulumi.Automation.UpdateSummary.Environment.get -> System.Collections.Immutable.IImmutableDictionary<string, string>
+Pulumi.Automation.UpdateSummary.Kind.get -> Pulumi.Automation.UpdateKind
+Pulumi.Automation.UpdateSummary.Message.get -> string
+Pulumi.Automation.UpdateSummary.ResourceChanges.get -> System.Collections.Immutable.IImmutableDictionary<Pulumi.Automation.OperationType, int>
+Pulumi.Automation.UpdateSummary.Result.get -> Pulumi.Automation.UpdateState
+Pulumi.Automation.UpdateSummary.StartTime.get -> System.DateTimeOffset
+Pulumi.Automation.UpdateSummary.Version.get -> int?
+Pulumi.Automation.WhoAmIResult
+Pulumi.Automation.WhoAmIResult.User.get -> string
+Pulumi.Automation.WhoAmIResult.WhoAmIResult(string user) -> void
+Pulumi.Automation.Workspace
+Pulumi.Automation.Workspace.CreateStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.Automation.Workspace.SelectStackAsync(string stackName) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack
+Pulumi.Automation.WorkspaceStack.DestroyAsync(Pulumi.Automation.DestroyOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.WorkspaceStack.Dispose() -> void
+Pulumi.Automation.WorkspaceStack.GetAllConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+Pulumi.Automation.WorkspaceStack.GetConfigAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
+Pulumi.Automation.WorkspaceStack.GetHistoryAsync(Pulumi.Automation.HistoryOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.UpdateSummary>>
+Pulumi.Automation.WorkspaceStack.GetInfoAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateSummary>
+Pulumi.Automation.WorkspaceStack.GetOutputsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
+Pulumi.Automation.WorkspaceStack.Name.get -> string
+Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.PreviewResult>
+Pulumi.Automation.WorkspaceStack.RefreshAsync(Pulumi.Automation.RefreshOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpdateResult>
+Pulumi.Automation.WorkspaceStack.RefreshConfigAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+Pulumi.Automation.WorkspaceStack.RemoveAllConfigAsync(System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.RemoveConfigAsync(string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.SetAllConfigAsync(System.Collections.Generic.IDictionary<string, Pulumi.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.SetConfigAsync(string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.UpResult>
+Pulumi.Automation.WorkspaceStack.Workspace.get -> Pulumi.Automation.Workspace
+abstract Pulumi.Automation.Workspace.CreateStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
+abstract Pulumi.Automation.Workspace.EnvironmentVariables.set -> void
+abstract Pulumi.Automation.Workspace.GetAllConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+abstract Pulumi.Automation.Workspace.GetConfigAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
+abstract Pulumi.Automation.Workspace.GetProjectSettingsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ProjectSettings>
+abstract Pulumi.Automation.Workspace.GetStackOutputsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
+abstract Pulumi.Automation.Workspace.GetStackSettingsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSettings>
+abstract Pulumi.Automation.Workspace.InstallPluginAsync(string name, string version, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.ListPluginsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.PluginInfo>>
+abstract Pulumi.Automation.Workspace.ListStacksAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.StackSummary>>
+abstract Pulumi.Automation.Workspace.Logger.get -> Microsoft.Extensions.Logging.ILogger
+abstract Pulumi.Automation.Workspace.Logger.set -> void
+abstract Pulumi.Automation.Workspace.PostCommandCallbackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.Program.get -> Pulumi.Automation.PulumiFn
+abstract Pulumi.Automation.Workspace.Program.set -> void
+abstract Pulumi.Automation.Workspace.PulumiHome.get -> string
+abstract Pulumi.Automation.Workspace.PulumiVersion.get -> string
+abstract Pulumi.Automation.Workspace.RefreshConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+abstract Pulumi.Automation.Workspace.RemoveAllConfigAsync(string stackName, System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.RemoveConfigAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.RemovePluginAsync(string name = null, string versionRange = null, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.RemoveStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.SaveProjectSettingsAsync(Pulumi.Automation.ProjectSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.SaveStackSettingsAsync(string stackName, Pulumi.Automation.StackSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.SecretsProvider.get -> string
+abstract Pulumi.Automation.Workspace.SelectStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.SerializeArgsForOpAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<string>>
+abstract Pulumi.Automation.Workspace.SetAllConfigAsync(string stackName, System.Collections.Generic.IDictionary<string, Pulumi.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.SetConfigAsync(string stackName, string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.WhoAmIAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WhoAmIResult>
+abstract Pulumi.Automation.Workspace.WorkDir.get -> string
+override Pulumi.Automation.LocalWorkspace.CreateStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.Dispose() -> void
+override Pulumi.Automation.LocalWorkspace.EnvironmentVariables.get -> System.Collections.Generic.IDictionary<string, string>
+override Pulumi.Automation.LocalWorkspace.EnvironmentVariables.set -> void
+override Pulumi.Automation.LocalWorkspace.GetAllConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+override Pulumi.Automation.LocalWorkspace.GetConfigAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ConfigValue>
+override Pulumi.Automation.LocalWorkspace.GetProjectSettingsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.ProjectSettings>
+override Pulumi.Automation.LocalWorkspace.GetStackOutputsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.OutputValue>>
+override Pulumi.Automation.LocalWorkspace.GetStackSettingsAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSettings>
+override Pulumi.Automation.LocalWorkspace.InstallPluginAsync(string name, string version, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.ListPluginsAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.PluginInfo>>
+override Pulumi.Automation.LocalWorkspace.ListStacksAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<Pulumi.Automation.StackSummary>>
+override Pulumi.Automation.LocalWorkspace.Logger.get -> Microsoft.Extensions.Logging.ILogger
+override Pulumi.Automation.LocalWorkspace.Logger.set -> void
+override Pulumi.Automation.LocalWorkspace.PostCommandCallbackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.Program.get -> Pulumi.Automation.PulumiFn
+override Pulumi.Automation.LocalWorkspace.Program.set -> void
+override Pulumi.Automation.LocalWorkspace.PulumiHome.get -> string
+override Pulumi.Automation.LocalWorkspace.PulumiVersion.get -> string
+override Pulumi.Automation.LocalWorkspace.RefreshConfigAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableDictionary<string, Pulumi.Automation.ConfigValue>>
+override Pulumi.Automation.LocalWorkspace.RemoveAllConfigAsync(string stackName, System.Collections.Generic.IEnumerable<string> keys, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.RemoveConfigAsync(string stackName, string key, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.RemovePluginAsync(string name = null, string versionRange = null, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.RemoveStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.SaveProjectSettingsAsync(Pulumi.Automation.ProjectSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.SaveStackSettingsAsync(string stackName, Pulumi.Automation.StackSettings settings, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.SecretsProvider.get -> string
+override Pulumi.Automation.LocalWorkspace.SelectStackAsync(string stackName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.SerializeArgsForOpAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Immutable.ImmutableList<string>>
+override Pulumi.Automation.LocalWorkspace.SetAllConfigAsync(string stackName, System.Collections.Generic.IDictionary<string, Pulumi.Automation.ConfigValue> configMap, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.SetConfigAsync(string stackName, string key, Pulumi.Automation.ConfigValue value, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.WhoAmIAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WhoAmIResult>
+override Pulumi.Automation.LocalWorkspace.WorkDir.get -> string
+static Pulumi.Automation.LocalWorkspace.CreateAsync(Pulumi.Automation.LocalWorkspaceOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.LocalWorkspace>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateOrSelectStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.CreateStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.InlineProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.InlineProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.LocalProgramArgs args) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.LocalWorkspace.SelectStackAsync(Pulumi.Automation.LocalProgramArgs args, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.PulumiFn.Create(System.Action program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.Func<System.Collections.Generic.IDictionary<string, object>> program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.CancellationToken, System.Threading.Tasks.Task> program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task<System.Collections.Generic.IDictionary<string, object>>> program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.Func<System.Threading.Tasks.Task> program) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create(System.IServiceProvider serviceProvider, System.Type stackType) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create<TStack>() -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.PulumiFn.Create<TStack>(System.IServiceProvider serviceProvider) -> Pulumi.Automation.PulumiFn
+static Pulumi.Automation.WorkspaceStack.CreateAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.WorkspaceStack.CreateOrSelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+static Pulumi.Automation.WorkspaceStack.SelectAsync(string name, Pulumi.Automation.Workspace workspace, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.WorkspaceStack>
+virtual Pulumi.Automation.Workspace.Dispose() -> void
+virtual Pulumi.Automation.Workspace.GetStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackSummary>
+Pulumi.Automation.Exceptions.ProjectSettingsConflictException
+Pulumi.Automation.Exceptions.ProjectSettingsConflictException.SettingsFileLocation.get -> string
+Pulumi.Automation.WorkspaceStack.CancelAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.ImportStackAsync(string stackName, Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+abstract Pulumi.Automation.Workspace.ExportStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
+override Pulumi.Automation.LocalWorkspace.ImportStackAsync(string stackName, Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.ExportStackAsync(string stackName, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
+Pulumi.Automation.StackDeployment
+Pulumi.Automation.StackDeployment.Version.get -> int
+Pulumi.Automation.StackDeployment.Json.get -> System.Text.Json.JsonElement
+static Pulumi.Automation.StackDeployment.FromJsonString(string jsonString) -> Pulumi.Automation.StackDeployment
+Pulumi.Automation.WorkspaceStack.ExportStackAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Pulumi.Automation.StackDeployment>
+Pulumi.Automation.WorkspaceStack.ImportStackAsync(Pulumi.Automation.StackDeployment state, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task

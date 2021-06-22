@@ -16,6 +16,7 @@ package python
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,25 +26,33 @@ import (
 	"github.com/pkg/errors"
 )
 
-const windows = "windows"
+const (
+	windows             = "windows"
+	pythonShimCmdFormat = "pulumi-%s-shim.cmd"
+)
 
 // Command returns an *exec.Cmd for running `python`. If the `PULUMI_PYTHON_CMD` variable is set
 // it will be looked for on `PATH`, otherwise, `python3` and `python` will be looked for.
 func Command(arg ...string) (*exec.Cmd, error) {
 	var err error
 	var pythonCmds []string
-	var pythonPath string
 
 	if pythonCmd := os.Getenv("PULUMI_PYTHON_CMD"); pythonCmd != "" {
 		pythonCmds = []string{pythonCmd}
 	} else {
-		// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-		// distributions (in particular the default python.org Windows installation) do not include
-		// a `python3` binary.
+		// Look for `python3` by default, but fallback to `python` if not found, except on Windows
+		// where we look for these in the reverse order because the default python.org Windows
+		// installation does not include a `python3` binary, and the existence of a `python3.exe`
+		// symlink to `python.exe` on some systems does not work correctly with the Python `venv`
+		// module.
 		pythonCmds = []string{"python3", "python"}
+		if runtime.GOOS == windows {
+			pythonCmds = []string{"python", "python3"}
+		}
 	}
 
-	for _, pythonCmd := range pythonCmds {
+	var pythonCmd, pythonPath string
+	for _, pythonCmd = range pythonCmds {
 		pythonPath, err = exec.LookPath(pythonCmd)
 		// Break on the first cmd we find on the path (if any)
 		if err == nil {
@@ -51,12 +60,73 @@ func Command(arg ...string) (*exec.Cmd, error) {
 		}
 	}
 	if err != nil {
-		return nil, fmt.Errorf(
-			"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
-			pythonCmds)
+		// second-chance on windows for python being installed through the Windows app store.
+		if runtime.GOOS == windows {
+			pythonCmd, pythonPath, err = resolveWindowsExecutionAlias(pythonCmds)
+		}
+		if err != nil {
+			return nil, errors.Errorf(
+				"Failed to locate any of %q on your PATH.  Have you installed Python 3.6 or greater?",
+				pythonCmds)
+		}
 	}
 
+	if needsPythonShim(pythonPath) {
+		shimCmd := fmt.Sprintf(pythonShimCmdFormat, pythonCmd)
+		return exec.Command(shimCmd, arg...), nil
+	}
 	return exec.Command(pythonPath, arg...), nil
+}
+
+// resolveWindowsExecutionAlias performs a lookup for python among UWP
+// application execution aliases which exec.LookPath() can't handle.
+// Windows 10 supports execution aliases for UWP applications. If python
+// is installed using the Windows store app, the installer will drop an alias
+// in %LOCALAPPDATA%\Microsoft\WindowsApps which is a zero-length file - also
+// called an execution alias. This directory is also added to the PATH.
+// See https://www.tiraniddo.dev/2019/09/overview-of-windows-execution-aliases.html
+// for an overview.
+// Most of this code is a replacement of the windows version of exec.LookPath
+// but uses os.Lstat instead of an os.Stat which fails with a
+// "CreateFile <path>: The file cannot be accessed by the system".
+func resolveWindowsExecutionAlias(pythonCmds []string) (string, string, error) {
+	exts := []string{""}
+	x := os.Getenv(`PATHEXT`)
+	if x != "" {
+		for _, e := range strings.Split(strings.ToLower(x), `;`) {
+			if e == "" {
+				continue
+			}
+			if e[0] != '.' {
+				e = "." + e
+			}
+			exts = append(exts, e)
+		}
+	} else {
+		exts = append(exts, ".com", ".exe", ".bat", ".cmd")
+	}
+
+	path := os.Getenv("PATH")
+	for _, dir := range filepath.SplitList(path) {
+		if !strings.Contains(strings.ToLower(dir), filepath.Join("microsoft", "windowsapps")) {
+			continue
+		}
+		for _, pythonCmd := range pythonCmds {
+			for _, ext := range exts {
+				path := filepath.Join(dir, pythonCmd+ext)
+				_, err := os.Lstat(path)
+				if err != nil && !os.IsNotExist(err) {
+					return "", "", errors.Wrap(err, "evaluating python execution alias")
+				}
+				if os.IsNotExist(err) {
+					continue
+				}
+				return pythonCmd, path, nil
+			}
+		}
+	}
+
+	return "", "", errors.New("no python execution alias found")
 }
 
 // VirtualEnvCommand returns an *exec.Cmd for running a command from the specified virtual environment
@@ -79,6 +149,29 @@ func IsVirtualEnv(dir string) bool {
 		return true
 	}
 	return false
+}
+
+// NewVirtualEnvError creates an error about the virtual environment with more info on how to resolve the issue.
+func NewVirtualEnvError(dir, fullPath string) error {
+	pythonBin := "python3"
+	if runtime.GOOS == windows {
+		pythonBin = "python"
+	}
+	venvPythonBin := filepath.Join(fullPath, virtualEnvBinDirName(), "python")
+
+	message := "doesn't appear to be a virtual environment"
+	if _, err := os.Stat(fullPath); os.IsNotExist(err) {
+		message = "doesn't exist"
+	}
+
+	commandsText := fmt.Sprintf("    1. %s -m venv %s\n", pythonBin, fullPath) +
+		fmt.Sprintf("    2. %s -m pip install --upgrade pip setuptools wheel\n", venvPythonBin) +
+		fmt.Sprintf("    3. %s -m pip install -r requirements.txt\n", venvPythonBin)
+
+	return errors.Errorf("The 'virtualenv' option in Pulumi.yaml is set to %q, but %q %s; "+
+		"run the following commands to create the virtual environment and install dependencies into it:\n\n%s\n\n"+
+		"For more information see: https://www.pulumi.com/docs/intro/languages/python/#virtual-environments",
+		dir, fullPath, message, commandsText)
 }
 
 // ActivateVirtualEnv takes an array of environment variables (same format as os.Environ()) and path to
@@ -111,74 +204,88 @@ func ActivateVirtualEnv(environ []string, virtualEnvDir string) []string {
 }
 
 // InstallDependencies will create a new virtual environment and install dependencies in the root directory.
-func InstallDependencies(root string, showOutput bool, saveProj func(virtualenv string) error) error {
-	if showOutput {
-		fmt.Println("Creating virtual environment...")
-		fmt.Println()
+func InstallDependencies(root, venvDir string, showOutput bool) error {
+	return InstallDependenciesWithWriters(root, venvDir, showOutput, os.Stdout, os.Stderr)
+}
+
+func InstallDependenciesWithWriters(root, venvDir string, showOutput bool, infoWriter, errorWriter io.Writer) error {
+	print := func(message string) {
+		if showOutput {
+			fmt.Fprintf(infoWriter, "%s\n", message)
+		}
 	}
 
-	// Create the virtual environment by running `python -m venv venv`.
-	venvDir := filepath.Join(root, "venv")
+	print("Creating virtual environment...")
+
+	// Create the virtual environment by running `python -m venv <venvDir>`.
+	if !filepath.IsAbs(venvDir) {
+		venvDir = filepath.Join(root, venvDir)
+	}
+
 	cmd, err := Command("-m", "venv", venvDir)
 	if err != nil {
 		return err
 	}
 	if output, err := cmd.CombinedOutput(); err != nil {
 		if len(output) > 0 {
-			os.Stdout.Write(output)
-			fmt.Println()
+			fmt.Fprintf(errorWriter, "%s\n", string(output))
 		}
 		return errors.Wrapf(err, "creating virtual environment at %s", venvDir)
 	}
 
-	// Save project with venv info.
-	if err := saveProj("venv"); err != nil {
+	print("Finished creating virtual environment")
+
+	runPipInstall := func(errorMsg string, arg ...string) error {
+		pipCmd := VirtualEnvCommand(venvDir, "python", append([]string{"-m", "pip", "install"}, arg...)...)
+		pipCmd.Dir = root
+		pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
+
+		wrapError := func(err error) error {
+			return errors.Wrapf(err, "%s via '%s'", errorMsg, strings.Join(pipCmd.Args, " "))
+		}
+
+		if showOutput {
+			// Show stdout/stderr output.
+			pipCmd.Stdout = infoWriter
+			pipCmd.Stderr = errorWriter
+			if err := pipCmd.Run(); err != nil {
+				return wrapError(err)
+			}
+		} else {
+			// Otherwise, only show output if there is an error.
+			if output, err := pipCmd.CombinedOutput(); err != nil {
+				if len(output) > 0 {
+					fmt.Fprintf(errorWriter, "%s\n", string(output))
+				}
+				return wrapError(err)
+			}
+		}
+		return nil
+	}
+
+	print("Updating pip, setuptools, and wheel in virtual environment...")
+
+	err = runPipInstall("updating pip, setuptools, and wheel", "--upgrade", "pip", "setuptools", "wheel")
+	if err != nil {
 		return err
 	}
 
-	if showOutput {
-		fmt.Println("Finished creating virtual environment")
-		fmt.Println()
-	}
+	print("Finished updating")
 
-	// If `requirements.txt` doesn't exist, just exit early.
+	// If `requirements.txt` doesn't exist, exit early.
 	requirementsPath := filepath.Join(root, "requirements.txt")
 	if _, err := os.Stat(requirementsPath); os.IsNotExist(err) {
 		return nil
 	}
 
-	if showOutput {
-		fmt.Println("Installing dependencies...")
-		fmt.Println()
+	print("Installing dependencies in virtual environment...")
+
+	err = runPipInstall("installing dependencies", "-r", "requirements.txt")
+	if err != nil {
+		return err
 	}
 
-	// Install dependencies by running `pip install -r requirements.txt` using the `pip`
-	// in the virtual environment.
-	pipCmd := VirtualEnvCommand(venvDir, "pip", "install", "-r", "requirements.txt")
-	pipCmd.Dir = root
-	pipCmd.Env = ActivateVirtualEnv(os.Environ(), venvDir)
-	if showOutput {
-		// Show stdout/stderr output.
-		pipCmd.Stdout = os.Stdout
-		pipCmd.Stderr = os.Stderr
-		if err := pipCmd.Run(); err != nil {
-			return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
-		}
-	} else {
-		// Otherwise, only show output if there is an error.
-		if output, err := pipCmd.CombinedOutput(); err != nil {
-			if len(output) > 0 {
-				os.Stdout.Write(output)
-				fmt.Println()
-			}
-			return errors.Wrap(err, "installing dependencies via `pip install -r requirements.txt`")
-		}
-	}
-
-	if showOutput {
-		fmt.Println("Finished installing dependencies")
-		fmt.Println()
-	}
+	print("Finished installing dependencies")
 
 	return nil
 }

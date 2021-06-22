@@ -26,7 +26,7 @@ assert(pulumi1.runtime !== pulumi2.runtime);
 assert.strictEqual(pulumi1.runtime.isDryRun(), pulumi2.runtime.isDryRun(), "pulumi1.runtime.isDryRun() !== pulumi2.runtime.isDryRun()");
 assert.strictEqual(pulumi1.runtime.getProject(), pulumi2.runtime.getProject(), "pulumi1.runtime.getProject() !== pulumi2.runtime.getProject()");
 assert.strictEqual(pulumi1.runtime.getStack(), pulumi2.runtime.getStack(), "pulumi1.runtime.getStack() !== pulumi2.runtime.getStack()");
-assert.deepEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig(), "pulumi1.runtime.allConfig() !== pulumi2.runtime.getStack()");
+assert.deepStrictEqual(pulumi1.runtime.allConfig(), pulumi2.runtime.allConfig(), "pulumi1.runtime.allConfig() !== pulumi2.runtime.getStack()");
 
 // Check that the two runtimes agree on the root resource
 pulumi1.runtime.getRootResource().then(r => {

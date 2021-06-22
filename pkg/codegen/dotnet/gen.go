@@ -27,14 +27,15 @@ import (
 	"path"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"strconv"
 	"strings"
 	"unicode"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type stringSet map[string]struct{}
@@ -49,10 +50,11 @@ func (ss stringSet) has(s string) bool {
 }
 
 type typeDetails struct {
-	outputType   bool
-	inputType    bool
-	stateType    bool
-	functionType bool
+	outputType bool
+	inputType  bool
+	stateType  bool
+	argsType   bool
+	plainType  bool
 }
 
 // Title converts the input string to a title case
@@ -105,6 +107,9 @@ func isImmutableArrayType(t schema.Type, wrapInput bool) bool {
 }
 
 func isValueType(t schema.Type) bool {
+	if _, ok := t.(*schema.EnumType); ok {
+		return true
+	}
 	switch t {
 	case schema.BoolType, schema.IntType, schema.NumberType:
 		return true
@@ -125,6 +130,7 @@ type modContext struct {
 	mod                    string
 	propertyNames          map[*schema.Property]string
 	types                  []*schema.ObjectType
+	enums                  []*schema.EnumType
 	resources              []*schema.Resource
 	functions              []*schema.Function
 	typeDetails            map[*schema.ObjectType]*typeDetails
@@ -176,6 +182,10 @@ func (mod *modContext) isK8sCompatMode() bool {
 	return mod.compatibility == "kubernetes20"
 }
 
+func (mod *modContext) isTFCompatMode() bool {
+	return mod.compatibility == "tfbridge20"
+}
+
 func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	components := strings.Split(tok, ":")
 	contract.Assertf(len(components) == 3, "malformed token %v", tok)
@@ -183,7 +193,9 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	pkg, nsName := "Pulumi."+namespaceName(mod.namespaces, components[0]), mod.pkg.TokenToModule(tok)
 
 	if mod.isK8sCompatMode() {
-		return pkg + ".Types." + qualifier + "." + namespaceName(mod.namespaces, nsName)
+		if qualifier != "" {
+			return pkg + ".Types." + qualifier + "." + namespaceName(mod.namespaces, nsName)
+		}
 	}
 
 	typ := pkg
@@ -196,9 +208,34 @@ func (mod *modContext) tokenToNamespace(tok string, qualifier string) string {
 	return typ
 }
 
-func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, requireInitializers, optional bool) string {
+func (mod *modContext) typeName(t *schema.ObjectType, state, input, args bool) string {
+	name := tokenToName(t.Token)
+	if state {
+		return name + "GetArgs"
+	}
+	if !mod.isTFCompatMode() && !mod.isK8sCompatMode() {
+		if args {
+			return name + "Args"
+		}
+		return name
+	}
+
+	switch {
+	case input:
+		return name + "Args"
+	case mod.details(t).plainType:
+		return name + "Result"
+	}
+	return name
+}
+
+func (mod *modContext) typeString(t schema.Type, qualifier string, input, state, wrapInput, args, requireInitializers, optional bool) string {
 	var typ string
 	switch t := t.(type) {
+	case *schema.EnumType:
+		typ = mod.tokenToNamespace(t.Token, "")
+		typ += "."
+		typ += tokenToName(t.Token)
 	case *schema.ArrayType:
 		var listFmt string
 		switch {
@@ -211,7 +248,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		wrapInput = false
-		typ = fmt.Sprintf(listFmt, mod.typeString(t.ElementType, qualifier, input, state, false, false, false))
+		typ = fmt.Sprintf(listFmt, mod.typeString(t.ElementType, qualifier, input, state, wrapInput, args, false, false))
 	case *schema.MapType:
 		var mapFmt string
 		switch {
@@ -224,28 +261,63 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		wrapInput = false
-		typ = fmt.Sprintf(mapFmt, mod.typeString(t.ElementType, qualifier, input, state, false, false, false))
+		typ = fmt.Sprintf(mapFmt, mod.typeString(t.ElementType, qualifier, input, state, wrapInput, args, false, false))
 	case *schema.ObjectType:
-		typ = mod.tokenToNamespace(t.Token, qualifier)
-		if (typ == mod.namespaceName && qualifier == "") || typ == mod.namespaceName+"."+qualifier {
+		namingCtx := mod
+		if t.Package != mod.pkg {
+			// If object type belongs to another package, we apply naming conventions from that package,
+			// including namespace naming and compatibility mode.
+			extPkg := t.Package
+			var info CSharpPackageInfo
+			contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+			if v, ok := t.Package.Language["csharp"].(CSharpPackageInfo); ok {
+				info = v
+			}
+			namingCtx = &modContext{
+				pkg:           extPkg,
+				namespaces:    info.Namespaces,
+				compatibility: info.Compatibility,
+			}
+		}
+		typ = namingCtx.tokenToNamespace(t.Token, qualifier)
+		if (typ == namingCtx.namespaceName && qualifier == "") || typ == namingCtx.namespaceName+"."+qualifier {
 			typ = qualifier
 		}
 		if typ != "" {
 			typ += "."
 		}
-		typ += tokenToName(t.Token)
-		switch {
-		case state:
-			typ += "GetArgs"
-		case input:
-			typ += "Args"
-		case mod.details(t).functionType:
-			typ += "Result"
+		typ += mod.typeName(t, state, input, args)
+	case *schema.ResourceType:
+		if strings.HasPrefix(t.Token, "pulumi:providers:") {
+			pkgName := strings.TrimPrefix(t.Token, "pulumi:providers:")
+			typ = fmt.Sprintf("Pulumi.%s.Provider", namespaceName(mod.namespaces, pkgName))
+		} else {
+			namingCtx := mod
+			if t.Resource != nil && t.Resource.Package != mod.pkg {
+				// If resource type belongs to another package, we apply naming conventions from that package,
+				// including namespace naming and compatibility mode.
+				extPkg := t.Resource.Package
+				var info CSharpPackageInfo
+				contract.AssertNoError(extPkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}))
+				if v, ok := t.Resource.Package.Language["csharp"].(CSharpPackageInfo); ok {
+					info = v
+				}
+				namingCtx = &modContext{
+					pkg:           extPkg,
+					namespaces:    info.Namespaces,
+					compatibility: info.Compatibility,
+				}
+			}
+			typ = namingCtx.tokenToNamespace(t.Token, "")
+			if typ != "" {
+				typ += "."
+			}
+			typ += tokenToName(t.Token)
 		}
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
-			return mod.typeString(t.UnderlyingType, qualifier, input, state, wrapInput, requireInitializers, optional)
+			return mod.typeString(t.UnderlyingType, qualifier, input, state, wrapInput, args, requireInitializers, optional)
 		}
 
 		typ = tokenToName(t.Token)
@@ -253,33 +325,35 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 			typ = ns + "." + typ
 		}
 	case *schema.UnionType:
-		unionT := "Union"
-		if wrapInput {
-			unionT = "InputUnion"
-		}
-
 		elementTypeSet := stringSet{}
 		var elementTypes []string
 		for _, e := range t.ElementTypes {
-			et := mod.typeString(e, qualifier, input, state, false, false, false)
+			// If this is an output and a "relaxed" enum, emit the type as the underlying primitive type rather than the union.
+			// Eg. Output<string> rather than Output<Union<EnumType, string>>
+			if typ, ok := e.(*schema.EnumType); ok && !input {
+				return mod.typeString(typ.ElementType, qualifier, input, state, wrapInput, args, requireInitializers, optional)
+			}
+
+			et := mod.typeString(e, qualifier, input, state, false, args, false, false)
 			if !elementTypeSet.has(et) {
 				elementTypeSet.add(et)
 				elementTypes = append(elementTypes, et)
 			}
 		}
 
-		if len(elementTypes) == 1 {
-			return mod.typeString(t.ElementTypes[0], qualifier, input, state, wrapInput, requireInitializers, optional)
+		switch len(elementTypes) {
+		case 1:
+			return mod.typeString(t.ElementTypes[0], qualifier, input, state, wrapInput, args, requireInitializers, optional)
+		case 2:
+			unionT := "Union"
+			if wrapInput {
+				unionT = "InputUnion"
+			}
+			typ = fmt.Sprintf("%s<%s>", unionT, strings.Join(elementTypes, ", "))
+			wrapInput = false
+		default:
+			typ = "object"
 		}
-
-		for _, e := range elementTypes[:len(elementTypes)-1] {
-			typ = fmt.Sprintf("%s%s<%s, ", typ, unionT, e)
-		}
-		last := elementTypes[len(elementTypes)-1]
-		term := strings.Repeat(">", len(elementTypes)-1)
-
-		wrapInput = false
-		typ += last + term
 	default:
 		switch t {
 		case schema.BoolType:
@@ -344,14 +418,16 @@ type plainType struct {
 	baseClass             string
 	propertyTypeQualifier string
 	properties            []*schema.Property
-	wrapInput             bool
+	args                  bool
 	state                 bool
 }
 
 func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent string) {
+	argsType := pt.args && !prop.IsPlain
+
 	wireName := prop.Name
 	propertyName := pt.mod.propertyName(prop)
-	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.wrapInput, false, !prop.IsRequired)
+	propertyType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, false, !prop.IsRequired)
 
 	// First generate the input attribute.
 	attributeArgs := ""
@@ -370,42 +446,77 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 		}
 	}
 
-	// Next generate the input property itself. The way this is generated depends on the type of the property:
-	// complex types like lists and maps need a backing field.
+	indent = strings.Repeat(indent, 2)
+
+	needsBackingField := false
 	switch prop.Type.(type) {
 	case *schema.ArrayType, *schema.MapType:
-		backingFieldName := "_" + prop.Name
-		requireInitializers := !pt.wrapInput
-		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, pt.wrapInput, requireInitializers, false)
+		needsBackingField = true
+	}
+	if prop.Secret {
+		needsBackingField = true
+	}
 
-		fmt.Fprintf(w, "%s    [Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%s    private %s? %s;\n", indent, backingFieldType, backingFieldName)
+	// Next generate the input property itself. The way this is generated depends on the type of the property:
+	// complex types like lists and maps need a backing field. Secret properties also require a backing field.
+	if needsBackingField {
+		backingFieldName := "_" + prop.Name
+		requireInitializers := !pt.args || prop.IsPlain
+		backingFieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, true, pt.state, argsType, argsType, requireInitializers, false)
+
+		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		fmt.Fprintf(w, "%sprivate %s? %s;\n", indent, backingFieldType, backingFieldName)
 
 		if prop.Comment != "" {
 			fmt.Fprintf(w, "\n")
-			printComment(w, prop.Comment, indent+"    ")
+			printComment(w, prop.Comment, indent)
 		}
-		if prop.DeprecationMessage != "" {
-			fmt.Fprintf(w, "%s    [Obsolete(@\"%s\")]\n", indent, strings.Replace(prop.DeprecationMessage, `"`, `""`, -1))
-		}
+		printObsoleteAttribute(w, prop.DeprecationMessage, indent)
 
-		// Note that we use the backing field type--which is just the property type without any nullable annotation--to
-		// ensure that the user does not see warnings when initializing these properties using object or collection
-		// initializers.
-		fmt.Fprintf(w, "%s    public %s %s\n", indent, backingFieldType, propertyName)
-		fmt.Fprintf(w, "%s    {\n", indent)
-		fmt.Fprintf(w, "%s        get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
-		fmt.Fprintf(w, "%s        set => %s = value;\n", indent, backingFieldName)
-		fmt.Fprintf(w, "%s    }\n", indent)
-	default:
+		switch prop.Type.(type) {
+		case *schema.ArrayType, *schema.MapType:
+			// Note that we use the backing field type--which is just the property type without any nullable annotation--to
+			// ensure that the user does not see warnings when initializing these properties using object or collection
+			// initializers.
+			fmt.Fprintf(w, "%spublic %s %s\n", indent, backingFieldType, propertyName)
+			fmt.Fprintf(w, "%s{\n", indent)
+			fmt.Fprintf(w, "%s    get => %[2]s ?? (%[2]s = new %[3]s());\n", indent, backingFieldName, backingFieldType)
+		default:
+			fmt.Fprintf(w, "%spublic %s? %s\n", indent, backingFieldType, propertyName)
+			fmt.Fprintf(w, "%s{\n", indent)
+			fmt.Fprintf(w, "%s    get => %s;\n", indent, backingFieldName)
+		}
+		if prop.Secret {
+			fmt.Fprintf(w, "%s    set\n", indent)
+			fmt.Fprintf(w, "%s    {\n", indent)
+			// Since we can't directly assign the Output from CreateSecret to the property, use an Output.All or
+			// Output.Tuple to enable the secret flag on the data. (If any input to the All/Tuple is secret, then the
+			// Output will also be secret.)
+			switch t := prop.Type.(type) {
+			case *schema.ArrayType:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableArray.Create<%s>());\n", indent, t.ElementType.String())
+				fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
+			case *schema.MapType:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(ImmutableDictionary.Create<string, %s>());\n", indent, t.ElementType.String())
+				fmt.Fprintf(w, "%s        %s = Output.All(value, emptySecret).Apply(v => v[0]);\n", indent, backingFieldName)
+			default:
+				fmt.Fprintf(w, "%s        var emptySecret = Output.CreateSecret(0);\n", indent)
+				fmt.Fprintf(w, "%s        %s = Output.Tuple<%s?, int>(value, emptySecret).Apply(t => t.Item1);\n", indent, backingFieldName, backingFieldType)
+			}
+			fmt.Fprintf(w, "%s    }\n", indent)
+		} else {
+			fmt.Fprintf(w, "%s    set => %s = value;\n", indent, backingFieldName)
+		}
+		fmt.Fprintf(w, "%s}\n", indent)
+	} else {
 		initializer := ""
-		if prop.IsRequired && (!isValueType(prop.Type) || pt.wrapInput) {
+		if prop.IsRequired && (!isValueType(prop.Type) || (pt.args && !prop.IsPlain)) {
 			initializer = " = null!;"
 		}
 
-		printComment(w, prop.Comment, indent+"    ")
-		fmt.Fprintf(w, "%s    [Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
-		fmt.Fprintf(w, "%s    public %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
+		printComment(w, prop.Comment, indent)
+		fmt.Fprintf(w, "%s[Input(\"%s\"%s)]\n", indent, wireName, attributeArgs)
+		fmt.Fprintf(w, "%spublic %s %s { get; set; }%s\n", indent, propertyType, propertyName, initializer)
 	}
 }
 
@@ -480,7 +591,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	for _, prop := range pt.properties {
 		fieldName := pt.mod.propertyName(prop)
 		required := prop.IsRequired || pt.mod.isK8sCompatMode()
-		fieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, !required)
+		fieldType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, false, !required)
 		printComment(w, prop.Comment, indent+"    ")
 		fmt.Fprintf(w, "%s    public readonly %s %s;\n", indent, fieldType, fieldName)
 	}
@@ -496,7 +607,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	for i, prop := range pt.properties {
 		paramName := csharpIdentifier(prop.Name)
 		required := prop.IsRequired || pt.mod.isK8sCompatMode()
-		paramType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, !required)
+		paramType := pt.mod.typeString(prop.Type, pt.propertyTypeQualifier, false, false, false, false, false, !required)
 
 		terminator := ""
 		if i != len(pt.properties)-1 {
@@ -556,11 +667,35 @@ func primitiveValue(value interface{}) (string, error) {
 func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 	var val string
 	if dv.Value != nil {
-		v, err := primitiveValue(dv.Value)
-		if err != nil {
-			return "", err
+		switch enum := t.(type) {
+		case *schema.EnumType:
+			enumName := tokenToName(enum.Token)
+			for _, e := range enum.Elements {
+				if e.Value != dv.Value {
+					continue
+				}
+
+				elName := e.Name
+				if elName == "" {
+					elName = fmt.Sprintf("%v", e.Value)
+				}
+				safeName, err := makeSafeEnumName(elName, enumName)
+				if err != nil {
+					return "", err
+				}
+				val = fmt.Sprintf("%s.%s.%s", mod.namespaceName, enumName, safeName)
+				break
+			}
+			if val == "" {
+				return "", errors.Errorf("default value '%v' not found in enum '%s'", dv.Value, enumName)
+			}
+		default:
+			v, err := primitiveValue(dv.Value)
+			if err != nil {
+				return "", err
+			}
+			val = v
 		}
-		val = v
 	}
 
 	if len(dv.Environment) != 0 {
@@ -591,7 +726,7 @@ func (mod *modContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 }
 
 func genAlias(w io.Writer, alias *schema.Alias) {
-	fmt.Fprintf(w, "new Alias { ")
+	fmt.Fprintf(w, "new Pulumi.Alias { ")
 
 	parts := []string{}
 	if alias.Name != nil {
@@ -623,21 +758,29 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
 	fmt.Fprintf(w, "{\n")
 
-	// Write the TypeDoc/JSDoc for the resource class
+	// Write the documentation comment for the resource class
 	printComment(w, codegen.FilterExamples(r.Comment, "csharp"), "    ")
 
 	// Open the class.
 	className := name
-	baseType := "Pulumi.CustomResource"
-	if mod.isK8sCompatMode() {
-		baseType = "KubernetesResource"
-	}
-	if r.IsProvider {
+	var baseType string
+	optionsType := "CustomResourceOptions"
+	switch {
+	case r.IsProvider:
 		baseType = "Pulumi.ProviderResource"
+	case mod.isK8sCompatMode():
+		baseType = "KubernetesResource"
+	case r.IsComponent:
+		baseType = "Pulumi.ComponentResource"
+		optionsType = "ComponentResourceOptions"
+	default:
+		baseType = "Pulumi.CustomResource"
 	}
+
 	if r.DeprecationMessage != "" {
 		fmt.Fprintf(w, "    [Obsolete(@\"%s\")]\n", strings.Replace(r.DeprecationMessage, `"`, `""`, -1))
 	}
+	fmt.Fprintf(w, "    [%sResourceType(\"%s\")]\n", namespaceName(mod.namespaces, mod.pkg.Name), r.Token)
 	fmt.Fprintf(w, "    public partial class %s : %s\n", className, baseType)
 	fmt.Fprintf(w, "    {\n")
 
@@ -648,7 +791,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		wireName := prop.Name
 		propertyName := mod.propertyName(prop)
 		required := prop.IsRequired || mod.isK8sCompatMode()
-		propertyType := mod.typeString(prop.Type, "Outputs", false, false, false, false, !required)
+		propertyType := mod.typeString(prop.Type, "Outputs", false, false, false, false, false, !required)
 
 		// Workaround the fact that provider inputs come back as strings.
 		if r.IsProvider && !schema.IsPrimitiveType(prop.Type) {
@@ -691,8 +834,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		argsType += "?"
 	}
 
-	optionsType := "CustomResourceOptions"
-
 	tok := r.Token
 	if r.IsProvider {
 		tok = mod.pkg.Name
@@ -713,19 +854,29 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "        /// <param name=\"options\">A bag of options that control this resource's behavior</param>\n")
 
 	fmt.Fprintf(w, "        public %s(string name, %s args%s, %s? options = null)\n", className, argsType, argsDefault, optionsType)
-	fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
+	if r.IsComponent {
+		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"), remote: true)\n", tok, argsOverride)
+	} else {
+		fmt.Fprintf(w, "            : base(\"%s\", name, %s, MakeResourceOptions(options, \"\"))\n", tok, argsOverride)
+	}
 	fmt.Fprintf(w, "        {\n")
 	fmt.Fprintf(w, "        }\n")
 
-	if mod.dictionaryConstructors {
-		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, CustomResourceOptions? options = null)\n", className)
-		fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
+	// Write a dictionary constructor.
+	if mod.dictionaryConstructors && !r.IsComponent {
+		fmt.Fprintf(w, "        internal %s(string name, ImmutableDictionary<string, object?> dictionary, %s? options = null)\n",
+			className, optionsType)
+		if r.IsComponent {
+			fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"), remote: true)\n", tok)
+		} else {
+			fmt.Fprintf(w, "            : base(\"%s\", name, new DictionaryResourceArgs(dictionary), MakeResourceOptions(options, \"\"))\n", tok)
+		}
 		fmt.Fprintf(w, "        {\n")
 		fmt.Fprintf(w, "        }\n")
 	}
 
 	// Write a private constructor for the use of `Get`.
-	if !r.IsProvider {
+	if !r.IsProvider && !r.IsComponent {
 		stateParam, stateRef := "", "null"
 		if r.StateInputs != nil {
 			stateParam, stateRef = fmt.Sprintf("%sState? state = null, ", className), "state"
@@ -793,8 +944,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	fmt.Fprintf(w, "            return merged;\n")
 	fmt.Fprintf(w, "        }\n")
 
-	// Write the `Get` method for reading instances of this resource unless this is a provider resource.
-	if !r.IsProvider {
+	// Write the `Get` method for reading instances of this resource unless this is a provider resource or ComponentResource.
+	if !r.IsProvider && !r.IsComponent {
 		fmt.Fprintf(w, "        /// <summary>\n")
 		fmt.Fprintf(w, "        /// Get an existing %s resource's state with the given name, ID, and optional extra\n", className)
 		fmt.Fprintf(w, "        /// properties used to qualify the lookup.\n")
@@ -837,7 +988,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		baseClass:             "ResourceArgs",
 		propertyTypeQualifier: "Inputs",
 		properties:            r.InputProperties,
-		wrapInput:             true,
+		args:                  true,
 	}
 	if err := args.genInputType(w, 1); err != nil {
 		return err
@@ -852,7 +1003,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			baseClass:             "ResourceArgs",
 			propertyTypeQualifier: "Inputs",
 			properties:            r.StateInputs.Properties,
-			wrapInput:             true,
+			args:                  true,
 			state:                 true,
 		}
 		if err := state.genInputType(w, 1); err != nil {
@@ -946,59 +1097,176 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	return nil
 }
 
-func visitObjectTypesAcc(t schema.Type, visitor func(*schema.ObjectType), visited codegen.Set) {
-	if visited.Has(t) {
-		return
-	}
-	visited.Add(t)
+func (mod *modContext) genEnums(w io.Writer, enums []*schema.EnumType) error {
+	// Open the namespace.
+	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
+	fmt.Fprintf(w, "{\n")
 
-	switch t := t.(type) {
-	case *schema.ArrayType:
-		visitObjectTypesAcc(t.ElementType, visitor, visited)
-	case *schema.MapType:
-		visitObjectTypesAcc(t.ElementType, visitor, visited)
-	case *schema.ObjectType:
-		for _, p := range t.Properties {
-			visitObjectTypesAcc(p.Type, visitor, visited)
+	for i, enum := range enums {
+		err := mod.genEnum(w, enum)
+		if err != nil {
+			return err
 		}
-		visitor(t)
-	case *schema.UnionType:
-		for _, e := range t.ElementTypes {
-			visitObjectTypesAcc(e, visitor, visited)
+		if i != len(enums)-1 {
+			fmt.Fprintf(w, "\n")
 		}
+	}
+
+	// Close the namespace.
+	fmt.Fprintf(w, "}\n")
+
+	return nil
+}
+
+func printObsoleteAttribute(w io.Writer, deprecationMessage, indent string) {
+	if deprecationMessage != "" {
+		fmt.Fprintf(w, "%s[Obsolete(@\"%s\")]\n", indent, strings.Replace(deprecationMessage, `"`, `""`, -1))
 	}
 }
 
-func visitObjectTypes(t schema.Type, visitor func(*schema.ObjectType)) {
-	// Accumulator to avoid visiting the same node twice in case of recursive types.
-	visited := codegen.Set{}
-	visitObjectTypesAcc(t, visitor, visited)
-}
+func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
+	indent := "    "
+	enumName := tokenToName(enum.Token)
 
-func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyTypeQualifier string, input, state bool, level int) error {
-	name := tokenToName(obj.Token)
-	switch {
-	case state:
-		name += "GetArgs"
-	case input:
-		name += "Args"
-	case mod.details(obj).functionType:
-		name += "Result"
+	// Fix up identifiers for each enum value.
+	for _, e := range enum.Elements {
+		// If the enum doesn't have a name, set the value as the name.
+		if e.Name == "" {
+			e.Name = fmt.Sprintf("%v", e.Value)
+		}
+
+		safeName, err := makeSafeEnumName(e.Name, enumName)
+		if err != nil {
+			return err
+		}
+		e.Name = safeName
 	}
 
+	// Print documentation comment
+	printComment(w, enum.Comment, indent)
+
+	underlyingType := mod.typeString(enum.ElementType, "", false, false, false, false, false, false)
+	switch enum.ElementType {
+	case schema.StringType, schema.NumberType:
+		// EnumType attribute
+		fmt.Fprintf(w, "%s[EnumType]\n", indent)
+
+		// Open struct declaration
+		fmt.Fprintf(w, "%[1]spublic readonly struct %[2]s : IEquatable<%[2]s>\n", indent, enumName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		indent := strings.Repeat(indent, 2)
+		fmt.Fprintf(w, "%sprivate readonly %s _value;\n", indent, underlyingType)
+		fmt.Fprintf(w, "\n")
+
+		// Constructor
+		fmt.Fprintf(w, "%sprivate %s(%s value)\n", indent, enumName, underlyingType)
+		fmt.Fprintf(w, "%s{\n", indent)
+		fmt.Fprintf(w, "%s    _value = value", indent)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, " ?? throw new ArgumentNullException(nameof(value))")
+		}
+		fmt.Fprintf(w, ";\n")
+		fmt.Fprintf(w, "%s}\n", indent)
+		fmt.Fprintf(w, "\n")
+
+		// Enum values
+		for _, e := range enum.Elements {
+			printComment(w, e.Comment, indent)
+			printObsoleteAttribute(w, e.DeprecationMessage, indent)
+			fmt.Fprintf(w, "%[1]spublic static %[2]s %[3]s { get; } = new %[2]s(", indent, enumName, e.Name)
+			if enum.ElementType == schema.StringType {
+				fmt.Fprintf(w, "%q", e.Value)
+			} else {
+				fmt.Fprintf(w, "%v", e.Value)
+			}
+			fmt.Fprintf(w, ");\n")
+		}
+		fmt.Fprintf(w, "\n")
+
+		// Equality and inequality operators
+		fmt.Fprintf(w, "%[1]spublic static bool operator ==(%[2]s left, %[2]s right) => left.Equals(right);\n", indent, enumName)
+		fmt.Fprintf(w, "%[1]spublic static bool operator !=(%[2]s left, %[2]s right) => !left.Equals(right);\n", indent, enumName)
+		fmt.Fprintf(w, "\n")
+
+		// Explicit conversion operator
+		fmt.Fprintf(w, "%[1]spublic static explicit operator %s(%s value) => value._value;\n", indent, underlyingType, enumName)
+		fmt.Fprintf(w, "\n")
+
+		// Equals override
+		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
+		fmt.Fprintf(w, "%spublic override bool Equals(object? obj) => obj is %s other && Equals(other);\n", indent, enumName)
+		fmt.Fprintf(w, "%spublic bool Equals(%s other) => ", indent, enumName)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, "string.Equals(_value, other._value, StringComparison.Ordinal)")
+		} else {
+			fmt.Fprintf(w, "_value == other._value")
+		}
+		fmt.Fprintf(w, ";\n")
+		fmt.Fprintf(w, "\n")
+
+		// GetHashCode override
+		fmt.Fprintf(w, "%s[EditorBrowsable(EditorBrowsableState.Never)]\n", indent)
+		fmt.Fprintf(w, "%spublic override int GetHashCode() => _value", indent)
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, "?")
+		}
+		fmt.Fprintf(w, ".GetHashCode()")
+		if enum.ElementType == schema.StringType {
+			fmt.Fprintf(w, " ?? 0")
+		}
+		fmt.Fprintf(w, ";\n")
+		fmt.Fprintf(w, "\n")
+
+		// ToString override
+		fmt.Fprintf(w, "%spublic override string ToString() => _value", indent)
+		if enum.ElementType == schema.NumberType {
+			fmt.Fprintf(w, ".ToString()")
+		}
+		fmt.Fprintf(w, ";\n")
+	case schema.IntType:
+		// Open enum declaration
+		fmt.Fprintf(w, "%spublic enum %s\n", indent, enumName)
+		fmt.Fprintf(w, "%s{\n", indent)
+		for _, e := range enum.Elements {
+			indent := strings.Repeat(indent, 2)
+			printComment(w, e.Comment, indent)
+			printObsoleteAttribute(w, e.DeprecationMessage, indent)
+			fmt.Fprintf(w, "%s%s = %v,\n", indent, e.Name, e.Value)
+		}
+	default:
+		// Issue to implement boolean-based enums: https://github.com/pulumi/pulumi/issues/5652
+		return fmt.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
+	}
+
+	// Close the declaration
+	fmt.Fprintf(w, "%s}\n", indent)
+
+	return nil
+}
+
+func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType, bool)) {
+	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
+		if o, ok := t.Type.(*schema.ObjectType); ok {
+			visitor(o, t.Plain)
+		}
+	})
+}
+
+func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyTypeQualifier string, input, state, args bool, level int) error {
 	pt := &plainType{
 		mod:                   mod,
-		name:                  name,
+		name:                  mod.typeName(obj, state, input, args),
 		comment:               obj.Comment,
 		propertyTypeQualifier: propertyTypeQualifier,
 		properties:            obj.Properties,
 		state:                 state,
+		args:                  args,
 	}
 
 	if input {
-		pt.baseClass, pt.wrapInput = "ResourceArgs", true
-		if mod.details(obj).functionType {
-			pt.baseClass, pt.wrapInput = "InvokeArgs", false
+		pt.baseClass = "ResourceArgs"
+		if !args && mod.details(obj).plainType {
+			pt.baseClass = "InvokeArgs"
 		}
 		return pt.genInputType(w, level)
 	}
@@ -1007,14 +1275,104 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, propertyType
 	return nil
 }
 
-func (mod *modContext) genPulumiHeader(w io.Writer) {
-	mod.genHeader(w, []string{
-		"System",
-		"System.Collections.Generic",
-		"System.Collections.Immutable",
-		"System.Threading.Tasks",
-		"Pulumi.Serialization",
-	})
+// pulumiImports is a slice of common imports that are used with the genHeader method.
+var pulumiImports = []string{
+	"System",
+	"System.Collections.Generic",
+	"System.Collections.Immutable",
+	"System.Threading.Tasks",
+	"Pulumi.Serialization",
+}
+
+func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) {
+	if seen.Has(t) {
+		return
+	}
+	seen.Add(t)
+
+	switch t := t.(type) {
+	case *schema.ArrayType:
+		mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return
+	case *schema.MapType:
+		mod.getTypeImports(t.ElementType, recurse, imports, seen)
+		return
+	case *schema.ObjectType:
+		for _, p := range t.Properties {
+			mod.getTypeImports(p.Type, recurse, imports, seen)
+		}
+		return
+	case *schema.ResourceType:
+		// If it's an external resource, we'll be using fully-qualified type names, so there's no need
+		// for an import.
+		if t.Resource != nil && t.Resource.Package != mod.pkg {
+			return
+		}
+
+		modName, name, modPath := mod.pkg.TokenToModule(t.Token), tokenToName(t.Token), ""
+		if modName != mod.mod {
+			mp, err := filepath.Rel(mod.mod, modName)
+			contract.Assert(err == nil)
+			if path.Base(mp) == "." {
+				mp = path.Dir(mp)
+			}
+			modPath = filepath.ToSlash(mp)
+		}
+		if len(modPath) == 0 {
+			return
+		}
+		if imports[modPath] == nil {
+			imports[modPath] = codegen.NewStringSet()
+		}
+		imports[modPath].Add(name)
+		return
+	case *schema.TokenType:
+		return
+	case *schema.UnionType:
+		for _, e := range t.ElementTypes {
+			mod.getTypeImports(e, recurse, imports, seen)
+		}
+		return
+	default:
+		return
+	}
+}
+
+func (mod *modContext) getImports(member interface{}, imports map[string]codegen.StringSet) {
+	seen := codegen.Set{}
+	switch member := member.(type) {
+	case *schema.ObjectType:
+		for _, p := range member.Properties {
+			mod.getTypeImports(p.Type, true, imports, seen)
+		}
+		return
+	case *schema.ResourceType:
+		mod.getTypeImports(member, true, imports, seen)
+		return
+	case *schema.Resource:
+		for _, p := range member.Properties {
+			mod.getTypeImports(p.Type, false, imports, seen)
+		}
+		for _, p := range member.InputProperties {
+			mod.getTypeImports(p.Type, false, imports, seen)
+		}
+		return
+	case *schema.Function:
+		if member.Inputs != nil {
+			mod.getTypeImports(member.Inputs, false, imports, seen)
+		}
+		if member.Outputs != nil {
+			mod.getTypeImports(member.Outputs, false, imports, seen)
+		}
+		return
+	case []*schema.Property:
+		for _, p := range member {
+			mod.getTypeImports(p.Type, false, imports, seen)
+		}
+		return
+	default:
+		return
+	}
 }
 
 func (mod *modContext) genHeader(w io.Writer, using []string) {
@@ -1032,7 +1390,7 @@ func (mod *modContext) genHeader(w io.Writer, using []string) {
 
 func (mod *modContext) getConfigProperty(schemaType schema.Type) (string, string) {
 	propertyType := mod.typeString(
-		schemaType, "Types", false, false, false /*wrapInputs*/, false /*requireInitializers*/, false)
+		schemaType, "Types", false, false, false /*wrapInputs*/, false /*args*/, false /*requireInitializers*/, false)
 
 	var getFunc string
 	nullableSigil := "?"
@@ -1112,7 +1470,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 			// Generate each output field.
 			for _, prop := range typ.Properties {
 				name := mod.propertyName(prop)
-				typ := mod.typeString(prop.Type, "Types", false, false, false /*wrapInput*/, false, !prop.IsRequired)
+				typ := mod.typeString(prop.Type, "Types", false, false, false /*wrapInput*/, false /*args*/, false, !prop.IsRequired)
 
 				initializer := ""
 				if !prop.IsRequired && !isValueType(prop.Type) && !isImmutableArrayType(prop.Type, false) {
@@ -1151,10 +1509,10 @@ func (mod *modContext) genUtilities() (string, error) {
 	// Strip any 'v' off of the version.
 	w := &bytes.Buffer{}
 	err := csharpUtilitiesTemplate.Execute(w, csharpUtilitiesTemplateContext{
+		Name:      namespaceName(mod.namespaces, mod.pkg.Name),
 		Namespace: mod.namespaceName,
 		ClassName: "Utilities",
 		Tool:      mod.tool,
-		Version:   mod.pkg.Version.String(),
 	})
 	if err != nil {
 		return "", err
@@ -1220,8 +1578,18 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Resources
 	for _, r := range mod.resources {
+		imports := map[string]codegen.StringSet{}
+		mod.getImports(r, imports)
+
 		buffer := &bytes.Buffer{}
-		mod.genPulumiHeader(buffer)
+		var additionalImports []string
+		for _, i := range imports {
+			additionalImports = append(additionalImports, i.SortedValues()...)
+		}
+		sort.Strings(additionalImports)
+		importStrings := pulumiImports
+		importStrings = append(importStrings, additionalImports...)
+		mod.genHeader(buffer, importStrings)
 
 		if err := mod.genResource(buffer, r); err != nil {
 			return err
@@ -1232,8 +1600,15 @@ func (mod *modContext) gen(fs fs) error {
 
 	// Functions
 	for _, f := range mod.functions {
+		imports := map[string]codegen.StringSet{}
+		mod.getImports(f, imports)
+
 		buffer := &bytes.Buffer{}
-		mod.genPulumiHeader(buffer)
+		importStrings := pulumiImports
+		for _, i := range imports {
+			importStrings = append(importStrings, i.SortedValues()...)
+		}
+		mod.genHeader(buffer, importStrings)
 
 		if err := mod.genFunction(buffer, f); err != nil {
 			return err
@@ -1246,12 +1621,19 @@ func (mod *modContext) gen(fs fs) error {
 	for _, t := range mod.types {
 		if mod.details(t).inputType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
-			if err := mod.genType(buffer, t, "Inputs", true, false, 1); err != nil {
-				return err
+			if mod.details(t).argsType {
+				if err := mod.genType(buffer, t, "Inputs", true, false, true, 1); err != nil {
+					return err
+				}
+			}
+			if mod.details(t).plainType {
+				if err := mod.genType(buffer, t, "Inputs", true, false, false, 1); err != nil {
+					return err
+				}
 			}
 			fmt.Fprintf(buffer, "}\n")
 
@@ -1259,11 +1641,11 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		if mod.details(t).stateType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Inputs"))
 			fmt.Fprintf(buffer, "{\n")
-			if err := mod.genType(buffer, t, "Inputs", true, true, 1); err != nil {
+			if err := mod.genType(buffer, t, "Inputs", true, true, true, 1); err != nil {
 				return err
 			}
 			fmt.Fprintf(buffer, "}\n")
@@ -1272,17 +1654,17 @@ func (mod *modContext) gen(fs fs) error {
 		}
 		if mod.details(t).outputType {
 			buffer := &bytes.Buffer{}
-			mod.genPulumiHeader(buffer)
+			mod.genHeader(buffer, pulumiImports)
 
 			fmt.Fprintf(buffer, "namespace %s\n", mod.tokenToNamespace(t.Token, "Outputs"))
 			fmt.Fprintf(buffer, "{\n")
-			if err := mod.genType(buffer, t, "Outputs", false, false, 1); err != nil {
+			if err := mod.genType(buffer, t, "Outputs", false, false, false, 1); err != nil {
 				return err
 			}
 			fmt.Fprintf(buffer, "}\n")
 
 			suffix := ""
-			if mod.details(t).functionType {
+			if (mod.isTFCompatMode() || mod.isK8sCompatMode()) && mod.details(t).plainType {
 				suffix = "Result"
 			}
 
@@ -1290,6 +1672,17 @@ func (mod *modContext) gen(fs fs) error {
 		}
 	}
 
+	// Enums
+	if len(mod.enums) > 0 {
+		buffer := &bytes.Buffer{}
+		mod.genHeader(buffer, []string{"System", "System.ComponentModel", "Pulumi"})
+
+		if err := mod.genEnums(buffer, mod.enums); err != nil {
+			return err
+		}
+
+		addFile("Enums.cs", buffer.String())
+	}
 	return nil
 }
 
@@ -1328,7 +1721,7 @@ func getLogo(pkg *schema.Package) ([]byte, error) {
 	url := pkg.LogoURL
 	if url == "" {
 		// Default to a generic Pulumi logo from the parent repository.
-		url = "https://raw.githubusercontent.com/pulumi/pulumi/394c91d7f6ab7a4096f4454827690a460f665433/sdk/dotnet/pulumi_logo_64x64.png"
+		url = "https://raw.githubusercontent.com/pulumi/pulumi/dbc96206bec722b7791a22ff50e895ab7c0abdc0/sdk/dotnet/pulumi_logo_64x64.png"
 	}
 
 	// Get the data.
@@ -1358,7 +1751,23 @@ type LanguageResource struct {
 	Package string // The package name (e.g. Apps.V1)
 }
 
-func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPackageInfo) (map[string]*modContext, error) {
+func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*modContext, *CSharpPackageInfo, error) {
+	// Decode .NET-specific info for each package as we discover them.
+	infos := map[*schema.Package]*CSharpPackageInfo{}
+	var getPackageInfo = func(p *schema.Package) *CSharpPackageInfo {
+		info, ok := infos[p]
+		if !ok {
+			if err := p.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
+				panic(err)
+			}
+			csharpInfo, _ := pkg.Language["csharp"].(CSharpPackageInfo)
+			info = &csharpInfo
+			infos[p] = info
+		}
+		return info
+	}
+	infos[pkg] = getPackageInfo(pkg)
+
 	propertyNames := map[*schema.Property]string{}
 	computePropertyNames(pkg.Config, propertyNames)
 	computePropertyNames(pkg.Provider.InputProperties, propertyNames)
@@ -1387,18 +1796,17 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 	modules := map[string]*modContext{}
 	details := map[*schema.ObjectType]*typeDetails{}
 
-	assemblyName := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
-
-	var getMod func(modName string) *modContext
-	getMod = func(modName string) *modContext {
+	var getMod func(modName string, p *schema.Package) *modContext
+	getMod = func(modName string, p *schema.Package) *modContext {
 		mod, ok := modules[modName]
 		if !ok {
-			ns := assemblyName
+			info := getPackageInfo(p)
+			ns := "Pulumi." + namespaceName(info.Namespaces, pkg.Name)
 			if modName != "" {
 				ns += "." + namespaceName(info.Namespaces, modName)
 			}
 			mod = &modContext{
-				pkg:                    pkg,
+				pkg:                    p,
 				mod:                    modName,
 				tool:                   tool,
 				namespaceName:          ns,
@@ -1414,50 +1822,55 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 				if parentName == "." {
 					parentName = ""
 				}
-				parent := getMod(parentName)
+				parent := getMod(parentName, p)
 				parent.children = append(parent.children, mod)
 			}
 
-			modules[modName] = mod
+			// Save the module only if it's for the current package.
+			// This way, modules for external packages are not saved.
+			if p == pkg {
+				modules[modName] = mod
+			}
 		}
 		return mod
 	}
 
-	getModFromToken := func(token string) *modContext {
-		return getMod(pkg.TokenToModule(token))
+	getModFromToken := func(token string, p *schema.Package) *modContext {
+		return getMod(p.TokenToModule(token), p)
 	}
 
 	// Create the config module if necessary.
 	if len(pkg.Config) > 0 {
-		cfg := getMod("config")
-		cfg.namespaceName = assemblyName
+		cfg := getMod("config", pkg)
+		cfg.namespaceName = "Pulumi." + namespaceName(infos[pkg].Namespaces, pkg.Name)
 	}
 
-	for _, v := range pkg.Config {
-		visitObjectTypes(v.Type, func(t *schema.ObjectType) { getModFromToken(t.Token).details(t).outputType = true })
-	}
+	visitObjectTypes(pkg.Config, func(t *schema.ObjectType, _ bool) {
+		getModFromToken(t.Token, pkg).details(t).outputType = true
+	})
 
 	// Find input and output types referenced by resources.
 	scanResource := func(r *schema.Resource) {
-		mod := getModFromToken(r.Token)
+		mod := getModFromToken(r.Token, pkg)
 		mod.resources = append(mod.resources, r)
-		for _, p := range r.Properties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).outputType = true
-			})
-		}
-		for _, p := range r.InputProperties {
-			visitObjectTypes(p.Type, func(t *schema.ObjectType) {
-				if r.IsProvider {
-					getModFromToken(t.Token).details(t).outputType = true
-				}
-				getModFromToken(t.Token).details(t).inputType = true
-			})
-		}
+		visitObjectTypes(r.Properties, func(t *schema.ObjectType, _ bool) {
+			getModFromToken(t.Token, t.Package).details(t).outputType = true
+		})
+		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType, plain bool) {
+			if r.IsProvider {
+				getModFromToken(t.Token, t.Package).details(t).outputType = true
+			}
+			getModFromToken(t.Token, t.Package).details(t).inputType = true
+			if plain {
+				getModFromToken(t.Token, t.Package).details(t).plainType = true
+			} else {
+				getModFromToken(t.Token, t.Package).details(t).argsType = true
+			}
+		})
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).inputType = true
-				getModFromToken(t.Token).details(t).stateType = true
+			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType, _ bool) {
+				getModFromToken(t.Token, t.Package).details(t).inputType = true
+				getModFromToken(t.Token, t.Package).details(t).stateType = true
 			})
 		}
 	}
@@ -1469,43 +1882,45 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info CSharpPacka
 
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
-		mod := getModFromToken(f.Token)
+		mod := getModFromToken(f.Token, pkg)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).inputType = true
-				getModFromToken(t.Token).details(t).functionType = true
+			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType, _ bool) {
+				details := getModFromToken(t.Token, t.Package).details(t)
+				details.inputType = true
+				details.plainType = true
 			})
 		}
 		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs, func(t *schema.ObjectType) {
-				getModFromToken(t.Token).details(t).outputType = true
-				getModFromToken(t.Token).details(t).functionType = true
+			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType, _ bool) {
+				details := getModFromToken(t.Token, t.Package).details(t)
+				details.outputType = true
+				details.plainType = true
 			})
 		}
 	}
 
 	// Find nested types.
 	for _, t := range pkg.Types {
-		if obj, ok := t.(*schema.ObjectType); ok {
-			mod := getModFromToken(obj.Token)
-			mod.types = append(mod.types, obj)
+		switch typ := t.(type) {
+		case *schema.ObjectType:
+			mod := getModFromToken(typ.Token, pkg)
+			mod.types = append(mod.types, typ)
+		case *schema.EnumType:
+			mod := getModFromToken(typ.Token, pkg)
+			mod.enums = append(mod.enums, typ)
+		default:
+			continue
 		}
 	}
 
-	return modules, nil
+	return modules, infos[pkg], nil
 }
 
 // LanguageResources returns a map of resources that can be used by downstream codegen. The map
 // key is the resource schema token.
 func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageResource, error) {
-	// Decode .NET-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
-
-	modules, err := generateModuleContextMap(tool, pkg, info)
+	modules, info, err := generateModuleContextMap(tool, pkg)
 	if err != nil {
 		return nil, err
 	}
@@ -1529,13 +1944,7 @@ func LanguageResources(tool string, pkg *schema.Package) (map[string]LanguageRes
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode .NET-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"csharp": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["csharp"].(CSharpPackageInfo)
-
-	modules, err := generateModuleContextMap(tool, pkg, info)
+	modules, info, err := generateModuleContextMap(tool, pkg)
 	if err != nil {
 		return nil, err
 	}

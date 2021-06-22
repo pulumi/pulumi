@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,15 +13,16 @@
 # limitations under the License.
 
 """The Resource module, containing all resource-related definitions."""
-from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
 
+import asyncio
 import copy
-
-from .runtime import known_types
-from .runtime.resource import _register_resource, register_resource_outputs, _read_resource
-from .runtime.settings import get_root_resource
-
+from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
+from . import _types
 from .metadata import get_project, get_stack
+from .runtime import known_types
+from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource, \
+    convert_providers
+from .runtime.settings import get_root_resource
 
 if TYPE_CHECKING:
     from .output import Input, Inputs, Output
@@ -326,7 +327,9 @@ class ResourceOptions:
 
     providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]
     """
-    An optional set of providers to use for child resources. Keyed by package name (e.g. "aws")
+    An optional set of providers to use for child resources. Keyed by package name (e.g. "aws"), or just
+    provided as a list. In the latter case, the package name will be retrieved from the provider itself.
+    Note: do not provide both provider and providers.
     """
 
     ignore_changes: Optional[List[str]]
@@ -378,13 +381,18 @@ class ResourceOptions:
     property must be removed from the resource's options.
     """
 
+    urn: Optional[str]
+    """
+    The URN of a previously-registered resource of this type to read from the engine.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
                  depends_on: Optional[List['Resource']] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
-                 providers: Optional[Mapping[str, 'ProviderResource']] = None,
+                 providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]] = None,
                  delete_before_replace: Optional[bool] = None,
                  ignore_changes: Optional[List[str]] = None,
                  version: Optional[str] = None,
@@ -393,7 +401,8 @@ class ResourceOptions:
                  id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
-                 transformations: Optional[List[ResourceTransformation]] = None) -> None:
+                 transformations: Optional[List[ResourceTransformation]] = None,
+                 urn: Optional[str] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -403,21 +412,29 @@ class ResourceOptions:
         :param Optional[ProviderResource] provider: An optional provider to use for this resource's CRUD operations.
                If no provider is supplied, the default provider for the resource's package will be used. The default
                provider is pulled from the parent's provider bag.
-        :param Optional[Mapping[str,ProviderResource]] providers: An optional set of providers to use for child resources. Keyed
-               by package name (e.g. "aws")
+        :param Optional[Union[Mapping[str, ProviderResource], List[ProviderResource]]] providers: An optional set of
+               providers to use for child resources. Keyed by package name (e.g. "aws"), or just provided as a list.
+               In the latter case, the package name will be retrieved from the provider itself. Note: do not provide
+               both provider and providers.
         :param Optional[bool] delete_before_replace: If provided and True, this resource must be deleted before it is replaced.
-        :param Optional[List[string]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
+        :param Optional[List[str]] ignore_changes: If provided, a list of property names to ignore for purposes of updates
                or replacements.
-        :param Optional[List[string]] additional_secret_outputs: If provided, a list of output property names that should
+        :param Optional[str] version: An optional version. If provided, the engine loads a provider with exactly the
+               requested version to operate on this resource. This version overrides the version information inferred
+               from the current package and should rarely be used.
+        :param Optional[List[Input[Union[str, Alias]]]] aliases: An optional list of aliases to treat this resource as
+               matching.
+        :param Optional[List[str]] additional_secret_outputs: If provided, a list of output property names that should
                also be treated as secret.
-        :param Optional[str] id: If provided, an existing resource ID to read, rather than create.
+        :param Optional[Input[str]] id: If provided, an existing resource ID to read, rather than create.
         :param Optional[str] import_: When provided with a resource ID, import indicates that this resource's provider should
                import its state from the cloud resource with the given ID. The inputs to the resource's constructor must align
                with the resource's current state. Once a resource has been imported, the import property must be removed from
                the resource's options.
-        :param Optional[CustomTimeouts] customTimeouts: If provided, a config block for custom timeout information.
-        :param Optional[transformations] transformations: If provided, a list of transformations to apply to this resource
-               during construction.
+        :param Optional[CustomTimeouts] custom_timeouts: If provided, a config block for custom timeout information.
+        :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
+               to this resource during construction.
+        :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -439,6 +456,7 @@ class ResourceOptions:
         self.id = id
         self.import_ = import_
         self.transformations = transformations
+        self.urn = urn
 
         if depends_on is not None:
             for dep in depends_on:
@@ -461,15 +479,15 @@ class ResourceOptions:
 
         Conceptually attributes merging follows these basic rules:
 
-        1. if the attributes is a collection, the final value will be a collection containing the
-            values from each options object. Both original collections in each options object will
-            be unchanged.
+        1. If the attributes is a collection, the final value will be a collection containing the
+           values from each options object. Both original collections in each options object will
+           be unchanged.
 
         2. Simple scalar values from `opts2` (i.e. strings, numbers, bools) will replace the values
-            from `opts1`.
+           from `opts1`.
 
         3. For the purposes of merging `depends_on`, `provider` and `providers` are always treated
-            as collections, even if only a single value was provided.
+           as collections, even if only a single value was provided.
 
         4. Attributes with value 'None' will not be copied over.
 
@@ -509,6 +527,7 @@ class ResourceOptions:
         dest.custom_timeouts = dest.custom_timeouts if source.custom_timeouts is None else source.custom_timeouts
         dest.id = dest.id if source.id is None else source.id
         dest.import_ = dest.import_ if source.import_ is None else source.import_
+        dest.urn = dest.urn if source.urn is None else source.urn
 
         # Now, if we are left with a .providers that is just a single key/value pair, then
         # collapse that down into .provider form.
@@ -566,12 +585,6 @@ class Resource:
     Resource represents a class whose CRUD operations are implemented by a provider plugin.
     """
 
-    urn: 'Output[str]'
-    """
-    The stable, logical URN used to distinctly address a resource, both before and after
-    deployments.
-    """
-
     _providers: Mapping[str, 'ProviderResource']
     """
     The set of providers to use for child resources. Keyed by package name (e.g. "aws").
@@ -605,15 +618,28 @@ class Resource:
                  name: str,
                  custom: bool,
                  props: Optional['Inputs'] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 remote: bool = False,
+                 dependency: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
         :param bool custom: True if this resource is a custom resource.
-        :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
+        :param Optional[Inputs] props: An optional list of input properties to use as inputs for the resource.
+               If props is an input type (decorated with `@input_type`), dict keys will be translated using
+               the type's and resource's type/name metadata rather than using the `translate_input_property`
+               and `translate_output_property` methods.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool remote: True if this is a remote component resource.
+        :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
+
+        if dependency:
+            self._protect = False
+            self._providers = {}
+            return
+
         if props is None:
             props = {}
         if not t:
@@ -628,6 +654,15 @@ class Resource:
             opts = ResourceOptions()
         elif not isinstance(opts, ResourceOptions):
             raise TypeError('Expected resource options to be a ResourceOptions instance')
+
+        # If `props` is an input type, convert it into an untranslated dictionary.
+        # Translation of the keys will happen later using the type's and resource's type/name metadata.
+        # If `props` is not an input type, set `typ` to None to make translation behave as it has previously.
+        typ = type(props)
+        if _types.is_input_type(typ):
+            props = _types.input_type_to_untranslated_dict(props)
+        else:
+            typ = None  # type: ignore
 
         # Before anything else - if there are transformations registered, give them a chance to run to modify the user
         # provided properties and options assigned to this resource.
@@ -698,7 +733,7 @@ class Resource:
                     [pkg, _, _] = type_components
                     self._providers = {**self._providers, pkg: provider}
         else:
-            providers = self._convert_providers(opts.provider, opts.providers)
+            providers = convert_providers(opts.provider, opts.providers)
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
@@ -712,44 +747,35 @@ class Resource:
                 self._aliases.append(collapse_alias_to_urn(
                     alias, self._name, t, opts.parent))
 
-        if opts.id is not None:
-            # If this resource already exists, read its state rather than registering it anew.
+        if opts.urn is not None:
+            # This is a resource that already exists. Read its state from the engine.
+            get_resource(self, props, custom, opts.urn, typ)
+        elif opts.id is not None:
+            # If this is a custom resource that already exists, read its state from the provider.
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            res = cast('CustomResource', self)
-            result = _read_resource(res, t, self._name, props, opts)
-            res.urn = result.urn
-            assert result.id is not None
-            res.id = result.id
+
+            read_resource(cast('CustomResource', self), t, self._name, props, opts, typ)
         else:
-            result = _register_resource(self, t, self._name, custom, props, opts)
-            self.urn = result.urn
-            if custom:
-                assert result.id is not None
-                res = cast('CustomResource', self)
-                res.id = result.id
+            register_resource(self, t, self._name, custom, remote, DependencyResource, props, opts, typ)
 
-    def _convert_providers(self, provider: Optional['ProviderResource'], providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
-        if provider is not None:
-            return self._convert_providers(None, [provider])
-
-        if providers is None:
-            return {}
-
-        if not isinstance(providers, list):
-            return providers
-
-        result = {}
-        for p in providers:
-            result[p.package] = p
-
-        return result
+    @property
+    def urn(self) -> 'Output[str]':
+        """
+        The stable, logical URN used to distinctly address a resource, both before and after
+        deployments.
+        """
+        return self.__dict__["urn"]
 
     def translate_output_property(self, prop: str) -> str:
         """
         Provides subclasses of Resource an opportunity to translate names of output properties
         into a format of their choosing before writing those properties to the resource object.
+
+        If the `props` passed to `__init__` is an input type (decorated with `@input_type`), the
+        type/name metadata of the resource will be used to translate names instead of calling this
+        method.
 
         :param str prop: A property name.
         :return: A potentially transformed property name.
@@ -761,6 +787,10 @@ class Resource:
         """
         Provides subclasses of Resource an opportunity to translate names of input properties into
         a format of their choosing before sending those properties to the Pulumi engine.
+
+        If the `props` passed to `__init__` is an input type (decorated with `@input_type`), the
+        type/name metadata of `props` will be used to translate names instead of calling this
+        method.
 
         :param str prop: A property name.
         :return: A potentially transformed property name.
@@ -795,12 +825,6 @@ class CustomResource(Resource):
     dynamically loaded plugin for the defining package.
     """
 
-    id: 'Output[str]'
-    """
-    id is the provider-assigned unique ID for this managed resource.  It is set during
-    deployments and may be missing (undefined) during planning phases.
-    """
-
     __pulumi_type: str
     """
     Private field containing the type ID for this object. Useful for implementing `isInstance` on
@@ -811,16 +835,26 @@ class CustomResource(Resource):
                  t: str,
                  name: str,
                  props: Optional[dict] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 dependency: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
-        Resource.__init__(self, t, name, True, props, opts)
+        Resource.__init__(self, t, name, True, props, opts, False, dependency)
         self.__pulumi_type = t
+
+    @property
+    def id(self) -> 'Output[str]':
+        """
+        id is the provider-assigned unique ID for this managed resource.  It is set during
+        deployments and may be missing (undefined) during planning phases.
+        """
+        return self.__dict__["id"]
 
 
 class ComponentResource(Resource):
@@ -834,16 +868,18 @@ class ComponentResource(Resource):
                  t: str,
                  name: str,
                  props: Optional[dict] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 remote: bool = False) -> None:
         """
         :param str t: The type of this resource.
         :param str name: The name of this resource.
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool remote: True if this is a remote component resource.
         """
-        Resource.__init__(self, t, name, False, props, opts)
-        self.id = None
+        Resource.__init__(self, t, name, False, props, opts, remote, False)
+        self.__dict__["id"] = None
 
     def register_outputs(self, outputs):
         """
@@ -871,13 +907,15 @@ class ProviderResource(CustomResource):
                  pkg: str,
                  name: str,
                  props: Optional[dict] = None,
-                 opts: Optional[ResourceOptions] = None) -> None:
+                 opts: Optional[ResourceOptions] = None,
+                 dependency: bool = False) -> None:
         """
         :param str pkg: The package type of this provider resource.
         :param str name: The name of this resource.
         :param Optional[dict] props: An optional list of input properties to use as inputs for the resource.
         :param Optional[ResourceOptions] opts: Optional set of :class:`pulumi.ResourceOptions` to use for this
                resource.
+        :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
 
         if opts is not None and opts.provider is not None:
@@ -885,8 +923,61 @@ class ProviderResource(CustomResource):
                 "Explicit providers may not be used with provider resources")
         # Provider resources are given a well-known type, prefixed with "pulumi:providers".
         CustomResource.__init__(
-            self, f"pulumi:providers:{pkg}", name, props, opts)
+            self, f"pulumi:providers:{pkg}", name, props, opts, dependency)
         self.package = pkg
+
+
+class DependencyResource(CustomResource):
+    """
+    A DependencyResource is a resource that is used to indicate that an Output has a dependency on a particular
+    resource. These resources are only created when dealing with remote component resources.
+    """
+
+    def __init__(self, urn: str) -> None:
+        super().__init__(t="", name="", props={}, opts=None, dependency=True)
+
+        from . import Output  # pylint: disable=import-outside-toplevel
+
+        urn_future: asyncio.Future[str] = asyncio.Future()
+        urn_known: asyncio.Future[bool] = asyncio.Future()
+        urn_secret: asyncio.Future[bool] = asyncio.Future()
+        urn_future.set_result(urn)
+        urn_known.set_result(True)
+        urn_secret.set_result(False)
+        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+
+
+class DependencyProviderResource(ProviderResource):
+    """
+    A DependencyProviderResource is a resource that is used by the provider SDK as a stand-in for a provider that
+    is only used for its reference. Its only valid properties are its URN and ID.
+    """
+
+    def __init__(self, ref: str) -> None:
+        super().__init__(pkg="", name="", props={}, opts=None, dependency=True)
+
+        # Parse the URN and ID out of the provider reference.
+        last_sep = ref.rindex("::")
+        ref_urn = ref[:last_sep]
+        ref_id = ref[last_sep+2:]
+
+        from . import Output  # pylint: disable=import-outside-toplevel
+
+        urn_future: asyncio.Future[str] = asyncio.Future()
+        urn_known: asyncio.Future[bool] = asyncio.Future()
+        urn_secret: asyncio.Future[bool] = asyncio.Future()
+        urn_future.set_result(ref_urn)
+        urn_known.set_result(True)
+        urn_secret.set_result(False)
+        self.__dict__["urn"] = Output({self}, urn_future, urn_known, urn_secret)
+
+        id_future: asyncio.Future[str] = asyncio.Future()
+        id_known: asyncio.Future[bool] = asyncio.Future()
+        id_secret: asyncio.Future[bool] = asyncio.Future()
+        id_future.set_result(ref_id)
+        id_known.set_result(True)
+        id_secret.set_result(False)
+        self.__dict__["id"] = Output({self}, id_future, id_known, id_secret)
 
 
 def export(name: str, value: Any):

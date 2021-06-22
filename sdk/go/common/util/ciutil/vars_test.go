@@ -30,35 +30,41 @@ func TestDetectVars(t *testing.T) {
 		// except for the Travis one itself.
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AzurePipelines: {
-			"TRAVIS":        "",
-			"TF_BUILD":      "true",
-			"BUILD_BUILDID": buildNumber,
+			"TRAVIS":         "",
+			"TF_BUILD":       "true",
+			"BUILD_BUILDID":  buildNumber,
+			"GITHUB_ACTIONS": "",
 		},
 		CircleCI: {
 			"TRAVIS":           "",
 			"CIRCLECI":         "true",
 			"CIRCLE_BUILD_NUM": buildNumber,
+			"GITHUB_ACTIONS":   "",
 		},
 		Codefresh: {
-			"TRAVIS":       "",
-			"CF_BUILD_URL": "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
-			"CF_BUILD_ID":  buildNumber,
+			"TRAVIS":         "",
+			"CF_BUILD_URL":   "https://g.codefresh.io/build/99f5d825577e23c56f8c6b2a",
+			"CF_BUILD_ID":    buildNumber,
+			"GITHUB_ACTIONS": "",
 		},
 		GenericCI: {
 			"TRAVIS":             "",
 			"PULUMI_CI_SYSTEM":   "generic-ci-system",
 			"PULUMI_CI_BUILD_ID": buildNumber,
+			"GITHUB_ACTIONS":     "",
 		},
 		GitLab: {
 			"TRAVIS":          "",
 			"GITLAB_CI":       "true",
 			"CI_PIPELINE_ID":  buildID,
 			"CI_PIPELINE_IID": buildNumber,
+			"GITHUB_ACTIONS":  "",
 		},
 		Travis: {
 			"TRAVIS":            "true",
 			"TRAVIS_JOB_ID":     buildID,
 			"TRAVIS_JOB_NUMBER": buildNumber,
+			"GITHUB_ACTIONS":    "",
 		},
 	}
 
@@ -110,12 +116,14 @@ func TestDetectVarsBaseCI(t *testing.T) {
 		// except for the Travis one itself.
 		// This way when the unit test runs on Travis, we don't pick-up Travis env vars.
 		AppVeyor: {
-			"TRAVIS":   "",
-			"APPVEYOR": "true",
+			"TRAVIS":         "",
+			"APPVEYOR":       "true",
+			"GITHUB_ACTIONS": "",
 		},
 		Codeship: {
-			"TRAVIS":  "",
-			"CI_NAME": "codeship",
+			"TRAVIS":         "",
+			"CI_NAME":        "codeship",
+			"GITHUB_ACTIONS": "",
 		},
 	}
 

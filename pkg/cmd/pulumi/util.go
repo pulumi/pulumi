@@ -35,23 +35,24 @@ import (
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
 	git "gopkg.in/src-d/go-git.v4"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/state"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/secrets/passphrase"
-	"github.com/pulumi/pulumi/pkg/v2/util/cancel"
-	"github.com/pulumi/pulumi/pkg/v2/util/tracing"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/gitutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/state"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/passphrase"
+	"github.com/pulumi/pulumi/pkg/v3/util/cancel"
+	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/constant"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/gitutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func hasDebugCommands() bool {
@@ -66,6 +67,14 @@ func useLegacyDiff() bool {
 	return cmdutil.IsTruthy(os.Getenv("PULUMI_ENABLE_LEGACY_DIFF"))
 }
 
+func disableProviderPreview() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_PROVIDER_PREVIEW"))
+}
+
+func disableResourceReferences() bool {
+	return cmdutil.IsTruthy(os.Getenv("PULUMI_DISABLE_RESOURCE_REFERENCES"))
+}
+
 // skipConfirmations returns whether or not confirmation prompts should
 // be skipped. This should be used by pass any requirement that a --yes
 // parameter has been set for non-interactive scenarios.
@@ -78,6 +87,19 @@ func skipConfirmations() bool {
 
 // backendInstance is used to inject a backend mock from tests.
 var backendInstance backend.Backend
+
+func isFilestateBackend(opts display.Options) (bool, error) {
+	if backendInstance != nil {
+		return false, nil
+	}
+
+	url, err := workspace.GetCurrentCloudURL()
+	if err != nil {
+		return false, errors.Wrapf(err, "could not get cloud url")
+	}
+
+	return filestate.IsFileStateBackendURL(url), nil
+}
 
 func currentBackend(opts display.Options) (backend.Backend, error) {
 	if backendInstance != nil {
@@ -114,23 +136,40 @@ func commandContext() context.Context {
 	return ctx
 }
 
-// createStack creates a stack with the given name, and optionally selects it as the current.
-func createStack(
-	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
-	secretsProvider string) (backend.Stack, error) {
-
+func createSecretsManager(b backend.Backend, stackRef backend.StackReference, secretsProvider string,
+	rotatePassphraseSecretsProvider bool) error {
 	// As part of creating the stack, we also need to configure the secrets provider for the stack.
 	// We need to do this configuration step for cases where we will be using with the passphrase
 	// secrets provider or one of the cloud-backed secrets providers.  We do not need to do this
 	// for the Pulumi service backend secrets provider.
+	// we have an explicit flag to rotate the secrets manager ONLY when it's a passphrase!
 	isDefaultSecretsProvider := secretsProvider == "" || secretsProvider == "default"
 	if _, ok := b.(filestate.Backend); ok && isDefaultSecretsProvider {
 		// The default when using the filestate backend is the passphrase secrets provider
 		secretsProvider = passphrase.Type
 	}
+
+	if _, ok := b.(httpstate.Backend); ok && isDefaultSecretsProvider {
+		stack, err := state.CurrentStack(commandContext(), b)
+		if err != nil {
+			return err
+		}
+		if stack == nil {
+			// This means this is the first time we are initiating a stack
+			// there is no way a stack will exist here so we need to just return nil
+			// this will mean the "old" default behaviour will work for us
+			return nil
+		}
+		if _, serviceSecretsErr := newServiceSecretsManager(stack.(httpstate.Stack),
+			stackRef.Name(), stackConfigFile); serviceSecretsErr != nil {
+			return serviceSecretsErr
+		}
+	}
+
 	if secretsProvider == passphrase.Type {
-		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile); pharseErr != nil {
-			return nil, pharseErr
+		if _, pharseErr := newPassphraseSecretsManager(stackRef.Name(), stackConfigFile,
+			rotatePassphraseSecretsProvider); pharseErr != nil {
+			return pharseErr
 		}
 	} else if !isDefaultSecretsProvider {
 		// All other non-default secrets providers are handled by the cloud secrets provider which
@@ -141,7 +180,7 @@ func createStack(
 		if strings.HasPrefix(secretsProvider, "azurekeyvault://") {
 			parsed, err := url.Parse(secretsProvider)
 			if err != nil {
-				return nil, errors.Wrap(err, "failed to parse secrets provider URL")
+				return errors.Wrap(err, "failed to parse secrets provider URL")
 			}
 
 			if parsed.Query().Get("algorithm") == "" {
@@ -151,9 +190,17 @@ func createStack(
 		}
 
 		if _, secretsErr := newCloudSecretsManager(stackRef.Name(), stackConfigFile, secretsProvider); secretsErr != nil {
-			return nil, secretsErr
+			return secretsErr
 		}
 	}
+
+	return nil
+}
+
+// createStack creates a stack with the given name, and optionally selects it as the current.
+func createStack(
+	b backend.Backend, stackRef backend.StackReference, opts interface{}, setCurrent bool,
+	secretsProvider string) (backend.Stack, error) {
 
 	stack, err := b.CreateStack(commandContext(), stackRef, opts)
 	if err != nil {
@@ -165,6 +212,11 @@ func createStack(
 			return nil, err
 		}
 		return nil, errors.Wrapf(err, "could not create stack")
+	}
+
+	if err := createSecretsManager(b, stackRef, secretsProvider,
+		false /* rotateSecretsManager */); err != nil {
+		return nil, err
 	}
 
 	if setCurrent {
@@ -372,6 +424,24 @@ func parseAndSaveConfigArray(s backend.Stack, configArray []string, path bool) e
 	return nil
 }
 
+// readProjectForUpdate attempts to detect and read a Pulumi project for the current workspace. If
+// the project is successfully detected and read, it is returned along with the path to its
+// containing directory, which will be used as the root of the project's Pulumi program. If a
+// client address is present, the returned project will always have the runtime set to "client"
+// with the address option set to the client address.
+func readProjectForUpdate(clientAddress string) (*workspace.Project, string, error) {
+	proj, root, err := readProject()
+	if err != nil {
+		return nil, "", err
+	}
+	if clientAddress != "" {
+		proj.Runtime = workspace.NewProjectRuntimeInfo("client", map[string]interface{}{
+			"address": clientAddress,
+		})
+	}
+	return proj, root, nil
+}
+
 // readProject attempts to detect and read a Pulumi project for the current workspace. If the
 // project is successfully detected and read, it is returned along with the path to its containing
 // directory, which will be used as the root of the project's Pulumi program.
@@ -460,7 +530,7 @@ func isGitWorkTreeDirty(repoRoot string) (bool, error) {
 
 // getUpdateMetadata returns an UpdateMetadata object, with optional data about the environment
 // performing the update.
-func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
+func getUpdateMetadata(msg, root, execKind, execAgent string) (*backend.UpdateMetadata, error) {
 	m := &backend.UpdateMetadata{
 		Message:     msg,
 		Environment: make(map[string]string),
@@ -471,6 +541,8 @@ func getUpdateMetadata(msg, root string) (*backend.UpdateMetadata, error) {
 	}
 
 	addCIMetadataToEnvironment(m.Environment)
+
+	addExecutionMetadataToEnvironment(m.Environment, execKind, execAgent)
 
 	return m, nil
 }
@@ -622,6 +694,25 @@ func addCIMetadataToEnvironment(env map[string]string) {
 	addIfSet(backend.CIPRNumber, vars.PRNumber)
 }
 
+// addExecutionMetadataToEnvironment populates the environment metadata bag with execution-related values.
+func addExecutionMetadataToEnvironment(env map[string]string, execKind, execAgent string) {
+	// this comes from a hidden flag, so we restrict the set of allowed values
+	switch execKind {
+	case constant.ExecKindAutoInline:
+		break
+	case constant.ExecKindAutoLocal:
+		break
+	case constant.ExecKindCLI:
+		break
+	default:
+		execKind = constant.ExecKindCLI
+	}
+	env[backend.ExecutionKind] = execKind
+	if execAgent != "" {
+		env[backend.ExecutionAgent] = execAgent
+	}
+}
+
 type cancellationScope struct {
 	context *cancel.Context
 	sigint  chan os.Signal
@@ -661,7 +752,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 					message += colors.BrightRed + "Note that terminating immediately may lead to orphaned resources " +
 						"and other inconsistencies.\n" + colors.Reset
 				}
-				events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})
@@ -669,7 +760,7 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 				cancelSource.Cancel()
 			} else {
 				message := colors.BrightRed + "^C received; terminating" + colors.Reset
-				events <- engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
+				engine.NewEvent(engine.StdoutColorEvent, engine.StdoutEventPayload{
 					Message: message,
 					Color:   colors.Always,
 				})

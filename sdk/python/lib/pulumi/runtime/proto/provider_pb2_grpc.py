@@ -77,6 +77,11 @@ class ResourceProviderStub(object):
         request_serializer=provider__pb2.DeleteRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
+    self.Construct = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/Construct',
+        request_serializer=provider__pb2.ConstructRequest.SerializeToString,
+        response_deserializer=provider__pb2.ConstructResponse.FromString,
+        )
     self.Cancel = channel.unary_unary(
         '/pulumirpc.ResourceProvider/Cancel',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -185,6 +190,13 @@ class ResourceProviderServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def Construct(self, request, context):
+    """Construct creates a new instance of the provided component resource and returns its state.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def Cancel(self, request, context):
     """Cancel signals the provider to abort all outstanding resource operations.
     """
@@ -261,6 +273,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
           servicer.Delete,
           request_deserializer=provider__pb2.DeleteRequest.FromString,
           response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'Construct': grpc.unary_unary_rpc_method_handler(
+          servicer.Construct,
+          request_deserializer=provider__pb2.ConstructRequest.FromString,
+          response_serializer=provider__pb2.ConstructResponse.SerializeToString,
       ),
       'Cancel': grpc.unary_unary_rpc_method_handler(
           servicer.Cancel,

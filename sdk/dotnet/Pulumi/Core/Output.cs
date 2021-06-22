@@ -3,7 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics.CodeAnalysis;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
@@ -15,17 +15,33 @@ namespace Pulumi
     /// </summary>
     public static partial class Output
     {
-        public static Output<T> Create<T>([MaybeNull]T value)
+        public static Output<T> Create<T>(T value)
             => Create(Task.FromResult(value));
 
         public static Output<T> Create<T>(Task<T> value)
             => Output<T>.Create(value);
 
-        public static Output<T> CreateSecret<T>([MaybeNull]T value)
+        public static Output<T> CreateSecret<T>(T value)
             => CreateSecret(Task.FromResult(value));
 
         public static Output<T> CreateSecret<T>(Task<T> value)
             => Output<T>.CreateSecret(value);
+
+        /// <summary>
+        /// Returns a new <see cref="Output{T}"/> which is a copy of the existing output but marked as
+        /// a non-secret. The original output is not modified in any way.
+        /// </summary>
+        public static Output<T> Unsecret<T>(Output<T> output)
+            => output.WithIsSecret(Task.FromResult(false));
+
+        /// <summary>
+        /// Retrieves the secretness status of the given output.
+        /// </summary>
+        public static async Task<bool> IsSecretAsync<T>(Output<T> output)
+        {
+            var dataTask = await output.DataTask.ConfigureAwait(false);
+            return dataTask.IsSecret;
+        }
 
         /// <summary>
         /// Combines all the <see cref="Input{T}"/> values in <paramref name="inputs"/>
@@ -42,7 +58,7 @@ namespace Pulumi
         /// </summary>
         public static Output<ImmutableArray<T>> All<T>(IEnumerable<Input<T>> inputs)
             => Output<T>.All(ImmutableArray.CreateRange(inputs));
-        
+
         /// <summary>
         /// Combines all the <see cref="Output{T}"/> values in <paramref name="outputs"/>
         /// into a single <see cref="Output{T}"/> with an <see cref="ImmutableArray{T}"/>
@@ -123,8 +139,14 @@ namespace Pulumi
     {
         internal Task<OutputData<T>> DataTask { get; private set; }
 
-        internal Output(Task<OutputData<T>> dataTask)
-            => DataTask = dataTask;
+        internal Output(Task<OutputData<T>> dataTask) {
+            this.DataTask = dataTask;
+
+            if (Deployment.TryGetInternalInstance(out var instance))
+            {
+                instance.Runner.RegisterTask(TypeNameHelper.GetTypeDisplayName(GetType(), false), dataTask);
+            }
+        }
 
         internal async Task<T> GetValueAsync()
         {
@@ -170,20 +192,26 @@ namespace Pulumi
             return new Output<T>(tcs.Task);
         }
 
+        internal static Output<T> CreateUnknown(T value)
+            => Unknown(value);
+
+        internal static Output<T> CreateUnknown(Func<Task<T>> valueFactory)
+            => Unknown(default!).Apply(_ => valueFactory());
+
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, U> func)
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, Task<U>> func)
             => Apply(t => Output.Create(func(t)));
 
         /// <summary>
-        /// <see cref="Apply{U}(Func{T, Output{U}})"/> for more details.
+        /// <see cref="Output{T}.Apply{U}(Func{T, Output{U}})"/> for more details.
         /// </summary>
         public Output<U> Apply<U>(Func<T, Input<U>?> func)
             => Apply(t => func(t).ToOutput());
@@ -282,6 +310,7 @@ namespace Pulumi
             var isKnown = true;
             var isSecret = false;
 
+#pragma warning disable 8601
             Update(await GetData(item1).ConfigureAwait(false), ref tuple.Item1);
             Update(await GetData(item2).ConfigureAwait(false), ref tuple.Item2);
             Update(await GetData(item3).ConfigureAwait(false), ref tuple.Item3);
@@ -290,6 +319,7 @@ namespace Pulumi
             Update(await GetData(item6).ConfigureAwait(false), ref tuple.Item6);
             Update(await GetData(item7).ConfigureAwait(false), ref tuple.Item7);
             Update(await GetData(item8).ConfigureAwait(false), ref tuple.Item8);
+#pragma warning restore 8601
 
             return OutputData.Create(resources.ToImmutable(), tuple, isKnown, isSecret);
 
@@ -306,5 +336,10 @@ namespace Pulumi
                 (isKnown, isSecret) = OutputData.Combine(data, isKnown, isSecret);
             }
         }
+
+        internal static Output<T> Unknown(T value) => new Output<T>(UnknownHelperAsync(value));
+
+        private static Task<OutputData<T>> UnknownHelperAsync(T value)
+            => Task.FromResult(new OutputData<T>(ImmutableHashSet<Resource>.Empty, value, isKnown: false, isSecret: false));
     }
 }

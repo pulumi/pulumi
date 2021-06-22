@@ -11,20 +11,24 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// Package passphrase implements support for a local passphrase secret manager.
 package passphrase
 
 import (
 	"encoding/base64"
 	"encoding/json"
+	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 const Type = "passphrase"
@@ -138,6 +142,30 @@ func NewPassphaseSecretsManager(phrase string, state string) (secrets.Manager, e
 	return sm, nil
 }
 
+// Tries to find the Passphrase first using `PULUMI_CONFIG_PASSPHRASE` then
+// `PULUMI_CONFIG_PASSPHRASE_FILE` if it is not found and defaulting to an empty string
+func getConfigPassphrase() (string, bool, error) {
+	if passphrase, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); isOk {
+		return passphrase, true, nil
+	}
+
+	if phraseFile, isOk := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); isOk {
+		phraseFilePath, err := filepath.Abs(phraseFile)
+		if err != nil {
+			return "", false, errors.Wrap(err, "unable to detect passphrase path")
+		}
+
+		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+		if err != nil {
+			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+		}
+
+		return strings.TrimSpace(string(phraseDetails)), true, nil
+	}
+
+	return "", false, nil
+}
+
 // NewPassphaseSecretsManagerFromState returns a new passphrase-based secrets manager, from the
 // given state. Will use the passphrase found in PULUMI_CONFIG_PASSPHRASE.
 func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager, error) {
@@ -149,7 +177,20 @@ func NewPassphaseSecretsManagerFromState(state json.RawMessage) (secrets.Manager
 	// This is not ideal, but we don't have a great way to prompt the user in this case, since this may be
 	// called during an update when trying to read stack outputs as part servicing a StackReference request
 	// (since we need to decrypt the deployment)
-	phrase := os.Getenv("PULUMI_CONFIG_PASSPHRASE")
+	phrase, isFound, err := getConfigPassphrase()
+	if err != nil {
+		return nil, err // this is already a wrapped error from getConfigPassphrase()
+	}
+
+	// At this point, we don't know if it's an incorrect passphrase. We only know if there is a passphrase or there is
+	// not. Ideally, we would prompt the user for the passphrase at this point but we can't do that in the CLI is in an
+	// update operation, so we should at least error out with an appropriate message here to ensure that the user
+	// understands why the operation fails unexpectedly.
+	if !isFound {
+		return nil, errors.New("unable to find either `PULUMI_CONFIG_PASSPHRASE` or " +
+			"`PULUMI_CONFIG_PASSPHRASE_FILE` when trying to access the Passphrase Secrets Provider; please ensure one " +
+			"of these environment variables is set to allow the operation to continue")
+	}
 
 	sm, err := NewPassphaseSecretsManager(phrase, s.Salt)
 	switch {
@@ -178,10 +219,10 @@ type errorCrypter struct{}
 
 func (ec *errorCrypter) EncryptValue(v string) (string, error) {
 	return "", errors.New("failed to encrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
-		"correct passphrase")
+		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }
 
 func (ec *errorCrypter) DecryptValue(v string) (string, error) {
 	return "", errors.New("failed to decrypt: incorrect passphrase, please set PULUMI_CONFIG_PASSPHRASE to the " +
-		"correct passphrase")
+		"correct passphrase or set PULUMI_CONFIG_PASSPHRASE_FILE to a file containing the passphrase")
 }

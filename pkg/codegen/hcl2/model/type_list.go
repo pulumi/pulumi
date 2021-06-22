@@ -19,7 +19,7 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 )
 
 // ListType represents lists of particular element types.
@@ -52,12 +52,16 @@ func (t *ListType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnosti
 
 // Equals returns true if this type has the same identity as the given type.
 func (t *ListType) Equals(other Type) bool {
+	return t.equals(other, nil)
+}
+
+func (t *ListType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
 
 	otherList, ok := other.(*ListType)
-	return ok && t.ElementType.Equals(otherList.ElementType)
+	return ok && t.ElementType.equals(otherList.ElementType, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A list(T) is assignable
@@ -84,20 +88,20 @@ func (t *ListType) AssignableFrom(src Type) bool {
 // to T. If any element type is unsafely convertible to T and no element type is safely convertible to T, the
 // conversion is unsafe. Otherwise, no conversion exists.
 func (t *ListType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false)
+	return t.conversionFrom(src, false, nil)
 }
 
-func (t *ListType) conversionFrom(src Type, unifying bool) ConversionKind {
-	return conversionFrom(t, src, unifying, func() ConversionKind {
+func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
+	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
 		switch src := src.(type) {
 		case *ListType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying)
+			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *SetType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying)
+			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *TupleType:
 			conversionKind := SafeConversion
 			for _, src := range src.ElementTypes {
-				if ck := t.ElementType.conversionFrom(src, unifying); ck < conversionKind {
+				if ck := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
 					conversionKind = ck
 				}
 			}
@@ -108,7 +112,11 @@ func (t *ListType) conversionFrom(src Type, unifying bool) ConversionKind {
 }
 
 func (t *ListType) String() string {
-	return fmt.Sprintf("list(%v)", t.ElementType)
+	return t.string(nil)
+}
+
+func (t *ListType) string(seen map[Type]struct{}) string {
+	return fmt.Sprintf("list(%s)", t.ElementType.string(seen))
 }
 
 func (t *ListType) unify(other Type) (Type, ConversionKind) {
@@ -135,7 +143,7 @@ func (t *ListType) unify(other Type) (Type, ConversionKind) {
 			return NewListType(elementType), conversionKind
 		default:
 			// Prefer the list type.
-			return t, t.conversionFrom(other, true)
+			return t, t.conversionFrom(other, true, nil)
 		}
 	})
 }

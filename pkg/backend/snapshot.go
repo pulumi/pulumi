@@ -21,13 +21,13 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // SnapshotPersister is an interface implemented by our backends that implements snapshot
@@ -181,22 +181,26 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// If the URN of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
 	if old.URN != new.URN {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of URN")
 		return true
 	}
 
 	// If the type of this resource has changed, we must write the checkpoint. This should only be possible when a
 	// resource is aliased.
 	if old.Type != new.Type {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Type")
 		return true
 	}
 
 	// If the kind of this resource has changed, we must write the checkpoint.
 	if old.Custom != new.Custom {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Custom")
 		return true
 	}
 
 	// We need to persist the changes if CustomTimes have changed
 	if old.CustomTimeouts != new.CustomTimeouts {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of CustomTimeouts")
 		return true
 	}
 
@@ -205,23 +209,31 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// If this resource's provider has changed, we must write the checkpoint. This can happen in scenarios involving
 	// aliased providers or upgrades to default providers.
 	if old.Provider != new.Provider {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Provider")
 		return true
 	}
 
 	// If this resource's parent has changed, we must write the checkpoint.
 	if old.Parent != new.Parent {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Parent")
 		return true
 	}
 
 	// If the protection attribute of this resource has changed, we must write the checkpoint.
 	if old.Protect != new.Protect {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Protect")
 		return true
 	}
 
 	// If the inputs or outputs of this resource have changed, we must write the checkpoint. Note that it is possible
 	// for the inputs of a "same" resource to have changed even if the contents of the input bags are different if the
 	// resource's provider deems the physical change to be semantically irrelevant.
-	if !reflect.DeepEqual(old.Inputs, new.Inputs) || !reflect.DeepEqual(old.Outputs, new.Outputs) {
+	if !old.Inputs.DeepEquals(new.Inputs) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Inputs")
+		return true
+	}
+	if !old.Outputs.DeepEquals(new.Outputs) {
+		logging.V(9).Infof("SnapshotManager: mustWrite() true because of Outputs")
 		return true
 	}
 
@@ -235,6 +247,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// lists being empty ourselves.
 	if len(old.Dependencies) != 0 || len(new.Dependencies) != 0 {
 		if !reflect.DeepEqual(old.Dependencies, new.Dependencies) {
+			logging.V(9).Infof("SnapshotManager: mustWrite() true because of Dependencies")
 			return true
 		}
 	}
@@ -242,6 +255,7 @@ func (ssm *sameSnapshotMutation) mustWrite(step *deploy.SameStep) bool {
 	// Init errors are strictly advisory, so we do not consider them when deciding whether or not to write the
 	// checkpoint.
 
+	logging.V(9).Infof("SnapshotManager: mustWrite() false")
 	return false
 }
 
@@ -275,6 +289,7 @@ func (ssm *sameSnapshotMutation) End(step deploy.Step, successful bool) error {
 			return false
 		}
 
+		logging.V(9).Infof("SnapshotManager: sameSnapshotMutation.End() not eliding write")
 		return true
 	})
 }

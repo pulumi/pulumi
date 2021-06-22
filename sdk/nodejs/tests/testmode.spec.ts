@@ -13,9 +13,10 @@
 // limitations under the License.
 
 import * as assert from "assert";
+import { CustomResource } from "../index";
 import { Output } from "../output";
-import { CustomResource } from "../resource";
 import * as runtime from "../runtime";
+import { asyncTest } from "./util";
 
 class FakeResource extends CustomResource {
     public x?: Output<number>;
@@ -30,6 +31,9 @@ const testModeDisabledError = (err: Error) => {
 
 describe("testMode", () => {
     it("rejects non-test mode", () => {
+        runtime._reset();
+        runtime._setTestModeEnabled(false);
+
         // Allocating a resource directly while not in test mode errors out.
         assert.throws(() => { const _ = new FakeResource("fake"); }, testModeDisabledError);
         // Fetching the project name while not in test mode errors out.
@@ -37,33 +41,33 @@ describe("testMode", () => {
         // Fetching the stack name while not in test mode errors out.
         assert.throws(() => { const _ = runtime.getStack(); }, testModeDisabledError);
     });
-    it("accepts test mode", () => {
-        (async () => {
-            // Set up all the test mode envvars, so that the test will pass.
-            runtime._setTestModeEnabled(true);
-            const testProject = "TestProject";
-            runtime._setProject(testProject);
-            const testStack = "TestStack";
-            runtime._setStack(testStack);
-            try {
-                // Allocating a resource directly while in test mode succeeds.
-                let res: FakeResource | undefined;
-                assert.doesNotThrow(() => { res = new FakeResource("fake", { x: 42 }); });
-                const x = await new Promise((resolve) => res!.x!.apply(resolve));
-                assert.equal(x, 42);
-                // Fetching the project name while in test mode succeeds.
-                let project: string | undefined;
-                assert.doesNotThrow(() => { project = runtime.getProject(); });
-                assert.equal(project, testProject);
-                // Fetching the stack name while in test mode succeeds.
-                let stack: string | undefined;
-                assert.doesNotThrow(() => { stack = runtime.getStack(); });
-                assert.equal(stack, testStack);
-            } finally {
-                runtime._setTestModeEnabled(false);
-                runtime._setProject("");
-                runtime._setStack("");
-            }
-        })();
-    });
+    it("accepts test mode", asyncTest(async () => {
+        // Set up all the test mode envvars, so that the test will pass.
+        runtime._reset();
+        runtime._setTestModeEnabled(true);
+
+        const testProject = "TestProject";
+        runtime._setProject(testProject);
+        const testStack = "TestStack";
+        runtime._setStack(testStack);
+        try {
+            // Allocating a resource directly while in test mode succeeds.
+            let res: FakeResource | undefined;
+            assert.doesNotThrow(() => { res = new FakeResource("fake", { x: 42 }); });
+            const x = await new Promise((resolve) => res!.x!.apply(resolve));
+            assert.strictEqual(x, 42);
+            // Fetching the project name while in test mode succeeds.
+            let project: string | undefined;
+            assert.doesNotThrow(() => { project = runtime.getProject(); });
+            assert.strictEqual(project, testProject);
+            // Fetching the stack name while in test mode succeeds.
+            let stack: string | undefined;
+            assert.doesNotThrow(() => { stack = runtime.getStack(); });
+            assert.strictEqual(stack, testStack);
+        } finally {
+            runtime._setTestModeEnabled(false);
+            runtime._setProject("");
+            runtime._setStack("");
+        }
+    }));
 });

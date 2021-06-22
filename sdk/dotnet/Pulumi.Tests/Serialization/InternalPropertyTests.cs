@@ -1,9 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Threading.Tasks;
 using Google.Protobuf.WellKnownTypes;
 using Pulumi.Serialization;
 using Xunit;

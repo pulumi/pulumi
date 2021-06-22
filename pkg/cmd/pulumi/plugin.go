@@ -17,11 +17,11 @@ package main
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPluginCmd() *cobra.Command {
@@ -58,8 +58,7 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 	}
 
 	projinfo := &engine.Projinfo{Proj: proj, Root: root}
-	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(),
-		cmdutil.Diag(), nil)
+	pwd, main, ctx, err := engine.ProjectInfoContext(projinfo, nil, nil, cmdutil.Diag(), cmdutil.Diag(), false, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -67,7 +66,7 @@ func getProjectPlugins() ([]workspace.PluginInfo, error) {
 	// Get the required plugins and then ensure they have metadata populated about them.  Because it's possible
 	// a plugin required by the project hasn't yet been installed, we will simply skip any errors we encounter.
 	var results []workspace.PluginInfo
-	plugins, err := ctx.Host.GetRequiredPlugins(plugin.ProgInfo{
+	plugins, err := plugin.GetRequiredPlugins(ctx.Host, plugin.ProgInfo{
 		Proj:    proj,
 		Pwd:     pwd,
 		Program: main,

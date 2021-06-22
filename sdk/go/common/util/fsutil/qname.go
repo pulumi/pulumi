@@ -18,7 +18,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 // QnamePath just cleans a name and makes sure it's appropriate to use as a path.

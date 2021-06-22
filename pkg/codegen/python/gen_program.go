@@ -21,13 +21,13 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type generator struct {
@@ -81,19 +81,6 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 		seenTypes := codegen.Set{}
 		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
 		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
-
-		// Annotate nested types to indicate they are dictionaries.
-		for _, t := range p.Types {
-			if t, ok := t.(*schema.ObjectType); ok {
-				if t.Language == nil {
-					t.Language = map[string]interface{}{}
-				}
-				t.Language["python"] = objectTypeInfo{
-					isDictionary:         true,
-					camelCaseToSnakeCase: camelCaseToSnakeCase,
-				}
-			}
-		}
 	}
 
 	g := &generator{
@@ -106,7 +93,7 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 	return g, nil
 }
 
-// genLeadingTrivia generates the list of leading trivia assicated with a given token.
+// genLeadingTrivia generates the list of leading trivia associated with a given token.
 func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
 	// TODO(pdg): whitespace
 	for _, t := range token.LeadingTrivia {
@@ -116,7 +103,7 @@ func (g *generator) genLeadingTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
-// genTrailingTrivia generates the list of trailing trivia assicated with a given token.
+// genTrailingTrivia generates the list of trailing trivia associated with a given token.
 func (g *generator) genTrailingTrivia(w io.Writer, token syntax.Token) {
 	// TODO(pdg): whitespace
 	for _, t := range token.TrailingTrivia {
@@ -126,7 +113,7 @@ func (g *generator) genTrailingTrivia(w io.Writer, token syntax.Token) {
 	}
 }
 
-// genTrivia generates the list of trivia assicated with a given token.
+// genTrivia generates the list of trivia associated with a given token.
 func (g *generator) genTrivia(w io.Writer, token syntax.Token) {
 	g.genLeadingTrivia(w, token)
 	g.genTrailingTrivia(w, token)
@@ -194,17 +181,75 @@ func (g *generator) genNode(w io.Writer, n hcl2.Node) {
 	}
 }
 
-// resourceTypeName computes the python package, module, and type name for the given resource.
+// resourceTypeName computes the Python package, module, and type name for the given resource.
 func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics) {
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := r.DecomposeToken()
 
-	components := strings.Split(module, ".")
+	// Normalize module.
+	if r.Schema != nil {
+		pkg := r.Schema.Package
+		if lang, ok := pkg.Language["python"]; ok {
+			pkgInfo := lang.(PackageInfo)
+			if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+				module = m
+			}
+		}
+	}
+
+	components := strings.Split(module, "/")
 	for i, component := range components {
 		components[i] = PyName(component)
 	}
-
 	return PyName(pkg), strings.Join(components, "."), title(member), diagnostics
+}
+
+// argumentTypeName computes the Python argument class name for the given expression and model type.
+func (g *generator) argumentTypeName(expr model.Expression, destType model.Type) string {
+	schemaType, ok := hcl2.GetSchemaForType(destType.(model.Type))
+	if !ok {
+		return ""
+	}
+
+	objType, ok := schemaType.(*schema.ObjectType)
+	if !ok {
+		return ""
+	}
+
+	if objType.Language != nil {
+		pyTypeInfo, ok := objType.Language["python"].(objectTypeInfo)
+		if ok {
+			if pyTypeInfo.isDictionary {
+				return ""
+			}
+		}
+	}
+
+	token := objType.Token
+	tokenRange := expr.SyntaxNode().Range()
+
+	// Example: aws, s3/BucketLogging, BucketLogging, []Diagnostics
+	pkgName, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
+	contract.Assert(len(diagnostics) == 0)
+
+	modName := objType.Package.TokenToModule(token)
+
+	// Normalize module.
+	pkg := objType.Package
+	if lang, ok := pkg.Language["python"]; ok {
+		pkgInfo := lang.(PackageInfo)
+		if m, ok := pkgInfo.ModuleNameOverrides[module]; ok {
+			modName = m
+		}
+	}
+	if modName != "" {
+		modName = "." + PyName(modName)
+	}
+	modName = strings.Replace(modName, "_", ".", -1)
+	member = member + "Args"
+
+	// Example: aws.s3.BucketLoggingArgs
+	return fmt.Sprintf("%s%s.%s", PyName(pkgName), modName, title(member))
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name
@@ -231,7 +276,7 @@ func (g *generator) lowerResourceOptions(opts *hcl2.ResourceOptions) (*model.Blo
 			}
 		}
 
-		value, valueTemps := g.lowerExpression(value)
+		value, valueTemps := g.lowerExpression(value, value.Type())
 		temps = append(temps, valueTemps...)
 
 		block.Body.Items = append(block.Body.Items, &model.Attribute{
@@ -269,7 +314,7 @@ func (g *generator) genResourceOptions(w io.Writer, block *model.Block, hasInput
 	if hasInputs {
 		prefix = "\n" + g.Indent
 	}
-	g.Fprintf(w, ",%sopts=ResourceOptions(", prefix)
+	g.Fprintf(w, ",%sopts=pulumi.ResourceOptions(", prefix)
 	g.Indented(func() {
 		for i, item := range block.Body.Items {
 			if i > 0 {
@@ -302,12 +347,14 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
 	casingTable := g.casingTables[pkg]
-	for _, attr := range r.Inputs {
-		g.lowerObjectKeys(attr.Value, casingTable)
+	for _, input := range r.Inputs {
+		g.lowerObjectKeys(input.Value, casingTable)
 
-		value, valueTemps := g.lowerExpression(attr.Value)
+		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
+		g.diagnostics = append(g.diagnostics, diagnostics...)
+		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))
 		temps = append(temps, valueTemps...)
-		attr.Value = value
+		input.Value = value
 	}
 	g.genTemps(w, temps)
 
@@ -403,7 +450,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 	var defaultValue model.Expression
 	var temps []*quoteTemp
 	if v.DefaultValue != nil {
-		defaultValue, temps = g.lowerExpression(v.DefaultValue)
+		defaultValue, temps = g.lowerExpression(v.DefaultValue, v.DefaultValue.Type())
 	}
 	g.genTemps(w, temps)
 
@@ -418,7 +465,7 @@ func (g *generator) genConfigVariable(w io.Writer, v *hcl2.ConfigVariable) {
 }
 
 func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
-	value, temps := g.lowerExpression(v.Definition.Value)
+	value, temps := g.lowerExpression(v.Definition.Value, v.Type())
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia
@@ -426,7 +473,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 }
 
 func (g *generator) genOutputVariable(w io.Writer, v *hcl2.OutputVariable) {
-	value, temps := g.lowerExpression(v.Value)
+	value, temps := g.lowerExpression(v.Value, v.Type())
 	g.genTemps(w, temps)
 
 	// TODO(pdg): trivia

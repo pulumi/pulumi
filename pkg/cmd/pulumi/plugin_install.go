@@ -19,14 +19,16 @@ import (
 	"io"
 	"os"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPluginInstallCmd() *cobra.Command {
@@ -34,7 +36,6 @@ func newPluginInstallCmd() *cobra.Command {
 	var exact bool
 	var file string
 	var reinstall bool
-	var verbose bool
 
 	var cmd = &cobra.Command{
 		Use:   "install [KIND NAME VERSION]",
@@ -96,40 +97,31 @@ func newPluginInstallCmd() *cobra.Command {
 			// Now for each kind, name, version pair, download it from the release website, and install it.
 			for _, install := range installs {
 				label := fmt.Sprintf("[%s plugin %s]", install.Kind, install)
-				cmdutil.Diag().Infoerrf(
-					diag.Message("", "%s installing"), label)
 
 				// If the plugin already exists, don't download it unless --reinstall was passed.  Note that
 				// by default we accept plugins with >= constraints, unless --exact was passed which requires ==.
 				if !reinstall {
 					if exact {
 						if workspace.HasPlugin(install) {
-							if verbose {
-								cmdutil.Diag().Infoerrf(
-									diag.Message("", "%s skipping install (existing == match)"), label)
-							}
+							logging.V(1).Infof("%s skipping install (existing == match)", label)
 							continue
 						}
 					} else {
 						if has, _ := workspace.HasPluginGTE(install); has {
-							if verbose {
-								cmdutil.Diag().Infoerrf(
-									diag.Message("", "%s skipping install (existing >= match)"), label)
-							}
+							logging.V(1).Infof("%s skipping install (existing >= match)", label)
 							continue
 						}
 					}
 				}
+
+				cmdutil.Diag().Infoerrf(
+					diag.Message("", "%s installing"), label)
 
 				// If we got here, actually try to do the download.
 				var source string
 				var tarball io.ReadCloser
 				var err error
 				if file == "" {
-					if verbose {
-						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s downloading from %s"), label, install.ServerURL)
-					}
 					var size int64
 					if tarball, size, err = install.Download(); err != nil {
 						return errors.Wrapf(err, "%s downloading from %s", label, install.ServerURL)
@@ -137,18 +129,12 @@ func newPluginInstallCmd() *cobra.Command {
 					tarball = workspace.ReadCloserProgressBar(tarball, size, "Downloading plugin", displayOpts.Color)
 				} else {
 					source = file
-					if verbose {
-						cmdutil.Diag().Infoerrf(
-							diag.Message("", "%s opening tarball from %s"), label, file)
-					}
+					logging.V(1).Infof("%s opening tarball from %s", label, file)
 					if tarball, err = os.Open(file); err != nil {
 						return errors.Wrapf(err, "opening file %s", source)
 					}
 				}
-				if verbose {
-					cmdutil.Diag().Infoerrf(
-						diag.Message("", "%s installing tarball ..."), label)
-				}
+				logging.V(1).Infof("%s installing tarball ...", label)
 				if err = install.Install(tarball); err != nil {
 					return errors.Wrapf(err, "installing %s from %s", label, source)
 				}
@@ -166,8 +152,6 @@ func newPluginInstallCmd() *cobra.Command {
 		"file", "f", "", "Install a plugin from a tarball file, instead of downloading it")
 	cmd.PersistentFlags().BoolVar(&reinstall,
 		"reinstall", false, "Reinstall a plugin even if it already exists")
-	cmd.PersistentFlags().BoolVar(&verbose,
-		"verbose", false, "Print detailed information about the installation steps")
 
 	return cmd
 }

@@ -21,12 +21,12 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
-	"github.com/pulumi/pulumi/sdk/v2/python"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/spf13/cobra"
 	survey "gopkg.in/AlecAivazis/survey.v1"
 	surveycore "gopkg.in/AlecAivazis/survey.v1/core"
@@ -193,15 +193,15 @@ func installPolicyPackDependencies(proj *workspace.PolicyPackProject, projPath, 
 			return errors.Wrapf(err, "`%s install` failed; rerun manually to try again.", bin)
 		}
 	} else if strings.EqualFold(proj.Runtime.Name(), "python") {
-		if err := python.InstallDependencies(root, true /*showOutput*/, func(virtualenv string) error {
-			// Save project with venv info.
-			proj.Runtime.SetOption("virtualenv", virtualenv)
-			if err := proj.Save(projPath); err != nil {
-				return errors.Wrapf(err, "saving project at %s", projPath)
-			}
-			return nil
-		}); err != nil {
+		const venvDir = "venv"
+		if err := python.InstallDependencies(root, venvDir, true /*showOutput*/); err != nil {
 			return err
+		}
+
+		// Save project with venv info.
+		proj.Runtime.SetOption("virtualenv", venvDir)
+		if err := proj.Save(projPath); err != nil {
+			return errors.Wrapf(err, "saving project at %s", projPath)
 		}
 	}
 	return nil

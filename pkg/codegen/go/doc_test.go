@@ -22,7 +22,7 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -32,15 +32,17 @@ var testPackageSpec = schema.PackageSpec{
 	Meta: &schema.MetadataSpec{
 		ModuleFormat: "(.*)(?:/[^/]*)",
 	},
-	Types: map[string]schema.ObjectTypeSpec{
+	Types: map[string]schema.ComplexTypeSpec{
 		"aws:s3/BucketCorsRule:BucketCorsRule": {
-			Description: "The resource options object.",
-			Type:        "object",
-			Properties: map[string]schema.PropertySpec{
-				"stringProp": {
-					Description: "A string prop.",
-					TypeSpec: schema.TypeSpec{
-						Type: "string",
+			ObjectTypeSpec: schema.ObjectTypeSpec{
+				Description: "The resource options object.",
+				Type:        "object",
+				Properties: map[string]schema.PropertySpec{
+					"stringProp": {
+						Description: "A string prop.",
+						TypeSpec: schema.TypeSpec{
+							Type: "string",
+						},
 					},
 				},
 			},
@@ -77,9 +79,9 @@ func TestGetDocLinkForPulumiType(t *testing.T) {
 	})
 	t.Run("Generate_V2_ResourceOptionsLink", func(t *testing.T) {
 		pkg.Version = &semver.Version{
-			Major: 2,
+			Major: 3,
 		}
-		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#ResourceOption"
+		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption"
 		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
 		assert.Equal(t, expected, link)
 		pkg.Version = nil

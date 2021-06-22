@@ -17,19 +17,19 @@ package codegen
 import (
 	"github.com/pgavlin/goldmark/ast"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // DocLanguageHelper is an interface for extracting language-specific information from a Pulumi schema.
 // See the implementation for this interface under each of the language code generators.
 type DocLanguageHelper interface {
 	GetPropertyName(p *schema.Property) (string, error)
+	GetEnumName(e *schema.Enum, typeName string) (string, error)
 	GetDocLinkForResourceType(pkg *schema.Package, moduleName, typeName string) string
 	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
 	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetDocLinkForBuiltInType(typeName string) string
-	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string
+	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string
 
 	GetFunctionName(modName string, f *schema.Function) string
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
@@ -47,7 +47,8 @@ func filterExamples(source []byte, node ast.Node, lang string) {
 		next = c.NextSibling()
 		switch c := c.(type) {
 		case *ast.FencedCodeBlock:
-			if string(c.Language(source)) != lang {
+			sourceLang := string(c.Language(source))
+			if sourceLang != lang && sourceLang != "sh" {
 				node.RemoveChild(node, c)
 			}
 		case *schema.Shortcode:

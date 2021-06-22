@@ -1,0 +1,3 @@
+name: get_resource
+description: A simple .NET program that gets an existing resource from the engine.
+runtime: dotnet

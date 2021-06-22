@@ -19,11 +19,13 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"sync"
 
+	"github.com/blang/semver"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"golang.org/x/net/context"
-
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -182,12 +184,16 @@ func marshalInputAndDetermineSecret(v interface{},
 	destType reflect.Type,
 	await bool) (resource.PropertyValue, []Resource, bool, error) {
 	secret := false
+	var deps []Resource
 	for {
 		valueType := reflect.TypeOf(v)
 
 		// If this is an Input, make sure it is of the proper type and await it if it is an output/
-		var deps []Resource
 		if input, ok := v.(Input); ok {
+			if inputType := reflect.ValueOf(input); inputType.Kind() == reflect.Ptr && inputType.IsNil() {
+				// input type is a ptr type with a nil backing value
+				return resource.PropertyValue{}, nil, secret, nil
+			}
 			valueType = input.ElementType()
 
 			// If the element type of the input is not identical to the type of the destination and the destination is
@@ -197,7 +203,9 @@ func marshalInputAndDetermineSecret(v interface{},
 					// We were able to convert the input. Use the result as the new input value.
 					input, valueType = newOutput, destType
 				} else if !valueType.AssignableTo(destType) {
-					err := fmt.Errorf("cannot marshal an input of type %T as a value of type %v", input, destType)
+					err := fmt.Errorf(
+						"cannot marshal an input of type %T with element type %v as a value of type %v",
+						input, valueType, destType)
 					return resource.PropertyValue{}, nil, false, err
 				}
 			}
@@ -209,7 +217,7 @@ func marshalInputAndDetermineSecret(v interface{},
 				}
 
 				// Await the output.
-				ov, known, outputSecret, err := output.await(context.TODO())
+				ov, known, outputSecret, outputDeps, err := output.getState().await(context.TODO())
 				if err != nil {
 					return resource.PropertyValue{}, nil, false, err
 				}
@@ -217,10 +225,10 @@ func marshalInputAndDetermineSecret(v interface{},
 
 				// If the value is unknown, return the appropriate sentinel.
 				if !known {
-					return resource.MakeComputed(resource.NewStringProperty("")), output.dependencies(), secret, nil
+					return resource.MakeComputed(resource.NewStringProperty("")), outputDeps, secret, nil
 				}
 
-				v, deps = ov, output.dependencies()
+				v, deps = ov, outputDeps
 			}
 		}
 
@@ -254,15 +262,27 @@ func marshalInputAndDetermineSecret(v interface{},
 				Path:   v.Path(),
 				URI:    v.URI(),
 			}), deps, secret, nil
-		case CustomResource:
+		case Resource:
 			deps = append(deps, v)
 
-			// Resources aren't serializable; instead, serialize a reference to ID, tracking as a dependency.
-			e, d, err := marshalInput(v.ID(), idType, await)
+			urn, known, secretURN, err := v.URN().awaitURN(context.Background())
 			if err != nil {
 				return resource.PropertyValue{}, nil, false, err
 			}
-			return e, append(deps, d...), secret, nil
+			contract.Assert(known)
+			contract.Assert(!secretURN)
+
+			if custom, ok := v.(CustomResource); ok {
+				id, _, secretID, err := custom.ID().awaitID(context.Background())
+				if err != nil {
+					return resource.PropertyValue{}, nil, false, err
+				}
+				contract.Assert(!secretID)
+
+				return resource.MakeCustomResourceReference(resource.URN(urn), resource.ID(id), ""), deps, secret, nil
+			}
+
+			return resource.MakeComponentResourceReference(resource.URN(urn), ""), deps, secret, nil
 		}
 
 		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
@@ -372,12 +392,47 @@ func marshalInputAndDetermineSecret(v interface{},
 	}
 }
 
-func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error) {
+func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (Resource, error) {
+	version := nullVersion
+	if len(ref.PackageVersion) > 0 {
+		var err error
+		version, err = semver.ParseTolerant(ref.PackageVersion)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse provider version: %s", ref.PackageVersion)
+		}
+	}
+
+	resName := ref.URN.Name().String()
+	resType := ref.URN.Type()
+
+	isProvider := tokens.Token(resType).HasModuleMember() && resType.Module() == "pulumi:providers"
+	if isProvider {
+		pkgName := resType.Name().String()
+		if resourcePackageV, ok := resourcePackages.Load(pkgName, version); ok {
+			resourcePackage := resourcePackageV.(ResourcePackage)
+			return resourcePackage.ConstructProvider(ctx, resName, string(resType), string(ref.URN))
+		}
+		id, _ := ref.IDString()
+		return ctx.newDependencyProviderResource(URN(ref.URN), ID(id)), nil
+	}
+
+	modName := resType.Module().String()
+	if resourceModuleV, ok := resourceModules.Load(modName, version); ok {
+		resourceModule := resourceModuleV.(ResourceModule)
+		return resourceModule.Construct(ctx, resName, string(resType), string(ref.URN))
+	}
+	if id, hasID := ref.IDString(); hasID {
+		return ctx.newDependencyCustomResource(URN(ref.URN), ID(id)), nil
+	}
+	return ctx.newDependencyResource(URN(ref.URN)), nil
+}
+
+func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {
 	switch {
 	case v.IsComputed() || v.IsOutput():
 		return nil, false, nil
 	case v.IsSecret():
-		sv, _, err := unmarshalPropertyValue(v.SecretValue().Element)
+		sv, _, err := unmarshalPropertyValue(ctx, v.SecretValue().Element)
 		if err != nil {
 			return nil, false, err
 		}
@@ -387,7 +442,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		rv := make([]interface{}, len(arr))
 		secret := false
 		for i, e := range arr {
-			ev, esecret, err := unmarshalPropertyValue(e)
+			ev, esecret, err := unmarshalPropertyValue(ctx, e)
 			secret = secret || esecret
 			if err != nil {
 				return nil, false, err
@@ -399,7 +454,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		m := make(map[string]interface{})
 		secret := false
 		for k, e := range v.ObjectValue() {
-			ev, esecret, err := unmarshalPropertyValue(e)
+			ev, esecret, err := unmarshalPropertyValue(ctx, e)
 			secret = secret || esecret
 			if err != nil {
 				return nil, false, err
@@ -425,7 +480,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 		case archive.IsAssets():
 			as := make(map[string]interface{})
 			for k, v := range archive.Assets {
-				a, asecret, err := unmarshalPropertyValue(resource.NewPropertyValue(v))
+				a, asecret, err := unmarshalPropertyValue(ctx, resource.NewPropertyValue(v))
 				secret = secret || asecret
 				if err != nil {
 					return nil, false, err
@@ -437,9 +492,14 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 			return NewFileArchive(archive.Path), secret, nil
 		case archive.IsURI():
 			return NewRemoteArchive(archive.URI), secret, nil
-		default:
 		}
 		return nil, false, errors.New("expected asset to be one of File, String, or Remote; got none")
+	case v.IsResourceReference():
+		resource, err := unmarshalResourceReference(ctx, v.ResourceReferenceValue())
+		if err != nil {
+			return nil, false, err
+		}
+		return resource, false, nil
 	default:
 		return v.V, false, nil
 	}
@@ -447,7 +507,7 @@ func unmarshalPropertyValue(v resource.PropertyValue) (interface{}, bool, error)
 
 // unmarshalOutput unmarshals a single output variable into its runtime representation.
 // returning a bool that indicates secretness
-func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error) {
+func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value) (bool, error) {
 	contract.Assert(dest.CanSet())
 
 	// Check for nils and unknowns. The destination will be left with the zero value.
@@ -469,7 +529,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 			return false, fmt.Errorf("expected a %s, got an asset", dest.Type())
 		}
 
-		asset, secret, err := unmarshalPropertyValue(v)
+		asset, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
@@ -480,17 +540,28 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 			return false, fmt.Errorf("expected a %s, got an archive", dest.Type())
 		}
 
-		archive, secret, err := unmarshalPropertyValue(v)
+		archive, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
 		dest.Set(reflect.ValueOf(archive))
 		return secret, nil
 	case v.IsSecret():
-		if _, err := unmarshalOutput(v.SecretValue().Element, dest); err != nil {
+		if _, err := unmarshalOutput(ctx, v.SecretValue().Element, dest); err != nil {
 			return false, err
 		}
 		return true, nil
+	case v.IsResourceReference():
+		res, secret, err := unmarshalPropertyValue(ctx, v)
+		if err != nil {
+			return false, err
+		}
+		resV := reflect.ValueOf(res).Elem()
+		if !resV.Type().AssignableTo(dest.Type()) {
+			return false, fmt.Errorf("expected a %s, got a resource of type %s", dest.Type(), resV.Type())
+		}
+		dest.Set(resV)
+		return secret, nil
 	}
 
 	// Unmarshal based on the desired type.
@@ -520,10 +591,19 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		dest.SetFloat(v.NumberValue())
 		return false, nil
 	case reflect.String:
-		if !v.IsString() {
+		switch {
+		case v.IsString():
+			dest.SetString(v.StringValue())
+		case v.IsResourceReference():
+			ref := v.ResourceReferenceValue()
+			if id, hasID := ref.IDString(); hasID {
+				dest.SetString(id)
+			} else {
+				dest.SetString(string(ref.URN))
+			}
+		default:
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
-		dest.SetString(v.StringValue())
 		return false, nil
 	case reflect.Slice:
 		if !v.IsArray() {
@@ -533,7 +613,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		slice := reflect.MakeSlice(dest.Type(), len(arr), len(arr))
 		secret := false
 		for i, e := range arr {
-			isecret, err := unmarshalOutput(e, slice.Index(i))
+			isecret, err := unmarshalOutput(ctx, e, slice.Index(i))
 			if err != nil {
 				return false, err
 			}
@@ -559,7 +639,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 				continue
 			}
 			elem := reflect.New(elemType).Elem()
-			esecret, err := unmarshalOutput(e, elem)
+			esecret, err := unmarshalOutput(ctx, e, elem)
 			if err != nil {
 				return false, err
 			}
@@ -578,7 +658,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 		}
 
 		// If we're unmarshaling into the empty interface type, use the property type as the type of the result.
-		result, secret, err := unmarshalPropertyValue(v)
+		result, secret, err := unmarshalPropertyValue(ctx, v)
 		if err != nil {
 			return false, err
 		}
@@ -608,7 +688,7 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 				continue
 			}
 
-			osecret, err := unmarshalOutput(e, fieldV)
+			osecret, err := unmarshalOutput(ctx, e, fieldV)
 			secret = secret || osecret
 			if err != nil {
 				return false, err
@@ -618,4 +698,105 @@ func unmarshalOutput(v resource.PropertyValue, dest reflect.Value) (bool, error)
 	default:
 		return false, fmt.Errorf("cannot unmarshal into type %v", dest.Type())
 	}
+}
+
+type Versioned interface {
+	Version() semver.Version
+}
+
+type versionedMap struct {
+	sync.RWMutex
+	versions map[string][]Versioned
+}
+
+// nullVersion represents the wildcard version (match any version).
+var nullVersion semver.Version
+
+func (vm *versionedMap) Load(key string, version semver.Version) (Versioned, bool) {
+	vm.RLock()
+	defer vm.RUnlock()
+
+	wildcard := version.EQ(nullVersion)
+
+	var bestVersion Versioned
+	for _, v := range vm.versions[key] {
+		// Unless we are matching a wildcard version, constrain search to matching major version.
+		if !wildcard && v.Version().Major != version.Major {
+			continue
+		}
+
+		// If we find an exact match, return that.
+		if v.Version().EQ(version) {
+			return v, true
+		}
+
+		if bestVersion == nil {
+			bestVersion = v
+			continue
+		}
+		if v.Version().GTE(bestVersion.Version()) {
+			bestVersion = v
+		}
+	}
+
+	return bestVersion, bestVersion != nil
+}
+
+func (vm *versionedMap) Store(key string, value Versioned) error {
+	vm.Lock()
+	defer vm.Unlock()
+
+	hasVersion := func(versions []Versioned, version semver.Version) bool {
+		for _, v := range versions {
+			if v.Version().EQ(value.Version()) {
+				return true
+			}
+		}
+		return false
+	}
+
+	if _, exists := vm.versions[key]; exists && hasVersion(vm.versions[key], value.Version()) {
+		return fmt.Errorf("existing registration for %v: %s", key, value.Version())
+	}
+
+	vm.versions[key] = append(vm.versions[key], value)
+
+	return nil
+}
+
+type ResourcePackage interface {
+	Versioned
+	ConstructProvider(ctx *Context, name, typ, urn string) (ProviderResource, error)
+}
+
+type ResourceModule interface {
+	Versioned
+	Construct(ctx *Context, name, typ, urn string) (Resource, error)
+}
+
+var resourcePackages versionedMap
+var resourceModules versionedMap
+
+// RegisterResourcePackage register a resource package with the Pulumi runtime.
+func RegisterResourcePackage(pkg string, resourcePackage ResourcePackage) {
+	if err := resourcePackages.Store(pkg, resourcePackage); err != nil {
+		panic(err)
+	}
+}
+
+func moduleKey(pkg, mod string) string {
+	return fmt.Sprintf("%s:%s", pkg, mod)
+}
+
+// RegisterResourceModule register a resource module with the Pulumi runtime.
+func RegisterResourceModule(pkg, mod string, module ResourceModule) {
+	key := moduleKey(pkg, mod)
+	if err := resourceModules.Store(key, module); err != nil {
+		panic(err)
+	}
+}
+
+func init() {
+	resourcePackages = versionedMap{versions: make(map[string][]Versioned)}
+	resourceModules = versionedMap{versions: make(map[string][]Versioned)}
 }

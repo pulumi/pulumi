@@ -13,24 +13,69 @@ namespace Pulumi.Testing
         /// <summary>
         /// Invoked when a new resource is created by the program.
         /// </summary>
-        /// <param name="type">Resource type name.</param>
-        /// <param name="name">Resource name.</param>
-        /// <param name="inputs">Dictionary of resource input properties.</param>
-        /// <param name="provider">Provider.</param>
-        /// <param name="id">Resource identifier.</param>
+        /// <param name="args">MockResourceArgs</param>
         /// <returns>A tuple of a resource identifier and resource state. State can be either a POCO
-        /// or a dictionary bag.</returns>
-        Task<(string id, object state)> NewResourceAsync(string type, string name,
-            ImmutableDictionary<string, object> inputs, string? provider, string? id);
+        /// or a dictionary bag. The returned ID may be null for component resources.</returns>
+        Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args);
 
         /// <summary>
         /// Invoked when the program needs to call a provider to load data (e.g., to retrieve an existing
         /// resource).
         /// </summary>
-        /// <param name="token">Function token.</param>
-        /// <param name="args">Dictionary of input arguments.</param>
-        /// <param name="provider">Provider.</param>
+        /// <param name="args">MockCallArgs</param>
         /// <returns>Invocation result, can be either a POCO or a dictionary bag.</returns>
-        Task<object> CallAsync(string token, ImmutableDictionary<string, object> args, string? provider);
+        Task<object> CallAsync(MockCallArgs args);
+    }
+    
+    /// <summary>
+    /// MockResourceArgs for use in NewResourceAsync
+    /// </summary>
+    public class MockResourceArgs
+    {
+        /// <summary>
+        /// Resource type name.
+        /// </summary>
+        public string? Type { get; set; }
+        
+        /// <summary>
+        /// Resource Name.
+        /// </summary>
+        public string? Name { get; set; }   
+        
+        /// <summary>
+        /// Dictionary of resource input properties.
+        /// </summary>
+        public ImmutableDictionary<string, object> Inputs { get; set; } = null!;
+
+        /// <summary>
+        /// Provider.
+        /// </summary>
+        public string? Provider { get; set; }
+        
+        /// <summary>
+        /// Resource identifier.
+        /// </summary>
+        public string? Id { get; set; }
+    }
+
+    /// <summary>
+    /// MockCallArgs for use in CallAsync
+    /// </summary>
+    public class MockCallArgs
+    {
+        /// <summary>
+        /// Resource identifier.
+        /// </summary>
+        public string? Token { get; set; }
+        
+        /// <summary>
+        /// Dictionary of input arguments.
+        /// </summary>
+        public ImmutableDictionary<string, object> Args { get; set; } = null!;
+        
+        /// <summary>
+        /// Provider.
+        /// </summary>
+        public string? Provider { get; set; }
     }
 }

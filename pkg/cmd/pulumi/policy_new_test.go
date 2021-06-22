@@ -71,6 +71,7 @@ func TestInvalidPolicyPackTemplateName(t *testing.T) {
 		t.Parallel()
 		tempdir, _ := ioutil.TempDir("", "test-env")
 		defer os.RemoveAll(tempdir)
+		assert.DirExists(t, tempdir)
 		assert.NoError(t, os.Chdir(tempdir))
 
 		var args = newPolicyArgs{

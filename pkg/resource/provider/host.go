@@ -17,11 +17,11 @@ package provider
 import (
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	lumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	lumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 )
@@ -52,6 +52,11 @@ func NewHostClient(addr string) (*HostClient, error) {
 // Close closes and renders the connection and client unusable.
 func (host *HostClient) Close() error {
 	return host.conn.Close()
+}
+
+// EngineConn provides the engine gRPC client connection.
+func (host *HostClient) EngineConn() *grpc.ClientConn {
+	return host.conn
 }
 
 func (host *HostClient) log(

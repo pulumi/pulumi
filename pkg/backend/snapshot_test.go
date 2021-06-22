@@ -20,12 +20,15 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/secrets/b64"
-	"github.com/pulumi/pulumi/pkg/v2/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/b64"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 )
 
 type MockRegisterResourceEvent struct {
@@ -69,6 +72,16 @@ func NewResourceWithDeps(name string, deps []resource.URN) *resource.State {
 		Inputs:       make(resource.PropertyMap),
 		Outputs:      make(resource.PropertyMap),
 		Dependencies: deps,
+	}
+}
+
+func NewResourceWithInputs(name string, inputs resource.PropertyMap) *resource.State {
+	return &resource.State{
+		Type:         tokens.Type("test"),
+		URN:          resource.URN(name),
+		Inputs:       inputs,
+		Outputs:      make(resource.PropertyMap),
+		Dependencies: []resource.URN{},
 	}
 }
 
@@ -126,6 +139,33 @@ func TestSamesWithEmptyDependencies(t *testing.T) {
 	})
 	manager, sp := MockSetup(t, snap)
 	resUpdated := NewResourceWithDeps(string(res.URN), []resource.URN{})
+	same := deploy.NewSameStep(nil, nil, res, resUpdated)
+	mutation, err := manager.BeginMutation(same)
+	assert.NoError(t, err)
+	err = mutation.End(same, true)
+	assert.NoError(t, err)
+	assert.Len(t, sp.SavedSnapshots, 0, "expected no snapshots to be saved for same step")
+}
+
+func TestSamesWithEmptyArraysInInputs(t *testing.T) {
+	// Model reading from state file
+	state := map[string]interface{}{"defaults": []interface{}{}}
+	inputs, err := stack.DeserializeProperties(state, config.NopDecrypter, config.NopEncrypter)
+	assert.NoError(t, err)
+
+	res := NewResourceWithInputs("a-unique-urn-resource-a", inputs)
+	snap := NewSnapshot([]*resource.State{
+		res,
+	})
+	manager, sp := MockSetup(t, snap)
+
+	// Model passing into and back out of RPC layer (e.g. via `Check`)
+	marshalledInputs, err := plugin.MarshalProperties(inputs, plugin.MarshalOptions{})
+	assert.NoError(t, err)
+	inputsUpdated, err := plugin.UnmarshalProperties(marshalledInputs, plugin.MarshalOptions{})
+	assert.NoError(t, err)
+
+	resUpdated := NewResourceWithInputs(string(res.URN), inputsUpdated)
 	same := deploy.NewSameStep(nil, nil, res, resUpdated)
 	mutation, err := manager.BeginMutation(same)
 	assert.NoError(t, err)

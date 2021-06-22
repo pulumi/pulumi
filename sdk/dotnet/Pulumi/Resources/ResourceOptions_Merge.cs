@@ -9,6 +9,7 @@ namespace Pulumi
             options1.Id = options2.Id ?? options1.Id;
             options1.Parent = options2.Parent ?? options1.Parent;
             options1.Protect = options2.Protect ?? options1.Protect;
+            options1.Urn = options2.Urn ?? options1.Urn;
             options1.Version = options2.Version ?? options1.Version;
             options1.Provider = options2.Provider ?? options1.Provider;
             options1.CustomTimeouts = options2.CustomTimeouts ?? options1.CustomTimeouts;

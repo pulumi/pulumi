@@ -5,9 +5,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 )
 
 func TestTranslateDetailedDiff(t *testing.T) {
@@ -705,6 +705,21 @@ func TestTranslateDetailedDiff(t *testing.T) {
 							Updates: map[int]resource.ValueDiff{},
 						},
 					},
+				},
+			},
+		},
+		{
+			state:  map[string]interface{}{},
+			inputs: map[string]interface{}{},
+			detailedDiff: map[string]plugin.PropertyDiff{
+				"foo[something.wonky]probably/miscalculated.by.provider": U,
+			},
+			expected: &resource.ObjectDiff{
+				Adds:    resource.PropertyMap{},
+				Deletes: resource.PropertyMap{},
+				Sames:   resource.PropertyMap{},
+				Updates: map[resource.PropertyKey]resource.ValueDiff{
+					"foo[something.wonky]probably/miscalculated.by.provider": {},
 				},
 			},
 		},

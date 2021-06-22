@@ -26,7 +26,7 @@ namespace Pulumi
         /// </summary>
         public InputList<Resource> DependsOn
         {
-            get => _dependsOn ?? (_dependsOn = new InputList<Resource>());
+            get => _dependsOn ??= new InputList<Resource>();
             set => _dependsOn = value;
         }
 
@@ -42,7 +42,7 @@ namespace Pulumi
         /// </summary>
         public List<string> IgnoreChanges
         {
-            get => _ignoreChanges ?? (_ignoreChanges = new List<string>());
+            get => _ignoreChanges ??= new List<string>();
             set => _ignoreChanges = value;
         }
 
@@ -78,7 +78,7 @@ namespace Pulumi
         /// </summary>
         public List<ResourceTransformation> ResourceTransformations
         {
-            get => _resourceTransformations ?? (_resourceTransformations = new List<ResourceTransformation>());
+            get => _resourceTransformations ??= new List<ResourceTransformation>();
             set => _resourceTransformations = value;
         }
 
@@ -86,6 +86,11 @@ namespace Pulumi
         /// An optional list of aliases to treat this resource as matching.
         /// </summary>
         public List<Input<Alias>> Aliases { get; set; } = new List<Input<Alias>>();
+
+        /// <summary>
+        /// The URN of a previously-registered resource of this type to read from the engine.
+        /// </summary>
+        public string? Urn { get; set; }
 
         internal abstract ResourceOptions Clone();
     }

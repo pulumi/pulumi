@@ -6,7 +6,6 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
-using Pulumi.Serialization;
 
 namespace Pulumi
 {
@@ -31,20 +30,20 @@ namespace Pulumi
         /// may look a bit confusing and may incorrectly look like something that could be removed
         /// without changing semantics.
         /// </summary>
-        internal static readonly Resource? Root = null;
+        internal static Resource? Root { get; } = null;
 
         /// <summary>
         /// <see cref="_rootPulumiStackTypeName"/> is the type name that should be used to construct
         /// the root component in the tree of Pulumi resources allocated by a deployment.This must
         /// be kept up to date with
-        /// <c>github.com/pulumi/pulumi/pkg/v2/resource/stack.RootPulumiStackTypeName</c>.
+        /// <c>github.com/pulumi/pulumi/sdk/v3/go/common/resource/stack.RootStackType</c>.
         /// </summary>
         internal const string _rootPulumiStackTypeName = "pulumi:pulumi:Stack";
 
         /// <summary>
         /// The outputs of this stack, if the <c>init</c> callback exited normally.
         /// </summary>
-        internal Output<IDictionary<string, object?>> Outputs =
+        internal Output<IDictionary<string, object?>> Outputs { get; private set; } =
             Output.Create<IDictionary<string, object?>>(ImmutableDictionary<string, object?>.Empty);
 
         /// <summary>
@@ -113,12 +112,10 @@ namespace Pulumi
             this.RegisterOutputs(this.Outputs);
         }
 
-        private async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)
+        private static async Task<IDictionary<string, object?>> RunInitAsync(Func<Task<IDictionary<string, object?>>> init)
         {
             var dictionary = await init().ConfigureAwait(false);
-            return dictionary == null
-                ? ImmutableDictionary<string, object?>.Empty
-                : dictionary.ToImmutableDictionary();
+            return dictionary.ToImmutableDictionary();
         }
         
         private static ComponentResourceOptions? ConvertOptions(StackOptions? options)

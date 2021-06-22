@@ -107,7 +107,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         props = rpc.deserialize_properties(request.properties)
         provider = get_provider(props)
         result = provider.create(props)
-        outs = result.outs
+        outs = result.outs if result.outs is not None else {}
         outs[PROVIDER_KEY] = props[PROVIDER_KEY]
 
         loop = asyncio.new_event_loop()
@@ -135,7 +135,7 @@ class DynamicResourceProviderServicer(ResourceProviderServicer):
         inputs_proto = loop.run_until_complete(rpc.serialize_properties(inputs, {}))
         loop.close()
 
-        failures_proto = [proto.CheckFailure(f.property, f.reason) for f in failures]
+        failures_proto = [proto.CheckFailure(property=f.property, reason=f.reason) for f in failures]
 
         fields = {"inputs": inputs_proto, "failures": failures_proto}
         return proto.CheckResponse(**fields)

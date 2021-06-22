@@ -11,12 +11,14 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
+// Package secrets defines the interface common to all secret managers.
 package secrets
 
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 )
 
 // Manager provides the interface for providing stack encryption.

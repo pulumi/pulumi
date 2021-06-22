@@ -27,18 +27,18 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"github.com/google/go-querystring/query"
 	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/pkg/v2/util/tracing"
-	"github.com/pulumi/pulumi/pkg/v2/version"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/httputil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/pkg/v3/util/tracing"
+	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/httputil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 const (
@@ -137,9 +137,11 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 			return "", nil, errors.Wrapf(err, "compressing payload")
 		}
 
-		// gzip.Writer will not actually write anything unless it is flushed.
-		if err := writer.Flush(); err != nil {
-			return "", nil, errors.Wrapf(err, "flushing compressed payload")
+		// gzip.Writer will not actually write anything unless it is flushed,
+		//  and it will not actually write the GZip footer unless it is closed. (Close also flushes)
+		// Without this, the compressed bytes do not decompress properly e.g. in python.
+		if err := writer.Close(); err != nil {
+			return "", nil, errors.Wrapf(err, "closing compressed payload")
 		}
 
 		logging.V(apiRequestDetailLogLevel).Infof("gzip compression ratio: %f, original size: %d bytes",
@@ -169,7 +171,7 @@ func pulumiAPICall(ctx context.Context, d diag.Sink, cloudAPI, method, path stri
 	userAgent := fmt.Sprintf("pulumi-cli/1 (%s; %s)", version.Version, runtime.GOOS)
 	req.Header.Set("User-Agent", userAgent)
 	// Specify the specific API version we accept.
-	req.Header.Set("Accept", "application/vnd.pulumi+6")
+	req.Header.Set("Accept", "application/vnd.pulumi+7")
 
 	// Apply credentials if provided.
 	if tok.String() != "" {
@@ -331,7 +333,9 @@ func readBody(resp *http.Response) ([]byte, error) {
 	case "gzip":
 		logging.V(apiRequestDetailLogLevel).Infoln("decompressing gzipped response from service")
 		reader, err := gzip.NewReader(resp.Body)
-		defer contract.IgnoreClose(reader)
+		if reader != nil {
+			defer contract.IgnoreClose(reader)
+		}
 		if err != nil {
 			return nil, errors.Wrap(err, "reading gzip-compressed body")
 		}

@@ -27,11 +27,11 @@ import (
 
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/version"
-	pulumirpc "github.com/pulumi/pulumi/sdk/v2/proto/go"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/version"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 	"google.golang.org/grpc"
 )
 
@@ -47,8 +47,10 @@ var (
 func main() {
 	var tracing string
 	var binary string
+	var root string
 	flag.StringVar(&tracing, "tracing", "", "Emit tracing to a Zipkin-compatible tracing endpoint")
 	flag.StringVar(&binary, "binary", "", "A relative or an absolute path to a precompiled .NET assembly to execute")
+	flag.StringVar(&root, "root", "", "Project root path to use")
 
 	// You can use the below flag to request that the language host load a specific executor instead of probing the
 	// PATH.  This can be used during testing to override the default location.
@@ -61,7 +63,13 @@ func main() {
 	logging.InitLogging(false, 0, false)
 	cmdutil.InitTracing("pulumi-language-dotnet", "pulumi-language-dotnet", tracing)
 	var dotnetExec string
-	if givenExecutor == "" {
+	switch {
+	case givenExecutor != "":
+		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
+		dotnetExec = givenExecutor
+	case binary != "" && !strings.HasSuffix(binary, ".dll"):
+		logging.V(3).Info("language host requires no .NET SDK for a self-contained binary")
+	default:
 		pathExec, err := exec.LookPath("dotnet")
 		if err != nil {
 			err = errors.Wrap(err, "could not find `dotnet` on the $PATH")
@@ -70,9 +78,6 @@ func main() {
 
 		logging.V(3).Infof("language host identified executor from path: `%s`", pathExec)
 		dotnetExec = pathExec
-	} else {
-		logging.V(3).Infof("language host asked to use specific executor: `%s`", givenExecutor)
-		dotnetExec = givenExecutor
 	}
 
 	// Optionally pluck out the engine so we can do logging, etc.
@@ -327,6 +332,13 @@ func (host *dotnetLanguageHost) DeterminePluginDependency(
 	name := strings.ToLower(packageName[len("Pulumi."):])
 
 	version := strings.TrimSpace(bytes.NewBuffer(b).String())
+	parts := strings.SplitN(version, "\n", 2)
+	if len(parts) == 2 {
+		// version.txt may contain two lines, in which case it's "plugin name\nversion"
+		name = strings.TrimSpace(parts[0])
+		version = strings.TrimSpace(parts[1])
+	}
+
 	if !strings.HasPrefix(version, "v") {
 		// Version file has stripped off the "v" that we need. So add it back here.
 		version = fmt.Sprintf("v%v", version)
@@ -373,7 +385,7 @@ func (host *dotnetLanguageHost) RunDotnetCommand(
 	// Buffer the writes we see from dotnet from its stdout and stderr streams. We will display
 	// these ephemerally as `dotnet build` runs.  If the build does fail though, we will dump
 	// messages back to our own stdout/stderr so they get picked up and displayed to the user.
-	streamID := rand.Int31()
+	streamID := rand.Int31() //nolint:gosec
 
 	infoBuffer := &bytes.Buffer{}
 	errorBuffer := &bytes.Buffer{}
@@ -476,12 +488,24 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 		err = errors.Wrap(err, "failed to serialize configuration")
 		return nil, err
 	}
+	configSecretKeys, err := host.constructConfigSecretKeys(req)
+	if err != nil {
+		err = errors.Wrap(err, "failed to serialize configuration secret keys")
+		return nil, err
+	}
 
+	executable := host.exec
 	args := []string{}
 
-	if host.binary != "" {
+	switch {
+	case host.binary != "" && strings.HasSuffix(host.binary, ".dll"):
+		// Portable pre-compiled dll: run `dotnet <name>.dll`
 		args = append(args, host.binary)
-	} else {
+	case host.binary != "":
+		// Self-contained executable: run it directly.
+		executable = host.binary
+	default:
+		// Run from source.
 		args = append(args, "run")
 
 		if req.GetProgram() != "" {
@@ -496,10 +520,10 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 
 	// Now simply spawn a process to execute the requested program, wiring up stdout/stderr directly.
 	var errResult string
-	cmd := exec.Command(host.exec, args...) // nolint: gas // intentionally running dynamic program name.
+	cmd := exec.Command(executable, args...) // nolint: gas // intentionally running dynamic program name.
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Env = host.constructEnv(req, config)
+	cmd.Env = host.constructEnv(req, config, configSecretKeys)
 	if err := cmd.Run(); err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			// If the program ran, but exited with a non-zero error code.  This will happen often, since user
@@ -528,7 +552,7 @@ func (host *dotnetLanguageHost) Run(ctx context.Context, req *pulumirpc.RunReque
 	return &pulumirpc.RunResponse{Error: errResult}, nil
 }
 
-func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config string) []string {
+func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config, configSecretKeys string) []string {
 	env := os.Environ()
 
 	maybeAppendEnv := func(k, v string) {
@@ -547,6 +571,7 @@ func (host *dotnetLanguageHost) constructEnv(req *pulumirpc.RunRequest, config s
 	maybeAppendEnv("parallel", fmt.Sprint(req.GetParallel()))
 	maybeAppendEnv("tracing", host.tracing)
 	maybeAppendEnv("config", config)
+	maybeAppendEnv("config_secret_keys", configSecretKeys)
 
 	return env
 }
@@ -564,6 +589,22 @@ func (host *dotnetLanguageHost) constructConfig(req *pulumirpc.RunRequest) (stri
 	}
 
 	return string(configJSON), nil
+}
+
+// constructConfigSecretKeys JSON-serializes the list of keys that contain secret values given as part of
+// a RunRequest.
+func (host *dotnetLanguageHost) constructConfigSecretKeys(req *pulumirpc.RunRequest) (string, error) {
+	configSecretKeys := req.GetConfigSecretKeys()
+	if configSecretKeys == nil {
+		return "[]", nil
+	}
+
+	configSecretKeysJSON, err := json.Marshal(configSecretKeys)
+	if err != nil {
+		return "", err
+	}
+
+	return string(configSecretKeysJSON), nil
 }
 
 func (host *dotnetLanguageHost) GetPluginInfo(ctx context.Context, req *pbempty.Empty) (*pulumirpc.PluginInfo, error) {

@@ -13,24 +13,42 @@
 # limitations under the License.
 import unittest
 import pulumi
+import grpc
+
+
+class GrpcError(grpc.RpcError):
+    def __init__(self, code, details):
+        self._code = code
+        self._details = details
+
+    def code(self):
+        return self._code
+
+    def details(self):
+        return self._details
+
 
 class MyMocks(pulumi.runtime.Mocks):
-    def call(self, token, args, provider):
-        if token == 'test:index:MyFunction':
+    def call(self, args: pulumi.runtime.MockCallArgs):
+        if args.token == 'test:index:MyFunction':
             return {
                 'out_value': 59,
             }
+        elif args.token == 'test:index:FailFunction':
+            return ({}, [('none', 'this function fails!')])
+        elif args.token == 'test:index:ThrowFunction':
+            raise GrpcError(42, 'this function throws!')
         else:
             return {}
 
-    def new_resource(self, type_, name, inputs, provider, id_):
-        if type_ == 'aws:ec2/securityGroup:SecurityGroup':
+    def new_resource(self, args: pulumi.runtime.MockResourceArgs):
+        if args.typ == 'aws:ec2/securityGroup:SecurityGroup':
             state = {
                 'arn': 'arn:aws:ec2:us-west-2:123456789012:security-group/sg-12345678',
-                'name': inputs['name'] if 'name' in inputs else name + '-sg',
+                'name': args.inputs['name'] if 'name' in args.inputs else args.name + '-sg',
             }
-            return ['sg-12345678', dict(inputs, **state)]
-        elif type_ == 'aws:ec2/instance:Instance':
+            return ['sg-12345678', dict(args.inputs, **state)]
+        elif args.typ == 'aws:ec2/instance:Instance':
             state = {
                 'arn': 'arn:aws:ec2:us-west-2:123456789012:instance/i-1234567890abcdef0',
                 'instanceState': 'running',
@@ -39,16 +57,23 @@ class MyMocks(pulumi.runtime.Mocks):
                 'public_dns': 'ec2-203-0-113-12.compute-1.amazonaws.com',
                 'public_ip': '203.0.113.12',
             }
-            return ['i-1234567890abcdef0', dict(inputs, **state)]
+            return ['i-1234567890abcdef0', dict(args.inputs, **state)]
+        elif args.typ == 'pkg:index:MyCustom':
+            return [args.name + '_id', args.inputs]
+        elif args.typ == 'pulumi:pulumi:StackReference' and 'dns' in args.name:
+            return [args.name, {'outputs': {'haha': 'business'}}]
         else:
             return ['', {}]
+
 
 pulumi.runtime.set_mocks(MyMocks())
 
 # Now actually import the code that creates resources, and then test it.
 import resources
 
+
 class TestingWithMocks(unittest.TestCase):
+    @unittest.skip(reason="Skipping flaky test tracked in https://github.com/pulumi/pulumi/issues/6561")
     @pulumi.runtime.test
     def test_component(self):
         def check_outprop(outprop):
@@ -62,5 +87,38 @@ class TestingWithMocks(unittest.TestCase):
         return resources.myinstance.public_ip.apply(check_ip)
 
     @pulumi.runtime.test
+    def test_custom_resource_reference(self):
+        def check_instance(instance):
+            self.assertIsInstance(instance, resources.Instance)
+            def check_ip(ip):
+                self.assertEqual(ip, '203.0.113.12')
+            instance.public_ip.apply(check_ip)
+        return resources.mycustom.instance.apply(check_instance)
+
+    @pulumi.runtime.test
     def test_invoke(self):
         return self.assertEqual(resources.invoke_result, 59)
+
+    @pulumi.runtime.test
+    def test_invoke_failures(self):
+        caught = False
+        try:
+            pulumi.runtime.invoke("test:index:FailFunction", props={})
+        except Exception:
+            caught = True
+        self.assertTrue(caught)
+
+    @pulumi.runtime.test
+    def test_invoke_throws(self):
+        caught = False
+        try:
+            pulumi.runtime.invoke("test:index:ThrowFunction", props={})
+        except Exception:
+            caught = True
+        self.assertTrue(caught)
+
+    @pulumi.runtime.test
+    def test_stack_reference(self):
+        def check_outputs(outputs):
+            self.assertEqual(outputs["haha"], "business")
+        resources.dns_ref.outputs.apply(check_outputs)

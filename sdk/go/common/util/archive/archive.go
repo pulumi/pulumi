@@ -26,8 +26,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // TGZ adds the contents of the provided directory to an in-memory .tar.gz/.tgz and returns the bytes.
@@ -60,61 +60,70 @@ func TGZ(dir, prefixPathInsideTar string, useDefaultExcludes bool) ([]byte, erro
 	return buffer.Bytes(), nil
 }
 
-// UnTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
-func UnTGZ(tarball []byte, dir string) error {
-	tarReader := bytes.NewReader(tarball)
-	gzr, err := gzip.NewReader(tarReader)
-	if err != nil {
-		return errors.Wrapf(err, "unzipping")
-	}
-	r := tar.NewReader(gzr)
-	for {
-		header, err := r.Next()
-		if err == io.EOF {
-			break
-		} else if err != nil {
-			return errors.Wrapf(err, "untarring")
+func extractFile(r *tar.Reader, header *tar.Header, dir string) error {
+	// TODO: check the name to ensure that it does not contain path traversal characters.
+	//
+	//nolint: gosec
+	path := filepath.Join(dir, header.Name)
+
+	switch header.Typeflag {
+	case tar.TypeDir:
+		// Create any directories as needed.
+		if _, err := os.Stat(path); err != nil {
+			if err = os.MkdirAll(path, 0700); err != nil {
+				return errors.Wrapf(err, "extracting dir %s", path)
+			}
+		}
+	case tar.TypeReg:
+		// Create any directories as needed. Some tools (notably `npm pack`) don't list
+		// directories individually, so if a file is in a directory that doesn't exist, we need
+		// to create it here.
+		dir := filepath.Dir(path)
+		if _, err := os.Stat(dir); err != nil {
+			if err = os.MkdirAll(dir, 0700); err != nil {
+				return errors.Wrapf(err, "extracting dir %s", dir)
+			}
 		}
 
-		path := filepath.Join(dir, header.Name)
-
-		switch header.Typeflag {
-		case tar.TypeDir:
-			// Create any directories as needed.
-			if _, err := os.Stat(path); err != nil {
-				if err = os.MkdirAll(path, 0700); err != nil {
-					return errors.Wrapf(err, "untarring dir %s", path)
-				}
-			}
-		case tar.TypeReg:
-			// Create any directories as needed. Some tools (notably `npm pack`) don't list
-			// directories individually, so if a file is in a directory that doesn't exist, we need
-			// to create it here.
-			dir := filepath.Dir(path)
-			if _, err := os.Stat(dir); err != nil {
-				if err = os.MkdirAll(dir, 0700); err != nil {
-					return errors.Wrapf(err, "untarring dir %s", dir)
-				}
-			}
-
-			// Expand files into the target directory.
-			dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
-			if err != nil {
-				return errors.Wrapf(err, "opening file %s for untar", path)
-			}
-			defer contract.IgnoreClose(dst)
-
-			// We're not concerned with potential tarbombs, so disable gosec.
-			//nolint: gosec
-			if _, err = io.Copy(dst, r); err != nil {
-				return errors.Wrapf(err, "untarring file %s", path)
-			}
-		default:
-			return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
+		// Expand files into the target directory.
+		dst, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, os.FileMode(header.Mode))
+		if err != nil {
+			return errors.Wrapf(err, "opening file %s for extraction", path)
 		}
+		defer contract.IgnoreClose(dst)
+
+		// We're not concerned with potential tarbombs, so disable gosec.
+		// nolint:gosec
+		if _, err = io.Copy(dst, r); err != nil {
+			return errors.Wrapf(err, "untarring file %s", path)
+		}
+	default:
+		return errors.Errorf("unexpected plugin file type %s (%v)", header.Name, header.Typeflag)
 	}
 
 	return nil
+}
+
+// ExtractTGZ uncompresses a .tar.gz/.tgz file into a specific directory.
+func ExtractTGZ(r io.Reader, dir string) error {
+	gzr, err := gzip.NewReader(r)
+	if err != nil {
+		return errors.Wrapf(err, "uncompressing")
+	}
+	tr := tar.NewReader(gzr)
+	for {
+		header, err := tr.Next()
+		if err != nil {
+			if err == io.EOF {
+				return nil
+			}
+			return errors.Wrapf(err, "extracting")
+		}
+
+		if err = extractFile(tr, header, dir); err != nil {
+			return err
+		}
+	}
 }
 
 const (

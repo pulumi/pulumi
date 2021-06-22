@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,13 +15,19 @@
 package cmdutil
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
+	"net"
 	"net/url"
 	"os"
+	"runtime"
+	"strings"
+	"time"
 
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	jaeger "github.com/uber/jaeger-client-go"
 	"github.com/uber/jaeger-client-go/transport/zipkin"
 	"sourcegraph.com/sourcegraph/appdash"
@@ -55,13 +61,11 @@ func IsTracingEnabled() bool {
 
 // InitTracing initializes tracing
 func InitTracing(name, rootSpanName, tracingEndpoint string) {
+
 	// If no tracing endpoint was provided, just return. The default global tracer is already a no-op tracer.
 	if tracingEndpoint == "" {
 		return
 	}
-
-	// Store the tracing endpoint
-	TracingEndpoint = tracingEndpoint
 
 	endpointURL, err := url.Parse(tracingEndpoint)
 	if err != nil {
@@ -90,12 +94,33 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 
 		collector := appdash.NewLocalCollector(store.store)
 		tracer = appdash_opentracing.NewTracer(collector)
+
+		proxyEndpoint, err := startProxyAppDashServer(collector)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		// Instead of storing the original endpoint, store the
+		// proxy endpoint. The TracingEndpoint global var is
+		// consumed by code forking off sub-processes, and we
+		// want those sending data to the proxy endpoint, so
+		// it cleanly lands in the file managed by the parent
+		// process.
+		TracingEndpoint = proxyEndpoint
+
 	case endpointURL.Scheme == "tcp":
+		// Store the tracing endpoint
+		TracingEndpoint = tracingEndpoint
+
 		// If the endpoint scheme is tcp, use an Appdash endpoint.
-		collector := appdash.NewRemoteCollector(tracingEndpoint)
+		collector := appdash.NewRemoteCollector(endpointURL.Host)
 		traceCloser = collector
 		tracer = appdash_opentracing.NewTracer(collector)
+
 	default:
+		// Store the tracing endpoint
+		TracingEndpoint = tracingEndpoint
+
 		// Jaeger tracer can be initialized with a transport that will
 		// report tracing Spans to a Zipkin backend
 		transport, err := zipkin.NewHTTPTransport(
@@ -121,7 +146,12 @@ func InitTracing(name, rootSpanName, tracingEndpoint string) {
 
 	// If a root span was requested, start it now.
 	if rootSpanName != "" {
-		TracingRootSpan = tracer.StartSpan(rootSpanName)
+		var options []opentracing.StartSpanOption
+		for _, tag := range rootSpanTags() {
+			options = append(options, tag)
+		}
+		TracingRootSpan = tracer.StartSpan(rootSpanName, options...)
+		go collectMemStats(rootSpanName)
 	}
 }
 
@@ -136,4 +166,155 @@ func CloseTracing() {
 	}
 
 	contract.IgnoreClose(traceCloser)
+}
+
+// Starts an AppDash server listening on any available TCP port
+// locally and sends the spans and annotations to the given collector.
+// Returns a Pulumi-formatted tracing endpoint pointing to this
+// server.
+//
+// See https://github.com/sourcegraph/appdash/blob/master/cmd/appdash/example_app.go
+func startProxyAppDashServer(collector appdash.Collector) (string, error) {
+	l, err := net.ListenTCP("tcp", &net.TCPAddr{IP: net.IPv4(127, 0, 0, 1), Port: 0})
+	if err != nil {
+		return "", err
+	}
+	collectorPort := l.Addr().(*net.TCPAddr).Port
+
+	cs := appdash.NewServer(l, collector)
+	cs.Debug = true
+	cs.Trace = true
+	go cs.Start()
+
+	// The default sends to stderr, which is unfortunate for
+	// end-users. Discard for now.
+	cs.Log = log.New(ioutil.Discard, "appdash", 0)
+
+	return fmt.Sprintf("tcp://127.0.0.1:%d", collectorPort), nil
+}
+
+// Computes initial tags to write to the `TracingRootSpan`, which can
+// be useful for aggregating trace data in benchmarks.
+func rootSpanTags() []opentracing.Tag {
+
+	tags := []opentracing.Tag{
+		{
+			Key:   "os.Args",
+			Value: os.Args,
+		},
+		{
+			Key:   "runtime.GOOS",
+			Value: runtime.GOOS,
+		},
+		{
+			Key:   "runtime.GOARCH",
+			Value: runtime.GOARCH,
+		},
+		{
+			Key:   "runtime.NumCPU",
+			Value: runtime.NumCPU(),
+		},
+	}
+
+	// Promote all env vars `pulumi_tracing_tag_foo=bar` into tags `foo: bar`.
+	envPrefix := "pulumi_tracing_tag_"
+	for _, e := range os.Environ() {
+		pair := strings.SplitN(e, "=", 2)
+		envVarName := strings.ToLower(pair[0])
+		envVarValue := pair[1]
+
+		if strings.HasPrefix(envVarName, envPrefix) {
+			tags = append(tags, opentracing.Tag{
+				Key:   strings.TrimPrefix(envVarName, envPrefix),
+				Value: envVarValue,
+			})
+		}
+	}
+
+	return tags
+}
+
+// Samples memory stats in the background at 1s intervals, and creates
+// spans for the data. This is currently opt-in via
+// `PULUMI_TRACING_MEMSTATS_POLL_INTERVAL=1s` or similar. Consider
+// collecting this by default later whenever tracing is enabled as we
+// calibrate that the overhead is low enough.
+func collectMemStats(spanPrefix string) {
+	memStats := runtime.MemStats{}
+	maxStats := runtime.MemStats{}
+
+	poll := func() {
+		if TracingRootSpan == nil {
+			return
+		}
+
+		runtime.ReadMemStats(&memStats)
+
+		// report cumulative metrics as is
+		TracingRootSpan.SetTag("runtime.NumCgoCall", runtime.NumCgoCall())
+		TracingRootSpan.SetTag("MemStats.TotalAlloc", memStats.TotalAlloc)
+		TracingRootSpan.SetTag("MemStats.Mallocs", memStats.Mallocs)
+		TracingRootSpan.SetTag("MemStats.Frees", memStats.Frees)
+		TracingRootSpan.SetTag("MemStats.PauseTotalNs", memStats.PauseTotalNs)
+		TracingRootSpan.SetTag("MemStats.NumGC", memStats.NumGC)
+
+		// for other metrics report the max
+
+		if memStats.Sys > maxStats.Sys {
+			maxStats.Sys = memStats.Sys
+			TracingRootSpan.SetTag("MemStats.Sys.Max", maxStats.Sys)
+		}
+
+		if memStats.HeapAlloc > maxStats.HeapAlloc {
+			maxStats.HeapAlloc = memStats.HeapAlloc
+			TracingRootSpan.SetTag("MemStats.HeapAlloc.Max", maxStats.HeapAlloc)
+		}
+
+		if memStats.HeapSys > maxStats.HeapSys {
+			maxStats.HeapSys = memStats.HeapSys
+			TracingRootSpan.SetTag("MemStats.HeapSys.Max", maxStats.HeapSys)
+		}
+
+		if memStats.HeapIdle > maxStats.HeapIdle {
+			maxStats.HeapIdle = memStats.HeapIdle
+			TracingRootSpan.SetTag("MemStats.HeapIdle.Max", maxStats.HeapIdle)
+		}
+
+		if memStats.HeapInuse > maxStats.HeapInuse {
+			maxStats.HeapInuse = memStats.HeapInuse
+			TracingRootSpan.SetTag("MemStats.HeapInuse.Max", maxStats.HeapInuse)
+		}
+
+		if memStats.HeapReleased > maxStats.HeapReleased {
+			maxStats.HeapReleased = memStats.HeapReleased
+			TracingRootSpan.SetTag("MemStats.HeapReleased.Max", maxStats.HeapReleased)
+		}
+
+		if memStats.HeapObjects > maxStats.HeapObjects {
+			maxStats.HeapObjects = memStats.HeapObjects
+			TracingRootSpan.SetTag("MemStats.HeapObjects.Max", maxStats.HeapObjects)
+		}
+
+		if memStats.StackInuse > maxStats.StackInuse {
+			maxStats.StackInuse = memStats.StackInuse
+			TracingRootSpan.SetTag("MemStats.StackInuse.Max", maxStats.StackInuse)
+		}
+
+		if memStats.StackSys > maxStats.StackSys {
+			maxStats.StackSys = memStats.StackSys
+			TracingRootSpan.SetTag("MemStats.StackSys.Max", maxStats.StackSys)
+		}
+	}
+
+	interval := os.Getenv("PULUMI_TRACING_MEMSTATS_POLL_INTERVAL")
+
+	if interval != "" {
+		intervalDuration, err := time.ParseDuration(interval)
+		if err == nil {
+			for {
+				poll()
+				time.Sleep(intervalDuration)
+			}
+		}
+	}
 }

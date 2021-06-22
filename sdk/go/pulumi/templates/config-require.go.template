@@ -19,37 +19,46 @@ import (
 
 	"github.com/spf13/cast"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-// Require loads a configuration value by its key, or panics if it doesn't exist.
-func Require(ctx *pulumi.Context, key string) string {
-	key = ensureKey(ctx, key)
-	v, ok := ctx.GetConfig(key)
+func require(ctx *pulumi.Context, key, use, insteadOf string) string {
+	v, ok := get(ctx, key, use, insteadOf)
 	if !ok {
 		contract.Failf("missing required configuration variable '%s'; run `pulumi config` to set", key)
 	}
 	return v
 }
 
-// RequireObject loads an optional configuration value by its key into the output variable,
-// or panics if unable to do so.
-func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
-	key = ensureKey(ctx, key)
-	v := Require(ctx, key)
+// Require loads a configuration value by its key, or panics if it doesn't exist.
+func Require(ctx *pulumi.Context, key string) string {
+	return require(ctx, key, "RequireSecret", "Require")
+}
+
+func requireObject(ctx *pulumi.Context, key string, output interface{}, use, insteadOf string) {
+	v := require(ctx, key, use, insteadOf)
 	if err := json.Unmarshal([]byte(v), output); err != nil {
 		contract.Failf("unable to unmarshall required configuration variable '%s'; %s", key, err.Error())
 	}
 }
 
+// RequireObject loads an optional configuration value by its key into the output variable,
+// or panics if unable to do so.
+func RequireObject(ctx *pulumi.Context, key string, output interface{}) {
+	requireObject(ctx, key, output, "RequireSecretObject", "RequireObject")
+}
+
 {{range .Builtins}}
 {{if .GenerateConfig}}
+func require{{.Name}}(ctx *pulumi.Context, key, use, insteadOf string) {{.Type}} {
+	v := require(ctx, key, use, insteadOf)
+	return cast.To{{.Name}}(v)
+}
+
 // Require{{.Name}} loads an optional configuration value by its key, as a {{.Type}}, or panics if it doesn't exist.
 func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
-	key = ensureKey(ctx, key)
-	v := Require(ctx, key)
-	return cast.To{{.Name}}(v)
+	return require{{.Name}}(ctx, key, "RequireSecret{{.Name}}", "Require{{.Name}}")
 }
 
 {{end}}
@@ -57,15 +66,13 @@ func Require{{.Name}}(ctx *pulumi.Context, key string) {{.Type}} {
 // RequireSecret loads a configuration value by its key returning it wrapped in a secret Output,
 // or panics if it doesn't exist.
 func RequireSecret(ctx *pulumi.Context, key string) pulumi.StringOutput {
-	key = ensureKey(ctx, key)
-	return pulumi.ToSecret(Require(ctx, key)).(pulumi.StringOutput)
+	return pulumi.ToSecret(require(ctx, key, "", "")).(pulumi.StringOutput)
 }
 
 // RequireSecretObject loads an optional configuration value by its key into the output variable,
 // returning it wrapped in a secret Output, or panics if unable to do so.
 func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pulumi.Output {
-	key = ensureKey(ctx, key)
-	RequireObject(ctx, key, output)
+	requireObject(ctx, key, output, "", "")
 	return pulumi.ToSecret(output)
 }
 
@@ -74,8 +81,7 @@ func RequireSecretObject(ctx *pulumi.Context, key string, output interface{}) pu
 // RequireSecret{{.Name}} loads an optional configuration value by its key,
 // as a {{.Type}} wrapped in a secret Output, or panics if it doesn't exist.
 func RequireSecret{{.Name}}(ctx *pulumi.Context, key string) pulumi.{{.Name}}Output {
-	key = ensureKey(ctx, key)
-	return pulumi.ToSecret(Require{{.Name}}(ctx, key)).(pulumi.{{.Name}}Output)
+	return pulumi.ToSecret(require{{.Name}}(ctx, key, "", "")).(pulumi.{{.Name}}Output)
 }
 {{end}}
 {{end}}

@@ -15,16 +15,17 @@
 package deploytest
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/blang/semver"
-	uuid "github.com/satori/go.uuid"
+	uuid "github.com/gofrs/uuid"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 type Provider struct {
@@ -47,14 +48,17 @@ type Provider struct {
 		olds, news resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 	DiffF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
 		ignoreChanges []string) (plugin.DiffResult, error)
-	CreateF func(urn resource.URN,
-		inputs resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap, resource.Status, error)
-	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,
-		timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
+	CreateF func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+		preview bool) (resource.ID, resource.PropertyMap, resource.Status, error)
+	UpdateF func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	DeleteF func(urn resource.URN, id resource.ID, olds resource.PropertyMap, timeout float64) (resource.Status, error)
-
-	ReadF func(urn resource.URN, id resource.ID,
+	ReadF   func(urn resource.URN, id resource.ID,
 		inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error)
+
+	ConstructF func(monitor *ResourceMonitor, typ, name string, parent resource.URN, inputs resource.PropertyMap,
+		options plugin.ConstructOptions) (plugin.ConstructResult, error)
+
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 
@@ -122,12 +126,18 @@ func (prov *Provider) Check(urn resource.URN,
 	}
 	return prov.CheckF(urn, olds, news)
 }
-func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64) (resource.ID,
-	resource.PropertyMap, resource.Status, error) {
+func (prov *Provider) Create(urn resource.URN, props resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
 	if prov.CreateF == nil {
-		return resource.ID(uuid.NewV4().String()), resource.PropertyMap{}, resource.StatusOK, nil
+		// generate a new uuid
+		uuid, err := uuid.NewV4()
+		if err != nil {
+			return "", nil, resource.StatusOK, err
+		}
+		return resource.ID(uuid.String()), resource.PropertyMap{}, resource.StatusOK, nil
 	}
-	return prov.CreateF(urn, props, timeout)
+	return prov.CreateF(urn, props, timeout, preview)
 }
 func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	olds resource.PropertyMap, news resource.PropertyMap, _ bool, ignoreChanges []string) (plugin.DiffResult, error) {
@@ -137,11 +147,11 @@ func (prov *Provider) Diff(urn resource.URN, id resource.ID,
 	return prov.DiffF(urn, id, olds, news, ignoreChanges)
 }
 func (prov *Provider) Update(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
-	timeout float64, ignoreChanges []string) (resource.PropertyMap, resource.Status, error) {
+	timeout float64, ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
 	if prov.UpdateF == nil {
 		return news, resource.StatusOK, nil
 	}
-	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges)
+	return prov.UpdateF(urn, id, olds, news, timeout, ignoreChanges, preview)
 }
 func (prov *Provider) Delete(urn resource.URN,
 	id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error) {
@@ -161,6 +171,19 @@ func (prov *Provider) Read(urn resource.URN, id resource.ID,
 	}
 	return prov.ReadF(urn, id, inputs, state)
 }
+
+func (prov *Provider) Construct(info plugin.ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN,
+	inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+	if prov.ConstructF == nil {
+		return plugin.ConstructResult{}, nil
+	}
+	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	if err != nil {
+		return plugin.ConstructResult{}, err
+	}
+	return prov.ConstructF(monitor, string(typ), string(name), parent, inputs, options)
+}
+
 func (prov *Provider) Invoke(tok tokens.ModuleMember,
 	args resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error) {
 	if prov.InvokeF == nil {

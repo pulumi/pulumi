@@ -1,6 +1,5 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -12,7 +11,7 @@ namespace Pulumi
     public partial class Deployment
     {
         private async Task<PrepareResult> PrepareResourceAsync(
-            string label, Resource res, bool custom,
+            string label, Resource res, bool custom, bool remote,
             ResourceArgs args, ResourceOptions options)
         {
             /* IMPORTANT!  We should never await prior to this line, otherwise the Resource will be partly uninitialized. */
@@ -21,26 +20,29 @@ namespace Pulumi
             var type = res.GetResourceType();
             var name = res.GetResourceName();
 
-            Log.Debug($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Gathering explicit dependencies: t={type}, name={name}, custom={custom}, remote={remote}");
             var explicitDirectDependencies = new HashSet<Resource>(
                 await GatherExplicitDependenciesAsync(options.DependsOn).ConfigureAwait(false));
-            Log.Debug($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Gathered explicit dependencies: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Serialize out all our props to their final values.  In doing so, we'll also collect all
             // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-            Log.Debug($"Serializing properties: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Serializing properties: t={type}, name={name}, custom={custom}, remote={remote}");
             var dictionary = await args.ToDictionaryAsync().ConfigureAwait(false);
             var (serializedProps, propertyToDirectDependencies) =
-                await SerializeResourcePropertiesAsync(label, dictionary).ConfigureAwait(false);
-            Log.Debug($"Serialized properties: t={type}, name={name}, custom={custom}");
+                await SerializeResourcePropertiesAsync(
+                        label,
+                        dictionary,
+                        await this.MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);
+            LogExcessive($"Serialized properties: t={type}, name={name}, custom={custom}, remote={remote}");
 
             // Wait for the parent to complete.
             // If no parent was provided, parent to the root resource.
-            Log.Debug($"Getting parent urn: t={type}, name={name}, custom={custom}");
-            var parentURN = options.Parent != null
+            LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
+            var parentUrn = options.Parent != null
                 ? await options.Parent.Urn.GetValueAsync().ConfigureAwait(false)
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
-            Log.Debug($"Got parent urn: t={type}, name={name}, custom={custom}");
+            LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
 
             string? providerRef = null;
             if (custom)
@@ -49,22 +51,42 @@ namespace Pulumi
                 providerRef = await ProviderResource.RegisterAsync(customOpts?.Provider).ConfigureAwait(false);
             }
 
+            var providerRefs = new Dictionary<string, string>();
+            if (remote && options is ComponentResourceOptions componentOpts)
+            {
+                // If only the Provider opt is set, move it to the Providers list for further processing.
+                if (componentOpts.Provider != null && componentOpts.Providers.Count == 0)
+                {
+                    componentOpts.Providers.Add(componentOpts.Provider);
+                    componentOpts.Provider = null;
+                }
+
+                foreach (var provider in componentOpts.Providers)
+                {
+                    var pref = await ProviderResource.RegisterAsync(provider).ConfigureAwait(false);
+                    if (pref != null)
+                    {
+                        providerRefs.Add(provider.Package, pref);
+                    }
+                }
+            }
+
             // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
             // the dependency graph and optimize operations accordingly.
 
             // The list of all dependencies (implicit or explicit).
             var allDirectDependencies = new HashSet<Resource>(explicitDirectDependencies);
 
-            var allDirectDependencyURNs = await GetAllTransitivelyReferencedCustomResourceURNsAsync(explicitDirectDependencies).ConfigureAwait(false);
-            var propertyToDirectDependencyURNs = new Dictionary<string, HashSet<string>>();
+            var allDirectDependencyUrns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(explicitDirectDependencies).ConfigureAwait(false);
+            var propertyToDirectDependencyUrns = new Dictionary<string, HashSet<string>>();
 
             foreach (var (propertyName, directDependencies) in propertyToDirectDependencies)
             {
                 allDirectDependencies.AddRange(directDependencies);
 
-                var urns = await GetAllTransitivelyReferencedCustomResourceURNsAsync(directDependencies).ConfigureAwait(false);
-                allDirectDependencyURNs.AddRange(urns);
-                propertyToDirectDependencyURNs[propertyName] = urns;
+                var urns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(directDependencies).ConfigureAwait(false);
+                allDirectDependencyUrns.AddRange(urns);
+                propertyToDirectDependencyUrns[propertyName] = urns;
             }
 
             // Wait for all aliases. Note that we use 'res._aliases' instead of 'options.aliases' as
@@ -84,17 +106,24 @@ namespace Pulumi
 
             return new PrepareResult(
                 serializedProps,
-                parentURN ?? "",
+                parentUrn ?? "",
                 providerRef ?? "",
-                allDirectDependencyURNs,
-                propertyToDirectDependencyURNs,
+                providerRefs,
+                allDirectDependencyUrns,
+                propertyToDirectDependencyUrns,
                 aliases);
+
+            void LogExcessive(string message)
+            {
+                if (_excessiveDebugOutput)
+                    Log.Debug(message);
+            }
         }
 
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync();
 
-        private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceURNsAsync(
+        private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceUrnsAsync(
             HashSet<Resource> resources)
         {
             // Go through 'resources', but transitively walk through **Component** resources,
@@ -145,28 +174,35 @@ namespace Pulumi
                 {
                     if (resource is ComponentResource)
                     {
-                        AddTransitivelyReferencedChildResourcesOfComponentResources(resource.ChildResources, result);
+                        HashSet<Resource> childResources;
+                        lock (resource.ChildResources)
+                        {
+                            childResources = new HashSet<Resource>(resource.ChildResources);
+                        }
+                        AddTransitivelyReferencedChildResourcesOfComponentResources(childResources, result);
                     }
                 }
             }
         }
 
-        private struct PrepareResult
+        private readonly struct PrepareResult
         {
             public readonly Struct SerializedProps;
             public readonly string ParentUrn;
             public readonly string ProviderRef;
-            public readonly HashSet<string> AllDirectDependencyURNs;
-            public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyURNs;
+            public readonly Dictionary<string, string> ProviderRefs;
+            public readonly HashSet<string> AllDirectDependencyUrns;
+            public readonly Dictionary<string, HashSet<string>> PropertyToDirectDependencyUrns;
             public readonly List<string> Aliases;
 
-            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, HashSet<string> allDirectDependencyURNs, Dictionary<string, HashSet<string>> propertyToDirectDependencyURNs, List<string> aliases)
+            public PrepareResult(Struct serializedProps, string parentUrn, string providerRef, Dictionary<string, string> providerRefs, HashSet<string> allDirectDependencyUrns, Dictionary<string, HashSet<string>> propertyToDirectDependencyUrns, List<string> aliases)
             {
                 SerializedProps = serializedProps;
                 ParentUrn = parentUrn;
                 ProviderRef = providerRef;
-                AllDirectDependencyURNs = allDirectDependencyURNs;
-                PropertyToDirectDependencyURNs = propertyToDirectDependencyURNs;
+                ProviderRefs = providerRefs;
+                AllDirectDependencyUrns = allDirectDependencyUrns;
+                PropertyToDirectDependencyUrns = propertyToDirectDependencyUrns;
                 Aliases = aliases;
             }
         }

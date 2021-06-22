@@ -19,12 +19,12 @@ import (
 	"math"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy/providers"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -425,9 +425,17 @@ func generateValue(typ schema.Type, value resource.PropertyValue) (model.Express
 				if err != nil {
 					return nil, err
 				}
+
+				// we need to take into account when we have a complex key - without this
+				// we will return key as an array as the / will show as 2 parts
+				propKey := string(k)
+				if strings.Contains(string(k), "/") {
+					propKey = fmt.Sprintf("%q", string(k))
+				}
+
 				items = append(items, model.ObjectConsItem{
 					Key: &model.LiteralValueExpression{
-						Value: cty.StringVal(string(k)),
+						Value: cty.StringVal(propKey),
 					},
 					Value: x,
 				})

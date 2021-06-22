@@ -13,15 +13,18 @@
 // limitations under the License.
 
 import * as asset from "../asset";
+import { isGrpcError } from "../errors";
 import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
-import { ComponentResource, CustomResource, Resource } from "../resource";
-import { debuggablePromise, errorString } from "./debuggable";
-import { excessiveDebugOutput, isDryRun, monitorSupportsSecrets } from "./settings";
+import { ComponentResource, CustomResource, ProviderResource, Resource, URN } from "../resource";
+import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
+import { excessiveDebugOutput, isDryRun, monitorSupportsResourceReferences, monitorSupportsSecrets } from "./settings";
+
+import * as semver from "semver";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
 
-export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean) => void>;
+export type OutputResolvers = Record<string, (value: any, isStable: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void>;
 
 /**
  * transferProperties mutates the 'onto' resource so that it has Promise-valued properties for all
@@ -49,28 +52,55 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
         }
 
         let resolveValue: (v: any) => void;
+        let rejectValue: (err: Error) => void;
         let resolveIsKnown: (v: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
         let resolveIsSecret: (v: boolean) => void;
+        let rejectIsSecret: (err: Error) => void;
+        let resolveDeps: (v: Resource[]) => void;
+        let rejectDeps: (err: Error) => void;
 
-        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean) => {
-            resolveValue(v);
-            resolveIsKnown(isKnown);
-            resolveIsSecret(isSecret);
+        resolvers[k] = (v: any, isKnown: boolean, isSecret: boolean, deps: Resource[] = [], err?: Error) => {
+            if (!!err) {
+                rejectValue(err);
+                rejectIsKnown(err);
+                rejectIsSecret(err);
+                rejectDeps(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(isKnown);
+                resolveIsSecret(isSecret);
+                resolveDeps(deps);
+            }
         };
 
         const propString = Output.isInstance(props[k]) ? "Output<T>" : `${props[k]}`;
         (<any>onto)[k] = new Output(
             onto,
             debuggablePromise(
-                new Promise<any>(resolve => resolveValue = resolve),
+                new Promise<any>((resolve, reject) => {
+                    resolveValue = resolve;
+                    rejectValue = reject;
+                }),
                 `transferProperty(${label}, ${k}, ${propString})`),
             debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsKnown = resolve),
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsKnown = resolve;
+                    rejectIsKnown = reject;
+                }),
                 `transferIsStable(${label}, ${k}, ${propString})`),
             debuggablePromise(
-                new Promise<boolean>(resolve => resolveIsSecret = resolve),
-                `transferIsSecret(${label}, ${k}, ${props[k]})`),
-            Promise.resolve(onto));
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsSecret = resolve;
+                    rejectIsSecret = reject;
+                }),
+                `transferIsSecret(${label}, ${k}, ${propString})`),
+            debuggablePromise(
+                new Promise<Resource[]>((resolve, reject) => {
+                    resolveDeps = resolve;
+                    rejectDeps = reject;
+                }),
+                `transferDeps(${label}, ${k}, ${propString})`));
     }
 
     return resolvers;
@@ -82,7 +112,10 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
-        label: string, props: Inputs, acceptKey: (k: string) => boolean): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
+        label: string,
+        props: Inputs,
+        acceptKey: (k: string) => boolean,
+    ): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
 
     const propertyToDependentResources = new Map<string, Set<Resource>>();
 
@@ -143,8 +176,17 @@ export function deserializeProperties(outputsStruct: any): any {
  * `allProps`represents an unknown value that was returned by an engine operation.
  */
 export function resolveProperties(
-    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean) => void>,
-    t: string, name: string, allProps: any): void {
+    res: Resource, resolvers: Record<string, (v: any, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error) => void>,
+    t: string, name: string, allProps: any, deps: Record<string, Resource[]>, err?: Error): void {
+
+    // If there is an error, just reject everything.
+    if (err) {
+        for (const k of Object.keys(resolvers)) {
+            const resolve = resolvers[k];
+            resolve(undefined, true, false, [], err);
+        }
+        return;
+    }
 
     // Now go ahead and resolve all properties present in the inputs and outputs set.
     for (const k of Object.keys(allProps)) {
@@ -183,7 +225,7 @@ export function resolveProperties(
             // If the value the engine handed back is or contains an unknown value, the resolver will mark its value as
             // unknown automatically, so we just pass true for isKnown here. Note that unknown values will only be
             // present during previews (i.e. isDryRun() will be true).
-            resolve(value, /*isKnown*/ true, isSecret);
+            resolve(value, /*isKnown*/ true, isSecret, deps[k]);
         }
         catch (err) {
             throw new Error(
@@ -222,6 +264,10 @@ export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
  * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
  */
 export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
+/**
+ * specialResourceSig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go.
+ */
+export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
@@ -229,7 +275,7 @@ export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
  */
 export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
     // IMPORTANT:
-    // IMPORTANT: Keep this in sync with serializesPropertiesSync in invoke.ts
+    // IMPORTANT: Keep this in sync with serializePropertiesSync in invoke.ts
     // IMPORTANT:
 
     if (prop === undefined ||
@@ -309,13 +355,24 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
     }
 
     if (CustomResource.isInstance(prop)) {
-        // Resources aren't serializable; instead, we serialize them as references to the ID property.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: custom resource id`);
+            log.debug(`Serialize property [${ctx}]: custom resource urn`);
         }
 
         dependentResources.add(prop);
-        return serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+        const id = await serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+
+        if (await monitorSupportsResourceReferences()) {
+            // If we are keeping resources, emit a stronly typed wrapper over the URN
+            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+            return {
+                [specialSigKey]: specialResourceSig,
+                urn: urn,
+                id: id,
+            };
+        }
+        // Else, return the id for backward compatibility.
+        return id;
     }
 
     if (ComponentResource.isInstance(prop)) {
@@ -334,9 +391,18 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // and tracked in a reasonable manner, while not causing us to compute or embed information
         // about it that is not needed, and which can lead to deadlocks.
         if (excessiveDebugOutput) {
-            log.debug(`Serialize property [${ctx}]: component resource urnid`);
+            log.debug(`Serialize property [${ctx}]: component resource urn`);
         }
 
+        if (await monitorSupportsResourceReferences()) {
+            // If we are keeping resources, emit a strongly typed wrapper over the URN
+            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+            return {
+                [specialSigKey]: specialResourceSig,
+                urn: urn,
+            };
+        }
+        // Else, return the urn for backward compatibility.
         return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
     }
 
@@ -375,14 +441,14 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 /**
  * isRpcSecret returns true if obj is a wrapped secret value (i.e. it's an object with the special key set).
  */
-function isRpcSecret(obj: any): boolean {
+export function isRpcSecret(obj: any): boolean {
     return obj && obj[specialSigKey] === specialSecretSig;
 }
 
 /**
  * unwrapRpcSecret returns the underlying value for a secret, or the value itself if it was not a secret.
  */
-function unwrapRpcSecret(obj: any): any {
+export function unwrapRpcSecret(obj: any): any {
     if (!isRpcSecret(obj)) {
         return obj;
     }
@@ -468,6 +534,41 @@ export function deserializeProperty(prop: any): any {
                         [specialSigKey]: specialSecretSig,
                         value: deserializeProperty(prop["value"]),
                     };
+                case specialResourceSig:
+                    // Deserialize the resource into a live Resource reference
+                    const urn = prop["urn"];
+                    const version = prop["packageVersion"];
+
+                    const urnParts = urn.split("::");
+                    const qualifiedType = urnParts[2];
+                    const urnName = urnParts[3];
+
+                    const type = qualifiedType.split("$").pop()!;
+                    const typeParts = type.split(":");
+                    const pkgName = typeParts[0];
+                    const modName = typeParts.length > 1 ? typeParts[1] : "";
+                    const typName = typeParts.length > 2 ? typeParts[2] : "";
+                    const isProvider = pkgName === "pulumi" && modName === "providers";
+
+                    if (isProvider) {
+                        const resourcePackage = getResourcePackage(typName, version);
+                        if (resourcePackage) {
+                            return resourcePackage.constructProvider(urnName, type, urn);
+                        }
+                    } else {
+                        const resourceModule = getResourceModule(pkgName, modName, version);
+                        if (resourceModule) {
+                            return resourceModule.construct(urnName, type, urn);
+                        }
+                    }
+
+                    // If we've made it here, deserialize the reference as either a URN or an ID (if present).
+                    if (prop["id"]) {
+                        const id = prop["id"];
+                        return deserializeProperty(id === "" ? unknownValue : id);
+                    }
+                    return urn;
+
                 default:
                     throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
@@ -493,4 +594,136 @@ export function deserializeProperty(prop: any): any {
         }
         return obj;
     }
+}
+
+/**
+ * suppressUnhandledGrpcRejections silences any unhandled promise rejections that occur due to gRPC errors. The input
+ * promise may still be rejected.
+ */
+export function suppressUnhandledGrpcRejections<T>(p: Promise<T>): Promise<T> {
+    p.catch(err => {
+        if (!isGrpcError(err)) {
+            throw err;
+        }
+    });
+    return p;
+}
+
+function sameVersion(a?: string, b?: string): boolean {
+    // We treat undefined as a wildcard, so it always equals every other version.
+    return a === undefined || b === undefined || semver.eq(a, b);
+}
+
+function checkVersion(want?: semver.SemVer, have?: semver.SemVer): boolean {
+    if (want === undefined || have === undefined) {
+        return true;
+    }
+    return have.major === want.major && have.minor >= want.minor && have.patch >= want.patch;
+}
+
+/** @internal */
+export function register<T extends { readonly version?: string }>(source: Map<string, T[]>, registrationType: string, key: string, item: T): boolean {
+    let items = source.get(key);
+    if (items) {
+        for (const existing of items) {
+            if (sameVersion(existing.version, item.version)) {
+                // It is possible for the same version of the same provider SDK to be loaded multiple times in Node.js.
+                // In this case, we might legitimately get multiple registrations of the same resource.  It should not
+                // matter which we use, so we can just skip re-registering.  De-serialized resources will always be
+                // instances of classes from the first registered package.
+                if (excessiveDebugOutput) {
+                    log.debug(`skip re-registering already registered ${registrationType} ${key}@${item.version}.`);
+                }
+                return false;
+            }
+        }
+    } else {
+        items = [];
+        source.set(key, items);
+    }
+
+    if (excessiveDebugOutput) {
+        log.debug(`registering ${registrationType} ${key}@${item.version}`);
+    }
+    items.push(item);
+    return true;
+}
+
+/** @internal */
+export function getRegistration<T extends { readonly version?: string }>(source: Map<string, T[]>, key: string, version: string): T | undefined {
+    const ver = version ? new semver.SemVer(version) : undefined;
+
+    let bestMatch: T | undefined = undefined;
+    let bestMatchVersion: semver.SemVer | undefined = undefined;
+    for (const existing of source.get(key) ?? []) {
+        const existingVersion = existing.version !== undefined ? new semver.SemVer(existing.version) : undefined;
+        if (!checkVersion(ver, existingVersion)) {
+            continue;
+        }
+        if (!bestMatch || (existingVersion && bestMatchVersion && semver.gt(existingVersion, bestMatchVersion))) {
+            bestMatch = existing;
+            bestMatchVersion = existingVersion;
+        }
+    }
+    return bestMatch;
+}
+
+/**
+ * A ResourcePackage is a type that understands how to construct resource providers given a name, type, args, and URN.
+ */
+export interface ResourcePackage {
+    readonly version?: string;
+    constructProvider(name: string, type: string, urn: string): ProviderResource;
+}
+
+const resourcePackages = new Map<string, ResourcePackage[]>();
+
+/** @internal Used only for testing purposes. */
+export function _resetResourcePackages() {
+    resourcePackages.clear();
+}
+
+/**
+ * registerResourcePackage registers a resource package that will be used to construct providers for any URNs matching
+ * the package name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ */
+export function registerResourcePackage(pkg: string, resourcePackage: ResourcePackage) {
+    register(resourcePackages, "package", pkg, resourcePackage);
+}
+
+export function getResourcePackage(pkg: string, version: string): ResourcePackage | undefined {
+    return getRegistration(resourcePackages, pkg, version);
+}
+
+/**
+ * A ResourceModule is a type that understands how to construct resources given a name, type, args, and URN.
+ */
+export interface ResourceModule {
+    readonly version?: string;
+    construct(name: string, type: string, urn: string): Resource;
+}
+
+const resourceModules = new Map<string, ResourceModule[]>();
+
+function moduleKey(pkg: string, mod: string): string {
+    return `${pkg}:${mod}`;
+}
+
+/** @internal Used only for testing purposes. */
+export function _resetResourceModules() {
+    resourceModules.clear();
+}
+
+/**
+ * registerResourceModule registers a resource module that will be used to construct resources for any URNs matching
+ * the module name and version that are deserialized by the current instance of the Pulumi JavaScript SDK.
+ */
+export function registerResourceModule(pkg: string, mod: string, module: ResourceModule) {
+    const key = moduleKey(pkg, mod);
+    register(resourceModules, "module", key, module);
+}
+
+export function getResourceModule(pkg: string, mod: string, version: string): ResourceModule | undefined {
+    const key = moduleKey(pkg, mod);
+    return getRegistration(resourceModules, key, version);
 }

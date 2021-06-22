@@ -25,7 +25,6 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
-	"os/user"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -36,23 +35,23 @@ import (
 
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	pulumi_testing "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tools"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/ciutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	pulumi_testing "github.com/pulumi/pulumi/sdk/v2/go/common/testing"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tools"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/ciutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	user "github.com/tweekmonster/luser"
 )
 
 const PythonRuntime = "python"
@@ -205,6 +204,9 @@ type ProgramTestOptions struct {
 	RunBuild bool
 	// RunUpdateTest will ensure that updates to the package version can test for spurious diffs
 	RunUpdateTest bool
+	// DecryptSecretsInOutput will ensure that stack output is passed `--show-secrets` parameter
+	// Used in conjunction with ExtraRuntimeValidation
+	DecryptSecretsInOutput bool
 
 	// CloudURL is an optional URL to override the default Pulumi Service API (https://api.pulumi-staging.io). The
 	// PULUMI_ACCESS_TOKEN environment variable must also be set to a valid access token for the target cloud.
@@ -214,8 +216,17 @@ type ProgramTestOptions struct {
 	// environment during tests.
 	StackName string
 
-	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocations.
+	// If non-empty, specifies the value of the `--tracing` flag to pass
+	// to Pulumi CLI, which may be a Zipkin endpoint or a
+	// `file:./local.trace` style url for AppDash tracing.
+	//
+	// Template `{command}` syntax will be expanded to the current
+	// command name such as `pulumi-stack-rm`. This is useful for
+	// file-based tracing since `ProgramTest` performs multiple
+	// CLI invocations that can inadvertently overwrite the trace
+	// file.
 	Tracing string
+
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
 
@@ -257,8 +268,14 @@ type ProgramTestOptions struct {
 	// Additional environment variables to pass for each command we run.
 	Env []string
 
-	// Automatically create and use a virtual environment, rather than using the Pipenv tool.
+	// Automatically create and use a virtual environment, rather than using the Pipenv tool. This is now the default
+	// behavior, so this option no longer has any affect. To go back to the old behavior use the `UsePipenv` option.
 	UseAutomaticVirtualEnv bool
+	// Use the Pipenv tool to manage the virtual environment.
+	UsePipenv bool
+
+	// If set, this hook is called after the `pulumi preview` command has completed.
+	PreviewCompletedHook func(dir string) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -413,6 +430,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	if overrides.RunUpdateTest {
 		opts.RunUpdateTest = overrides.RunUpdateTest
 	}
+	if overrides.DecryptSecretsInOutput {
+		opts.DecryptSecretsInOutput = overrides.DecryptSecretsInOutput
+	}
 	if overrides.CloudURL != "" {
 		opts.CloudURL = overrides.CloudURL
 	}
@@ -460,6 +480,9 @@ func (opts ProgramTestOptions) With(overrides ProgramTestOptions) ProgramTestOpt
 	}
 	if overrides.Env != nil {
 		opts.Env = append(opts.Env, overrides.Env...)
+	}
+	if overrides.UsePipenv {
+		opts.UsePipenv = overrides.UsePipenv
 	}
 	return opts
 }
@@ -618,16 +641,6 @@ func ProgramTestManualLifeCycle(t *testing.T, opts *ProgramTestOptions) *Program
 	return pt
 }
 
-// fprintf works like fmt.FPrintf, except it explicitly drops the return values. This keeps the linters happy, since
-// they don't like to see errors dropped on the floor. It is possible that our call to fmt.Fprintf will fail, even
-// for "standard" streams like `stdout` and `stderr`, if they have been set to non-blocking by an external process.
-// In that case, we just drop the error on the floor and continue. We see this behavior in Travis when we try to write
-// a lot of messages quickly (as we do when logging test failures)
-func fprintf(w io.Writer, format string, a ...interface{}) {
-	_, err := fmt.Fprintf(w, format, a...)
-	contract.IgnoreError(err)
-}
-
 // ProgramTester contains state associated with running a single test pass.
 type ProgramTester struct {
 	t            *testing.T          // the Go tester for this run.
@@ -682,10 +695,15 @@ func (pt *ProgramTester) getPythonBin() (string, error) {
 		pt.pythonBin = pt.opts.PythonBin
 		if pt.opts.PythonBin == "" {
 			var err error
-			// Look for "python3" by default, but fallback to `python` if not found as some Python 3
-			// distributions (in particular the default python.org Windows installation) do not include
-			// a `python3` binary.
+			// Look for `python3` by default, but fallback to `python` if not found, except on Windows
+			// where we look for these in the reverse order because the default python.org Windows
+			// installation does not include a `python3` binary, and the existence of a `python3.exe`
+			// symlink to `python.exe` on some systems does not work correctly with the Python `venv`
+			// module.
 			pythonCmds := []string{"python3", "python"}
+			if runtime.GOOS == windowsOS {
+				pythonCmds = []string{"python", "python3"}
+			}
 			for _, bin := range pythonCmds {
 				pt.pythonBin, err = exec.LookPath(bin)
 				// Break on the first cmd we find on the path (if any).
@@ -710,7 +728,7 @@ func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
-func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error) {
 	bin, err := pt.getBin()
 	if err != nil {
 		return nil, err
@@ -721,7 +739,7 @@ func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
 	}
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
-		cmd = append(cmd, "--tracing", tracing)
+		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
 	}
 	return cmd, nil
 }
@@ -761,7 +779,7 @@ func (pt *ProgramTester) runCommand(name string, args []string, wd string) error
 }
 
 func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
-	cmd, err := pt.pulumiCmd(args)
+	cmd, err := pt.pulumiCmd(name, args)
 	if err != nil {
 		return err
 	}
@@ -781,7 +799,7 @@ func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string,
 	// the correct version of Python.  We also need to do this for destroy and refresh so that
 	// dynamic providers are run in the right virtual environment.
 	// This is only necessary when not using automatic virtual environment support.
-	if !pt.opts.UseAutomaticVirtualEnv && isUpdate {
+	if pt.opts.UsePipenv && isUpdate {
 		projinfo, err := pt.getProjinfo(wd)
 		if err != nil {
 			return nil
@@ -879,8 +897,8 @@ func (pt *ProgramTester) runVirtualEnvCommand(name string, args []string, wd str
 		}
 
 		if pt.opts.Verbose {
-			fprintf(pt.opts.Stdout, "acquired pip install lock\n")
-			defer fprintf(pt.opts.Stdout, "released pip install lock\n")
+			pt.t.Log("acquired pip install lock")
+			defer pt.t.Log("released pip install lock")
 		}
 		defer func() {
 			if err := pipMutex.Unlock(); err != nil {
@@ -930,8 +948,8 @@ func (pt *ProgramTester) runPipenvCommand(name string, args []string, wd string)
 		}
 
 		if pt.opts.Verbose {
-			fprintf(pt.opts.Stdout, "acquired pip install lock\n")
-			defer fprintf(pt.opts.Stdout, "released pip install lock\n")
+			pt.t.Log("acquired pip install lock")
+			defer pt.t.Log("released pip install lock")
 		}
 		defer func() {
 			if err := pipMutex.Unlock(); err != nil {
@@ -1061,7 +1079,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 	}
 
 	// Ensure all links are present, the stack is created, and all configs are applied.
-	fprintf(pt.opts.Stdout, "Initializing project (dir %s; stack %s)\n", dir, stackName)
+	pt.t.Logf("Initializing project (dir %s; stack %s)", dir, stackName)
 
 	// Login as needed.
 	stackInitName := string(pt.opts.GetStackNameWithOwner())
@@ -1129,7 +1147,7 @@ func (pt *ProgramTester) TestLifeCycleInitialize() error {
 func (pt *ProgramTester) TestLifeCycleDestroy() error {
 	if pt.projdir != "" {
 		// Destroy and remove the stack.
-		fprintf(pt.opts.Stdout, "Destroying stack\n")
+		pt.t.Log("Destroying stack")
 		destroy := []string{"destroy", "--non-interactive", "--yes", "--skip-preview"}
 		if pt.opts.GetDebugUpdates() {
 			destroy = append(destroy, "-d")
@@ -1139,7 +1157,7 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 		}
 
 		if pt.t.Failed() {
-			fprintf(pt.opts.Stdout, "Test failed, retaining stack '%s'\n", pt.opts.GetStackNameWithOwner())
+			pt.t.Logf("Test failed, retaining stack '%s'", pt.opts.GetStackNameWithOwner())
 			return nil
 		}
 
@@ -1154,7 +1172,7 @@ func (pt *ProgramTester) TestLifeCycleDestroy() error {
 func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 	dir := pt.projdir
 	// Now preview and update the real changes.
-	fprintf(pt.opts.Stdout, "Performing primary preview and update\n")
+	pt.t.Log("Performing primary preview and update")
 	initErr := pt.PreviewAndUpdate(dir, "initial", pt.opts.ExpectFailure, false, false)
 
 	// If the initial preview/update failed, just exit without trying the rest (but make sure to destroy).
@@ -1164,7 +1182,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 
 	// Perform an empty preview and update; nothing is expected to happen here.
 	if !pt.opts.SkipExportImport {
-		fprintf(pt.opts.Stdout, "Roundtripping checkpoint via stack export and stack import\n")
+		pt.t.Log("Roundtripping checkpoint via stack export and stack import")
 
 		if err := pt.exportImport(dir); err != nil {
 			return err
@@ -1176,7 +1194,7 @@ func (pt *ProgramTester) TestPreviewUpdateAndEdits() error {
 		if !pt.opts.AllowEmptyUpdateChanges {
 			msg = "(no changes expected)"
 		}
-		fprintf(pt.opts.Stdout, "Performing empty preview and update%s\n", msg)
+		pt.t.Logf("Performing empty preview and update%s", msg)
 		if err := pt.PreviewAndUpdate(
 			dir, "empty", false, !pt.opts.AllowEmptyPreviewChanges, !pt.opts.AllowEmptyUpdateChanges); err != nil {
 
@@ -1249,10 +1267,15 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	if !pt.opts.SkipPreview {
 		if err := pt.runPulumiCommand("pulumi-preview-"+name, preview, dir, shouldFail); err != nil {
 			if shouldFail {
-				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this preview)\n")
+				pt.t.Log("Permitting failure (ExpectFailure=true for this preview)")
 				return nil
 			}
 			return err
+		}
+		if pt.opts.PreviewCompletedHook != nil {
+			if err := pt.opts.PreviewCompletedHook(dir); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -1260,7 +1283,7 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 	if !pt.opts.SkipUpdate {
 		if err := pt.runPulumiCommand("pulumi-update-"+name, update, dir, shouldFail); err != nil {
 			if shouldFail {
-				fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+				pt.t.Log("Permitting failure (ExpectFailure=true for this update)")
 				return nil
 			}
 			return err
@@ -1288,7 +1311,7 @@ func (pt *ProgramTester) query(dir string, name string, shouldFail bool) error {
 	// Now run a query.
 	if err := pt.runPulumiCommand("pulumi-query-"+name, query, dir, shouldFail); err != nil {
 		if shouldFail {
-			fprintf(pt.opts.Stdout, "Permitting failure (ExpectFailure=true for this update)\n")
+			pt.t.Log("Permitting failure (ExpectFailure=true for this update)")
 			return nil
 		}
 		return err
@@ -1313,7 +1336,7 @@ func (pt *ProgramTester) testEdits(dir string) error {
 }
 
 func (pt *ProgramTester) testEdit(dir string, i int, edit EditDir) error {
-	fprintf(pt.opts.Stdout, "Applying edit '%v' and rerunning preview and update\n", edit.Dir)
+	pt.t.Logf("Applying edit '%v' and rerunning preview and update", edit.Dir)
 
 	if edit.Additive {
 		// Just copy new files into dir
@@ -1435,8 +1458,16 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 	fileName := filepath.Join(tempDir, "stack.json")
 
 	// Invoke `pulumi stack export`
+	// There are situations where we want to get access to the secrets in the validation
+	// this will allow us to get access to them as part of running ExtraRuntimeValidation
+	var pulumiCommand []string
+	if pt.opts.DecryptSecretsInOutput {
+		pulumiCommand = append(pulumiCommand, "stack", "export", "--show-secrets", "--file", fileName)
+	} else {
+		pulumiCommand = append(pulumiCommand, "stack", "export", "--file", fileName)
+	}
 	if err = pt.runPulumiCommand("pulumi-export",
-		[]string{"stack", "export", "--file", fileName}, dir, false); err != nil {
+		pulumiCommand, dir, false); err != nil {
 		return errors.Wrapf(err, "expected to export stack to file: %s", fileName)
 	}
 
@@ -1497,9 +1528,9 @@ func (pt *ProgramTester) performExtraRuntimeValidation(
 		Events:       events,
 	}
 
-	fprintf(pt.opts.Stdout, "Performing extra runtime validation.\n")
+	pt.t.Log("Performing extra runtime validation.")
 	extraRuntimeValidation(pt.t, stackInfo)
-	fprintf(pt.opts.Stdout, "Extra runtime validation complete.\n")
+	pt.t.Log("Extra runtime validation complete.")
 	return nil
 }
 
@@ -1512,31 +1543,19 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", err
 	}
 
-	// Set up a prefix so that all output has the test directory name in it.  This is important for debugging
-	// because we run tests in parallel, and so all output will be interleaved and difficult to follow otherwise.
-	var prefix string
-	if len(sourceDir) <= 30 {
-		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir)
-	} else {
-		prefix = fmt.Sprintf("[ %30.30s ] ", sourceDir[len(sourceDir)-30:])
+	if pt.opts.Stdout == nil {
+		pt.opts.Stdout = os.Stdout
 	}
-	stdout := pt.opts.Stdout
-	if stdout == nil {
-		stdout = newPrefixer(os.Stdout, prefix)
-		pt.opts.Stdout = stdout
-	}
-	stderr := pt.opts.Stderr
-	if stderr == nil {
-		stderr = newPrefixer(os.Stderr, prefix)
-		pt.opts.Stderr = stderr
+	if pt.opts.Stderr == nil {
+		pt.opts.Stderr = os.Stderr
 	}
 
-	fprintf(pt.opts.Stdout, "sample: %v\n", sourceDir)
+	pt.t.Logf("sample: %v", sourceDir)
 	bin, err := pt.getBin()
 	if err != nil {
 		return "", "", err
 	}
-	fprintf(pt.opts.Stdout, "pulumi: %v\n", bin)
+	pt.t.Logf("pulumi: %v\n", bin)
 
 	stackName := string(pt.opts.GetStackName())
 
@@ -1569,7 +1588,37 @@ func (pt *ProgramTester) copyTestToTemporaryDirectory() (string, string, error) 
 		return "", "", errors.Wrapf(err, "Failed to prepare %v", projdir)
 	}
 
-	fprintf(stdout, "projdir: %v\n", projdir)
+	// TODO[pulumi/pulumi#5455]: Dynamic providers fail to load when used from multi-lang components.
+	// Until that's been fixed, this environment variable can be set by a test, which results in
+	// a package.json being emitted in the project directory and `yarn install && yarn link @pulumi/pulumi`
+	// being run.
+	// When the underlying issue has been fixed, the use of this environment variable should be removed.
+	var yarnLinkPulumi bool
+	for _, env := range pt.opts.Env {
+		if env == "PULUMI_TEST_YARN_LINK_PULUMI=true" {
+			yarnLinkPulumi = true
+			break
+		}
+	}
+	if yarnLinkPulumi {
+		const packageJSON = `{
+			"name": "test",
+			"peerDependencies": {
+				"@pulumi/pulumi": "latest"
+			}
+		}`
+		if err := ioutil.WriteFile(filepath.Join(projdir, "package.json"), []byte(packageJSON), 0600); err != nil {
+			return "", "", err
+		}
+		if err = pt.runYarnCommand("yarn-install", []string{"install"}, projdir); err != nil {
+			return "", "", err
+		}
+		if err := pt.runYarnCommand("yarn-link", []string{"link", "@pulumi/pulumi"}, projdir); err != nil {
+			return "", "", err
+		}
+	}
+
+	pt.t.Logf("projdir: %v", projdir)
 	return tmpdir, projdir, nil
 }
 
@@ -1644,7 +1693,7 @@ func (pt *ProgramTester) prepareNodeJSProject(projinfo *engine.Projinfo) error {
 				}
 			}
 
-			fprintf(pt.opts.Stdout, "adding resolution for %s to version %s\n", packageName, packageVersion)
+			pt.t.Logf("adding resolution for %s to version %s", packageName, packageVersion)
 			resolutions["**/"+packageName] = packageVersion
 		}
 
@@ -1715,7 +1764,11 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		return err
 	}
 
-	if pt.opts.UseAutomaticVirtualEnv {
+	if pt.opts.UsePipenv {
+		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			return err
+		}
+	} else {
 		if err = pt.runPythonCommand("python-venv", []string{"-m", "venv", "venv"}, cwd); err != nil {
 			return err
 		}
@@ -1727,11 +1780,7 @@ func (pt *ProgramTester) preparePythonProject(projinfo *engine.Projinfo) error {
 		}
 
 		if err := pt.runVirtualEnvCommand("virtualenv-pip-install",
-			[]string{"pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
-			return err
-		}
-	} else {
-		if err = pt.preparePythonProjectWithPipenv(cwd); err != nil {
+			[]string{"python", "-m", "pip", "install", "-r", "requirements.txt"}, cwd); err != nil {
 			return err
 		}
 	}
@@ -1749,14 +1798,7 @@ func (pt *ProgramTester) preparePythonProjectWithPipenv(cwd string) error {
 	// Create a new Pipenv environment. This bootstraps a new virtual environment containing the version of Python that
 	// we requested. Note that this version of Python is sourced from the machine, so you must first install the version
 	// of Python that you are requesting on the host machine before building a virtualenv for it.
-	pythonVersion := "3"
-	if runtime.GOOS == windowsOS {
-		// Due to https://bugs.python.org/issue34679, Python Dynamic Providers on Windows do not
-		// work on Python 3.8.0 (but are fixed in 3.8.1).  For now we will force Windows to use 3.7
-		// to avoid this bug, until 3.8.1 is available in all our CI systems.
-		pythonVersion = "3.7"
-	}
-	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", pythonVersion}, cwd); err != nil {
+	if err := pt.runPipenvCommand("pipenv-new", []string{"--python", "3"}, cwd); err != nil {
 		return err
 	}
 
@@ -1794,14 +1836,14 @@ func (pt *ProgramTester) installPipPackageDeps(cwd string) error {
 			}
 		}
 
-		if pt.opts.UseAutomaticVirtualEnv {
-			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
-				[]string{"pip", "install", "-e", dep}, cwd); err != nil {
+		if pt.opts.UsePipenv {
+			if err := pt.runPipenvCommand("pipenv-install-package",
+				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
 			}
 		} else {
-			if err := pt.runPipenvCommand("pipenv-install-package",
-				[]string{"run", "pip", "install", "-e", dep}, cwd); err != nil {
+			if err := pt.runVirtualEnvCommand("virtualenv-pip-install-package",
+				[]string{"python", "-m", "pip", "install", "-e", dep}, cwd); err != nil {
 				return err
 			}
 		}
@@ -1821,6 +1863,42 @@ func getVirtualenvBinPath(cwd, bin string) (string, error) {
 	return virtualenvBinPath, nil
 }
 
+// getSanitizedPkg strips the version string from a go dep
+// Note: most of the pulumi modules don't use major version subdirectories for modules
+func getSanitizedModulePath(pkg string) string {
+	re := regexp.MustCompile(`v\d`)
+	v := re.FindString(pkg)
+	if v != "" {
+		return strings.TrimSuffix(strings.Replace(pkg, v, "", -1), "/")
+	}
+	return pkg
+
+}
+
+func getRewritePath(pkg string, gopath string, depRoot string) string {
+
+	var depParts []string
+	sanitizedPkg := getSanitizedModulePath(pkg)
+
+	splitPkg := strings.Split(sanitizedPkg, "/")
+
+	if depRoot != "" {
+		// Get the package name
+		// This is the value after "github.com/foo/bar"
+		repoName := splitPkg[2]
+		basePath := splitPkg[len(splitPkg)-1]
+		if basePath == repoName {
+			depParts = append([]string{depRoot, repoName})
+		} else {
+			depParts = append([]string{depRoot, repoName, basePath})
+		}
+		return filepath.Join(depParts...)
+	}
+	depParts = append([]string{gopath, "src"}, splitPkg...)
+	return filepath.Join(depParts...)
+
+}
+
 // prepareGoProject runs setup necessary to get a Go project ready for `pulumi` commands.
 func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 	// Go programs are compiled, so we will compile the project first.
@@ -1838,6 +1916,8 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 		gopath = filepath.Join(usr.HomeDir, "go")
 	}
+
+	depRoot := os.Getenv("PULUMI_GO_DEP_ROOT")
 
 	cwd, _, err := projinfo.GetPwdMain()
 	if err != nil {
@@ -1861,14 +1941,9 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
-		depParts := append([]string{gopath, "src"}, strings.Split(pkg, "/")...)
-		dep := filepath.Join(depParts...)
-		if strings.Contains(dep, "v2") {
-			// This is something we need to do for a local override. We effectively
-			// map a pkg to a folder location on disk. Local disk doesn't have a v2
-			// in it's path so we need to skip it
-			dep = strings.Replace(dep, "v2", "", -1)
-		}
+
+		dep := getRewritePath(pkg, gopath, depRoot)
+
 		editStr := fmt.Sprintf("%s=%s", pkg, dep)
 		err = pt.runCommand("go-mod-edit", []string{goBin, "mod", "edit", "-replace", editStr}, cwd)
 		if err != nil {
@@ -1932,7 +2007,7 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 		version := r.Replace(file)
 
 		err = pt.runCommand("dotnet-add-package",
-			[]string{dotNetBin, "add", "package", dep, "-s", localNuget, "-v", version}, cwd)
+			[]string{dotNetBin, "add", "package", dep, "-v", version}, cwd)
 		if err != nil {
 			return errors.Wrapf(err, "failed to add dependency on %s", dep)
 		}

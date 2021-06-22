@@ -16,11 +16,12 @@
 The config module contains all configuration management functionality.
 """
 import json
-from typing import Optional, Any
+from typing import Callable, Optional, Any
 
 from . import errors
+from . import log
 from .output import Output
-from .runtime.config import get_config
+from .runtime.config import get_config, is_config_secret
 from .metadata import get_project
 
 class Config:
@@ -48,6 +49,17 @@ class Config:
             raise TypeError('Expected name to be a string')
         self.name = name
 
+    # pylint: disable=unused-argument
+    def _get(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> Optional[str]:
+        full_key = self.full_key(key)
+        # TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+        # if use is not None and is_config_secret(full_key):
+        #     assert instead_of is not None
+        #     log.warn(
+        #         f"Configuration '{full_key}' value is a secret; " +
+        #         f"use `{use.__name__}` instead of `{instead_of.__name__}`")
+        return get_config(full_key)
+
     def get(self, key: str) -> Optional[str]:
         """
         Returns an optional configuration value by its key, or None if it doesn't exist.
@@ -56,7 +68,7 @@ class Config:
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
-        return get_config(self.full_key(key))
+        return self._get(key, self.get_secret, self.get)
 
     def get_secret(self, key: str) -> Optional[Output[str]]:
         """
@@ -66,11 +78,24 @@ class Config:
         :return: The configuration key's value, or None if one does not exist.
         :rtype: Optional[str]
         """
-        c = self.get(key)
+        c = self._get(key)
         if c is None:
             return None
 
         return Output.secret(c)
+
+    def _get_bool(self,
+                  key: str,
+                  use: Optional[Callable] = None,
+                  instead_of: Optional[Callable] = None) -> Optional[bool]:
+        v = self._get(key, use, instead_of)
+        if v is None:
+            return None
+        if v in ['true', 'True']:
+            return True
+        if v in ['false', 'False']:
+            return False
+        raise ConfigTypeError(self.full_key(key), v, 'bool')
 
     def get_bool(self, key: str) -> Optional[bool]:
         """
@@ -82,14 +107,7 @@ class Config:
         :rtype: Optional[bool]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        v = self.get(key)
-        if v is None:
-            return None
-        if v in ['true', 'True']:
-            return True
-        if v in ['false', 'False']:
-            return False
-        raise ConfigTypeError(self.full_key(key), v, 'bool')
+        return self._get_bool(key, self.get_secret_bool, self.get_bool)
 
     def get_secret_bool(self, key: str) -> Optional[Output[bool]]:
         """
@@ -101,11 +119,23 @@ class Config:
         :rtype: Optional[bool]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        v = self.get_bool(key)
+        v = self._get_bool(key)
         if v is None:
             return None
 
         return Output.secret(v)
+
+    def _get_int(self,
+                 key: str,
+                 use: Optional[Callable] = None,
+                 instead_of: Optional[Callable] = None) -> Optional[int]:
+        v = self._get(key, use, instead_of)
+        if v is None:
+            return None
+        try:
+            return int(v)
+        except Exception as e:
+            raise ConfigTypeError(self.full_key(key), v, 'int') from e
 
     def get_int(self, key: str) -> Optional[int]:
         """
@@ -117,13 +147,7 @@ class Config:
         :rtype: Optional[int]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        v = self.get(key)
-        if v is None:
-            return None
-        try:
-            return int(v)
-        except:
-            raise ConfigTypeError(self.full_key(key), v, 'int')
+        return self._get_int(key, self.get_secret_int, self.get_int)
 
     def get_secret_int(self, key: str) -> Optional[Output[int]]:
         """
@@ -135,11 +159,23 @@ class Config:
         :rtype: Optional[int]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        v = self.get_int(key)
+        v = self._get_int(key)
         if v is None:
             return None
 
         return Output.secret(v)
+
+    def _get_float(self,
+                   key: str,
+                   use: Optional[Callable] = None,
+                   instead_of: Optional[Callable] = None) -> Optional[float]:
+        v = self._get(key, use, instead_of)
+        if v is None:
+            return None
+        try:
+            return float(v)
+        except Exception as e:
+            raise ConfigTypeError(self.full_key(key), v, 'float') from e
 
     def get_float(self, key: str) -> Optional[float]:
         """
@@ -151,13 +187,7 @@ class Config:
         :rtype: Optional[float]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        v = self.get(key)
-        if v is None:
-            return None
-        try:
-            return float(v)
-        except:
-            raise ConfigTypeError(self.full_key(key), v, 'float')
+        return self._get_float(key, self.get_secret_float, self.get_float)
 
     def get_secret_float(self, key: str) -> Optional[Output[float]]:
         """
@@ -169,11 +199,23 @@ class Config:
         :rtype: Optional[float]
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        v = self.get_float(key)
+        v = self._get_float(key)
         if v is None:
             return None
 
         return Output.secret(v)
+
+    def _get_object(self,
+                    key: str,
+                    use: Optional[Callable] = None,
+                    instead_of: Optional[Callable] = None) -> Optional[Any]:
+        v = self._get(key, use, instead_of)
+        if v is None:
+            return None
+        try:
+            return json.loads(v)
+        except Exception as e:
+            raise ConfigTypeError(self.full_key(key), v, "JSON object") from e
 
     def get_object(self, key: str) -> Optional[Any]:
         """
@@ -181,13 +223,7 @@ class Config:
         doesn't exist. This routine simply JSON parses and doesn't validate the shape of the
         contents.
         """
-        v = self.get(key)
-        if v is None:
-            return None
-        try:
-            return json.loads(v)
-        except:
-            raise ConfigTypeError(self.full_key(key), v, "JSON object")
+        return self._get_object(key, self.get_secret_object, self.get_object)
 
     def get_secret_object(self, key: str) -> Optional[Output[Any]]:
         """
@@ -195,10 +231,16 @@ class Config:
         undefined if it doesn't exist. This routine simply JSON parses and doesn't validate the
         shape of the contents.
         """
-        v = self.get_object(key)
+        v = self._get_object(key)
         if v is None:
             return None
         return Output.secret(v)
+
+    def _require(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> str:
+        v = self._get(key, use, instead_of)
+        if v is None:
+            raise ConfigMissingError(self.full_key(key))
+        return v
 
     def require(self, key: str) -> str:
         """
@@ -209,10 +251,7 @@ class Config:
         :rtype: str
         :raises ConfigMissingError: The configuration value did not exist.
         """
-        v = self.get(key)
-        if v is None:
-            raise ConfigMissingError(self.full_key(key))
-        return v
+        return self._require(key, self.require_secret, self.require)
 
     def require_secret(self, key: str) -> Output[str]:
         """
@@ -223,7 +262,13 @@ class Config:
         :rtype: str
         :raises ConfigMissingError: The configuration value did not exist.
         """
-        return Output.secret(self.require(key))
+        return Output.secret(self._require(key))
+
+    def _require_bool(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> bool:
+        v = self._get_bool(key, use, instead_of)
+        if v is None:
+            raise ConfigMissingError(self.full_key(key))
+        return v
 
     def require_bool(self, key: str) -> bool:
         """
@@ -236,10 +281,7 @@ class Config:
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        v = self.get_bool(key)
-        if v is None:
-            raise ConfigMissingError(self.full_key(key))
-        return v
+        return self._require_bool(key, self.require_secret_bool, self.require_bool)
 
     def require_secret_bool(self, key: str) -> Output[bool]:
         """
@@ -252,7 +294,13 @@ class Config:
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to bool.
         """
-        return Output.secret(self.require_bool(key))
+        return Output.secret(self._require_bool(key))
+
+    def _require_int(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> int:
+        v = self._get_int(key, use, instead_of)
+        if v is None:
+            raise ConfigMissingError(self.full_key(key))
+        return v
 
     def require_int(self, key: str) -> int:
         """
@@ -265,10 +313,7 @@ class Config:
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        v = self.get_int(key)
-        if v is None:
-            raise ConfigMissingError(self.full_key(key))
-        return v
+        return self._require_int(key, self.require_secret_int, self.require_int)
 
     def require_secret_int(self, key: str) -> Output[int]:
         """
@@ -281,7 +326,13 @@ class Config:
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to int.
         """
-        return Output.secret(self.require_int(key))
+        return Output.secret(self._require_int(key))
+
+    def _require_float(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> float:
+        v = self._get_float(key, use, instead_of)
+        if v is None:
+            raise ConfigMissingError(self.full_key(key))
+        return v
 
     def require_float(self, key: str) -> float:
         """
@@ -294,10 +345,7 @@ class Config:
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        v = self.get_float(key)
-        if v is None:
-            raise ConfigMissingError(self.full_key(key))
-        return v
+        return self._require_float(key, self.require_secret_float, self.require_float)
 
     def require_secret_float(self, key: str) -> Output[float]:
         """
@@ -310,7 +358,13 @@ class Config:
         :raises ConfigMissingError: The configuration value did not exist.
         :raises ConfigTypeError: The configuration value existed but couldn't be coerced to float.
         """
-        return Output.secret(self.require_float(key))
+        return Output.secret(self._require_float(key))
+
+    def _require_object(self, key: str, use: Optional[Callable] = None, instead_of: Optional[Callable] = None) -> Any:
+        v = self._get_object(key, use, instead_of)
+        if v is None:
+            raise ConfigMissingError(self.full_key(key))
+        return v
 
     def require_object(self, key: str) -> Any:
         """
@@ -318,10 +372,7 @@ class Config:
         object. If it doesn't exist, or the configuration value is not a legal JSON string, an error
         is thrown.
         """
-        v = self.get_object(key)
-        if v is None:
-            raise ConfigMissingError(self.full_key(key))
-        return v
+        return self._require_object(key, self.require_secret_object, self.require_object)
 
     def require_secret_object(self, key: str) -> Output[Any]:
         """
@@ -329,7 +380,7 @@ class Config:
         object, marking it as a secret. If it doesn't exist, or the configuration value is not a
         legal JSON string, an error is thrown.
         """
-        return Output.secret(self.require_object(key))
+        return Output.secret(self._require_object(key))
 
     def full_key(self, key: str) -> str:
         """
@@ -366,7 +417,7 @@ class ConfigTypeError(errors.RunError):
         self.key = key
         self.value = value
         self.expect_type = expect_type
-        super(ConfigTypeError, self).__init__(
+        super().__init__(
             "Configuration '%s' value '%s' is not a valid '%s'" % (key, value, expect_type))
 
 
@@ -382,6 +433,6 @@ class ConfigMissingError(errors.RunError):
 
     def __init__(self, key: str) -> None:
         self.key = key
-        super(ConfigMissingError, self).__init__(
+        super().__init__(
             "Missing required configuration variable '%s'\n" % key +
             "    please set a value using the command `pulumi config set %s <value>`" % key)

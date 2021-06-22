@@ -17,7 +17,7 @@ package contract
 import (
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // Ignore explicitly ignores a value.  This is similar to `_ = x`, but tells linters ignoring is intentional.

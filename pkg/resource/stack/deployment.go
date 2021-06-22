@@ -21,14 +21,14 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype/migrate"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype/migrate"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const (
@@ -370,6 +370,20 @@ func SerializePropertyValue(prop resource.PropertyValue, enc config.Encrypter,
 		return prop.ArchiveValue().Serialize(), nil
 	}
 
+	// We serialize resource references using a map-based representation similar to assets, archives, and secrets.
+	if prop.IsResourceReference() {
+		ref := prop.ResourceReferenceValue()
+		serialized := map[string]interface{}{
+			resource.SigKey:  resource.ResourceReferenceSig,
+			"urn":            string(ref.URN),
+			"packageVersion": ref.PackageVersion,
+		}
+		if id, hasID := ref.IDString(); hasID {
+			serialized["id"] = id
+		}
+		return serialized, nil
+	}
+
 	if prop.IsSecret() {
 		// Since we are going to encrypt property value, we can elide encrypting sub-elements. We'll mark them as
 		// "secret" so we retain that information when deserializaing the overall structure, but there is no
@@ -424,6 +438,18 @@ func DeserializeResource(res apitype.ResourceV3, dec config.Decrypter, enc confi
 	outputs, err := DeserializeProperties(res.Outputs, dec, enc)
 	if err != nil {
 		return nil, err
+	}
+
+	if res.URN == "" {
+		return nil, errors.Errorf("resource missing required 'urn' field")
+	}
+
+	if res.Type == "" {
+		return nil, errors.Errorf("resource '%s' missing required 'type' field", res.URN)
+	}
+
+	if !res.Custom && res.ID != "" {
+		return nil, errors.Errorf("resource '%s' has 'custom' false but non-empty ID", res.URN)
 	}
 
 	return resource.NewState(
@@ -543,6 +569,59 @@ func DeserializePropertyValue(v interface{}, dec config.Decrypter,
 						cachingCrypter.insert(prop.SecretValue(), plaintext, ciphertext)
 					}
 					return prop, nil
+				case resource.ResourceReferenceSig:
+					var packageVersion string
+					if packageVersionV, ok := objmap["packageVersion"]; ok {
+						packageVersion, ok = packageVersionV.(string)
+						if !ok {
+							return resource.PropertyValue{},
+								errors.New("malformed resource reference: packageVersion must be a string")
+						}
+					}
+
+					urnStr, ok := objmap["urn"].(string)
+					if !ok {
+						return resource.PropertyValue{}, errors.New("malformed resource reference: missing urn")
+					}
+					urn := resource.URN(urnStr)
+
+					// deserializeID handles two cases, one of which arose from a bug in a refactoring of resource.ResourceReference.
+					// This bug caused the raw ID PropertyValue to be serialized as a map[string]interface{}. In the normal case, the
+					// ID is serialized as a string.
+					deserializeID := func() (string, bool, error) {
+						idV, ok := objmap["id"]
+						if !ok {
+							return "", false, nil
+						}
+
+						switch idV := idV.(type) {
+						case string:
+							return idV, true, nil
+						case map[string]interface{}:
+							switch v := idV["V"].(type) {
+							case nil:
+								// This happens for component resource references, which do not have an associated ID.
+								return "", false, nil
+							case string:
+								// This happens for custom resource references, which do have an associated ID.
+								return v, true, nil
+							case map[string]interface{}:
+								// This happens for custom resource references with an unknown ID. In this case, the ID should be
+								// deserialized as the empty string.
+								return "", true, nil
+							}
+						}
+						return "", false, errors.New("malformed resource reference: id must be a string")
+					}
+
+					id, hasID, err := deserializeID()
+					if err != nil {
+						return resource.PropertyValue{}, err
+					}
+					if hasID {
+						return resource.MakeCustomResourceReference(urn, resource.ID(id), packageVersion), nil
+					}
+					return resource.MakeComponentResourceReference(urn, packageVersion), nil
 				default:
 					return resource.PropertyValue{}, errors.Errorf("unrecognized signature '%v' in property map", sig)
 				}

@@ -57,9 +57,18 @@ process.on("exit", (code: number) => {
     }
 });
 
+const providerCache: { [key: string]: dynamic.ResourceProvider } = {};
+
 function getProvider(props: any): dynamic.ResourceProvider {
+    const providerString = props[providerKey];
+    let provider: any = providerCache[providerString];
+    if (!provider) {
+        provider = requireFromString(providerString).handler();
+        providerCache[providerString] = provider;
+    }
+
     // TODO[pulumi/pulumi#414]: investigate replacing requireFromString with eval
-    return requireFromString(props[providerKey]).handler();
+    return provider;
 }
 
 // Each of the *RPC functions below implements a single method of the resource provider gRPC interface. The CRUD
@@ -297,6 +306,13 @@ function getSchemaRPC(call: any, callback: any): void {
     }, undefined);
 }
 
+function constructRPC(call: any, callback: any): void {
+    callback({
+        code: grpc.status.UNIMPLEMENTED,
+        details: "Construct is not implemented by the dynamic provider",
+    }, undefined);
+}
+
 function resultIncludingProvider(result: any, props: any): any {
     return Object.assign(result || {}, {
         [providerKey]: props[providerKey],
@@ -372,6 +388,7 @@ export async function main(args: string[]) {
         delete: deleteRPC,
         getPluginInfo: getPluginInfoRPC,
         getSchema: getSchemaRPC,
+        construct: constructRPC,
     });
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {

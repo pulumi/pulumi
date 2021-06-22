@@ -1,0 +1,21 @@
+{
+  "types": {
+    "fake-provider:module1:BadEnum": {
+      "type": "integer",
+      "enum": [
+        {
+          "value": 1
+        },
+        {
+          "value": 2
+        },
+        {
+          "value": 3
+        },
+        {
+          "value": 9.1
+        }
+      ]
+    }
+  }
+}

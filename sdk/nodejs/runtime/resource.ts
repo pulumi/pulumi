@@ -19,8 +19,10 @@ import * as utils from "../utils";
 
 import { getAllResources, Input, Inputs, Output, output } from "../output";
 import { ResolvedResource } from "../queryable";
+import { expandProviders } from "../resource";
 import {
     ComponentResource,
+    ComponentResourceOptions,
     createUrn,
     CustomResource,
     CustomResourceOptions,
@@ -41,6 +43,7 @@ import {
     serializeProperties,
     serializeProperty,
     serializeResourceProperties,
+    suppressUnhandledGrpcRejections,
     transferProperties,
 } from "./rpc";
 import {
@@ -53,22 +56,26 @@ import {
     isLegacyApplyEnabled,
     rpcKeepAlive,
     serialize,
+    terminateRpcs,
 } from "./settings";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
+const providerproto = require("../proto/provider_pb.js");
 const resproto = require("../proto/resource_pb.js");
 
 interface ResourceResolverOperation {
     // A resolver for a resource's URN.
-    resolveURN: (urn: URN) => void;
+    resolveURN: (urn: URN, err?: Error) => void;
     // A resolver for a resource's ID (for custom resources only).
-    resolveID: ((v: ID, performApply: boolean) => void) | undefined;
+    resolveID: ((v: ID, performApply: boolean, err?: Error) => void) | undefined;
     // A collection of resolvers for a resource's properties.
     resolvers: OutputResolvers;
     // A parent URN, fully resolved, if any.
     parentURN: URN | undefined;
     // A provider reference, fully resolved, if any.
     providerRef: string | undefined;
+    // A map of provider references, fully resolved, if any.
+    providerRefs: Map<string, string>;
     // All serialized properties, fully awaited, serialized, and ready to go.
     serializedProps: Record<string, any>;
     // A set of URNs that this resource is directly dependent upon.  These will all be URNs of
@@ -85,6 +92,102 @@ interface ResourceResolverOperation {
 }
 
 /**
+ * Get an existing resource's state from the engine.
+ */
+export function getResource(res: Resource, props: Inputs, custom: boolean, urn: string): void {
+    // Extract the resource type from the URN.
+    const urnParts = urn.split("::");
+    const qualifiedType = urnParts[2];
+    const urnName = urnParts[3];
+    const type = qualifiedType.split("$").pop()!;
+
+    const label = `resource:urn=${urn}`;
+    log.debug(`Getting resource: urn=${urn}`);
+
+    const monitor: any = getMonitor();
+    const resopAsync = prepareResource(label, res, custom, false, props, {});
+
+    const preallocError = new Error();
+    debuggablePromise(resopAsync.then(async (resop) => {
+        const inputs = await serializeProperties(label, { urn });
+
+        const req = new providerproto.InvokeRequest();
+        req.setTok("pulumi:pulumi:getResource");
+        req.setArgs(gstruct.Struct.fromJavaScript(inputs));
+        req.setProvider("");
+        req.setVersion("");
+
+        // Now run the operation, serializing the invocation if necessary.
+        const opLabel = `monitor.getResource(${label})`;
+        runAsyncResourceOp(opLabel, async () => {
+            let resp: any = {};
+            let err: Error | undefined;
+            try {
+                if (monitor) {
+                    resp = await debuggablePromise(new Promise((resolve, reject) =>
+                        monitor.invoke(req, (rpcError: grpc.ServiceError, innerResponse: any) => {
+                            log.debug(`getResource Invoke RPC finished: err: ${rpcError}, resp: ${innerResponse}`);
+                            if (rpcError) {
+                                if (rpcError.code === grpc.status.UNAVAILABLE || rpcError.code === grpc.status.CANCELLED) {
+                                    err = rpcError;
+                                    terminateRpcs();
+                                    rpcError.message = "Resource monitor is terminating";
+                                    (<any>preallocError).code = rpcError.code;
+                                }
+
+                                preallocError.message = `failed to get resource:urn=${urn}: ${rpcError.message}`;
+                                reject(new Error(rpcError.details));
+                            }
+                            else {
+                                resolve(innerResponse);
+                            }
+                        })), opLabel);
+
+                    // If the invoke failed, raise an error
+                    const failures: any = resp.getFailuresList();
+                    if (failures && failures.length) {
+                        let reasons = "";
+                        for (let i = 0; i < failures.length; i++) {
+                            if (reasons !== "") {
+                                reasons += "; ";
+                            }
+                            reasons += `${failures[i].getReason()} (${failures[i].getProperty()})`;
+                        }
+                        throw new Error(`getResource Invoke failed: ${reasons}`);
+                    }
+
+                    // Otherwise, return the response.
+                    const m = resp.getReturn().getFieldsMap();
+                    resp = {
+                        urn: m.get("urn").toJavaScript(),
+                        id: m.get("id").toJavaScript() || undefined,
+                        state: m.get("state").getStructValue(),
+                    };
+                }
+            } catch (e) {
+                err = e;
+                resp = {
+                    urn: "",
+                    id: undefined,
+                    state: undefined,
+                };
+            }
+
+            resop.resolveURN(resp.urn, err);
+
+            // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
+            // undefined so that later parts of our system don't have to deal with values like 'null'.
+            if (resop.resolveID) {
+                const id = resp.id || undefined;
+                resop.resolveID(id, id !== undefined, err);
+            }
+
+            await resolveOutputs(res, type, urnName, props, resp.state, {}, resop.resolvers, err);
+        });
+    }), label);
+}
+
+/**
  * Reads an existing custom resource's state from the resource monitor.  Note that resources read in this way
  * will not be part of the resulting stack's state, as they are presumed to belong to another.
  */
@@ -98,7 +201,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
     log.debug(`Reading resource: id=${Output.isInstance(id) ? "Output<T>" : id}, t=${t}, name=${name}`);
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, true, props, opts);
+    const resopAsync = prepareResource(label, res, true, false, props, opts);
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
@@ -117,39 +220,56 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
         req.setDependenciesList(Array.from(resop.allDirectDependencyURNs));
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
 
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.readResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
-            let resp: any;
-            if (monitor) {
-                // If we're attached to the engine, make an RPC call and wait for it to resolve.
-                resp = await debuggablePromise(new Promise((resolve, reject) =>
-                    (monitor as any).readResource(req, (err: Error, innerResponse: any) => {
-                        log.debug(`ReadResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
-                        if (err) {
-                            preallocError.message =
-                                `failed to read resource #${resolvedID} '${name}' [${t}]: ${err.message}`;
-                            reject(preallocError);
-                        }
-                        else {
-                            resolve(innerResponse);
-                        }
-                    })), opLabel);
-            } else {
-                // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
-                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
+            let resp: any = {};
+            let err: Error | undefined;
+            try {
+                if (monitor) {
+                    // If we're attached to the engine, make an RPC call and wait for it to resolve.
+                    resp = await debuggablePromise(new Promise((resolve, reject) =>
+                        (monitor as any).readResource(req, (rpcError: grpc.ServiceError, innerResponse: any) => {
+                            log.debug(`ReadResource RPC finished: ${label}; err: ${rpcError}, resp: ${innerResponse}`);
+                            if (rpcError) {
+                                if (rpcError.code === grpc.status.UNAVAILABLE || rpcError.code === grpc.status.CANCELLED) {
+                                    err = rpcError;
+                                    terminateRpcs();
+                                    rpcError.message = "Resource monitor is terminating";
+                                    (<any>preallocError).code = rpcError.code;
+                                }
+
+                                preallocError.message =
+                                    `failed to read resource #${resolvedID} '${name}' [${t}]: ${rpcError.message}`;
+                                reject(preallocError);
+                            }
+                            else {
+                                resolve(innerResponse);
+                            }
+                        })), opLabel);
+                } else {
+                    // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
+                    const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
+                    resp = {
+                        getUrn: () => mockurn,
+                        getProperties: () => req.getProperties(),
+                    };
+                }
+            } catch (e) {
+                err = e;
                 resp = {
-                    getUrn: () => mockurn,
-                    getProperties: () => req.getProperties(),
+                    getUrn: () => "",
+                    getProperties: () => undefined,
                 };
             }
 
             // Now resolve everything: the URN, the ID (supplied as input), and the output properties.
-            resop.resolveURN(resp.getUrn());
-            resop.resolveID!(resolvedID, resolvedID !== undefined);
-            await resolveOutputs(res, t, name, props, resp.getProperties(), resop.resolvers);
+            resop.resolveURN(resp.getUrn(), err);
+            resop.resolveID!(resolvedID, resolvedID !== undefined, err);
+            await resolveOutputs(res, t, name, props, resp.getProperties(), {}, resop.resolvers, err);
         });
     }), label);
 }
@@ -159,13 +279,13 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
  * URN and the ID that will resolve after the deployment has completed.  All properties will be initialized to property
  * objects that the registration operation will resolve at the right time (or remain unresolved for deployments).
  */
-export function registerResource(res: Resource, t: string, name: string, custom: boolean,
-                                 props: Inputs, opts: ResourceOptions): void {
+export function registerResource(res: Resource, t: string, name: string, custom: boolean, remote: boolean,
+                                 newDependency: (urn: URN) => Resource, props: Inputs, opts: ResourceOptions): void {
     const label = `resource:${name}[${t}]`;
-    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}`);
+    log.debug(`Registering resource: t=${t}, name=${name}, custom=${custom}, remote=${remote}`);
 
     const monitor = getMonitor();
-    const resopAsync = prepareResource(label, res, custom, props, opts);
+    const resopAsync = prepareResource(label, res, custom, remote, props, opts);
 
     // In order to present a useful stack trace if an error does occur, we preallocate potential
     // errors here. V8 captures a stack trace at the moment an Error is created and this stack
@@ -190,10 +310,12 @@ export function registerResource(res: Resource, t: string, name: string, custom:
         req.setIgnorechangesList(opts.ignoreChanges || []);
         req.setVersion(opts.version || "");
         req.setAcceptsecrets(true);
+        req.setAcceptresources(!utils.disableResourceReferences);
         req.setAdditionalsecretoutputsList((<any>opts).additionalSecretOutputs || []);
         req.setAliasesList(resop.aliases);
         req.setImportid(resop.import || "");
         req.setSupportspartialvalues(true);
+        req.setRemote(remote);
 
         const customTimeouts = new resproto.RegisterResourceRequest.CustomTimeouts();
         if (opts.customTimeouts != null) {
@@ -210,52 +332,82 @@ export function registerResource(res: Resource, t: string, name: string, custom:
             propertyDependencies.set(key, deps);
         }
 
+        const providerRefs = req.getProvidersMap();
+        for (const [key, ref] of resop.providerRefs) {
+            providerRefs.set(key, ref);
+        }
+
         // Now run the operation, serializing the invocation if necessary.
         const opLabel = `monitor.registerResource(${label})`;
         runAsyncResourceOp(opLabel, async () => {
-            let resp: any;
-            if (monitor) {
-                // If we're running with an attachment to the engine, perform the operation.
-                resp = await debuggablePromise(new Promise((resolve, reject) =>
-                    (monitor as any).registerResource(req, (err: grpc.ServiceError, innerResponse: any) => {
-                        log.debug(`RegisterResource RPC finished: ${label}; err: ${err}, resp: ${innerResponse}`);
-                        if (err) {
-                            // If the monitor is unavailable, it is in the process of shutting down or has already
-                            // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                            if (err.code === grpc.status.UNAVAILABLE) {
-                                log.debug("Resource monitor is terminating");
-                                process.exit(0);
-                            }
+            let resp: any = {};
+            let err: Error | undefined;
+            try {
+                if (monitor) {
+                    // If we're running with an attachment to the engine, perform the operation.
+                    resp = await debuggablePromise(new Promise((resolve, reject) =>
+                        (monitor as any).registerResource(req, (rpcErr: grpc.ServiceError, innerResponse: any) => {
+                            if (rpcErr) {
+                                err = rpcErr;
+                                // If the monitor is unavailable, it is in the process of shutting down or has already
+                                // shut down. Don't emit an error and don't do any more RPCs, just exit.
+                                if (rpcErr.code === grpc.status.UNAVAILABLE || rpcErr.code === grpc.status.CANCELLED) {
+                                    // Re-emit the message
+                                    terminateRpcs();
+                                    rpcErr.message = "Resource monitor is terminating";
+                                    (<any>preallocError).code = rpcErr.code;
+                                }
 
-                            // Node lets us hack the message as long as we do it before accessing the `stack` property.
-                            preallocError.message = `failed to register new resource ${name} [${t}]: ${err.message}`;
-                            reject(preallocError);
-                        }
-                        else {
-                            resolve(innerResponse);
-                        }
-                    })), opLabel);
-            } else {
-                // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
-                const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
+                                // Node lets us hack the message as long as we do it before accessing the `stack` property.
+                                log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`);
+                                preallocError.message = `failed to register new resource ${name} [${t}]: ${rpcErr.message}`;
+                                reject(preallocError);
+                            }
+                            else {
+                                log.debug(`RegisterResource RPC finished: ${label}; err: ${rpcErr}, resp: ${innerResponse}`);
+                                resolve(innerResponse);
+                            }
+                        })), opLabel);
+                } else {
+                    // If we aren't attached to the engine, in test mode, mock up a fake response for testing purposes.
+                    const mockurn = await createUrn(req.getName(), req.getType(), req.getParent()).promise();
+                    resp = {
+                        getUrn: () => mockurn,
+                        getId: () => undefined,
+                        getObject: () => req.getObject(),
+                        getPropertydependenciesMap: () => undefined,
+                    };
+                }
+            } catch (e) {
+                err = e;
                 resp = {
-                    getUrn: () => mockurn,
+                    getUrn: () => "",
                     getId: () => undefined,
                     getObject: () => req.getObject(),
+                    getPropertydependenciesMap: () => undefined,
                 };
             }
 
-            resop.resolveURN(resp.getUrn());
+            resop.resolveURN(resp.getUrn(), err);
 
             // Note: 'id || undefined' is intentional.  We intentionally collapse falsy values to
             // undefined so that later parts of our system don't have to deal with values like 'null'.
             if (resop.resolveID) {
                 const id = resp.getId() || undefined;
-                resop.resolveID(id, id !== undefined);
+                resop.resolveID(id, id !== undefined, err);
+            }
+
+            const deps: Record<string, Resource[]> = {};
+            const rpcDeps = resp.getPropertydependenciesMap();
+            if (rpcDeps) {
+                for (const [k, propertyDeps] of resp.getPropertydependenciesMap().entries()) {
+                    const urns = <URN[]>propertyDeps.getUrnsList();
+                    deps[k] = urns.map(urn => newDependency(urn));
+                }
             }
 
             // Now resolve the output properties.
-            await resolveOutputs(res, t, name, props, resp.getObject(), resop.resolvers);
+            await resolveOutputs(res, t, name, props, resp.getObject(), deps, resop.resolvers, err);
         });
     }), label);
 }
@@ -264,38 +416,76 @@ export function registerResource(res: Resource, t: string, name: string, custom:
  * Prepares for an RPC that will manufacture a resource, and hence deals with input and output
  * properties.
  */
-async function prepareResource(label: string, res: Resource, custom: boolean,
+async function prepareResource(label: string, res: Resource, custom: boolean, remote: boolean,
                                props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
 
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
-    let resolveURN: (urn: URN) => void;
-    (res as any).urn = new Output(
-        res,
-        debuggablePromise(
-            new Promise<URN>(resolve => resolveURN = resolve),
-            `resolveURN(${label})`),
-        /*isKnown:*/ Promise.resolve(true),
-        /*isSecret:*/ Promise.resolve(false),
-        Promise.resolve(res));
+    let resolveURN: (urn: URN, err?: Error) => void;
+    {
+        let resolveValue: (urn: URN) => void;
+        let rejectValue: (err: Error) => void;
+        let resolveIsKnown: (isKnown: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
+        (res as any).urn = new Output(
+            res,
+            debuggablePromise(
+                new Promise<URN>((resolve, reject) => {
+                    resolveValue = resolve;
+                    rejectValue = reject;
+                }),
+                `resolveURN(${label})`),
+            debuggablePromise(
+                new Promise<boolean>((resolve, reject) => {
+                    resolveIsKnown = resolve;
+                    rejectIsKnown = reject;
+                }),
+                `resolveURNIsKnown(${label})`),
+            /*isSecret:*/ Promise.resolve(false),
+            Promise.resolve(res));
+
+        resolveURN = (v, err) => {
+            if (!!err) {
+                rejectValue(err);
+                rejectIsKnown(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(true);
+            }
+        };
+    }
 
     // If a custom resource, make room for the ID property.
-    let resolveID: ((v: any, performApply: boolean) => void) | undefined;
+    let resolveID: ((v: any, performApply: boolean, err?: Error) => void) | undefined;
     if (custom) {
         let resolveValue: (v: ID) => void;
+        let rejectValue: (err: Error) => void;
         let resolveIsKnown: (v: boolean) => void;
+        let rejectIsKnown: (err: Error) => void;
+
         (res as any).id = new Output(
             res,
-            debuggablePromise(new Promise<ID>(resolve => resolveValue = resolve), `resolveID(${label})`),
-            debuggablePromise(new Promise<boolean>(
-                resolve => resolveIsKnown = resolve), `resolveIDIsKnown(${label})`),
+            debuggablePromise(new Promise<ID>((resolve, reject) => {
+                resolveValue = resolve;
+                rejectValue = reject;
+            }),
+                `resolveID(${label})`),
+            debuggablePromise(new Promise<boolean>((resolve, reject) => {
+                resolveIsKnown = resolve;
+                rejectIsKnown = reject;
+            }), `resolveIDIsKnown(${label})`),
             Promise.resolve(false),
             Promise.resolve(res));
 
-        resolveID = (v, isKnown) => {
-            resolveValue(v);
-            resolveIsKnown(isKnown);
+        resolveID = (v, isKnown, err) => {
+            if (!!err) {
+                rejectValue(err);
+                rejectIsKnown(err);
+            } else {
+                resolveValue(v);
+                resolveIsKnown(isKnown);
+            }
         };
     }
 
@@ -326,6 +516,20 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
         const customOpts = <CustomResourceOptions>opts;
         importID = customOpts.import;
         providerRef = await ProviderResource.register(opts.provider);
+    }
+
+    const providerRefs: Map<string, string> = new Map<string, string>();
+    if (remote) {
+        const componentOpts = <ComponentResourceOptions>opts;
+        expandProviders(componentOpts);
+        if (componentOpts.providers) {
+            for (const provider of componentOpts.providers as ProviderResource[]) {
+                const pref = await ProviderResource.register(provider);
+                if (pref) {
+                    providerRefs.set(provider.getPackage(), pref);
+                }
+            }
+        }
     }
 
     // Collect the URNs for explicit/implicit dependencies for the engine so that it can understand
@@ -359,12 +563,13 @@ async function prepareResource(label: string, res: Resource, custom: boolean,
     }
 
     return {
-        resolveURN: resolveURN!,
+        resolveURN: resolveURN,
         resolveID: resolveID,
         resolvers: resolvers,
         serializedProps: serializedProps,
         parentURN: parentURN,
         providerRef: providerRef,
+        providerRefs: providerRefs,
         allDirectDependencyURNs: allDirectDependencyURNs,
         propertyToDirectDependencyURNs: propertyToDirectDependencyURNs,
         aliases: aliases,
@@ -474,7 +679,9 @@ async function gatherExplicitDependencies(
  * Finishes a resource creation RPC operation by resolving its outputs to the resulting RPC payload.
  */
 async function resolveOutputs(res: Resource, t: string, name: string,
-                              props: Inputs, outputs: any, resolvers: OutputResolvers): Promise<void> {
+                              props: Inputs, outputs: any, deps: Record<string, Resource[]>,
+                              resolvers: OutputResolvers, err?: Error): Promise<void> {
+
     // Produce a combined set of property states, starting with inputs and then applying
     // outputs.  If the same property exists in the inputs and outputs states, the output wins.
     const allProps: Record<string, any> = {};
@@ -498,7 +705,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
         }
     }
 
-    resolveProperties(res, resolvers, t, name, allProps);
+    resolveProperties(res, resolvers, t, name, allProps, deps, err);
 }
 
 /**
@@ -534,15 +741,16 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
                     if (err) {
                         // If the monitor is unavailable, it is in the process of shutting down or has already
                         // shut down. Don't emit an error and don't do any more RPCs, just exit.
-                        if (err.code === grpc.status.UNAVAILABLE) {
-                            log.debug("Resource monitor is terminating");
-                            process.exit(0);
+                        if (err.code === grpc.status.UNAVAILABLE || err.code === grpc.status.CANCELLED) {
+                            terminateRpcs();
+                            err.message = "Resource monitor is terminating";
                         }
 
-                        log.error(`Failed to end new resource registration '${urn}': ${err.stack}`);
                         reject(err);
                     }
                     else {
+                        log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` +
+                            `err: ${err}, resp: ${innerResponse}`);
                         resolve();
                     }
                 })), label);
@@ -603,13 +811,13 @@ function runAsyncResourceOp(label: string, callback: () => Promise<void>, serial
     if (serial === undefined) {
         serial = serialize();
     }
-    const resourceOp: Promise<void> = debuggablePromise(resourceChain.then(async () => {
+    const resourceOp: Promise<void> = suppressUnhandledGrpcRejections(debuggablePromise(resourceChain.then(async () => {
         if (serial) {
             resourceChainLabel = label;
             log.debug(`Resource RPC serialization requested: ${label} is current`);
         }
         return callback();
-    }), label + "-initial");
+    }), label + "-initial"));
 
     // Ensure the process won't exit until this RPC call finishes and resolve it when appropriate.
     const done: () => void = rpcKeepAlive();

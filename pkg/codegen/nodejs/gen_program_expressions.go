@@ -9,9 +9,9 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
 )
@@ -215,7 +215,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 
 	// Compute the resource type from the Pulumi type token.
 	pkg, module, member, diagnostics := hcl2.DecomposeToken(token, tokenRange)
-	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), member, diagnostics
+	return pkg, strings.Replace(module, "/", ".", -1), member, diagnostics
 }
 
 func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, entries bool) {
@@ -324,7 +324,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		if module != "" {
 			module = "." + module
 		}
-		name := fmt.Sprintf("%s%s.%s", pkg, module, fn)
+		name := fmt.Sprintf("%s%s.%s", makeValidIdentifier(pkg), module, fn)
 
 		optionsBag := ""
 		if len(expr.Args) == 3 {
@@ -411,6 +411,8 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 	switch expr.Type() {
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
+	case model.NoneType:
+		g.Fgen(w, "undefined")
 	case model.NumberType:
 		bf := expr.Value.AsBigFloat()
 		if i, acc := bf.Int64(); acc == big.Exact {

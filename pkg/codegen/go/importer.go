@@ -17,7 +17,7 @@ package gen
 import (
 	"encoding/json"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // GoPackageInfo holds information required to generate the Go SDK from a schema.
@@ -26,6 +26,9 @@ type GoPackageInfo struct {
 	//
 	//    github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes
 	ImportBasePath string `json:"importBasePath,omitempty"`
+
+	// Explicit package name, which may be different to the import path.
+	RootPackageName string `json:"rootPackageName,omitempty"`
 
 	// Map from module -> package name
 	//
@@ -38,6 +41,10 @@ type GoPackageInfo struct {
 	//    { "github.com/pulumi/pulumi-kubernetes/sdk/go/kubernetes/flowcontrol/v1alpha1": "flowcontrolv1alpha1" }
 	//
 	PackageImportAliases map[string]string `json:"packageImportAliases,omitempty"`
+
+	// Generate container types (arrays, maps, pointer output types etc.) for each resource.
+	// These are typically used to support external references.
+	GenerateResourceContainerTypes bool `json:"generateResourceContainerTypes,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

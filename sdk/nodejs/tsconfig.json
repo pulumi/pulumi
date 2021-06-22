@@ -35,6 +35,10 @@
 
         "log/index.ts",
 
+        "provider/index.ts",
+        "provider/provider.ts",
+        "provider/server.ts",
+
         "runtime/index.ts",
 
         "runtime/closure/codePaths.ts",
@@ -63,6 +67,17 @@
         "cmd/run-policy-pack/index.ts",
         "cmd/run-policy-pack/run.ts",
 
+        "automation/index.ts",
+        "automation/cmd.ts",
+        "automation/config.ts",
+        "automation/localWorkspace.ts",
+        "automation/minimumVersion.ts",
+        "automation/projectSettings.ts",
+        "automation/stackSettings.ts",
+        "automation/server.ts",
+        "automation/stack.ts",
+        "automation/workspace.ts",
+
         "tests/config.spec.ts",
         "tests/init.spec.ts",
         "tests/iterable.spec.ts",
@@ -74,9 +89,14 @@
         "tests/util.ts",
         "tests/runtime/asyncIterableUtil.spec.ts",
         "tests/runtime/closureLoader.spec.ts",
+        "tests/runtime/registrations.spec.ts",
         "tests/runtime/tsClosureCases.ts",
         "tests/runtime/props.spec.ts",
-        "tests/runtime/langhost/run.spec.ts"
+        "tests/runtime/settings.spec.ts",
+        "tests/runtime/langhost/run.spec.ts",
+
+        "tests/automation/localWorkspace.spec.ts",
+
+        "tests_with_mocks/mocks.spec.ts",
     ]
 }
-

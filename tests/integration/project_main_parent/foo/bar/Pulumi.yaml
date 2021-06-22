@@ -1,0 +1,4 @@
+name: project_main_parent
+description: A program with an entry point in a parent folder
+runtime: nodejs
+main: ../../foo

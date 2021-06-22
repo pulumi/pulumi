@@ -17,11 +17,6 @@ namespace Pulumi
         private readonly string _name;
 
         /// <summary>
-        /// The optional parent of this resource.
-        /// </summary>
-        private readonly Resource? _parentResource;
-
-        /// <summary>
         /// The child resources of this resource.  We use these (only from a ComponentResource) to
         /// allow code to dependOn a ComponentResource and have that effectively mean that it is
         /// depending on all the CustomResource children of that component.
@@ -56,7 +51,7 @@ namespace Pulumi
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
         /// </summary>
-        internal readonly HashSet<Resource> ChildResources = new HashSet<Resource>();
+        internal HashSet<Resource> ChildResources { get; } = new HashSet<Resource>();
 
         /// <summary>
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
@@ -64,7 +59,7 @@ namespace Pulumi
         /// </summary>
         // Set using reflection, so we silence the NRT warnings with `null!`.
         [Output(Constants.UrnPropertyName)]
-        public Output<string> Urn { get; private set; } = null!;
+        public Output<string> Urn { get; private protected set; } = null!;
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
@@ -110,10 +105,22 @@ namespace Pulumi
         /// <param name="custom">True to indicate that this is a custom resource, managed by a plugin.</param>
         /// <param name="args">The arguments to use to populate the new resource.</param>
         /// <param name="options">A bag of options that control this resource's behavior.</param>
+        /// <param name="remote">True if this is a remote component resource.</param>
+        /// <param name="dependency">True if this is a synthetic resource used internally for dependency tracking.</param>
         private protected Resource(
             string type, string name, bool custom,
-            ResourceArgs args, ResourceOptions options)
+            ResourceArgs args, ResourceOptions options,
+            bool remote = false, bool dependency = false)
         {
+            if (dependency)
+            {
+                _type = "";
+                _name = "";
+                _protect = false;
+                _providers = ImmutableDictionary<string, ProviderResource>.Empty;
+                return;
+            }
+
             if (string.IsNullOrEmpty(type))
                 throw new ArgumentException("'type' cannot be null or empty.", nameof(type));
 
@@ -179,11 +186,13 @@ namespace Pulumi
 
             if (options.Parent != null)
             {
-                this._parentResource = options.Parent;
-                this._parentResource.ChildResources.Add(this);
+                var parentResource = options.Parent;
+                lock (parentResource.ChildResources)
+                {
+                    parentResource.ChildResources.Add(this);
+                }
 
-                if (options.Protect == null)
-                    options.Protect = options.Parent._protect;
+                options.Protect ??= options.Parent._protect;
 
                 // Make a copy of the aliases array, and add to it any implicit aliases inherited from its parent
                 options.Aliases = options.Aliases.ToList();
@@ -247,7 +256,7 @@ namespace Pulumi
             }
             this._aliases = aliases.ToImmutable();
 
-            Deployment.InternalInstance.ReadOrRegisterResource(this, args, options);
+            Deployment.InternalInstance.ReadOrRegisterResource(this, remote, urn => new DependencyResource(urn), args, options);
         }
 
         /// <summary>
@@ -320,7 +329,6 @@ $"Only specify one of '{nameof(Alias.Parent)}', '{nameof(Alias.ParentUrn)}' or '
             if (value != null)
             {
                 ThrowAliasPropertyConflict(name);
-                return;
             }
         }
 

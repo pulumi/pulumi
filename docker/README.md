@@ -38,13 +38,14 @@ pulumi/pulumi-base:<PULUMI_VERSION>
 Images with the SDK runtimes are generated in the following format:
 
 ```
-pulumi/pulumi-<PULUM_SDK>:<PULUMI_VERSION>-<OS>
+pulumi/pulumi-<PULUMI_SDK>:<PULUMI_VERSION>-<OS>
 ```
 
-The default image without the OS is based on Debian Buster, and can be used like so:
+The default image without the OS suffix is based on Debian Buster, and can be used like so:
 
 ```
-pulumi/pulumi-base-<PULUMI_SDK>:<PULUMI_VERSION>
+pulumi/pulumi-<PULUMI_SDK>:<PULUMI_VERSION>
+pulumi/pulumi-<PULUMI_SDK>:latest
 ```
 
 ### Image Size

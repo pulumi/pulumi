@@ -21,12 +21,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
 func newDestroyCmd() *cobra.Command {
@@ -34,6 +34,8 @@ func newDestroyCmd() *cobra.Command {
 	var stack string
 
 	var message string
+	var execKind string
+	var execAgent string
 
 	// Flags for engine.UpdateOptions.
 	var diffDisplay bool
@@ -45,6 +47,7 @@ func newDestroyCmd() *cobra.Command {
 	var showSames bool
 	var skipPreview bool
 	var suppressOutputs bool
+	var suppressPermaLink string
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
@@ -90,7 +93,28 @@ func newDestroyCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
-			s, err := requireStack(stack, false, opts.Display, true /*setCurrent*/)
+			// we only suppress permalinks if the user passes true. the default is an empty string
+			// which we pass as 'false'
+			//nolint:goconst
+			if suppressPermaLink == "true" {
+				opts.Display.SuppressPermaLink = true
+			} else {
+				opts.Display.SuppressPermaLink = false
+			}
+
+			filestateBackend, err := isFilestateBackend(opts.Display)
+			if err != nil {
+				return result.FromError(err)
+			}
+
+			// by default, we are going to suppress the permalink when using self-managed backends
+			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
+			//nolint:goconst
+			if suppressPermaLink != "false" && filestateBackend {
+				opts.Display.SuppressPermaLink = true
+			}
+
+			s, err := requireStack(stack, false, opts.Display, false /*setCurrent*/)
 			if err != nil {
 				return result.FromError(err)
 			}
@@ -99,7 +123,7 @@ func newDestroyCmd() *cobra.Command {
 				return result.FromError(err)
 			}
 
-			m, err := getUpdateMetadata(message, root)
+			m, err := getUpdateMetadata(message, root, execKind, execAgent)
 			if err != nil {
 				return result.FromError(errors.Wrap(err, "gathering environment metadata"))
 			}
@@ -120,12 +144,14 @@ func newDestroyCmd() *cobra.Command {
 			}
 
 			opts.Engine = engine.UpdateOptions{
-				Parallel:         parallel,
-				Debug:            debug,
-				Refresh:          refresh,
-				DestroyTargets:   targetUrns,
-				TargetDependents: targetDependents,
-				UseLegacyDiff:    useLegacyDiff(),
+				Parallel:                  parallel,
+				Debug:                     debug,
+				Refresh:                   refresh,
+				DestroyTargets:            targetUrns,
+				TargetDependents:          targetDependents,
+				UseLegacyDiff:             useLegacyDiff(),
+				DisableProviderPreview:    disableProviderPreview(),
+				DisableResourceReferences: disableResourceReferences(),
 			}
 
 			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
@@ -189,12 +215,16 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().BoolVar(
 		&showSames, "show-sames", false,
 		"Show resources that don't need to be updated because they haven't changed, alongside those that do")
-	cmd.PersistentFlags().BoolVar(
-		&skipPreview, "skip-preview", false,
+	cmd.PersistentFlags().BoolVarP(
+		&skipPreview, "skip-preview", "f", false,
 		"Do not perform a preview before performing the destroy")
 	cmd.PersistentFlags().BoolVar(
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
+	cmd.PersistentFlags().StringVar(
+		&suppressPermaLink, "suppress-permalink", "",
+		"Suppress display of the state permalink")
+	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 
 	cmd.PersistentFlags().BoolVarP(
 		&yes, "yes", "y", false,
@@ -205,5 +235,14 @@ func newDestroyCmd() *cobra.Command {
 			&eventLogPath, "event-log", "",
 			"Log events to a file at this path")
 	}
+
+	// internal flags
+	cmd.PersistentFlags().StringVar(&execKind, "exec-kind", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-kind")
+	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+
 	return cmd
 }

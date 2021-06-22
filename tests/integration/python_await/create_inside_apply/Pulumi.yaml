@@ -1,0 +1,3 @@
+name: create_inside_apply
+runtime: python
+description: create a resource inside an apply in python

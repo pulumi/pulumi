@@ -34,26 +34,26 @@ import (
 	"github.com/pkg/errors"
 	"github.com/skratchdot/open-golang/open"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/backend/filestate"
-	"github.com/pulumi/pulumi/pkg/v2/backend/httpstate/client"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/retry"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/backend/filestate"
+	"github.com/pulumi/pulumi/pkg/v3/backend/httpstate/client"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/retry"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 const (
@@ -647,6 +647,11 @@ func (b *cloudBackend) Logout() error {
 	return workspace.DeleteAccount(b.CloudURL())
 }
 
+// LogoutAll logs out of all accounts
+func (b *cloudBackend) LogoutAll() error {
+	return workspace.DeleteAllAccounts()
+}
+
 // DoesProjectExist returns true if a project with the given name exists in this backend, or false otherwise.
 func (b *cloudBackend) DoesProjectExist(ctx context.Context, projectName string) (bool, error) {
 	owner, err := b.currentUser(ctx)
@@ -762,10 +767,11 @@ func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	return b.client.DeleteStack(ctx, stackID, force)
 }
 
-func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, newName tokens.QName) error {
+func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack,
+	newName tokens.QName) (backend.StackReference, error) {
 	stackID, err := b.getCloudStackIdentifier(stack.Ref())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	// Support a qualified stack name, which would also rename the stack's project too.
@@ -773,27 +779,45 @@ func (b *cloudBackend) RenameStack(ctx context.Context, stack backend.Stack, new
 	// new value in Pulumi.yaml.
 	newRef, err := b.ParseStackReference(string(newName))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	newIdentity, err := b.getCloudStackIdentifier(newRef)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	if stackID.Owner != newIdentity.Owner {
-		url := "."
+		errMsg := fmt.Sprintf(
+			"New stack owner, %s, does not match existing owner, %s.\n\n",
+			stackID.Owner, newIdentity.Owner)
 
-		if consoleURL, err := b.StackConsoleURL(stack.Ref()); err == nil {
-			url = ":\n" + consoleURL + "/settings/options"
+		// Re-parse the name using the parseStackName function to avoid the logic in ParseStackReference
+		// that auto-populates the owner property with the currently logged in account. We actually want to
+		// give a different error message if the raw stack name itself didn't include an owner part.
+		parsedName, err := b.parseStackName(string(newName))
+		contract.IgnoreError(err)
+		if parsedName.Owner == "" {
+			errMsg += fmt.Sprintf(
+				"       Did you forget to include the owner name? If yes, rerun the command as follows:\n\n"+
+					"           $ pulumi stack rename %s/%s\n\n",
+				stackID.Owner, newName)
 		}
-		errMsg := "You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
-			"of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
-			"\"Settings\" page of the stack and then clicking the \"Transfer Stack\" button" + url
 
-		return errors.Errorf(errMsg)
+		errMsgSuffix := "."
+		if consoleURL, err := b.StackConsoleURL(stack.Ref()); err == nil {
+			errMsgSuffix = ":\n\n           " + consoleURL + "/settings/options"
+		}
+		errMsg += "       You cannot transfer stack ownership via a rename. If you wish to transfer ownership\n" +
+			"       of a stack to another organization, you can do so in the Pulumi Console by going to the\n" +
+			"       \"Settings\" page of the stack and then clicking the \"Transfer Stack\" button"
+
+		return nil, errors.New(errMsg + errMsgSuffix)
 	}
 
-	return b.client.RenameStack(ctx, stackID, newIdentity)
+	if err = b.client.RenameStack(ctx, stackID, newIdentity); err != nil {
+		return nil, err
+	}
+	return newRef, nil
 }
 
 func (b *cloudBackend) Preview(ctx context.Context, stack backend.Stack,
@@ -812,6 +836,12 @@ func (b *cloudBackend) Update(ctx context.Context, stack backend.Stack,
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
 }
 
+func (b *cloudBackend) Import(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+	op.Imports = imports
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
+}
+
 func (b *cloudBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
@@ -823,8 +853,8 @@ func (b *cloudBackend) Destroy(ctx context.Context, stack backend.Stack,
 }
 
 func (b *cloudBackend) Watch(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply)
+	op backend.UpdateOperation, paths []string) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply, paths)
 }
 
 func (b *cloudBackend) Query(ctx context.Context, op backend.QueryOperation) result.Result {
@@ -901,7 +931,7 @@ func (b *cloudBackend) apply(
 	if !(op.Opts.Display.JSONDisplay || op.Opts.Display.Type == display.DisplayWatch) {
 		// Print a banner so it's clear this is going to the cloud.
 		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"%s (%s):"+colors.Reset+"\n"), actionLabel, stack.Ref())
+			colors.SpecHeadline+"%s (%s)"+colors.Reset+"\n\n"), actionLabel, stack.Ref())
 	}
 
 	// Create an update object to persist results.
@@ -911,25 +941,30 @@ func (b *cloudBackend) apply(
 		return nil, result.FromError(err)
 	}
 
-	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
-		// Print a URL at the end of the update pointing to the Pulumi Service.
-		var link string
-		base := b.cloudConsoleStackPath(update.StackIdentifier)
-		if !opts.DryRun {
-			link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
-		} else {
-			link = b.CloudConsoleURL(base, "previews", update.UpdateID)
-		}
-		if link != "" {
-			defer func() {
-				fmt.Printf(op.Opts.Display.Color.Colorize(
-					colors.SpecHeadline+"Permalink: "+
-						colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
-			}()
-		}
+	if !op.Opts.Display.SuppressPermaLink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
+		// Print a URL at the beginning of the update pointing to the Pulumi Service.
+		b.printLink(op, opts, update, version)
 	}
 
 	return b.runEngineAction(ctx, kind, stack.Ref(), op, update, token, events, opts.DryRun)
+}
+
+// printLink prints a link to the update in the Pulumi Service.
+func (b *cloudBackend) printLink(
+	op backend.UpdateOperation, opts backend.ApplierOptions,
+	update client.UpdateIdentifier, version int) {
+	var link string
+	base := b.cloudConsoleStackPath(update.StackIdentifier)
+	if !opts.DryRun {
+		link = b.CloudConsoleURL(base, "updates", strconv.Itoa(version))
+	} else {
+		link = b.CloudConsoleURL(base, "previews", update.UpdateID)
+	}
+	if link != "" {
+		fmt.Printf(op.Opts.Display.Color.Colorize(
+			colors.SpecHeadline+"View Live: "+
+				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n\n"), link)
+	}
 }
 
 // query executes a query program against the resource outputs of a stack hosted in the Pulumi
@@ -1004,6 +1039,8 @@ func (b *cloudBackend) runEngineAction(
 		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
 		changes, res = engine.Update(u, engineCtx, op.Opts.Engine, dryRun)
+	case apitype.ResourceImportUpdate:
+		changes, res = engine.Import(u, engineCtx, op.Opts.Engine, op.Imports, dryRun)
 	case apitype.RefreshUpdate:
 		changes, res = engine.Refresh(u, engineCtx, op.Opts.Engine, dryRun)
 	case apitype.DestroyUpdate:
@@ -1061,13 +1098,17 @@ func (b *cloudBackend) CancelCurrentUpdate(ctx context.Context, stackRef backend
 	return b.client.CancelUpdate(ctx, updateID)
 }
 
-func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+func (b *cloudBackend) GetHistory(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	pageSize int,
+	page int) ([]backend.UpdateInfo, error) {
 	stack, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return nil, err
 	}
 
-	updates, err := b.client.GetStackUpdates(ctx, stack)
+	updates, err := b.client.GetStackUpdates(ctx, stack, pageSize, page)
 	if err != nil {
 		return nil, err
 	}
@@ -1082,6 +1123,7 @@ func (b *cloudBackend) GetHistory(ctx context.Context, stackRef backend.StackRef
 		}
 
 		beUpdates = append(beUpdates, backend.UpdateInfo{
+			Version:         update.Version,
 			Kind:            update.Kind,
 			Message:         update.Message,
 			Environment:     update.Environment,
@@ -1209,7 +1251,7 @@ func (b *cloudBackend) ImportDeployment(ctx context.Context, stack backend.Stack
 
 	// Wait for the import to complete, which also polls and renders event output to STDOUT.
 	status, err := b.waitForUpdate(
-		ctx, backend.ActionLabel(apitype.ImportUpdate, false /*dryRun*/), update,
+		ctx, backend.ActionLabel(apitype.StackImportUpdate, false /*dryRun*/), update,
 		display.Options{Color: colors.Always})
 	if err != nil {
 		return errors.Wrap(err, "waiting for import")

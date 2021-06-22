@@ -20,7 +20,7 @@ import (
 
 	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )
@@ -55,13 +55,11 @@ func (w metadataReaderWriter) ForeachKey(handler func(key, val string) error) er
 
 // OpenTracingServerInterceptor provides a default gRPC server interceptor for emitting tracing to the global
 // OpenTracing tracer.
-func OpenTracingServerInterceptor(parentSpan opentracing.Span) grpc.UnaryServerInterceptor {
-	tracingInterceptor := otgrpc.OpenTracingServerInterceptor(
-		// Use the globally installed tracer
-		opentracing.GlobalTracer(),
-		// Log full payloads along with trace spans
-		otgrpc.LogPayloads(),
-	)
+func OpenTracingServerInterceptor(parentSpan opentracing.Span, options ...otgrpc.Option) grpc.UnaryServerInterceptor {
+	// Log full payloads along with trace spans
+	options = append(options, otgrpc.LogPayloads())
+
+	tracingInterceptor := otgrpc.OpenTracingServerInterceptor(opentracing.GlobalTracer(), options...)
 	if parentSpan == nil {
 		return tracingInterceptor
 	}
@@ -80,19 +78,17 @@ func OpenTracingServerInterceptor(parentSpan opentracing.Span) grpc.UnaryServerI
 		}
 		return tracingInterceptor(ctx, req, info, handler)
 	}
-
 }
 
 // OpenTracingClientInterceptor provides a default gRPC client interceptor for emitting tracing to the global
 // OpenTracing tracer.
-func OpenTracingClientInterceptor() grpc.UnaryClientInterceptor {
-	return otgrpc.OpenTracingClientInterceptor(
-		// Use the globally installed tracer
-		opentracing.GlobalTracer(),
+func OpenTracingClientInterceptor(options ...otgrpc.Option) grpc.UnaryClientInterceptor {
+	options = append(options,
 		// Log full payloads along with trace spans
 		otgrpc.LogPayloads(),
 		// Do not trace calls to the empty method
 		otgrpc.IncludingSpans(func(_ opentracing.SpanContext, method string, _, _ interface{}) bool {
 			return method != ""
 		}))
+	return otgrpc.OpenTracingClientInterceptor(opentracing.GlobalTracer(), options...)
 }

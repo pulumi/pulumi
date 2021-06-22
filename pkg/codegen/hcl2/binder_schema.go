@@ -21,10 +21,10 @@ import (
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 type packageSchema struct {
@@ -145,25 +145,38 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 // schemaTypeToType converts a schema.Type to a model Type.
 func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
+	return b.schemaTypeToTypeImpl(src, map[schema.Type]model.Type{})
+}
+
+func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]model.Type) (result model.Type) {
 	defer func() {
 		b.typeSchemas[result] = src
 	}()
 
+	if already, ok := seen[src]; ok {
+		return already
+	}
+
 	switch src := src.(type) {
 	case *schema.ArrayType:
-		return model.NewListType(b.schemaTypeToType(src.ElementType))
+		return model.NewListType(b.schemaTypeToTypeImpl(src.ElementType, seen))
 	case *schema.MapType:
-		return model.NewMapType(b.schemaTypeToType(src.ElementType))
+		return model.NewMapType(b.schemaTypeToTypeImpl(src.ElementType, seen))
 	case *schema.ObjectType:
 		properties := map[string]model.Type{}
+		objType := model.NewObjectType(properties, src)
+		seen[src] = objType
 		for _, prop := range src.Properties {
-			t := b.schemaTypeToType(prop.Type)
-			if !prop.IsRequired {
+			t := b.schemaTypeToTypeImpl(prop.Type, seen)
+			if !prop.IsRequired || b.options.allowMissingProperties {
 				t = model.NewOptionalType(t)
+			}
+			if prop.ConstValue != nil {
+				t = model.NewConstType(t, prop.ConstValue)
 			}
 			properties[prop.Name] = t
 		}
-		return model.NewObjectType(properties, src)
+		return objType
 	case *schema.TokenType:
 		t, ok := model.GetOpaqueType(src.Token)
 		if !ok {
@@ -173,14 +186,17 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 		}
 
 		if src.UnderlyingType != nil {
-			underlyingType := b.schemaTypeToType(src.UnderlyingType)
+			underlyingType := b.schemaTypeToTypeImpl(src.UnderlyingType, seen)
 			return model.NewUnionType(t, underlyingType)
 		}
 		return t
 	case *schema.UnionType:
 		types := make([]model.Type, len(src.ElementTypes))
 		for i, src := range src.ElementTypes {
-			types[i] = b.schemaTypeToType(src)
+			types[i] = b.schemaTypeToTypeImpl(src, seen)
+		}
+		if src.Discriminator != "" {
+			return model.NewUnionTypeAnnotated(types, src)
 		}
 		return model.NewUnionType(types...)
 	default:
@@ -211,7 +227,7 @@ var schemaArrayTypes = make(map[schema.Type]*schema.ArrayType)
 
 // GetSchemaForType extracts the schema.Type associated with a model.Type, if any.
 //
-// The result may be a *schema.UnionType if multiple schema types are associaged with the input type.
+// The result may be a *schema.UnionType if multiple schema types are associated with the input type.
 func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	switch t := t.(type) {
 	case *model.ListType:
@@ -239,6 +255,11 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	case *model.PromiseType:
 		return GetSchemaForType(t.ElementType)
 	case *model.UnionType:
+		for _, a := range t.Annotations {
+			if t, ok := a.(*schema.UnionType); ok {
+				return t, true
+			}
+		}
 		schemas := codegen.Set{}
 		for _, t := range t.ElementTypes {
 			if s, ok := GetSchemaForType(t); ok {
@@ -265,4 +286,33 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 	default:
 		return nil, false
 	}
+}
+
+// GetDiscriminatedUnionObjectMapping calculates a map of type names to object types for a given
+// union type.
+func GetDiscriminatedUnionObjectMapping(t *model.UnionType) map[string]model.Type {
+	mapping := map[string]model.Type{}
+	for _, t := range t.ElementTypes {
+		k, v := getDiscriminatedUnionObjectItem(t)
+		mapping[k] = v
+	}
+	return mapping
+}
+
+func getDiscriminatedUnionObjectItem(t model.Type) (string, model.Type) {
+	switch t := t.(type) {
+	case *model.ListType:
+		return getDiscriminatedUnionObjectItem(t.ElementType)
+	case *model.ObjectType:
+		if schemaType, ok := GetSchemaForType(t); ok {
+			if objType, ok := schemaType.(*schema.ObjectType); ok {
+				return objType.Token, t
+			}
+		}
+	case *model.OutputType:
+		return getDiscriminatedUnionObjectItem(t.ElementType)
+	case *model.PromiseType:
+		return getDiscriminatedUnionObjectItem(t.ElementType)
+	}
+	return "", nil
 }

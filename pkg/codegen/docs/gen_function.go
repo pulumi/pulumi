@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/python"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // functionDocArgs represents the args that a Function doc template needs.
@@ -87,8 +87,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 			}
 
 		case "python":
-			// Pulumi's Python language SDK does not have "types" yet, so we will skip it for now.
-			continue
+			resultTypeName = docLangHelper.GetResourceFunctionResultName(mod.mod, f)
 		default:
 			panic(errors.Errorf("cannot generate function resource info for unhandled language %q", lang))
 		}
@@ -98,7 +97,7 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 		resourceMap[lang] = propertyType{
 			Name:        resultTypeName,
 			DisplayName: displayName,
-			Link:        docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, resultTypeName),
+			Link:        "#result",
 		}
 	}
 
@@ -107,17 +106,14 @@ func (mod *modContext) getFunctionResourceInfo(f *schema.Function) map[string]pr
 
 func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []formalParam {
 	argsType := title(funcName+"Args", "nodejs")
-
 	docLangHelper := getLanguageDocHelper("nodejs")
 	var params []formalParam
-
 	if f.Inputs != nil {
 		params = append(params, formalParam{
 			Name:         "args",
 			OptionalFlag: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType),
 			},
 		})
 	}
@@ -136,14 +132,13 @@ func (mod *modContext) genFunctionTS(f *schema.Function, funcName string) []form
 func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
 
-	docLangHelper := getLanguageDocHelper("go")
 	params := []formalParam{
 		{
 			Name:         "ctx",
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: "Context",
-				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#Context",
+				Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#Context",
 			},
 		},
 	}
@@ -154,7 +149,6 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 			OptionalFlag: "*",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, mod.mod, argsType),
 			},
 		})
 	}
@@ -164,7 +158,7 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 		OptionalFlag: "...",
 		Type: propertyType{
 			Name: "InvokeOption",
-			Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#InvokeOption",
+			Link: "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#InvokeOption",
 		},
 	})
 	return params
@@ -172,19 +166,6 @@ func (mod *modContext) genFunctionGo(f *schema.Function, funcName string) []form
 
 func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []formalParam {
 	argsType := funcName + "Args"
-	argsSchemaType := &schema.ObjectType{
-		Token: f.Token,
-	}
-
-	characteristics := propertyCharacteristics{
-		input:    true,
-		optional: false,
-	}
-	argLangType := mod.typeString(argsSchemaType, "csharp", characteristics, false /* insertWordBreaks */)
-	// The args type for a resource isn't part of "Inputs" namespace, so remove the "Inputs"
-	// namespace qualifier.
-	argLangTypeName := strings.ReplaceAll(argLangType.Name, "Inputs.", "")
-
 	docLangHelper := getLanguageDocHelper("csharp")
 	var params []formalParam
 	if f.Inputs != nil {
@@ -194,7 +175,6 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []form
 			DefaultValue: "",
 			Type: propertyType{
 				Name: argsType,
-				Link: docLangHelper.GetDocLinkForResourceType(mod.pkg, "", argLangTypeName),
 			},
 		})
 	}
@@ -212,6 +192,7 @@ func (mod *modContext) genFunctionCS(f *schema.Function, funcName string) []form
 }
 
 func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string) []formalParam {
+	docLanguageHelper := getLanguageDocHelper("python")
 	var params []formalParam
 
 	// Some functions don't have any inputs other than the InvokeOptions.
@@ -219,11 +200,14 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 	if f.Inputs != nil {
 		params = make([]formalParam, 0, len(f.Inputs.Properties))
 		for _, prop := range f.Inputs.Properties {
-			fArg := formalParam{
+			typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, prop.Type, true /*input*/, false /*args*/, false /*optional*/)
+			params = append(params, formalParam{
 				Name:         python.PyName(prop.Name),
-				DefaultValue: "=None",
-			}
-			params = append(params, fArg)
+				DefaultValue: " = None",
+				Type: propertyType{
+					Name: fmt.Sprintf("Optional[%s]", typ),
+				},
+			})
 		}
 	} else {
 		params = make([]formalParam, 0, 1)
@@ -231,7 +215,11 @@ func (mod *modContext) genFunctionPython(f *schema.Function, resourceName string
 
 	params = append(params, formalParam{
 		Name:         "opts",
-		DefaultValue: "=None",
+		DefaultValue: " = None",
+		Type: propertyType{
+			Name: "Optional[InvokeOptions]",
+			Link: "/docs/reference/pkg/python/pulumi/#pulumi.InvokeOptions",
+		},
 	})
 
 	return params
@@ -249,6 +237,9 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 		)
 		b := &bytes.Buffer{}
 
+		paramSeparatorTemplate := "param_separator"
+		ps := paramSeparator{}
+
 		switch lang {
 		case "nodejs":
 			params = mod.genFunctionTS(f, funcNameMap["nodejs"])
@@ -262,6 +253,11 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 		case "python":
 			params = mod.genFunctionPython(f, funcNameMap["python"])
 			paramTemplate = "py_formal_param"
+			paramSeparatorTemplate = "py_param_separator"
+
+			docHelper := getLanguageDocHelper(lang)
+			funcName := docHelper.GetFunctionName(mod.mod, f)
+			ps = paramSeparator{Indent: strings.Repeat(" ", len("def (")+len(funcName))}
 		}
 
 		n := len(params)
@@ -274,7 +270,7 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 				panic(err)
 			}
 			if i != n-1 {
-				if err := templates.ExecuteTemplate(b, "param_separator", nil); err != nil {
+				if err := templates.ExecuteTemplate(b, paramSeparatorTemplate, ps); err != nil {
 					panic(err)
 				}
 			}
@@ -285,26 +281,25 @@ func (mod *modContext) genFunctionArgs(f *schema.Function, funcNameMap map[strin
 }
 
 func (mod *modContext) genFunctionHeader(f *schema.Function) header {
-	funcName := strings.Title(tokenToName(f.Token))
-	packageName := formatTitleText(mod.pkg.Name)
+	funcName := tokenToName(f.Token)
 	var baseDescription string
 	var titleTag string
 	if mod.mod == "" {
-		baseDescription = fmt.Sprintf("Explore the %s function of the %s package, "+
-			"including examples, input properties, output properties, "+
-			"and supporting types.", funcName, packageName)
-		titleTag = fmt.Sprintf("Function %s | Package %s", funcName, packageName)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s function "+
+			"with examples, input properties, output properties, "+
+			"and supporting types.", mod.pkg.Name, funcName)
+		titleTag = fmt.Sprintf("%s.%s", mod.pkg.Name, funcName)
 	} else {
-		baseDescription = fmt.Sprintf("Explore the %s function of the %s module, "+
-			"including examples, input properties, output properties, "+
-			"and supporting types.", funcName, mod.mod)
-		titleTag = fmt.Sprintf("Function %s | Module %s | Package %s", funcName, mod.mod, packageName)
+		baseDescription = fmt.Sprintf("Documentation for the %s.%s.%s function "+
+			"with examples, input properties, output properties, "+
+			"and supporting types.", mod.pkg.Name, mod.mod, funcName)
+		titleTag = fmt.Sprintf("%s.%s.%s", mod.pkg.Name, mod.mod, funcName)
 	}
 
 	return header{
 		Title:    funcName,
 		TitleTag: titleTag,
-		MetaDesc: baseDescription + " " + metaDescriptionRegexp.FindString(f.Comment),
+		MetaDesc: baseDescription,
 	}
 }
 
@@ -315,10 +310,10 @@ func (mod *modContext) genFunction(f *schema.Function) functionDocArgs {
 	outputProps := make(map[string][]property)
 	for _, lang := range supportedLanguages {
 		if f.Inputs != nil {
-			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false)
+			inputProps[lang] = mod.getProperties(f.Inputs.Properties, lang, true, false, false, false)
 		}
 		if f.Outputs != nil {
-			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false)
+			outputProps[lang] = mod.getProperties(f.Outputs.Properties, lang, false, false, false, false)
 		}
 	}
 

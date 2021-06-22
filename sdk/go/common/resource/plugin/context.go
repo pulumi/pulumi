@@ -16,28 +16,52 @@ package plugin
 
 import (
 	"context"
+	"io/ioutil"
 
 	"github.com/opentracing/opentracing-go"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/rpcutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 )
 
-// Context is used to group related operations together so that associated OS resources can be cached, shared, and
-// reclaimed as appropriate.
+// Context is used to group related operations together so that
+// associated OS resources can be cached, shared, and reclaimed as
+// appropriate. It also carries shared plugin configuration.
 type Context struct {
 	Diag       diag.Sink // the diagnostics sink to use for messages.
 	StatusDiag diag.Sink // the diagnostics sink to use for status messages.
 	Host       Host      // the host that can be used to fetch providers.
 	Pwd        string    // the working directory to spawn all plugins in.
+	Root       string    // the root directory of the project.
 
 	tracingSpan opentracing.Span // the OpenTracing span to parent requests within.
 }
 
-// NewContext allocates a new context with a given sink and host.  Note that the host is "owned" by this context from
-// here forwards, such that when the context's resources are reclaimed, so too are the host's.
+// NewContext allocates a new context with a given sink and host. Note
+// that the host is "owned" by this context from here forwards, such
+// that when the context's resources are reclaimed, so too are the
+// host's.
 func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
-	pwd string, runtimeOptions map[string]interface{}, parentSpan opentracing.Span) (*Context, error) {
+	pwd string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+	parentSpan opentracing.Span) (*Context, error) {
+
+	root := ""
+	return NewContextWithRoot(d, statusD, host, cfg, pwd, root, runtimeOptions, disableProviderPreview, parentSpan)
+}
+
+// Variation of NewContext that also sets known project Root.
+func NewContextWithRoot(d, statusD diag.Sink, host Host, cfg ConfigSource,
+	pwd, root string, runtimeOptions map[string]interface{}, disableProviderPreview bool,
+	parentSpan opentracing.Span) (*Context, error) {
+
+	if d == nil {
+		d = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+	if statusD == nil {
+		statusD = diag.DefaultSink(ioutil.Discard, ioutil.Discard, diag.FormatOptions{Color: colors.Never})
+	}
+
 	ctx := &Context{
 		Diag:        d,
 		StatusDiag:  statusD,
@@ -46,7 +70,7 @@ func NewContext(d, statusD diag.Sink, host Host, cfg ConfigSource,
 		tracingSpan: parentSpan,
 	}
 	if host == nil {
-		h, err := NewDefaultHost(ctx, cfg, runtimeOptions)
+		h, err := NewDefaultHost(ctx, cfg, runtimeOptions, disableProviderPreview)
 		if err != nil {
 			return nil, err
 		}

@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import * as grpc from "@grpc/grpc-js";
+
 import { Resource } from "./resource";
 import * as utils from "./utils";
 
@@ -67,4 +69,9 @@ export class ResourceError extends Error {
     constructor(message: string, public resource: Resource | undefined, public hideStack?: boolean) {
         super(message);
     }
+}
+
+export function isGrpcError(err: Error): boolean {
+    const code = (<any>err).code;
+    return code === grpc.status.UNAVAILABLE || code === grpc.status.CANCELLED;
 }

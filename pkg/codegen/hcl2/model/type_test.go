@@ -666,3 +666,49 @@ func TestUnifyType(t *testing.T) {
 	//	assert.Equal(t, t0, unifyTypes(t0, t1))
 	//	assert.Equal(t, t0, unifyTypes(t1, t0))
 }
+
+func TestRecursiveObjectType(t *testing.T) {
+	makeType := func(prop string) Type {
+		props := map[string]Type{
+			prop: NewOutputType(IntType),
+		}
+		objType := NewObjectType(props)
+		props["sibling"] = objType
+		listType := NewListType(objType)
+		linkedListType := NewOptionalType(listType)
+		props["next"] = linkedListType
+		return linkedListType
+	}
+
+	linkedListType := makeType("data")
+	linkedListTypeEqual := makeType("data")
+	linkedListTypeNonEqual := makeType("data1")
+
+	// Equals
+	assert.True(t, linkedListType.Equals(linkedListTypeEqual))
+	assert.False(t, linkedListType.Equals(linkedListTypeNonEqual))
+
+	// String conversion
+	// Note: 'next' property is not visible because the string value is memoized at the time of Optional creation.
+	assert.Equal(t, "union(list(object({data = output(int), sibling = ...})), none)", linkedListType.String())
+
+	// Convert from another type
+	assert.Equal(t, UnsafeConversion, linkedListType.ConversionFrom(linkedListTypeNonEqual))
+
+	// Contains eventuals
+	hasOutputs, hasPromises := ContainsEventuals(linkedListType)
+	assert.True(t, hasOutputs)
+	assert.False(t, hasPromises)
+
+	// Resolving eventuals
+	resolvedLinkedListType := ResolveOutputs(linkedListType)
+	data := resolvedLinkedListType.(*UnionType).ElementTypes[0].(*ListType).ElementType.(*ObjectType).Properties["data"]
+	assert.True(t, data.Equals(IntType))
+	hasOutputs, _ = ContainsEventuals(resolvedLinkedListType)
+	assert.False(t, hasOutputs)
+
+	// InputType conversion
+	inputLinkedListType := InputType(resolvedLinkedListType)
+	hasOutputs, _ = ContainsEventuals(inputLinkedListType)
+	assert.True(t, hasOutputs)
+}

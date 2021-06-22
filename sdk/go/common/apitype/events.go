@@ -72,9 +72,8 @@ type SummaryEvent struct {
 	MaybeCorrupt bool `json:"maybeCorrupt"`
 	// Duration is the number of seconds the update was executing.
 	DurationSeconds int `json:"durationSeconds"`
-	// ResourceChanges contains the count for resource change by type. The keys are deploy.StepOp,
-	// which is not exported in this package.
-	ResourceChanges map[string]int `json:"resourceChanges"`
+	// ResourceChanges contains the count for resource change by type.
+	ResourceChanges map[OpType]int `json:"resourceChanges"`
 	// PolicyPacks run during update. Maps PolicyPackName -> version.
 	// Note: When this field was initially added, we forgot to add the JSON tag
 	// and are now locked into to using PascalCase for this field to maintain backwards
@@ -112,8 +111,8 @@ type PropertyDiff struct {
 // StepEventMetadata describes a "step" within the Pulumi engine, which is any concrete action
 // to migrate a set of cloud resources from one state to another.
 type StepEventMetadata struct {
-	// Op is the operation being performed, a deploy.StepOp.
-	Op   string `json:"op"`
+	// Op is the operation being performed.
+	Op   OpType `json:"op"`
 	URN  string `json:"urn"`
 	Type string `json:"type"`
 
@@ -175,7 +174,7 @@ type ResOutputsEvent struct {
 }
 
 // ResOpFailedEvent is emitted when a resource operation fails. Typically a DiagnosticEvent is
-// emitted before this event, indiciating what the root cause of the error.
+// emitted before this event, indicating the root cause of the error.
 type ResOpFailedEvent struct {
 	Metadata StepEventMetadata `json:"metadata"`
 	Status   int               `json:"status"`

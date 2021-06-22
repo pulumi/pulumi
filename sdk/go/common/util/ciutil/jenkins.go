@@ -24,7 +24,7 @@ type jenkinsCI struct {
 }
 
 func (j jenkinsCI) DetectVars() Vars {
-	v := Vars{Name: Travis}
+	v := Vars{Name: Jenkins}
 	v.BuildID = os.Getenv("BUILD_NUMBER")
 	if v.BuildID == "" {
 		// BUILD_ID env var is defunct since version 1.597 and

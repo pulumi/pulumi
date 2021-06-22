@@ -26,7 +26,7 @@ namespace Pulumi
         /// </summary>
         public List<string> AdditionalSecretOutputs
         {
-            get => _additionalSecretOutputs ?? (_additionalSecretOutputs = new List<string>());
+            get => _additionalSecretOutputs ??= new List<string>();
             set => _additionalSecretOutputs = value;
         }
 

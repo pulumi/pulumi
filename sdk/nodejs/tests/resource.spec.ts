@@ -38,7 +38,7 @@ describe("createUrn", () => {
     before(() => {
         runtime._setTestModeEnabled(true);
         runtime._setProject("myproject");
-        runtime._setStack("mystack"); 
+        runtime._setStack("mystack");
     });
 
     after(() => {
@@ -49,18 +49,18 @@ describe("createUrn", () => {
 
     it("handles name and type", asyncTest(async () => {
         const urn = await createUrn("n", "t").promise();
-        assert.equal(urn, "urn:pulumi:mystack::myproject::t::n");
+        assert.strictEqual(urn, "urn:pulumi:mystack::myproject::t::n");
     }));
 
     it("handles name and type and parent", asyncTest(async () => {
         const res = new MyResource("myres");
         const urn = await createUrn("n", "t", res).promise();
-        assert.equal(urn, "urn:pulumi:mystack::myproject::my:mod:MyResource$t::n");
+        assert.strictEqual(urn, "urn:pulumi:mystack::myproject::my:mod:MyResource$t::n");
     }));
 
     it("handles name and type and parent with parent", asyncTest(async () => {
         const res = new MyParentResource("myres");
         const urn = await createUrn("n", "t", res.child).promise();
-        assert.equal(urn, "urn:pulumi:mystack::myproject::my:mod:MyParentResource$my:mod:MyResource$t::n");
+        assert.strictEqual(urn, "urn:pulumi:mystack::myproject::my:mod:MyParentResource$my:mod:MyResource$t::n");
     }));
 });

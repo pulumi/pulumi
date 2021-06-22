@@ -20,8 +20,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // DocLanguageHelper is the DotNet-specific implementation of the DocLanguageHelper.
@@ -36,7 +36,17 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForPulumiType returns the .Net API doc link for a Pulumi type.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
-	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi/%s.html", typeName)
+	var filename string
+	switch typeName {
+	// We use docfx to generate the .NET language docs. docfx adds a suffix
+	// to generic classes. The suffix depends on the number of type args the class accepts,
+	// which in the case of the Pulumi.Input class is 1.
+	case "Pulumi.Input":
+		filename = "Pulumi.Input-1"
+	default:
+		filename = typeName
+	}
+	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi/%s.html", filename)
 }
 
 // GetDocLinkForResourceType returns the .NET API doc URL for a type belonging to a resource provider.
@@ -51,13 +61,6 @@ func (d DocLanguageHelper) GetDocLinkForResourceType(pkg *schema.Package, _, typ
 	return fmt.Sprintf("/docs/reference/pkg/dotnet/Pulumi%s/%s.html", packageNamespace, typeName)
 }
 
-// GetDocLinkForBuiltInType returns the C# URL for a built-in type.
-// Currently not using the typeName parameter because the returned link takes to a general
-// top -level page containing info for all built in types.
-func (d DocLanguageHelper) GetDocLinkForBuiltInType(typeName string) string {
-	return "https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/built-in-types"
-}
-
 // GetDocLinkForResourceInputOrOutputType returns the doc link for an input or output type of a Resource.
 func (d DocLanguageHelper) GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string {
 	return d.GetDocLinkForResourceType(pkg, moduleName, typeName)
@@ -69,7 +72,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,
@@ -81,7 +84,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	if !input {
 		qualifier = "Outputs"
 	}
-	return mod.typeString(t, qualifier, input, false /*state*/, false /*wrapInput*/, true /*requireInitializers*/, optional)
+	return mod.typeString(t, qualifier, input, false /*state*/, false /*wrapInput*/, args /*args*/, true /*requireInitializers*/, optional)
 }
 
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
@@ -115,6 +118,15 @@ func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 		return name, nil
 	}
 	return propLangName, nil
+}
+
+// GetEnumName returns the enum name specific to C#.
+func (d DocLanguageHelper) GetEnumName(e *schema.Enum, typeName string) (string, error) {
+	name := fmt.Sprintf("%v", e.Value)
+	if e.Name != "" {
+		name = e.Name
+	}
+	return makeSafeEnumName(name, typeName)
 }
 
 // GetModuleDocLink returns the display name and the link for a module.

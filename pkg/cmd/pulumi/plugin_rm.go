@@ -16,16 +16,17 @@ package main
 
 import (
 	"fmt"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newPluginRmCmd() *cobra.Command {
@@ -89,7 +90,9 @@ func newPluginRmCmd() *cobra.Command {
 			}
 
 			if len(deletes) == 0 {
-				return errors.New("no plugins found")
+				cmdutil.Diag().Infof(
+					diag.Message("", "no plugins found to uninstall"))
+				return nil
 			}
 
 			// Confirm that the user wants to do this (unless --yes was passed), and do the deletes.

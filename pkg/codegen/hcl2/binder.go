@@ -20,18 +20,20 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/plugin"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
 type bindOptions struct {
-	allowMissingVariables bool
-	loader                schema.Loader
-	packageCache          *PackageCache
+	allowMissingVariables  bool
+	allowMissingProperties bool
+	skipResourceTypecheck  bool
+	loader                 schema.Loader
+	packageCache           *PackageCache
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -56,6 +58,14 @@ type BindOption func(*bindOptions)
 
 func AllowMissingVariables(options *bindOptions) {
 	options.allowMissingVariables = true
+}
+
+func AllowMissingProperties(options *bindOptions) {
+	options.allowMissingProperties = true
+}
+
+func SkipResourceTypechecking(options *bindOptions) {
+	options.skipResourceTypecheck = true
 }
 
 func PluginHost(host plugin.Host) BindOption {
@@ -87,7 +97,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		if err != nil {
 			return nil, nil, err
 		}
-		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, nil)
+		ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -146,7 +156,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	}, diagnostics, nil
 }
 
-// declareNodes declares all of the top-level nodes in the given file. This invludes config, resources, outputs, and
+// declareNodes declares all of the top-level nodes in the given file. This includes config, resources, outputs, and
 // locals.
 func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 	var diagnostics hcl.Diagnostics

@@ -17,12 +17,15 @@ namespace Pulumi.Tests
 
         private static async Task Run(Func<Task> func, bool dryRun)
         {
-            var mock = new Mock<IDeployment>(MockBehavior.Strict);
+            var runner = new Mock<IRunner>(MockBehavior.Strict);
+            runner.Setup(r => r.RegisterTask(It.IsAny<string>(), It.IsAny<Task>()));
+
+            var mock = new Mock<IDeploymentInternal>(MockBehavior.Strict);
             mock.Setup(d => d.IsDryRun).Returns(dryRun);
+            mock.Setup(d => d.Runner).Returns(runner.Object);
 
             Deployment.Instance = new DeploymentInstance(mock.Object);
             await func().ConfigureAwait(false);
-            Deployment.Instance = null!;
         }
 
         protected static Task RunInPreview(Action action)

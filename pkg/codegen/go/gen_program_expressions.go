@@ -10,10 +10,10 @@ import (
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -258,6 +258,11 @@ func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 }
 
 func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression, destType model.Type) {
+	if destType == model.NoneType {
+		g.Fgen(w, "nil")
+		return
+	}
+
 	argTypeName := g.argumentTypeName(expr, destType, false)
 	isPulumiType := strings.HasPrefix(argTypeName, "pulumi.")
 
@@ -302,10 +307,15 @@ func (g *generator) genLiteralValueExpression(w io.Writer, expr *model.LiteralVa
 		}
 	// handles the __convert intrinsic assuming that the union type will have an opaque type containing the dest type
 	case *model.UnionType:
+		var didGenerate bool
 		for _, t := range destType.ElementTypes {
+			if didGenerate {
+				break
+			}
 			switch t := t.(type) {
 			case *model.OpaqueType:
 				g.genLiteralValueExpression(w, expr, t)
+				didGenerate = true
 				break
 			}
 		}
@@ -572,7 +582,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
 				module = pkg
 			}
-			importPrefix := strings.Split(module, "/")[0]
+			importPrefix := g.getModOrAlias(pkg, module)
+			importPrefix = strings.Split(importPrefix, "/")[0]
 			contract.Assert(len(diags) == 0)
 			fmtString := "[]%s.%s"
 			if isInput {
@@ -593,7 +604,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
 				module = pkg
 			}
-			importPrefix := strings.Split(module, "/")[0]
+			importPrefix := g.getModOrAlias(pkg, module)
+			importPrefix = strings.Split(importPrefix, "/")[0]
 			contract.Assert(len(diags) == 0)
 			member = Title(member)
 			if strings.HasPrefix(member, "Get") {
@@ -709,6 +721,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		for _, ut := range destType.ElementTypes {
 			if _, isOpaqueType := ut.(*model.OpaqueType); isOpaqueType {
 				return g.argumentTypeName(expr, ut, isInput)
+			}
+			if ct, isConstType := ut.(*model.ConstType); isConstType {
+				return g.argumentTypeName(expr, ct.Type, isInput)
 			}
 		}
 		return "interface{}"
@@ -957,7 +972,9 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 			member = strings.Replace(member, "get", "lookup", 1)
 		}
 	}
-	return pkg, strings.Replace(module, "/", ".", -1), Title(member), diagnostics
+	modOrAlias := g.getModOrAlias(pkg, module)
+	mod := strings.Replace(modOrAlias, "/", ".", -1)
+	return pkg, mod, Title(member), diagnostics
 }
 
 var functionPackages = map[string][]string{

@@ -23,12 +23,13 @@ import (
 	"strings"
 
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/model/format"
-	"github.com/pulumi/pulumi/pkg/v2/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
 
@@ -51,6 +52,12 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 		program: program,
 	}
 	g.Formatter = format.NewFormatter(g)
+
+	for _, p := range program.Packages() {
+		if err := p.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+			return nil, nil, err
+		}
+	}
 
 	var index bytes.Buffer
 	g.genPreamble(&index, program)
@@ -153,7 +160,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
-			importSet.Add("@pulumi/" + makeValidIdentifier(pkg))
+			importSet.Add("@pulumi/" + pkg)
 		}
 		diags := n.VisitExpressions(nil, func(n model.Expression) (model.Expression, hcl.Diagnostics) {
 			if call, ok := n.(*model.FunctionCallExpression); ok {
@@ -171,7 +178,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 		if pkg == "@pulumi/pulumi" {
 			continue
 		}
-		as := path.Base(pkg)
+		as := makeValidIdentifier(path.Base(pkg))
 		if as != pkg {
 			imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 		} else {
@@ -215,6 +222,18 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 	if pkg == "pulumi" && module == "providers" {
 		pkg, module, member = member, "", "Provider"
 	}
+
+	// Normalize module.
+	if r.Schema != nil {
+		pkg := r.Schema.Package
+		if lang, ok := pkg.Language["nodejs"]; ok {
+			pkgInfo := lang.(NodePackageInfo)
+			if m, ok := pkgInfo.ModuleToPackage[module]; ok {
+				module = m
+			}
+		}
+	}
+
 	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
 }
 

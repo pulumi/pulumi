@@ -15,12 +15,14 @@
 package plugin
 
 import (
+	"errors"
 	"io"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Provider presents a simple interface for orchestrating resource create, read, update, and delete operations.  Each
@@ -59,8 +61,8 @@ type Provider interface {
 	Diff(urn resource.URN, id resource.ID, olds resource.PropertyMap, news resource.PropertyMap,
 		allowUnknowns bool, ignoreChanges []string) (DiffResult, error)
 	// Create allocates a new instance of the provided resource and returns its unique resource.ID.
-	Create(urn resource.URN, news resource.PropertyMap, timeout float64) (resource.ID, resource.PropertyMap,
-		resource.Status, error)
+	Create(urn resource.URN, news resource.PropertyMap, timeout float64, preview bool) (resource.ID,
+		resource.PropertyMap, resource.Status, error)
 	// Read the current live state associated with a resource.  Enough state must be include in the inputs to uniquely
 	// identify the resource; this is typically just the resource ID, but may also include some properties.  If the
 	// resource is missing (for instance, because it has been deleted), the resulting property map will be nil.
@@ -69,9 +71,14 @@ type Provider interface {
 	// Update updates an existing resource with new values.
 	Update(urn resource.URN, id resource.ID,
 		olds resource.PropertyMap, news resource.PropertyMap, timeout float64,
-		ignoreChanges []string) (resource.PropertyMap, resource.Status, error)
+		ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error)
 	// Delete tears down an existing resource.
 	Delete(urn resource.URN, id resource.ID, props resource.PropertyMap, timeout float64) (resource.Status, error)
+
+	// Construct creates a new component resource.
+	Construct(info ConstructInfo, typ tokens.Type, name tokens.QName, parent resource.URN, inputs resource.PropertyMap,
+		options ConstructOptions) (ConstructResult, error)
+
 	// Invoke dynamically executes a built-in function in the provider.
 	Invoke(tok tokens.ModuleMember, args resource.PropertyMap) (resource.PropertyMap, []CheckFailure, error)
 	// StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
@@ -96,6 +103,9 @@ type CheckFailure struct {
 	Property resource.PropertyKey // the property that failed checking.
 	Reason   string               // the reason the property failed to check.
 }
+
+// ErrNotYetImplemented may be returned from a provider for optional methods that are not yet implemented.
+var ErrNotYetImplemented = errors.New("NYI")
 
 // DiffChanges represents the kind of changes detected by a diff operation.
 type DiffChanges int
@@ -208,4 +218,38 @@ type ReadResult struct {
 	// Outputs contains the new outputs/state for the resource, if any. If this field is nil, the resource does not
 	// exist.
 	Outputs resource.PropertyMap
+}
+
+// ConstructInfo contains all of the information required to register resources as part of a call to Construct.
+type ConstructInfo struct {
+	Project        string                // the project name housing the program being run.
+	Stack          string                // the stack name being evaluated.
+	Config         map[config.Key]string // the configuration variables to apply before running.
+	DryRun         bool                  // true if we are performing a dry-run (preview).
+	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress string                // the RPC address to the host resource monitor.
+}
+
+// ConstructOptions captures options for a call to Construct.
+type ConstructOptions struct {
+	// Aliases is the set of aliases for the component.
+	Aliases []resource.URN
+	// Dependencies is the list of resources this component depends on.
+	Dependencies []resource.URN
+	// Protect is true if the component is protected.
+	Protect bool
+	// Providers is a map from package name to provider reference.
+	Providers map[string]string
+	// PropertyDependencies is a map from property name to a list of resources that property depends on.
+	PropertyDependencies map[resource.PropertyKey][]resource.URN
+}
+
+// ConstructResult is the result of a call to Construct.
+type ConstructResult struct {
+	// The URN of the constructed component resource.
+	URN resource.URN
+	// The output properties of the component resource.
+	Outputs resource.PropertyMap
+	// The resources that each output property depends on.
+	OutputDependencies map[resource.PropertyKey][]resource.URN
 }

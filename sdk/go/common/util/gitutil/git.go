@@ -17,14 +17,13 @@ package gitutil
 import (
 	"fmt"
 	"net/url"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/fsutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	git "gopkg.in/src-d/go-git.v4"
 	"gopkg.in/src-d/go-git.v4/config"
 	"gopkg.in/src-d/go-git.v4/plumbing"
@@ -80,7 +79,7 @@ func GetGitRepository(dir string) (*git.Repository, error) {
 	}
 
 	// Open the git repo in the .git folder's parent, not the .git folder itself.
-	repo, err := git.PlainOpen(path.Join(gitRoot, ".."))
+	repo, err := git.PlainOpen(filepath.Dir(gitRoot))
 	if err == git.ErrRepositoryNotExists {
 		return nil, nil
 	}

@@ -323,6 +323,25 @@ func (v PropertyValue) DeepEquals(other PropertyValue) bool {
 		return vs.Element.DeepEquals(os.Element)
 	}
 
+	// Resource references are equal if they refer to the same resource. The package version is ignored.
+	if v.IsResourceReference() {
+		if !other.IsResourceReference() {
+			return false
+		}
+		vr := v.ResourceReferenceValue()
+		or := other.ResourceReferenceValue()
+
+		if vr.URN != or.URN {
+			return false
+		}
+
+		vid, oid := vr.ID, or.ID
+		if vid.IsComputed() && oid.IsComputed() {
+			return true
+		}
+		return vid.DeepEquals(oid)
+	}
+
 	// For all other cases, primitives are equal if their values are equal.
 	return v.V == other.V
 }

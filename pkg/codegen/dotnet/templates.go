@@ -16,9 +16,10 @@
 package dotnet
 
 import (
+	"strings"
 	"text/template"
 
-	"github.com/pulumi/pulumi/pkg/v2/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // nolint:lll
@@ -93,6 +94,19 @@ namespace {{.Namespace}}
             using var stream = assembly.GetManifestResourceStream("{{.Namespace}}.version.txt");
             using var reader = new StreamReader(stream ?? throw new NotSupportedException("Missing embedded version.txt file"));
             version = reader.ReadToEnd().Trim();
+            var parts = version.Split("\n");
+            if (parts.Length == 2)
+            {
+                // The first part is the provider name.
+                version = parts[1].Trim();
+            }
+        }
+    }
+
+    internal sealed class {{.Name}}ResourceTypeAttribute : Pulumi.ResourceTypeAttribute
+    {
+        public {{.Name}}ResourceTypeAttribute(string type) : base(type, Utilities.Version)
+        {
         }
     }
 }
@@ -101,10 +115,10 @@ namespace {{.Namespace}}
 var csharpUtilitiesTemplate = template.Must(template.New("CSharpUtilities").Parse(csharpUtilitiesTemplateText))
 
 type csharpUtilitiesTemplateContext struct {
+	Name      string
 	Namespace string
 	ClassName string
 	Tool      string
-	Version   string
 }
 
 // TODO(pdg): parameterize package name
@@ -129,14 +143,28 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
     <NoWarn>1701;1702;1591</NoWarn>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <AllowedOutputExtensionsInPackageBuildOutputFolder>$(AllowedOutputExtensionsInPackageBuildOutputFolder);.pdb</AllowedOutputExtensionsInPackageBuildOutputFolder>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(GITHUB_ACTIONS)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All" />
+  </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Include="version.txt" />
-    <Content Include="version.txt" />
+    <None Include="version.txt" Pack="True" PackagePath="content" />
   </ItemGroup>
 
   <ItemGroup>
     {{- range $package, $version := .PackageReferences}}
-    <PackageReference Include="{{$package}}" Version="{{$version}}" />
+    <PackageReference Include="{{$package}}" Version="{{$version}}"{{if ispulumipkg $package}} ExcludeAssets="contentFiles"{{end}} />
     {{- end}}
   </ItemGroup>
 
@@ -150,7 +178,16 @@ const csharpProjectFileTemplateText = `<Project Sdk="Microsoft.NET.Sdk">
 </Project>
 `
 
-var csharpProjectFileTemplate = template.Must(template.New("CSharpProject").Parse(csharpProjectFileTemplateText))
+var csharpProjectFileTemplate = template.Must(template.New("CSharpProject").Funcs(template.FuncMap{
+	// ispulumipkg is used in the template to conditionally emit `ExcludeAssets="contentFiles"`
+	// for `<PackageReference>`s that start with "Pulumi.", to prevent the references's contentFiles
+	// from being included in this project's package. Otherwise, if a reference has version.txt
+	// in its contentFiles, and we don't exclude contentFiles for the reference, the reference's
+	// version.txt will be used over this project's version.txt.
+	"ispulumipkg": func(s string) bool {
+		return strings.HasPrefix(s, "Pulumi.")
+	},
+}).Parse(csharpProjectFileTemplateText))
 
 type csharpProjectFileTemplateContext struct {
 	XMLDoc            string

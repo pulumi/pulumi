@@ -17,11 +17,11 @@ package main
 import (
 	"encoding/base64"
 
-	"github.com/pulumi/pulumi/pkg/v2/secrets"
-	"github.com/pulumi/pulumi/pkg/v2/secrets/cloud"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/secrets"
+	"github.com/pulumi/pulumi/pkg/v3/secrets/cloud"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider string) (secrets.Manager, error) {
@@ -40,8 +40,18 @@ func newCloudSecretsManager(stackName tokens.QName, configFile, secretsProvider 
 		return nil, err
 	}
 
+	// Only a passphrase provider has an encryption salt. So changing a secrets provider
+	// from passphrase to a cloud secrets provider should ensure that we remove the enryptionsalt
+	// as it's a legacy artifact and needs to be removed
+	if info.EncryptionSalt != "" {
+		info.EncryptionSalt = ""
+	}
+
 	var secretsManager *cloud.Manager
-	if info.EncryptedKey == "" {
+
+	// if there is no key OR the secrets provider is changing
+	// then we need to generate the new key based on the new secrets provider
+	if info.EncryptedKey == "" || info.SecretsProvider != secretsProvider {
 		dataKey, err := cloud.GenerateNewDataKey(secretsProvider)
 		if err != nil {
 			return nil, err

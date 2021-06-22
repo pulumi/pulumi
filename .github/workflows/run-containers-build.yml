@@ -1,0 +1,33 @@
+name: Testing Containers Build
+on:
+  pull_request:
+    paths:
+      - 'docker/**'
+      - '!docker/README.md'
+
+env:
+  GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN }}
+
+jobs:
+ test-containers:
+   name: Test Container Changes
+   # Verify that the event is not triggered by a fork since forks cannot
+   # access secrets other than the default GITHUB_TOKEN.
+   if: github.event.pull_request.head.repo.full_name == github.repository
+   strategy:
+     matrix:
+       go-version: [ 1.16.x ]
+   runs-on: ubuntu-latest
+   steps:
+     - name: Set up Go ${{ matrix.go-version }}
+       uses: actions/setup-go@v1
+       with:
+         go-version: ${{ matrix.go-version }}
+     - name: Install pulumictl
+       uses: jaxxstorm/action-install-gh-release@v1.2.0
+       with:
+         repo: pulumi/pulumictl
+     - name: Checkout Repo
+       uses: actions/checkout@v2
+     - name: Run Container Tests
+       run: make test_containers VERSION=v$(curl https://www.pulumi.com/latest-version)

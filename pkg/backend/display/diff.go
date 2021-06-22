@@ -25,14 +25,14 @@ import (
 
 	"github.com/dustin/go-humanize/english"
 
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // ShowDiffEvents displays the engine events with the diff view.
@@ -41,10 +41,18 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 
 	prefix := fmt.Sprintf("%s%s...", cmdutil.EmojiOr("✨ ", "@ "), op)
 
+	stdout := opts.Stdout
+	if stdout == nil {
+		stdout = os.Stdout
+	}
+	stderr := opts.Stderr
+	if stderr == nil {
+		stderr = os.Stderr
+	}
+
 	var spinner cmdutil.Spinner
 	var ticker *time.Ticker
-
-	if opts.IsInteractive {
+	if stdout == os.Stdout && stderr == os.Stderr && opts.IsInteractive {
 		spinner, ticker = cmdutil.NewSpinnerAndTicker(prefix, nil, 8 /*timesPerSecond*/)
 	} else {
 		spinner = &nopSpinner{}
@@ -66,11 +74,11 @@ func ShowDiffEvents(op string, action apitype.UpdateKind,
 		case event := <-events:
 			spinner.Reset()
 
-			out := os.Stdout
+			out := stdout
 			if event.Type == engine.DiagEvent {
 				payload := event.Payload().(engine.DiagEventPayload)
 				if payload.Severity == diag.Error || payload.Severity == diag.Warning {
-					out = os.Stderr
+					out = stderr
 				}
 			}
 

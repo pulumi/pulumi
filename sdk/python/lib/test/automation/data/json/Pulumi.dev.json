@@ -1,0 +1,11 @@
+{
+    "secretsprovider": "abc",
+    "encryptionsalt": "blahblah",
+    "encryptedkey": "thisiskey",
+    "config": {
+        "plain": "plain",
+        "secure": {
+            "secure": "secret"
+        }
+    }
+}

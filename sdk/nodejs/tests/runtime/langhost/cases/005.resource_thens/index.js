@@ -25,24 +25,24 @@ class ResourceB extends pulumi.CustomResource {
 let a = new ResourceA("resourceA");
 a.urn.apply(urn => {
     console.log(`A.URN: ${urn}`);
-    assert.equal(urn, "test:index:ResourceA::resourceA");
+    assert.strictEqual(urn, "test:index:ResourceA::resourceA");
 });
 a.id.apply(id => {
     if (id) {
         console.log(`A.ID: ${id}`);
-        assert.equal(id, "resourceA");
+        assert.strictEqual(id, "resourceA");
     }
 });
 a.inprop.apply(prop => {
     if (prop) {
         console.log(`A.InProp: ${prop}`);
-        assert.equal(prop, 777);
+        assert.strictEqual(prop, 777);
     }
 });
 a.outprop.apply(prop => {
     if (prop) {
         console.log(`A.OutProp: ${prop}`);
-        assert.equal(prop, "output yeah");
+        assert.strictEqual(prop, "output yeah");
     }
 });
 
@@ -50,24 +50,24 @@ a.outprop.apply(prop => {
 let b = new ResourceB("resourceB", a);
 b.urn.apply(urn => {
     console.log(`B.URN: ${urn}`);
-    assert.equal(urn, "test:index:ResourceB::resourceB");
+    assert.strictEqual(urn, "test:index:ResourceB::resourceB");
 });
 b.id.apply(id => {
     if (id) {
         console.log(`B.ID: ${id}`);
-        assert.equal(id, "resourceB");
+        assert.strictEqual(id, "resourceB");
     }
 });
 b.otherIn.apply(prop => {
     if (prop) {
         console.log(`B.OtherIn: ${prop}`);
-        assert.equal(prop, 777);
+        assert.strictEqual(prop, 777);
     }
 });
 b.otherOut.apply(prop => {
     if (prop) {
         console.log(`B.OtherOut: ${prop}`);
-        assert.equal(prop, "output yeah");
+        assert.strictEqual(prop, "output yeah");
     }
 });
 

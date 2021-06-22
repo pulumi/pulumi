@@ -21,9 +21,9 @@ import (
 	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 )
 
 // MarshalOptions controls the marshaling of RPC structures.
@@ -36,6 +36,7 @@ type MarshalOptions struct {
 	ComputeAssetHashes bool   // true if we are computing missing asset hashes on the fly.
 	KeepSecrets        bool   // true if we are keeping secrets (otherwise we replace them with their underlying value).
 	RejectAssets       bool   // true if we should return errors on Asset and Archive values.
+	KeepResources      bool   // true if we are keeping resoures (otherwise we return raw urn).
 	SkipInternalKeys   bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
 }
 
@@ -114,7 +115,9 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			if err != nil {
 				return nil, err
 			}
-			elems = append(elems, e)
+			if e != nil {
+				elems = append(elems, e)
+			}
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{
@@ -161,6 +164,27 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			"value":         v.SecretValue().Element,
 		})
 		return MarshalPropertyValue(secret, opts)
+	} else if v.IsResourceReference() {
+		ref := v.ResourceReferenceValue()
+		if !opts.KeepResources {
+			val := string(ref.URN)
+			if !ref.ID.IsNull() {
+				return MarshalPropertyValue(ref.ID, opts)
+			}
+			logging.V(5).Infof("marshalling resource value as raw URN or ID as opts.KeepResources is false")
+			return MarshalString(val, opts), nil
+		}
+		m := resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.ResourceReferenceSig),
+			"urn":           resource.NewStringProperty(string(ref.URN)),
+		}
+		if id, hasID := ref.IDString(); hasID {
+			m["id"] = resource.NewStringProperty(id)
+		}
+		if ref.PackageVersion != "" {
+			m["packageVersion"] = resource.NewStringProperty(ref.PackageVersion)
+		}
+		return MarshalPropertyValue(resource.NewObjectProperty(m), opts)
 	}
 
 	contract.Failf("Unrecognized property value in RPC[%s]: %v (type=%v)", opts.Label, v.V, reflect.TypeOf(v.V))
@@ -264,9 +288,8 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 		m := resource.NewStringProperty(s)
 		return &m, nil
 	case *structpb.Value_ListValue:
-		// If there's already an array, prefer to swap elements within it.
-		var elems []resource.PropertyValue
 		lst := v.GetListValue()
+		elems := make([]resource.PropertyValue, len(lst.GetValues()))
 		for i, elem := range lst.GetValues() {
 			e, err := UnmarshalPropertyValue(elem, opts)
 			if err != nil {
@@ -345,6 +368,59 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			}
 			s := resource.MakeSecret(value)
 			return &s, nil
+		case resource.ResourceReferenceSig:
+			urn, ok := obj["urn"]
+			if !ok {
+				return nil, errors.New("malformed resource reference: missing urn")
+			}
+			if !urn.IsString() {
+				return nil, errors.New("malformed resource reference: urn not a string")
+			}
+
+			id, hasID := "", false
+			if idProp, ok := obj["id"]; ok {
+				hasID = true
+				switch {
+				case idProp.IsString():
+					id = idProp.StringValue()
+				case idProp.IsComputed():
+					// Leave the ID empty to indicate that it is unknown.
+				default:
+					return nil, errors.New("malformed resource reference: id not a string")
+				}
+			}
+
+			var packageVersion string
+			if packageVersionProp, ok := obj["packageVersion"]; ok {
+				if !packageVersionProp.IsString() {
+					return nil, errors.New("malformed resource reference: packageVersion not a string")
+				}
+				packageVersion = packageVersionProp.StringValue()
+			}
+
+			if !opts.KeepResources {
+				value := urn.StringValue()
+				if hasID {
+					isIDUnknown := id == ""
+					if isIDUnknown && opts.KeepUnknowns {
+						v := structpb.Value{
+							Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+						}
+						return UnmarshalPropertyValue(&v, opts)
+					}
+					value = id
+				}
+				r := resource.NewStringProperty(value)
+				return &r, nil
+			}
+
+			var ref resource.PropertyValue
+			if hasID {
+				ref = resource.MakeCustomResourceReference(resource.URN(urn.StringValue()), resource.ID(id), packageVersion)
+			} else {
+				ref = resource.MakeComponentResourceReference(resource.URN(urn.StringValue()), packageVersion)
+			}
+			return &ref, nil
 		default:
 			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
 		}

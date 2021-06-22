@@ -22,5 +22,5 @@ let args = {
 
 let result2 = pulumi.runtime.invoke("test:index:echo", args, { provider });
 result2.then((v) => {
-	assert.deepEqual(v, args);
+	assert.deepStrictEqual(v, args);
 });

@@ -23,10 +23,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 )
 
 // We use RFC 5424 timestamps with millisecond precision for displaying time stamps on log entries. Go does not
@@ -44,14 +44,19 @@ func newLogsCmd() *cobra.Command {
 
 	logsCmd := &cobra.Command{
 		Use:   "logs",
-		Short: "[PREVIEW] Show aggregated logs for a stack",
-		Args:  cmdutil.NoArgs,
+		Short: "[PREVIEW] Show aggregated resource logs for a stack",
+		Long: "[PREVIEW] Show aggregated resource logs for a stack\n" +
+			"\n" +
+			"This command aggregates log entries associated with the resources in a stack from the corresponding\n" +
+			"provider. For example, for AWS resources, the `pulumi logs` command will query\n" +
+			"CloudWatch Logs for log data relevant to resources in a stack.\n",
+		Args: cmdutil.NoArgs,
 		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 			opts := display.Options{
 				Color: cmdutil.GetGlobalColorization(),
 			}
 
-			s, err := requireStack(stack, false, opts, true /*setCurrent*/)
+			s, err := requireStack(stack, false, opts, false /*setCurrent*/)
 			if err != nil {
 				return err
 			}

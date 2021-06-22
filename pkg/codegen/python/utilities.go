@@ -1,7 +1,10 @@
 package python
 
 import (
+	"github.com/pkg/errors"
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"io"
+	"regexp"
 	"strings"
 	"unicode"
 )
@@ -55,4 +58,32 @@ func makeValidIdentifier(name string) string {
 		}
 	}
 	return builder.String()
+}
+
+func makeSafeEnumName(name, typeName string) (string, error) {
+	// Replace common single character enum names.
+	safeName := codegen.ExpandShortEnumName(name)
+
+	// If the name is one illegal character, return an error.
+	if len(safeName) == 1 && !isLegalIdentifierStart(rune(safeName[0])) {
+		return "", errors.Errorf("enum name %s is not a valid identifier", safeName)
+	}
+
+	// If it's camelCase, change it to snake_case.
+	safeName = PyName(safeName)
+
+	// Change to uppercase and make a valid identifier.
+	safeName = makeValidIdentifier(strings.ToTitle(safeName))
+
+	// If the enum name starts with an underscore, add the type name as a prefix.
+	if strings.HasPrefix(safeName, "_") {
+		pyTypeName := strings.ToTitle(PyName(typeName))
+		safeName = pyTypeName + safeName
+	}
+
+	// If there are multiple underscores in a row, replace with one.
+	regex := regexp.MustCompile(`_+`)
+	safeName = regex.ReplaceAllString(safeName, "_")
+
+	return safeName, nil
 }

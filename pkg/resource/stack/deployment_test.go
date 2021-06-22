@@ -16,15 +16,17 @@ package stack
 
 import (
 	"encoding/json"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 // TestDeploymentSerialization creates a basic snapshot of a given resource state.
@@ -54,7 +56,10 @@ func TestDeploymentSerialization(t *testing.T) {
 				"c": "c-see-saw",
 				"d": "d-dee-daw",
 			},
-			"in-empty-map": map[string]interface{}{},
+			"in-empty-map":                            map[string]interface{}{},
+			"in-component-resource-reference":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
+			"in-custom-resource-reference":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
+			"in-custom-resource-reference-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
 		}),
 		resource.NewPropertyMapFromMap(map[string]interface{}{
 			"out-nil":         nil,
@@ -128,6 +133,23 @@ func TestDeploymentSerialization(t *testing.T) {
 	assert.Equal(t, "d-dee-daw", inmap["d"].(string))
 	assert.NotNil(t, dep.Inputs["in-empty-map"])
 	assert.Equal(t, 0, len(dep.Inputs["in-empty-map"].(map[string]interface{})))
+	assert.Equal(t, map[string]interface{}{
+		resource.SigKey:  resource.ResourceReferenceSig,
+		"urn":            "urn",
+		"packageVersion": "1.2.3",
+	}, dep.Inputs["in-component-resource-reference"])
+	assert.Equal(t, map[string]interface{}{
+		resource.SigKey:  resource.ResourceReferenceSig,
+		"urn":            "urn2",
+		"id":             "id",
+		"packageVersion": "2.3.4",
+	}, dep.Inputs["in-custom-resource-reference"])
+	assert.Equal(t, map[string]interface{}{
+		resource.SigKey:  resource.ResourceReferenceSig,
+		"urn":            "urn3",
+		"id":             "",
+		"packageVersion": "3.4.5",
+	}, dep.Inputs["in-custom-resource-reference-unknown-id"])
 
 	// assert some things about the outputs:
 	assert.NotNil(t, dep.Outputs)
@@ -193,6 +215,43 @@ func TestUnknownSig(t *testing.T) {
 	}
 	_, err := DeserializePropertyValue(rawProp, config.NewPanicCrypter(), config.NewPanicCrypter())
 	assert.Error(t, err)
+}
+
+// TestDeserializeResourceReferencePropertyValueID tests the ability of the deserializer to handle resource references
+// that were serialized without unwrapping their ID PropertyValue due to a bug in the serializer. Such resource
+// references were produced by Pulumi v2.18.0.
+func TestDeserializeResourceReferencePropertyValueID(t *testing.T) {
+	// Serialize replicates Pulumi 2.18.0's buggy resource reference serializer. We round-trip the value through JSON
+	// in order to convert the ID property value into a plain map[string]interface{}.
+	serialize := func(v resource.PropertyValue) interface{} {
+		ref := v.ResourceReferenceValue()
+		bytes, err := json.Marshal(map[string]interface{}{
+			resource.SigKey:  resource.ResourceReferenceSig,
+			"urn":            ref.URN,
+			"id":             ref.ID,
+			"packageVersion": ref.PackageVersion,
+		})
+		contract.IgnoreError(err)
+		var sv interface{}
+		err = json.Unmarshal(bytes, &sv)
+		contract.IgnoreError(err)
+		return sv
+	}
+
+	serialized := map[string]interface{}{
+		"component-resource":         serialize(resource.MakeComponentResourceReference("urn", "1.2.3")),
+		"custom-resource":            serialize(resource.MakeCustomResourceReference("urn2", "id", "2.3.4")),
+		"custom-resource-unknown-id": serialize(resource.MakeCustomResourceReference("urn3", "", "3.4.5")),
+	}
+
+	deserialized, err := DeserializePropertyValue(serialized, config.NewPanicCrypter(), config.NewPanicCrypter())
+	assert.NoError(t, err)
+
+	assert.Equal(t, resource.NewPropertyValue(map[string]interface{}{
+		"component-resource":         resource.MakeComponentResourceReference("urn", "1.2.3").V,
+		"custom-resource":            resource.MakeCustomResourceReference("urn2", "id", "2.3.4").V,
+		"custom-resource-unknown-id": resource.MakeCustomResourceReference("urn3", "", "3.4.5").V,
+	}), deserialized)
 }
 
 func TestCustomSerialization(t *testing.T) {
@@ -338,4 +397,41 @@ func TestCustomSerialization(t *testing.T) {
 			t.Logf("Full JSON encoding:\n%v", json)
 		}
 	})
+}
+
+func TestDeserializeInvalidResourceErrors(t *testing.T) {
+	deployment, err := DeserializeDeploymentV3(apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{},
+		},
+	}, DefaultSecretsProvider)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, "resource missing required 'urn' field", err.Error())
+
+	urn := "urn:pulumi:prod::acme::acme:erp:Backend$aws:ebs/volume:Volume::PlatformBackendDb"
+	deployment, err = DeserializeDeploymentV3(apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN: resource.URN(urn),
+			},
+		},
+	}, DefaultSecretsProvider)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Sprintf("resource '%s' missing required 'type' field", urn), err.Error())
+
+	deployment, err = DeserializeDeploymentV3(apitype.DeploymentV3{
+		Resources: []apitype.ResourceV3{
+			{
+				URN:    resource.URN(urn),
+				Type:   "aws:ebs/volume:Volume",
+				Custom: false,
+				ID:     "vol-044ba5ad2bd959bc1",
+			},
+		},
+	}, DefaultSecretsProvider)
+	assert.Nil(t, deployment)
+	assert.Error(t, err)
+	assert.Equal(t, fmt.Sprintf("resource '%s' has 'custom' false but non-empty ID", urn), err.Error())
 }

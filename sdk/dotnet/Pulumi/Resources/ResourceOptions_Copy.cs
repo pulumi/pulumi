@@ -19,6 +19,7 @@ namespace Pulumi
                 Protect = options.Protect,
                 Provider = options.Provider,
                 ResourceTransformations = options.ResourceTransformations.ToList(),
+                Urn = options.Urn,
                 Version = options.Version
             };
 

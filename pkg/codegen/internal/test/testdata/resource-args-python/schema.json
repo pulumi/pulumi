@@ -1,0 +1,62 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example::Pet": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example::Pet": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::Person": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "pets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example::Pet"
+          }
+        }
+      },
+      "inputProperties": {
+        "name": {
+          "type": "string"
+        },
+        "pets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/types/example::Pet"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {
+      "generateResourceContainerTypes": true
+    },
+    "nodejs": {},
+    "python": {}
+  }
+}

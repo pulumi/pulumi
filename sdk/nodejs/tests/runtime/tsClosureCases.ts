@@ -33,6 +33,7 @@ interface ClosureCase {
     expectText?: string;            // optionally also validate the serialization to JavaScript text.
     error?: string;                 // error message we expect to be thrown if we are unable to serialize closure.
     afters?: ClosureCase[];         // an optional list of test cases to run afterwards.
+    allowSecrets?: boolean;         // optionally allow secrets to be captured.
 }
 
 /** @internal */
@@ -1046,6 +1047,27 @@ return () => { try { }
 }
 `,
     });
+
+    {
+        const defaultValue = 1;
+
+        cases.push({
+            title: "Capture default parameters",
+            func: (arg: any = defaultValue) => {},
+            expectText: `exports.handler = __f0;
+
+function __f0() {
+  return (function() {
+    with({ defaultValue: 1 }) {
+
+return (arg = defaultValue) => { };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+`,
+        });
+    }
 
     // Recursive function serialization.
     {
@@ -6516,13 +6538,26 @@ return function () { console.log(regex); foo(); };
         const s = pulumi.secret("can't capture me");
 
         cases.push({
-            title: "Can't capture secrets",
+            title: "Can't capture secrets without allowSecrets",
             func: function() {
                 console.log(s.get());
             },
             error: "Secret outputs cannot be captured by a closure.",
         });
     }
+
+    {
+      const s = pulumi.secret("can't capture me");
+
+      cases.push({
+          title: "Can capture secrets with allowSecrets",
+          func: function() {
+              console.log(s.get());
+          },
+          allowSecrets: true,
+          expectText: `(...)`,
+      });
+  }
 
     // Run a bunch of direct checks on async js functions if we're in node 8 or above.
     // We can't do this inline as node6 doesn't understand 'async functions'.  And we
@@ -6585,10 +6620,15 @@ return function () { console.log(regex); foo(); };
 
     async function serializeFunction(test: ClosureCase) {
         if (test.func) {
-            return await runtime.serializeFunction(test.func);
+            return await runtime.serializeFunction(test.func, {
+              allowSecrets: test.allowSecrets,
+            });
         }
         else if (test.factoryFunc) {
-            return await runtime.serializeFunction(test.factoryFunc!, { isFactoryFunction: true });
+            return await runtime.serializeFunction(test.factoryFunc!, { 
+              allowSecrets: test.allowSecrets,
+              isFactoryFunction: true,
+            });
         }
         else {
             throw new Error("Have to supply [func] or [factoryFunc]!");
@@ -6619,7 +6659,7 @@ function compareTextWithWildcards(expected: string, actual: string) {
     if (!expected.includes(wildcard)) {
         // We get a nice diff view if we diff the entire string, so do that
         // if we didn't get a wildcard.
-        assert.equal(actual, expected);
+        assert.strictEqual(actual, expected);
         return;
     }
 
@@ -6648,7 +6688,7 @@ function compareTextWithWildcards(expected: string, actual: string) {
             const line = actualLines[actualIndex++].trim();
             const index = expectedLine.indexOf(wildcard);
             const indexAfter = index + wildcard.length;
-            assert.equal(line.substring(0, index), expectedLine.substring(0, index));
+            assert.strictEqual(line.substring(0, index), expectedLine.substring(0, index));
 
             if (indexAfter === expectedLine.length) {
                 continue;
@@ -6660,9 +6700,9 @@ function compareTextWithWildcards(expected: string, actual: string) {
                 }
             }
 
-            assert.equal(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
+            assert.strictEqual(line.substring(repetitionIndex), expectedLine.substring(indexAfter));
         } else {
-            assert.equal(actualLines[actualIndex++].trim(), expectedLine);
+            assert.strictEqual(actualLines[actualIndex++].trim(), expectedLine);
         }
     }
 }

@@ -31,15 +31,15 @@ namespace Pulumi
             => Deployment.InternalInstance.Logger.WarnAsync(message, resource, streamId, ephemeral);
 
         /// <summary>
-        /// Logs a fatal error to indicate that the tool should stop processing resource
-        /// operations immediately.
+        /// Logs a fatal condition. Consider raising an exception
+        /// after calling Error to stop the Pulumi program.
         /// </summary>
         public static void Error(string message, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
             => Deployment.InternalInstance.Logger.ErrorAsync(message, resource, streamId, ephemeral);
 
         /// <summary>
-        /// Logs a fatal exception to indicate that the tool should stop processing resource
-        /// operations immediately.
+        /// Logs an exception. Consider raising the exception after
+        /// calling this method to stop the Pulumi program.
         /// </summary>
         public static void Exception(Exception exception, Resource? resource = null, int? streamId = null, bool? ephemeral = null)
             => Error(exception.ToString(), resource, streamId, ephemeral);

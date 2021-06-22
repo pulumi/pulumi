@@ -20,7 +20,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"os/user"
 	"path"
 	"path/filepath"
 	"regexp"
@@ -28,7 +27,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gofrs/uuid"
 	"github.com/pkg/errors"
+	user "github.com/tweekmonster/luser"
 	"gocloud.dev/blob"
 	_ "gocloud.dev/blob/azureblob" // driver for azblob://
 	_ "gocloud.dev/blob/fileblob"  // driver for file://
@@ -36,25 +37,25 @@ import (
 	_ "gocloud.dev/blob/s3blob"    // driver for s3://
 	"gocloud.dev/gcerrors"
 
-	"github.com/pulumi/pulumi/pkg/v2/backend"
-	"github.com/pulumi/pulumi/pkg/v2/backend/display"
-	"github.com/pulumi/pulumi/pkg/v2/engine"
-	"github.com/pulumi/pulumi/pkg/v2/operations"
-	"github.com/pulumi/pulumi/pkg/v2/resource/deploy"
-	"github.com/pulumi/pulumi/pkg/v2/resource/edit"
-	"github.com/pulumi/pulumi/pkg/v2/resource/stack"
-	"github.com/pulumi/pulumi/pkg/v2/util/validation"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/apitype"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/diag/colors"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/encoding"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/cmdutil"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/logging"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/result"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/workspace"
+	"github.com/pulumi/pulumi/pkg/v3/backend"
+	"github.com/pulumi/pulumi/pkg/v3/backend/display"
+	"github.com/pulumi/pulumi/pkg/v3/engine"
+	"github.com/pulumi/pulumi/pkg/v3/operations"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
+	"github.com/pulumi/pulumi/pkg/v3/resource/edit"
+	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
+	"github.com/pulumi/pulumi/pkg/v3/util/validation"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
 // Backend extends the base backend interface with specific information about local backends.
@@ -74,6 +75,8 @@ type localBackend struct {
 
 	bucket Bucket
 	mutex  sync.Mutex
+
+	lockID string
 }
 
 type localBackendReference struct {
@@ -142,11 +145,18 @@ func New(d diag.Sink, originalURL string) (Backend, error) {
 		}
 	}
 
+	// Allocate a unique lock ID for this backend instance.
+	lockID, err := uuid.NewV4()
+	if err != nil {
+		return nil, err
+	}
+
 	return &localBackend{
 		d:           d,
 		originalURL: originalURL,
 		url:         u,
 		bucket:      &wrappedBucket{bucket: bucket},
+		lockID:      lockID.String(),
 	}, nil
 }
 
@@ -268,6 +278,14 @@ func (b *localBackend) DoesProjectExist(ctx context.Context, projectName string)
 func (b *localBackend) CreateStack(ctx context.Context, stackRef backend.StackReference,
 	opts interface{}) (backend.Stack, error) {
 
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stackRef)
+		if err != nil {
+			return nil, err
+		}
+		defer b.Unlock(ctx, stackRef)
+	}
+
 	contract.Requiref(opts == nil, "opts", "local stacks do not support any options")
 
 	stackName := stackRef.Name()
@@ -335,6 +353,15 @@ func (b *localBackend) ListStacks(
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return false, err
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	stackName := stack.Ref().Name()
 	snapshot, _, err := b.getStack(stackName)
 	if err != nil {
@@ -349,32 +376,49 @@ func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, for
 	return false, b.removeStack(stackName)
 }
 
-func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack, newName tokens.QName) error {
+func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack,
+	newName tokens.QName) (backend.StackReference, error) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, err
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
+	// Get the current state from the stack to be renamed.
 	stackName := stack.Ref().Name()
 	snap, _, err := b.getStack(stackName)
 	if err != nil {
-		return err
+		return nil, err
+	}
+
+	// Ensure the new stack name is valid.
+	newRef, err := b.ParseStackReference(string(newName))
+	if err != nil {
+		return nil, err
 	}
 
 	// Ensure the destination stack does not already exist.
 	hasExisting, err := b.bucket.Exists(ctx, b.stackPath(newName))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if hasExisting {
-		return errors.Errorf("a stack named %s already exists", newName)
+		return nil, errors.Errorf("a stack named %s already exists", newName)
 	}
 
 	// If we have a snapshot, we need to rename the URNs inside it to use the new stack name.
 	if snap != nil {
 		if err = edit.RenameStack(snap, newName, ""); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	// Now save the snapshot with a new name (we pass nil to re-use the existing secrets manager from the snapshot).
 	if _, err = b.saveStack(newName, snap, nil); err != nil {
-		return err
+		return nil, err
 	}
 
 	// To remove the old stack, just make a backup of the file and don't write out anything new.
@@ -382,13 +426,16 @@ func (b *localBackend) RenameStack(ctx context.Context, stack backend.Stack, new
 	backupTarget(b.bucket, file)
 
 	// And rename the histoy folder as well.
-	return b.renameHistory(stackName, newName)
+	if err = b.renameHistory(stackName, newName); err != nil {
+		return nil, err
+	}
+	return newRef, err
 }
 
 func (b *localBackend) GetLatestConfiguration(ctx context.Context,
 	stack backend.Stack) (config.Map, error) {
 
-	hist, err := b.GetHistory(ctx, stack.Ref())
+	hist, err := b.GetHistory(ctx, stack.Ref(), 1 /*pageSize*/, 1 /*page*/)
 	if err != nil {
 		return nil, err
 	}
@@ -409,6 +456,15 @@ func (b *localBackend) PackPolicies(
 
 func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	// We can skip PreviewThenPromptThenExecute and just go straight to Execute.
 	opts := backend.ApplierOptions{
 		DryRun:   true,
@@ -419,16 +475,56 @@ func (b *localBackend) Preview(ctx context.Context, stack backend.Stack,
 
 func (b *localBackend) Update(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.UpdateUpdate, stack, op, b.apply)
+}
+
+func (b *localBackend) Import(ctx context.Context, stack backend.Stack,
+	op backend.UpdateOperation, imports []deploy.Import) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
+	op.Imports = imports
+	return backend.PreviewThenPromptThenExecute(ctx, apitype.ResourceImportUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Refresh(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stack.Ref())
+		if err != nil {
+			return nil, result.FromError(err)
+		}
+		defer b.Unlock(ctx, stack.Ref())
+	}
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.RefreshUpdate, stack, op, b.apply)
 }
 
 func (b *localBackend) Destroy(ctx context.Context, stack backend.Stack,
 	op backend.UpdateOperation) (engine.ResourceChanges, result.Result) {
+
+	err := b.Lock(ctx, stack.Ref())
+	if err != nil {
+		return nil, result.FromError(err)
+	}
+	defer b.Unlock(ctx, stack.Ref())
+
 	return backend.PreviewThenPromptThenExecute(ctx, apitype.DestroyUpdate, stack, op, b.apply)
 }
 
@@ -438,8 +534,8 @@ func (b *localBackend) Query(ctx context.Context, op backend.QueryOperation) res
 }
 
 func (b *localBackend) Watch(ctx context.Context, stack backend.Stack,
-	op backend.UpdateOperation) result.Result {
-	return backend.Watch(ctx, b, stack, op, b.apply)
+	op backend.UpdateOperation, paths []string) result.Result {
+	return backend.Watch(ctx, b, stack, op, b.apply, paths)
 }
 
 // apply actually performs the provided type of update on a locally hosted stack.
@@ -509,6 +605,8 @@ func (b *localBackend) apply(
 		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, true)
 	case apitype.UpdateUpdate:
 		changes, updateRes = engine.Update(update, engineCtx, op.Opts.Engine, opts.DryRun)
+	case apitype.ResourceImportUpdate:
+		changes, updateRes = engine.Import(update, engineCtx, op.Opts.Engine, op.Imports, opts.DryRun)
 	case apitype.RefreshUpdate:
 		changes, updateRes = engine.Refresh(update, engineCtx, op.Opts.Engine, opts.DryRun)
 	case apitype.DestroyUpdate:
@@ -569,7 +667,7 @@ func (b *localBackend) apply(
 	}
 
 	// Make sure to print a link to the stack's checkpoint before exiting.
-	if opts.ShowLink && !op.Opts.Display.JSONDisplay {
+	if !op.Opts.Display.SuppressPermaLink && opts.ShowLink && !op.Opts.Display.JSONDisplay {
 		// Note we get a real signed link for aws/azure/gcp links.  But no such option exists for
 		// file:// links so we manually create the link ourselves.
 		var link string
@@ -580,18 +678,25 @@ func (b *localBackend) apply(
 		} else {
 			link, err = b.bucket.SignedURL(context.TODO(), b.stackPath(stackName), nil)
 			if err != nil {
+				// set link to be empty to when there is an error to hide use of Permalinks
+				link = ""
+
 				// we log a warning here rather then returning an error to avoid exiting
 				// pulumi with an error code.
 				// printing a statefile perma link happens after all the providers have finished
 				// deploying the infrastructure, failing the pulumi update because there was a
 				// problem printing a statefile perma link can be missleading in automated CI environments.
-				cmdutil.Diag().Warningf(diag.Message("", "Could not get signed url for stack location: %v"), err)
+				cmdutil.Diag().Warningf(diag.Message("", "Unable to create signed url for current backend to "+
+					"create a Permalink. Please visit https://www.pulumi.com/docs/troubleshooting/ "+
+					"for more information\n"))
 			}
 		}
 
-		fmt.Printf(op.Opts.Display.Color.Colorize(
-			colors.SpecHeadline+"Permalink: "+
-				colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		if link != "" {
+			fmt.Printf(op.Opts.Display.Color.Colorize(
+				colors.SpecHeadline+"Permalink: "+
+					colors.Underline+colors.BrightBlue+"%s"+colors.Reset+"\n"), link)
+		}
 	}
 
 	return changes, nil
@@ -604,9 +709,13 @@ func (b *localBackend) query(ctx context.Context, op backend.QueryOperation,
 	return backend.RunQuery(ctx, b, op, callerEventsOpt, b.newQuery)
 }
 
-func (b *localBackend) GetHistory(ctx context.Context, stackRef backend.StackReference) ([]backend.UpdateInfo, error) {
+func (b *localBackend) GetHistory(
+	ctx context.Context,
+	stackRef backend.StackReference,
+	pageSize int,
+	page int) ([]backend.UpdateInfo, error) {
 	stackName := stackRef.Name()
-	updates, err := b.getHistory(stackName)
+	updates, err := b.getHistory(stackName, pageSize, page)
 	if err != nil {
 		return nil, err
 	}
@@ -628,7 +737,11 @@ func (b *localBackend) GetLogs(ctx context.Context, stack backend.Stack, cfg bac
 // GetLogsForTarget fetches stack logs using the config, decrypter, and checkpoint in the given target.
 func GetLogsForTarget(target *deploy.Target, query operations.LogQuery) ([]operations.LogEntry, error) {
 	contract.Assert(target != nil)
-	contract.Assert(target.Snapshot != nil)
+
+	if target.Snapshot == nil {
+		// If the stack has not been deployed yet, return no logs.
+		return nil, nil
+	}
 
 	config, err := target.Config.Decrypt(target.Decrypter)
 	if err != nil {
@@ -676,6 +789,14 @@ func (b *localBackend) ExportDeployment(ctx context.Context,
 func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 	deployment *apitype.UntypedDeployment) error {
 
+	if cmdutil.IsTruthy(os.Getenv(PulumiFilestateLockingEnvVar)) {
+		err := b.Lock(ctx, stk.Ref())
+		if err != nil {
+			return err
+		}
+		defer b.Unlock(ctx, stk.Ref())
+	}
+
 	stackName := stk.Ref().Name()
 	_, _, err := b.getStack(stackName)
 	if err != nil {
@@ -693,6 +814,10 @@ func (b *localBackend) ImportDeployment(ctx context.Context, stk backend.Stack,
 
 func (b *localBackend) Logout() error {
 	return workspace.DeleteAccount(b.originalURL)
+}
+
+func (b *localBackend) LogoutAll() error {
+	return workspace.DeleteAllAccounts()
 }
 
 func (b *localBackend) CurrentUser() (string, error) {

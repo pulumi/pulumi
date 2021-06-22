@@ -21,8 +21,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/pulumi/pulumi/sdk/v2/go/common/resource"
-	"github.com/pulumi/pulumi/sdk/v2/go/common/util/contract"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
 var errSecureKeyReserved = errors.New(`"secure" key in maps of length 1 are reserved`)
@@ -55,6 +55,17 @@ func (m Map) Copy(decrypter Decrypter, encrypter Encrypter) (Map, error) {
 	}
 
 	return newConfig, nil
+}
+
+// SecureKeys returns a list of keys that have secure values.
+func (m Map) SecureKeys() []Key {
+	var keys []Key
+	for k, v := range m {
+		if v.Secure() {
+			keys = append(keys, k)
+		}
+	}
+	return keys
 }
 
 // HasSecureValue returns true if the config map contains a secure (encrypted) value.
