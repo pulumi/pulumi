@@ -355,7 +355,7 @@ func (ctx *Context) ReadResource(
 
 	options := merge(opts...)
 	if options.Parent == nil {
-		options.Parent = ctx.stack
+		options.Parent = NewResourceInput(ctx.stack)
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
@@ -532,7 +532,7 @@ func (ctx *Context) registerResource(
 
 	options := merge(opts...)
 	if options.Parent == nil {
-		options.Parent = ctx.stack
+		options.Parent = NewResourceInput(ctx.stack)
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the

@@ -280,3 +280,20 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 		assert.Equal(t, p1, p2)
 	}
 }
+
+func TestResourceInputImpl(t *testing.T) {
+	var resource Resource = &testRes{foo: "abracadabra"}
+	var resourceInput ResourceInput = NewResourceInput(resource)
+	var resourceOutput ResourceOutput = resourceInput.ToResourceOutput()
+
+	channel := make(chan interface{})
+	resourceOutput.ApplyT(func(res interface{}) interface{} {
+		channel <- res
+		return res
+	})
+
+	res := <-channel
+	unpackedRes, castOk := res.(*testRes)
+	assert.Equal(t, true, castOk)
+	assert.Equal(t, "abracadabra", unpackedRes.foo)
+}

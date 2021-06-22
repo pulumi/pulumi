@@ -15,7 +15,7 @@
 package pulumi
 
 import (
-	//"context"
+	"context"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -319,7 +319,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			ro.Parent = r
+			ro.Parent = NewResourceInput(r)
 		case io != nil:
 			io.Parent = r
 		}
@@ -405,16 +405,34 @@ func Version(o string) ResourceOrInvokeOption {
 }
 
 type ResourceInput interface {
-	// Input
+	Input
 
-	// ToResourceOutput() ResourceOutput
-	// ToResourceOutputWithContext(context.Context) ResourceOutput
+	ToResourceOutput() ResourceOutput
+	ToResourceOutputWithContext(context.Context) ResourceOutput
 }
 
-// TODO eventually we can just have Resource implement ResourceInput
-// interface, so this is a no-op.
-func resourceAsInputMagic(r Resource) ResourceInput {
-	return nil
+type plainResourceInput struct {
+	resource Resource
+}
+
+func (pri *plainResourceInput) ElementType() reflect.Type {
+	return resourceType
+}
+
+func (pri *plainResourceInput) ToResourceOutput() ResourceOutput {
+	var ctx Context
+	out, ok, _ := ctx.NewOutput()
+	ok(pri.resource)
+	return ResourceOutput{out.getState()}
+}
+
+func (pri *plainResourceInput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
+	return pri.ToResourceOutput()
+}
+
+// TODO should we just include ResourceInput in Resource and deal with any breakage?
+func NewResourceInput(resource Resource) ResourceInput {
+	return &plainResourceInput{resource}
 }
 
 // TODO - helps incremental refactoring, but can we completely remove
