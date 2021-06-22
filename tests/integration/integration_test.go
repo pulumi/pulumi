@@ -734,3 +734,27 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		})
 	}
 }
+
+func TestRotatePassphrase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("rotate_passphrase")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
+
+	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
+	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
+
+	e.Stdin, e.Passphrase = nil, "qwerty"
+	e.RunCommand("pulumi", "config", "get", "foo")
+}

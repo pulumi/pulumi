@@ -120,6 +120,10 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
 		firstMessage := "Enter your passphrase to protect config/secrets"
 		if rotatePassphraseSecretsProvider {
 			firstMessage = "Enter your new passphrase to protect config/secrets"
+
+			if test, ok := os.LookupEnv("PULUMI_TEST_PASSPHRASE"); (!ok || !cmdutil.IsTruthy(test)) && !cmdutil.Interactive() {
+				return nil, fmt.Errorf("passphrase rotation requires an interactive terminal")
+			}
 		}
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
 		first, _, err := readPassphraseImpl(firstMessage, !rotatePassphraseSecretsProvider)
