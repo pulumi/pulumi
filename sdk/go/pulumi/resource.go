@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"runtime/debug"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -320,10 +321,23 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			ro.Parent = NewResourceInput(r)
+			if r != nil {
+				var err error
+				ro.Parent, err = NewResourceInput(r)
+				if err != nil {
+					panic(err) // should not happen as we have checked r != nil
+				}
+			}
 		case io != nil:
 			io.Parent = r
 		}
+	})
+}
+
+// Like Parent, but accepts ResourceInput and ResourceOutput.
+func ParentInput(r ResourceInput) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.Parent = r
 	})
 }
 
@@ -432,8 +446,11 @@ func (pri *plainResourceInput) ToResourceOutputWithContext(ctx context.Context) 
 }
 
 // TODO should we just include ResourceInput in Resource and deal with any breakage?
-func NewResourceInput(resource Resource) ResourceInput {
-	return &plainResourceInput{resource}
+func NewResourceInput(resource Resource) (ResourceInput, error) {
+	if resource == nil {
+		return nil, fmt.Errorf("NewResourceInput cannot be called with a nil resource")
+	}
+	return &plainResourceInput{resource}, nil
 }
 
 // TODO - helps incremental refactoring, but can we completely remove
@@ -448,6 +465,8 @@ func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, e
 	resource, isResource := result.(Resource)
 
 	if !isResource {
+
+		fmt.Printf("Stack: %s\n", string(debug.Stack()))
 		return nil, fmt.Errorf("ResourceInput resolved to a value that is not a Resource but a %v",
 			reflect.TypeOf(result))
 	}

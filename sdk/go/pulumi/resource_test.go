@@ -283,7 +283,11 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 
 func TestResourceInputImpl(t *testing.T) {
 	var resource Resource = &testRes{foo: "abracadabra"}
-	var resourceInput ResourceInput = NewResourceInput(resource)
+	var resourceInput ResourceInput
+	var err error
+	resourceInput, err = NewResourceInput(resource)
+	assert.Nil(t, err)
+
 	var resourceOutput ResourceOutput = resourceInput.ToResourceOutput()
 
 	channel := make(chan interface{})
@@ -296,4 +300,14 @@ func TestResourceInputImpl(t *testing.T) {
 	unpackedRes, castOk := res.(*testRes)
 	assert.Equal(t, true, castOk)
 	assert.Equal(t, "abracadabra", unpackedRes.foo)
+}
+
+func TestCanPassDeferredParent(t *testing.T) {
+	mocks := &testMonitor{}
+
+	err := RunErr(func(ctx *Context) error {
+		return nil
+	}, WithMocks("project", "stack", mocks))
+
+	assert.NoError(t, err)
 }
