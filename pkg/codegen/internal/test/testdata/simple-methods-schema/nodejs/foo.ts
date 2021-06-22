@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
-import * as random from "@pulumi/random";
+import * as pulumiRandom from "@pulumi/random";
 
 export class Foo extends pulumi.ComponentResource {
     /** @internal */
@@ -97,9 +97,9 @@ export namespace Foo {
         boolValue?: pulumi.Input<boolean>;
         boolValuePlain?: boolean;
         boolValueRequired: pulumi.Input<boolean>;
-        name?: pulumi.Input<random.RandomPet>;
-        namePlain?: random.RandomPet;
-        nameRequired: pulumi.Input<random.RandomPet>;
+        name?: pulumi.Input<pulumiRandom.RandomPet>;
+        namePlain?: pulumiRandom.RandomPet;
+        nameRequired: pulumi.Input<pulumiRandom.RandomPet>;
         stringValue?: pulumi.Input<string>;
         stringValuePlain?: string;
         stringValueRequired: pulumi.Input<string>;
