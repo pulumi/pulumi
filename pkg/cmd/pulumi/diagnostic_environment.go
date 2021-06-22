@@ -21,6 +21,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/display"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/spf13/cobra"
+	"os/exec"
 )
 
 func newDiagnosticEnvironmentCmd() *cobra.Command {
@@ -69,10 +70,35 @@ func newDiagnosticEnvironmentCmd() *cobra.Command {
 				rescnt = len(snap.Resources)
 			}
 
+			// Runtime versions info
+			proj, _, err := readProject()
+			if err != nil {
+				return err
+			}
+
+			var runtimeName string = proj.Runtime.Name()
+			var runtimeVersion string = ""
+			switch runtimeName {
+			case "dotnet":
+				cmdOutput, _ := exec.Command("dotnet", "--version").Output()
+				runtimeVersion = string(cmdOutput[:])
+			case "go":
+				cmdOutput, _ := exec.Command("go", "version").Output()
+				runtimeVersion = string(cmdOutput[:])
+			case "nodejs":
+				cmdOutput, _ := exec.Command("npm", "--version").Output()
+				runtimeVersion = string(cmdOutput[:])
+			case "python":
+				cmdOutput, _ := exec.Command("python3", "--version").Output()
+				runtimeVersion = string(cmdOutput[:])
+
+			}
+
 			// Outputs
 			fmt.Printf("Pulumi Version: %s\n", version.Version)
 			fmt.Printf("OS: %s %s\n", os, runtime.GOARCH)
-			fmt.Printf("Console URL: %s\n", b.URL())
+			fmt.Printf("Runtime: %s %s", runtimeName, runtimeVersion)
+			fmt.Printf("Backend URL: %s\n", b.URL())
 			fmt.Printf("Current stack resources (%d):\n", rescnt)
 			if rescnt == 0 {
 				fmt.Printf("    No resources currently in this stack\n")
