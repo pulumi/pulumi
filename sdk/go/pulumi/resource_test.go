@@ -307,7 +307,7 @@ func TestNewResourceInput(t *testing.T) {
 
 func TestParentInput(t *testing.T) {
 	mockNewResource := func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-		return "someID", resource.PropertyMap{}, nil
+		return "newResourceID", resource.PropertyMap{}, nil
 	}
 
 	mocks := &testMonitor{
