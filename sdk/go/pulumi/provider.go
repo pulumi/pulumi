@@ -101,8 +101,6 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if req.GetParent() != "" {
 		parent = pulumiCtx.newDependencyResource(URN(req.GetParent()))
 	}
-
-	var newResourceErr error
 	opts := resourceOption(func(ro *resourceOptions) {
 		ro.Aliases = aliases
 		ro.DependsOn = dependencies
@@ -114,9 +112,6 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
 	if err != nil {
 		return nil, err
-	}
-	if newResourceErr != nil {
-		return nil, newResourceErr
 	}
 
 	// Wait for async work to finish.
