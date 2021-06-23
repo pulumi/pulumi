@@ -1017,6 +1017,16 @@ func (ResourceOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Resource)(nil)).Elem()
 }
 
+func (o ResourceOutput) ToResourceOutput() ResourceOutput {
+	return o
+}
+
+func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
+	return o
+}
+
+var _ ResourceInput = &ResourceOutput{}
+
 func init() {
 	RegisterOutputType(ResourceOutput{})
 }

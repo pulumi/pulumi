@@ -1,10 +1,13 @@
 package pulumi
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type testRes struct {
@@ -281,7 +284,7 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 	}
 }
 
-func TestResourceInputImpl(t *testing.T) {
+func TestNewResourceInput(t *testing.T) {
 	var resource Resource = &testRes{foo: "abracadabra"}
 	var resourceInput ResourceInput
 	var err error
@@ -302,10 +305,47 @@ func TestResourceInputImpl(t *testing.T) {
 	assert.Equal(t, "abracadabra", unpackedRes.foo)
 }
 
-func TestCanPassDeferredParent(t *testing.T) {
-	mocks := &testMonitor{}
+func TestParentInput(t *testing.T) {
+	mockNewResource := func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+		return "someID", resource.PropertyMap{}, nil
+	}
+
+	mocks := &testMonitor{
+		NewResourceF: mockNewResource,
+	}
+
+	mkRes := func(ctx *Context, name string, opts ...ResourceOption) Resource {
+		var res testRes
+		err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
+		assert.NoError(t, err)
+		return &res
+	}
+
+	urn := func(ctx *Context, res Resource) URN {
+		urn, _, _, _ := res.URN().awaitURN(ctx.ctx)
+		return urn
+	}
 
 	err := RunErr(func(ctx *Context) error {
+		dep := mkRes(ctx, "resDependency")
+		parent := mkRes(ctx, "resParent")
+
+		parentWithDep := ResourceOutput{
+			Any(dep).
+				ApplyT(func(interface{}) interface{} { return parent }).
+				getState(),
+		}
+
+		child := mkRes(ctx, "resChild", ParentInput(parentWithDep))
+
+		m := ctx.monitor.(*mockMonitor)
+
+		assert.Equalf(t, urn(ctx, parent), m.parents[urn(ctx, child)],
+			"Failed to set parent via ParentInput")
+
+		assert.Containsf(t, m.dependencies[urn(ctx, child)], urn(ctx, dep),
+			"Failed to propagate dependencies via ParentInput")
+
 		return nil
 	}, WithMocks("project", "stack", mocks))
 
