@@ -6,6 +6,8 @@
   to be watched by the `pulumi watch` command.
   [#7115](https://github.com/pulumi/pulumi/pull/7247)
 
+- [auto/nodejs] - Fail early when multiple versions of `@pulumi/pulumi` are detected in nodejs inline programs.'
+  [#7349](https://github.com/pulumi/pulumi/pull/7349)
 
 ### Bug Fixes
 

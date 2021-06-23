@@ -26,7 +26,7 @@ import {
     Stack,
     validatePulumiVersion,
 } from "../../automation";
-import { Config } from "../../index";
+import { Config, output } from "../../index";
 import { asyncTest } from "../util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -598,6 +598,38 @@ describe("LocalWorkspace", () => {
 
         // pulumi up
         await assert.rejects(stack.up());
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
+    it(`detects inline programs with side by side pulumi and throws an error`, asyncTest(async () => {
+
+        const program = async () => {
+            // clear pulumi/pulumi from require cache
+            delete require.cache[require.resolve("../../runtime")];
+            delete require.cache[require.resolve("../../runtime/config")];
+            delete require.cache[require.resolve("../../runtime/settings")];
+            // load up a fresh instance of pulumi
+            const p1 = require("../../runtime/settings");
+            // do some work that happens to observe runtime options with the new instance
+            p1.monitorSupportsSecrets();
+            return {
+                // export an output from originally pulumi causing settings to be observed again (boom).
+                test: output("original_pulumi"),
+            };
+        };
+        const projectName = "inline_node_sxs";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up
+        await assert.rejects(stack.up(), (err: Error) => {
+           return err.stack!.indexOf("Detected multiple versions of '@pulumi/pulumi'") >= 0;
+        });
 
         // pulumi destroy
         const destroyRes = await stack.destroy();

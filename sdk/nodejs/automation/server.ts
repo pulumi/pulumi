@@ -37,6 +37,10 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
         this.program = program;
 
         this.running = false;
+
+        // set a bit in runtime settings to indicate that we're running in inline mode.
+        // this allows us to detect and fail fast for side by side pulumi scenarios.
+        runtime.setInline();
     }
 
     onPulumiExit(hasError: boolean) {
