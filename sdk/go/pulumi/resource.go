@@ -308,22 +308,23 @@ func DependsOn(o []Resource) ResourceOption {
 
 // Like DependsOn, but accepts ResourceInptu and ResourceOutput.
 func DependsOnInputs(o []ResourceInput) ResourceOption {
-	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
-
+	return deferResourceOption(func(ctx context.Context) (ResourceOption, error) {
 		// Similarly to ParentInput, we force-await any
 		// ResourceOutputs passed in right here, instead of
 		// trying to lazily await them as needed downstream.
 
+		var allDeps []Resource
+
 		for _, ri := range o {
 			dep, moreDeps, err := awaitResourceInputMAGIC(ctx, ri)
 			if err != nil {
-				return err
+				return nil, err
 			}
-			ro.DependsOn = append(ro.DependsOn, dep)
-			ro.DependsOn = append(ro.DependsOn, moreDeps...)
+			allDeps = append(allDeps, dep)
+			allDeps = append(allDeps, moreDeps...)
 		}
 
-		return nil
+		return DependsOn(allDeps), nil
 	})
 }
 
@@ -361,7 +362,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 
 // Like Parent, but accepts ResourceInput and ResourceOutput.
 func ParentInput(r ResourceInput) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
+	return deferResourceOrInvokeOption(func(ctx context.Context) (ResourceOrInvokeOption, error) {
 		// The Parent option is accessed a lot as it figures
 		// in URN construction for example, so it is
 		// reasonable to force-await it right away instead of
@@ -369,18 +370,10 @@ func ParentInput(r ResourceInput) ResourceOrInvokeOption {
 		p, deps, err := awaitResourceInputMAGIC(ctx, r)
 
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		switch {
-		case ro != nil:
-			ro.Parent = p
-			ro.DependsOn = append(ro.DependsOn, deps...)
-		case io != nil:
-			io.Parent = p
-		}
-
-		return nil
+		return combineResourceOrInvokeOptions(Parent(p), orInvokeOption(DependsOn(deps))), nil
 	})
 }
 
@@ -406,25 +399,17 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 }
 
 // Similar to Provider, but accepts ProviderResourceInput or ProviderResourceOutput.
-func ProviderInput(pri ProviderResourceInput) resourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
-
+func ProviderInput(pri ProviderResourceInput) ResourceOrInvokeOption {
+	return deferResourceOrInvokeOption(func(ctx context.Context) (ResourceOrInvokeOption, error) {
 		// Less obvious than ParentInput that we should
 		// force-await here, but doing so for simplicity of
 		// implementation.
 		p, deps, err := awaitProviderResourceOutput(ctx, pri.ToProviderResourceOutput())
 		if err != nil {
-			return err
+			return nil, err
 		}
 
-		switch {
-		case ro != nil:
-			ro.DependsOn = append(ro.DependsOn, deps...)
-			return Providers(p).applyResourceOption(ctx, ro)
-		case io != nil:
-			io.Provider = p
-		}
-		return nil
+		return combineResourceOrInvokeOptions(Provider(p), orInvokeOption(DependsOn(deps))), nil
 	})
 }
 
@@ -599,6 +584,16 @@ func awaitProviderResourceOutput(ctx context.Context, pri ProviderResourceInput)
 	return resource, deps, err
 }
 
+// Trivially ResourceOption is also a ResourceOrInvokeOption.
+func orInvokeOption(opt ResourceOption) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
+		if ro != nil {
+			return opt.applyResourceOption(ctx, ro)
+		}
+		return nil
+	})
+}
+
 // The combined option will apply all the given options in order.
 func combineResourceOptions(options ...ResourceOption) ResourceOption {
 	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
@@ -606,6 +601,29 @@ func combineResourceOptions(options ...ResourceOption) ResourceOption {
 			err := opt.applyResourceOption(ctx, ro)
 			if err != nil {
 				return err
+			}
+		}
+		return nil
+	})
+}
+
+// The combined option will apply all the given options in order.
+func combineResourceOrInvokeOptions(options ...ResourceOrInvokeOption) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
+		switch {
+		case ro != nil:
+			for _, opt := range options {
+				err := opt.applyResourceOption(ctx, ro)
+				if err != nil {
+					return err
+				}
+			}
+		case io != nil:
+			for _, opt := range options {
+				err := opt.applyInvokeOption(ctx, io)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		return nil
@@ -620,5 +638,22 @@ func deferResourceOption(f func(ctx context.Context) (ResourceOption, error)) Re
 			return err
 		}
 		return opt.applyResourceOption(ctx, ro)
+	})
+}
+
+// Defers an init action until the option is applied.
+func deferResourceOrInvokeOption(f func(ctx context.Context) (ResourceOrInvokeOption, error)) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
+		opt, err := f(ctx)
+		if err != nil {
+			return err
+		}
+		switch {
+		case ro != nil:
+			return opt.applyResourceOption(ctx, ro)
+		case io != nil:
+			return opt.applyInvokeOption(ctx, io)
+		}
+		return nil
 	})
 }
