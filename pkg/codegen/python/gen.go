@@ -1201,7 +1201,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 		if hasStateInputs {
 			for _, prop := range res.StateInputs.Properties {
-				pname := PyName(prop.Name)
+				pname := InitParamName(prop.Name)
 				ty := mod.typeString(prop.Type, true, true, true, true /*optional*/, true /*acceptMapping*/)
 				fmt.Fprintf(w, ",\n            %s: %s = None", pname, ty)
 			}
@@ -1223,7 +1223,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		if res.StateInputs != nil {
 			for _, prop := range res.StateInputs.Properties {
 				stateInputs.Add(prop.Name)
-				fmt.Fprintf(w, "        __props__.__dict__[%[1]q] = %[1]s\n", PyName(prop.Name))
+				fmt.Fprintf(w, "        __props__.__dict__[%q] = %s\n", PyName(prop.Name), InitParamName(prop.Name))
 			}
 		}
 		for _, prop := range res.Properties {
@@ -1826,7 +1826,7 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	fmt.Fprintln(b, ":param pulumi.ResourceOptions opts: Options for the resource.")
 	if res.StateInputs != nil {
 		for _, prop := range res.StateInputs.Properties {
-			mod.genPropDocstring(b, PyName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
+			mod.genPropDocstring(b, InitParamName(prop.Name), prop, true /*wrapInput*/, true /*acceptMapping*/)
 		}
 	}
 
