@@ -258,7 +258,7 @@ func (p PropertyPath) Delete(dest PropertyValue) bool {
 
 }
 
-// Contains returns true if the receiver property path contains the other pproperty path.
+// Contains returns true if the receiver property path contains the other property path.
 // For example, the path `foo["bar"][1]` contains the path `foo.bar[1].baz`.  The key `"*"`
 // is a wildcard which matches any string or int index at that same nesting level.  So for example,
 // the path `foo.*.baz` contains `foo.bar.baz.bam`, and the path `*` contains any path.
@@ -271,16 +271,16 @@ func (p PropertyPath) Contains(other PropertyPath) bool {
 		pp := p[i]
 		otherp := other[i]
 
-		switch pp.(type) {
+		switch pp := pp.(type) {
 		case int:
-			if otherpi, ok := otherp.(int); !ok || otherpi != pp.(int) {
+			if otherpi, ok := otherp.(int); !ok || otherpi != pp {
 				return false
 			}
 		case string:
-			if pp.(string) == "*" {
+			if pp == "*" {
 				continue
 			}
-			if otherps, ok := otherp.(string); !ok || otherps != pp.(string) {
+			if otherps, ok := otherp.(string); !ok || otherps != pp {
 				return false
 			}
 		default:

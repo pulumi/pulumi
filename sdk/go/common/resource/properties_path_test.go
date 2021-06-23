@@ -243,8 +243,33 @@ func TestPropertyPathContains(t *testing.T) {
 			true,
 		},
 		{
+			PropertyPath{"*", "bar", "baz"},
+			PropertyPath{"foo", "bar", "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "*", "baz"},
+			PropertyPath{"foo", 1, "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"foo", 1, "*", "bam"},
+			PropertyPath{"foo", 1, "baz", "bam"},
+			true,
+		},
+		{
 			PropertyPath{"*"},
 			PropertyPath{"a", "b"},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", 1},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", 1, "b"},
 			true,
 		},
 	}
