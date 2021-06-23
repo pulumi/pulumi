@@ -172,6 +172,7 @@ type ComponentResource interface {
 // be used for a given resource by passing it in ResourceOpt.Provider.
 type ProviderResource interface {
 	CustomResource
+	ProviderResourceInput
 
 	getPackage() string
 }
