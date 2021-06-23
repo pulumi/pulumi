@@ -272,6 +272,9 @@ func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, in
 
 	switch len(elementTypes) {
 	case 1:
+		if wrapInput {
+			return fmt.Sprintf("Input<%s>", elementTypes[0])
+		}
 		return elementTypes[0]
 	case 2:
 		unionT := "Union"
