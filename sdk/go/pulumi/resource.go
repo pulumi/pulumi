@@ -306,6 +306,27 @@ func DependsOn(o []Resource) ResourceOption {
 	})
 }
 
+// Like DependsOn, but accepts ResourceInptu and ResourceOutput.
+func DependsOnInputs(o []ResourceInput) ResourceOption {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
+
+		// Similarly to ParentInput, we force-await any
+		// ResourceOutputs passed in right here, instead of
+		// trying to lazily await them as needed downstream.
+
+		for _, ri := range o {
+			dep, moreDeps, err := awaitResourceInputMAGIC(ctx, ri)
+			if err != nil {
+				return err
+			}
+			ro.DependsOn = append(ro.DependsOn, dep)
+			ro.DependsOn = append(ro.DependsOn, moreDeps...)
+		}
+
+		return nil
+	})
+}
+
 // Ignore changes to any of the specified properties.
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {

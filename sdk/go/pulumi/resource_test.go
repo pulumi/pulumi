@@ -7,8 +7,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
 
 type testRes struct {
@@ -307,29 +305,9 @@ func TestNewResourceInput(t *testing.T) {
 }
 
 func TestParentInput(t *testing.T) {
-	mockNewResource := func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-		return "newResourceID", resource.PropertyMap{}, nil
-	}
-
-	mocks := &testMonitor{
-		NewResourceF: mockNewResource,
-	}
-
-	mkRes := func(ctx *Context, name string, opts ...ResourceOption) Resource {
-		var res testRes
-		err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
-		assert.NoError(t, err)
-		return &res
-	}
-
-	urn := func(ctx *Context, res Resource) URN {
-		urn, _, _, _ := res.URN().awaitURN(ctx.ctx)
-		return urn
-	}
-
 	err := RunErr(func(ctx *Context) error {
-		dep := mkRes(ctx, "resDependency")
-		parent := mkRes(ctx, "resParent")
+		dep := newTestRes(t, ctx, "resDependency")
+		parent := newTestRes(t, ctx, "resParent")
 
 		parentWithDep := ResourceOutput{
 			Any(dep).
@@ -337,20 +315,62 @@ func TestParentInput(t *testing.T) {
 				getState(),
 		}
 
-		child := mkRes(ctx, "resChild", ParentInput(parentWithDep))
+		child := newTestRes(t, ctx, "resChild", ParentInput(parentWithDep))
 
 		m := ctx.monitor.(*mockMonitor)
 
-		assert.Equalf(t, urn(ctx, parent), m.parents[urn(ctx, child)],
+		assert.Equalf(t, urn(t, ctx, parent), m.parents[urn(t, ctx, child)],
 			"Failed to set parent via ParentInput")
 
-		assert.Containsf(t, m.dependencies[urn(ctx, child)], urn(ctx, dep),
+		assert.Containsf(t, m.dependencies[urn(t, ctx, child)], urn(t, ctx, dep),
 			"Failed to propagate dependencies via ParentInput")
 
 		return nil
-	}, WithMocks("project", "stack", mocks))
-
+	}, WithMocks("project", "stack", &testMonitor{}))
 	assert.NoError(t, err)
+}
+
+func TestDependsOnInputs(t *testing.T) {
+	err := RunErr(func(ctx *Context) error {
+		dep1 := newTestRes(t, ctx, "resDependency1")
+		dep2 := newTestRes(t, ctx, "resDependency2")
+
+		// Construct an output that resolve to `dep2` but also
+		// implicitly depends on `dep1`.
+		output := ResourceOutput{
+			Any(dep1).
+				ApplyT(func(interface{}) interface{} { return dep2 }).
+				getState(),
+		}
+
+		res := newTestRes(t, ctx, "resDependent", DependsOnInputs([]ResourceInput{output}))
+
+		m := ctx.monitor.(*mockMonitor)
+
+		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep2),
+			"Failed to propagate direct dependencies via DependsOnInputs")
+
+		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep1),
+			"Failed to propagate indirect dependencies via DependsOnInputs")
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	assert.NoError(t, err)
+}
+
+func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
+	var res testRes
+	err := ctx.RegisterResource(fmt.Sprintf("test:resource:%stype", name), name, nil, &res, opts...)
+	assert.NoError(t, err)
+	return &res
+}
+
+func urn(t *testing.T, ctx *Context, res Resource) URN {
+	urn, _, _, err := res.URN().awaitURN(ctx.ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return urn
 }
 
 func tmerge(t *testing.T, opts ...ResourceOption) *resourceOptions {
