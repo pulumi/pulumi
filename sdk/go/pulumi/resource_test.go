@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -356,6 +357,47 @@ func TestDependsOnInputs(t *testing.T) {
 		return nil
 	}, WithMocks("project", "stack", &testMonitor{}))
 	assert.NoError(t, err)
+}
+
+func TestProviderInput(t *testing.T) {
+	providerId := "providerId"
+	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
+	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerId)
+
+	var seenProviders []string
+
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			if args.Provider != "" {
+				seenProviders = append(seenProviders, args.Provider)
+			}
+			return "freshID", nil, nil
+		},
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		dep := newTestRes(t, ctx, "resDependency")
+
+		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
+
+		// Construct an output that resolve to `providerResource` but also depends on `dep`.
+		output := Any(dep).
+			ApplyT(func(interface{}) ProviderResource { return providerResource }).(ProviderResourceOutput)
+
+		res := newTestRes(t, ctx, "resWithProvider", ProviderInput(output))
+
+		m := ctx.monitor.(*mockMonitor)
+
+		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep),
+			"Failed to propagate indirect dependencies via ProviderInput")
+
+		return nil
+	}, WithMocks("project", "stack", mocks))
+
+	assert.NoError(t, err)
+
+	assert.Len(t, seenProviders, 1)
+	assert.Equal(t, providerUrn, seenProviders[0])
 }
 
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {

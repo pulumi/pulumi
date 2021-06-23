@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"runtime/debug"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -406,6 +405,29 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 	})
 }
 
+// Similar to Provider, but accepts ProviderResourceInput or ProviderResourceOutput.
+func ProviderInput(pri ProviderResourceInput) resourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
+
+		// Less obvious than ParentInput that we should
+		// force-await here, but doing so for simplicity of
+		// implementation.
+		p, deps, err := awaitProviderResourceOutput(ctx, pri.ToProviderResourceOutput())
+		if err != nil {
+			return err
+		}
+
+		switch {
+		case ro != nil:
+			ro.DependsOn = append(ro.DependsOn, deps...)
+			return Providers(p).applyResourceOption(ctx, ro)
+		case io != nil:
+			io.Provider = p
+		}
+		return nil
+	})
+}
+
 // ProviderMap is an optional map of package to provider resource for a component resource.
 func ProviderMap(o map[string]ProviderResource) ResourceOption {
 	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
@@ -516,9 +538,23 @@ func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, [
 	resource, isResource := result.(Resource)
 
 	if !isResource {
-
-		fmt.Printf("Stack: %s\n", string(debug.Stack()))
 		return nil, nil, fmt.Errorf("ResourceInput resolved to a value that is not a Resource but a %v",
+			reflect.TypeOf(result))
+	}
+
+	return resource, deps, err
+}
+
+func awaitProviderResourceOutput(ctx context.Context, pri ProviderResourceInput) (ProviderResource, []Resource, error) {
+	result, known, _, deps, err := pri.ToProviderResourceOutput().await(ctx)
+
+	if !known {
+		return nil, nil, fmt.Errorf("Encountered unknown ProviderResourceInput, this is currently not supported")
+	}
+
+	resource, isResource := result.(ProviderResource)
+	if !isResource {
+		return nil, nil, fmt.Errorf("ProviderResourceInput resolved to a value that is not a Resource but a %v",
 			reflect.TypeOf(result))
 	}
 
