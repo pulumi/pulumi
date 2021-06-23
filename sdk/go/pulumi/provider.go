@@ -101,12 +101,13 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	if req.GetParent() != "" {
 		parent = pulumiCtx.newDependencyResource(URN(req.GetParent()))
 	}
-	opts := resourceOption(func(ro *resourceOptions) {
+	opts := resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.Aliases = aliases
 		ro.DependsOn = dependencies
 		ro.Protect = req.GetProtect()
 		ro.Providers = providers
 		ro.Parent = parent
+		return nil
 	})
 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)

@@ -230,11 +230,11 @@ type invokeOptions struct {
 }
 
 type ResourceOption interface {
-	applyResourceOption(*resourceOptions)
+	applyResourceOption(context.Context, *resourceOptions) error
 }
 
 type InvokeOption interface {
-	applyInvokeOption(*invokeOptions)
+	applyInvokeOption(context.Context, *invokeOptions) error
 }
 
 type ResourceOrInvokeOption interface {
@@ -242,67 +242,75 @@ type ResourceOrInvokeOption interface {
 	InvokeOption
 }
 
-type resourceOption func(*resourceOptions)
+type resourceOption func(context.Context, *resourceOptions) error
 
-func (o resourceOption) applyResourceOption(opts *resourceOptions) {
-	o(opts)
+func (o resourceOption) applyResourceOption(ctx context.Context, opts *resourceOptions) error {
+	return o(ctx, opts)
 }
 
-type resourceOrInvokeOption func(ro *resourceOptions, io *invokeOptions)
+type resourceOrInvokeOption func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error
 
-func (o resourceOrInvokeOption) applyResourceOption(opts *resourceOptions) {
-	o(opts, nil)
+func (o resourceOrInvokeOption) applyResourceOption(ctx context.Context, opts *resourceOptions) error {
+	return o(ctx, opts, nil)
 }
 
-func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
-	o(nil, opts)
+func (o resourceOrInvokeOption) applyInvokeOption(ctx context.Context, opts *invokeOptions) error {
+	return o(ctx, nil, opts)
 }
 
 // merging is handled by each functional options call
 // properties that are arrays/maps are always appended/merged together
 // last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
-func merge(opts ...ResourceOption) *resourceOptions {
+func merge(ctx context.Context, opts ...ResourceOption) (*resourceOptions, error) {
 	options := &resourceOptions{}
 	for _, o := range opts {
 		if o != nil {
-			o.applyResourceOption(options)
+			err := o.applyResourceOption(ctx, options)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	return options
+	return options, nil
 }
 
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.
 func AdditionalSecretOutputs(o []string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.AdditionalSecretOutputs = append(ro.AdditionalSecretOutputs, o...)
+		return nil
 	})
 }
 
 // Aliases applies a list of identifiers to find and use existing resources.
 func Aliases(o []Alias) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.Aliases = append(ro.Aliases, o...)
+		return nil
 	})
 }
 
 // DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 func DeleteBeforeReplace(o bool) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.DeleteBeforeReplace = o
+		return nil
 	})
 }
 
 // DependsOn is an optional array of explicit dependencies on other resources.
 func DependsOn(o []Resource) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.DependsOn = append(ro.DependsOn, o...)
+		return nil
 	})
 }
 
 // Ignore changes to any of the specified properties.
 func IgnoreChanges(o []string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.IgnoreChanges = append(ro.IgnoreChanges, o...)
+		return nil
 	})
 }
 
@@ -311,34 +319,36 @@ func IgnoreChanges(o []string) ResourceOption {
 // current state. Once a resource has been imported, the import property must be removed from the resource's
 // options.
 func Import(o IDInput) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.Import = o
+		return nil
 	})
 }
 
 // Parent sets the parent resource to which this resource or invoke belongs.
 func Parent(r Resource) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
 		switch {
 		case ro != nil:
 			ro.Parent = r
 		case io != nil:
 			io.Parent = r
 		}
+		return nil
 	})
 }
 
 // Like Parent, but accepts ResourceInput and ResourceOutput.
 func ParentInput(r ResourceInput) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
 		// The Parent option is accessed a lot as it figures
 		// in URN construction for example, so it is
 		// reasonable to force-await it right away instead of
 		// trying to defer lazily.
-		p, deps, err := awaitResourceInputMAGIC(context.TODO(), r)
+		p, deps, err := awaitResourceInputMAGIC(ctx, r)
 
 		if err != nil {
-			panic(err) // TODO we need an error path when defining options
+			return err
 		}
 
 		switch {
@@ -348,31 +358,35 @@ func ParentInput(r ResourceInput) ResourceOrInvokeOption {
 		case io != nil:
 			io.Parent = p
 		}
+
+		return nil
 	})
 }
 
 // Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 func Protect(o bool) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.Protect = o
+		return nil
 	})
 }
 
 // Provider sets the provider resource to use for a resource's CRUD operations or an invoke's call.
 func Provider(r ProviderResource) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
 		switch {
 		case ro != nil:
-			Providers(r).applyResourceOption(ro)
+			return Providers(r).applyResourceOption(ctx, ro)
 		case io != nil:
 			io.Provider = r
 		}
+		return nil
 	})
 }
 
 // ProviderMap is an optional map of package to provider resource for a component resource.
 func ProviderMap(o map[string]ProviderResource) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		if o != nil {
 			if ro.Providers == nil {
 				ro.Providers = make(map[string]ProviderResource)
@@ -381,6 +395,7 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 				ro.Providers[k] = v
 			}
 		}
+		return nil
 	})
 }
 
@@ -395,23 +410,26 @@ func Providers(o ...ProviderResource) ResourceOption {
 
 // Timeouts is an optional configuration block used for CRUD operations
 func Timeouts(o *CustomTimeouts) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.CustomTimeouts = o
+		return nil
 	})
 }
 
 // Transformations is an optional list of transformations to be applied to the resource.
 func Transformations(o []ResourceTransformation) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.Transformations = append(ro.Transformations, o...)
+		return nil
 	})
 }
 
 // URN_ is an optional URN of a previously-registered resource of this type to read from the engine.
 //nolint: golint
 func URN_(o string) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
 		ro.URN = o
+		return nil
 	})
 }
 
@@ -419,13 +437,14 @@ func URN_(o string) ResourceOption {
 // operating on this resource. This version overrides the version information inferred from the current package and
 // should rarely be used.
 func Version(o string) ResourceOrInvokeOption {
-	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+	return resourceOrInvokeOption(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
 		switch {
 		case ro != nil:
 			ro.Version = o
 		case io != nil:
 			io.Version = o
 		}
+		return nil
 	})
 }
 

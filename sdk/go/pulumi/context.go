@@ -220,7 +220,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	options := &invokeOptions{}
 	for _, o := range opts {
 		if o != nil {
-			o.applyInvokeOption(options)
+			err := o.applyInvokeOption(ctx.ctx, options)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -353,7 +356,10 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := merge(opts...)
+	options, err := merge(ctx.ctx, opts...)
+	if err != nil {
+		return err
+	}
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -530,7 +536,10 @@ func (ctx *Context) registerResource(
 		}
 	}
 
-	options := merge(opts...)
+	options, err := merge(ctx.ctx, opts...)
+	if err != nil {
+		return err
+	}
 	if options.Parent == nil {
 		options.Parent = ctx.stack
 	}
@@ -675,7 +684,10 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 
 		res := transformation(args)
 		if res != nil {
-			resOptions := merge(res.Opts...)
+			resOptions, err := merge(context.TODO(), res.Opts...)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 
 			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
 				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
