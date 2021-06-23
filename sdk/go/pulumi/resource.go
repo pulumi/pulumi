@@ -469,7 +469,7 @@ func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, [
 	result, known, _, deps, err := ri.ToResourceOutput().await(ctx)
 
 	if !known {
-		return nil, nil, fmt.Errorf("Encountred unknown ResourceInput, this is currently not supported")
+		return nil, nil, fmt.Errorf("Encountered unknown ResourceInput, this is currently not supported")
 	}
 
 	resource, isResource := result.(Resource)
