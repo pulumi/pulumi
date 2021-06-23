@@ -719,7 +719,7 @@ type TypeSpec struct {
 	OneOf []TypeSpec `json:"oneOf,omitempty"`
 	// Discriminator informs the consumer of an alternative schema based on the value associated with it.
 	Discriminator *DiscriminatorSpec `json:"discriminator,omitempty"`
-	// Plan indicates that when used as an input, this type does not accept eventual values.
+	// Plain indicates that when used as an input, this type does not accept eventual values.
 	Plain bool `json:"plain,omitempty"`
 }
 
@@ -772,8 +772,8 @@ type ObjectTypeSpec struct {
 	// Required, if present, is a list of the names of an object type's required properties. These properties must be set
 	// for inputs and will always be set for outputs.
 	Required []string `json:"required,omitempty"`
-	// Plain, if present, is a list of the names of an object type's plain properties. These properties only accept
-	// prompt values.
+	// Plain, was a list of the names of an object type's plain properties. This property is ignored: instead, property
+	// types should be marked as plain where necessary.
 	Plain []string `json:"plain,omitempty"`
 	// Language specifies additional language-specific data about the type.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
@@ -980,6 +980,7 @@ func importSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 		typeList = append(typeList, t)
 	}
 	for _, t := range types.objects {
+		// t is a plain shape: add it and its coresponding input shape to the type list.
 		typeList = append(typeList, t)
 		typeList = append(typeList, t.InputShape)
 	}
@@ -1793,7 +1794,7 @@ func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
 func bindResource(token string, spec ResourceSpec, types *types,
 	functionTable map[string]*Function) (*Resource, error) {
 	if len(spec.Plain) > 0 {
-		return nil, errors.New("plain cannot be specified on resources")
+		return nil, errors.New("plain has been removed; property types must be marked as plain instead")
 	}
 	if len(spec.PlainInputs) > 0 {
 		return nil, errors.New("plainInputs has been removed; individual property types must be marked as plain instead")

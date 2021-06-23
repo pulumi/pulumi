@@ -582,67 +582,10 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 		return ""
 	}
 
-	//	var tokenRange hcl.Range
-	//	if expr != nil {
-	//		node := expr.SyntaxNode()
-	//		if node != nil && !reflect.ValueOf(node).IsNil() {
-	//			tokenRange = expr.SyntaxNode().Range()
-	//		}
-	//	}
-
 	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
 		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
 		return pkg.argsType(schemaType)
 	}
-
-	//	if _, isInput := schemaType.(*schema.InputType); ok && !isInput {
-	//		switch schemaType := schemaType.(type) {
-	//		case *schema.ArrayType:
-	//			token := codegen.UnwrapType(schemaType.ElementType).(*schema.ObjectType).Token
-	//			pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
-	//			// namespaceless invokes
-	//			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
-	//				module = pkg
-	//			}
-	//			importPrefix := g.getModOrAlias(pkg, module)
-	//			importPrefix = strings.Split(importPrefix, "/")[0]
-	//			contract.Assert(len(diags) == 0)
-	//			fmtString := "[]%s.%s"
-	//			if isInput {
-	//				member = Title(member)
-	//				if strings.HasPrefix(member, "Get") {
-	//					if g.useLookupInvokeForm(token) {
-	//						member = strings.Replace(member, "Get", "Lookup", 1)
-	//					}
-	//					return fmt.Sprintf("[]%s.%s", importPrefix, member)
-	//				}
-	//				fmtString = "%s.%sArray"
-	//			}
-	//			return fmt.Sprintf(fmtString, importPrefix, member)
-	//		case *schema.ObjectType:
-	//			token := schemaType.Token
-	//			pkg, module, member, diags := hcl2.DecomposeToken(token, tokenRange)
-	//			// namespaceless invokes
-	//			if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
-	//				module = pkg
-	//			}
-	//			importPrefix := g.getModOrAlias(pkg, module)
-	//			importPrefix = strings.Split(importPrefix, "/")[0]
-	//			contract.Assert(len(diags) == 0)
-	//			member = Title(member)
-	//			if strings.HasPrefix(member, "Get") {
-	//				if g.useLookupInvokeForm(token) {
-	//					member = strings.Replace(member, "Get", "Lookup", 1)
-	//				}
-	//				return fmt.Sprintf("%s.%s", importPrefix, member)
-	//			}
-	//			fmtString := "%s.%s"
-	//			if isInput {
-	//				fmtString = "%s.%sArgs"
-	//			}
-	//			return fmt.Sprintf(fmtString, importPrefix, member)
-	//		}
-	//	}
 
 	switch destType := destType.(type) {
 	case *model.OpaqueType:
