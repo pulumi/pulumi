@@ -443,6 +443,25 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 	})
 }
 
+// Similar to ProviderMap, but accepts ProviderResourceInput instead of ProviderResource.
+func ProviderInputMap(inputMap map[string]ProviderResourceInput) ResourceOption {
+	return deferResourceOption(func(ctx context.Context) (ResourceOption, error) {
+		var allDeps []Resource
+
+		resourceMap := make(map[string]ProviderResource)
+		for k, v := range inputMap {
+			pr, deps, err := awaitProviderResourceOutput(ctx, v.ToProviderResourceOutput())
+			if err != nil {
+				return nil, err
+			}
+			allDeps = append(allDeps, deps...)
+			resourceMap[k] = pr
+		}
+
+		return combineResourceOptions(ProviderMap(resourceMap), DependsOn(allDeps)), nil
+	})
+}
+
 // Providers is an optional list of providers to use for a resource's children.
 func Providers(o ...ProviderResource) ResourceOption {
 	m := map[string]ProviderResource{}
@@ -450,6 +469,25 @@ func Providers(o ...ProviderResource) ResourceOption {
 		m[p.getPackage()] = p
 	}
 	return ProviderMap(m)
+}
+
+// Like Providers, but accepts ProviderResourceInput.
+func ProviderInputs(o ...ProviderResourceInput) ResourceOption {
+	return deferResourceOption(func(ctx context.Context) (ResourceOption, error) {
+		var ps []ProviderResource
+		var allDeps []Resource
+
+		for _, pri := range o {
+			p, deps, err := awaitProviderResourceOutput(ctx, pri.ToProviderResourceOutput())
+			if err != nil {
+				return nil, err
+			}
+			ps = append(ps, p)
+			allDeps = append(allDeps, deps...)
+		}
+
+		return combineResourceOptions(Providers(ps...), DependsOn(allDeps)), nil
+	})
 }
 
 // Timeouts is an optional configuration block used for CRUD operations
@@ -559,4 +597,28 @@ func awaitProviderResourceOutput(ctx context.Context, pri ProviderResourceInput)
 	}
 
 	return resource, deps, err
+}
+
+// The combined option will apply all the given options in order.
+func combineResourceOptions(options ...ResourceOption) ResourceOption {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
+		for _, opt := range options {
+			err := opt.applyResourceOption(ctx, ro)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
+// Defers an init action until the option is applied.
+func deferResourceOption(f func(ctx context.Context) (ResourceOption, error)) ResourceOption {
+	return resourceOption(func(ctx context.Context, ro *resourceOptions) error {
+		opt, err := f(ctx)
+		if err != nil {
+			return err
+		}
+		return opt.applyResourceOption(ctx, ro)
+	})
 }
