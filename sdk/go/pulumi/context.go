@@ -355,13 +355,7 @@ func (ctx *Context) ReadResource(
 
 	options := merge(opts...)
 	if options.Parent == nil {
-		if ctx.stack != nil {
-			var err error
-			options.Parent, err = NewResourceInput(ctx.stack)
-			if err != nil {
-				return err
-			}
-		}
+		options.Parent = ctx.stack
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
@@ -371,17 +365,8 @@ func (ctx *Context) ReadResource(
 		return err
 	}
 
-	var parent Resource
-
-	if options.Parent != nil {
-		parent, err = awaitResourceInputMAGIC(ctx.ctx, options.Parent)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, parent)
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
 	if err != nil {
 		return err
 	}
@@ -392,7 +377,7 @@ func (ctx *Context) ReadResource(
 	}
 
 	// Merge providers.
-	providers := mergeProviders(t, parent, options.Provider, options.Providers)
+	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
 	res := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
@@ -547,13 +532,7 @@ func (ctx *Context) registerResource(
 
 	options := merge(opts...)
 	if options.Parent == nil {
-		if ctx.stack != nil {
-			var err error
-			options.Parent, err = NewResourceInput(ctx.stack)
-			if err != nil {
-				return err
-			}
-		}
+		options.Parent = ctx.stack
 	}
 
 	// Before anything else, if there are transformations registered, give them a chance to run to modify the
@@ -563,16 +542,8 @@ func (ctx *Context) registerResource(
 		return err
 	}
 
-	var parent Resource
-	if options.Parent != nil {
-		parent, err = awaitResourceInputMAGIC(ctx.ctx, options.Parent)
-		if err != nil {
-			return err
-		}
-	}
-
 	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, parent)
+	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
 	if err != nil {
 		return err
 	}
@@ -583,7 +554,7 @@ func (ctx *Context) registerResource(
 	}
 
 	// Merge providers.
-	providers := mergeProviders(t, parent, options.Provider, options.Providers)
+	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
 
 	// Create resolvers for the resource's outputs.
 	resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
@@ -689,17 +660,8 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 	options *resourceOptions) (Input, *resourceOptions, []ResourceTransformation, error) {
 
 	transformations := options.Transformations
-
-	// nullable
-	var optionsParent Resource
-
 	if options.Parent != nil {
-		var err error
-		optionsParent, err = awaitResourceInputMAGIC(context.TODO(), options.Parent)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-		transformations = append(transformations, optionsParent.getTransformations()...)
+		transformations = append(transformations, options.Parent.getTransformations()...)
 	}
 
 	for _, transformation := range transformations {
@@ -715,22 +677,9 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 		if res != nil {
 			resOptions := merge(res.Opts...)
 
-			var resOptionsParent Resource
-
-			if resOptions.Parent != nil {
-				var err error
-				resOptionsParent, err = awaitResourceInputMAGIC(context.TODO(), resOptions.Parent)
-				if err != nil {
-					return nil, nil, nil, err
-				}
-			}
-
-			unchangedParent := (resOptionsParent == nil && optionsParent == nil) ||
-				(resOptionsParent != nil && optionsParent != nil && resOptionsParent.URN() == optionsParent.URN())
-			if !unchangedParent {
+			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
 				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
-
 			props = res.Props
 			options = resOptions
 		}
@@ -1095,14 +1044,7 @@ func (ctx *Context) getOpts(t string, providers map[string]ProviderResource, opt
 
 	var parentURN URN
 	if opts.Parent != nil {
-
-		ctx := context.TODO()
-		parent, err := awaitResourceInputMAGIC(ctx, opts.Parent)
-		if err != nil {
-			return "", nil, false, "", nil, false, "", nil, nil, "", err
-		}
-
-		urn, _, _, err := parent.URN().awaitURN(ctx)
+		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
 		if err != nil {
 			return "", nil, false, "", nil, false, "", nil, nil, "", err
 		}

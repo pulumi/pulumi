@@ -201,7 +201,7 @@ type resourceOptions struct {
 	// options.
 	Import IDInput
 	// Parent is an optional parent resource to which this resource belongs.
-	Parent ResourceInput
+	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
@@ -321,13 +321,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			if r != nil {
-				var err error
-				ro.Parent, err = NewResourceInput(r)
-				if err != nil {
-					panic(err) // should not happen as we have checked r != nil
-				}
-			}
+			ro.Parent = r
 		case io != nil:
 			io.Parent = r
 		}
@@ -335,9 +329,25 @@ func Parent(r Resource) ResourceOrInvokeOption {
 }
 
 // Like Parent, but accepts ResourceInput and ResourceOutput.
-func ParentInput(r ResourceInput) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.Parent = r
+func ParentInput(r ResourceInput) ResourceOrInvokeOption {
+	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
+		// The Parent option is accessed a lot as it figures
+		// in URN construction for example, so it is
+		// reasonable to force-await it right away instead of
+		// trying to defer lazily.
+		p, deps, err := awaitResourceInputMAGIC(context.TODO(), r)
+
+		if err != nil {
+			panic(err) // TODO we need an error path when defining options
+		}
+
+		switch {
+		case ro != nil:
+			ro.Parent = p
+			ro.DependsOn = append(ro.DependsOn, deps...)
+		case io != nil:
+			io.Parent = p
+		}
 	})
 }
 
@@ -455,11 +465,11 @@ func NewResourceInput(resource Resource) (ResourceInput, error) {
 
 // TODO - helps incremental refactoring, but can we completely remove
 // this function?
-func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, error) {
-	result, known, _, _, err := ri.ToResourceOutput().await(ctx)
+func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, []Resource, error) {
+	result, known, _, deps, err := ri.ToResourceOutput().await(ctx)
 
 	if !known {
-		return nil, fmt.Errorf("Encountred unknown ResourceInput, this is currently not supported")
+		return nil, nil, fmt.Errorf("Encountred unknown ResourceInput, this is currently not supported")
 	}
 
 	resource, isResource := result.(Resource)
@@ -467,9 +477,9 @@ func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, e
 	if !isResource {
 
 		fmt.Printf("Stack: %s\n", string(debug.Stack()))
-		return nil, fmt.Errorf("ResourceInput resolved to a value that is not a Resource but a %v",
+		return nil, nil, fmt.Errorf("ResourceInput resolved to a value that is not a Resource but a %v",
 			reflect.TypeOf(result))
 	}
 
-	return resource, err
+	return resource, deps, err
 }

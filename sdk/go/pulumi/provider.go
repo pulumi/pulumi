@@ -108,10 +108,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		ro.DependsOn = dependencies
 		ro.Protect = req.GetProtect()
 		ro.Providers = providers
-
-		if parent != nil {
-			ro.Parent, newResourceErr = NewResourceInput(parent)
-		}
+		ro.Parent = parent
 	})
 
 	urn, state, err := constructF(pulumiCtx, req.GetType(), req.GetName(), inputs, opts)
