@@ -2027,14 +2027,14 @@ func TestToProviderResourceOutput(t *testing.T) {
 
 		out = in.ToProviderResourceOutputWithContext(context.Background())
 
-		_, known, _, _, err = await(out)
+		v, known, _, _, err = await(out)
 		assert.True(t, known)
 		assert.NoError(t, err)
 		assert.Equal(t, providerResource, v)
 
 		out = out.ToProviderResourceOutputWithContext(context.Background())
 
-		_, known, _, _, err = await(out)
+		v, known, _, _, err = await(out)
 		assert.True(t, known)
 		assert.NoError(t, err)
 		assert.Equal(t, providerResource, v)
