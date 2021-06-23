@@ -291,7 +291,7 @@ class Server implements grpc.UntypedServiceImplementation {
                     pulumiConfig[k] = v;
                 }
             }
-            runtime.setAllConfig(pulumiConfig);
+            runtime.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
 
             // Deserialize the inputs and apply appropriate dependencies.
             const inputs: Inputs = {};

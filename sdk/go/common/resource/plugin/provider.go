@@ -222,12 +222,13 @@ type ReadResult struct {
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
 type ConstructInfo struct {
-	Project        string                // the project name housing the program being run.
-	Stack          string                // the stack name being evaluated.
-	Config         map[config.Key]string // the configuration variables to apply before running.
-	DryRun         bool                  // true if we are performing a dry-run (preview).
-	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorAddress string                // the RPC address to the host resource monitor.
+	Project          string                // the project name housing the program being run.
+	Stack            string                // the stack name being evaluated.
+	Config           map[config.Key]string // the configuration variables to apply before running.
+	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
+	DryRun           bool                  // true if we are performing a dry-run (preview).
+	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress   string                // the RPC address to the host resource monitor.
 }
 
 // ConstructOptions captures options for a call to Construct.

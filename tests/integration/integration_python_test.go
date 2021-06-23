@@ -561,6 +561,9 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
 		Quick:      true,
 		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
@@ -588,6 +591,10 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 					case "child-c":
 						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
 							res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}

@@ -106,7 +106,8 @@ func (src *evalSource) Iterate(
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
-	mon, err := newResourceMonitor(src, providers, regChan, regOutChan, regReadChan, opts, config, tracingSpan)
+	mon, err := newResourceMonitor(
+		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
 	if err != nil {
 		return nil, result.FromError(errors.Wrap(err, "failed to start resource monitor"))
 	}
@@ -411,7 +412,7 @@ var _ SourceResourceMonitor = (*resmon)(nil)
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent, opts Options,
-	config map[config.Key]string, tracingSpan opentracing.Span) (*resmon, error) {
+	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span) (*resmon, error) {
 
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -449,12 +450,13 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 	}
 
 	resmon.constructInfo = plugin.ConstructInfo{
-		Project:        string(src.runinfo.Proj.Name),
-		Stack:          string(src.runinfo.Target.Name),
-		Config:         config,
-		DryRun:         src.dryRun,
-		Parallel:       opts.Parallel,
-		MonitorAddress: fmt.Sprintf("127.0.0.1:%d", port),
+		Project:          string(src.runinfo.Proj.Name),
+		Stack:            string(src.runinfo.Target.Name),
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           src.dryRun,
+		Parallel:         opts.Parallel,
+		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", port),
 	}
 	resmon.done = done
 

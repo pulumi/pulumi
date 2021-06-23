@@ -359,8 +359,11 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 		Env:          env,
 		Dir:          filepath.Join("construct_component", "dotnet"),
 		Dependencies: []string{"Pulumi"},
-		Quick:        true,
-		NoParallel:   true, // avoid contention for Dir
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick:      true,
+		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -383,6 +386,10 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 						}
 					case "child-c":
 						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}

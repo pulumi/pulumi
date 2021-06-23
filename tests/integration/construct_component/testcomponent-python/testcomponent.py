@@ -18,6 +18,7 @@ import sys
 from pulumi import Input, Inputs, ComponentResource, ResourceOptions
 import pulumi
 import pulumi.dynamic as dynamic
+import pulumi.runtime.config as config
 import pulumi.provider as provider
 
 
@@ -38,11 +39,17 @@ class Resource(dynamic.Resource):
 
 
 class Component(ComponentResource):
-    def __init__(self, name: str, echo: Input[any], opts: Optional[ResourceOptions]=None):
+    def __init__(self, name: str, echo: Input[any], secret: Input[str], opts: Optional[ResourceOptions]=None):
         super().__init__('testcomponent:index:Component', name, {}, opts)
         self.echo = pulumi.Output.from_input(echo)
         resource = Resource('child-{}'.format(name), echo, ResourceOptions(parent=self))
         self.child_id = resource.id
+        self.secret = secret
+        self.register_outputs({
+            'childId': self.child_id,
+            'echo': self.echo,
+            'secret': self.secret
+        })
 
 
 class Provider(provider.Provider):
@@ -56,14 +63,22 @@ class Provider(provider.Provider):
 
         if resource_type != 'testcomponent:index:Component':
             raise Exception('unknown resource type {}'.format(resource_type))
+        
 
-        component = Component(name, inputs['echo'], options)
+        secret_key = "secret"
+        cfg = pulumi.Config()
+        full_secret_key = cfg.full_key(secret_key)
+        if not config.is_config_secret(full_secret_key):
+            raise Exception('expected config for key to be secret: {}'.format(full_secret_key))
+        secret = cfg.require_secret('secret')
+        component = Component(name, inputs['echo'], secret, options)
 
         return provider.ConstructResult(
             urn=component.urn,
             state={
                 'echo': component.echo,
-                'childId': component.child_id
+                'childId': component.child_id,
+                'secret': component.secret
             })
 
 

@@ -37,13 +37,14 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Config:      req.GetConfig(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
-		MonitorAddr: req.GetMonitorEndpoint(),
-		engineConn:  engineConn,
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           req.GetConfig(),
+		ConfigSecretKeys: req.GetConfigSecretKeys(),
+		Parallel:         int(req.GetParallel()),
+		DryRun:           req.GetDryRun(),
+		MonitorAddr:      req.GetMonitorEndpoint(),
+		engineConn:       engineConn,
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
