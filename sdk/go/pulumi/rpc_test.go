@@ -65,14 +65,6 @@ func newSimpleProviderResource(ctx *Context, urn URN, id ID) ProviderResource {
 	return &res
 }
 
-func (p *simpleProviderResource) ToProviderResourceOutput() ProviderResourceOutput {
-	return p.ToProviderResourceOutputWithContext(context.Background())
-}
-
-func (p *simpleProviderResource) ToProviderResourceOutputWithContext(ctx context.Context) ProviderResourceOutput {
-	return ProviderResourceOutput{(&Context{ctx: ctx}).newResolvedOutput(p).getState()}
-}
-
 type testResourcePackage struct {
 	version semver.Version
 }
