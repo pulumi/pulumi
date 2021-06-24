@@ -1014,7 +1014,7 @@ type ResourceOutput struct{ *OutputState }
 
 // ElementType returns the element type of this Output (Resource).
 func (ResourceOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Resource)(nil)).Elem()
+	return resourceType
 }
 
 func (o ResourceOutput) ToResourceOutput() ResourceOutput {
@@ -1023,6 +1023,21 @@ func (o ResourceOutput) ToResourceOutput() ResourceOutput {
 
 func (o ResourceOutput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
 	return o
+}
+
+// An Input type carrying Resource values.
+//
+// Unfortunately `Resource` values do not implement `ResourceInput` in
+// the current version. Use `NewResourceInput` instead.
+type ResourceInput interface {
+	Input
+
+	ToResourceOutput() ResourceOutput
+	ToResourceOutputWithContext(context.Context) ResourceOutput
+}
+
+func NewResourceInput(resource Resource) ResourceInput {
+	return Int(0).ToIntOutput().ApplyT(func(int) Resource { return resource }).(ResourceOutput)
 }
 
 var _ ResourceInput = &ResourceOutput{}

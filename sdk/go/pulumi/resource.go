@@ -515,40 +515,6 @@ func Version(o string) ResourceOrInvokeOption {
 	})
 }
 
-type ResourceInput interface {
-	Input
-
-	ToResourceOutput() ResourceOutput
-	ToResourceOutputWithContext(context.Context) ResourceOutput
-}
-
-type plainResourceInput struct {
-	resource Resource
-}
-
-func (pri *plainResourceInput) ElementType() reflect.Type {
-	return resourceType
-}
-
-func (pri *plainResourceInput) ToResourceOutput() ResourceOutput {
-	var ctx Context
-	out, ok, _ := ctx.NewOutput()
-	ok(pri.resource)
-	return ResourceOutput{out.getState()}
-}
-
-func (pri *plainResourceInput) ToResourceOutputWithContext(ctx context.Context) ResourceOutput {
-	return pri.ToResourceOutput()
-}
-
-// TODO should we just include ResourceInput in Resource and deal with any breakage?
-func NewResourceInput(resource Resource) (ResourceInput, error) {
-	if resource == nil {
-		return nil, fmt.Errorf("NewResourceInput cannot be called with a nil resource")
-	}
-	return &plainResourceInput{resource}, nil
-}
-
 // TODO - helps incremental refactoring, but can we completely remove
 // this function?
 func awaitResourceInputMAGIC(ctx context.Context, ri ResourceInput) (Resource, []Resource, error) {

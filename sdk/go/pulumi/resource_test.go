@@ -286,10 +286,7 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 
 func TestNewResourceInput(t *testing.T) {
 	var resource Resource = &testRes{foo: "abracadabra"}
-	var resourceInput ResourceInput
-	var err error
-	resourceInput, err = NewResourceInput(resource)
-	assert.Nil(t, err)
+	var resourceInput ResourceInput = NewResourceInput(resource)
 
 	var resourceOutput ResourceOutput = resourceInput.ToResourceOutput()
 
