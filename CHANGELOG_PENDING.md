@@ -12,6 +12,9 @@
 - [sdk/go] - Add preliminary support for unmarshaling plain arrays and maps of output values.
   [#7369](https://github.com/pulumi/pulumi/pull/7369)
 
+- Initial support for resource methods (Node.js authoring, Python calling)
+  [#7363](https://github.com/pulumi/pulumi/pull/7363)
+
 ### Bug Fixes
 
 - [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
