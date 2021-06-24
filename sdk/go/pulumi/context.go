@@ -1225,10 +1225,3 @@ func (ctx *Context) newOutput(typ reflect.Type, deps ...Resource) Output {
 func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
 	return newAnyOutput(&ctx.join)
 }
-
-// Like NewOutput, but immediately resolves the output to the given value.
-func (ctx *Context) newResolvedOutput(v interface{}) Output {
-	out, resolve, _ := ctx.NewOutput()
-	resolve(v)
-	return out
-}
