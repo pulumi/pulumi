@@ -4991,45 +4991,6 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 
 var providerResourceType = reflect.TypeOf((*ProviderResource)(nil)).Elem()
 
-// ProviderResourceInput is an input type that accepts ProviderResource and ProviderResourceOutput values.
-type ProviderResourceInput interface {
-	Input
-
-	ToProviderResourceOutput() ProviderResourceOutput
-	ToProviderResourceOutputWithContext(ctx context.Context) ProviderResourceOutput
-}
-
-// ElementType returns the element type of this Input (ProviderResource).
-func (*ProviderResourceState) ElementType() reflect.Type {
-	return providerResourceType
-}
-
-func (p *ProviderResourceState) ToProviderResourceOutput() ProviderResourceOutput {
-	return p.ToProviderResourceOutputWithContext(context.Background())
-}
-
-func (p *ProviderResourceState) ToProviderResourceOutputWithContext(ctx context.Context) ProviderResourceOutput {
-	return ProviderResourceOutput{(&Context{ctx: ctx}).newResolvedOutput(p).getState()}
-}
-
-var _ ProviderResourceInput = &ProviderResourceState{}
-
-// ProviderResourceOutput is an Output that returns ProviderResource values.
-type ProviderResourceOutput struct{ *OutputState }
-
-// ElementType returns the element type of this Output (ProviderResource).
-func (ProviderResourceOutput) ElementType() reflect.Type {
-	return providerResourceType
-}
-
-func (o ProviderResourceOutput) ToProviderResourceOutput() ProviderResourceOutput {
-	return o
-}
-
-func (o ProviderResourceOutput) ToProviderResourceOutputWithContext(ctx context.Context) ProviderResourceOutput {
-	return o
-}
-
 func getResolvedValue(input Input) (reflect.Value, bool) {
 	switch input := input.(type) {
 	case *asset, *archive:
@@ -5116,5 +5077,4 @@ func init() {
 	RegisterOutputType(URNMapArrayOutput{})
 	RegisterOutputType(URNMapMapOutput{})
 	RegisterOutputType(URNArrayArrayOutput{})
-	RegisterOutputType(ProviderResourceOutput{})
 }

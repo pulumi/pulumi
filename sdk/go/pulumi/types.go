@@ -1042,6 +1042,38 @@ func NewResourceInput(resource Resource) ResourceInput {
 
 var _ ResourceInput = &ResourceOutput{}
 
+// An Input type carrying ProviderResource values.
+//
+// Unfortunately `ProviderResource` does not implement
+// `ProviderResourceInput` in the current version. Use
+// `NewProviderResourceInput` instead.
+type ProviderResourceInput interface {
+	Input
+
+	ToProviderResourceOutput() ProviderResourceOutput
+	ToProviderResourceOutputWithContext(ctx context.Context) ProviderResourceOutput
+}
+
+func NewProviderResourceInput(resource ProviderResource) ProviderResourceInput {
+	return Int(0).ToIntOutput().ApplyT(func(int) ProviderResource { return resource }).(ProviderResourceOutput)
+}
+
+// An Output carrying ProviderResource values.
+type ProviderResourceOutput struct{ *OutputState }
+
+func (ProviderResourceOutput) ElementType() reflect.Type {
+	return providerResourceType
+}
+
+func (o ProviderResourceOutput) ToProviderResourceOutput() ProviderResourceOutput {
+	return o
+}
+
+func (o ProviderResourceOutput) ToProviderResourceOutputWithContext(ctx context.Context) ProviderResourceOutput {
+	return o
+}
+
 func init() {
 	RegisterOutputType(ResourceOutput{})
+	RegisterOutputType(ProviderResourceOutput{})
 }

@@ -2010,7 +2010,7 @@ func TestToProviderResourceOutput(t *testing.T) {
 
 	for _, providerResource := range inputs {
 
-		var in ProviderResourceInput = providerResource
+		var in ProviderResourceInput = NewProviderResourceInput(providerResource)
 		out := in.ToProviderResourceOutput()
 
 		v, known, _, _, err := await(out)
