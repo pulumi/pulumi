@@ -4989,8 +4989,6 @@ func ToURNArrayArrayOutput(in []URNArrayOutput) URNArrayArrayOutput {
 	return a.ToURNArrayArrayOutput()
 }
 
-var providerResourceType = reflect.TypeOf((*ProviderResource)(nil)).Elem()
-
 func getResolvedValue(input Input) (reflect.Value, bool) {
 	switch input := input.(type) {
 	case *asset, *archive:

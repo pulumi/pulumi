@@ -1058,6 +1058,8 @@ func NewProviderResourceInput(resource ProviderResource) ProviderResourceInput {
 	return Int(0).ToIntOutput().ApplyT(func(int) ProviderResource { return resource }).(ProviderResourceOutput)
 }
 
+var providerResourceType = reflect.TypeOf((*ProviderResource)(nil)).Elem()
+
 // An Output carrying ProviderResource values.
 type ProviderResourceOutput struct{ *OutputState }
 
