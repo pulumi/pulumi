@@ -119,9 +119,9 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				filepath.Join("pulumi_xyz", "_inputs.py"),
 				filepath.Join("pulumi_xyz", "static_page.py"),
-            },
-        },
-        {
+			},
+		},
+		{
 			"Third-party nested module",
 			"nested-module-thirdparty",
 			[]string{
