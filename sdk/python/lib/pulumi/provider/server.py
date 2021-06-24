@@ -70,7 +70,7 @@ class ProviderServicer(ResourceProviderServicer):
             monitor_address=_empty_as_none(request.monitorEndpoint),
             preview=request.dryRun)
 
-        pulumi.runtime.config.set_all_config(dict(request.config))
+        pulumi.runtime.config.set_all_config(dict(request.config), request.configSecretKeys)
 
         inputs = self._construct_inputs(request)
 

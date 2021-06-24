@@ -409,13 +409,24 @@ func (p *providerServer) Construct(ctx context.Context,
 		}
 		cfg[configKey] = v
 	}
+
+	cfgSecretKeys := []config.Key{}
+	for _, k := range req.GetConfigSecretKeys() {
+		key, err := config.ParseKey(k)
+		if err != nil {
+			return nil, err
+		}
+		cfgSecretKeys = append(cfgSecretKeys, key)
+	}
+
 	info := ConstructInfo{
-		Project:        req.GetProject(),
-		Stack:          req.GetStack(),
-		Config:         cfg,
-		DryRun:         req.GetDryRun(),
-		Parallel:       int(req.GetParallel()),
-		MonitorAddress: req.GetMonitorEndpoint(),
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           cfg,
+		ConfigSecretKeys: cfgSecretKeys,
+		DryRun:           req.GetDryRun(),
+		Parallel:         int(req.GetParallel()),
+		MonitorAddress:   req.GetMonitorEndpoint(),
 	}
 
 	aliases := make([]resource.URN, len(req.GetAliases()))

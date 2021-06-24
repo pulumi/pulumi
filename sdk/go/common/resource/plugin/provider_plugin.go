@@ -1102,11 +1102,16 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	for k, v := range info.Config {
 		config[k.String()] = v
 	}
+	configSecretKeys := []string{}
+	for _, k := range info.ConfigSecretKeys {
+		configSecretKeys = append(configSecretKeys, k.String())
+	}
 
 	resp, err := client.Construct(p.requestContext(), &pulumirpc.ConstructRequest{
 		Project:           info.Project,
 		Stack:             info.Stack,
 		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
 		DryRun:            info.DryRun,
 		Parallel:          int32(info.Parallel),
 		MonitorEndpoint:   info.MonitorAddress,
