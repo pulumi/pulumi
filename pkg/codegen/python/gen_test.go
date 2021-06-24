@@ -4,8 +4,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 )
 
 var pathTests = []struct {
@@ -107,6 +108,8 @@ func TestGeneratePackage(t *testing.T) {
 			"Nested module",
 			"nested-module",
 			[]string{
+				filepath.Join("pulumi_foo", "nested", "__init__.py"),
+				filepath.Join("pulumi_foo", "nested", "module", "__init__.py"),
 				filepath.Join("pulumi_foo", "nested", "module", "resource.py"),
 			},
 		},
@@ -116,6 +119,17 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				filepath.Join("pulumi_xyz", "_inputs.py"),
 				filepath.Join("pulumi_xyz", "static_page.py"),
+			},
+		},
+		{
+			"Third-party nested module",
+			"nested-module-thirdparty",
+			[]string{
+				filepath.Join("setup.py"),
+				filepath.Join("foo_bar", "deeply", "__init__.py"),
+				filepath.Join("foo_bar", "deeply", "nested", "__init__.py"),
+				filepath.Join("foo_bar", "deeply", "nested", "module", "__init__.py"),
+				filepath.Join("foo_bar", "deeply", "nested", "module", "resource.py"),
 			},
 		},
 	}
