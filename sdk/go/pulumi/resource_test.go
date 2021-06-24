@@ -6,8 +6,12 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	empty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/stretchr/testify/assert"
+	grpc "google.golang.org/grpc"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 type testRes struct {
@@ -304,6 +308,9 @@ func TestNewResourceInput(t *testing.T) {
 
 func TestParentInput(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
+		parents := trackParents(ctx)
+
 		dep := newTestRes(t, ctx, "resDependency")
 		parent := newTestRes(t, ctx, "resParent")
 
@@ -315,12 +322,10 @@ func TestParentInput(t *testing.T) {
 
 		child := newTestRes(t, ctx, "resChild", ParentInput(parentWithDep))
 
-		m := ctx.monitor.(*mockMonitor)
-
-		assert.Equalf(t, urn(t, ctx, parent), m.parents[urn(t, ctx, child)],
+		assert.Equalf(t, urn(t, ctx, parent), parents[urn(t, ctx, child)],
 			"Failed to set parent via ParentInput")
 
-		assert.Containsf(t, m.dependencies[urn(t, ctx, child)], urn(t, ctx, dep),
+		assert.Containsf(t, dependsOn[urn(t, ctx, child)], urn(t, ctx, dep),
 			"Failed to propagate dependencies via ParentInput")
 
 		return nil
@@ -330,6 +335,8 @@ func TestParentInput(t *testing.T) {
 
 func TestDependsOnInputs(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
+
 		dep1 := newTestRes(t, ctx, "resDependency1")
 		dep2 := newTestRes(t, ctx, "resDependency2")
 
@@ -343,12 +350,10 @@ func TestDependsOnInputs(t *testing.T) {
 
 		res := newTestRes(t, ctx, "resDependent", DependsOnInputs([]ResourceInput{output}))
 
-		m := ctx.monitor.(*mockMonitor)
-
-		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep2),
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep2),
 			"Failed to propagate direct dependencies via DependsOnInputs")
 
-		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep1),
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep1),
 			"Failed to propagate indirect dependencies via DependsOnInputs")
 
 		return nil
@@ -373,6 +378,8 @@ func TestProviderInput(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
+
 		dep := newTestRes(t, ctx, "resDependency")
 
 		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
@@ -383,9 +390,7 @@ func TestProviderInput(t *testing.T) {
 
 		res := newTestRes(t, ctx, "resWithProvider", ProviderInput(output))
 
-		m := ctx.monitor.(*mockMonitor)
-
-		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep),
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
 			"Failed to propagate indirect dependencies via ProviderInput")
 
 		return nil
@@ -414,6 +419,7 @@ func TestProviderInputs(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
 		dep := newTestRes(t, ctx, "resDependency")
 
 		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
@@ -424,9 +430,7 @@ func TestProviderInputs(t *testing.T) {
 
 		res := newTestRes(t, ctx, "resWithProvider", ProviderInputs(output))
 
-		m := ctx.monitor.(*mockMonitor)
-
-		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep),
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
 			"Failed to propagate indirect dependencies via ProviderInput")
 
 		return nil
@@ -455,6 +459,7 @@ func TestProviderInputMap(t *testing.T) {
 	}
 
 	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
 		dep := newTestRes(t, ctx, "resDependency")
 
 		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
@@ -467,9 +472,7 @@ func TestProviderInputMap(t *testing.T) {
 			providerResource.getPackage(): output,
 		}))
 
-		m := ctx.monitor.(*mockMonitor)
-
-		assert.Containsf(t, m.dependencies[urn(t, ctx, res)], urn(t, ctx, dep),
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
 			"Failed to propagate indirect dependencies via ProviderInput")
 
 		return nil
@@ -503,3 +506,82 @@ func tmerge(t *testing.T, opts ...ResourceOption) *resourceOptions {
 	}
 	return ro
 }
+
+func trackParents(ctx *Context) map[URN]URN {
+	parents := make(map[URN]URN)
+	m := newInterceptingResourceMonitor(ctx.monitor)
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error) {
+		if in.GetParent() != "" {
+			parents[URN(resp.Urn)] = URN(in.GetParent())
+		}
+	}
+	ctx.monitor = m
+	return parents
+}
+
+func trackDependencies(ctx *Context) map[URN][]URN {
+	dependsOn := make(map[URN][]URN)
+	m := newInterceptingResourceMonitor(ctx.monitor)
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error) {
+		var deps []URN
+		for _, dep := range in.GetDependencies() {
+			deps = append(deps, URN(dep))
+		}
+		dependsOn[URN(resp.Urn)] = deps
+	}
+	ctx.monitor = m
+	return dependsOn
+}
+
+type interceptingResourceMonitor struct {
+	inner                 pulumirpc.ResourceMonitorClient
+	afterRegisterResource func(req *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error)
+}
+
+func newInterceptingResourceMonitor(inner pulumirpc.ResourceMonitorClient) *interceptingResourceMonitor {
+	m := &interceptingResourceMonitor{}
+	m.inner = inner
+	return m
+}
+
+func (i *interceptingResourceMonitor) SupportsFeature(ctx context.Context,
+	in *pulumirpc.SupportsFeatureRequest,
+	opts ...grpc.CallOption) (*pulumirpc.SupportsFeatureResponse, error) {
+	return i.inner.SupportsFeature(ctx, in, opts...)
+}
+
+func (i *interceptingResourceMonitor) Invoke(ctx context.Context,
+	in *pulumirpc.InvokeRequest,
+	opts ...grpc.CallOption) (*pulumirpc.InvokeResponse, error) {
+	return i.inner.Invoke(ctx, in, opts...)
+}
+
+func (i *interceptingResourceMonitor) StreamInvoke(ctx context.Context,
+	in *pulumirpc.InvokeRequest,
+	opts ...grpc.CallOption) (pulumirpc.ResourceMonitor_StreamInvokeClient, error) {
+	return i.inner.StreamInvoke(ctx, in, opts...)
+}
+
+func (i *interceptingResourceMonitor) ReadResource(ctx context.Context,
+	in *pulumirpc.ReadResourceRequest,
+	opts ...grpc.CallOption) (*pulumirpc.ReadResourceResponse, error) {
+	return i.inner.ReadResource(ctx, in, opts...)
+}
+
+func (i *interceptingResourceMonitor) RegisterResource(ctx context.Context,
+	in *pulumirpc.RegisterResourceRequest,
+	opts ...grpc.CallOption) (*pulumirpc.RegisterResourceResponse, error) {
+	resp, err := i.inner.RegisterResource(ctx, in, opts...)
+	if i.afterRegisterResource != nil {
+		i.afterRegisterResource(in, resp, err)
+	}
+	return resp, err
+}
+
+func (i *interceptingResourceMonitor) RegisterResourceOutputs(ctx context.Context,
+	in *pulumirpc.RegisterResourceOutputsRequest,
+	opts ...grpc.CallOption) (*empty.Empty, error) {
+	return i.inner.RegisterResourceOutputs(ctx, in, opts...)
+}
+
+var _ pulumirpc.ResourceMonitorClient = &interceptingResourceMonitor{}

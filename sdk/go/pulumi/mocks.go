@@ -58,18 +58,9 @@ type mockMonitor struct {
 	stack     string
 	mocks     MockResourceMonitor
 	resources sync.Map
-
-	// Maps child resource URN to parent resource URN. This map is
-	// populated by `RegisterResource` and can be useful in
-	// testing child-parent relation.
-	parents map[URN]URN
-
-	// Maps a resource URN to a list of URNs identifying resources
-	// it `DependsOn`. This map is populated by `RegisterResource`
-	// and can be useful in verifying that the dependency relation
-	// is propagated to the engine as expected.
-	dependencies map[URN][]URN
 }
+
+var _ pulumirpc.ResourceMonitorClient = &mockMonitor{}
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
 	parentType := tokens.Type("")
@@ -222,15 +213,10 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
 
-	if in.GetParent() != "" {
-		m.registerParent(URN(urn), URN(in.GetParent()))
-	}
-
 	var dependencies []URN
 	for _, d := range in.GetDependencies() {
 		dependencies = append(dependencies, URN(d))
 	}
-	m.registerDependencies(URN(urn), dependencies)
 
 	m.resources.Store(urn, resource.PropertyMap{
 		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
@@ -251,20 +237,6 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 		Id:     id,
 		Object: stateOut,
 	}, nil
-}
-
-func (m *mockMonitor) registerParent(childUrn, parentUrn URN) {
-	if m.parents == nil {
-		m.parents = map[URN]URN{}
-	}
-	m.parents[childUrn] = parentUrn
-}
-
-func (m *mockMonitor) registerDependencies(dependentResource URN, dependsOn []URN) {
-	if m.dependencies == nil {
-		m.dependencies = map[URN][]URN{}
-	}
-	m.dependencies[dependentResource] = append(m.dependencies[dependentResource], dependsOn...)
 }
 
 func (m *mockMonitor) RegisterResourceOutputs(ctx context.Context, in *pulumirpc.RegisterResourceOutputsRequest,
