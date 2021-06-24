@@ -95,6 +95,7 @@ type ResourceOptions struct {
 	DeleteBeforeReplace   *bool
 	Version               string
 	IgnoreChanges         []string
+	ReplaceOnChanges      []string
 	Aliases               []resource.URN
 	ImportID              resource.ID
 	CustomTimeouts        *resource.CustomTimeouts
@@ -185,6 +186,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		CustomTimeouts:             &timeouts,
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
+		ReplaceOnChanges:           opts.ReplaceOnChanges,
 	}
 
 	// submit request

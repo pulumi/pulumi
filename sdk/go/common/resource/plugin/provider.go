@@ -155,6 +155,28 @@ func (d DiffKind) IsReplace() bool {
 	}
 }
 
+// ToReplace converts a DiffKind into the equivalent replacement if it not already
+// a replacement.
+func (d DiffKind) ToReplace() DiffKind {
+	switch d {
+	case DiffAdd:
+		return DiffAddReplace
+	case DiffAddReplace:
+		return DiffAddReplace
+	case DiffDelete:
+		return DiffDeleteReplace
+	case DiffDeleteReplace:
+		return DiffDeleteReplace
+	case DiffUpdate:
+		return DiffUpdateReplace
+	case DiffUpdateReplace:
+		return DiffUpdateReplace
+	default:
+		contract.Failf("Unknown diff kind %v", int(d))
+		return DiffUpdateReplace
+	}
+}
+
 const (
 	// DiffAdd indicates that the property was added.
 	DiffAdd DiffKind = 0
@@ -174,6 +196,15 @@ const (
 type PropertyDiff struct {
 	Kind      DiffKind // The kind of diff.
 	InputDiff bool     // True if this is a diff between old and new inputs rather than old state and new inputs.
+}
+
+// ToReplace converts the kind of a PropertyDiff into the equivalent replacement if it not already
+// a replacement.
+func (p PropertyDiff) ToReplace() PropertyDiff {
+	return PropertyDiff{
+		InputDiff: p.InputDiff,
+		Kind:      p.Kind.ToReplace(),
+	}
 }
 
 // DiffResult indicates whether an operation should replace or update an existing resource.
