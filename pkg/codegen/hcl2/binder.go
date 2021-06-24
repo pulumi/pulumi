@@ -92,6 +92,9 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		o(&options)
 	}
 
+	// TODO: remove this once the latest pulumi-terraform-bridge has been rolled out
+	options.skipResourceTypecheck = true
+
 	if options.loader == nil {
 		cwd, err := os.Getwd()
 		if err != nil {

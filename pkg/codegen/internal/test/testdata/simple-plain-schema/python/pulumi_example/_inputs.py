@@ -9,12 +9,12 @@ from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 
 __all__ = [
-    'FooArgs',
     'Foo',
+    'FooArgs',
 ]
 
 @pulumi.input_type
-class FooArgs:
+class Foo:
     def __init__(__self__, *,
                  a: bool,
                  c: int,
@@ -88,7 +88,7 @@ class FooArgs:
 
 
 @pulumi.input_type
-class Foo:
+class FooArgs:
     def __init__(__self__, *,
                  a: bool,
                  c: int,

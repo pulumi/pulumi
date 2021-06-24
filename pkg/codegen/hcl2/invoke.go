@@ -69,7 +69,7 @@ func (b *binder) bindInvokeSignature(args []model.Expression) (model.StaticFunct
 		return signature, hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
 	}
 	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
-	if !ok || lit.Type() != model.StringType {
+	if !ok || model.StringType.ConversionFrom(lit.Type()) == model.NoConversion {
 		return signature, hcl.Diagnostics{tokenMustBeStringLiteral(args[0])}
 	}
 

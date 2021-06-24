@@ -15,11 +15,10 @@
 package model
 
 import (
-	"fmt"
-
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/zclconf/go-cty/cty"
 )
 
 // ConstType represents a type that is a single constant value.
@@ -27,11 +26,11 @@ type ConstType struct {
 	// Type is the underlying value type.
 	Type Type
 	// Value is the constant value.
-	Value interface{}
+	Value cty.Value
 }
 
 // NewConstType creates a new constant type with the given type and value.
-func NewConstType(typ Type, value interface{}) *ConstType {
+func NewConstType(typ Type, value cty.Value) *ConstType {
 	return &ConstType{Type: typ, Value: value}
 }
 
@@ -57,7 +56,7 @@ func (t *ConstType) equals(other Type, seen map[Type]struct{}) bool {
 	}
 
 	otherConst, ok := other.(*ConstType)
-	return ok && t.Value == otherConst.Value && t.Type.equals(otherConst.Type, seen)
+	return ok && t.Value.RawEquals(otherConst.Value) && t.Type.equals(otherConst.Type, seen)
 }
 
 // AssignableFrom returns true if this type is assignable from the indicated source type. A const(value) is assignable
@@ -71,17 +70,21 @@ func (t *ConstType) AssignableFrom(src Type) bool {
 // ConversionFrom returns the kind of conversion (if any) that is possible from the source type to this type.
 // The const type is only convertible from itself.
 func (t *ConstType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *ConstType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
-		return NoConversion
+func (t *ConstType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+		if t.Type.ConversionFrom(src) != NoConversion {
+			return UnsafeConversion, nil
+		}
+		return NoConversion, nil
 	})
 }
 
 func (t *ConstType) String() string {
-	return fmt.Sprintf("%v", t.Value)
+	return t.Value.GoString()
 }
 
 func (t *ConstType) string(_ map[Type]struct{}) string {

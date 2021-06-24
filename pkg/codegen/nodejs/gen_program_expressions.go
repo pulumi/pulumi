@@ -293,7 +293,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case intrinsicInterpolate:
 		g.Fgen(w, "pulumi.interpolate`")
 		for _, part := range expr.Args {
-			if lit, ok := part.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			if lit, ok := part.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 				g.Fgen(w, lit.Value.AsString())
 			} else {
 				g.Fgenf(w, "${%.v}", part)
@@ -408,7 +408,12 @@ func (g *generator) genStringLiteral(w io.Writer, v string) {
 }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
-	switch expr.Type() {
+	typ := expr.Type()
+	if cns, ok := typ.(*model.ConstType); ok {
+		typ = cns.Type
+	}
+
+	switch typ {
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
@@ -433,7 +438,7 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 	strKey := ""
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
-		if x.Type() == model.StringType {
+		if model.StringType.AssignableFrom(x.Type()) {
 			strKey = x.Value.AsString()
 			break
 		}
@@ -442,7 +447,7 @@ func (g *generator) literalKey(x model.Expression) (string, bool) {
 		return buf.String(), true
 	case *model.TemplateExpression:
 		if len(x.Parts) == 1 {
-			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			if lit, ok := x.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 				strKey = lit.Value.AsString()
 				break
 			}
@@ -535,7 +540,7 @@ func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression)
 
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
 	if len(expr.Parts) == 1 {
-		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.Parts[0].(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.GenLiteralValueExpression(w, lit)
 			return
 		}
@@ -543,7 +548,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 
 	g.Fgen(w, "`")
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.Fgen(w, lit.Value.AsString())
 		} else {
 			g.Fgenf(w, "${%.v}", expr)

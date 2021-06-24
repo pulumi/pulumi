@@ -45,12 +45,13 @@ func (noneType) AssignableFrom(src Type) bool {
 }
 
 func (noneType) ConversionFrom(src Type) ConversionKind {
-	return NoneType.conversionFrom(src, false, nil)
+	kind, _ := NoneType.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(NoneType, src, unifying, seen, func() ConversionKind {
-		return NoConversion
+func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
+	return conversionFrom(NoneType, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+		return NoConversion, nil
 	})
 }
 

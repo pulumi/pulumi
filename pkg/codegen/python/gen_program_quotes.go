@@ -196,7 +196,7 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 	var longString bool
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
-		if x.Type() != model.StringType || qa.inTemplate() {
+		if !model.StringType.AssignableFrom(x.Type()) || qa.inTemplate() {
 			return x, nil
 		}
 		v := x.Value.AsString()
@@ -210,7 +210,7 @@ func (qa *quoteAllocator) allocateExpression(x model.Expression) (model.Expressi
 		}
 	case *model.TemplateExpression:
 		for i, part := range x.Parts {
-			if lit, ok := part.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+			if lit, ok := part.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 				v := lit.Value.AsString()
 				switch strings.Count(v, "\n") {
 				case 0:
@@ -257,7 +257,7 @@ func (qa *quoteAllocator) freeExpression(x model.Expression) (model.Expression, 
 
 	switch x := x.(type) {
 	case *model.LiteralValueExpression:
-		if x.Type() != model.StringType || qa.inTemplate() {
+		if !model.StringType.AssignableFrom(x.Type()) || qa.inTemplate() {
 			return x, nil
 		}
 		// OK

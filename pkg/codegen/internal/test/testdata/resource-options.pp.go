@@ -9,7 +9,7 @@ import (
 func main() {
 	pulumi.Run(func(ctx *pulumi.Context) error {
 		provider, err := providers.Newaws(ctx, "provider", &providers.awsArgs{
-			Region: pulumi.String("us-west-2"),
+			Region: "us-west-2",
 		})
 		if err != nil {
 			return err

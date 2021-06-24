@@ -211,6 +211,8 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		return ""
 	}
 
+	schemaType = codegen.UnwrapType(schemaType)
+
 	objType, ok := schemaType.(*schema.ObjectType)
 	if !ok {
 		return ""

@@ -13,14 +13,16 @@
                     "__self__": {
                         "$ref": "#/resources/xyz:index:Foo"
                     }
-                }
+                },
+                "required": ["__self__"]
             },
             "outputs": {
                 "properties": {
                     "someValue": {
                         "type": "string"
                     }
-                }
+                },
+                "required": ["someValue"]
             }
         }
     }

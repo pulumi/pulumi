@@ -223,7 +223,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#container_go" style="color: inherit; text-decoration: inherit;">Container</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#container">Container</a></span>
+        <span class="property-type"><a href="#container">Container<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -239,7 +239,7 @@ The RubberTree resource accepts the following [input]({{< relref "/docs/intro/co
 <a href="#size_go" style="color: inherit; text-decoration: inherit;">Size</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#treesize">Tree<wbr>Size</a></span>
+        <span class="property-type"><a href="#treesize">string</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
@@ -623,7 +623,7 @@ The following state arguments are supported:
 <a href="#brightness_go" style="color: inherit; text-decoration: inherit;">Brightness</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#containerbrightness">Container<wbr>Brightness</a></span>
+        <span class="property-type"><a href="#containerbrightness">float64</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">

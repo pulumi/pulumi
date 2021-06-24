@@ -188,7 +188,7 @@ The Cat resource accepts the following [input]({{< relref "/docs/intro/concepts/
 <a href="#pet_go" style="color: inherit; text-decoration: inherit;">Pet</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pet">Pet</a></span>
+        <span class="property-type"><a href="#pet">Pet<wbr>Args</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

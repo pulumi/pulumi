@@ -15,6 +15,7 @@
 package model
 
 import (
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -41,7 +42,7 @@ type Type interface {
 	String() string
 
 	equals(other Type, seen map[Type]struct{}) bool
-	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind
+	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics)
 	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
@@ -62,22 +63,31 @@ var (
 	DynamicType = MustNewOpaqueType("dynamic")
 )
 
-func assignableFrom(dest, src Type, assignableFrom func() bool) bool {
-	return dest.Equals(src) || dest == DynamicType || assignableFrom()
+func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
+	if dest.Equals(src) || dest == DynamicType {
+		return true
+	}
+	if cns, ok := src.(*ConstType); ok {
+		return assignableFrom(dest, cns.Type, assignableFromImpl)
+	}
+	return assignableFromImpl()
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
-	conversionFrom func() ConversionKind) ConversionKind {
+	conversionFromImpl func() (ConversionKind, hcl.Diagnostics)) (ConversionKind, hcl.Diagnostics) {
 	if dest.Equals(src) || dest == DynamicType {
-		return SafeConversion
+		return SafeConversion, nil
 	}
 	if src, isUnion := src.(*UnionType); isUnion {
 		return src.conversionTo(dest, unifying, seen)
 	}
-	if src == DynamicType {
-		return UnsafeConversion
+	if src, isConst := src.(*ConstType); isConst {
+		return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
 	}
-	return conversionFrom()
+	if src == DynamicType {
+		return UnsafeConversion, nil
+	}
+	return conversionFromImpl()
 }
 
 func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKind) {
@@ -95,7 +105,8 @@ func unify(t0, t1 Type, unify func() (Type, ConversionKind)) (Type, ConversionKi
 		// The dynamic type unifies with any other type by selecting that other type.
 		return t0, UnsafeConversion
 	default:
-		conversionFrom, conversionTo := t0.conversionFrom(t1, true, nil), t1.conversionFrom(t0, true, nil)
+		conversionFrom, _ := t0.conversionFrom(t1, true, nil)
+		conversionTo, _ := t1.conversionFrom(t0, true, nil)
 		switch {
 		case conversionFrom < conversionTo:
 			return t1, conversionTo

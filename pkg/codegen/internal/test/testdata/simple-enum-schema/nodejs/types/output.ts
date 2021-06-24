@@ -10,3 +10,4 @@ export interface Container {
     material?: string;
     size: enums.ContainerSize;
 }
+

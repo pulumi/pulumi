@@ -40,8 +40,6 @@ import (
 type typeDetails struct {
 	outputType bool
 	inputType  bool
-	argsType   bool
-	plainType  bool
 }
 
 func title(s string) string {
@@ -206,72 +204,69 @@ func tokenToFunctionName(tok string) string {
 	return camel(tokenToName(tok))
 }
 
-func (mod *modContext) typeString(t schema.Type, input, wrapInput, args, optional bool, constValue interface{}) string {
-	var typ string
+func (mod *modContext) typeString(t schema.Type, input bool, constValue interface{}) string {
 	switch t := t.(type) {
+	case *schema.OptionalType:
+		return mod.typeString(t.ElementType, input, constValue) + " | undefined"
+	case *schema.InputType:
+		typ := mod.typeString(codegen.SimplifyInputUnion(t.ElementType), input, constValue)
+		if typ == "any" {
+			return typ
+		}
+		return fmt.Sprintf("pulumi.Input<%s>", typ)
 	case *schema.EnumType:
-		typ = mod.objectType(nil, t.Token, input, args, true)
+		return mod.objectType(nil, t.Token, input, false, true)
 	case *schema.ArrayType:
-		typ = mod.typeString(t.ElementType, input, wrapInput, args, false, constValue) + "[]"
+		return mod.typeString(t.ElementType, input, constValue) + "[]"
 	case *schema.MapType:
-		typ = fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, wrapInput, args, false, constValue))
+		return fmt.Sprintf("{[key: string]: %v}", mod.typeString(t.ElementType, input, constValue))
 	case *schema.ObjectType:
-		typ = mod.objectType(t.Package, t.Token, input, args, false)
+		return mod.objectType(t.Package, t.Token, input, t.IsInputShape(), false)
 	case *schema.ResourceType:
-		typ = mod.resourceType(t)
+		return mod.resourceType(t)
 	case *schema.TokenType:
-		typ = tokenToName(t.Token)
+		return tokenToName(t.Token)
 	case *schema.UnionType:
 		if !input && mod.disableUnionOutputTypes {
 			if t.DefaultType != nil {
-				return mod.typeString(t.DefaultType, input, wrapInput, args, optional, constValue)
+				return mod.typeString(t.DefaultType, input, constValue)
 			}
-			typ = "any"
-		} else {
-			var elements []string
-			for _, e := range t.ElementTypes {
-				t := mod.typeString(e, input, wrapInput, args, false, constValue)
-				if args && strings.HasPrefix(t, "pulumi.Input<") {
-					contract.Assert(t[len(t)-1] == '>')
-					// Strip off the leading `pulumi.Input<` and the trailing `>`
-					t = t[len("pulumi.Input<") : len(t)-1]
-				}
-				elements = append(elements, t)
-			}
-			typ = strings.Join(elements, " | ")
+			return "any"
 		}
+
+		elements := make([]string, len(t.ElementTypes))
+		for i, e := range t.ElementTypes {
+			elements[i] = mod.typeString(e, input, constValue)
+		}
+		return strings.Join(elements, " | ")
 	default:
 		switch t {
 		case schema.BoolType:
-			typ = "boolean"
+			return "boolean"
 		case schema.IntType, schema.NumberType:
-			typ = "number"
+			return "number"
 		case schema.StringType:
-			typ = "string"
+			if constValue != nil {
+				return fmt.Sprintf("%q", constValue.(string))
+			}
+			return "string"
 		case schema.ArchiveType:
-			typ = "pulumi.asset.Archive"
+			return "pulumi.asset.Archive"
 		case schema.AssetType:
-			typ = "pulumi.asset.Asset | pulumi.asset.Archive"
+			return "pulumi.asset.Asset | pulumi.asset.Archive"
 		case schema.JSONType:
 			fallthrough
 		case schema.AnyType:
-			typ = "any"
+			return "any"
 		}
 	}
 
-	if constValue != nil && typ == "string" {
-		typ = fmt.Sprintf("%q", constValue.(string))
-	}
-	if wrapInput && typ != "any" {
-		typ = fmt.Sprintf("pulumi.Input<%s>", typ)
-	}
-	if optional {
-		return typ + " | undefined"
-	}
-	return typ
+	panic(fmt.Errorf("unexpected type %T", t))
 }
 
 func isStringType(t schema.Type) bool {
+	t = codegen.UnwrapType(t)
+
 	for tt, ok := t.(*schema.TokenType); ok; tt, ok = t.(*schema.TokenType) {
 		t = tt.UnderlyingType
 	}
@@ -309,7 +304,7 @@ func printComment(w io.Writer, comment, deprecationMessage, indent string) {
 	fmt.Fprintf(w, "%s */\n", indent)
 }
 
-func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, arg, readonly bool, level int) {
+func (mod *modContext) genPlainType(w io.Writer, name, comment string, properties []*schema.Property, input, readonly bool, level int) {
 	indent := strings.Repeat("    ", level)
 
 	printComment(w, comment, "", indent)
@@ -323,12 +318,12 @@ func (mod *modContext) genPlainType(w io.Writer, name, comment string, propertie
 			prefix = "readonly "
 		}
 
-		sigil := ""
-		if !p.IsRequired {
-			sigil = "?"
+		sigil, propertyType := "", p.Type
+		if !p.IsRequired() {
+			sigil, propertyType = "?", codegen.RequiredType(p)
 		}
 
-		typ := mod.typeString(p.Type, input, arg && !p.IsPlain, arg && !p.IsPlain, false, p.ConstValue)
+		typ := mod.typeString(propertyType, input, p.ConstValue)
 		fmt.Fprintf(w, "%s    %s%s%s: %s;\n", indent, prefix, p.Name, sigil, typ)
 	}
 	fmt.Fprintf(w, "%s}\n", indent)
@@ -508,7 +503,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	allOptionalInputs := true
 	for _, prop := range r.InputProperties {
 		ins.Add(prop.Name)
-		allOptionalInputs = allOptionalInputs && !prop.IsRequired
+		allOptionalInputs = allOptionalInputs && !prop.IsRequired()
 	}
 	for _, prop := range r.Properties {
 		printComment(w, prop.Comment, prop.DeprecationMessage, "    ")
@@ -519,11 +514,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			outcomment = "/*out*/ "
 		}
 
-		required := prop.IsRequired
+		propertyType := prop.Type
 		if mod.compatibility == kubernetes20 {
-			required = true
+			propertyType = codegen.RequiredType(prop)
 		}
-		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(prop.Type, false, false, false, !required, prop.ConstValue))
+		fmt.Fprintf(w, "    public %sreadonly %s!: pulumi.Output<%s>;\n", outcomment, prop.Name, mod.typeString(propertyType, false, prop.ConstValue))
 	}
 	fmt.Fprintf(w, "\n")
 
@@ -566,7 +561,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 	genInputProps := func() error {
 		for _, prop := range r.InputProperties {
-			if prop.IsRequired {
+			if prop.IsRequired() {
 				fmt.Fprintf(w, "            if ((!args || args.%s === undefined) && !opts.urn) {\n", prop.Name)
 				fmt.Fprintf(w, "                throw new Error(\"Missing required property '%s'\");\n", prop.Name)
 				fmt.Fprintf(w, "            }\n")
@@ -589,7 +584,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				arg = cv
 			} else {
 				if prop.DefaultValue != nil {
-					dv, err := mod.getDefaultValue(prop.DefaultValue, prop.Type)
+					dv, err := mod.getDefaultValue(prop.DefaultValue, codegen.UnwrapType(prop.Type))
 					if err != nil {
 						return err
 					}
@@ -714,13 +709,13 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	// Emit the state type for get methods.
 	if r.StateInputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, true, false, 0)
+		mod.genPlainType(w, stateType, r.StateInputs.Comment, r.StateInputs.Properties, true, false, 0)
 	}
 
 	// Emit the argument type for construction.
 	fmt.Fprintf(w, "\n")
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
-	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, true, false, 0)
+	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0)
 
 	return nil
 }
@@ -740,7 +735,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	argsOptional := true
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
-			if p.IsRequired {
+			if p.IsRequired() {
 				argsOptional = false
 				break
 			}
@@ -791,18 +786,18 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) {
 	// If there are argument and/or return types, emit them.
 	if fun.Inputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, false, 0)
+		mod.genPlainType(w, title(name)+"Args", fun.Inputs.Comment, fun.Inputs.Properties, true, false, 0)
 	}
 	if fun.Outputs != nil {
 		fmt.Fprintf(w, "\n")
-		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, false, true, 0)
+		mod.genPlainType(w, title(name)+"Result", fun.Outputs.Comment, fun.Outputs.Properties, false, true, 0)
 	}
 }
 
-func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType, bool)) {
-	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
-		if o, ok := t.Type.(*schema.ObjectType); ok {
-			visitor(o, t.Plain)
+func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
+	codegen.VisitTypeClosure(properties, func(t schema.Type) {
+		if o, ok := t.(*schema.ObjectType); ok {
+			visitor(o)
 		}
 	})
 }
@@ -827,30 +822,20 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 			properties = make([]*schema.Property, len(obj.Properties))
 			for i, p := range obj.Properties {
 				copy := *p
+				if optional, ok := copy.Type.(*schema.OptionalType); ok && required.Has(p.Name) {
+					copy.Type = optional.ElementType
+				}
 				properties[i] = &copy
-				properties[i].IsRequired = required.Has(p.Name)
 			}
 		}
 	}
 
 	name := tokenToName(obj.Token)
-	if mod.compatibility == tfbridge20 || mod.compatibility == kubernetes20 {
-		wrapInput := input && !mod.details(obj).plainType
-		mod.genPlainType(w, name, obj.Comment, properties, input, wrapInput, false, level)
-		return
+	if obj.IsInputShape() && mod.compatibility != tfbridge20 && mod.compatibility != kubernetes20 {
+		name += "Args"
 	}
 
-	if input {
-		if mod.details(obj).plainType {
-			mod.genPlainType(w, name, obj.Comment, properties, true, false, false, level)
-		}
-		if mod.details(obj).argsType {
-			mod.genPlainType(w, name+"Args", obj.Comment, properties, true, true, false, level)
-		}
-		return
-	}
-
-	mod.genPlainType(w, name, obj.Comment, properties, false, false, false, level)
+	mod.genPlainType(w, name, obj.Comment, properties, input, false, level)
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set) bool {
@@ -880,6 +865,10 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImpor
 	}
 
 	switch t := t.(type) {
+	case *schema.OptionalType:
+		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
+	case *schema.InputType:
+		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.ArrayType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
 	case *schema.MapType:
@@ -1003,16 +992,18 @@ func (mod *modContext) genHeader(w io.Writer, imports []string, externalImports 
 // configGetter returns the name of the config.get* method used for a configuration variable and the cast necessary
 // for the result of the call, if any.
 func (mod *modContext) configGetter(v *schema.Property) (string, string) {
-	if v.Type == schema.StringType {
+	typ := codegen.RequiredType(v)
+
+	if typ == schema.StringType {
 		return "get", ""
 	}
 
-	if tok, ok := v.Type.(*schema.TokenType); ok && tok.UnderlyingType == schema.StringType {
-		return "get", fmt.Sprintf("<%s>", mod.typeString(v.Type, false, false, false, false, nil))
+	if tok, ok := typ.(*schema.TokenType); ok && tok.UnderlyingType == schema.StringType {
+		return "get", fmt.Sprintf("<%s>", mod.typeString(typ, false, nil))
 	}
 
 	// Only try to parse a JSON object if the config isn't a straight string.
-	return fmt.Sprintf("getObject<%s>", mod.typeString(v.Type, false, false, false, false, nil)), ""
+	return fmt.Sprintf("getObject<%s>", mod.typeString(typ, false, nil)), ""
 }
 
 func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) error {
@@ -1034,7 +1025,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		configFetch := fmt.Sprintf("%s__config.%s(\"%s\")", cast, getfunc, p.Name)
 		// TODO: handle ConstValues https://github.com/pulumi/pulumi/issues/4755
 		if p.DefaultValue != nil {
-			v, err := mod.getDefaultValue(p.DefaultValue, p.Type)
+			v, err := mod.getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
 			if err != nil {
 				return err
 			}
@@ -1045,7 +1036,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 		}
 
 		fmt.Fprintf(w, "export let %s: %s = %s;\n",
-			p.Name, mod.typeString(p.Type, false, false, false, true, nil), configFetch)
+			p.Name, mod.typeString(codegen.OptionalType(p), false, nil), configFetch)
 	}
 
 	return nil
@@ -1755,31 +1746,22 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		_ = getMod("config")
 	}
 
-	visitObjectTypes(pkg.Config, func(t *schema.ObjectType, plain bool) {
+	visitObjectTypes(pkg.Config, func(t *schema.ObjectType) {
 		types.details(t).outputType = true
 	})
 
 	scanResource := func(r *schema.Resource) {
 		mod := getModFromToken(r.Token)
 		mod.resources = append(mod.resources, r)
-		visitObjectTypes(r.Properties, func(t *schema.ObjectType, _ bool) {
+		visitObjectTypes(r.Properties, func(t *schema.ObjectType) {
 			types.details(t).outputType = true
 		})
-		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType, plain bool) {
-			if r.IsProvider {
-				types.details(t).outputType = true
-			}
+		visitObjectTypes(r.InputProperties, func(t *schema.ObjectType) {
 			types.details(t).inputType = true
-			if plain {
-				types.details(t).plainType = true
-			} else {
-				types.details(t).argsType = true
-			}
 		})
 		if r.StateInputs != nil {
-			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType, _ bool) {
+			visitObjectTypes(r.StateInputs.Properties, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
-				types.details(t).argsType = true
 			})
 		}
 	}
@@ -1795,15 +1777,13 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 		mod := getModFromToken(f.Token)
 		mod.functions = append(mod.functions, f)
 		if f.Inputs != nil {
-			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType, _ bool) {
+			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
-				types.details(t).plainType = true
 			})
 		}
 		if f.Outputs != nil {
-			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType, _ bool) {
+			visitObjectTypes(f.Outputs.Properties, func(t *schema.ObjectType) {
 				types.details(t).outputType = true
-				types.details(t).plainType = true
 			})
 		}
 	}
@@ -1893,9 +1873,9 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 					Name: p.Name,
 				}
 				if p.ConstValue != nil {
-					lp.ConstValue = mod.typeString(p.Type, false, false, false, false, p.ConstValue)
+					lp.ConstValue = mod.typeString(p.Type, false, p.ConstValue)
 				} else {
-					lp.Package = mod.typeString(p.Type, false, false, false, false, nil)
+					lp.Package = mod.typeString(p.Type, false, nil)
 				}
 				lr.Properties = append(lr.Properties, lp)
 			}

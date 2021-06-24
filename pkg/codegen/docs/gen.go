@@ -362,10 +362,6 @@ func getLanguageDocHelper(lang string) codegen.DocLanguageHelper {
 type propertyCharacteristics struct {
 	// input is a flag indicating if the property is an input type.
 	input bool
-	// args is a flag indicating if the property is an args type.
-	args bool
-	// optional is a flag indicating if the property is optional.
-	optional bool
 }
 
 func (mod *modContext) details(t *schema.ObjectType) *typeDetails {
@@ -490,9 +486,15 @@ func (mod *modContext) cleanTypeString(t schema.Type, langTypeString, lang, modN
 // typeString returns a property type suitable for docs with its display name and the anchor link to
 // a type if the type of the property is an array or an object.
 func (mod *modContext) typeString(t schema.Type, lang string, characteristics propertyCharacteristics, insertWordBreaks bool) propertyType {
+	t = codegen.PlainType(t)
+
 	docLanguageHelper := getLanguageDocHelper(lang)
 	modName := mod.getLanguageModuleName(lang)
-	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input, characteristics.args, characteristics.optional)
+	langTypeString := docLanguageHelper.GetLanguageTypeString(mod.pkg, modName, t, characteristics.input)
+
+	if optional, ok := t.(*schema.OptionalType); ok {
+		t = optional.ElementType
+	}
 
 	// If the type is an object type, let's also wrap it with a link to the supporting type
 	// on the same page using an anchor tag.
@@ -805,12 +807,12 @@ func (mod *modContext) genConstructorPython(r *schema.Resource, argsOptional, ar
 		if p.ConstValue != nil {
 			continue
 		}
-		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, true /*args*/, false /*optional*/)
+		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
 		params = append(params, formalParam{
 			Name:         python.InitParamName(p.Name),
 			DefaultValue: " = None",
 			Type: propertyType{
-				Name: fmt.Sprintf("Optional[%s]", typ),
+				Name: fmt.Sprintf("%s", typ),
 			},
 		})
 	}
@@ -828,14 +830,14 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 		for _, t := range mod.pkg.Types {
 			switch typ := t.(type) {
 			case *schema.ObjectType:
-				if typ.Token != token || len(typ.Properties) == 0 {
+				if typ.Token != token || len(typ.Properties) == 0 || typ.IsInputShape() {
 					continue
 				}
 
 				// Create a map to hold the per-language properties of this object.
 				props := make(map[string][]property)
 				for _, lang := range supportedLanguages {
-					props[lang] = mod.getProperties(typ.Properties, lang, true, resourceType, true, false)
+					props[lang] = mod.getProperties(typ.Properties, lang, true, true, false)
 				}
 
 				name := strings.Title(tokenToName(typ.Token))
@@ -891,7 +893,7 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 
 // getProperties returns a slice of properties that can be rendered for docs for
 // the provided slice of properties in the schema.
-func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, args, nested, isProvider bool,
+func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested, isProvider bool,
 ) []property {
 	if len(properties) == 0 {
 		return nil
@@ -909,11 +911,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			continue
 		}
 
-		characteristics := propertyCharacteristics{
-			input:    input,
-			args:     args,
-			optional: !prop.IsRequired,
-		}
+		characteristics := propertyCharacteristics{input: input}
 
 		langDocHelper := getLanguageDocHelper(lang)
 		name, err := langDocHelper.GetPropertyName(prop)
@@ -925,7 +923,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
 
 		propTypes := make([]propertyType, 0)
-		if typ, isUnion := prop.Type.(*schema.UnionType); isUnion {
+		if typ, isUnion := codegen.UnwrapType(prop.Type).(*schema.UnionType); isUnion {
 			for _, elementType := range typ.ElementTypes {
 				propTypes = append(propTypes, mod.typeString(elementType, lang, characteristics, true))
 			}
@@ -955,7 +953,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 			Name:               propLangName,
 			Comment:            comment,
 			DeprecationMessage: prop.DeprecationMessage,
-			IsRequired:         prop.IsRequired,
+			IsRequired:         prop.IsRequired(),
 			IsInput:            input,
 			Link:               "#" + propID,
 			Types:              propTypes,
@@ -1221,12 +1219,12 @@ func (mod *modContext) getPythonLookupParams(r *schema.Resource, stateParam stri
 	docLanguageHelper := getLanguageDocHelper("python")
 	params := make([]formalParam, 0, len(r.StateInputs.Properties))
 	for _, p := range r.StateInputs.Properties {
-		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, p.Type, true /*input*/, true /*args*/, false /*optional*/)
+		typ := docLanguageHelper.GetLanguageTypeString(mod.pkg, mod.mod, codegen.PlainType(codegen.OptionalType(p)), true /*input*/)
 		params = append(params, formalParam{
 			Name:         python.PyName(p.Name),
 			DefaultValue: " = None",
 			Type: propertyType{
-				Name: fmt.Sprintf("Optional[%s]", typ),
+				Name: typ,
 			},
 		})
 	}
@@ -1341,20 +1339,19 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 	// All resources have an implicit `id` output property, that we must inject into the docs.
 	filteredOutputProps = append(filteredOutputProps, &schema.Property{
-		Name:       "id",
-		Comment:    "The provider-assigned unique ID for this managed resource.",
-		Type:       schema.StringType,
-		IsRequired: true,
+		Name:    "id",
+		Comment: "The provider-assigned unique ID for this managed resource.",
+		Type:    schema.StringType,
 	})
 
 	for _, lang := range supportedLanguages {
-		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, true, false, r.IsProvider)
-		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false, false, r.IsProvider)
+		inputProps[lang] = mod.getProperties(r.InputProperties, lang, true, false, r.IsProvider)
+		outputProps[lang] = mod.getProperties(filteredOutputProps, lang, false, false, r.IsProvider)
 		if r.IsProvider {
 			continue
 		}
 		if r.StateInputs != nil {
-			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, true, false, r.IsProvider)
+			stateProps := mod.getProperties(r.StateInputs.Properties, lang, true, false, r.IsProvider)
 			for i := 0; i < len(stateProps); i++ {
 				id := "state_" + stateProps[i].ID
 				stateProps[i].ID = id
@@ -1367,7 +1364,7 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 	allOptionalInputs := true
 	for _, prop := range r.InputProperties {
 		// If at least one prop is required, then break.
-		if prop.IsRequired {
+		if prop.IsRequired() {
 			allOptionalInputs = false
 			break
 		}
@@ -1415,50 +1412,27 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 
 func (mod *modContext) getNestedTypes(t schema.Type, types nestedTypeUsageInfo, input bool) {
 	switch t := t.(type) {
+	case *schema.InputType:
+		mod.getNestedTypes(t.ElementType, types, input)
+	case *schema.OptionalType:
+		mod.getNestedTypes(t.ElementType, types, input)
 	case *schema.ArrayType:
-		glog.V(4).Infof("visiting array %s\n", t.ElementType.String())
-		skip := false
-		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token, input) {
-			glog.V(4).Infof("already added %s. skipping...\n", o.Token)
-			skip = true
-		}
-
-		if !skip {
-			mod.getNestedTypes(t.ElementType, types, input)
-		}
+		mod.getNestedTypes(t.ElementType, types, input)
 	case *schema.MapType:
-		glog.V(4).Infof("visiting map %s\n", t.ElementType.String())
-		skip := false
-		if o, ok := t.ElementType.(*schema.ObjectType); ok && types.contains(o.Token, input) {
-			glog.V(4).Infof("already added %s. skipping...\n", o.Token)
-			skip = true
+		mod.getNestedTypes(t.ElementType, types, input)
+	case *schema.ObjectType:
+		if types.contains(t.Token, input) {
+			break
 		}
 
-		if !skip {
-			mod.getNestedTypes(t.ElementType, types, input)
-		}
-	case *schema.ObjectType:
-		glog.V(4).Infof("visiting object %s\n", t.Token)
 		types.add(t.Token, input)
 		for _, p := range t.Properties {
-			if o, ok := p.Type.(*schema.ObjectType); ok && types.contains(o.Token, input) {
-				glog.V(4).Infof("already added %s. skipping...\n", o.Token)
-				continue
-			}
-			glog.V(4).Infof("visiting object property %s\n", p.Type.String())
 			mod.getNestedTypes(p.Type, types, input)
 		}
 	case *schema.EnumType:
-		glog.V(4).Infof("visiting enum type %s\n", t.Token)
 		types.add(t.Token, false)
 	case *schema.UnionType:
-		glog.V(4).Infof("visiting union type %s\n", t.String())
 		for _, e := range t.ElementTypes {
-			if o, ok := e.(*schema.ObjectType); ok && types.contains(o.Token, input) {
-				glog.V(4).Infof("already added %s. skipping...\n", o.Token)
-				continue
-			}
-			glog.V(4).Infof("visiting union element type %s\n", e.String())
 			mod.getNestedTypes(e, types, input)
 		}
 	}
@@ -1675,11 +1649,16 @@ func (mod *modContext) genIndex() indexData {
 	}
 	sortIndexEntries(functions)
 
+	version := ""
+	if mod.pkg.Version != nil {
+		version = mod.pkg.Version.String()
+	}
+
 	packageDetails := packageDetails{
 		Repository: mod.pkg.Repository,
 		License:    mod.pkg.License,
 		Notes:      mod.pkg.Attribution,
-		Version:    mod.pkg.Version.String(),
+		Version:    version,
 	}
 
 	var titleTag string
@@ -1890,8 +1869,8 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(t schema.Type)) {
-	codegen.VisitTypeClosure(properties, func(t codegen.Type) {
-		switch st := t.Type.(type) {
+	codegen.VisitTypeClosure(properties, func(t schema.Type) {
+		switch st := t.(type) {
 		case *schema.EnumType, *schema.ObjectType, *schema.ResourceType:
 			visitor(st)
 		}

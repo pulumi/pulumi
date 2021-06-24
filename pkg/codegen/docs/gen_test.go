@@ -284,7 +284,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 		}
 
 		t.Run("InputPropertiesAreSnakeCased", func(t *testing.T) {
-			props := mod.getProperties(r.InputProperties, "python", true, true, false, false)
+			props := mod.getProperties(r.InputProperties, "python", true, false, false)
 			for _, p := range props {
 				assert.True(t, strings.Contains(p.Name, "_"), "input property name in python must use snake_case")
 			}
@@ -550,6 +550,15 @@ func TestGeneratePackage(t *testing.T) {
 			[]string{
 				"person.md",
 				"pet.md",
+			},
+		},
+		{
+			"Repro for #6957",
+			"plain-schema-gh6957",
+			[]string{
+				"_index.md",
+				"provider.md",
+				"staticpage.md",
 			},
 		},
 	}

@@ -64,19 +64,11 @@ func GetRubberTree(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering RubberTree resources.
 type rubberTreeState struct {
-	Container *plant.Container `pulumi:"container"`
-	Diameter  *float64         `pulumi:"diameter"`
-	Farm      *string          `pulumi:"farm"`
-	Size      *string          `pulumi:"size"`
-	Type      *string          `pulumi:"type"`
+	Farm *string `pulumi:"farm"`
 }
 
 type RubberTreeState struct {
-	Container plant.ContainerPtrInput
-	Diameter  *Diameter
-	Farm      pulumi.StringPtrInput
-	Size      *TreeSize
-	Type      *RubberTreeVariety
+	Farm pulumi.StringPtrInput
 }
 
 func (RubberTreeState) ElementType() reflect.Type {

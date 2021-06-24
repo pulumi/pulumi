@@ -399,7 +399,12 @@ func (g *generator) genStringLiteral(w io.Writer, v string) {
 }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
-	switch expr.Type() {
+	typ := expr.Type()
+	if cns, ok := typ.(*model.ConstType); ok {
+		typ = cns.Type
+	}
+
+	switch typ {
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
@@ -520,7 +525,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	multiLine := false
 	expressions := false
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			if strings.Contains(lit.Value.AsString(), "\n") {
 				multiLine = true
 			}
@@ -537,7 +542,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	}
 	g.Fgen(w, "\"")
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.Fgen(w, g.escapeString(lit.Value.AsString(), multiLine, expressions))
 		} else {
 			g.Fgenf(w, "{%.v}", expr)
