@@ -531,9 +531,9 @@ func (mod *modContext) unqualifiedImportName() string {
 
 	// Extract version suffix from child modules. Nested versions will have their own __init__.py file.
 	// Example: apps/v1beta1 -> v1beta1
-	parts := strings.SplitN(name, "/", 2)
-	if len(parts) == 2 {
-		name = parts[1]
+	parts := strings.Split(name, "/")
+	if len(parts) > 1 {
+		name = parts[len(parts)-1]
 	}
 
 	return PyName(name)
