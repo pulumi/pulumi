@@ -57,10 +57,8 @@ type mockMonitor struct {
 	project   string
 	stack     string
 	mocks     MockResourceMonitor
-	resources sync.Map
+	resources sync.Map // map[string]resource.PropertyMap
 }
-
-var _ pulumirpc.ResourceMonitorClient = &mockMonitor{}
 
 func (m *mockMonitor) newURN(parent, typ, name string) string {
 	parentType := tokens.Type("")
@@ -212,11 +210,6 @@ func (m *mockMonitor) RegisterResource(ctx context.Context, in *pulumirpc.Regist
 	}
 
 	urn := m.newURN(in.GetParent(), in.GetType(), in.GetName())
-
-	var dependencies []URN
-	for _, d := range in.GetDependencies() {
-		dependencies = append(dependencies, URN(d))
-	}
 
 	m.resources.Store(urn, resource.PropertyMap{
 		resource.PropertyKey("urn"):   resource.NewStringProperty(urn),
