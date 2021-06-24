@@ -362,9 +362,9 @@ func TestDependsOnInputs(t *testing.T) {
 }
 
 func TestProviderInput(t *testing.T) {
-	providerId := "providerId"
+	providerID := "providerId1"
 	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
-	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerId)
+	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
 
 	var seenProviders []string
 
@@ -373,7 +373,7 @@ func TestProviderInput(t *testing.T) {
 			if args.Provider != "" {
 				seenProviders = append(seenProviders, args.Provider)
 			}
-			return "freshID", nil, nil
+			return "freshID1", nil, nil
 		},
 	}
 
@@ -403,9 +403,9 @@ func TestProviderInput(t *testing.T) {
 }
 
 func TestProviderInputs(t *testing.T) {
-	providerId := "providerId"
+	providerID := "providerId"
 	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
-	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerId)
+	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
 
 	var seenProviders []string
 
@@ -414,7 +414,7 @@ func TestProviderInputs(t *testing.T) {
 			if args.Provider != "" {
 				seenProviders = append(seenProviders, args.Provider)
 			}
-			return "freshID", nil, nil
+			return "freshID2", nil, nil
 		},
 	}
 
@@ -443,9 +443,9 @@ func TestProviderInputs(t *testing.T) {
 }
 
 func TestProviderInputMap(t *testing.T) {
-	providerId := "providerId"
+	providerID := "providerId"
 	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
-	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerId)
+	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
 
 	var seenProviders []string
 
@@ -454,7 +454,7 @@ func TestProviderInputMap(t *testing.T) {
 			if args.Provider != "" {
 				seenProviders = append(seenProviders, args.Provider)
 			}
-			return "freshID", nil, nil
+			return "freshID3", nil, nil
 		},
 	}
 
@@ -510,7 +510,9 @@ func tmerge(t *testing.T, opts ...ResourceOption) *resourceOptions {
 func trackParents(ctx *Context) map[URN]URN {
 	parents := make(map[URN]URN)
 	m := newInterceptingResourceMonitor(ctx.monitor)
-	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error) {
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
+		resp *pulumirpc.RegisterResourceResponse,
+		err error) {
 		if in.GetParent() != "" {
 			parents[URN(resp.Urn)] = URN(in.GetParent())
 		}
@@ -522,7 +524,9 @@ func trackParents(ctx *Context) map[URN]URN {
 func trackDependencies(ctx *Context) map[URN][]URN {
 	dependsOn := make(map[URN][]URN)
 	m := newInterceptingResourceMonitor(ctx.monitor)
-	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest, resp *pulumirpc.RegisterResourceResponse, err error) {
+	m.afterRegisterResource = func(in *pulumirpc.RegisterResourceRequest,
+		resp *pulumirpc.RegisterResourceResponse,
+		err error) {
 		var deps []URN
 		for _, dep := range in.GetDependencies() {
 			deps = append(deps, URN(dep))
