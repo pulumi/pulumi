@@ -25,6 +25,7 @@ service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
     rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
+    rpc Call(CallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}

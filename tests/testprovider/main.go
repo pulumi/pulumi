@@ -89,6 +89,11 @@ func (k *testproviderProvider) StreamInvoke(req *rpc.InvokeRequest,
 	return fmt.Errorf("Unknown StreamInvoke token '%s'", tok)
 }
 
+func (k *testproviderProvider) Call(_ context.Context, req *rpc.CallRequest) (*rpc.CallResponse, error) {
+	tok := req.GetTok()
+	return nil, fmt.Errorf("Unknown Call token '%s'", tok)
+}
+
 func (k *testproviderProvider) Check(ctx context.Context, req *rpc.CheckRequest) (*rpc.CheckResponse, error) {
 	urn := resource.URN(req.GetUrn())
 	ty := urn.Type()
