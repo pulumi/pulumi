@@ -396,15 +396,9 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		return pkg.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		typ := "[]"
-		if !argsType && pkg.isExternalObjectType(t.ElementType) {
-			typ += "*"
-		}
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
 	case *schema.MapType:
 		typ := "map[string]"
-		if !argsType && pkg.isExternalObjectType(t.ElementType) {
-			typ += "*"
-		}
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
