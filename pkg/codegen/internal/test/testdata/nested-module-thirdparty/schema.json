@@ -1,0 +1,29 @@
+{
+  "version": "0.0.1",
+  "name": "foo-bar",
+  "resources": {
+    "foo-bar:deeply/nested/module:Resource": {
+      "properties": {
+        "baz": {
+          "type": "string",
+          "secret": true
+        }
+      },
+      "inputProperties": {
+        "baz": {
+          "type": "string",
+          "secret": true
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "python": {
+      "packageName": "foo_bar",
+      "requires": {
+        "pulumi": ">=3.0.0,<4.0.0"
+      }
+    }
+  }
+}
