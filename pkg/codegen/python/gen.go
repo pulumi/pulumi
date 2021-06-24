@@ -1583,7 +1583,7 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "        with open('README.md', encoding='utf-8') as f:\n")
 	fmt.Fprintf(w, "            return f.read()\n")
 	fmt.Fprintf(w, "    except FileNotFoundError:\n")
-	fmt.Fprintf(w, "            return \"%s Pulumi Package - Development Version\"\n", pkg.Name)
+	fmt.Fprintf(w, "        return \"%s Pulumi Package - Development Version\"\n", pkg.Name)
 	fmt.Fprintf(w, "\n\n")
 
 	// Finally, the actual setup part.
