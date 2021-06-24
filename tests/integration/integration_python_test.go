@@ -694,6 +694,34 @@ func TestConstructUnknownPython(t *testing.T) {
 	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
 }
 
+// Test methods on remote components.
+func TestConstructMethodsPython(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join("construct_component_methods", "python"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
 func TestGetResourcePython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
