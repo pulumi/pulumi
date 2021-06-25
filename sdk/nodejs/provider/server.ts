@@ -37,13 +37,15 @@ const statusproto = require("../proto/status_pb.js");
 class Server implements grpc.UntypedServiceImplementation {
     readonly engineAddr: string;
     readonly provider: Provider;
+    readonly uncaughtErrors: Set<Error>;
 
     /** Queue of construct calls. */
     constructQueue = Promise.resolve();
 
-    constructor(engineAddr: string, provider: Provider) {
+    constructor(engineAddr: string, provider: Provider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
         this.provider = provider;
+        this.uncaughtErrors = uncaughtErrors;
     }
 
     // Satisfy the grpc.UntypedServiceImplementation interface.
@@ -267,6 +269,23 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     async constructImpl(call: any, callback: any): Promise<void> {
+        // given that construct calls are serialized, we can attach an uncaught handler to pick up exceptions
+        // in underlying user code. When we catch the error, we need to respond to the gRPC request with the error
+        // to avoid a hang.
+        const uncaughtHandler = (err: Error) => {
+            if (!this.uncaughtErrors.has(err)) {
+                this.uncaughtErrors.add(err);
+                // Use `pulumi.log.error` here to tell the engine there was a fatal error, which should
+                // stop processing subsequent resource operations.
+                log.error(err.stack || err.message || ("" + err));
+            }
+            // bubble the uncaught error in the user code back and terminate the outstanding gRPC request.
+            callback(err, undefined);
+        };
+        process.on("uncaughtException", uncaughtHandler);
+        // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
+        // just suppress the TS strictness here.
+        process.on("unhandledRejection", uncaughtHandler);
         try {
             const req: any = call.request;
             const type = req.getType();
@@ -357,6 +376,10 @@ class Server implements grpc.UntypedServiceImplementation {
         } catch (e) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
+        } finally {
+            // remove these uncaught handlers that are specific to this gRPC callback context
+            process.off("uncaughtException", uncaughtHandler);
+            process.off("unhandledRejection", uncaughtHandler);
         }
     }
 
@@ -477,7 +500,7 @@ export async function main(provider: Provider, args: string[]) {
     const server = new grpc.Server({
         "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
     });
-    server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider));
+    server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {
