@@ -218,29 +218,67 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				continue
 			}
 
-			if field.Type.Implements(outputType) || field.Type.Implements(inputType) {
+			handleField := func(typ reflect.Type, value resource.PropertyValue, deps []Resource) (reflect.Value, error) {
 				resultType := anyOutputType
-				if field.Type.Implements(outputType) {
-					resultType = field.Type
-				} else if field.Type.Implements(inputType) {
-					toOutputMethodName := "To" + strings.TrimSuffix(field.Type.Name(), "Input") + "Output"
-					if toOutputMethod, found := field.Type.MethodByName(toOutputMethodName); found {
+				if typ.Implements(outputType) {
+					resultType = typ
+				} else if typ.Implements(inputType) {
+					toOutputMethodName := "To" + strings.TrimSuffix(typ.Name(), "Input") + "Output"
+					if toOutputMethod, found := typ.MethodByName(toOutputMethodName); found {
 						mt := toOutputMethod.Type
 						if mt.NumIn() == 0 && mt.NumOut() == 1 && mt.Out(0).Implements(outputType) {
 							resultType = mt.Out(0)
 						}
 					}
 				}
-				output := ctx.newOutput(resultType, ci.deps...)
+				output := ctx.newOutput(resultType, deps...)
 				dest := reflect.New(output.ElementType()).Elem()
 				known := !ci.value.ContainsUnknowns()
-				secret, err := unmarshalOutput(ctx, ci.value, dest)
+				secret, err := unmarshalOutput(ctx, value, dest)
+				if err != nil {
+					return reflect.Value{}, err
+				}
+				output.getState().resolve(dest.Interface(), known, secret, nil)
+				return reflect.ValueOf(output), nil
+			}
+
+			if field.Type.Implements(outputType) || field.Type.Implements(inputType) {
+				val, err := handleField(field.Type, ci.value, ci.deps)
 				if err != nil {
 					return err
 				}
+				fieldV.Set(val)
+				continue
+			}
 
-				output.getState().resolve(dest.Interface(), known, secret, nil)
-				fieldV.Set(reflect.ValueOf(output))
+			if field.Type.Kind() == reflect.Slice && (field.Type.Elem().Implements(outputType) || field.Type.Elem().Implements(inputType)) {
+				elemType := field.Type.Elem()
+				length := len(ci.value.ArrayValue())
+				dest := reflect.MakeSlice(field.Type, length, length)
+				for i := 0; i < length; i++ {
+					val, err := handleField(elemType, ci.value.ArrayValue()[i], ci.deps)
+					if err != nil {
+						return err
+					}
+					dest.Index(i).Set(val)
+				}
+				fieldV.Set(dest)
+				continue
+			}
+
+			if field.Type.Kind() == reflect.Map && (field.Type.Elem().Implements(outputType) || field.Type.Elem().Implements(inputType)) {
+				elemType := field.Type.Elem()
+				length := len(ci.value.ObjectValue())
+				dest := reflect.MakeMapWithSize(field.Type, length)
+				for k, v := range ci.value.ObjectValue() {
+					key := reflect.ValueOf(string(k))
+					val, err := handleField(elemType, v, ci.deps)
+					if err != nil {
+						return err
+					}
+					dest.SetMapIndex(key, val)
+				}
+				fieldV.Set(dest)
 				continue
 			}
 
