@@ -242,7 +242,11 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				return reflect.ValueOf(output), nil
 			}
 
-			if field.Type.Implements(outputType) || field.Type.Implements(inputType) {
+			isInputType := func(typ reflect.Type) bool {
+				return typ.Implements(outputType) || typ.Implements(inputType)
+			}
+
+			if isInputType(field.Type) {
 				val, err := handleField(field.Type, ci.value, ci.deps)
 				if err != nil {
 					return err
@@ -251,7 +255,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				continue
 			}
 
-			if field.Type.Kind() == reflect.Slice && (field.Type.Elem().Implements(outputType) || field.Type.Elem().Implements(inputType)) {
+			if field.Type.Kind() == reflect.Slice && isInputType(field.Type.Elem()) {
 				elemType := field.Type.Elem()
 				length := len(ci.value.ArrayValue())
 				dest := reflect.MakeSlice(field.Type, length, length)
@@ -266,7 +270,7 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				continue
 			}
 
-			if field.Type.Kind() == reflect.Map && (field.Type.Elem().Implements(outputType) || field.Type.Elem().Implements(inputType)) {
+			if field.Type.Kind() == reflect.Map && isInputType(field.Type.Elem()) {
 				elemType := field.Type.Elem()
 				length := len(ci.value.ObjectValue())
 				dest := reflect.MakeMapWithSize(field.Type, length)
