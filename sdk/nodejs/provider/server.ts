@@ -275,9 +275,6 @@ class Server implements grpc.UntypedServiceImplementation {
         const uncaughtHandler = (err: Error) => {
             if (!this.uncaughtErrors.has(err)) {
                 this.uncaughtErrors.add(err);
-                // Use `pulumi.log.error` here to tell the engine there was a fatal error, which should
-                // stop processing subsequent resource operations.
-                log.error(err.stack || err.message || ("" + err));
             }
             // bubble the uncaught error in the user code back and terminate the outstanding gRPC request.
             callback(err, undefined);

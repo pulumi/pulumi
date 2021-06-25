@@ -1,3 +1,5 @@
+// Copyright 2016-2021, Pulumi Corporation.  All rights reserved.
+
 import * as pulumi from "@pulumi/pulumi";
 import * as provider from "@pulumi/pulumi/provider";
 

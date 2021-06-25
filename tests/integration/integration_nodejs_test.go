@@ -1021,10 +1021,6 @@ func TestComponentProviderSchemaNode(t *testing.T) {
 // Test throwing an error within an apply in a remote component written in nodejs.
 // The provider should return the error and shutdown gracefully rather than hanging.
 func TestConstructNodeErrorApply(t *testing.T) {
-	if runtime.GOOS == WindowsOS {
-		t.Skip("Temporarily skipping test on Windows")
-	}
-
 	dir := "construct_component_error_apply"
 	componentDir := "testcomponent"
 
