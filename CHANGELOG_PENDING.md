@@ -22,3 +22,6 @@
   
 - [multilang/python] - Fix nested module generation.
   [#7353](https://github.com/pulumi/pulumi/pull/7353)
+
+- [multilang/nodejs] - Fix a hang when an error is thrown within an apply in a remote component.
+  [#7365](https://github.com/pulumi/pulumi/pull/7365)
