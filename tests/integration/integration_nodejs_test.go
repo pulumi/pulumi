@@ -1017,3 +1017,31 @@ func TestComponentProviderSchemaNode(t *testing.T) {
 	}
 	testComponentProviderSchema(t, path)
 }
+
+// Test throwing an error within an apply in a remote component written in nodejs.
+// The provider should return the error and shutdown gracefully rather than hanging.
+func TestConstructNodeErrorApply(t *testing.T) {
+	dir := "construct_component_error_apply"
+	componentDir := "testcomponent"
+
+	stderr := &bytes.Buffer{}
+	expectedError := "intentional error from within an apply"
+
+	opts := &integration.ProgramTestOptions{
+		Env:           []string{pathEnv(t, filepath.Join(dir, componentDir))},
+		Dir:           filepath.Join(dir, "nodejs"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		Quick:         true,
+		NoParallel:    true,
+		Stderr:        stderr,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
+	}
+
+	t.Run(componentDir, func(t *testing.T) {
+		integration.ProgramTest(t, opts)
+	})
+}
