@@ -37,6 +37,8 @@ const (
 	ConfigDir = "config"
 	// GitDir is the name of the folder git uses to store information.
 	GitDir = ".git"
+	// ProjectDir is the name of the directory that holds projects.
+	ProjectDir = "projects"
 	// HistoryDir is the name of the directory that holds historical information for projects.
 	HistoryDir = "history"
 	// PluginDir is the name of the directory containing plugins.

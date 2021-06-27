@@ -39,10 +39,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/encoding"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -93,11 +91,9 @@ func (b *localBackend) newQuery(ctx context.Context,
 	return &localQuery{root: op.Root, proj: op.Proj}, nil
 }
 
-func (b *localBackend) newUpdate(stackName tokens.QName, op backend.UpdateOperation) (*update, error) {
-	contract.Require(stackName != "", "stackName")
-
+func (b *localBackend) newUpdate(stackRef localBackendReference, op backend.UpdateOperation) (*update, error) {
 	// Construct the deployment target.
-	target, err := b.getTarget(stackName, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
+	target, err := b.getTarget(stackRef, op.StackConfiguration.Config, op.StackConfiguration.Decrypter)
 	if err != nil {
 		return nil, err
 	}
@@ -111,27 +107,23 @@ func (b *localBackend) newUpdate(stackName tokens.QName, op backend.UpdateOperat
 	}, nil
 }
 
-func (b *localBackend) getTarget(stackName tokens.QName, cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
-	snapshot, _, err := b.getStack(stackName)
+func (b *localBackend) getTarget(stackRef localBackendReference, cfg config.Map, dec config.Decrypter) (*deploy.Target, error) {
+	snapshot, _, err := b.getStack(stackRef)
 	if err != nil {
 		return nil, err
 	}
 	return &deploy.Target{
-		Name:      stackName,
+		Name:      stackRef.Name(),
 		Config:    cfg,
 		Decrypter: dec,
 		Snapshot:  snapshot,
 	}, nil
 }
 
-func (b *localBackend) getStack(name tokens.QName) (*deploy.Snapshot, string, error) {
-	if name == "" {
-		return nil, "", errors.New("invalid empty stack name")
-	}
+func (b *localBackend) getStack(stackRef localBackendReference) (*deploy.Snapshot, string, error) {
+	file := stackPath(stackRef)
 
-	file := b.stackPath(name)
-
-	chk, err := b.getCheckpoint(name)
+	chk, err := b.getCheckpoint(stackRef)
 	if err != nil {
 		return nil, file, errors.Wrap(err, "failed to load checkpoint")
 	}
@@ -154,8 +146,8 @@ func (b *localBackend) getStack(name tokens.QName) (*deploy.Snapshot, string, er
 }
 
 // GetCheckpoint loads a checkpoint file for the given stack in this project, from the current project workspace.
-func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.CheckpointV3, error) {
-	chkpath := b.stackPath(stackName)
+func (b *localBackend) getCheckpoint(stackRef localBackendReference) (*apitype.CheckpointV3, error) {
+	chkpath := stackPath(stackRef)
 	bytes, err := b.bucket.ReadAll(context.TODO(), chkpath)
 	if err != nil {
 		return nil, err
@@ -164,9 +156,9 @@ func (b *localBackend) getCheckpoint(stackName tokens.QName) (*apitype.Checkpoin
 	return stack.UnmarshalVersionedCheckpointToLatestCheckpoint(bytes)
 }
 
-func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
+func (b *localBackend) saveStack(stackRef localBackendReference, snap *deploy.Snapshot, sm secrets.Manager) (string, error) {
 	// Make a serializable stack and then use the encoder to encode it.
-	file := b.stackPath(name)
+	file := stackPath(stackRef)
 	m, ext := encoding.Detect(file)
 	if m == nil {
 		return "", errors.Errorf("resource serialization failed; illegal markup extension: '%v'", ext)
@@ -174,7 +166,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 	if filepath.Ext(file) == "" {
 		file = file + ext
 	}
-	chk, err := stack.SerializeCheckpoint(name, snap, sm, false /* showSecrets */)
+	chk, err := stack.SerializeCheckpoint(stackRef.Name(), snap, sm, false /* showSecrets */)
 	if err != nil {
 		return "", errors.Wrap(err, "serializaing checkpoint")
 	}
@@ -220,7 +212,7 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 		}
 	}
 
-	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", name, file, bck)
+	logging.V(7).Infof("Saved stack %s checkpoint to: %s (backup=%s)", stackRef.Name(), file, bck)
 
 	// And if we are retaining historical checkpoint information, write it out again
 	if cmdutil.IsTruthy(os.Getenv("PULUMI_RETAIN_CHECKPOINTS")) {
@@ -244,14 +236,12 @@ func (b *localBackend) saveStack(name tokens.QName, snap *deploy.Snapshot, sm se
 }
 
 // removeStack removes information about a stack from the current workspace.
-func (b *localBackend) removeStack(name tokens.QName) error {
-	contract.Require(name != "", "name")
-
+func (b *localBackend) removeStack(stackRef localBackendReference) error {
 	// Just make a backup of the file and don't write out anything new.
-	file := b.stackPath(name)
+	file := stackPath(stackRef)
 	backupTarget(b.bucket, file)
 
-	historyDir := b.historyDirectory(name)
+	historyDir := historyDirectory(stackRef)
 	return removeAllByPrefix(b.bucket, historyDir)
 }
 
@@ -267,23 +257,21 @@ func backupTarget(bucket Bucket, file string) string {
 }
 
 // backupStack copies the current Checkpoint file to ~/.pulumi/backups.
-func (b *localBackend) backupStack(name tokens.QName) error {
-	contract.Require(name != "", "name")
-
+func (b *localBackend) backupStack(stackRef localBackendReference) error {
 	// Exit early if backups are disabled.
 	if cmdutil.IsTruthy(os.Getenv(DisableCheckpointBackupsEnvVar)) {
 		return nil
 	}
 
 	// Read the current checkpoint file. (Assuming it aleady exists.)
-	stackPath := b.stackPath(name)
+	stackPath := stackPath(stackRef)
 	byts, err := b.bucket.ReadAll(context.TODO(), stackPath)
 	if err != nil {
 		return err
 	}
 
 	// Get the backup directory.
-	backupDir := b.backupDirectory(name)
+	backupDir := backupDirectory(stackRef)
 
 	// Write out the new backup checkpoint file.
 	stackFile := filepath.Base(stackPath)
@@ -293,31 +281,27 @@ func (b *localBackend) backupStack(name tokens.QName) error {
 	return b.bucket.WriteAll(context.TODO(), filepath.Join(backupDir, backupFile), byts, nil)
 }
 
-func (b *localBackend) stackPath(stack tokens.QName) string {
-	path := filepath.Join(b.StateDir(), workspace.StackDir)
-	if stack != "" {
-		path = filepath.Join(path, fsutil.QnamePath(stack)+".json")
-	}
-
-	return path
+func stackBaseDir(project string) string {
+	return filepath.Join(stateDir(project), workspace.StackDir)
 }
 
-func (b *localBackend) historyDirectory(stack tokens.QName) string {
-	contract.Require(stack != "", "stack")
-	return filepath.Join(b.StateDir(), workspace.HistoryDir, fsutil.QnamePath(stack))
+func stackPath(stackRef localBackendReference) string {
+	basePath := stackBaseDir(stackRef.project)
+	return filepath.Join(basePath, string(stackRef.Name()) + ".json")
 }
 
-func (b *localBackend) backupDirectory(stack tokens.QName) string {
-	contract.Require(stack != "", "stack")
-	return filepath.Join(b.StateDir(), workspace.BackupDir, fsutil.QnamePath(stack))
+func historyDirectory(stackRef localBackendReference) string {
+	return filepath.Join(stateDir(stackRef.project), workspace.HistoryDir, string(stackRef.Name()))
+}
+
+func backupDirectory(stackRef localBackendReference) string {
+	return filepath.Join(stateDir(stackRef.project), workspace.BackupDir, string(stackRef.Name()))
 }
 
 // getHistory returns locally stored update history. The first element of the result will be
 // the most recent update record.
-func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]backend.UpdateInfo, error) {
-	contract.Require(name != "", "name")
-
-	dir := b.historyDirectory(name)
+func (b *localBackend) getHistory(stackRef localBackendReference, pageSize int, page int) ([]backend.UpdateInfo, error) {
+	dir := historyDirectory(stackRef)
 	// TODO: we could consider optimizing the list operation using `page` and `pageSize`.
 	// Unfortunately, this is mildly invasive given the gocloud List API.
 	allFiles, err := listBucket(b.bucket, dir)
@@ -381,12 +365,9 @@ func (b *localBackend) getHistory(name tokens.QName, pageSize int, page int) ([]
 	return updates, nil
 }
 
-func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName) error {
-	contract.Require(oldName != "", "oldName")
-	contract.Require(newName != "", "newName")
-
-	oldHistory := b.historyDirectory(oldName)
-	newHistory := b.historyDirectory(newName)
+func (b *localBackend) renameHistory(oldStackRef localBackendReference, newStackRef localBackendReference) error {
+	oldHistory := historyDirectory(oldStackRef)
+	newHistory := historyDirectory(newStackRef)
 
 	allFiles, err := listBucket(b.bucket, oldHistory)
 	if err != nil {
@@ -403,7 +384,7 @@ func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName)
 
 		// The filename format is <stack-name>-<timestamp>.[checkpoint|history].json, we need to change
 		// the stack name part but retain the other parts.
-		newFileName := string(newName) + fileName[strings.LastIndex(fileName, "-"):]
+		newFileName := string(newStackRef.name) + fileName[strings.LastIndex(fileName, "-"):]
 		newBlob := path.Join(newHistory, newFileName)
 
 		if err := b.bucket.Copy(context.TODO(), newBlob, oldBlob, nil); err != nil {
@@ -418,13 +399,11 @@ func (b *localBackend) renameHistory(oldName tokens.QName, newName tokens.QName)
 }
 
 // addToHistory saves the UpdateInfo and makes a copy of the current Checkpoint file.
-func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo) error {
-	contract.Require(name != "", "name")
-
-	dir := b.historyDirectory(name)
+func (b *localBackend) addToHistory(stackRef localBackendReference, update backend.UpdateInfo) error {
+	dir := historyDirectory(stackRef)
 
 	// Prefix for the update and checkpoint files.
-	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", name, time.Now().UnixNano()))
+	pathPrefix := path.Join(dir, fmt.Sprintf("%s-%d", stackRef.name, time.Now().UnixNano()))
 
 	// Save the history file.
 	byts, err := json.MarshalIndent(&update, "", "    ")
@@ -439,5 +418,5 @@ func (b *localBackend) addToHistory(name tokens.QName, update backend.UpdateInfo
 
 	// Make a copy of the checkpoint file. (Assuming it already exists.)
 	checkpointFile := fmt.Sprintf("%s.checkpoint.json", pathPrefix)
-	return b.bucket.Copy(context.TODO(), checkpointFile, b.stackPath(name), nil)
+	return b.bucket.Copy(context.TODO(), checkpointFile, stackPath(stackRef), nil)
 }
