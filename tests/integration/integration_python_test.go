@@ -702,6 +702,9 @@ func TestConstructMethodsPython(t *testing.T) {
 		{
 			componentDir: "testcomponent",
 		},
+		{
+			componentDir: "testcomponent-go",
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
