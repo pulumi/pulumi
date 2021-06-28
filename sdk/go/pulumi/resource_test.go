@@ -382,7 +382,7 @@ func TestProviderInput(t *testing.T) {
 
 		dep := newTestRes(t, ctx, "resDependency")
 
-		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
+		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
 
 		// Construct an output that resolve to `providerResource` but also depends on `dep`.
 		output := Any(dep).
@@ -422,7 +422,7 @@ func TestProviderInputs(t *testing.T) {
 		dependsOn := trackDependencies(ctx)
 		dep := newTestRes(t, ctx, "resDependency")
 
-		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
+		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
 
 		// Construct an output that resolve to `providerResource` but also depends on `dep`.
 		output := Any(dep).
@@ -462,7 +462,7 @@ func TestProviderInputMap(t *testing.T) {
 		dependsOn := trackDependencies(ctx)
 		dep := newTestRes(t, ctx, "resDependency")
 
-		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), "providerId")
+		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
 
 		// Construct an output that resolve to `providerResource` but also depends on `dep`.
 		output := Any(dep).
