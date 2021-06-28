@@ -524,18 +524,16 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			"unrecognized diff state for %s: %d", urn, diff.Changes)
 	}
 
-	// There are changes if the diff returned DiffSome or if there were initErrors previously that should
-	// force an update to occur even if no inputs changed.
 	hasInitErrors := len(old.InitErrors) > 0
-	needsUpdateOrReplace := diff.Changes == plugin.DiffSome || hasInitErrors
+
+	// Update the diff to apply any replaceOnChanges annotations and to include initErrors in the diff.
+	diff, err = sg.applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
+	if err != nil {
+		return nil, result.FromError(err)
+	}
 
 	// If there were changes check for a replacement vs. an in-place update.
-	if needsUpdateOrReplace {
-		// Update the diff to apply any replaceOnChanges annotations and to include initErrors in the diff.
-		diff, err = sg.applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
-		if err != nil {
-			return nil, result.FromError(err)
-		}
+	if diff.Changes == plugin.DiffSome {
 		if diff.Replace() {
 			// If the goal state specified an ID, issue an error: the replacement will change the ID, and is
 			// therefore incompatible with the goal state.
@@ -654,6 +652,13 @@ func (sg *stepGenerator) generateStepsFromDiff(
 			NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, diff.ChangedKeys, diff.DetailedDiff,
 				goal.IgnoreChanges),
 		}, nil
+	}
+
+	// If resource was unchanged, but there were initialization errors, generate an empty update
+	// step to attempt to "continue" awaiting initialization.
+	if hasInitErrors {
+		sg.updates[urn] = true
+		return []Step{NewUpdateStep(sg.deployment, event, old, new, diff.StableKeys, nil, nil, nil)}, nil
 	}
 
 	// Else there are no changes needed
@@ -1185,22 +1190,18 @@ func (sg *stepGenerator) getProviderResource(urn resource.URN, provider string) 
 }
 
 // initErrorSpecialKey is a special property key used to indicate that a diff is due to
-// intiialization errors existing in the old state instead of due to a specific proeprty
+// initialization errors existing in the old state instead of due to a specific property
 // diff between old and new states.
 const initErrorSpecialKey = "#initerror"
 
 // applyReplaceOnChanges adjusts a DiffResult returned from a provider to apply the ReplaceOnChange
-// settings in the desired state and initerrors from the previous state.
+// settings in the desired state and init errors from the previous state.
 func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
 	replaceOnChanges []string, hasInitErrors bool) (plugin.DiffResult, error) {
 
-	var err error
-	diffPaths := map[string]resource.PropertyPath{}
-	for p := range diff.DetailedDiff {
-		diffPaths[p], err = resource.ParsePropertyPath(p)
-		if err != nil {
-			return diff, err
-		}
+	// No further work is necessary for DiffNone unless init errors are present.
+	if diff.Changes != plugin.DiffSome && !hasInitErrors {
+		return diff, nil
 	}
 
 	var replaceOnChangePaths []resource.PropertyPath
@@ -1254,6 +1255,7 @@ func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
 	}
 
 	// Add init errors to modified diff results
+	modifiedChanges := diff.Changes
 	if hasInitErrors {
 		for _, replaceOnChangePath := range replaceOnChangePaths {
 			initErrPath, err := resource.ParsePropertyPath(initErrorSpecialKey)
@@ -1266,6 +1268,8 @@ func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
 					Kind:      plugin.DiffUpdateReplace,
 					InputDiff: false,
 				}
+				// If an init error is present on a path that causes replacement, then trigger a replacement.
+				modifiedChanges = plugin.DiffSome
 			}
 		}
 	}
@@ -1274,7 +1278,7 @@ func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
 		DetailedDiff:        modifiedDiff,
 		ReplaceKeys:         modifiedReplaceKeys,
 		ChangedKeys:         diff.ChangedKeys,
-		Changes:             diff.Changes,
+		Changes:             modifiedChanges,
 		DeleteBeforeReplace: diff.DeleteBeforeReplace,
 		StableKeys:          diff.StableKeys,
 	}, nil

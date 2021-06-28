@@ -155,9 +155,9 @@ func (d DiffKind) IsReplace() bool {
 	}
 }
 
-// ToReplace converts a DiffKind into the equivalent replacement if it not already
+// AsReplace converts a DiffKind into the equivalent replacement if it not already
 // a replacement.
-func (d DiffKind) ToReplace() DiffKind {
+func (d DiffKind) AsReplace() DiffKind {
 	switch d {
 	case DiffAdd:
 		return DiffAddReplace
@@ -203,7 +203,7 @@ type PropertyDiff struct {
 func (p PropertyDiff) ToReplace() PropertyDiff {
 	return PropertyDiff{
 		InputDiff: p.InputDiff,
-		Kind:      p.Kind.ToReplace(),
+		Kind:      p.Kind.AsReplace(),
 	}
 }
 
