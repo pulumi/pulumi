@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -130,6 +131,14 @@ type NestedMapArgs struct {
 	Value map[string]Nested `pulumi:"value"`
 }
 
+type PlainArrayArgs struct {
+	Value []StringInput `pulumi:"value"`
+}
+
+type PlainMapArgs struct {
+	Value map[string]StringInput `pulumi:"value"`
+}
+
 func TestConstructInputsCopyTo(t *testing.T) {
 	var ctx Context
 
@@ -143,6 +152,7 @@ func TestConstructInputsCopyTo(t *testing.T) {
 		expectedValue  interface{}
 		expectedSecret bool
 		expectedDeps   []Resource
+		typeOnly       bool
 	}{
 		{
 			input:         resource.NewStringProperty("foo"),
@@ -339,23 +349,45 @@ func TestConstructInputsCopyTo(t *testing.T) {
 				"b": {Foo: "4", Bar: 4},
 			},
 		},
+		{
+			input: resource.NewArrayProperty([]resource.PropertyValue{
+				resource.NewStringProperty("foo"),
+				resource.NewStringProperty("bar"),
+			}),
+			args:         &PlainArrayArgs{},
+			expectedType: []StringInput{},
+			typeOnly:     true,
+		},
+		{
+			input: resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
+				"foo": "bar",
+				"baz": "qux",
+			})),
+			args:         &PlainMapArgs{},
+			expectedType: map[string]StringInput{},
+			typeOnly:     true,
+		},
 	}
 	for _, test := range tests {
 		t.Run(fmt.Sprintf("%T-%v-%T", test.args, test.input, test.expectedType), func(t *testing.T) {
 			ctx, err := NewContext(context.Background(), RunInfo{})
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			inputs := map[string]interface{}{
 				"value": &constructInput{value: test.input, deps: test.deps},
 			}
 			err = constructInputsCopyTo(ctx, inputs, test.args)
-			assert.NoError(t, err)
+			require.NoError(t, err)
 
 			result := reflect.ValueOf(test.args).Elem().FieldByName("Value").Interface()
-			assert.IsType(t, test.expectedType, result)
+			require.IsType(t, test.expectedType, result)
 
-			if _, ok := test.expectedType.(Output); ok {
-				value, known, secret, deps, err := await(result.(Output))
+			if test.typeOnly {
+				return
+			}
+
+			if out, ok := result.(Output); ok {
+				value, known, secret, deps, err := await(out)
 				assert.NoError(t, err)
 				assert.Equal(t, test.expectedValue, value)
 				assert.True(t, known)
