@@ -220,14 +220,8 @@ func resourceName(r *schema.Resource) string {
 
 func isNilType(t schema.Type) bool {
 	switch t := t.(type) {
-	case *schema.OptionalType, *schema.ArrayType, *schema.MapType, *schema.ResourceType:
+	case *schema.OptionalType, *schema.ArrayType, *schema.MapType, *schema.ResourceType, *schema.InputType:
 		return true
-	case *schema.InputType:
-		// Enums are value types.
-		//
-		// FIXME: enum inputs are not proper inputs: they do not accept output values.
-		_, isEnum := t.ElementType.(*schema.EnumType)
-		return !isEnum
 	case *schema.TokenType:
 		// Use the underlying type for now.
 		if t.UnderlyingType != nil {
@@ -258,7 +252,7 @@ func (pkg *pkgContext) inputType(t schema.Type) (result string) {
 		return pkg.inputType(t.ElementType)
 	case *schema.EnumType:
 		// Since enum type is itself an input
-		return pkg.tokenToEnum(t.Token)
+		return pkg.tokenToEnum(t.Token) + "Input"
 	case *schema.ArrayType:
 		en := pkg.inputType(t.ElementType)
 		return strings.TrimSuffix(en, "Input") + "ArrayInput"
@@ -784,6 +778,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	contract.Assert(ok)
 	printCommentWithDeprecationMessage(w, enumType.Comment, "", false)
 	elementType := pkg.enumElementType(enumType.ElementType, false)
+
 	fmt.Fprintf(w, "type %s %s\n\n", name, elementType)
 
 	fmt.Fprintln(w, "const (")
@@ -810,9 +805,14 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 		}
 	}
 	fmt.Fprintln(w, ")")
+
+	fmt.Fprintf(w, "type %sOutput struct{ *pulumi.OutputState }\n\n", name)
+	genOutputMethods(w, name, name, false)
+
 	inputType := pkg.inputType(enumType)
-	contract.Assertf(name == inputType,
-		"expect inputType (%s) for enums to be the same as enum type (%s)", inputType, enumType)
+	pkg.genInputInterface(w, name)
+	//contract.Assertf(name == inputType,
+	//	"expect inputType (%s) for enums to be the same as enum type (%s)", inputType, enumType)
 	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType)
 	return nil
 }
@@ -845,13 +845,13 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "func (e %s) To%sOutput() %sOutput {\n", typeName, asFuncName, elementType)
-	fmt.Fprintf(w, "return pulumi.ToOutput(%[1]s(e)).(%[1]sOutput)\n", elementType)
+	fmt.Fprintf(w, "func (e %[1]s) To%[1]sOutput() %[1]sOutput {\n", typeName)
+	fmt.Fprintf(w, "return pulumi.ToOutput(%[1]s(e)).(%[1]sOutput)\n", typeName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
-	fmt.Fprintf(w, "func (e %[1]s) To%[2]sOutputWithContext(ctx context.Context) %[3]sOutput {\n", typeName, asFuncName, elementType)
-	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, %[1]s(e)).(%[1]sOutput)\n", elementType)
+	fmt.Fprintf(w, "func (e %[1]s) To%[1]sOutputWithContext(ctx context.Context) %[1]sOutput {\n", typeName)
+	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, %[1]s(e)).(%[1]sOutput)\n", typeName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
@@ -890,10 +890,10 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 
 		genOutputMethods(w, typeName+"Array", "[]"+typeName, false)
 
-		fmt.Fprintf(w, "func (o %[1]sArrayOutput) Index(i pulumi.IntInput) %[2]sOutput {\n", typeName, elementType)
-		fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %sOutput {\n", elementType)
-		fmt.Fprintf(w, "\t\treturn vs[0].([]%s)[vs[1].(int)].To%sOutput()\n", typeName, asFuncName)
-		fmt.Fprintf(w, "\t}).(%sOutput)\n", elementType)
+		fmt.Fprintf(w, "func (o %[1]sArrayOutput) Index(i pulumi.IntInput) %[1]sOutput {\n", typeName)
+		fmt.Fprintf(w, "\treturn pulumi.All(o, i).ApplyT(func (vs []interface{}) %sOutput {\n", typeName)
+		fmt.Fprintf(w, "\t\treturn vs[0].([]%[1]s)[vs[1].(int)].To%[1]sOutput()\n", typeName)
+		fmt.Fprintf(w, "\t}).(%sOutput)\n", typeName)
 		fmt.Fprintf(w, "}\n\n")
 	}
 
@@ -903,10 +903,10 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 
 		genOutputMethods(w, typeName+"Map", "map[string]"+typeName, false)
 
-		fmt.Fprintf(w, "func (o %[1]sMapOutput) MapIndex(k pulumi.StringInput) %[2]sOutput {\n", typeName, elementType)
-		fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %sOutput {\n", elementType)
-		fmt.Fprintf(w, "\t\treturn vs[0].(map[string]%s)[vs[1].(string)].To%sOutput()\n", typeName, asFuncName)
-		fmt.Fprintf(w, "\t}).(%sOutput)\n", elementType)
+		fmt.Fprintf(w, "func (o %[1]sMapOutput) MapIndex(k pulumi.StringInput) %[1]sOutput {\n", typeName)
+		fmt.Fprintf(w, "\treturn pulumi.All(o, k).ApplyT(func (vs []interface{}) %sOutput {\n", typeName)
+		fmt.Fprintf(w, "\t\treturn vs[0].(map[string]%[1]s)[vs[1].(string)].To%[1]sOutput()\n", typeName)
+		fmt.Fprintf(w, "\t}).(%sOutput)\n", typeName)
 		fmt.Fprintf(w, "}\n\n")
 	}
 }
@@ -1222,15 +1222,10 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 	// Produce the inputs.
 	for _, p := range r.InputProperties {
-		switch codegen.UnwrapType(p.Type).(type) {
-		case *schema.EnumType:
-			// not a pointer type and already handled above
-		default:
-			if p.IsRequired() && isNilType(p.Type) {
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-				fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
-				fmt.Fprintf(w, "\t}\n")
-			}
+		if p.IsRequired() && isNilType(p.Type) {
+			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\treturn nil, errors.New(\"invalid value for required argument '%s'\")\n", Title(p.Name))
+			fmt.Fprintf(w, "\t}\n")
 		}
 	}
 
@@ -1259,36 +1254,9 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 				t = "pulumi.Any"
 			}
 
-			switch typ := codegen.UnwrapType(p.Type).(type) {
-			case *schema.EnumType:
-				if p.IsRequired() {
-					switch typ.ElementType {
-					// Only string and numeric types are supported for enums
-					case schema.StringType:
-						fmt.Fprintf(w, "\tif args.%s == \"\" {\n", Title(p.Name))
-					case schema.IntType, schema.NumberType:
-						fmt.Fprintf(w, "\tif args.%s == 0 {\n", Title(p.Name))
-					default:
-						contract.Assertf(false, "unxpected type %T for enum: %s", typ, typ.Token)
-					}
-					fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-					fmt.Fprintf(w, "\t}\n")
-				} else {
-					fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-
-					// Enum types are themselves inputs so pkg.InputType() returns *<EnumType>
-					// when the type is optional. We want the generated code to look like this:
-					// e:= <EnumType>(<Default>)
-					// args.<Name> = &e
-					fmt.Fprintf(w, "\te := %s(%s)\n", pkg.inputType(codegen.RequiredType(p)), v)
-					fmt.Fprintf(w, "\t\targs.%s = &e\n", Title(p.Name))
-					fmt.Fprintf(w, "\t}\n")
-				}
-			default:
-				fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
-				fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
-				fmt.Fprintf(w, "\t}\n")
-			}
+			fmt.Fprintf(w, "\tif args.%s == nil {\n", Title(p.Name))
+			fmt.Fprintf(w, "\t\targs.%s = %s(%s)\n", Title(p.Name), t, v)
+			fmt.Fprintf(w, "\t}\n")
 		}
 	}
 

@@ -17,16 +17,41 @@ const (
 	ContainerBrightnessOne          = ContainerBrightness(1)
 )
 
+type ContainerBrightnessOutput struct{ *pulumi.OutputState }
+
+func (ContainerBrightnessOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerBrightness)(nil)).Elem()
+}
+
+func (o ContainerBrightnessOutput) ToContainerBrightnessOutput() ContainerBrightnessOutput {
+	return o
+}
+
+func (o ContainerBrightnessOutput) ToContainerBrightnessOutputWithContext(ctx context.Context) ContainerBrightnessOutput {
+	return o
+}
+
+// ContainerBrightnessInput is an input type that accepts ContainerBrightnessArgs and ContainerBrightnessOutput values.
+// You can construct a concrete instance of `ContainerBrightnessInput` via:
+//
+//          ContainerBrightnessArgs{...}
+type ContainerBrightnessInput interface {
+	pulumi.Input
+
+	ToContainerBrightnessOutput() ContainerBrightnessOutput
+	ToContainerBrightnessOutputWithContext(context.Context) ContainerBrightnessOutput
+}
+
 func (ContainerBrightness) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.Float64)(nil)).Elem()
 }
 
-func (e ContainerBrightness) ToFloat64Output() pulumi.Float64Output {
-	return pulumi.ToOutput(pulumi.Float64(e)).(pulumi.Float64Output)
+func (e ContainerBrightness) ToContainerBrightnessOutput() ContainerBrightnessOutput {
+	return pulumi.ToOutput(ContainerBrightness(e)).(ContainerBrightnessOutput)
 }
 
-func (e ContainerBrightness) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
-	return pulumi.ToOutputWithContext(ctx, pulumi.Float64(e)).(pulumi.Float64Output)
+func (e ContainerBrightness) ToContainerBrightnessOutputWithContext(ctx context.Context) ContainerBrightnessOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerBrightness(e)).(ContainerBrightnessOutput)
 }
 
 func (e ContainerBrightness) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
@@ -46,16 +71,41 @@ const (
 	ContainerColorYellow = ContainerColor("yellow")
 )
 
+type ContainerColorOutput struct{ *pulumi.OutputState }
+
+func (ContainerColorOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerColor)(nil)).Elem()
+}
+
+func (o ContainerColorOutput) ToContainerColorOutput() ContainerColorOutput {
+	return o
+}
+
+func (o ContainerColorOutput) ToContainerColorOutputWithContext(ctx context.Context) ContainerColorOutput {
+	return o
+}
+
+// ContainerColorInput is an input type that accepts ContainerColorArgs and ContainerColorOutput values.
+// You can construct a concrete instance of `ContainerColorInput` via:
+//
+//          ContainerColorArgs{...}
+type ContainerColorInput interface {
+	pulumi.Input
+
+	ToContainerColorOutput() ContainerColorOutput
+	ToContainerColorOutputWithContext(context.Context) ContainerColorOutput
+}
+
 func (ContainerColor) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.String)(nil)).Elem()
 }
 
-func (e ContainerColor) ToStringOutput() pulumi.StringOutput {
-	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+func (e ContainerColor) ToContainerColorOutput() ContainerColorOutput {
+	return pulumi.ToOutput(ContainerColor(e)).(ContainerColorOutput)
 }
 
-func (e ContainerColor) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+func (e ContainerColor) ToContainerColorOutputWithContext(ctx context.Context) ContainerColorOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerColor(e)).(ContainerColorOutput)
 }
 
 func (e ContainerColor) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -76,16 +126,41 @@ const (
 	ContainerSizeEightInch = ContainerSize(8)
 )
 
+type ContainerSizeOutput struct{ *pulumi.OutputState }
+
+func (ContainerSizeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerSize)(nil)).Elem()
+}
+
+func (o ContainerSizeOutput) ToContainerSizeOutput() ContainerSizeOutput {
+	return o
+}
+
+func (o ContainerSizeOutput) ToContainerSizeOutputWithContext(ctx context.Context) ContainerSizeOutput {
+	return o
+}
+
+// ContainerSizeInput is an input type that accepts ContainerSizeArgs and ContainerSizeOutput values.
+// You can construct a concrete instance of `ContainerSizeInput` via:
+//
+//          ContainerSizeArgs{...}
+type ContainerSizeInput interface {
+	pulumi.Input
+
+	ToContainerSizeOutput() ContainerSizeOutput
+	ToContainerSizeOutputWithContext(context.Context) ContainerSizeOutput
+}
+
 func (ContainerSize) ElementType() reflect.Type {
 	return reflect.TypeOf((*pulumi.Int)(nil)).Elem()
 }
 
-func (e ContainerSize) ToIntOutput() pulumi.IntOutput {
-	return pulumi.ToOutput(pulumi.Int(e)).(pulumi.IntOutput)
+func (e ContainerSize) ToContainerSizeOutput() ContainerSizeOutput {
+	return pulumi.ToOutput(ContainerSize(e)).(ContainerSizeOutput)
 }
 
-func (e ContainerSize) ToIntOutputWithContext(ctx context.Context) pulumi.IntOutput {
-	return pulumi.ToOutputWithContext(ctx, pulumi.Int(e)).(pulumi.IntOutput)
+func (e ContainerSize) ToContainerSizeOutputWithContext(ctx context.Context) ContainerSizeOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerSize(e)).(ContainerSizeOutput)
 }
 
 func (e ContainerSize) ToIntPtrOutput() pulumi.IntPtrOutput {

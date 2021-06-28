@@ -29,17 +29,22 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Diameter == 0 {
+	if args.Diameter == nil {
+		return nil, errors.New("invalid value for required argument 'Diameter'")
+	}
+	if args.Type == nil {
+		return nil, errors.New("invalid value for required argument 'Type'")
+	}
+	if args.Diameter == nil {
 		args.Diameter = Diameter(6)
 	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
 	if args.Size == nil {
-		e := TreeSize("medium")
-		args.Size = &e
+		args.Size = *TreeSize("medium")
 	}
-	if args.Type == "" {
+	if args.Type == nil {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
@@ -86,10 +91,10 @@ type rubberTreeArgs struct {
 // The set of arguments for constructing a RubberTree resource.
 type RubberTreeArgs struct {
 	Container plant.ContainerPtrInput
-	Diameter  Diameter
+	Diameter  DiameterInput
 	Farm      pulumi.StringPtrInput
-	Size      *TreeSize
-	Type      RubberTreeVariety
+	Size      *TreeSizeInput
+	Type      RubberTreeVarietyInput
 }
 
 func (RubberTreeArgs) ElementType() reflect.Type {
