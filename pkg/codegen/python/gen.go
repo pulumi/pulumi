@@ -1480,7 +1480,7 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
 			if e.Comment != "" {
-				fmt.Fprintf(w, "%s%q\n", indent, e.Comment)
+				fmt.Fprintf(w, "%s\"\"\"%s\"\"\"\n", indent, e.Comment)
 			}
 		}
 	default:
