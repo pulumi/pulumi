@@ -1000,6 +1000,32 @@ func TestConstructUnknownNode(t *testing.T) {
 	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
 }
 
+// Test methods on remote components.
+func TestConstructMethodsNode(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join("construct_component_methods", "nodejs"),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),

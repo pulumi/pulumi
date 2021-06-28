@@ -152,6 +152,11 @@ export async function serializeProperties(label: string, props: Inputs) {
     return result;
 }
 
+/** @internal */
+export async function serializePropertiesReturnDeps(label: string, props: Inputs) {
+    return serializeFilteredProperties(label, props, _ => true);
+}
+
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  */

@@ -181,6 +181,20 @@ export abstract class Resource {
     // tslint:disable-next-line:variable-name
     private readonly __providers: Record<string, ProviderResource>;
 
+    /**
+     * The specified provider or provider determined from the parent for custom resources.
+     * @internal
+     */
+    // tslint:disable-next-line:variable-name
+    readonly __provider?: ProviderResource;
+
+    /**
+     * The specified provider version.
+     * @internal
+     */
+    // tslint:disable-next-line:variable-name
+    readonly __version?: string;
+
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
@@ -313,6 +327,8 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
+        this.__provider = custom ? opts.provider : undefined;
+        this.__version = opts.version;
 
         // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
         // default `name` and `type` to apply until we are inside the resource constructor.
