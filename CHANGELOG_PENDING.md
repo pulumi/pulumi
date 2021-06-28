@@ -11,10 +11,10 @@
 
 ### Bug Fixes
 
-- [sdk/dotnet] - Fix swallowed nested exceptions with inline program so they correctly bubble to consumer
+- [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
   [#7323](https://github.com/pulumi/pulumi/pull/7323)
   
-- [sdk/go] - Specify known when creating outputs for construct.
+- [sdk/go] - Specify known when creating outputs for `construct`.
   [#7343](https://github.com/pulumi/pulumi/pull/7343)
 
 - [cli] - Fix passphrase rotation.
@@ -25,3 +25,6 @@
 
 - [multilang/nodejs] - Fix a hang when an error is thrown within an apply in a remote component.
   [#7365](https://github.com/pulumi/pulumi/pull/7365)
+
+- [codegen/python] - Include enum docstrings for python.
+  [#7374](https://github.com/pulumi/pulumi/pull/7374)

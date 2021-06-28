@@ -1479,6 +1479,9 @@ func (mod *modContext) genEnum(w io.Writer, enum *schema.EnumType) error {
 			} else {
 				fmt.Fprintf(w, "%v\n", e.Value)
 			}
+			if e.Comment != "" {
+				fmt.Fprintf(w, "%s\"\"\"%s\"\"\"\n", indent, e.Comment)
+			}
 		}
 	default:
 		return errors.Errorf("enums of type %s are not yet implemented for this language", enum.ElementType.String())
