@@ -12,6 +12,8 @@
 - [sdk/go] - Add preliminary support for unmarshaling plain arrays and maps of output values.
   [#7369](https://github.com/pulumi/pulumi/pull/7369)
 
+- [cli] - Add global flag to print fully qualified stack names.
+
 ### Bug Fixes
 
 - [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.

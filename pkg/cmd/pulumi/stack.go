@@ -62,7 +62,7 @@ func newStackCmd() *cobra.Command {
 			}
 
 			if showStackName {
-				fmt.Printf("%s\n", s.Ref().Name())
+				fmt.Printf("%s\n", s.Ref())
 				return nil
 			}
 
