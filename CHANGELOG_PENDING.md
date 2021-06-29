@@ -13,7 +13,7 @@
   [#7350](https://github.com/pulumi/pulumi/pull/7350/)
 
   An example scenario enabled by this change is setting a parent to a
-  resource that is only known in the `Output` layer. Such secnarios
+  resource that is only known in the `Output` layer. Such scenarios
   commonly occur with multi-lang components.
 
   func example(ctx *pulumi.Context, parentOutput ResourceOutput) {
