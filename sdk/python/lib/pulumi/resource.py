@@ -816,12 +816,6 @@ class CustomResource(Resource):
     dynamically loaded plugin for the defining package.
     """
 
-    __pulumi_type: str
-    """
-    Private field containing the type ID for this object. Useful for implementing `isInstance` on
-    classes that inherit from `CustomResource`.
-    """
-
     def __init__(self,
                  t: str,
                  name: str,
@@ -837,7 +831,6 @@ class CustomResource(Resource):
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
         Resource.__init__(self, t, name, True, props, opts, False, dependency)
-        self.__pulumi_type = t
 
     @property
     def id(self) -> 'Output[str]':
