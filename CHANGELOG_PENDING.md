@@ -31,3 +31,5 @@
 
 - [codegen/python] - Include enum docstrings for python.
   [#7374](https://github.com/pulumi/pulumi/pull/7374)
+
+- [cli] - Properly parse Git remotes with periods or hyphens.
