@@ -305,7 +305,7 @@ func DependsOn(o []Resource) ResourceOption {
 	})
 }
 
-// Like DependsOn, but accepts ResourceInptu and ResourceOutput.
+// Like DependsOn, but accepts ResourceInput and ResourceOutput.
 func DependsOnInputs(o []ResourceInput) ResourceOption {
 	return deferResourceOption(func(ctx context.Context) (ResourceOption, error) {
 		// Similarly to ParentInput, we force-await any
