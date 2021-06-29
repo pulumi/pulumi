@@ -238,6 +238,42 @@ func (o TreeSizeOutput) ToTreeSizeOutputWithContext(ctx context.Context) TreeSiz
 	return o
 }
 
+func (o TreeSizeOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o.ToTreeSizePtrOutputWithContext(context.Background())
+}
+
+func (o TreeSizeOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v string) *string {
+		return &v
+	}).(TreeSizePtrOutput)
+}
+
+type TreeSizePtrOutput struct{ *pulumi.OutputState }
+
+// ElementType returns the element type of this Output (*string).
+func (TreeSizePtrOutput) ElementType() reflect.Type {
+	return treeSizePtrType
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return o
+}
+
+func (o TreeSizePtrOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return o
+}
+
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
+func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
+	return o.ApplyT(func(v *string) string {
+		var ret string
+		if v != nil {
+			ret = *v
+		}
+		return ret
+	}).(TreeSizeOutput)
+}
+
 // TreeSizeInput is an input type that accepts TreeSizeArgs and TreeSizeOutput values.
 // You can construct a concrete instance of `TreeSizeInput` via:
 //
@@ -261,12 +297,39 @@ func (e TreeSize) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutpu
 	return pulumi.ToOutputWithContext(ctx, TreeSize(e)).(TreeSizeOutput)
 }
 
-func (e TreeSize) ToStringPtrOutput() pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+func (e TreeSize) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return TreeSize(e).ToTreeSizePtrOutputWithContext(context.Background())
 }
 
-func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+func (e TreeSize) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return TreeSize(e).ToTreeSizeOutputWithContext(ctx).ToTreeSizePtrOutputWithContext(ctx)
+}
+
+var treeSizePtrType = reflect.TypeOf((**string)(nil)).Elem()
+
+type TreeSizePtrInput interface {
+	pulumi.Input
+
+	ToTreeSizePtrOutput() TreeSizePtrOutput
+	ToTreeSizePtrOutputWithContext(context.Context) TreeSizePtrOutput
+}
+
+type treeSizePtr string
+
+func TreeSizePtr(v string) TreeSizePtrInput {
+	return (*treeSizePtr)(&v)
+}
+
+func (*treeSizePtr) ElementType() reflect.Type {
+	return treeSizePtrType
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutput() TreeSizePtrOutput {
+	return pulumi.ToOutput(in).(TreeSizePtrOutput)
+}
+
+func (in *treeSizePtr) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(TreeSizePtrOutput)
 }
 
 // TreeSizeMapInput is an input type that accepts TreeSizeMap and TreeSizeMapOutput values.

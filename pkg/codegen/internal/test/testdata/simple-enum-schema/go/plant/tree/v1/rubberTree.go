@@ -30,22 +30,16 @@ func NewRubberTree(ctx *pulumi.Context,
 	}
 
 	if args.Diameter == nil {
-		return nil, errors.New("invalid value for required argument 'Diameter'")
-	}
-	if args.Type == nil {
-		return nil, errors.New("invalid value for required argument 'Type'")
-	}
-	if args.Diameter == nil {
-		args.Diameter = Diameter(6)
+		args.Diameter = DiameterSixinch
 	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
 	if args.Size == nil {
-		args.Size = *TreeSize("medium")
+		args.Size = TreeSizeMedium.ToTreeSizePtrOutput()
 	}
 	if args.Type == nil {
-		args.Type = RubberTreeVariety("Burgundy")
+		args.Type = RubberTreeVarietyBurgundy
 	}
 	var resource RubberTree
 	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
@@ -93,7 +87,7 @@ type RubberTreeArgs struct {
 	Container plant.ContainerPtrInput
 	Diameter  DiameterInput
 	Farm      pulumi.StringPtrInput
-	Size      *TreeSizeInput
+	Size      TreeSizePtrInput
 	Type      RubberTreeVarietyInput
 }
 

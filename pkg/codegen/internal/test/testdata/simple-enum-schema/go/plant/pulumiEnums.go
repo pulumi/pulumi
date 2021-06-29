@@ -31,6 +31,42 @@ func (o ContainerBrightnessOutput) ToContainerBrightnessOutputWithContext(ctx co
 	return o
 }
 
+func (o ContainerBrightnessOutput) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
+	return o.ToContainerBrightnessPtrOutputWithContext(context.Background())
+}
+
+func (o ContainerBrightnessOutput) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v string) *string {
+		return &v
+	}).(ContainerBrightnessPtrOutput)
+}
+
+type ContainerBrightnessPtrOutput struct{ *pulumi.OutputState }
+
+// ElementType returns the element type of this Output (*string).
+func (ContainerBrightnessPtrOutput) ElementType() reflect.Type {
+	return containerBrightnessPtrType
+}
+
+func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
+	return o
+}
+
+func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
+	return o
+}
+
+// Elem dereferences the pointer value or returns the zero value of the approporiate type if the pointer is nil.
+func (o ContainerBrightnessPtrOutput) Elem() ContainerBrightnessOutput {
+	return o.ApplyT(func(v *string) string {
+		var ret string
+		if v != nil {
+			ret = *v
+		}
+		return ret
+	}).(ContainerBrightnessOutput)
+}
+
 // ContainerBrightnessInput is an input type that accepts ContainerBrightnessArgs and ContainerBrightnessOutput values.
 // You can construct a concrete instance of `ContainerBrightnessInput` via:
 //
@@ -54,12 +90,39 @@ func (e ContainerBrightness) ToContainerBrightnessOutputWithContext(ctx context.
 	return pulumi.ToOutputWithContext(ctx, ContainerBrightness(e)).(ContainerBrightnessOutput)
 }
 
-func (e ContainerBrightness) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
-	return pulumi.Float64(e).ToFloat64PtrOutputWithContext(context.Background())
+func (e ContainerBrightness) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
+	return ContainerBrightness(e).ToContainerBrightnessPtrOutputWithContext(context.Background())
 }
 
-func (e ContainerBrightness) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
-	return pulumi.Float64(e).ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+func (e ContainerBrightness) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
+	return ContainerBrightness(e).ToContainerBrightnessOutputWithContext(ctx).ToContainerBrightnessPtrOutputWithContext(ctx)
+}
+
+var containerBrightnessPtrType = reflect.TypeOf((**string)(nil)).Elem()
+
+type ContainerBrightnessPtrInput interface {
+	pulumi.Input
+
+	ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput
+	ToContainerBrightnessPtrOutputWithContext(context.Context) ContainerBrightnessPtrOutput
+}
+
+type containerBrightnessPtr float64
+
+func ContainerBrightnessPtr(v float64) ContainerBrightnessPtrInput {
+	return (*containerBrightnessPtr)(&v)
+}
+
+func (*containerBrightnessPtr) ElementType() reflect.Type {
+	return containerBrightnessPtrType
+}
+
+func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
+	return pulumi.ToOutput(in).(ContainerBrightnessPtrOutput)
+}
+
+func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(ContainerBrightnessPtrOutput)
 }
 
 // plant container colors
