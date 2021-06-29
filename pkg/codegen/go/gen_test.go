@@ -156,7 +156,7 @@ func TestEnumUsage(t *testing.T) {
 					Size:     plant.ContainerSize(22),
 				},
 				Farm: tree.Farm_Plants_R_Us,
-				Type: "Burgundy",
+				Type: tree.RubberTreeVarietyBurgundy,
 			})
 			require.NoError(t, err)
 			require.NotNil(t, tree)

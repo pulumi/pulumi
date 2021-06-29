@@ -30,16 +30,16 @@ func NewRubberTree(ctx *pulumi.Context,
 	}
 
 	if args.Diameter == nil {
-		args.Diameter = DiameterSixinch
+		args.Diameter = Diameter(6)
 	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
 	if args.Size == nil {
-		args.Size = TreeSizeMedium.ToTreeSizePtrOutput()
+		args.Size = TreeSize("medium")
 	}
 	if args.Type == nil {
-		args.Type = RubberTreeVarietyBurgundy
+		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
 	err := ctx.RegisterResource("plant:tree/v1:RubberTree", name, args, &resource, opts...)
