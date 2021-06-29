@@ -295,7 +295,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             configureRuntime(req, this.engineAddr);
 
-            const inputs = deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
+            const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
 
             // Rebuild the resource options.
             const dependsOn: resource.Resource[] = [];
@@ -383,7 +383,7 @@ class Server implements grpc.UntypedServiceImplementation {
 
             configureRuntime(req, this.engineAddr);
 
-            const args = deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
+            const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
 
             const result = await this.provider.call(req.getTok(), args);
 
@@ -481,16 +481,19 @@ function configureRuntime(req: any, engineAddr: string) {
 }
 
 // deserializeInputs deserializes the inputs struct and applies appropriate dependencies.
-function deserializeInputs(inputsStruct: any, inputDependencies: any): Inputs {
+async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
     const result: Inputs = {};
     const deserializedInputs = runtime.deserializeProperties(inputsStruct);
     for (const k of Object.keys(deserializedInputs)) {
         const inputDeps = inputDependencies.get(k);
-        const deps = (inputDeps ? <resource.URN[]>inputDeps.getUrnsList() : [])
-            .map(depUrn => new resource.DependencyResource(depUrn));
+        const depsUrns: resource.URN[] = inputDeps?.getUrnsList() ?? [];
+        const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
         const input = deserializedInputs[k];
         const isSecret = runtime.isRpcSecret(input);
-        if (!isSecret && deps.length === 0) {
+        const isResourceReference = resource.Resource.isInstance(input)
+            && depsUrns.length === 1
+            && depsUrns[0] === await input.urn.promise();
+        if (isResourceReference || (!isSecret && deps.length === 0)) {
             // If it's a prompt value, return it directly without wrapping it as an output.
             result[k] = input;
         } else {

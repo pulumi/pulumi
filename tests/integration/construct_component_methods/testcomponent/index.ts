@@ -69,13 +69,10 @@ class Provider implements provider.Provider {
     async call(token: string, inputs: pulumi.Inputs): Promise<provider.InvokeResult> {
         switch (token) {
             case "testcomponent:index:Component/getMessage":
-                const self = inputs.__self__;
-                if (!pulumi.Output.isInstance(self)) {
-                    throw new Error(`__self__ is not an instance of Output for method ${token}`);
-                }
+                const self: Component = inputs.__self__;
                 return {
                     outputs: {
-                        message: self.apply(s => (<Component>s).getMessage(inputs.name)),
+                        message: self.getMessage(inputs.name),
                     },
                 };
 
