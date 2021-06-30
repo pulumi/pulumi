@@ -1219,3 +1219,82 @@ func TestApplyTCoerceRejectDifferentKinds(t *testing.T) {
 		})
 	}, "int-string should not be allowed")
 }
+
+// Here we want to have an interface type Example, and build ExampleInput/ExampleOutput types for it in the usual way.
+// Yet something is not quite right, as the failure of this test demonstrates.
+func TestInputOutputWrappersForInterfaces(t *testing.T) {
+	var id = "x"
+	var ex Example = &example{id}
+
+	assert.Equal(t, id, getExampleId(ex))
+
+	var exi ExampleInput = ex
+	assert.Equal(t, id, getExampleId(exi))
+
+	var exOutput ExampleOutput = ToOutput(ex).(ExampleOutput)
+	assert.Equal(t, id, getExampleId(exOutput))
+}
+
+type Example interface {
+	ExampleInput
+	Id() string
+}
+
+var exampleType = reflect.TypeOf((*Example)(nil)).Elem()
+
+type example struct{ id string }
+
+func (e *example) Id() string {
+	return e.id
+}
+
+var _ Example = &example{}
+
+func (*example) ElementType() reflect.Type {
+	return exampleType
+}
+
+func (in *example) ToExampleOutput() ExampleOutput {
+	return ToOutput(in).(ExampleOutput)
+}
+
+func (in *example) ToExampleOutputWithContext(ctx context.Context) ExampleOutput {
+	return ToOutputWithContext(ctx, in).(ExampleOutput)
+}
+
+// ExampleInput is an input type that accepts Example and ExampleOutput values.
+type ExampleInput interface {
+	Input
+
+	ToExampleOutput() ExampleOutput
+	ToExampleOutputWithContext(ctx context.Context) ExampleOutput
+}
+
+// ExampleOutput is an Output that returns Example values.
+type ExampleOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (Example).
+func (ExampleOutput) ElementType() reflect.Type {
+	return exampleType
+}
+
+func (o ExampleOutput) ToExampleOutput() ExampleOutput {
+	return o
+}
+
+func (o ExampleOutput) ToExampleOutputWithContext(ctx context.Context) ExampleOutput {
+	return o
+}
+
+func getExampleId(input ExampleInput) string {
+	c := make(chan string)
+	input.ToExampleOutput().ApplyT(func(x Example) int {
+		c <- x.Id()
+		return 0
+	})
+	return <-c
+}
+
+func init() {
+	RegisterOutputType(ExampleOutput{})
+}
