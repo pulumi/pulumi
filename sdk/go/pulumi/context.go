@@ -530,20 +530,39 @@ func (ctx *Context) registerResource(
 		}
 	}
 
-	options := merge(opts...)
-	if options.Parent == nil {
-		options.Parent = ctx.stack
+	transform := func(options *resourceOptions) (*resourceState, *resourceOptions, Input, error) {
+		if options == nil {
+			return nil, nil, nil, fmt.Errorf("options cannot be nil")
+		}
+
+		if options.Parent == nil {
+			options.Parent = ctx.stack
+		}
+
+		// Before anything else, if there are transformations registered, give them a chance to run to modify the
+		// user-provided properties and options assigned to this resource.
+		transformedProps, transformedOpts, transformations, err :=
+			applyTransformations(t, name, props, resource, opts, options)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		// Collapse aliases to URNs.
+		aliasURNs, err := ctx.collapseAliases(transformedOpts.Aliases, t, name, transformedOpts.Parent)
+		if err != nil {
+			return nil, nil, nil, err
+		}
+
+		// Merge providers.
+		providers := mergeProviders(t, transformedOpts.Parent, transformedOpts.Provider, transformedOpts.Providers)
+
+		// Create resolvers for the resource's outputs.
+		resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+
+		return resState, transformedOpts, transformedProps, nil
 	}
 
-	// Before anything else, if there are transformations registered, give them a chance to run to modify the
-	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
-	}
-
-	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
+	resState, transformedOpts, transformedProps, err := transform(merge(opts...))
 	if err != nil {
 		return err
 	}
@@ -552,12 +571,6 @@ func (ctx *Context) registerResource(
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
-
-	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
-
-	// Create resolvers for the resource's outputs.
-	resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -574,14 +587,14 @@ func (ctx *Context) registerResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, resState, remote)
+		inputs, err = ctx.prepareResourceInputs(transformedProps, t, transformedOpts, resState, remote)
 		if err != nil {
 			return
 		}
 
 		var resp *pulumirpc.RegisterResourceResponse
-		if len(options.URN) > 0 {
-			resp, err = ctx.getResource(options.URN)
+		if len(transformedOpts.URN) > 0 {
+			resp, err = ctx.getResource(transformedOpts.URN)
 			if err != nil {
 				logging.V(9).Infof("getResource(%s, %s): error: %v", t, name, err)
 			} else {
