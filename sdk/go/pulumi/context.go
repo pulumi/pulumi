@@ -358,11 +358,6 @@ func (ctx *Context) ReadResource(
 		return err
 	}
 
-	res, transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t, name, resource, props, opts...)
-	if err != nil {
-		return err
-	}
-
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
@@ -370,10 +365,21 @@ func (ctx *Context) ReadResource(
 		var inputs *resourceInputs
 		var state *structpb.Struct
 		var err error
+		var res *resourceState
+
 		defer func() {
-			res.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, nil)
+			if res != nil {
+				res.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, nil)
+			}
 			ctx.endRPC(err)
 		}()
+
+		var transformedOpts *resourceOptions
+		var transformedProps Input
+		res, transformedOpts, transformedProps, err = ctx.transformOptionsAndProps(t, name, resource, props, opts...)
+		if err != nil {
+			return
+		}
 
 		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
 		if !known || err != nil {
@@ -511,11 +517,6 @@ func (ctx *Context) registerResource(
 		}
 	}
 
-	resState, transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t, name, resource, props, opts...)
-	if err != nil {
-		return err
-	}
-
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
@@ -528,12 +529,23 @@ func (ctx *Context) registerResource(
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		var resState *resourceState
+
 		deps := make(map[string][]Resource)
 		var err error
 		defer func() {
-			resState.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, deps)
+			if resState != nil {
+				resState.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, deps)
+			}
 			ctx.endRPC(err)
 		}()
+
+		var transformedOpts *resourceOptions
+		var transformedProps Input
+		resState, transformedOpts, transformedProps, err = ctx.transformOptionsAndProps(t, name, resource, props, opts...)
+		if err != nil {
+			return
+		}
 
 		// Prepare the inputs for an impending operation.
 		inputs, err = ctx.prepareResourceInputs(transformedProps, t, transformedOpts, resState, remote)
@@ -596,6 +608,8 @@ func (ctx *Context) registerResource(
 	return nil
 }
 
+// Awaits any inputs implied in opts, applies transformations, and
+// returns transformed options, props, and a resource state.
 func (ctx *Context) transformOptionsAndProps(
 	t, name string,
 	resource Resource,
