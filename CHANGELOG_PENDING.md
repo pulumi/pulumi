@@ -2,6 +2,12 @@
 
 ### Improvements
 
+- [cli] Stops printing secret value on `pulumi config set` if it looks like a secret.
+  [#7327](https://github.com/pulumi/pulumi/pull/7327)
+
+- [dotnet/sdk] Support microsoft logging extensions with inline programs
+  [#7117](https://github.com/pulumi/pulumi/pull/7117)
+
 - [cli] - Added support for passing custom paths that need
   to be watched by the `pulumi watch` command.
   [#7115](https://github.com/pulumi/pulumi/pull/7247)
