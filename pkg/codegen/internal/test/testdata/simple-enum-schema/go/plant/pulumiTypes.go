@@ -29,10 +29,10 @@ type ContainerInput interface {
 }
 
 type ContainerArgs struct {
-	Brightness *ContainerBrightnessInput `pulumi:"brightness"`
-	Color      pulumi.StringPtrInput     `pulumi:"color"`
-	Material   pulumi.StringPtrInput     `pulumi:"material"`
-	Size       ContainerSizeInput        `pulumi:"size"`
+	Brightness ContainerBrightnessPtrInput `pulumi:"brightness"`
+	Color      pulumi.StringPtrInput       `pulumi:"color"`
+	Material   pulumi.StringPtrInput       `pulumi:"material"`
+	Size       ContainerSizeInput          `pulumi:"size"`
 }
 
 func (ContainerArgs) ElementType() reflect.Type {

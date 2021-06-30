@@ -10,12 +10,48 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type ContainerBrightness pulumi.Float64
+type ContainerBrightness float64
 
 const (
 	ContainerBrightnessZeroPointOne = ContainerBrightness(0.1)
 	ContainerBrightnessOne          = ContainerBrightness(1)
 )
+
+func (ContainerBrightness) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerBrightness)(nil)).Elem()
+}
+
+func (e ContainerBrightness) ToContainerBrightnessOutput() ContainerBrightnessOutput {
+	return pulumi.ToOutput(ContainerBrightness(e)).(ContainerBrightnessOutput)
+}
+
+func (e ContainerBrightness) ToContainerBrightnessOutputWithContext(ctx context.Context) ContainerBrightnessOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerBrightness(e)).(ContainerBrightnessOutput)
+}
+
+func (e ContainerBrightness) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
+	return ContainerBrightness(e).ToContainerBrightnessPtrOutputWithContext(context.Background())
+}
+
+func (e ContainerBrightness) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
+	return ContainerBrightness(e).ToContainerBrightnessOutputWithContext(ctx).ToContainerBrightnessPtrOutputWithContext(ctx)
+}
+
+func (e ContainerBrightness) ToFloat64Output() pulumi.Float64Output {
+	return pulumi.ToOutput(pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e ContainerBrightness) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
+	return pulumi.ToOutputWithContext(ctx, pulumi.Float64(e)).(pulumi.Float64Output)
+}
+
+func (e ContainerBrightness) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64PtrOutputWithContext(context.Background())
+}
+
+func (e ContainerBrightness) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
+	return pulumi.Float64(e).ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+}
 
 type ContainerBrightnessOutput struct{ *pulumi.OutputState }
 
@@ -36,7 +72,7 @@ func (o ContainerBrightnessOutput) ToContainerBrightnessPtrOutput() ContainerBri
 }
 
 func (o ContainerBrightnessOutput) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v float64) *float64 {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ContainerBrightness) *ContainerBrightness {
 		return &v
 	}).(ContainerBrightnessPtrOutput)
 }
@@ -56,8 +92,8 @@ func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutputWithContext(
 }
 
 func (o ContainerBrightnessPtrOutput) Elem() ContainerBrightnessOutput {
-	return o.ApplyT(func(v *float64) float64 {
-		var ret float64
+	return o.ApplyT(func(v *ContainerBrightness) ContainerBrightness {
+		var ret ContainerBrightness
 		if v != nil {
 			ret = *v
 		}
@@ -76,27 +112,7 @@ type ContainerBrightnessInput interface {
 	ToContainerBrightnessOutputWithContext(context.Context) ContainerBrightnessOutput
 }
 
-func (ContainerBrightness) ElementType() reflect.Type {
-	return reflect.TypeOf((*float64)(nil)).Elem()
-}
-
-func (e ContainerBrightness) ToContainerBrightnessOutput() ContainerBrightnessOutput {
-	return pulumi.ToOutput(ContainerBrightness(e)).(ContainerBrightnessOutput)
-}
-
-func (e ContainerBrightness) ToContainerBrightnessOutputWithContext(ctx context.Context) ContainerBrightnessOutput {
-	return pulumi.ToOutputWithContext(ctx, ContainerBrightness(e)).(ContainerBrightnessOutput)
-}
-
-func (e ContainerBrightness) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
-	return ContainerBrightness(e).ToContainerBrightnessPtrOutputWithContext(context.Background())
-}
-
-func (e ContainerBrightness) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
-	return ContainerBrightness(e).ToContainerBrightnessOutputWithContext(ctx).ToContainerBrightnessPtrOutputWithContext(ctx)
-}
-
-var containerBrightnessPtrType = reflect.TypeOf((**float64)(nil)).Elem()
+var containerBrightnessPtrType = reflect.TypeOf((**ContainerBrightness)(nil)).Elem()
 
 type ContainerBrightnessPtrInput interface {
 	pulumi.Input
@@ -124,7 +140,7 @@ func (in *containerBrightnessPtr) ToContainerBrightnessPtrOutputWithContext(ctx 
 }
 
 // plant container colors
-type ContainerColor pulumi.String
+type ContainerColor string
 
 const (
 	ContainerColorRed    = ContainerColor("red")
@@ -133,7 +149,7 @@ const (
 )
 
 func (ContainerColor) ElementType() reflect.Type {
-	return reflect.TypeOf((*string)(nil)).Elem()
+	return reflect.TypeOf((*ContainerColor)(nil)).Elem()
 }
 
 func (e ContainerColor) ToContainerColorOutput() ContainerColorOutput {
@@ -153,11 +169,11 @@ func (e ContainerColor) ToContainerColorPtrOutputWithContext(ctx context.Context
 }
 
 func (e ContainerColor) ToStringOutput() pulumi.StringOutput {
-	return pulumi.ToOutput(ContainerColor(e)).(pulumi.StringOutput)
+	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
 }
 
 func (e ContainerColor) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return pulumi.ToOutputWithContext(ctx, ContainerColor(e)).(pulumi.StringOutput)
+	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
 }
 
 func (e ContainerColor) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -187,7 +203,7 @@ func (o ContainerColorOutput) ToContainerColorPtrOutput() ContainerColorPtrOutpu
 }
 
 func (o ContainerColorOutput) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v string) *string {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ContainerColor) *ContainerColor {
 		return &v
 	}).(ContainerColorPtrOutput)
 }
@@ -207,8 +223,8 @@ func (o ContainerColorPtrOutput) ToContainerColorPtrOutputWithContext(ctx contex
 }
 
 func (o ContainerColorPtrOutput) Elem() ContainerColorOutput {
-	return o.ApplyT(func(v *string) string {
-		var ret string
+	return o.ApplyT(func(v *ContainerColor) ContainerColor {
+		var ret ContainerColor
 		if v != nil {
 			ret = *v
 		}
@@ -227,7 +243,7 @@ type ContainerColorInput interface {
 	ToContainerColorOutputWithContext(context.Context) ContainerColorOutput
 }
 
-var containerColorPtrType = reflect.TypeOf((**string)(nil)).Elem()
+var containerColorPtrType = reflect.TypeOf((**ContainerColor)(nil)).Elem()
 
 type ContainerColorPtrInput interface {
 	pulumi.Input
@@ -255,7 +271,7 @@ func (in *containerColorPtr) ToContainerColorPtrOutputWithContext(ctx context.Co
 }
 
 // plant container sizes
-type ContainerSize pulumi.Int
+type ContainerSize int64
 
 const (
 	ContainerSizeFourInch = ContainerSize(4)
@@ -263,6 +279,42 @@ const (
 	// Deprecated: Eight inch pots are no longer supported.
 	ContainerSizeEightInch = ContainerSize(8)
 )
+
+func (ContainerSize) ElementType() reflect.Type {
+	return reflect.TypeOf((*ContainerSize)(nil)).Elem()
+}
+
+func (e ContainerSize) ToContainerSizeOutput() ContainerSizeOutput {
+	return pulumi.ToOutput(ContainerSize(e)).(ContainerSizeOutput)
+}
+
+func (e ContainerSize) ToContainerSizeOutputWithContext(ctx context.Context) ContainerSizeOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerSize(e)).(ContainerSizeOutput)
+}
+
+func (e ContainerSize) ToContainerSizePtrOutput() ContainerSizePtrOutput {
+	return ContainerSize(e).ToContainerSizePtrOutputWithContext(context.Background())
+}
+
+func (e ContainerSize) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
+	return ContainerSize(e).ToContainerSizeOutputWithContext(ctx).ToContainerSizePtrOutputWithContext(ctx)
+}
+
+func (e ContainerSize) ToIntOutput() pulumi.IntOutput {
+	return pulumi.ToOutput(pulumi.Int(e)).(pulumi.IntOutput)
+}
+
+func (e ContainerSize) ToIntOutputWithContext(ctx context.Context) pulumi.IntOutput {
+	return pulumi.ToOutputWithContext(ctx, pulumi.Int(e)).(pulumi.IntOutput)
+}
+
+func (e ContainerSize) ToIntPtrOutput() pulumi.IntPtrOutput {
+	return pulumi.Int(e).ToIntPtrOutputWithContext(context.Background())
+}
+
+func (e ContainerSize) ToIntPtrOutputWithContext(ctx context.Context) pulumi.IntPtrOutput {
+	return pulumi.Int(e).ToIntOutputWithContext(ctx).ToIntPtrOutputWithContext(ctx)
+}
 
 type ContainerSizeOutput struct{ *pulumi.OutputState }
 
@@ -283,7 +335,7 @@ func (o ContainerSizeOutput) ToContainerSizePtrOutput() ContainerSizePtrOutput {
 }
 
 func (o ContainerSizeOutput) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v int64) *int64 {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ContainerSize) *ContainerSize {
 		return &v
 	}).(ContainerSizePtrOutput)
 }
@@ -303,8 +355,8 @@ func (o ContainerSizePtrOutput) ToContainerSizePtrOutputWithContext(ctx context.
 }
 
 func (o ContainerSizePtrOutput) Elem() ContainerSizeOutput {
-	return o.ApplyT(func(v *int64) int64 {
-		var ret int64
+	return o.ApplyT(func(v *ContainerSize) ContainerSize {
+		var ret ContainerSize
 		if v != nil {
 			ret = *v
 		}
@@ -323,27 +375,7 @@ type ContainerSizeInput interface {
 	ToContainerSizeOutputWithContext(context.Context) ContainerSizeOutput
 }
 
-func (ContainerSize) ElementType() reflect.Type {
-	return reflect.TypeOf((*int64)(nil)).Elem()
-}
-
-func (e ContainerSize) ToContainerSizeOutput() ContainerSizeOutput {
-	return pulumi.ToOutput(ContainerSize(e)).(ContainerSizeOutput)
-}
-
-func (e ContainerSize) ToContainerSizeOutputWithContext(ctx context.Context) ContainerSizeOutput {
-	return pulumi.ToOutputWithContext(ctx, ContainerSize(e)).(ContainerSizeOutput)
-}
-
-func (e ContainerSize) ToContainerSizePtrOutput() ContainerSizePtrOutput {
-	return ContainerSize(e).ToContainerSizePtrOutputWithContext(context.Background())
-}
-
-func (e ContainerSize) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
-	return ContainerSize(e).ToContainerSizeOutputWithContext(ctx).ToContainerSizePtrOutputWithContext(ctx)
-}
-
-var containerSizePtrType = reflect.TypeOf((**int64)(nil)).Elem()
+var containerSizePtrType = reflect.TypeOf((**ContainerSize)(nil)).Elem()
 
 type ContainerSizePtrInput interface {
 	pulumi.Input
