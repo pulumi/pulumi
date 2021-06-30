@@ -234,8 +234,11 @@ export abstract class Resource {
         // options assigned to this resource.
         const parent = opts.parent || getStackResource() || { __transformations: undefined };
         this.__transformations = [ ...(opts.transformations || []), ...(parent.__transformations || []) ];
+
+        let newname = name;
+
         for (const transformation of this.__transformations) {
-            const tres = transformation({ resource: this, type: t, name, props, opts });
+            const tres = transformation({ resource: this, type: t, name: newname, props, opts });
             if (tres) {
                 if (tres.opts.parent !== opts.parent) {
                     // This is currently not allowed because the parent tree is needed to establish what
@@ -248,10 +251,14 @@ export abstract class Resource {
                 }
                 props = tres.props;
                 opts = tres.opts;
+
+                if (tres.name) {
+                    newname = tres.name;
+                }
             }
         }
 
-        this.__name = name;
+        this.__name = newname;
 
         // Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = Object.assign({}, opts);
@@ -275,7 +282,7 @@ export abstract class Resource {
             opts.aliases = [...(opts.aliases || [])];
             if (opts.parent.__name) {
                 for (const parentAlias of (opts.parent.__aliases || [])) {
-                    opts.aliases.push(inheritedChildAlias(name, opts.parent.__name, parentAlias, t));
+                    opts.aliases.push(inheritedChildAlias(newname, opts.parent.__name, parentAlias, t));
                 }
             }
 
@@ -319,7 +326,7 @@ export abstract class Resource {
         this.__aliases = [];
         if (opts.aliases) {
             for (const alias of opts.aliases) {
-                this.__aliases.push(collapseAliasToUrn(alias, name, t, opts.parent));
+                this.__aliases.push(collapseAliasToUrn(alias, newname, t, opts.parent));
             }
         }
 
@@ -333,13 +340,13 @@ export abstract class Resource {
                 throw new ResourceError(
                     "Cannot read an existing resource unless it has a custom provider", opts.parent);
             }
-            readResource(this, t, name, props, opts);
+            readResource(this, t, newname, props, opts);
         } else {
             // Kick off the resource registration.  If we are actually performing a deployment, this
             // resource's properties will be resolved asynchronously after the operation completes, so
             // that dependent computations resolve normally.  If we are just planning, on the other
             // hand, values will never resolve.
-            registerResource(this, t, name, custom, remote, urn => new DependencyResource(urn), props, opts);
+            registerResource(this, t, newname, custom, remote, urn => new DependencyResource(urn), props, opts);
         }
     }
 }
@@ -585,6 +592,10 @@ export interface ResourceTransformationArgs {
  * the originally provided values.
  */
 export interface ResourceTransformationResult {
+    /**
+     * The new name to use in place of the original `name`
+     */
+    name?: string;
     /**
      * The new properties to use in place of the original `props`
      */

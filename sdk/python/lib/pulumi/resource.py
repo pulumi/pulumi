@@ -259,6 +259,11 @@ class ResourceTransformationResult:
     the originally provided values.
     """
 
+    name: str
+    """
+    The name of the Resource.
+    """
+
     props: 'Inputs'
     """
     The new properties to use in place of the original `props`.
@@ -676,8 +681,10 @@ class Resource:
             parent = get_root_resource()
         parent_transformations = (parent._transformations or []) if parent is not None else []
         self._transformations = (opts.transformations or []) + parent_transformations
+        self._name = name
+
         for transformation in self._transformations:
-            args = ResourceTransformationArgs(resource=self, type_=t, name=name, props=props, opts=opts)
+            args = ResourceTransformationArgs(resource=self, type_=t, name=self._name, props=props, opts=opts)
             tres = transformation(args)
             if tres is not None:
                 if tres.opts.parent != opts.parent:
@@ -691,7 +698,8 @@ class Resource:
                 props = tres.props
                 opts = tres.opts
 
-        self._name = name
+                if tres.name and isinstance(tres.name, str):
+                    self._name = tres.name
 
         # Make a shallow clone of opts to ensure we don't modify the value passed in.
         opts = copy.copy(opts)
@@ -714,7 +722,7 @@ class Resource:
             opts.aliases = opts.aliases.copy()
             for parent_alias in opts.parent._aliases:
                 child_alias = inherited_child_alias(
-                    name, opts.parent._name, parent_alias, t)
+                    self._name, opts.parent._name, parent_alias, t)
                 opts.aliases.append(cast('Output[Union[str, Alias]]', child_alias))
 
             # Infer providers and provider maps from parent, if one was provided.
@@ -749,7 +757,7 @@ class Resource:
         if opts.aliases is not None:
             for alias in opts.aliases:
                 self._aliases.append(collapse_alias_to_urn(
-                    alias, name, t, opts.parent))
+                    alias, self._name, t, opts.parent))
 
         if opts.urn is not None:
             # This is a resource that already exists. Read its state from the engine.
@@ -759,9 +767,10 @@ class Resource:
             if not custom:
                 raise Exception(
                     "Cannot read an existing resource unless it has a custom provider")
-            read_resource(cast('CustomResource', self), t, name, props, opts, typ)
+
+            read_resource(cast('CustomResource', self), t, self._name, props, opts, typ)
         else:
-            register_resource(self, t, name, custom, remote, DependencyResource, props, opts, typ)
+            register_resource(self, t, self._name, custom, remote, DependencyResource, props, opts, typ)
 
     @property
     def urn(self) -> 'Output[str]':

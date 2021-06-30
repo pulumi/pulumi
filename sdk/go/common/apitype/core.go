@@ -249,6 +249,8 @@ type ResourceV2 struct {
 //   1. Populating the map from input property names to dependencies by assuming that every dependency listed in
 //      `Dependencies` affects every input property.
 type ResourceV3 struct {
+	// Name of the resource
+	Name string `json:"name" yaml:"name"`
 	// URN uniquely identifying this resource.
 	URN resource.URN `json:"urn" yaml:"urn"`
 	// Custom is true when it is managed by a plugin.
