@@ -15,6 +15,8 @@
 package pulumi
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -179,7 +181,7 @@ type CustomTimeouts struct {
 	Delete string
 }
 
-type resourceOptions struct {
+type resourceOptionsCommon struct {
 	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
 	AdditionalSecretOutputs []string
 	// Aliases is an optional list of identifiers used to find and use existing resources.
@@ -217,6 +219,23 @@ type resourceOptions struct {
 	Version string
 }
 
+type resourceOptions struct {
+	resourceOptionsCommon
+
+	// Parent is an optional parent resource to which this resource belongs.
+	Parent Resource
+}
+
+// Like resourceOptions, but select properties are now typed PInput instead of P.
+type resourceOptionsWithInputs struct {
+	resourceOptionsCommon
+	Parent ResourceInput
+}
+
+func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) *resourceOptions {
+	panic("TODO Await")
+}
+
 type invokeOptions struct {
 	// Parent is an optional parent resource to use for default provider options for this invoke.
 	Parent Resource
@@ -227,7 +246,12 @@ type invokeOptions struct {
 }
 
 type ResourceOption interface {
-	applyResourceOption(*resourceOptions)
+	// Options may return an error here if they contain inputs;
+	// then they will be called applyResourceOptionWithInputs
+	// instead.
+	applyResourceOptionPlain(*resourceOptions) error
+
+	applyResourceOptionWithInputs(*resourceOptionsWithInputs)
 }
 
 type InvokeOption interface {
@@ -239,16 +263,61 @@ type ResourceOrInvokeOption interface {
 	InvokeOption
 }
 
+type resourceOptionWithInputs func(*resourceOptionsWithInputs)
+
+var _ ResourceOption = *new(resourceOptionWithInputs)
+
+func (o resourceOptionWithInputs) applyResourceOptionPlain(opts *resourceOptions) error {
+	return fmt.Errorf("This option contains Input values and needs to be called with applyResourceOptionWithInputs")
+}
+
+func (o resourceOptionWithInputs) applyResourceOptionWithInputs(opts *resourceOptionsWithInputs) {
+	o(opts)
+}
+
 type resourceOption func(*resourceOptions)
 
-func (o resourceOption) applyResourceOption(opts *resourceOptions) {
+var _ ResourceOption = *new(resourceOption)
+
+func (o resourceOption) applyResourceOptionPlain(opts *resourceOptions) error {
 	o(opts)
+	return nil
+}
+
+func (o resourceOption) applyResourceOptionWithInputs(optsWithInputs *resourceOptionsWithInputs) {
+	opts := resourceOptions{}
+
+	// copy common options for editing
+	opts.resourceOptionsCommon = optsWithInputs.resourceOptionsCommon
+
+	// apply the option edits
+	o(&opts)
+
+	// copy back edited common options
+	optsWithInputs.resourceOptionsCommon = opts.resourceOptionsCommon
+
+	// copy options that need promotion to inputs, if they were set
+	if opts.Parent != nil {
+		optsWithInputs.Parent = NewResourceInput(opts.Parent)
+	}
 }
 
 type resourceOrInvokeOption func(ro *resourceOptions, io *invokeOptions)
 
-func (o resourceOrInvokeOption) applyResourceOption(opts *resourceOptions) {
-	o(opts, nil)
+var _ ResourceOrInvokeOption = *new(resourceOrInvokeOption)
+
+func (o resourceOrInvokeOption) hasInputs() bool {
+	return false
+}
+
+func (o resourceOrInvokeOption) applyResourceOptionWithInputs(optsWithInputs *resourceOptionsWithInputs) {
+	resourceOption(func(opts *resourceOptions) { o(opts, nil) }).
+		applyResourceOptionWithInputs(optsWithInputs)
+}
+
+func (o resourceOrInvokeOption) applyResourceOptionPlain(opts *resourceOptions) error {
+	return resourceOption(func(opts *resourceOptions) { o(opts, nil) }).
+		applyResourceOptionPlain(opts)
 }
 
 func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
@@ -258,14 +327,26 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 // merging is handled by each functional options call
 // properties that are arrays/maps are always appended/merged together
 // last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
-func merge(opts ...ResourceOption) *resourceOptions {
-	options := &resourceOptions{}
+func merge(opts ...ResourceOption) *resourceOptionsWithInputs {
+	options := &resourceOptionsWithInputs{}
 	for _, o := range opts {
 		if o != nil {
-			o.applyResourceOption(options)
+			o.applyResourceOptionWithInputs(options)
 		}
 	}
 	return options
+}
+
+// Version of merge that only succeeds if none of the options contain inputs.
+func tryMergeWithoutInputs(opts ...ResourceOption) (*resourceOptions, error) {
+	options := &resourceOptions{}
+	for _, o := range opts {
+		err := o.applyResourceOptionPlain(options)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return options, nil
 }
 
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.
@@ -325,6 +406,13 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	})
 }
 
+// TODO
+func ParentInput(r ResourceInput) ResourceOption {
+	return resourceOptionWithInputs(func(ro *resourceOptionsWithInputs) {
+		ro.Parent = r
+	})
+}
+
 // Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 func Protect(o bool) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
@@ -337,7 +425,10 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 	return resourceOrInvokeOption(func(ro *resourceOptions, io *invokeOptions) {
 		switch {
 		case ro != nil:
-			Providers(r).applyResourceOption(ro)
+			err := Providers(r).applyResourceOptionPlain(ro)
+			if err != nil {
+				panic(err)
+			}
 		case io != nil:
 			io.Provider = r
 		}
