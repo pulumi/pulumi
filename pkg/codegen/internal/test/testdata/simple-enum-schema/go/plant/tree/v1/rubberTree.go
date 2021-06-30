@@ -16,10 +16,10 @@ type RubberTree struct {
 	pulumi.CustomResourceState
 
 	Container plant.ContainerPtrOutput `pulumi:"container"`
-	Diameter  pulumi.Float64Output     `pulumi:"diameter"`
+	Diameter  DiameterOutput           `pulumi:"diameter"`
 	Farm      pulumi.StringPtrOutput   `pulumi:"farm"`
-	Size      pulumi.StringPtrOutput   `pulumi:"size"`
-	Type      pulumi.StringOutput      `pulumi:"type"`
+	Size      TreeSizePtrOutput        `pulumi:"size"`
+	Type      RubberTreeVarietyOutput  `pulumi:"type"`
 }
 
 // NewRubberTree registers a new resource with the given unique name, arguments, and options.
@@ -75,11 +75,11 @@ func (RubberTreeState) ElementType() reflect.Type {
 }
 
 type rubberTreeArgs struct {
-	Container *plant.Container `pulumi:"container"`
-	Diameter  float64          `pulumi:"diameter"`
-	Farm      *string          `pulumi:"farm"`
-	Size      *string          `pulumi:"size"`
-	Type      string           `pulumi:"type"`
+	Container *plant.Container  `pulumi:"container"`
+	Diameter  Diameter          `pulumi:"diameter"`
+	Farm      *string           `pulumi:"farm"`
+	Size      *TreeSize         `pulumi:"size"`
+	Type      RubberTreeVariety `pulumi:"type"`
 }
 
 // The set of arguments for constructing a RubberTree resource.

@@ -11,10 +11,10 @@ import (
 )
 
 type Container struct {
-	Brightness *float64 `pulumi:"brightness"`
-	Color      *string  `pulumi:"color"`
-	Material   *string  `pulumi:"material"`
-	Size       int      `pulumi:"size"`
+	Brightness *ContainerBrightness `pulumi:"brightness"`
+	Color      *string              `pulumi:"color"`
+	Material   *string              `pulumi:"material"`
+	Size       ContainerSize        `pulumi:"size"`
 }
 
 // ContainerInput is an input type that accepts ContainerArgs and ContainerOutput values.
@@ -111,8 +111,8 @@ func (o ContainerOutput) ToContainerPtrOutputWithContext(ctx context.Context) Co
 		return &v
 	}).(ContainerPtrOutput)
 }
-func (o ContainerOutput) Brightness() pulumi.Float64PtrOutput {
-	return o.ApplyT(func(v Container) *float64 { return v.Brightness }).(pulumi.Float64PtrOutput)
+func (o ContainerOutput) Brightness() ContainerBrightnessPtrOutput {
+	return o.ApplyT(func(v Container) *ContainerBrightness { return v.Brightness }).(ContainerBrightnessPtrOutput)
 }
 
 func (o ContainerOutput) Color() pulumi.StringPtrOutput {
@@ -123,8 +123,8 @@ func (o ContainerOutput) Material() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Container) *string { return v.Material }).(pulumi.StringPtrOutput)
 }
 
-func (o ContainerOutput) Size() pulumi.IntOutput {
-	return o.ApplyT(func(v Container) int { return v.Size }).(pulumi.IntOutput)
+func (o ContainerOutput) Size() ContainerSizeOutput {
+	return o.ApplyT(func(v Container) ContainerSize { return v.Size }).(ContainerSizeOutput)
 }
 
 type ContainerPtrOutput struct{ *pulumi.OutputState }
@@ -145,13 +145,13 @@ func (o ContainerPtrOutput) Elem() ContainerOutput {
 	return o.ApplyT(func(v *Container) Container { return *v }).(ContainerOutput)
 }
 
-func (o ContainerPtrOutput) Brightness() pulumi.Float64PtrOutput {
-	return o.ApplyT(func(v *Container) *float64 {
+func (o ContainerPtrOutput) Brightness() ContainerBrightnessPtrOutput {
+	return o.ApplyT(func(v *Container) *ContainerBrightness {
 		if v == nil {
 			return nil
 		}
 		return v.Brightness
-	}).(pulumi.Float64PtrOutput)
+	}).(ContainerBrightnessPtrOutput)
 }
 
 func (o ContainerPtrOutput) Color() pulumi.StringPtrOutput {
@@ -172,13 +172,13 @@ func (o ContainerPtrOutput) Material() pulumi.StringPtrOutput {
 	}).(pulumi.StringPtrOutput)
 }
 
-func (o ContainerPtrOutput) Size() pulumi.IntPtrOutput {
-	return o.ApplyT(func(v *Container) *int {
+func (o ContainerPtrOutput) Size() ContainerSizePtrOutput {
+	return o.ApplyT(func(v *Container) *ContainerSize {
 		if v == nil {
 			return nil
 		}
 		return &v.Size
-	}).(pulumi.IntPtrOutput)
+	}).(ContainerSizePtrOutput)
 }
 
 func init() {

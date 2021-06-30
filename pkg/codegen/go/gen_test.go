@@ -182,4 +182,39 @@ func TestEnumUsage(t *testing.T) {
 			return nil
 		}, pulumi.WithMocks("project", "stack", mocks(1))))
 	})
+
+	t.Run("EnumOutputs", func(t *testing.T) {
+		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
+			tree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
+				Container: plant.ContainerArgs{
+					Color:    pulumi.String("Magenta").ToStringOutput(),
+					Material: pulumi.String("ceramic").ToStringOutput(),
+					Size:     plant.ContainerSize(22).ToContainerSizeOutput(),
+				},
+				Farm: tree.Farm_Plants_R_Us.ToStringPtrOutput(),
+				Type: tree.RubberTreeVarietyBurgundy.ToRubberTreeVarietyOutput(),
+			})
+			require.NoError(t, err)
+			require.NotNil(t, tree)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			pulumi.All(
+				tree.URN(), tree.Container.Material(), tree.Container.Color(), tree.Container.Size(), tree.Type,
+			).ApplyT(func(all []interface{}) error {
+				urn := all[0].(pulumi.URN)
+				material := all[1].(*string)
+				color := all[2].(*string)
+				size := all[3].(*plant.ContainerSize)
+				typ := all[4].(string)
+				assert.Equal(t, *material, "ceramic", "unexpected material on resource: %v", urn)
+				assert.Equal(t, *color, "Magenta", "unexpected color on resource: %v", urn)
+				assert.Equal(t, *size, plant.ContainerSize(22), "unexpected size on resource: %v", urn)
+				assert.Equal(t, typ, "Burgundy", "unexpected type on resource: %v", urn)
+				wg.Done()
+				return nil
+			})
+			wg.Wait()
+			return nil
+		}, pulumi.WithMocks("project", "stack", mocks(1))))
+	})
 }

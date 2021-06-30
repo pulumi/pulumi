@@ -22,35 +22,35 @@ func (Diameter) ElementType() reflect.Type {
 }
 
 func (e Diameter) ToDiameterOutput() DiameterOutput {
-	return pulumi.ToOutput(Diameter(e)).(DiameterOutput)
+	return pulumi.ToOutput(e).(DiameterOutput)
 }
 
 func (e Diameter) ToDiameterOutputWithContext(ctx context.Context) DiameterOutput {
-	return pulumi.ToOutputWithContext(ctx, Diameter(e)).(DiameterOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(DiameterOutput)
 }
 
 func (e Diameter) ToDiameterPtrOutput() DiameterPtrOutput {
-	return Diameter(e).ToDiameterPtrOutputWithContext(context.Background())
+	return e.ToDiameterPtrOutputWithContext(context.Background())
 }
 
 func (e Diameter) ToDiameterPtrOutputWithContext(ctx context.Context) DiameterPtrOutput {
-	return Diameter(e).ToDiameterOutputWithContext(ctx).ToDiameterPtrOutputWithContext(ctx)
+	return e.ToDiameterOutputWithContext(ctx).ToDiameterPtrOutputWithContext(ctx)
 }
 
 func (e Diameter) ToFloat64Output() pulumi.Float64Output {
-	return pulumi.ToOutput(pulumi.Float64(e)).(pulumi.Float64Output)
+	return pulumi.ToOutput(e).(pulumi.Float64Output)
 }
 
 func (e Diameter) ToFloat64OutputWithContext(ctx context.Context) pulumi.Float64Output {
-	return pulumi.ToOutputWithContext(ctx, pulumi.Float64(e)).(pulumi.Float64Output)
+	return pulumi.ToOutputWithContext(ctx, e).(pulumi.Float64Output)
 }
 
 func (e Diameter) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
-	return pulumi.Float64(e).ToFloat64PtrOutputWithContext(context.Background())
+	return e.ToFloat64PtrOutputWithContext(context.Background())
 }
 
 func (e Diameter) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
-	return pulumi.Float64(e).ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
+	return e.ToFloat64OutputWithContext(ctx).ToFloat64PtrOutputWithContext(ctx)
 }
 
 type DiameterOutput struct{ *pulumi.OutputState }
@@ -151,35 +151,35 @@ func (Farm) ElementType() reflect.Type {
 }
 
 func (e Farm) ToFarmOutput() FarmOutput {
-	return pulumi.ToOutput(Farm(e)).(FarmOutput)
+	return pulumi.ToOutput(e).(FarmOutput)
 }
 
 func (e Farm) ToFarmOutputWithContext(ctx context.Context) FarmOutput {
-	return pulumi.ToOutputWithContext(ctx, Farm(e)).(FarmOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(FarmOutput)
 }
 
 func (e Farm) ToFarmPtrOutput() FarmPtrOutput {
-	return Farm(e).ToFarmPtrOutputWithContext(context.Background())
+	return e.ToFarmPtrOutputWithContext(context.Background())
 }
 
 func (e Farm) ToFarmPtrOutputWithContext(ctx context.Context) FarmPtrOutput {
-	return Farm(e).ToFarmOutputWithContext(ctx).ToFarmPtrOutputWithContext(ctx)
+	return e.ToFarmOutputWithContext(ctx).ToFarmPtrOutputWithContext(ctx)
 }
 
 func (e Farm) ToStringOutput() pulumi.StringOutput {
-	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+	return pulumi.ToOutput(e).(pulumi.StringOutput)
 }
 
 func (e Farm) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(pulumi.StringOutput)
 }
 
 func (e Farm) ToStringPtrOutput() pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+	return e.ToStringPtrOutputWithContext(context.Background())
 }
 
 func (e Farm) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+	return e.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 type FarmOutput struct{ *pulumi.OutputState }
@@ -285,35 +285,35 @@ func (RubberTreeVariety) ElementType() reflect.Type {
 }
 
 func (e RubberTreeVariety) ToRubberTreeVarietyOutput() RubberTreeVarietyOutput {
-	return pulumi.ToOutput(RubberTreeVariety(e)).(RubberTreeVarietyOutput)
+	return pulumi.ToOutput(e).(RubberTreeVarietyOutput)
 }
 
 func (e RubberTreeVariety) ToRubberTreeVarietyOutputWithContext(ctx context.Context) RubberTreeVarietyOutput {
-	return pulumi.ToOutputWithContext(ctx, RubberTreeVariety(e)).(RubberTreeVarietyOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(RubberTreeVarietyOutput)
 }
 
 func (e RubberTreeVariety) ToRubberTreeVarietyPtrOutput() RubberTreeVarietyPtrOutput {
-	return RubberTreeVariety(e).ToRubberTreeVarietyPtrOutputWithContext(context.Background())
+	return e.ToRubberTreeVarietyPtrOutputWithContext(context.Background())
 }
 
 func (e RubberTreeVariety) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
-	return RubberTreeVariety(e).ToRubberTreeVarietyOutputWithContext(ctx).ToRubberTreeVarietyPtrOutputWithContext(ctx)
+	return e.ToRubberTreeVarietyOutputWithContext(ctx).ToRubberTreeVarietyPtrOutputWithContext(ctx)
 }
 
 func (e RubberTreeVariety) ToStringOutput() pulumi.StringOutput {
-	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+	return pulumi.ToOutput(e).(pulumi.StringOutput)
 }
 
 func (e RubberTreeVariety) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(pulumi.StringOutput)
 }
 
 func (e RubberTreeVariety) ToStringPtrOutput() pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+	return e.ToStringPtrOutputWithContext(context.Background())
 }
 
 func (e RubberTreeVariety) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+	return e.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 type RubberTreeVarietyOutput struct{ *pulumi.OutputState }
@@ -460,35 +460,35 @@ func (TreeSize) ElementType() reflect.Type {
 }
 
 func (e TreeSize) ToTreeSizeOutput() TreeSizeOutput {
-	return pulumi.ToOutput(TreeSize(e)).(TreeSizeOutput)
+	return pulumi.ToOutput(e).(TreeSizeOutput)
 }
 
 func (e TreeSize) ToTreeSizeOutputWithContext(ctx context.Context) TreeSizeOutput {
-	return pulumi.ToOutputWithContext(ctx, TreeSize(e)).(TreeSizeOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(TreeSizeOutput)
 }
 
 func (e TreeSize) ToTreeSizePtrOutput() TreeSizePtrOutput {
-	return TreeSize(e).ToTreeSizePtrOutputWithContext(context.Background())
+	return e.ToTreeSizePtrOutputWithContext(context.Background())
 }
 
 func (e TreeSize) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
-	return TreeSize(e).ToTreeSizeOutputWithContext(ctx).ToTreeSizePtrOutputWithContext(ctx)
+	return e.ToTreeSizeOutputWithContext(ctx).ToTreeSizePtrOutputWithContext(ctx)
 }
 
 func (e TreeSize) ToStringOutput() pulumi.StringOutput {
-	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
+	return pulumi.ToOutput(e).(pulumi.StringOutput)
 }
 
 func (e TreeSize) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
+	return pulumi.ToOutputWithContext(ctx, e).(pulumi.StringOutput)
 }
 
 func (e TreeSize) ToStringPtrOutput() pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+	return e.ToStringPtrOutputWithContext(context.Background())
 }
 
 func (e TreeSize) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+	return e.ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
 type TreeSizeOutput struct{ *pulumi.OutputState }
@@ -620,4 +620,17 @@ func (o TreeSizeMapOutput) MapIndex(k pulumi.StringInput) TreeSizeOutput {
 	return pulumi.All(o, k).ApplyT(func(vs []interface{}) TreeSizeOutput {
 		return vs[0].(map[string]TreeSize)[vs[1].(string)].ToTreeSizeOutput()
 	}).(TreeSizeOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(RubberTreeVarietyOutput{})
+	pulumi.RegisterOutputType(RubberTreeVarietyPtrOutput{})
+	pulumi.RegisterOutputType(RubberTreeVarietyArrayOutput{})
+	pulumi.RegisterOutputType(FarmOutput{})
+	pulumi.RegisterOutputType(FarmPtrOutput{})
+	pulumi.RegisterOutputType(DiameterOutput{})
+	pulumi.RegisterOutputType(DiameterPtrOutput{})
+	pulumi.RegisterOutputType(TreeSizeOutput{})
+	pulumi.RegisterOutputType(TreeSizePtrOutput{})
+	pulumi.RegisterOutputType(TreeSizeMapOutput{})
 }
