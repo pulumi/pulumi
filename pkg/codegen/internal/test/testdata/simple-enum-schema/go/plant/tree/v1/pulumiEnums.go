@@ -10,7 +10,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type Diameter pulumi.Float64
+type Diameter float64
 
 const (
 	DiameterSixinch    = Diameter(6)
@@ -36,7 +36,7 @@ func (o DiameterOutput) ToDiameterPtrOutput() DiameterPtrOutput {
 }
 
 func (o DiameterOutput) ToDiameterPtrOutputWithContext(ctx context.Context) DiameterPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v float64) *float64 {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Diameter) *Diameter {
 		return &v
 	}).(DiameterPtrOutput)
 }
@@ -56,8 +56,8 @@ func (o DiameterPtrOutput) ToDiameterPtrOutputWithContext(ctx context.Context) D
 }
 
 func (o DiameterPtrOutput) Elem() DiameterOutput {
-	return o.ApplyT(func(v *float64) float64 {
-		var ret float64
+	return o.ApplyT(func(v *Diameter) Diameter {
+		var ret Diameter
 		if v != nil {
 			ret = *v
 		}
@@ -77,7 +77,7 @@ type DiameterInput interface {
 }
 
 func (Diameter) ElementType() reflect.Type {
-	return reflect.TypeOf((*float64)(nil)).Elem()
+	return reflect.TypeOf((*Diameter)(nil)).Elem()
 }
 
 func (e Diameter) ToDiameterOutput() DiameterOutput {
@@ -96,7 +96,7 @@ func (e Diameter) ToDiameterPtrOutputWithContext(ctx context.Context) DiameterPt
 	return Diameter(e).ToDiameterOutputWithContext(ctx).ToDiameterPtrOutputWithContext(ctx)
 }
 
-var diameterPtrType = reflect.TypeOf((**float64)(nil)).Elem()
+var diameterPtrType = reflect.TypeOf((**Diameter)(nil)).Elem()
 
 type DiameterPtrInput interface {
 	pulumi.Input

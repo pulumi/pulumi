@@ -132,6 +132,42 @@ const (
 	ContainerColorYellow = ContainerColor("yellow")
 )
 
+func (ContainerColor) ElementType() reflect.Type {
+	return reflect.TypeOf((*string)(nil)).Elem()
+}
+
+func (e ContainerColor) ToContainerColorOutput() ContainerColorOutput {
+	return pulumi.ToOutput(ContainerColor(e)).(ContainerColorOutput)
+}
+
+func (e ContainerColor) ToContainerColorOutputWithContext(ctx context.Context) ContainerColorOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerColor(e)).(ContainerColorOutput)
+}
+
+func (e ContainerColor) ToContainerColorPtrOutput() ContainerColorPtrOutput {
+	return ContainerColor(e).ToContainerColorPtrOutputWithContext(context.Background())
+}
+
+func (e ContainerColor) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
+	return ContainerColor(e).ToContainerColorOutputWithContext(ctx).ToContainerColorPtrOutputWithContext(ctx)
+}
+
+func (e ContainerColor) ToStringOutput() pulumi.StringOutput {
+	return pulumi.ToOutput(ContainerColor(e)).(pulumi.StringOutput)
+}
+
+func (e ContainerColor) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return pulumi.ToOutputWithContext(ctx, ContainerColor(e)).(pulumi.StringOutput)
+}
+
+func (e ContainerColor) ToStringPtrOutput() pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
+}
+
+func (e ContainerColor) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
+}
+
 type ContainerColorOutput struct{ *pulumi.OutputState }
 
 func (ContainerColorOutput) ElementType() reflect.Type {
@@ -189,26 +225,6 @@ type ContainerColorInput interface {
 
 	ToContainerColorOutput() ContainerColorOutput
 	ToContainerColorOutputWithContext(context.Context) ContainerColorOutput
-}
-
-func (ContainerColor) ElementType() reflect.Type {
-	return reflect.TypeOf((*string)(nil)).Elem()
-}
-
-func (e ContainerColor) ToContainerColorOutput() ContainerColorOutput {
-	return pulumi.ToOutput(ContainerColor(e)).(ContainerColorOutput)
-}
-
-func (e ContainerColor) ToContainerColorOutputWithContext(ctx context.Context) ContainerColorOutput {
-	return pulumi.ToOutputWithContext(ctx, ContainerColor(e)).(ContainerColorOutput)
-}
-
-func (e ContainerColor) ToContainerColorPtrOutput() ContainerColorPtrOutput {
-	return ContainerColor(e).ToContainerColorPtrOutputWithContext(context.Background())
-}
-
-func (e ContainerColor) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
-	return ContainerColor(e).ToContainerColorOutputWithContext(ctx).ToContainerColorPtrOutputWithContext(ctx)
 }
 
 var containerColorPtrType = reflect.TypeOf((**string)(nil)).Elem()
