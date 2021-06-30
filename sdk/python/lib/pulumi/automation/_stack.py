@@ -91,7 +91,7 @@ class BaseResult:
 
     def __repr__(self):
         inputs = self.__dict__
-        fields = [f"{key}={inputs[key]!r}" for key in inputs]
+        fields = [f"{key}={inputs[key]!r}" for key in inputs]  # pylint: disable=consider-using-dict-items
         fields = ", ".join(fields)
         return f"{self.__class__.__name__}({fields})"
 
@@ -233,7 +233,7 @@ class Stack:
 
         if program:
             kind = ExecKind.INLINE.value
-            server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),
+            server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),  # pylint: disable=consider-using-with
                                  options=_GRPC_CHANNEL_OPTIONS)
             language_server = LanguageServer(program)
             language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
@@ -308,7 +308,7 @@ class Stack:
 
         if program:
             kind = ExecKind.INLINE.value
-            server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),
+            server = grpc.server(futures.ThreadPoolExecutor(max_workers=4),  # pylint: disable=consider-using-with
                                  options=_GRPC_CHANNEL_OPTIONS)
             language_server = LanguageServer(program)
             language_pb2_grpc.add_LanguageRuntimeServicer_to_server(language_server, server)
