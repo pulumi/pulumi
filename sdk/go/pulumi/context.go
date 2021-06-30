@@ -353,34 +353,15 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := merge(opts...)
-	if options.Parent == nil {
-		options.Parent = ctx.stack
-	}
-
-	// Before anything else, if there are transformations registered, give them a chance to run to modify the
-	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
-	}
-
-	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
-	if err != nil {
-		return err
-	}
-
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
 
-	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
-
-	// Create resolvers for the resource's outputs.
-	res := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	res, transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t, name, resource, props, opts...)
+	if err != nil {
+		return err
+	}
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -400,7 +381,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, res, false)
+		inputs, err = ctx.prepareResourceInputs(transformedProps, t, transformedOpts, res, false)
 		if err != nil {
 			return
 		}
@@ -530,39 +511,7 @@ func (ctx *Context) registerResource(
 		}
 	}
 
-	transform := func(options *resourceOptions) (*resourceState, *resourceOptions, Input, error) {
-		if options == nil {
-			return nil, nil, nil, fmt.Errorf("options cannot be nil")
-		}
-
-		if options.Parent == nil {
-			options.Parent = ctx.stack
-		}
-
-		// Before anything else, if there are transformations registered, give them a chance to run to modify the
-		// user-provided properties and options assigned to this resource.
-		transformedProps, transformedOpts, transformations, err :=
-			applyTransformations(t, name, props, resource, opts, options)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		// Collapse aliases to URNs.
-		aliasURNs, err := ctx.collapseAliases(transformedOpts.Aliases, t, name, transformedOpts.Parent)
-		if err != nil {
-			return nil, nil, nil, err
-		}
-
-		// Merge providers.
-		providers := mergeProviders(t, transformedOpts.Parent, transformedOpts.Provider, transformedOpts.Providers)
-
-		// Create resolvers for the resource's outputs.
-		resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
-
-		return resState, transformedOpts, transformedProps, nil
-	}
-
-	resState, transformedOpts, transformedProps, err := transform(merge(opts...))
+	resState, transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t, name, resource, props, opts...)
 	if err != nil {
 		return err
 	}
@@ -645,6 +594,45 @@ func (ctx *Context) registerResource(
 	}()
 
 	return nil
+}
+
+func (ctx *Context) transformOptionsAndProps(
+	t, name string,
+	resource Resource,
+	props Input,
+	opts ...ResourceOption) (*resourceState, *resourceOptions, Input, error) {
+
+	options := merge(opts...)
+
+	if options == nil {
+		return nil, nil, nil, fmt.Errorf("options cannot be nil")
+	}
+
+	if options.Parent == nil {
+		options.Parent = ctx.stack
+	}
+
+	// Before anything else, if there are transformations registered, give them a chance to run to modify the
+	// user-provided properties and options assigned to this resource.
+	transformedProps, transformedOpts, transformations, err :=
+		applyTransformations(t, name, props, resource, opts, options)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(transformedOpts.Aliases, t, name, transformedOpts.Parent)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	// Merge providers.
+	providers := mergeProviders(t, transformedOpts.Parent, transformedOpts.Provider, transformedOpts.Providers)
+
+	// Create resolvers for the resource's outputs.
+	resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+
+	return resState, transformedOpts, transformedProps, nil
 }
 
 func (ctx *Context) RegisterComponentResource(
