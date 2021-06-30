@@ -15,6 +15,8 @@
 package pulumi
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -179,7 +181,7 @@ type CustomTimeouts struct {
 	Delete string
 }
 
-type resourceOptions struct {
+type resourceOptionsCommon struct {
 	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
 	AdditionalSecretOutputs []string
 	// Aliases is an optional list of identifiers used to find and use existing resources.
@@ -197,8 +199,6 @@ type resourceOptions struct {
 	// current state. Once a resource has been imported, the import property must be removed from the resource's
 	// options.
 	Import IDInput
-	// Parent is an optional parent resource to which this resource belongs.
-	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
@@ -215,6 +215,27 @@ type resourceOptions struct {
 	// operating on this resource. This version overrides the version information inferred from the current package and
 	// should rarely be used.
 	Version string
+}
+
+type resourceOptions struct {
+	resourceOptionsCommon
+
+	// Parent is an optional parent resource to which this resource belongs.
+	Parent Resource
+}
+
+// Like resourceOptions, but select properties are now typed PInput instead of P.
+type resourceOptionsWithInputs struct {
+	resourceOptionsCommon
+	Parent ResourceInput
+}
+
+func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) *resourceOptions {
+	panic("TODO")
+}
+
+type ResourceInput interface {
+	Await() Resource
 }
 
 type invokeOptions struct {
@@ -258,14 +279,20 @@ func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
 // merging is handled by each functional options call
 // properties that are arrays/maps are always appended/merged together
 // last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
-func merge(opts ...ResourceOption) *resourceOptions {
-	options := &resourceOptions{}
-	for _, o := range opts {
-		if o != nil {
-			o.applyResourceOption(options)
-		}
-	}
-	return options
+func merge(opts ...ResourceOption) *resourceOptionsWithInputs {
+	return nil // TODO
+	// options := &resourceOptions{}
+	// for _, o := range opts {
+	// 	if o != nil {
+	// 		o.applyResourceOption(options)
+	// 	}
+	// }
+	// return options
+}
+
+// Version of merge that only succeeds if none of the options contain deferred inputs.
+func tryMergeWithoutInputs(opts ...ResourceOption) (*resourceOptions, error) {
+	return nil, fmt.Errorf("TODO")
 }
 
 // AdditionalSecretOutputs specifies a list of output properties to mark as secret.

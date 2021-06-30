@@ -602,7 +602,7 @@ func (ctx *Context) transformOptionsAndProps(
 	props Input,
 	opts ...ResourceOption) (*resourceState, *resourceOptions, Input, error) {
 
-	options := merge(opts...)
+	options := merge(opts...).Await(ctx.ctx)
 
 	if options == nil {
 		return nil, nil, nil, fmt.Errorf("options cannot be nil")
@@ -676,7 +676,11 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 
 		res := transformation(args)
 		if res != nil {
-			resOptions := merge(res.Opts...)
+			resOptions, err := tryMergeWithoutInputs(res.Opts...)
+
+			if err != nil {
+				return nil, nil, nil, err
+			}
 
 			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
 				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
