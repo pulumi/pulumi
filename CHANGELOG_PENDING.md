@@ -15,6 +15,9 @@
 - Initial support for resource methods (Node.js authoring, Python calling)
   [#7363](https://github.com/pulumi/pulumi/pull/7363)
 
+- [sdk/go] - Support for authoring resource methods in Go
+  [#7379](https://github.com/pulumi/pulumi/pull/7379)
+
 ### Bug Fixes
 
 - [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
