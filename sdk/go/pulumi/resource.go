@@ -234,14 +234,6 @@ func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) *resourceOptio
 	panic("TODO")
 }
 
-type ResourceInput interface {
-	Await() Resource
-}
-
-func NewResourceInput(resource Resource) ResourceInput {
-	panic("TODO")
-}
-
 type invokeOptions struct {
 	// Parent is an optional parent resource to use for default provider options for this invoke.
 	Parent Resource
