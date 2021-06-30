@@ -34,8 +34,8 @@ Examples of unacceptable behavior by participants include:
   
 ## Our Community Guidelines
 * Be clear and stay on topic. Communicating with strangers on the Internet can make it hard to convey or read tone, and sarcasm is frequently misunderstood. Try to use clear language, and think about how the other person will receive it.
-* Don’t cross-post the same thing in multiple GitHub Discussion topics or multiple Slack channels.
-* Public discussion is preferred to private. Avoid using Slack DMs for questions, and instead share them in public Slack channels or GitHub Discussion threads. This allows a larger audience to both share their knowledge as well as learn from your question or issue.
+* Don’t cross-post the same thing in multiple GitHub Discussion topics or multiple Slack channels. This can make it difficult for people answering your questions and creates "scrollback spam".
+* Public discussion is preferred to private. Avoid using Slack DMs for questions, and instead share them in public Slack channels or GitHub Discussion threads. This allows a larger audience to both share their knowledge as well as learn from your question or issue. If you're having a problem, chances are someone else is having a similar problem.
 * Minimize notifications to other community members. Avoid tagging other community members in Slack messages or Discussion threads, unless you are replying to something specific. Community members are here to help each other, but are not "on call" for support, and we expect everyone to try to minimize "notification fatigue". If your issue is time-sensitive or critical, use methods like support@pulumi.com instead.
 
 ## Our Responsibilities
