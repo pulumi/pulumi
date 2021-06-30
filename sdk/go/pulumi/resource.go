@@ -402,7 +402,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	})
 }
 
-// TODO
+// Like Parent, but accepts ResourceInput and ResourceOutput.
 func ParentInput(r ResourceInput) ResourceOption {
 	return resourceOptionWithInputs(func(ro *resourceOptionsWithInputs) {
 		ro.Parent = r
