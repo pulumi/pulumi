@@ -585,6 +585,16 @@ class Resource:
     The set of providers to use for child resources. Keyed by package name (e.g. "aws").
     """
 
+    _provider: Optional['ProviderResource']
+    """
+    The specified provider or provider determined from the parent for custom resources, or None.
+    """
+
+    _version: Optional[str]
+    """
+    The specified provider version or None.
+    """
+
     _protect: bool
     """
     When set to true, protect ensures this resource cannot be deleted.
@@ -729,6 +739,8 @@ class Resource:
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
+        self._provider = opts.provider if custom else None
+        self._version = opts.version
 
         # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
         # do not know the default `name` and `type` to apply until we are inside the resource

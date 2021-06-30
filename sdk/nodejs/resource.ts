@@ -809,9 +809,9 @@ export class ComponentResource<TData = any> extends Resource {
         // for a component resource.  The component is just used for organizational purposes and does
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ remote ? args : {}, opts, remote);
-        this.__registered = remote;
-        this.__data = remote ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        super(type, name, /*custom:*/ false, /*props:*/ remote || opts?.urn ? args : {}, opts, remote);
+        this.__registered = remote || !!opts?.urn;
+        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
     }
 
     /** @internal */

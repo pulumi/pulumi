@@ -65,7 +65,7 @@ func NewQuerySource(cancel context.Context, plugctx *plugin.Context, client Back
 	// NOTE: Using the queryResourceMonitor here is *VERY* important, as its job is to disallow
 	// resource operations in query mode!
 	mon, err := newQueryResourceMonitor(builtins, defaultProviderVersions, provs, reg, plugctx,
-		providerRegErrChan, opentracing.SpanFromContext(cancel))
+		providerRegErrChan, opentracing.SpanFromContext(cancel), runinfo)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to start resource monitor")
 	}
@@ -197,7 +197,7 @@ func runLangPlugin(src *querySource) result.Result {
 func newQueryResourceMonitor(
 	builtins *builtinProvider, defaultProviderVersions map[tokens.Package]*semver.Version,
 	provs ProviderSource, reg *providers.Registry, plugctx *plugin.Context,
-	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span) (*queryResmon, error) {
+	providerRegErrChan chan<- result.Result, tracingSpan opentracing.Span, runinfo *EvalRunInfo) (*queryResmon, error) {
 
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -258,7 +258,22 @@ func newQueryResourceMonitor(
 		return nil, err
 	}
 
-	queryResmon.addr = fmt.Sprintf("127.0.0.1:%d", port)
+	monitorAddress := fmt.Sprintf("127.0.0.1:%d", port)
+
+	cfg, err := runinfo.Target.Config.Decrypt(runinfo.Target.Decrypter)
+	if err != nil {
+		return nil, err
+	}
+
+	queryResmon.callInfo = plugin.CallInfo{
+		Project:        string(runinfo.Proj.Name),
+		Stack:          string(runinfo.Target.Name),
+		Config:         cfg,
+		DryRun:         true,
+		Parallel:       math.MaxInt32,
+		MonitorAddress: monitorAddress,
+	}
+	queryResmon.addr = monitorAddress
 	queryResmon.done = done
 
 	go d.serve()
@@ -281,6 +296,7 @@ type queryResmon struct {
 	cancel           chan bool           // a channel that can cancel the server.
 	done             chan error          // a channel that resolves when the server completes.
 	reg              *providers.Registry // registry for resource providers.
+	callInfo         plugin.CallInfo     // information for call calls.
 }
 
 var _ SourceResourceMonitor = (*queryResmon)(nil)
@@ -323,7 +339,7 @@ func (rm *queryResmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest)
 	}
 
 	// Do the invoke and then return the arguments.
-	logging.V(5).Infof("ResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
+	logging.V(5).Infof("QueryResourceMonitor.Invoke received: tok=%v #args=%v", tok, len(args))
 	ret, failures, err := prov.Invoke(tok, args)
 	if err != nil {
 		return nil, errors.Wrapf(err, "invocation of %v returned an error", tok)
@@ -371,7 +387,7 @@ func (rm *queryResmon) StreamInvoke(
 
 	// Synchronously do the StreamInvoke and then return the arguments. This will block until the
 	// streaming operation completes!
-	logging.V(5).Infof("ResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
+	logging.V(5).Infof("QueryResourceMonitor.StreamInvoke received: tok=%v #args=%v", tok, len(args))
 	failures, err := prov.StreamInvoke(tok, args, func(event resource.PropertyMap) error {
 		mret, err := plugin.MarshalProperties(event, plugin.MarshalOptions{Label: label, KeepUnknowns: true})
 		if err != nil {
@@ -396,6 +412,80 @@ func (rm *queryResmon) StreamInvoke(
 		return stream.Send(&pulumirpc.InvokeResponse{Failures: chkfails})
 	}
 	return nil
+}
+
+// Call dynamically executes a method in the provider associated with a component resource.
+func (rm *queryResmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	tok := tokens.ModuleMember(req.GetTok())
+	label := fmt.Sprintf("QueryResourceMonitor.Call(%s)", tok)
+
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	prov, err := getProviderFromSource(rm.reg, rm.defaultProviders, providerReq, req.GetProvider())
+	if err != nil {
+		return nil, err
+	}
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:         label,
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	argDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetArgDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, urn := range deps.Urns {
+			urns[i] = resource.URN(urn)
+		}
+		argDependencies[resource.PropertyKey(name)] = urns
+	}
+	options := plugin.CallOptions{
+		ArgDependencies: argDependencies,
+	}
+
+	// Do the call and then return the arguments.
+	logging.V(5).Infof(
+		"QueryResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), rm.callInfo, options)
+	ret, err := prov.Call(tok, args, rm.callInfo, options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "call of %v returned an error", tok)
+	}
+	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+		Label:         label,
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal return")
+	}
+
+	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
+	for name, deps := range ret.ReturnDependencies {
+		urns := make([]string, len(deps))
+		for i, urn := range deps {
+			urns[i] = string(urn)
+		}
+		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range ret.Failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+
+	return &pulumirpc.CallResponse{Return: mret, ReturnDependencies: returnDependencies, Failures: chkfails}, nil
 }
 
 // ReadResource reads the current state associated with a resource from its provider plugin.

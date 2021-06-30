@@ -214,6 +214,11 @@ func (p *monitorProxy) StreamInvoke(
 	}
 }
 
+func (p *monitorProxy) Call(
+	ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return p.target.Call(ctx, req)
+}
+
 func (p *monitorProxy) ReadResource(
 	ctx context.Context, req *pulumirpc.ReadResourceRequest) (*pulumirpc.ReadResourceResponse, error) {
 	return p.target.ReadResource(ctx, req)

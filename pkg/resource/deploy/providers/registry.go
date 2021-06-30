@@ -399,6 +399,15 @@ func (r *Registry) StreamInvoke(
 	return nil, fmt.Errorf("the provider registry does not implement streaming invokes")
 }
 
+func (r *Registry) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+
+	// It is the responsibility of the eval source to ensure that we never attempt an call using the provider
+	// registry.
+	contract.Fail()
+	return plugin.CallResult{}, errors.New("the provider registry is not callable")
+}
+
 func (r *Registry) GetPluginInfo() (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the provider registry
 	return workspace.PluginInfo{}, errors.New("the provider registry does not report plugin info")
