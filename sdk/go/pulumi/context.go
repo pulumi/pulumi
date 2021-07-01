@@ -363,26 +363,25 @@ func (ctx *Context) ReadResource(
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
-
-		transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t,
-			name, resStateBuilder, props, opts...)
-
+		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		var err error
 
-		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		defer func() {
 			res.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, nil)
 			ctx.endRPC(err)
 		}()
 
-		if err != nil {
+		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		if !known || err != nil {
 			return
 		}
 
-		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
-		if !known || err != nil {
+		transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t,
+			name, resStateBuilder, props, opts...)
+		if err != nil {
 			return
 		}
 
@@ -528,13 +527,11 @@ func (ctx *Context) registerResource(
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
 	go func() {
-		transformedOpts, transformedProps, err :=
-			ctx.transformOptionsAndProps(t, name, resStateBuilder, props, opts...)
-
 		// No matter the outcome, make sure all promises are resolved and that we've signaled completion of this RPC.
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
+		var err error
 		deps := make(map[string][]Resource)
 
 		defer func() {
@@ -542,6 +539,8 @@ func (ctx *Context) registerResource(
 			ctx.endRPC(err)
 		}()
 
+		transformedOpts, transformedProps, err :=
+			ctx.transformOptionsAndProps(t, name, resStateBuilder, props, opts...)
 		if err != nil {
 			return
 		}
