@@ -335,7 +335,8 @@ func (o resourceOrInvokeOption) applyResourceOptionImmediately(opts *resourceOpt
 	return o.toResourceOption().applyResourceOptionImmediately(opts)
 }
 
-func (o resourceOrInvokeOption) applyResourceOptionAfterAwaitingInputs(ctx context.Context, opts *resourceOptions) error {
+func (o resourceOrInvokeOption) applyResourceOptionAfterAwaitingInputs(
+	ctx context.Context, opts *resourceOptions) error {
 	return o.toResourceOption().applyResourceOptionAfterAwaitingInputs(ctx, opts)
 }
 
@@ -367,7 +368,8 @@ func (o resourceOrInvokeOptionWithInputs) applyResourceOptionImmediately(opts *r
 	return o.toResourceOptionWithInputs().applyResourceOptionImmediately(opts)
 }
 
-func (o resourceOrInvokeOptionWithInputs) applyResourceOptionAfterAwaitingInputs(ctx context.Context, opts *resourceOptions) error {
+func (o resourceOrInvokeOptionWithInputs) applyResourceOptionAfterAwaitingInputs(
+	ctx context.Context, opts *resourceOptions) error {
 	return o.toResourceOptionWithInputs().applyResourceOptionAfterAwaitingInputs(ctx, opts)
 }
 
@@ -376,7 +378,8 @@ func (o resourceOrInvokeOptionWithInputs) applyInvokeOptionImmediately(opts *inv
 		"needs to be called with applyInvokeOptionAfterAwaitingInputs")
 }
 
-func (o resourceOrInvokeOptionWithInputs) applyInvokeOptionAfterAwaitingInputs(ctx context.Context, opts *invokeOptions) error {
+func (o resourceOrInvokeOptionWithInputs) applyInvokeOptionAfterAwaitingInputs(
+	ctx context.Context, opts *invokeOptions) error {
 	return o(ctx, nil, opts)
 }
 
