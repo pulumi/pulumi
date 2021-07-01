@@ -499,8 +499,12 @@ func urn(t *testing.T, ctx *Context, res Resource) URN {
 	return urn
 }
 
-func tmerge(t *testing.T, opts ...ResourceOption) *resourceOptionsWithInputs {
-	return merge(opts...)
+func tmerge(t *testing.T, opts ...ResourceOption) *resourceOptions {
+	result, err := tryMergeWithoutInputs(opts...)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result
 }
 
 func trackParents(ctx *Context) map[URN]URN {
