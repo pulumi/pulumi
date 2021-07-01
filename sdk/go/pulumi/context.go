@@ -612,11 +612,7 @@ func (ctx *Context) transformOptionsAndProps(
 	props Input,
 	opts ...ResourceOption) (*resourceOptions, Input, error) {
 
-	options, err := merge(opts...).Await(ctx.ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-
+	options := mergeAwait(ctx.ctx, opts...)
 	if options == nil {
 		return nil, nil, fmt.Errorf("options cannot be nil")
 	}
@@ -692,7 +688,7 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 
 		res := transformation(args)
 		if res != nil {
-			resOptions, err := tryMergeWithoutInputs(res.Opts...)
+			resOptions, err := tryMergeWithoutAwaiting(res.Opts...)
 			if err != nil {
 				return nil, nil, nil, err
 			}

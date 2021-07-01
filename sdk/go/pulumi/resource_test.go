@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	grpc "google.golang.org/grpc"
 
-	//"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
@@ -402,87 +402,87 @@ func TestDependsOnInputs(t *testing.T) {
 // 	assert.Equal(t, providerUrn, seenProviders[0])
 // }
 
-// func TestProviderInputs(t *testing.T) {
-// 	providerID := "providerId"
-// 	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
-// 	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
+func TestProviderInputs(t *testing.T) {
+	providerID := "providerId"
+	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
+	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
 
-// 	var seenProviders []string
+	var seenProviders []string
 
-// 	mocks := &testMonitor{
-// 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-// 			if args.Provider != "" {
-// 				seenProviders = append(seenProviders, args.Provider)
-// 			}
-// 			return "freshID2", nil, nil
-// 		},
-// 	}
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			if args.Provider != "" {
+				seenProviders = append(seenProviders, args.Provider)
+			}
+			return "freshID2", nil, nil
+		},
+	}
 
-// 	err := RunErr(func(ctx *Context) error {
-// 		dependsOn := trackDependencies(ctx)
-// 		dep := newTestRes(t, ctx, "resDependency")
+	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
+		dep := newTestRes(t, ctx, "resDependency")
 
-// 		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
+		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
 
-// 		// Construct an output that resolve to `providerResource` but also depends on `dep`.
-// 		output := Any(dep).
-// 			ApplyT(func(interface{}) ProviderResource { return providerResource }).(ProviderResourceOutput)
+		// Construct an output that resolve to `providerResource` but also depends on `dep`.
+		output := Any(dep).
+			ApplyT(func(interface{}) ProviderResource { return providerResource }).(ProviderResourceOutput)
 
-// 		res := newTestRes(t, ctx, "resWithProvider", ProviderInputs(output))
+		res := newTestRes(t, ctx, "resWithProvider", ProviderInputs(output))
 
-// 		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
-// 			"Failed to propagate indirect dependencies via ProviderInput")
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
+			"Failed to propagate indirect dependencies via ProviderInput")
 
-// 		return nil
-// 	}, WithMocks("project", "stack", mocks))
+		return nil
+	}, WithMocks("project", "stack", mocks))
 
-// 	assert.NoError(t, err)
+	assert.NoError(t, err)
 
-// 	assert.Len(t, seenProviders, 1)
-// 	assert.Equal(t, providerUrn, seenProviders[0])
-// }
+	assert.Len(t, seenProviders, 1)
+	assert.Equal(t, providerUrn, seenProviders[0])
+}
 
-// func TestProviderInputMap(t *testing.T) {
-// 	providerID := "providerId"
-// 	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
-// 	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
+func TestProviderInputMap(t *testing.T) {
+	providerID := "providerId"
+	providerUrnBase := resource.NewURN("stack", "project", "", "pulumi:providers:test", "test")
+	providerUrn := fmt.Sprintf("%s::%s", providerUrnBase, providerID)
 
-// 	var seenProviders []string
+	var seenProviders []string
 
-// 	mocks := &testMonitor{
-// 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
-// 			if args.Provider != "" {
-// 				seenProviders = append(seenProviders, args.Provider)
-// 			}
-// 			return "freshID3", nil, nil
-// 		},
-// 	}
+	mocks := &testMonitor{
+		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
+			if args.Provider != "" {
+				seenProviders = append(seenProviders, args.Provider)
+			}
+			return "freshID3", nil, nil
+		},
+	}
 
-// 	err := RunErr(func(ctx *Context) error {
-// 		dependsOn := trackDependencies(ctx)
-// 		dep := newTestRes(t, ctx, "resDependency")
+	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
+		dep := newTestRes(t, ctx, "resDependency")
 
-// 		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
+		var providerResource ProviderResource = newSimpleProviderResource(ctx, URN(providerUrnBase), ID(providerID))
 
-// 		// Construct an output that resolve to `providerResource` but also depends on `dep`.
-// 		output := Any(dep).
-// 			ApplyT(func(interface{}) ProviderResource { return providerResource }).(ProviderResourceOutput)
+		// Construct an output that resolve to `providerResource` but also depends on `dep`.
+		output := Any(dep).
+			ApplyT(func(interface{}) ProviderResource { return providerResource }).(ProviderResourceOutput)
 
-// 		res := newTestRes(t, ctx, "resWithProvider", ProviderInputMap(map[string]ProviderResourceInput{
-// 			providerResource.getPackage(): output,
-// 		}))
+		res := newTestRes(t, ctx, "resWithProvider", ProviderInputMap(map[string]ProviderResourceInput{
+			providerResource.getPackage(): output,
+		}))
 
-// 		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
-// 			"Failed to propagate indirect dependencies via ProviderInput")
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep),
+			"Failed to propagate indirect dependencies via ProviderInput")
 
-// 		return nil
-// 	}, WithMocks("project", "stack", mocks))
+		return nil
+	}, WithMocks("project", "stack", mocks))
 
-// 	assert.NoError(t, err)
+	assert.NoError(t, err)
 
-// 	assert.Len(t, seenProviders, 1)
-// 	assert.Equal(t, providerUrn, seenProviders[0])
-// }
+	assert.Len(t, seenProviders, 1)
+	assert.Equal(t, providerUrn, seenProviders[0])
+}
 
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
 	var res testRes
@@ -500,7 +500,7 @@ func urn(t *testing.T, ctx *Context, res Resource) URN {
 }
 
 func tmerge(t *testing.T, opts ...ResourceOption) *resourceOptions {
-	result, err := tryMergeWithoutInputs(opts...)
+	result, err := tryMergeWithoutAwaiting(opts...)
 	if err != nil {
 		t.Fatal(err)
 	}
