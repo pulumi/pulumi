@@ -403,10 +403,10 @@ func (in *containerSizePtr) ToContainerSizePtrOutputWithContext(ctx context.Cont
 }
 
 func init() {
-	pulumi.RegisterOutputType(ContainerSizeOutput{})
-	pulumi.RegisterOutputType(ContainerSizePtrOutput{})
-	pulumi.RegisterOutputType(ContainerColorOutput{})
-	pulumi.RegisterOutputType(ContainerColorPtrOutput{})
 	pulumi.RegisterOutputType(ContainerBrightnessOutput{})
 	pulumi.RegisterOutputType(ContainerBrightnessPtrOutput{})
+	pulumi.RegisterOutputType(ContainerColorOutput{})
+	pulumi.RegisterOutputType(ContainerColorPtrOutput{})
+	pulumi.RegisterOutputType(ContainerSizeOutput{})
+	pulumi.RegisterOutputType(ContainerSizePtrOutput{})
 }

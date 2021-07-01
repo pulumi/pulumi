@@ -2479,6 +2479,21 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				}
 				delete(knownTypes, e)
 			}
+			// Register all output types
+			fmt.Fprintf(buffer, "func init() {\n")
+			for _, e := range pkg.enums {
+				name := pkg.tokenToEnum(e.Token)
+				fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sOutput{})\n", name)
+				fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sPtrOutput{})\n", name)
+				details := pkg.detailsForType(e)
+				if details.arrayElement {
+					fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sArrayOutput{})\n", name)
+				}
+				if details.mapElement {
+					fmt.Fprintf(buffer, "\tpulumi.RegisterOutputType(%sMapOutput{})\n", name)
+				}
+			}
+			fmt.Fprintf(buffer, "}\n\n")
 			setFile(path.Join(mod, "pulumiEnums.go"), buffer.String())
 		}
 
