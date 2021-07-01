@@ -616,7 +616,10 @@ func (ctx *Context) transformOptionsAndProps(
 	props Input,
 	opts ...ResourceOption) (*resourceState, *resourceOptions, Input, error) {
 
-	options := merge(opts...).Await(ctx.ctx)
+	options, err := merge(opts...).Await(ctx.ctx)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
 	if options == nil {
 		return nil, nil, nil, fmt.Errorf("options cannot be nil")
