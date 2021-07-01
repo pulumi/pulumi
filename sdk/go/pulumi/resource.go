@@ -483,18 +483,26 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	})
 }
 
-// TODO Make this ResourceOrInvokeOption, test Invoke path
 // Like Parent, but accepts ResourceInput and ResourceOutput.
-func ParentInput(r ResourceInput) ResourceOption {
-	return resourceOptionWithInputs(func(ctx context.Context, result *resourceOptions) error {
-		if r != nil {
-			parent, deps, err := awaitResourceInput(ctx, r)
-			if err != nil {
-				return err
-			}
-			result.Parent = parent
-			result.DependsOn = append(result.DependsOn, deps...)
+func ParentInput(r ResourceInput) ResourceOrInvokeOption {
+	return resourceOrInvokeOptionWithInputs(func(ctx context.Context, ro *resourceOptions, io *invokeOptions) error {
+		if r == nil {
+			return nil
 		}
+
+		parent, deps, err := awaitResourceInput(ctx, r)
+		if err != nil {
+			return err
+		}
+
+		switch {
+		case ro != nil:
+			ro.Parent = parent
+			ro.DependsOn = append(ro.DependsOn, deps...)
+		case io != nil:
+			io.Parent = parent
+		}
+
 		return nil
 	})
 }
