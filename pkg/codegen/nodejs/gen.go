@@ -1841,8 +1841,12 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 }
 
 // generateModuleContextMap groups resources, types, and functions into NodeJS packages.
-func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackageInfo,
-	extraFiles map[string][]byte) (map[string]*modContext, NodePackageInfo, error) {
+func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[string][]byte,
+) (map[string]*modContext, NodePackageInfo, error) {
+	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
+		return nil, NodePackageInfo{}, err
+	}
+	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
 
 	// group resources, types, and functions into NodeJS packages
 	modules := map[string]*modContext{}
@@ -1996,12 +2000,7 @@ type LanguageProperty struct {
 func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error) {
 	resources := map[string]LanguageResource{}
 
-	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
-
-	modules, _, err := generateModuleContextMap("", pkg, info, nil)
+	modules, _, err := generateModuleContextMap("", pkg, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -2033,13 +2032,7 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	// Decode node-specific info
-	if err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer}); err != nil {
-		return nil, err
-	}
-	info, _ := pkg.Language["nodejs"].(NodePackageInfo)
-
-	modules, info, err := generateModuleContextMap(tool, pkg, info, extraFiles)
+	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
 	if err != nil {
 		return nil, err
 	}
