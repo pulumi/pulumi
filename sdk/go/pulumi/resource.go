@@ -384,14 +384,17 @@ func (o resourceOrInvokeOptionWithInputs) applyInvokeOptionAfterAwaitingInputs(c
 // properties that are arrays/maps are always appended/merged together
 // last value wins for non-array/map values and for conflicting map values (bool, struct, etc)
 // if any options contain Inputs, these are awaited here, hence the need for a Context
-func mergeAwait(ctx context.Context, opts ...ResourceOption) *resourceOptions {
+func mergeAwait(ctx context.Context, opts ...ResourceOption) (*resourceOptions, error) {
 	options := &resourceOptions{}
 	for _, o := range opts {
 		if o != nil {
-			o.applyResourceOptionAfterAwaitingInputs(ctx, options)
+			err := o.applyResourceOptionAfterAwaitingInputs(ctx, options)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
-	return options
+	return options, nil
 }
 
 // Version of merge that only succeeds if none of the options contain inputs, but never awaits.
