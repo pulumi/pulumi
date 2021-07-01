@@ -414,7 +414,7 @@ func TestResourceState(t *testing.T) {
 	assert.Nil(t, err)
 
 	var theResource testResource
-	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil)
+	state := ctx.makeResourceState("", "", &theResource).state
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
