@@ -580,6 +580,36 @@ func TestConstructUnknownGo(t *testing.T) {
 	testConstructUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
 }
 
+func TestConstructMethodsGo(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join("construct_component_methods", "go"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v3",
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
 func TestGetResourceGo(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dependencies: []string{
