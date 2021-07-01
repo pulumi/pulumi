@@ -180,7 +180,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <a href="#varieties_go" style="color: inherit; text-decoration: inherit;">Varieties</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#rubbertreevariety">[]string</a></span>
+        <span class="property-type"><a href="#rubbertreevariety">[]Rubber<wbr>Tree<wbr>Variety</a></span>
     </dt>
     <dd>{{% md %}}The varieties available{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -188,7 +188,7 @@ The Nursery resource accepts the following [input]({{< relref "/docs/intro/conce
 <a href="#sizes_go" style="color: inherit; text-decoration: inherit;">Sizes</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">map[string]string</span>
+        <span class="property-type">map[string]Tree<wbr>Size</span>
     </dt>
     <dd>{{% md %}}The sizes of trees available{{% /md %}}</dd></dl>
 {{% /choosable %}}
