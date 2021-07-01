@@ -307,40 +307,30 @@ func TestNewResourceInput(t *testing.T) {
 }
 
 func TestParentInput(t *testing.T) {
-	// err := RunErr(func(ctx *Context) error {
-	// 	// dependsOn := trackDependencies(ctx)
-	// 	// parents := trackParents(ctx)
+	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
+		parents := trackParents(ctx)
 
-	// 	// dep := newTestRes(t, ctx, "resDependency")
-	// 	// parent := newTestRes(t, ctx, "resParent")
+		dep := newTestRes(t, ctx, "resDependency")
+		parent := newTestRes(t, ctx, "resParent")
 
-	// 	// fmt.Printf("A\n")
+		parentWithDep := ResourceOutput{
+			Any(dep).
+				ApplyT(func(interface{}) interface{} { return parent }).
+				getState(),
+		}
 
-	// 	// parentWithDep := ResourceOutput{
-	// 	// 	Any(dep).
-	// 	// 		ApplyT(func(interface{}) interface{} { return parent }).
-	// 	// 		getState(),
-	// 	// }
+		child := newTestRes(t, ctx, "resChild", ParentInput(parentWithDep))
 
-	// 	// fmt.Printf("B\n")
+		assert.Equalf(t, urn(t, ctx, parent), parents[urn(t, ctx, child)],
+			"Failed to set parent via ParentInput")
 
-	// 	// child := newTestRes(t, ctx, "resChild", ParentInput(parentWithDep))
+		assert.Containsf(t, dependsOn[urn(t, ctx, child)], urn(t, ctx, dep),
+			"Failed to propagate dependencies via ParentInput")
 
-	// 	// fmt.Printf("C\n")
-
-	// 	// assert.Equalf(t, urn(t, ctx, parent), parents[urn(t, ctx, child)],
-	// 	// 	"Failed to set parent via ParentInput")
-
-	// 	// fmt.Printf("D\n")
-
-	// 	// assert.Containsf(t, dependsOn[urn(t, ctx, child)], urn(t, ctx, dep),
-	// 	// 	"Failed to propagate dependencies via ParentInput")
-
-	// 	// fmt.Printf("E\n")
-
-	// 	return nil
-	// }, WithMocks("project", "stack", &testMonitor{}))
-	// assert.NoError(t, err)
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	assert.NoError(t, err)
 }
 
 // func TestDependsOnInputs(t *testing.T) {
