@@ -190,8 +190,6 @@ type resourceOptionsCommon struct {
 	CustomTimeouts *CustomTimeouts
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
-	// DependsOn is an optional array of explicit dependencies on other resources.
-	DependsOn []Resource
 	// IgnoreChanges ignores changes to any of the specified properties.
 	IgnoreChanges []string
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -222,12 +220,17 @@ type resourceOptions struct {
 
 	// Parent is an optional parent resource to which this resource belongs.
 	Parent Resource
+
+	// DependsOn is an optional array of explicit dependencies on other resources.
+	DependsOn []Resource
 }
 
 // Like resourceOptions, but select properties are now typed PInput instead of P.
 type resourceOptionsWithInputs struct {
 	resourceOptionsCommon
-	Parent ResourceInput
+
+	Parent    ResourceInput
+	DependsOn []ResourceInput
 }
 
 func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) (*resourceOptions, error) {
@@ -241,6 +244,19 @@ func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) (*resourceOpti
 		}
 		result.Parent = parent
 		result.DependsOn = append(result.DependsOn, deps...)
+	}
+
+	if rowi.DependsOn != nil {
+		var allDeps []Resource
+		for _, ri := range rowi.DependsOn {
+			dep, moreDeps, err := awaitResourceInput(ctx, ri)
+			if err != nil {
+				return nil, err
+			}
+			allDeps = append(allDeps, dep)
+			allDeps = append(allDeps, moreDeps...)
+		}
+		result.DependsOn = append(result.DependsOn, allDeps...)
 	}
 
 	return &result, nil
@@ -323,9 +339,16 @@ func (o resourceOption) applyResourceOptionWithInputs(optsWithInputs *resourceOp
 	// copy back edited common options
 	optsWithInputs.resourceOptionsCommon = opts.resourceOptionsCommon
 
-	// copy options that need promotion to inputs, if they were set
+	// now copy options that need promotion to inputs, if they were set
+
 	if opts.Parent != nil {
 		optsWithInputs.Parent = NewResourceInput(opts.Parent)
+	}
+
+	if len(opts.DependsOn) > 0 {
+		for _, d := range opts.DependsOn {
+			optsWithInputs.DependsOn = append(optsWithInputs.DependsOn, NewResourceInput(d))
+		}
 	}
 }
 
@@ -333,18 +356,16 @@ type resourceOrInvokeOption func(ro *resourceOptions, io *invokeOptions)
 
 var _ ResourceOrInvokeOption = *new(resourceOrInvokeOption)
 
-func (o resourceOrInvokeOption) hasInputs() bool {
-	return false
+func (o resourceOrInvokeOption) toResourceOption() resourceOption {
+	return resourceOption(func(opts *resourceOptions) { o(opts, nil) })
 }
 
 func (o resourceOrInvokeOption) applyResourceOptionWithInputs(optsWithInputs *resourceOptionsWithInputs) {
-	resourceOption(func(opts *resourceOptions) { o(opts, nil) }).
-		applyResourceOptionWithInputs(optsWithInputs)
+	o.toResourceOption().applyResourceOptionWithInputs(optsWithInputs)
 }
 
 func (o resourceOrInvokeOption) applyResourceOptionPlain(opts *resourceOptions) error {
-	return resourceOption(func(opts *resourceOptions) { o(opts, nil) }).
-		applyResourceOptionPlain(opts)
+	return o.toResourceOption().applyResourceOptionPlain(opts)
 }
 
 func (o resourceOrInvokeOption) applyInvokeOption(opts *invokeOptions) {
@@ -404,6 +425,13 @@ func DependsOn(o []Resource) ResourceOption {
 	})
 }
 
+// Like DependsOn, but accepts ResourceInput and ResourceOutput.
+func DependsOnInputs(o []ResourceInput) ResourceOption {
+	return resourceOptionWithInputs(func(opts *resourceOptionsWithInputs) {
+		opts.DependsOn = append(opts.DependsOn, o...)
+	})
+}
+
 // Ignore changes to any of the specified properties.
 func IgnoreChanges(o []string) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
@@ -433,6 +461,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	})
 }
 
+// TODO Make this ResourceOrInvokeOption, test Invoke path
 // Like Parent, but accepts ResourceInput and ResourceOutput.
 func ParentInput(r ResourceInput) ResourceOption {
 	return resourceOptionWithInputs(func(ro *resourceOptionsWithInputs) {
@@ -462,6 +491,21 @@ func Provider(r ProviderResource) ResourceOrInvokeOption {
 	})
 }
 
+// // Similar to Provider, but accepts ProviderResourceInput or ProviderResourceOutput.
+// func ProviderInput(pri ProviderResourceInput) ResourceOrInvokeOption {
+// 	return deferResourceOrInvokeOption(func(ctx context.Context) (ResourceOrInvokeOption, error) {
+// 		// Less obvious than ParentInput that we should
+// 		// force-await here, but doing so for simplicity of
+// 		// implementation.
+// 		p, deps, err := awaitProviderResourceOutput(ctx, pri.ToProviderResourceOutput())
+// 		if err != nil {
+// 			return nil, err
+// 		}
+
+// 		return combineResourceOrInvokeOptions(Provider(p), orInvokeOption(DependsOn(deps))), nil
+// 	})
+// }
+
 // ProviderMap is an optional map of package to provider resource for a component resource.
 func ProviderMap(o map[string]ProviderResource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
@@ -476,6 +520,25 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 	})
 }
 
+// // Similar to ProviderMap, but accepts ProviderResourceInput instead of ProviderResource.
+// func ProviderInputMap(inputMap map[string]ProviderResourceInput) ResourceOption {
+// 	return deferResourceOption(func(ctx context.Context) (ResourceOption, error) {
+// 		var allDeps []Resource
+
+// 		resourceMap := make(map[string]ProviderResource)
+// 		for k, v := range inputMap {
+// 			pr, deps, err := awaitProviderResourceOutput(ctx, v.ToProviderResourceOutput())
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			allDeps = append(allDeps, deps...)
+// 			resourceMap[k] = pr
+// 		}
+
+// 		return combineResourceOptions(ProviderMap(resourceMap), DependsOn(allDeps)), nil
+// 	})
+// }
+
 // Providers is an optional list of providers to use for a resource's children.
 func Providers(o ...ProviderResource) ResourceOption {
 	m := map[string]ProviderResource{}
@@ -484,6 +547,25 @@ func Providers(o ...ProviderResource) ResourceOption {
 	}
 	return ProviderMap(m)
 }
+
+// // Like Providers, but accepts ProviderResourceInput.
+// func ProviderInputs(o ...ProviderResourceInput) ResourceOption {
+// 	return deferResourceOption(func(ctx context.Context) (ResourceOption, error) {
+// 		var ps []ProviderResource
+// 		var allDeps []Resource
+
+// 		for _, pri := range o {
+// 			p, deps, err := awaitProviderResourceOutput(ctx, pri.ToProviderResourceOutput())
+// 			if err != nil {
+// 				return nil, err
+// 			}
+// 			ps = append(ps, p)
+// 			allDeps = append(allDeps, deps...)
+// 		}
+
+// 		return combineResourceOptions(Providers(ps...), DependsOn(allDeps)), nil
+// 	})
+// }
 
 // Timeouts is an optional configuration block used for CRUD operations
 func Timeouts(o *CustomTimeouts) ResourceOption {

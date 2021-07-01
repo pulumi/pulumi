@@ -333,33 +333,33 @@ func TestParentInput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-// func TestDependsOnInputs(t *testing.T) {
-// 	err := RunErr(func(ctx *Context) error {
-// 		dependsOn := trackDependencies(ctx)
+func TestDependsOnInputs(t *testing.T) {
+	err := RunErr(func(ctx *Context) error {
+		dependsOn := trackDependencies(ctx)
 
-// 		dep1 := newTestRes(t, ctx, "resDependency1")
-// 		dep2 := newTestRes(t, ctx, "resDependency2")
+		dep1 := newTestRes(t, ctx, "resDependency1")
+		dep2 := newTestRes(t, ctx, "resDependency2")
 
-// 		// Construct an output that resolve to `dep2` but also
-// 		// implicitly depends on `dep1`.
-// 		output := ResourceOutput{
-// 			Any(dep1).
-// 				ApplyT(func(interface{}) interface{} { return dep2 }).
-// 				getState(),
-// 		}
+		// Construct an output that resolve to `dep2` but also
+		// implicitly depends on `dep1`.
+		output := ResourceOutput{
+			Any(dep1).
+				ApplyT(func(interface{}) interface{} { return dep2 }).
+				getState(),
+		}
 
-// 		res := newTestRes(t, ctx, "resDependent", DependsOnInputs([]ResourceInput{output}))
+		res := newTestRes(t, ctx, "resDependent", DependsOnInputs([]ResourceInput{output}))
 
-// 		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep2),
-// 			"Failed to propagate direct dependencies via DependsOnInputs")
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep2),
+			"Failed to propagate direct dependencies via DependsOnInputs")
 
-// 		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep1),
-// 			"Failed to propagate indirect dependencies via DependsOnInputs")
+		assert.Containsf(t, dependsOn[urn(t, ctx, res)], urn(t, ctx, dep1),
+			"Failed to propagate indirect dependencies via DependsOnInputs")
 
-// 		return nil
-// 	}, WithMocks("project", "stack", &testMonitor{}))
-// 	assert.NoError(t, err)
-// }
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+	assert.NoError(t, err)
+}
 
 // func TestProviderInput(t *testing.T) {
 // 	providerID := "providerId1"
