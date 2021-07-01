@@ -220,7 +220,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	options := &invokeOptions{}
 	for _, o := range opts {
 		if o != nil {
-			o.applyInvokeOption(options)
+			err := o.applyInvokeOptionAfterAwaitingInputs(ctx.ctx, options)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
