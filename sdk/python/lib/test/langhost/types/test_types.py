@@ -1,4 +1,4 @@
-# Copyright 2016-2020, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,9 +22,9 @@ class TestTypes(LanghostTest):
             program=path.join(self.base_path(), "types"),
             expected_resource_count=16)
 
-    def register_resource(self, ctx, dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         if name in ["testres", "testres2", "testres3", "testres4"]:
             self.assertIn("additional", _resource)
             self.assertEqual({

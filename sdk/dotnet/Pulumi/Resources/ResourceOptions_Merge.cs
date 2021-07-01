@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 namespace Pulumi
 {
@@ -17,7 +17,8 @@ namespace Pulumi
             options1.IgnoreChanges.AddRange(options2.IgnoreChanges);
             options1.ResourceTransformations.AddRange(options2.ResourceTransformations);
             options1.Aliases.AddRange(options2.Aliases);
-                
+            options1.ReplaceOnChanges.AddRange(options2.ReplaceOnChanges);
+
             options1.DependsOn = options1.DependsOn.Concat(options2.DependsOn);
         }
     }

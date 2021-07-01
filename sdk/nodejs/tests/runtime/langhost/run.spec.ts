@@ -53,7 +53,10 @@ interface RunCase {
     };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                        propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string) => { urn: URN | undefined, id: ID | undefined, props: any | undefined };
+                        propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                        replaceOnChanges?: string[]) => {
+        urn: URN | undefined, id: ID | undefined, props: any | undefined,
+    };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
     log?: (ctx: any, severity: any, message: string, urn: URN, streamId: number) => void;
@@ -808,7 +811,9 @@ describe("rpc", () => {
             expectResourceCount: 3,
             registerResource: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
-                               propertyDeps?: any, ignoreChanges?: string[], version?: string) => {
+                               propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                               replaceOnChanges?: string[],
+                               ) => {
                 switch (name) {
                     case "testResource":
                         assert.strictEqual("0.19.1", version);
@@ -1157,6 +1162,25 @@ describe("rpc", () => {
                 };
             },
         },
+        "replace_on_changes": {
+            program: path.join(base, "066.replace_on_changes"),
+            expectResourceCount: 1,
+            registerResource: (
+                ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
+                custom?: boolean, protect?: boolean, parent?: string, provider?: string,
+                propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
+                replaceOnChanges?: string[],
+            ) => {
+                if (name === "testResource") {
+                    assert.deepStrictEqual(replaceOnChanges, ["foo"]);
+                }
+                return {
+                    urn: makeUrn(t, name),
+                    id: name,
+                    props: {},
+                };
+            },
+        },
     };
 
     for (const casename of Object.keys(cases)) {
@@ -1224,6 +1248,7 @@ describe("rpc", () => {
                                 const parent: string = req.getParent();
                                 const provider: string = req.getProvider();
                                 const ignoreChanges: string[] = req.getIgnorechangesList().sort();
+                                const replaceOnChanges: string[] = req.getReplaceonchangesList().sort();
                                 const propertyDeps: any = Array.from(req.getPropertydependenciesMap().entries())
                                     .reduce((o: any, [key, value]: any) => {
                                         return { ...o, [key]: value.getUrnsList().sort() };
@@ -1231,7 +1256,7 @@ describe("rpc", () => {
                                 const version: string = req.getVersion();
                                 const importID: string = req.getImportid();
                                 const { urn, id, props } = opts.registerResource(ctx, dryrun, t, name, res, deps,
-                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version, importID);
+                                    custom, protect, parent, provider, propertyDeps, ignoreChanges, version, importID, replaceOnChanges);
                                 resp.setUrn(urn);
                                 resp.setId(id);
                                 resp.setObject(gstruct.Struct.fromJavaScript(props));

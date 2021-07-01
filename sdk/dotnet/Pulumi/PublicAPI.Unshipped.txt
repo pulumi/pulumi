@@ -1,0 +1,2 @@
+Pulumi.ResourceOptions.ReplaceOnChanges.get -> System.Collections.Generic.List<string>
+Pulumi.ResourceOptions.ReplaceOnChanges.set -> void
