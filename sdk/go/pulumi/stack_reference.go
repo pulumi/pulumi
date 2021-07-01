@@ -39,6 +39,24 @@ func (s *StackReference) GetIDOutput(name StringInput) IDOutput {
 	}).(IDOutput)
 }
 
+// GetFloat64Output returns a stack output keyed by the given name as an Float64Output
+func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
+	return s.GetOutput(name).ApplyT(func(out interface{}) float64 {
+		var res float64
+		if out != nil {
+			res = out.(float64)
+		}
+		return res
+	}).(Float64Output)
+}
+
+// GetIntOutput returns a stack output keyed by the given name as an IntOutput
+func (s *StackReference) GetIntOutput(name StringInput) IntOutput {
+	return s.GetFloat64Output(name).ApplyT(func(out float64) int {
+		return int(out)
+	}).(IntOutput)
+}
+
 type stackReferenceArgs struct {
 	Name string `pulumi:"name"`
 }
