@@ -199,8 +199,6 @@ type resourceOptionsCommon struct {
 	// current state. Once a resource has been imported, the import property must be removed from the resource's
 	// options.
 	Import IDInput
-	// Parent is an optional parent resource to which this resource belongs.
-	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
@@ -435,7 +433,7 @@ func Parent(r Resource) ResourceOrInvokeOption {
 	})
 }
 
-// TODO
+// Like Parent, but accepts ResourceInput and ResourceOutput.
 func ParentInput(r ResourceInput) ResourceOption {
 	return resourceOptionWithInputs(func(ro *resourceOptionsWithInputs) {
 		ro.Parent = r
