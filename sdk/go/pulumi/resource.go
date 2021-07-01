@@ -442,6 +442,9 @@ func DependsOnInputs(o []ResourceInput) ResourceOption {
 	return resourceOptionWithInputs(func(ctx context.Context, opts *resourceOptions) error {
 		var allDeps []Resource
 		for _, ri := range o {
+			if ri == nil {
+				continue
+			}
 			dep, moreDeps, err := awaitResourceInput(ctx, ri)
 			if err != nil {
 				return err
@@ -536,6 +539,10 @@ func ProviderInput(pri ProviderResourceInput) ResourceOrInvokeOption {
 		ro *resourceOptions,
 		io *invokeOptions) error {
 
+		if pri == nil {
+			return nil
+		}
+
 		p, deps, err := awaitProviderResourceInput(ctx, pri.ToProviderResourceOutput())
 		if err != nil {
 			return err
@@ -571,9 +578,11 @@ func ProviderMap(o map[string]ProviderResource) ResourceOption {
 func ProviderInputMap(inputMap map[string]ProviderResourceInput) ResourceOption {
 	return resourceOptionWithInputs(func(ctx context.Context, opts *resourceOptions) error {
 		resultMap := make(map[string]ProviderResource)
-
 		var allDeps []Resource
 		for k, v := range inputMap {
+			if v == nil {
+				continue
+			}
 			r, deps, err := awaitProviderResourceInput(ctx, v)
 			if err != nil {
 				return err
@@ -581,7 +590,6 @@ func ProviderInputMap(inputMap map[string]ProviderResourceInput) ResourceOption 
 			allDeps = append(allDeps, deps...)
 			resultMap[k] = r
 		}
-
 		opts.DependsOn = append(opts.DependsOn, allDeps...)
 		return ProviderMap(resultMap).applyResourceOptionImmediately(opts)
 	})
@@ -602,6 +610,9 @@ func ProviderInputs(o ...ProviderResourceInput) ResourceOption {
 		var results []ProviderResource
 		var allDeps []Resource
 		for _, v := range o {
+			if v == nil {
+				continue
+			}
 			r, deps, err := awaitProviderResourceInput(ctx, v)
 			if err != nil {
 				return err
