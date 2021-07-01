@@ -232,8 +232,37 @@ type resourceOptionsWithInputs struct {
 	Parent ResourceInput
 }
 
-func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) *resourceOptions {
-	panic("TODO Await")
+func (rowi *resourceOptionsWithInputs) Await(ctx context.Context) (*resourceOptions, error) {
+	result := resourceOptions{}
+	result.resourceOptionsCommon = rowi.resourceOptionsCommon
+
+	if rowi.Parent != nil {
+		parent, deps, err := awaitResourceInput(ctx, rowi.Parent)
+		if err != nil {
+			return nil, err
+		}
+		result.Parent = parent
+		result.DependsOn = append(result.DependsOn, deps...)
+	}
+
+	return &result, nil
+}
+
+func awaitResourceInput(ctx context.Context, ri ResourceInput) (Resource, []Resource, error) {
+	result, known, _, deps, err := ri.ToResourceOutput().await(ctx)
+
+	if !known {
+		return nil, nil, fmt.Errorf("Encountered unknown ResourceInput, this is currently not supported")
+	}
+
+	resource, isResource := result.(Resource)
+
+	if !isResource {
+		return nil, nil, fmt.Errorf("ResourceInput resolved to a value that is not a Resource but a %v",
+			reflect.TypeOf(result))
+	}
+
+	return resource, deps, err
 }
 
 type invokeOptions struct {
