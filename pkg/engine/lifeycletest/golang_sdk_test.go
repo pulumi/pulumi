@@ -97,8 +97,10 @@ func TestSingleResourceDefaultProviderGolangLifecycle(t *testing.T) {
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
+
 }
 
+// here
 // Inspired by transformations_test.go.
 func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
@@ -176,6 +178,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 
 			// Scenario #3 - apply a transformation to the Stack to transform all (future) resources in the stack
 			res3Transformation := func(args *pulumi.ResourceTransformationArgs) *pulumi.ResourceTransformationResult {
+
 				// Props might be nil.
 				var props *testResourceInputs
 				if args.Props == nil {
@@ -183,6 +186,7 @@ func TestSingleResourceDefaultProviderGolangTransformations(t *testing.T) {
 				} else {
 					props = args.Props.(*testResourceInputs)
 				}
+
 				props.Foo = pulumi.String("baz")
 
 				return &pulumi.ResourceTransformationResult{

@@ -35,43 +35,52 @@ var providerResourceStateType = reflect.TypeOf(ProviderResourceState{})
 
 // ResourceState is the base
 type ResourceState struct {
-	urn URNOutput `pulumi:"urn"`
-
-	providers map[string]ProviderResource
-
-	aliases []URNOutput
-
-	name string
-
-	transformations []ResourceTransformation
+	urn                    URNOutput `pulumi:"urn"`
+	name                   string
+	aliasesPromise         *aliasesPromise
+	providersPromise       *providersPromise
+	transformationsPromise *transformationsPromise
+	addedTransformations   []ResourceTransformation
 }
 
-func (s ResourceState) URN() URNOutput {
+func (r *ResourceState) getProvidersPromise() *providersPromise {
+	return initProvidersPromise(&r.providersPromise)
+}
+
+func (r *ResourceState) getAliasesPromise() *aliasesPromise {
+	return initAliasesPromise(&r.aliasesPromise)
+}
+
+func (r *ResourceState) getTransformationsPromise() *transformationsPromise {
+	return initTransformationsPromise(&r.transformationsPromise)
+}
+
+func (s *ResourceState) URN() URNOutput {
 	return s.urn
 }
 
-func (s ResourceState) GetProvider(token string) ProviderResource {
-	return s.providers[getPackage(token)]
+func (s *ResourceState) GetProvider(token string) ProviderResource {
+	return s.getProviders()[getPackage(token)]
 }
 
-func (s ResourceState) getProviders() map[string]ProviderResource {
-	return s.providers
+func (s *ResourceState) getProviders() map[string]ProviderResource {
+	return s.getProvidersPromise().await()
 }
 
-func (s ResourceState) getAliases() []URNOutput {
-	return s.aliases
+func (s *ResourceState) getAliases() []URNOutput {
+	return s.getAliasesPromise().await()
 }
 
-func (s ResourceState) getName() string {
+func (s *ResourceState) getName() string {
 	return s.name
 }
 
-func (s ResourceState) getTransformations() []ResourceTransformation {
-	return s.transformations
+func (s *ResourceState) getTransformations() []ResourceTransformation {
+	return append(s.getTransformationsPromise().await(), s.addedTransformations...)
 }
 
 func (s *ResourceState) addTransformation(t ResourceTransformation) {
-	s.transformations = append(s.transformations, t)
+	s.addedTransformations = append(s.addedTransformations, t)
 }
 
 func (ResourceState) isResource() {}

@@ -377,14 +377,14 @@ func (ctx *Context) ReadResource(
 			ctx.endRPC(err)
 		}()
 
-		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
-		if !known || err != nil {
-			return
-		}
-
 		transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t,
 			name, resStateBuilder, props, opts...)
 		if err != nil {
+			return
+		}
+
+		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
+		if !known || err != nil {
 			return
 		}
 
@@ -615,6 +615,15 @@ func (ctx *Context) transformOptionsAndProps(
 	props Input,
 	opts ...ResourceOption) (*resourceOptions, Input, error) {
 
+	// To avoid deadlocks we need to resolve the promises in any
+	// case; if a successful path resolves them earlier, the first
+	// value wins. The finalizer resolves to default values.
+	defer func() {
+		resStateBuilder.resolveTransformations(nil)
+		resStateBuilder.resolveAliases(nil)
+		resStateBuilder.resolveProviders(make(map[string]ProviderResource))
+	}()
+
 	options, err := mergeAwait(ctx.ctx, opts...)
 	if err != nil {
 		return nil, nil, err
@@ -637,19 +646,20 @@ func (ctx *Context) transformOptionsAndProps(
 		return nil, nil, err
 	}
 
+	resStateBuilder.resolveTransformations(transformations)
+
 	// Collapse aliases to URNs.
 	aliasURNs, err := ctx.collapseAliases(transformedOpts.Aliases, t, name, transformedOpts.Parent)
 	if err != nil {
 		return nil, nil, err
 	}
 
+	resStateBuilder.resolveAliases(aliasURNs)
+
 	// Merge providers.
 	providers := mergeProviders(t, transformedOpts.Parent, transformedOpts.Provider, transformedOpts.Providers)
 
-	// Link final providers, aliases, transformations.
-	resStateBuilder.setProviders(providers)
-	resStateBuilder.setAliases(aliasURNs)
-	resStateBuilder.setTransformations(transformations)
+	resStateBuilder.resolveProviders(providers)
 
 	return transformedOpts, transformedProps, nil
 }
@@ -668,11 +678,35 @@ func (ctx *Context) RegisterRemoteComponentResource(
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
-	outputs         map[string]Output
-	providers       map[string]ProviderResource
-	aliases         []URNOutput
-	name            string
-	transformations []ResourceTransformation
+	name                   string
+	outputs                map[string]Output
+	aliasesPromise         *aliasesPromise
+	transformationsPromise *transformationsPromise
+	providersPromise       *providersPromise
+}
+
+func (r *resourceState) getProvidersPromise() *providersPromise {
+	return initProvidersPromise(&r.providersPromise)
+}
+
+func (r *resourceState) getAliasesPromise() *aliasesPromise {
+	return initAliasesPromise(&r.aliasesPromise)
+}
+
+func (r *resourceState) getTransformationsPromise() *transformationsPromise {
+	return initTransformationsPromise(&r.transformationsPromise)
+}
+
+func (r *resourceState) providers() map[string]ProviderResource {
+	return r.getProvidersPromise().await()
+}
+
+func (r *resourceState) aliases() []URNOutput {
+	return r.getAliasesPromise().await()
+}
+
+func (r *resourceState) transformations() []ResourceTransformation {
+	return r.getTransformationsPromise().await()
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
@@ -684,31 +718,36 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 		transformations = append(transformations, options.Parent.getTransformations()...)
 	}
 
+	transformedOptions := options
+	transformedProps := props
+	transformedOpts := opts
+
 	for _, transformation := range transformations {
 		args := &ResourceTransformationArgs{
 			Resource: resource,
 			Type:     t,
 			Name:     name,
-			Props:    props,
-			Opts:     opts,
+			Props:    transformedProps,
+			Opts:     transformedOpts,
 		}
 
 		res := transformation(args)
 		if res != nil {
-			resOptions, err := tryMergeWithoutAwaiting(res.Opts...)
+			var err error
+			transformedOptions, err = tryMergeWithoutAwaiting(res.Opts...)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 
-			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
+			if transformedOptions.Parent != nil && transformedOptions.Parent.URN() != options.Parent.URN() {
 				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
-			props = res.Props
-			options = resOptions
+			transformedProps = res.Props
+			transformedOpts = res.Opts
 		}
 	}
 
-	return props, options, transformations, nil
+	return transformedProps, transformedOptions, transformations, nil
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
@@ -772,11 +811,11 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 
 type resourceStateBuilder struct {
-	resource           Resource
-	state              *resourceState
-	setProviders       func(map[string]ProviderResource)
-	setAliases         func([]URNOutput)
-	setTransformations func([]ResourceTransformation)
+	resource               Resource
+	state                  *resourceState
+	resolveProviders       func(map[string]ProviderResource)
+	resolveAliases         func([]URNOutput)
+	resolveTransformations func([]ResourceTransformation)
 }
 
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
@@ -788,9 +827,13 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource) *resou
 	resource := reflect.ValueOf(resourceV)
 	typ := resource.Type()
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+		fmt.Printf("Basic pathway for %s\n", name)
 		b := &resourceStateBuilder{}
 		b.resource = resourceV
 		b.state = &resourceState{}
+		b.resolveProviders = b.state.getProvidersPromise().fulfill
+		b.resolveAliases = b.state.getAliasesPromise().fulfill
+		b.resolveTransformations = b.state.getTransformationsPromise().fulfill
 		return b
 	}
 	resource, typ = resource.Elem(), typ.Elem()
@@ -868,17 +911,20 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource) *resou
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
-		b.setProviders = func(providers map[string]ProviderResource) {
-			state.providers = providers
-			rs.providers = providers
+
+		b.resolveAliases = func(a []URNOutput) {
+			state.getAliasesPromise().fulfill(a)
+			rs.getAliasesPromise().fulfill(a)
 		}
-		b.setAliases = func(aliases []URNOutput) {
-			state.aliases = aliases
-			rs.aliases = aliases
+
+		b.resolveProviders = func(a map[string]ProviderResource) {
+			state.getProvidersPromise().fulfill(a)
+			rs.getProvidersPromise().fulfill(a)
 		}
-		b.setTransformations = func(transformations []ResourceTransformation) {
-			state.transformations = transformations
-			rs.transformations = transformations
+
+		b.resolveTransformations = func(a []ResourceTransformation) {
+			state.getTransformationsPromise().fulfill(a)
+			rs.getTransformationsPromise().fulfill(a)
 		}
 	}
 	populateResourceStateResolvers()
@@ -983,7 +1029,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
 	parent, optDeps, protect, provider, providers, deleteBeforeReplace, importID, ignoreChanges,
-		additionalSecretOutputs, version, err := ctx.getOpts(t, resource.providers, opts, remote)
+		additionalSecretOutputs, version, err := ctx.getOpts(t, resource.providers(), opts, remote)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -1033,8 +1079,10 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	sort.Strings(deps)
 
 	// Await alias URNs
-	aliases := make([]string, len(resource.aliases))
-	for i, alias := range resource.aliases {
+
+	resourceAliases := resource.aliases()
+	aliases := make([]string, len(resourceAliases))
+	for i, alias := range resourceAliases {
 		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
