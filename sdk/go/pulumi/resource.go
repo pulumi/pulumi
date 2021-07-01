@@ -181,7 +181,7 @@ type CustomTimeouts struct {
 	Delete string
 }
 
-type resourceOptionsCommon struct {
+type resourceOptions struct {
 	// AdditionalSecretOutputs is an optional list of output properties to mark as secret.
 	AdditionalSecretOutputs []string
 	// Aliases is an optional list of identifiers used to find and use existing resources.
@@ -190,6 +190,8 @@ type resourceOptionsCommon struct {
 	CustomTimeouts *CustomTimeouts
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
+	// DependsOn is an optional array of explicit dependencies on other resources.
+	DependsOn []Resource
 	// IgnoreChanges ignores changes to any of the specified properties.
 	IgnoreChanges []string
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -197,10 +199,14 @@ type resourceOptionsCommon struct {
 	// current state. Once a resource has been imported, the import property must be removed from the resource's
 	// options.
 	Import IDInput
+	// Parent is an optional parent resource to which this resource belongs.
+	Parent Resource
 	// Protect, when set to true, ensures that this resource cannot be deleted (without first setting it to false).
 	Protect bool
 	// Provider is an optional provider resource to use for this resource's CRUD operations.
 	Provider ProviderResource
+	// Providers is an optional map of package to provider resource for a component resource.
+	Providers map[string]ProviderResource
 	// Transformations is an optional list of transformations to apply to this resource during construction.
 	// The transformations are applied in order, and are applied prior to transformation and to parents
 	// walking from the resource up to the stack.
@@ -211,28 +217,6 @@ type resourceOptionsCommon struct {
 	// operating on this resource. This version overrides the version information inferred from the current package and
 	// should rarely be used.
 	Version string
-}
-
-type resourceOptions struct {
-	resourceOptionsCommon
-
-	// DependsOn is an optional array of explicit dependencies on other resources.
-	DependsOn []Resource
-
-	// Parent is an optional parent resource to which this resource belongs.
-	Parent Resource
-
-	// Providers is an optional map of package to provider resource for a component resource.
-	Providers map[string]ProviderResource
-}
-
-// Like resourceOptions, but select properties are now typed PInput instead of P.
-type resourceOptionsWithInputs struct {
-	resourceOptionsCommon
-
-	DependsOn []ResourceInput
-	Parent    ResourceInput
-	Providers map[string]ProviderResourceInput
 }
 
 func awaitResourceInput(ctx context.Context, ri ResourceInput) (Resource, []Resource, error) {
