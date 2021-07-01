@@ -393,7 +393,7 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		}
 		return pkg.inputType(t.ElementType)
 	case *schema.EnumType:
-		return pkg.typeStringImpl(t.ElementType, argsType)
+		return pkg.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		typ := "[]"
 		if !argsType && pkg.isExternalObjectType(t.ElementType) {
@@ -534,7 +534,7 @@ func (pkg *pkgContext) outputType(t schema.Type) string {
 		}
 		return strings.TrimSuffix(elem, "Output") + "PtrOutput"
 	case *schema.EnumType:
-		return pkg.outputType(t.ElementType)
+		return pkg.tokenToEnum(t.Token) + "Output"
 	case *schema.ArrayType:
 		en := strings.TrimSuffix(pkg.outputType(t.ElementType), "Output")
 		if en == "pulumi.Any" {
@@ -778,7 +778,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	goElementType := enumType.ElementType.String()
 	switch goElementType {
 	case "integer":
-		goElementType = "int64"
+		goElementType = "int"
 	case "number":
 		goElementType = "float64"
 	}
@@ -971,42 +971,42 @@ func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *sch
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[1]sOutput() %[1]sOutput {\n", typeName)
-	fmt.Fprintf(w, "return pulumi.ToOutput(%[1]s(e)).(%[1]sOutput)\n", typeName)
+	fmt.Fprintf(w, "return pulumi.ToOutput(e).(%sOutput)\n", typeName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[1]sOutputWithContext(ctx context.Context) %[1]sOutput {\n", typeName)
-	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, %[1]s(e)).(%[1]sOutput)\n", typeName)
+	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, e).(%sOutput)\n", typeName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[1]sPtrOutput() %[1]sPtrOutput {\n", typeName)
-	fmt.Fprintf(w, "return %[1]s(e).To%[1]sPtrOutputWithContext(context.Background())\n", typeName)
+	fmt.Fprintf(w, "return e.To%sPtrOutputWithContext(context.Background())\n", typeName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[1]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", typeName)
-	fmt.Fprintf(w, "return %[1]s(e).To%[1]sOutputWithContext(ctx).To%[1]sPtrOutputWithContext(ctx)\n", typeName)
+	fmt.Fprintf(w, "return e.To%[1]sOutputWithContext(ctx).To%[1]sPtrOutputWithContext(ctx)\n", typeName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[2]sOutput() %[3]sOutput {\n", typeName, asFuncName, elementType)
-	fmt.Fprintf(w, "return pulumi.ToOutput(%[1]s(e)).(%[1]sOutput)\n", elementType)
+	fmt.Fprintf(w, "return pulumi.ToOutput(e).(%sOutput)\n", elementType)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[2]sOutputWithContext(ctx context.Context) %[3]sOutput {\n", typeName, asFuncName, elementType)
-	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, %[1]s(e)).(%[1]sOutput)\n", elementType)
+	fmt.Fprintf(w, "return pulumi.ToOutputWithContext(ctx, e).(%sOutput)\n", elementType)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[2]sPtrOutput() %[3]sPtrOutput {\n", typeName, asFuncName, elementType)
-	fmt.Fprintf(w, "return %[1]s(e).To%[2]sPtrOutputWithContext(context.Background())\n", elementType, asFuncName)
+	fmt.Fprintf(w, "return e.To%sPtrOutputWithContext(context.Background())\n", asFuncName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 
 	fmt.Fprintf(w, "func (e %[1]s) To%[2]sPtrOutputWithContext(ctx context.Context) %[3]sPtrOutput {\n", typeName, asFuncName, elementType)
-	fmt.Fprintf(w, "return %[1]s(e).To%[2]sOutputWithContext(ctx).To%[2]sPtrOutputWithContext(ctx)\n", elementType, asFuncName)
+	fmt.Fprintf(w, "return e.To%[1]sOutputWithContext(ctx).To%[1]sPtrOutputWithContext(ctx)\n", asFuncName)
 	fmt.Fprintln(w, "}")
 	fmt.Fprintln(w)
 }
