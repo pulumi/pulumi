@@ -585,6 +585,7 @@ func (ctx *Context) registerResource(
 				AdditionalSecretOutputs: inputs.additionalSecretOutputs,
 				Version:                 inputs.version,
 				Remote:                  remote,
+				ReplaceOnChanges:        inputs.replaceOnChanges,
 			})
 			if err != nil {
 				logging.V(9).Infof("RegisterResource(%s, %s): error: %v", t, name, err)
@@ -1019,6 +1020,7 @@ type resourceInputs struct {
 	aliases                 []string
 	additionalSecretOutputs []string
 	version                 string
+	replaceOnChanges        []string
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.

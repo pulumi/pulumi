@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -216,6 +216,10 @@ type resourceOptions struct {
 	Provider ProviderResource
 	// Providers is an optional map of package to provider resource for a component resource.
 	Providers map[string]ProviderResource
+	// ReplaceOnChanges will force a replacement when any of these property paths are set.  If this list includes `"*"`,
+	// changes to any properties will force a replacement.  Initialization errors from previous deployments will
+	// require replacement instead of update only if `"*"` is passed.
+	ReplaceOnChanges []string
 	// Transformations is an optional list of transformations to apply to this resource during construction.
 	// The transformations are applied in order, and are applied prior to transformation and to parents
 	// walking from the resource up to the stack.
@@ -634,6 +638,15 @@ func ProviderInputs(o ...ProviderResourceInput) ResourceOption {
 		}
 		opts.DependsOn = append(opts.DependsOn, allDeps...)
 		return Providers(results...).applyResourceOptionImmediately(opts)
+	})
+}
+
+// ReplaceOnChanges will force a replacement when any of these property paths are set.  If this list includes `"*"`,
+// changes to any properties will force a replacement.  Initialization errors from previous deployments will
+// require replacement instead of update only if `"*"` is passed.
+func ReplaceOnChanges(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, o...)
 	})
 }
 

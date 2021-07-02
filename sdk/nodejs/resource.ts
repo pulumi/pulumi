@@ -492,6 +492,12 @@ export interface ResourceOptions {
      */
     ignoreChanges?: string[];
     /**
+     * Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes to any
+     * properties will force a replacement.  Initialization errors from previous deployments will require replacement
+     * instead of update only if `"*"` is passed.
+     */
+    replaceOnChanges?: string[];
+    /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
      * rarely be used.

@@ -288,6 +288,19 @@ def _translate_additional_secret_outputs(res: 'Resource',
     return additional_secret_outputs
 
 
+def _translate_replace_on_changes(res: 'Resource',
+                                  typ: Optional[type],
+                                  replace_on_changes: Optional[List[str]]) -> Optional[List[str]]:
+    if replace_on_changes is not None:
+        if typ is not None:
+            # If `typ` is specified, use its type/name metadata for translation.
+            input_names = _types.input_type_py_to_pulumi_names(typ)
+            replace_on_changes = list(map(lambda k: input_names.get(k) or k, replace_on_changes))
+        elif res.translate_input_property is not None:
+            replace_on_changes = list(map(res.translate_input_property, replace_on_changes))
+    return replace_on_changes
+
+
 def read_resource(res: 'CustomResource',
                   ty: str,
                   name: str,
@@ -439,6 +452,7 @@ def register_resource(res: 'Resource',
 
             ignore_changes = _translate_ignore_changes(res, typ, opts.ignore_changes)
             additional_secret_outputs = _translate_additional_secret_outputs(res, typ, opts.additional_secret_outputs)
+            replace_on_changes = _translate_replace_on_changes(res, typ, opts.replace_on_changes)
 
             # Translate the CustomTimeouts object.
             custom_timeouts = None
@@ -487,6 +501,7 @@ def register_resource(res: 'Resource',
                 aliases=resolver.aliases,
                 supportsPartialValues=True,
                 remote=remote,
+                replaceOnChanges=replace_on_changes,
             )
 
             from ..resource import create_urn  # pylint: disable=import-outside-toplevel

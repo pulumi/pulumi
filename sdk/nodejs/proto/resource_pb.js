@@ -1230,7 +1230,7 @@ proto.pulumirpc.ReadResourceResponse.prototype.hasProperties = function() {
  * @private {!Array<number>}
  * @const
  */
-proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15];
+proto.pulumirpc.RegisterResourceRequest.repeatedFields_ = [7,12,14,15,23];
 
 
 
@@ -1284,7 +1284,8 @@ proto.pulumirpc.RegisterResourceRequest.toObject = function(includeInstance, msg
     supportspartialvalues: jspb.Message.getBooleanFieldWithDefault(msg, 19, false),
     remote: jspb.Message.getBooleanFieldWithDefault(msg, 20, false),
     acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 21, false),
-    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : []
+    providersMap: (f = msg.getProvidersMap()) ? f.toObject(includeInstance, undefined) : [],
+    replaceonchangesList: (f = jspb.Message.getRepeatedField(msg, 23)) == null ? undefined : f
   };
 
   if (includeInstance) {
@@ -1414,6 +1415,10 @@ proto.pulumirpc.RegisterResourceRequest.deserializeBinaryFromReader = function(m
       reader.readMessage(value, function(message, reader) {
         jspb.Map.deserializeBinary(message, reader, jspb.BinaryReader.prototype.readString, jspb.BinaryReader.prototype.readString, null, "", "");
          });
+      break;
+    case 23:
+      var value = /** @type {string} */ (reader.readString());
+      msg.addReplaceonchanges(value);
       break;
     default:
       reader.skipField();
@@ -1593,6 +1598,13 @@ proto.pulumirpc.RegisterResourceRequest.serializeBinaryToWriter = function(messa
   f = message.getProvidersMap(true);
   if (f && f.getLength() > 0) {
     f.serializeBinary(22, writer, jspb.BinaryWriter.prototype.writeString, jspb.BinaryWriter.prototype.writeString);
+  }
+  f = message.getReplaceonchangesList();
+  if (f.length > 0) {
+    writer.writeRepeatedString(
+      23,
+      f
+    );
   }
 };
 
@@ -2459,6 +2471,43 @@ proto.pulumirpc.RegisterResourceRequest.prototype.getProvidersMap = function(opt
 proto.pulumirpc.RegisterResourceRequest.prototype.clearProvidersMap = function() {
   this.getProvidersMap().clear();
   return this;};
+
+
+/**
+ * repeated string replaceOnChanges = 23;
+ * @return {!Array<string>}
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.getReplaceonchangesList = function() {
+  return /** @type {!Array<string>} */ (jspb.Message.getRepeatedField(this, 23));
+};
+
+
+/**
+ * @param {!Array<string>} value
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.setReplaceonchangesList = function(value) {
+  return jspb.Message.setField(this, 23, value || []);
+};
+
+
+/**
+ * @param {string} value
+ * @param {number=} opt_index
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.addReplaceonchanges = function(value, opt_index) {
+  return jspb.Message.addToRepeatedField(this, 23, value, opt_index);
+};
+
+
+/**
+ * Clears the list making it empty but non-null.
+ * @return {!proto.pulumirpc.RegisterResourceRequest} returns this
+ */
+proto.pulumirpc.RegisterResourceRequest.prototype.clearReplaceonchangesList = function() {
+  return this.setReplaceonchangesList([]);
+};
 
 
 

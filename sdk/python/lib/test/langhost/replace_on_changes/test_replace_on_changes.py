@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from os import path
-import unittest
 from ..util import LanghostTest
 
 
-class InvalidPropertyDependencyTest(LanghostTest):
-    def test_invalid_property_dependency(self):
+class TestReplaceOnChanges(LanghostTest):
+    """
+    Tests that Pulumi resources can accept replace_on_changes resource options.
+    """
+    def test_replace_on_changes(self):
         self.run_test(
-            program=path.join(self.base_path(), "invalid_property_dependency"),
-            expected_error="Program exited with non-zero exit code: 1",
+            program=path.join(self.base_path(), "replace_on_changes"),
             expected_resource_count=1)
 
     def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
                           _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
                           _replace_on_changes):
-        self.assertEqual(ty, "test:index:MyResource")
-        if name == "resA":
-            self.assertListEqual(_dependencies, [])
-            self.assertDictEqual(_property_deps, {})
-        else:
-            self.fail(f"unexpected resource: {name} ({ty})")
+
+        print(f'register_resource args: {locals()}')
+        self.assertEqual("testResource", name)
+        self.assertListEqual(_replace_on_changes, ["a", "b"])
 
         return {
-            "urn": name,
-            "id": name,
-            "object": {
-                "outprop": "qux",
-            }
+            "urn": self.make_urn(ty, name),
         }

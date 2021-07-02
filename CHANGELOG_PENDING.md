@@ -1,5 +1,8 @@
 ### Improvements
 
+- [sdk] - Add `replaceOnChanges` resource option.
+  [#7226](https://github.com/pulumi/pulumi/pull/722
+
 - [sdk/go] - Introduce versions of `ResourceOption` accepting `ResourceInput` instead of `Resource`.
   [#7350](https://github.com/pulumi/pulumi/pull/7350/)
 
@@ -29,5 +32,7 @@
   func NewResourceInput(resource Resource) ResourceInput
   func NewProviderResourceInput(resource ProviderResource) ProviderResourceInput
 
+- [sdk/go] - Support for authoring resource methods in Go
+  [#7379](https://github.com/pulumi/pulumi/pull/7379)
 
 ### Bug Fixes
