@@ -91,64 +91,16 @@ func (p *transformationsPromise) fulfill(value []ResourceTransformation) {
 }
 
 func (p *providersPromise) await() map[string]ProviderResource {
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(1 * time.Second)
-		timeout <- true
-	}()
-
-	ch := make(chan bool, 1)
-	go func() {
-		p.waitGroup.Wait()
-		ch <- true
-	}()
-
-	select {
-	case <-ch:
-		return p.value
-	case <-timeout:
-		panic("timeout when waiting on providersPromise")
-	}
+	p.waitGroup.Wait()
+	return p.value
 }
 
 func (p *aliasesPromise) await() []URNOutput {
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(5 * time.Second)
-		timeout <- true
-	}()
-
-	ch := make(chan bool, 1)
-	go func() {
-		p.waitGroup.Wait()
-		ch <- true
-	}()
-
-	select {
-	case <-ch:
-		return p.value
-	case <-timeout:
-		panic("timeout when waiting on aliasesPromise")
-	}
+	p.waitGroup.Wait()
+	return p.value
 }
 
 func (p *transformationsPromise) await() []ResourceTransformation {
-	timeout := make(chan bool, 1)
-	go func() {
-		time.Sleep(1 * time.Second)
-		timeout <- true
-	}()
-
-	ch := make(chan bool, 1)
-	go func() {
-		p.waitGroup.Wait()
-		ch <- true
-	}()
-
-	select {
-	case <-ch:
-		return p.value
-	case <-timeout:
-		panic(fmt.Sprintf("timeout when waiting on transformationPromise %s", p.name))
-	}
+	p.waitGroup.Wait()
+	return p.value
 }
