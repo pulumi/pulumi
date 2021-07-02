@@ -38,7 +38,6 @@ type aliasesPromise struct {
 
 type transformationsPromise struct {
 	once      sync.Once
-	name      string
 	waitGroup sync.WaitGroup
 	value     []ResourceTransformation
 }
