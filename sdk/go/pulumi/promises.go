@@ -19,10 +19,8 @@
 package pulumi
 
 import (
-	"fmt"
 	"sync"
 	"sync/atomic"
-	"time"
 	"unsafe"
 )
 
