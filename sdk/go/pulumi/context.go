@@ -827,7 +827,6 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource) *resou
 	resource := reflect.ValueOf(resourceV)
 	typ := resource.Type()
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
-		fmt.Printf("Basic pathway for %s\n", name)
 		b := &resourceStateBuilder{}
 		b.resource = resourceV
 		b.state = &resourceState{}
