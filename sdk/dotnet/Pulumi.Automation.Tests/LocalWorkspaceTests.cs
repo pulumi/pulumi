@@ -1655,13 +1655,13 @@ namespace Pulumi.Automation.Tests
             var program = PulumiFn.Create(() =>
             {
                 var config = new Config();
-                var a = new ComponentResource("test:res:a", "a", null);
+                new ComponentResource("test:res:a", "a");
 
                 if (config.GetBoolean("ShouldFail") == true)
                     throw new FileNotFoundException("ShouldFail");
 
-                var b = new ComponentResource("test:res:b", "b", null);
-                var c = new ComponentResource("test:res:c", "c", null);
+                new ComponentResource("test:res:b", "b");
+                new ComponentResource("test:res:c", "c");
             });
             Assert.IsType<PulumiFnInline>(program);
 
@@ -1675,12 +1675,12 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["ShouldFail"] = new ConfigValue("false"),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["ShouldFail"] = new ConfigValue("false"),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up

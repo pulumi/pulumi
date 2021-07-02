@@ -1,6 +1,9 @@
 
 ### Improvements
   
+- [sdk/dotnet] - Fix async await warnings
+  [#7537](https://github.com/pulumi/pulumi/pull/7537)
+
 - [codegen/dotnet] - Emit dynamic config-getters.
   [#7549](https://github.com/pulumi/pulumi/pull/7549)
 

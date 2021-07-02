@@ -37,7 +37,7 @@ namespace Pulumi
         public static Task<int> RunAsync(Func<Task> func)
             => RunAsync(async () =>
             {
-                await func();
+                await func().ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
             });
 
