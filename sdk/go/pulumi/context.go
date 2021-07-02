@@ -686,28 +686,28 @@ type resourceState struct {
 	providersPromise       *providersPromise
 }
 
-func (r *resourceState) getProvidersPromise() *providersPromise {
-	return initProvidersPromise(&r.providersPromise)
+func (state *resourceState) getProvidersPromise() *providersPromise {
+	return initProvidersPromise(&state.providersPromise)
 }
 
-func (r *resourceState) getAliasesPromise() *aliasesPromise {
-	return initAliasesPromise(&r.aliasesPromise)
+func (state *resourceState) getAliasesPromise() *aliasesPromise {
+	return initAliasesPromise(&state.aliasesPromise)
 }
 
-func (r *resourceState) getTransformationsPromise() *transformationsPromise {
-	return initTransformationsPromise(&r.transformationsPromise)
+func (state *resourceState) getTransformationsPromise() *transformationsPromise {
+	return initTransformationsPromise(&state.transformationsPromise)
 }
 
-func (r *resourceState) providers() map[string]ProviderResource {
-	return r.getProvidersPromise().await()
+func (state *resourceState) providers() map[string]ProviderResource {
+	return state.getProvidersPromise().await()
 }
 
-func (r *resourceState) aliases() []URNOutput {
-	return r.getAliasesPromise().await()
+func (state *resourceState) aliases() []URNOutput {
+	return state.getAliasesPromise().await()
 }
 
-func (r *resourceState) transformations() []ResourceTransformation {
-	return r.getTransformationsPromise().await()
+func (state *resourceState) transformations() []ResourceTransformation {
+	return state.getTransformationsPromise().await()
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.

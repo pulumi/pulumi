@@ -43,16 +43,16 @@ type ResourceState struct {
 	addedTransformations   []ResourceTransformation
 }
 
-func (r *ResourceState) getProvidersPromise() *providersPromise {
-	return initProvidersPromise(&r.providersPromise)
+func (s *ResourceState) getProvidersPromise() *providersPromise {
+	return initProvidersPromise(&s.providersPromise)
 }
 
-func (r *ResourceState) getAliasesPromise() *aliasesPromise {
-	return initAliasesPromise(&r.aliasesPromise)
+func (s *ResourceState) getAliasesPromise() *aliasesPromise {
+	return initAliasesPromise(&s.aliasesPromise)
 }
 
-func (r *ResourceState) getTransformationsPromise() *transformationsPromise {
-	return initTransformationsPromise(&r.transformationsPromise)
+func (s *ResourceState) getTransformationsPromise() *transformationsPromise {
+	return initTransformationsPromise(&s.transformationsPromise)
 }
 
 func (s *ResourceState) URN() URNOutput {
