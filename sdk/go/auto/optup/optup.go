@@ -40,9 +40,9 @@ func Message(message string) Option {
 
 // Policy (optional) to run a policy pack during the preview
 func Policy(policy string) Option {
-	return optionFunc(func(opts *Options)) {
+	return optionFunc(func(opts *Options) {
 		opts.Policy = policy
-	}
+	})
 }
 
 // ExpectNoChanges will cause the update to return an error if any changes occur
