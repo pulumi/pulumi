@@ -52,7 +52,7 @@ func (s *ResourceState) getAliasesPromise() *aliasesPromise {
 }
 
 func (s *ResourceState) getTransformationsPromise() *transformationsPromise {
-	return initTransformationsPromise(&s.transformationsPromise)
+	return initTransformationsPromise(fmt.Sprintf("ResourceState name=%s", s.name), &s.transformationsPromise)
 }
 
 func (s *ResourceState) URN() URNOutput {
@@ -76,7 +76,7 @@ func (s *ResourceState) getName() string {
 }
 
 func (s *ResourceState) getTransformations() []ResourceTransformation {
-	return append(s.getTransformationsPromise().await(), s.addedTransformations...)
+	return append(s.getTransformationsPromise().await("ResourceState.getTransformations()"), s.addedTransformations...)
 }
 
 func (s *ResourceState) addTransformation(t ResourceTransformation) {

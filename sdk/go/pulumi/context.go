@@ -363,6 +363,7 @@ func (ctx *Context) ReadResource(
 
 	resStateBuilder := ctx.makeResourceState(t, name, resource)
 	res := resStateBuilder.state
+	stack := ctx.stack
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -378,7 +379,7 @@ func (ctx *Context) ReadResource(
 		}()
 
 		transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t,
-			name, resStateBuilder, props, opts...)
+			name, resStateBuilder, props, stack, opts...)
 		if err != nil {
 			return
 		}
@@ -448,7 +449,11 @@ func (ctx *Context) ReadResource(
 func (ctx *Context) RegisterResource(
 	t, name string, props Input, resource Resource, opts ...ResourceOption) error {
 
-	return ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
+	dbgPrintf("context.RegisterResource(t=%s, name=%s)\n", t, name)
+	err := ctx.registerResource(t, name, props, resource, false /*remote*/, opts...)
+
+	dbgPrintf("DONE context.RegisterResource(t=%s, name=%s) => %v\n", t, name, err)
+	return err
 }
 
 func (ctx *Context) getResource(urn string) (*pulumirpc.RegisterResourceResponse, error) {
@@ -521,6 +526,7 @@ func (ctx *Context) registerResource(
 
 	resStateBuilder := ctx.makeResourceState(t, name, resource)
 	resState := resStateBuilder.state
+	stack := ctx.stack
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
@@ -543,7 +549,7 @@ func (ctx *Context) registerResource(
 		}()
 
 		transformedOpts, transformedProps, err :=
-			ctx.transformOptionsAndProps(t, name, resStateBuilder, props, opts...)
+			ctx.transformOptionsAndProps(t, name, resStateBuilder, props, stack, opts...)
 		if err != nil {
 			return
 		}
@@ -614,7 +620,11 @@ func (ctx *Context) transformOptionsAndProps(
 	t, name string,
 	resStateBuilder *resourceStateBuilder,
 	props Input,
+	stack Resource,
 	opts ...ResourceOption) (*resourceOptions, Input, error) {
+
+	dbgPrintf("BEGIN transformOptionsAndProps t=%v name=%v ctx.stack=%v\n", t, name, ctx.stack)
+	defer dbgPrintf("END  transformOptionsAndProps t=%v name=%v\n", t, name)
 
 	// To avoid deadlocks we need to resolve the promises in any
 	// case; if a successful path resolves them earlier, the first
@@ -695,7 +705,7 @@ func (state *resourceState) getAliasesPromise() *aliasesPromise {
 }
 
 func (state *resourceState) getTransformationsPromise() *transformationsPromise {
-	return initTransformationsPromise(&state.transformationsPromise)
+	return initTransformationsPromise(state.name, &state.transformationsPromise)
 }
 
 func (state *resourceState) providers() map[string]ProviderResource {
@@ -706,13 +716,16 @@ func (state *resourceState) aliases() []URNOutput {
 	return state.getAliasesPromise().await()
 }
 
-func (state *resourceState) transformations() []ResourceTransformation {
-	return state.getTransformationsPromise().await()
+func (state *resourceState) transformations(whyExactly string) []ResourceTransformation {
+	return state.getTransformationsPromise().await(whyExactly)
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
 func applyTransformations(t, name string, props Input, resource Resource, opts []ResourceOption,
 	options *resourceOptions) (Input, *resourceOptions, []ResourceTransformation, error) {
+
+	dbgPrintf("ENTER applyTransformations t=%v name=%v options.Parent=%v\n", t, name, options.Parent.getName())
+	defer dbgPrintf("EXIT applyTransformations t=%v name=%v options.Parent=%v\n", t, name, options.Parent.getName())
 
 	transformations := options.Transformations
 	if options.Parent != nil {

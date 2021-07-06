@@ -993,6 +993,7 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 	}
 }
 
+// tada
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownNode(t *testing.T) {
 	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")

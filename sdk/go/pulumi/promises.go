@@ -19,6 +19,8 @@
 package pulumi
 
 import (
+	"fmt"
+	"runtime/debug"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -38,9 +40,10 @@ type aliasesPromise struct {
 }
 
 type transformationsPromise struct {
-	once      sync.Once
-	waitGroup sync.WaitGroup
-	value     []ResourceTransformation
+	promiseName string
+	once        sync.Once
+	waitGroup   sync.WaitGroup
+	value       []ResourceTransformation
 }
 
 func initProvidersPromise(loc **providersPromise) *providersPromise {
@@ -59,12 +62,16 @@ func initAliasesPromise(loc **aliasesPromise) *aliasesPromise {
 	return *loc
 }
 
-func initTransformationsPromise(loc **transformationsPromise) *transformationsPromise {
+func initTransformationsPromise(promiseName string, loc **transformationsPromise) *transformationsPromise {
+	dbgPrintf("initTransformationsPromise promiseName=%s stack=%s\n", promiseName,
+		string(debug.Stack()))
 	ptr := (*unsafe.Pointer)(unsafe.Pointer(loc))
 	newP := &transformationsPromise{}
 	newP.waitGroup.Add(1)
 	atomic.CompareAndSwapPointer(ptr, nil, unsafe.Pointer(newP))
-	return *loc
+	p := *loc
+	p.promiseName = promiseName
+	return p
 }
 
 func (p *providersPromise) fulfill(value map[string]ProviderResource) {
@@ -82,6 +89,7 @@ func (p *aliasesPromise) fulfill(value []URNOutput) {
 }
 
 func (p *transformationsPromise) fulfill(value []ResourceTransformation) {
+	dbgPrintf("Fulfill transformationPromise for %s with %d\n", p.promiseName, len(value))
 	p.once.Do(func() {
 		p.value = value
 		p.waitGroup.Done()
@@ -89,40 +97,44 @@ func (p *transformationsPromise) fulfill(value []ResourceTransformation) {
 }
 
 func (p *providersPromise) await() map[string]ProviderResource {
-	withTimeout(1*time.Second, func() {
+	withTimeout("providersPromise", 1*time.Second, func() {
 		p.waitGroup.Wait()
 	})
 	return p.value
 }
 
 func (p *aliasesPromise) await() []URNOutput {
-	withTimeout(1*time.Second, func() {
+	withTimeout("aliasesPromise", 1*time.Second, func() {
 		p.waitGroup.Wait()
 	})
 	return p.value
 }
 
-func (p *transformationsPromise) await() []ResourceTransformation {
-	withTimeout(1*time.Second, func() {
+func (p *transformationsPromise) await(whyExactly string) []ResourceTransformation {
+	dbgPrintf("await() transformationsPromise with name=%s and whyExactly=%s stack=%s\n", p.promiseName,
+		whyExactly,
+		string(debug.Stack()))
+	withTimeout("transformationsPromise: "+p.promiseName, 3*time.Second, func() {
 		p.waitGroup.Wait()
 	})
 	return p.value
 }
 
-func withTimeout(dur time.Duration, work func()) {
-	c := make(chan bool)
-	go func() {
-		time.Sleep(dur)
-		c <- true
-	}()
+func withTimeout(name string, dur time.Duration, work func()) {
+	c := make(chan bool, 1)
 
 	go func() {
 		work()
 		c <- false
 	}()
 
-	timedout := <-c
-	if timedout {
-		panic("Timeout")
+	select {
+	case <-c:
+		return // ok
+	case <-time.After(dur):
+		dbgPrintf("Timeout after %v waiting on %s. Stack is %s", dur, name,
+			string(debug.Stack()))
+		panic(fmt.Sprintf("Timeout after %v waiting on %s. Stack is %s", dur, name,
+			string(debug.Stack())))
 	}
 }
