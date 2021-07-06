@@ -195,6 +195,7 @@ class Stack:
 
     def up(self,
            parallel: Optional[int] = None,
+           policy: Optional[str] = None,
            message: Optional[str] = None,
            target: Optional[List[str]] = None,
            expect_no_changes: Optional[bool] = None,
@@ -271,6 +272,7 @@ class Stack:
     def preview(self,
                 parallel: Optional[int] = None,
                 message: Optional[str] = None,
+                policy: Optional[str] = None,
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
                 diff: Optional[bool] = None,
@@ -597,6 +599,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     extra_args: List[str] = []
 
     message = kwargs.get("message")
+    policy = kwargs.get("policy")
     expect_no_changes = kwargs.get("expect_no_changes")
     diff = kwargs.get("diff")
     replace = kwargs.get("replace")
@@ -606,6 +609,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
 
     if message:
         extra_args.extend(["--message", message])
+    if policy:
+        extra_args.extend(["---policy-pack", policy])
     if expect_no_changes:
         extra_args.append("--expect-no-changes")
     if diff:

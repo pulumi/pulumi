@@ -38,6 +38,13 @@ func Message(message string) Option {
 	})
 }
 
+// Policy (optional) to run a policy pack during the preview
+func Policy(policy string) Option {
+	return optionFunc(func(opts *Options)) {
+		opts.Policy = policy
+	}
+}
+
 // ExpectNoChanges will cause the preview to return an error if any changes occur
 func ExpectNoChanges() Option {
 	return optionFunc(func(opts *Options) {
@@ -115,6 +122,8 @@ type Options struct {
 	Parallel int
 	// Message (optional) to associate with the preview operation
 	Message string
+	// Policy (optional) to run a policy pack during the preview
+	Policy string
 	// Return an error if any changes occur during this preview
 	ExpectNoChanges bool
 	// Diff displays operation as a rich diff showing the overall change

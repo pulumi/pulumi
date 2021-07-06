@@ -184,6 +184,9 @@ Event: ${line}\n${e.toString()}`);
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
             }
+            if (opts.policy) {
+                args.push("--policy-pack", opts.policy);
+            }
         }
 
         let onExit = (hasError: boolean) => { return; };
@@ -294,6 +297,9 @@ Event: ${line}\n${e.toString()}`);
             }
             if (opts.userAgent) {
                 args.push("--exec-agent", opts.userAgent);
+            }
+            if (opts.policy) {
+                args.push("--policy-pack", opts.policy);
             }
         }
 
@@ -735,6 +741,7 @@ export interface UpOptions {
     target?: string[];
     targetDependents?: boolean;
     userAgent?: string;
+    policy?: string;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
     program?: PulumiFn;
@@ -752,6 +759,7 @@ export interface PreviewOptions {
     target?: string[];
     targetDependents?: boolean;
     userAgent?: string;
+    policy?: string;
     program?: PulumiFn;
     onOutput?: (out: string) => void;
     onEvent?: (event: EngineEvent) => void;
