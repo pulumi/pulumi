@@ -53,9 +53,10 @@ func TestGoPackageName(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "go", func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
 		return GeneratePackage(tool, pkg)
-	})
+	}
+	test.TestSDKCodegen(t, "go", generatePackage)
 }
 
 type mocks int
