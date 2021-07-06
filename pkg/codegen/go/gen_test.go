@@ -1,7 +1,6 @@
 package gen
 
 import (
-	"path/filepath"
 	"sync"
 	"testing"
 
@@ -54,123 +53,10 @@ func TestGoPackageName(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name                      string
-		schemaDir                 string
-		expectedFiles             []string
-		genResourceContainerTypes bool
-	}{
-		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				filepath.Join("example", "argFunction.go"),
-				filepath.Join("example", "doc.go"),
-				filepath.Join("example", "init.go"),
-				filepath.Join("example", "otherResource.go"),
-				filepath.Join("example", "provider.go"),
-				filepath.Join("example", "pulumiTypes.go"),
-				filepath.Join("example", "pulumiUtilities.go"),
-				filepath.Join("example", "resource.go"),
-			},
-			false,
-		},
-		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				filepath.Join("plant", "doc.go"),
-				filepath.Join("plant", "init.go"),
-				filepath.Join("plant", "provider.go"),
-				filepath.Join("plant", "pulumiTypes.go"),
-				filepath.Join("plant", "pulumiUtilities.go"),
-				filepath.Join("plant", "pulumiEnums.go"),
-				filepath.Join("plant", "provider.go"),
-				filepath.Join("plant", "tree", "v1", "init.go"),
-				filepath.Join("plant", "tree", "v1", "rubberTree.go"),
-				filepath.Join("plant", "tree", "v1", "pulumiEnums.go"),
-				filepath.Join("plant", "tree", "v1", "nursery.go"),
-			},
-			false,
-		},
-		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				filepath.Join("example", "init.go"),
-				filepath.Join("example", "argFunction.go"),
-				filepath.Join("example", "cat.go"),
-				filepath.Join("example", "component.go"),
-				filepath.Join("example", "doc.go"),
-				filepath.Join("example", "provider.go"),
-				filepath.Join("example", "pulumiTypes.go"),
-				filepath.Join("example", "pulumiUtilities.go"),
-				filepath.Join("example", "workload.go"),
-			},
-			true,
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				filepath.Join("example", "doc.go"),
-				filepath.Join("example", "init.go"),
-				filepath.Join("example", "component.go"),
-				filepath.Join("example", "doFoo.go"),
-				filepath.Join("example", "provider.go"),
-				filepath.Join("example", "pulumiTypes.go"),
-				filepath.Join("example", "pulumiUtilities.go"),
-			},
-			false,
-		},
-		{
-			"Simple schema with root package set",
-			"simple-plain-schema-with-root-package",
-			[]string{
-				filepath.Join("doc.go"),
-				filepath.Join("init.go"),
-				filepath.Join("component.go"),
-				filepath.Join("provider.go"),
-				filepath.Join("pulumiTypes.go"),
-				filepath.Join("pulumiUtilities.go"),
-			},
-			false,
-		},
-		{
-			"Repro for #6957",
-			"plain-schema-gh6957",
-			[]string{
-				filepath.Join("xyz", "doc.go"),
-				filepath.Join("xyz", "init.go"),
-				filepath.Join("xyz", "staticPage.go"),
-				filepath.Join("xyz", "provider.go"),
-				filepath.Join("xyz", "pulumiTypes.go"),
-				filepath.Join("xyz", "pulumiUtilities.go"),
-			},
-			false,
-		},
+	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
+		return GeneratePackage(tool, pkg)
 	}
-	testDir := filepath.Join("..", "internal", "test", "testdata")
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"),
-				func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
-					return GeneratePackage(tool, pkg)
-				})
-			assert.NoError(t, err)
-
-			dir := filepath.Join(testDir, tt.schemaDir)
-			lang := "go"
-
-			test.RewriteFilesWhenPulumiAccept(t, dir, lang, files)
-
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), lang, tt.expectedFiles)
-			assert.NoError(t, err)
-			test.ValidateFileEquality(t, files, expectedFiles)
-			test.CheckAllFilesGenerated(t, files, expectedFiles)
-		})
-	}
+	test.TestSDKCodegen(t, "go", generatePackage)
 }
 
 type mocks int
