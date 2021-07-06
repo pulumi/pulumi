@@ -21,6 +21,7 @@ package pulumi
 import (
 	"sync"
 	"sync/atomic"
+	"time"
 	"unsafe"
 )
 
@@ -88,16 +89,40 @@ func (p *transformationsPromise) fulfill(value []ResourceTransformation) {
 }
 
 func (p *providersPromise) await() map[string]ProviderResource {
-	p.waitGroup.Wait()
+	withTimeout(1*time.Second, func() {
+		p.waitGroup.Wait()
+	})
 	return p.value
 }
 
 func (p *aliasesPromise) await() []URNOutput {
-	p.waitGroup.Wait()
+	withTimeout(1*time.Second, func() {
+		p.waitGroup.Wait()
+	})
 	return p.value
 }
 
 func (p *transformationsPromise) await() []ResourceTransformation {
-	p.waitGroup.Wait()
+	withTimeout(1*time.Second, func() {
+		p.waitGroup.Wait()
+	})
 	return p.value
+}
+
+func withTimeout(dur time.Duration, work func()) {
+	c := make(chan bool)
+	go func() {
+		time.Sleep(dur)
+		c <- true
+	}()
+
+	go func() {
+		work()
+		c <- false
+	}()
+
+	timedout := <-c
+	if timedout {
+		panic("Timeout")
+	}
 }
