@@ -87,6 +87,7 @@ func (ResourceState) isResource() {}
 
 func (ctx *Context) newDependencyResource(urn URN) Resource {
 	var res ResourceState
+	initDependencyResource(&res)
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
 	return &res
@@ -106,6 +107,7 @@ func (CustomResourceState) isCustomResource() {}
 
 func (ctx *Context) newDependencyCustomResource(urn URN, id ID) CustomResource {
 	var res CustomResourceState
+	initDependencyResource(&res.ResourceState)
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
 	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
@@ -125,12 +127,29 @@ func (s ProviderResourceState) getPackage() string {
 
 func (ctx *Context) newDependencyProviderResource(urn URN, id ID) ProviderResource {
 	var res ProviderResourceState
+	initDependencyResource(&res.ResourceState)
 	res.urn.OutputState = ctx.newOutputState(res.urn.ElementType(), &res)
 	res.id.OutputState = ctx.newOutputState(res.id.ElementType(), &res)
 	res.urn.resolve(urn, true, false, nil)
 	res.id.resolve(id, id != "", false, nil)
 	res.pkg = string(resource.URN(urn).Type().Name())
 	return &res
+}
+
+// Initialize a resource state for a dependency resource (one created
+// from URN) and not registered in the SDK.
+func initDependencyResource(resource *ResourceState) {
+	// Assume it has no transformations. If the resource is
+	// provisioned on a different language runtime, cross-language
+	// transformations are not yet supported.
+	resource.getTransformationsPromise().fulfill([]ResourceTransformation{})
+
+	// Similarly, assume there are no aliases. This is not
+	// something we can currently look up via `ctx.getResource`.
+	resource.getAliasesPromise().fulfill([]URNOutput{})
+
+	// Ditto for the providers map.
+	resource.getProvidersPromise().fulfill(map[string]ProviderResource{})
 }
 
 // Resource represents a cloud resource managed by Pulumi.
