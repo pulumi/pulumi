@@ -1,4 +1,0 @@
-Pulumi.Automation.PreviewOptions.Policy.get -> string?
-Pulumi.Automation.PreviewOptions.Policy.set -> void
-Pulumi.Automation.UpOptions.Policy.get -> string?
-Pulumi.Automation.UpOptions.Policy.set -> void
