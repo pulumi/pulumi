@@ -69,7 +69,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
-	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
+	cd tests && $(GO_TEST) -p=1 -v ${TESTS_PKGS}
 
 .PHONY: test_containers
 test_containers:
