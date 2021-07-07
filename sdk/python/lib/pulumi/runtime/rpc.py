@@ -768,7 +768,7 @@ def resolve_outputs(res: 'Resource',
 
         all_properties[translated_key] = translated_value
 
-    translated_deps = {};
+    translated_deps = {}
     for key, property_deps in deps.items():
         translated_deps[translate(key)] = property_deps
 
