@@ -892,6 +892,8 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 		},
 		Quick:      true,
 		NoParallel: true,
+		// verify that additional flags don't cause the component provider hang
+		UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
