@@ -300,9 +300,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		elem := t.ElementType
 		switch e := t.ElementType.(type) {
 		case *schema.ArrayType:
-			inputType, elem = "InputList", codegen.UnwrapType(e.ElementType)
+			inputType, elem = "InputList", codegen.PlainType(e.ElementType)
 		case *schema.MapType:
-			inputType, elem = "InputMap", codegen.UnwrapType(e.ElementType)
+			inputType, elem = "InputMap", codegen.PlainType(e.ElementType)
 		default:
 			if e == schema.JSONType {
 				return "InputJson"
