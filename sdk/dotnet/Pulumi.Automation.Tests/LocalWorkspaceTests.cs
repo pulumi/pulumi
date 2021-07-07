@@ -357,7 +357,7 @@ namespace Pulumi.Automation.Tests
             {
                 await workspace.RemoveStackAsync(stackName);
             }
-        }
+        } 
 
         [Fact]
         public async Task StackLifecycleLocalProgram()
@@ -1704,6 +1704,71 @@ namespace Pulumi.Automation.Tests
                 Assert.Equal(UpdateKind.Destroy, destroyResult.Summary.Kind);
                 Assert.Equal(UpdateState.Succeeded, destroyResult.Summary.Result);
                 await stack.Workspace.RemoveStackAsync(stackName);
+            }
+        }
+
+        [Fact]
+        public async Task LocalProgramWithPolicy()
+        {
+            var stackName = $"{RandomStackName()}";
+            var workingDir = ResourcePath(Path.Combine("Data", "policy", "local"));
+            
+            using var stack = await LocalWorkspace.CreateStackAsync(new LocalProgramArgs(stackName, workingDir)
+            {
+                EnvironmentVariables = new Dictionary<string, string?>
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test",
+                }
+            });
+            try
+            {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["length"] = new ConfigValue("10")
+                };
+                await stack.SetAllConfigAsync(config);
+                
+                // pulumi pre --policy-pack ../policypack
+                var preResult = await stack.PreviewAsync(new PreviewOptions {Policy = "../policypack"});
+                Assert.Contains("Policy Packs run", preResult.StandardOutput);
+
+                // pulumi up --policy-pack ../policypack
+                var upResult = await stack.UpAsync(new UpOptions {Policy = "../policypack"});
+                Assert.Contains("Policy Packs run", upResult.StandardOutput);
+
+                // destroy infra and start again
+                await stack.DestroyAsync();
+
+                // set config so it fails the policy pack
+                config = new Dictionary<string, ConfigValue>
+                {
+                    ["length"] = new ConfigValue("9")
+                };
+                await stack.SetAllConfigAsync(config);
+
+                try
+                {
+                    // pulumi pre --policy-pack ../policypack
+                    preResult = await stack.PreviewAsync(new PreviewOptions {Policy = "../policypack"});
+                }
+                catch(Exception ex)
+                {
+                    Assert.Contains("Policy Violations", ex.Message);
+                }
+
+                try
+                {
+                    // pulumi up --policy-pack ../policypack
+                    upResult = await stack.UpAsync(new UpOptions {Policy = "../policypack"});
+                }
+                catch(Exception ex)
+                {
+                    Assert.Contains("Policy Violations", ex.Message);
+                }
+            }
+            finally
+            {
+                await stack.DestroyAsync();
             }
         }
 
