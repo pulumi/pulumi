@@ -53,6 +53,11 @@ var sdkTests = []sdkTest{
 		Directory:   "simple-resource-schema-custom-pypackage-name",
 		Description: "Simple schema with local resource properties and custom Python package name",
 	},
+	// TODO[pulumi/pulumi#7072]: Enable test after codegen support for all languages lands.
+	// {
+	// 	Directory:   "simple-methods-schema",
+	// 	Description: "Simple schema with methods",
+	// },
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code generator.

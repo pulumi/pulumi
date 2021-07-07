@@ -189,6 +189,9 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
 
     argp = argparse.ArgumentParser(description='Pulumi provider plugin (gRPC server)')
     argp.add_argument('engine', help='Pulumi engine address')
+    argp.add_argument('--logflow', action='store_true', help='Currently ignored')
+    argp.add_argument('--logtostderr', action='store_true', help='Currently ignored')
+
     engine_address: str = argp.parse_args().engine
 
     async def serve() -> None:
