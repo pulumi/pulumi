@@ -768,6 +768,10 @@ def resolve_outputs(res: 'Resource',
 
         all_properties[translated_key] = translated_value
 
+    translated_deps = {};
+    for key, property_deps in deps.items():
+        translated_deps[translate(key)] = property_deps
+
     if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
         for key, value in list(serialized_props.items()):
             translated_key = translate(key)
@@ -781,7 +785,7 @@ def resolve_outputs(res: 'Resource',
                                                                              path=_Path(translated_key,
                                                                                         resource=f'{res._name}'))
 
-    resolve_properties(resolvers, all_properties, deps)
+    resolve_properties(resolvers, all_properties, translated_deps)
 
 
 def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):
