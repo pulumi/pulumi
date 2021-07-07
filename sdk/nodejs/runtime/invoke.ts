@@ -249,8 +249,8 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
             let provider: string | undefined = undefined;
             let version: string | undefined = undefined;
             if (res) {
-                if (res.__provider) {
-                    provider = await ProviderResource.register(res.__provider);
+                if (res.__prov) {
+                    provider = await ProviderResource.register(res.__prov);
                 }
                 version = res.__version;
             }

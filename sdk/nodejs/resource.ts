@@ -185,8 +185,10 @@ export abstract class Resource {
      * The specified provider or provider determined from the parent for custom resources.
      * @internal
      */
+    // Note: This is deliberately not named `__provider` as that conflicts with the property
+    // used by the `dynamic.Resource` class.
     // tslint:disable-next-line:variable-name
-    readonly __provider?: ProviderResource;
+    readonly __prov?: ProviderResource;
 
     /**
      * The specified provider version.
@@ -327,7 +329,7 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
-        this.__provider = custom ? opts.provider : undefined;
+        this.__prov = custom ? opts.provider : undefined;
         this.__version = opts.version;
 
         // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
