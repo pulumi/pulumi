@@ -220,7 +220,10 @@ func (ctx *Context) Invoke(tok string, args interface{}, result interface{}, opt
 	options := &invokeOptions{}
 	for _, o := range opts {
 		if o != nil {
-			o.applyInvokeOption(options)
+			err := o.applyInvokeOptionAfterAwaitingInputs(ctx.ctx, options)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -353,34 +356,13 @@ func (ctx *Context) ReadResource(
 		}
 	}
 
-	options := merge(opts...)
-	if options.Parent == nil {
-		options.Parent = ctx.stack
-	}
-
-	// Before anything else, if there are transformations registered, give them a chance to run to modify the
-	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
-	}
-
-	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
-	if err != nil {
-		return err
-	}
-
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
 
-	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
-
-	// Create resolvers for the resource's outputs.
-	res := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
+	resStateBuilder := ctx.makeResourceState(t, name, resource)
+	res := resStateBuilder.state
 
 	// Kick off the resource read operation.  This will happen asynchronously and resolve the above properties.
 	go func() {
@@ -389,10 +371,17 @@ func (ctx *Context) ReadResource(
 		var inputs *resourceInputs
 		var state *structpb.Struct
 		var err error
+
 		defer func() {
 			res.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, nil)
 			ctx.endRPC(err)
 		}()
+
+		transformedOpts, transformedProps, err := ctx.transformOptionsAndProps(t,
+			name, resStateBuilder, props, opts...)
+		if err != nil {
+			return
+		}
 
 		idToRead, known, _, err := id.ToIDOutput().awaitID(context.TODO())
 		if !known || err != nil {
@@ -400,7 +389,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, res, false)
+		inputs, err = ctx.prepareResourceInputs(transformedProps, t, transformedOpts, res, false)
 		if err != nil {
 			return
 		}
@@ -530,34 +519,13 @@ func (ctx *Context) registerResource(
 		}
 	}
 
-	options := merge(opts...)
-	if options.Parent == nil {
-		options.Parent = ctx.stack
-	}
-
-	// Before anything else, if there are transformations registered, give them a chance to run to modify the
-	// user-provided properties and options assigned to this resource.
-	props, options, transformations, err := applyTransformations(t, name, props, resource, opts, options)
-	if err != nil {
-		return err
-	}
-
-	// Collapse aliases to URNs.
-	aliasURNs, err := ctx.collapseAliases(options.Aliases, t, name, options.Parent)
-	if err != nil {
-		return err
-	}
+	resStateBuilder := ctx.makeResourceState(t, name, resource)
+	resState := resStateBuilder.state
 
 	// Note that we're about to make an outstanding RPC request, so that we can rendezvous during shutdown.
 	if err := ctx.beginRPC(); err != nil {
 		return err
 	}
-
-	// Merge providers.
-	providers := mergeProviders(t, options.Parent, options.Provider, options.Providers)
-
-	// Create resolvers for the resource's outputs.
-	resState := ctx.makeResourceState(t, name, resource, providers, aliasURNs, transformations)
 
 	// Kick off the resource registration.  If we are actually performing a deployment, the resulting properties
 	// will be resolved asynchronously as the RPC operation completes.  If we're just planning, values won't resolve.
@@ -566,22 +534,29 @@ func (ctx *Context) registerResource(
 		var urn, resID string
 		var inputs *resourceInputs
 		var state *structpb.Struct
-		deps := make(map[string][]Resource)
 		var err error
+		deps := make(map[string][]Resource)
+
 		defer func() {
 			resState.resolve(ctx, ctx.DryRun(), err, inputs, urn, resID, state, deps)
 			ctx.endRPC(err)
 		}()
 
+		transformedOpts, transformedProps, err :=
+			ctx.transformOptionsAndProps(t, name, resStateBuilder, props, opts...)
+		if err != nil {
+			return
+		}
+
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, resState, remote)
+		inputs, err = ctx.prepareResourceInputs(transformedProps, t, transformedOpts, resState, remote)
 		if err != nil {
 			return
 		}
 
 		var resp *pulumirpc.RegisterResourceResponse
-		if len(options.URN) > 0 {
-			resp, err = ctx.getResource(options.URN)
+		if len(transformedOpts.URN) > 0 {
+			resp, err = ctx.getResource(transformedOpts.URN)
 			if err != nil {
 				logging.V(9).Infof("getResource(%s, %s): error: %v", t, name, err)
 			} else {
@@ -635,6 +610,61 @@ func (ctx *Context) registerResource(
 	return nil
 }
 
+func (ctx *Context) transformOptionsAndProps(
+	t, name string,
+	resStateBuilder *resourceStateBuilder,
+	props Input,
+	opts ...ResourceOption) (*resourceOptions, Input, error) {
+
+	// To avoid deadlocks we need to resolve the promises in any
+	// case; if a successful path resolves them earlier, the first
+	// value wins. The finalizer resolves to default values.
+	defer func() {
+		resStateBuilder.resolveTransformations(nil)
+		resStateBuilder.resolveAliases(nil)
+		resStateBuilder.resolveProviders(make(map[string]ProviderResource))
+	}()
+
+	options, err := mergeAwait(ctx.ctx, opts...)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	if options == nil {
+		return nil, nil, fmt.Errorf("options cannot be nil")
+	}
+
+	// Default Parent to ctx.stack but avoid setting Parent to self.
+	if options.Parent == nil && resStateBuilder.resource != ctx.stack {
+		options.Parent = ctx.stack
+	}
+
+	// Before anything else, if there are transformations registered, give them a chance to run to modify the
+	// user-provided properties and options assigned to this resource.
+	transformedProps, transformedOpts, transformations, err :=
+		applyTransformations(t, name, props, resStateBuilder.resource, opts, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resStateBuilder.resolveTransformations(transformations)
+
+	// Collapse aliases to URNs.
+	aliasURNs, err := ctx.collapseAliases(transformedOpts.Aliases, t, name, transformedOpts.Parent)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	resStateBuilder.resolveAliases(aliasURNs)
+
+	// Merge providers.
+	providers := mergeProviders(t, transformedOpts.Parent, transformedOpts.Provider, transformedOpts.Providers)
+
+	resStateBuilder.resolveProviders(providers)
+
+	return transformedOpts, transformedProps, nil
+}
+
 func (ctx *Context) RegisterComponentResource(
 	t, name string, resource ComponentResource, opts ...ResourceOption) error {
 
@@ -649,11 +679,35 @@ func (ctx *Context) RegisterRemoteComponentResource(
 
 // resourceState contains the results of a resource registration operation.
 type resourceState struct {
-	outputs         map[string]Output
-	providers       map[string]ProviderResource
-	aliases         []URNOutput
-	name            string
-	transformations []ResourceTransformation
+	name                   string
+	outputs                map[string]Output
+	aliasesPromise         *aliasesPromise
+	transformationsPromise *transformationsPromise
+	providersPromise       *providersPromise
+}
+
+func (state *resourceState) getProvidersPromise() *providersPromise {
+	return initProvidersPromise(&state.providersPromise)
+}
+
+func (state *resourceState) getAliasesPromise() *aliasesPromise {
+	return initAliasesPromise(&state.aliasesPromise)
+}
+
+func (state *resourceState) getTransformationsPromise() *transformationsPromise {
+	return initTransformationsPromise(&state.transformationsPromise)
+}
+
+func (state *resourceState) providers() map[string]ProviderResource {
+	return state.getProvidersPromise().await()
+}
+
+func (state *resourceState) aliases() []URNOutput {
+	return state.getAliasesPromise().await()
+}
+
+func (state *resourceState) transformations() []ResourceTransformation {
+	return state.getTransformationsPromise().await()
 }
 
 // Apply transformations and return the transformations themselves, as well as the transformed props and opts.
@@ -665,28 +719,36 @@ func applyTransformations(t, name string, props Input, resource Resource, opts [
 		transformations = append(transformations, options.Parent.getTransformations()...)
 	}
 
+	transformedOptions := options
+	transformedProps := props
+	transformedOpts := opts
+
 	for _, transformation := range transformations {
 		args := &ResourceTransformationArgs{
 			Resource: resource,
 			Type:     t,
 			Name:     name,
-			Props:    props,
-			Opts:     opts,
+			Props:    transformedProps,
+			Opts:     transformedOpts,
 		}
 
 		res := transformation(args)
 		if res != nil {
-			resOptions := merge(res.Opts...)
+			var err error
+			transformedOptions, err = tryMergeWithoutAwaiting(res.Opts...)
+			if err != nil {
+				return nil, nil, nil, err
+			}
 
-			if resOptions.Parent != nil && resOptions.Parent.URN() != options.Parent.URN() {
+			if transformedOptions.Parent != nil && transformedOptions.Parent.URN() != options.Parent.URN() {
 				return nil, nil, nil, errors.New("transformations cannot currently be used to change the `parent` of a resource")
 			}
-			props = res.Props
-			options = resOptions
+			transformedProps = res.Props
+			transformedOpts = res.Opts
 		}
 	}
 
-	return props, options, transformations, nil
+	return transformedProps, transformedOptions, transformations, nil
 }
 
 // checks all possible sources of providers and merges them with preference given to the most specific
@@ -749,17 +811,30 @@ func (ctx *Context) collapseAliases(aliases []Alias, t, name string, parent Reso
 
 var mapOutputType = reflect.TypeOf((*MapOutput)(nil)).Elem()
 
+type resourceStateBuilder struct {
+	resource               Resource
+	state                  *resourceState
+	resolveProviders       func(map[string]ProviderResource)
+	resolveAliases         func([]URNOutput)
+	resolveTransformations func([]ResourceTransformation)
+}
+
 // makeResourceState creates a set of resolvers that we'll use to finalize state, for URNs, IDs, and output
 // properties.
-func (ctx *Context) makeResourceState(t, name string, resourceV Resource, providers map[string]ProviderResource,
-	aliases []URNOutput, transformations []ResourceTransformation) *resourceState {
+func (ctx *Context) makeResourceState(t, name string, resourceV Resource) *resourceStateBuilder {
 
 	// Ensure that the input resource is a pointer to a struct. Note that we don't fail if it is not, and we probably
 	// ought to.
 	resource := reflect.ValueOf(resourceV)
 	typ := resource.Type()
 	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
-		return &resourceState{}
+		b := &resourceStateBuilder{}
+		b.resource = resourceV
+		b.state = &resourceState{}
+		b.resolveProviders = b.state.getProvidersPromise().fulfill
+		b.resolveAliases = b.state.getAliasesPromise().fulfill
+		b.resolveTransformations = b.state.getTransformationsPromise().fulfill
+		return b
 	}
 	resource, typ = resource.Elem(), typ.Elem()
 
@@ -825,23 +900,36 @@ func (ctx *Context) makeResourceState(t, name string, resourceV Resource, provid
 		state.outputs["id"] = crs.id
 	}
 
+	b := &resourceStateBuilder{}
+	b.state = state
+	b.resource = resourceV
+
 	// Populate ResourceState resolvers. (Pulled into function to keep the nil-ness linter check happy).
 	populateResourceStateResolvers := func() {
 		contract.Assert(rs != nil)
-		state.providers = providers
-		rs.providers = providers
 		rs.urn = URNOutput{ctx.newOutputState(urnType, resourceV)}
 		state.outputs["urn"] = rs.urn
 		state.name = name
 		rs.name = name
-		state.aliases = aliases
-		rs.aliases = aliases
-		state.transformations = transformations
-		rs.transformations = transformations
+
+		b.resolveAliases = func(a []URNOutput) {
+			state.getAliasesPromise().fulfill(a)
+			rs.getAliasesPromise().fulfill(a)
+		}
+
+		b.resolveProviders = func(a map[string]ProviderResource) {
+			state.getProvidersPromise().fulfill(a)
+			rs.getProvidersPromise().fulfill(a)
+		}
+
+		b.resolveTransformations = func(a []ResourceTransformation) {
+			state.getTransformationsPromise().fulfill(a)
+			rs.getTransformationsPromise().fulfill(a)
+		}
 	}
 	populateResourceStateResolvers()
 
-	return state
+	return b
 }
 
 // resolve resolves the resource outputs using the given error and/or values.
@@ -942,7 +1030,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
 	parent, optDeps, protect, provider, providers, deleteBeforeReplace, importID, ignoreChanges,
-		additionalSecretOutputs, version, err := ctx.getOpts(t, resource.providers, opts, remote)
+		additionalSecretOutputs, version, err := ctx.getOpts(t, resource.providers(), opts, remote)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -992,8 +1080,10 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	sort.Strings(deps)
 
 	// Await alias URNs
-	aliases := make([]string, len(resource.aliases))
-	for i, alias := range resource.aliases {
+
+	resourceAliases := resource.aliases()
+	aliases := make([]string, len(resourceAliases))
+	for i, alias := range resourceAliases {
 		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)

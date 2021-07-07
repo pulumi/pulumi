@@ -650,3 +650,55 @@ func TestMixedWaitGroupsApply(t *testing.T) {
 		})
 	})
 }
+
+func TestProviderResourceApplyT(t *testing.T) {
+	out := newIntOutput()
+	t.Run("ApplyT::ProviderResourceOutput", func(t *testing.T) {
+		_, ok := out.ApplyT(func(v int) ProviderResource {
+			return *new(ProviderResource)
+		}).(ProviderResourceOutput)
+		assert.True(t, ok)
+	})
+}
+
+func TestToProviderResourceOutput(t *testing.T) {
+	var inputs []ProviderResource
+
+	var providerResource1 ProviderResource = newSimpleProviderResource(&Context{}, "urn:pulumi:x::y::z", "id")
+	inputs = append(inputs, providerResource1)
+
+	var providerResource2 ProviderResource = &ProviderResourceState{}
+	inputs = append(inputs, providerResource2)
+
+	for _, providerResource := range inputs {
+
+		var in ProviderResourceInput = NewProviderResourceInput(providerResource)
+		out := in.ToProviderResourceOutput()
+
+		v, known, _, _, err := await(out)
+		assert.True(t, known)
+		assert.NoError(t, err)
+		assert.Equal(t, providerResource, v)
+
+		out = out.ToProviderResourceOutput()
+
+		v, known, _, _, err = await(out)
+		assert.True(t, known)
+		assert.NoError(t, err)
+		assert.Equal(t, providerResource, v)
+
+		out = in.ToProviderResourceOutputWithContext(context.Background())
+
+		v, known, _, _, err = await(out)
+		assert.True(t, known)
+		assert.NoError(t, err)
+		assert.Equal(t, providerResource, v)
+
+		out = out.ToProviderResourceOutputWithContext(context.Background())
+
+		v, known, _, _, err = await(out)
+		assert.True(t, known)
+		assert.NoError(t, err)
+		assert.Equal(t, providerResource, v)
+	}
+}
