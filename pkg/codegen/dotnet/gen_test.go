@@ -50,7 +50,7 @@ func TestGenerateType(t *testing.T) {
 
 	mod := &modContext{mod: "main"}
 	for _, c := range cases {
-		t.Run(c.type_.String(), func(t *testing.T) {
+		t.Run(c.typ.String(), func(t *testing.T) {
 			typeString := mod.typeString(c.typ, "", true, false, false)
 			assert.Equal(t, c.expected, typeString)
 		})
