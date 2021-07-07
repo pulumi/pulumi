@@ -403,7 +403,9 @@ func (mod *modContext) gen(fs fs) error {
 
 	addFile := func(name, contents string) {
 		p := path.Join(dir, name)
-		exports = append(exports, name[:len(name)-len(".py")])
+		if !strings.HasSuffix(name, ".pyi") {
+			exports = append(exports, name[:len(name)-len(".py")])
+		}
 		fs.add(p, []byte(contents))
 	}
 
@@ -442,6 +444,11 @@ func (mod *modContext) gen(fs fs) error {
 				return err
 			}
 			addFile("vars.py", vars)
+			typeStubs, err := mod.genConfigStubs(mod.pkg.Config)
+			if err != nil {
+				return err
+			}
+			addFile("__init__.pyi", typeStubs)
 		}
 	}
 
@@ -727,7 +734,7 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
 }
 
-// emitConfigVariables emits all config variables in the given module, returning the resulting file.
+// genConfig emits all config variables in the given module, returning the resulting file.
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
@@ -735,19 +742,16 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	mod.collectImports(variables, imports, false /*input*/)
 
 	mod.genHeader(w, true /*needsSDK*/, imports)
-
-	// Export only the symbols we want exported.
-	if len(variables) > 0 {
-		fmt.Fprintf(w, "__all__ = [\n")
-		for _, p := range variables {
-			fmt.Fprintf(w, "    '%s',\n", PyName(p.Name))
-		}
-		fmt.Fprintf(w, "]\n\n")
-	}
+	fmt.Fprintf(w, "import types\n")
+	fmt.Fprintf(w, "import sys\n")
+	fmt.Fprintf(w, "\n")
 
 	// Create a config bag for the variables to pull from.
 	fmt.Fprintf(w, "__config__ = pulumi.Config('%s')\n", mod.pkg.Name)
-	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "\n\n")
+
+	fmt.Fprintf(w, "class _ExportableConfig(types.ModuleType):\n")
+	indent := "    "
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
@@ -760,7 +764,35 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 			configFetch += " or " + v
 		}
 
-		fmt.Fprintf(w, "%s = %s\n", PyName(p.Name), configFetch)
+		fmt.Fprintf(w, "%s@property\n", indent)
+		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), mod.typeString(p.Type, false, true))
+		dblIndent := strings.Repeat(indent, 2)
+
+		printComment(w, p.Comment, dblIndent)
+		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
+		fmt.Fprintf(w, "\n")
+	}
+
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "sys.modules[__name__].__class__ = _ExportableConfig\n")
+
+	return w.String(), nil
+}
+
+// genConfigStubs emits all type information for the config variables in the given module, returning the resulting file.
+func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, error) {
+	w := &bytes.Buffer{}
+
+	imports := imports{}
+	mod.collectImports(variables, imports, false /*input*/)
+
+	mod.genHeader(w, true /*needsSDK*/, imports)
+	fmt.Fprintf(w, "import types\n")
+	fmt.Fprintf(w, "\n")
+
+	// Emit an entry for all config variables.
+	for _, p := range variables {
+		fmt.Fprintf(w, "%s: %s\n", p.Name, mod.typeString(p.Type, false, true))
 		printComment(w, p.Comment, "")
 		fmt.Fprintf(w, "\n")
 	}
