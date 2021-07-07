@@ -11,8 +11,9 @@ export let favoritePlants: string[] | undefined = __config.getObject<string[]>("
 /**
  * omg my favorite sandwich
  */
-export let favoriteSandwich: outputs.config.sandwich.Sandwich | undefined = __config.getObject<outputs.config.sandwich.Sandwich>("favoriteSandwich");
+export let favoriteSandwich: outputs.config.Sandwich | undefined = __config.getObject<outputs.config.Sandwich>("favoriteSandwich");
 export let isMember: boolean | undefined = __config.getObject<boolean>("isMember") || true;
+export let kids: outputs.Child | undefined = __config.getObject<outputs.Child>("kids");
 export let name: string | undefined = __config.get("name");
 export let numberOfSheep: number | undefined = __config.getObject<number>("numberOfSheep");
 /**

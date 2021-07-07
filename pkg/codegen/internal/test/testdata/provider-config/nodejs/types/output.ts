@@ -4,12 +4,15 @@
 import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
-export namespace config {
-    export namespace sandwich {
-        export interface Sandwich {
-            bread?: string;
-            veggies?: string[];
-        }
+export interface Child {
+    age?: number;
+    name?: string;
+}
 
+export namespace config {
+    export interface Sandwich {
+        bread?: string;
+        veggies?: string[];
     }
+
 }

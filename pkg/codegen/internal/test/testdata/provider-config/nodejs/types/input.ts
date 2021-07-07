@@ -5,6 +5,4 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
 export namespace config {
-    export namespace sandwich {
-    }
 }

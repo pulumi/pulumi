@@ -6,10 +6,4 @@ from .. import _utilities
 import typing
 # Export this package's modules as members:
 from .vars import *
-
-# Make subpackages available:
-if typing.TYPE_CHECKING:
-    import pulumi_configstation.config.sandwich as sandwich
-else:
-    sandwich = _utilities.lazy_import('pulumi_configstation.config.sandwich')
-
+from . import outputs

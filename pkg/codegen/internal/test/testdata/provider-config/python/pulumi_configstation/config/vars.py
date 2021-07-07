@@ -7,34 +7,49 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from .. import _utilities
-from .. import config as _config
+from . import outputs
+from .. import outputs as _root_outputs
 
-__all__ = [
-    'favorite_plants',
-    'favorite_sandwich',
-    'is_member',
-    'name',
-    'number_of_sheep',
-    'secret_code',
-]
+import types
+import sys
 
 __config__ = pulumi.Config('configstation')
 
-favorite_plants = __config__.get('favoritePlants')
 
-favorite_sandwich = __config__.get('favoriteSandwich')
-"""
-omg my favorite sandwich
-"""
+class _ExportableConfig(types.ModuleType):
+    @property
+    def favorite_plants(self) -> Optional[Sequence[str]]:
+        return __config__.get('favoritePlants')
 
-is_member = __config__.get('isMember') or True
+    @property
+    def favorite_sandwich(self) -> Optional[pulumi.InputType['outputs.Sandwich']]:
+        """
+        omg my favorite sandwich
+        """
+        return __config__.get('favoriteSandwich')
 
-name = __config__.get('name')
+    @property
+    def is_member(self) -> Optional[bool]:
+        return __config__.get('isMember') or True
 
-number_of_sheep = __config__.get('numberOfSheep')
+    @property
+    def kids(self) -> Optional[pulumi.InputType['_root_outputs.Child']]:
+        return __config__.get('kids')
 
-secret_code = __config__.get('secretCode') or _utilities.get_env('SECRET_CODE', 'MY_SUPER_SECRET_CODE')
-"""
-This is a huge secret
-"""
+    @property
+    def name(self) -> str:
+        return __config__.get('name')
 
+    @property
+    def number_of_sheep(self) -> Optional[int]:
+        return __config__.get('numberOfSheep')
+
+    @property
+    def secret_code(self) -> Optional[str]:
+        """
+        This is a huge secret
+        """
+        return __config__.get('secretCode') or _utilities.get_env('SECRET_CODE', 'MY_SUPER_SECRET_CODE')
+
+
+sys.modules[__name__].__class__ = _ExportableConfig

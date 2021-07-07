@@ -4,7 +4,6 @@
 package config
 
 import (
-	"config/sandwich"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 )
@@ -23,6 +22,9 @@ func GetIsMember(ctx *pulumi.Context) bool {
 		return v
 	}
 	return true
+}
+func GetKids(ctx *pulumi.Context) string {
+	return config.Get(ctx, "configstation:kids")
 }
 func GetName(ctx *pulumi.Context) string {
 	return config.Get(ctx, "configstation:name")

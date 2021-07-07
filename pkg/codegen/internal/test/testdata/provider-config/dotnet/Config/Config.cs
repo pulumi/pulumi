@@ -13,9 +13,11 @@ namespace Pulumi.Configstation
         /// <summary>
         /// omg my favorite sandwich
         /// </summary>
-        public static Pulumi.Configstation.Config/sandwich.Types.Sandwich? FavoriteSandwich { get; set; } = __config.GetObject<Pulumi.Configstation.Config/sandwich.Types.Sandwich>("favoriteSandwich");
+        public static Pulumi.Configstation.Config.Types.Sandwich? FavoriteSandwich { get; set; } = __config.GetObject<Pulumi.Configstation.Config.Types.Sandwich>("favoriteSandwich");
 
         public static bool? IsMember { get; set; } = __config.GetBoolean("isMember") ?? true;
+
+        public static Types.Child? Kids { get; set; } = __config.GetObject<Types.Child>("kids");
 
         public static string? Name { get; set; } = __config.Get("name");
 
@@ -26,5 +28,14 @@ namespace Pulumi.Configstation
         /// </summary>
         public static string? SecretCode { get; set; } = __config.Get("secretCode") ?? Utilities.GetEnv("SECRET_CODE", "MY_SUPER_SECRET_CODE");
 
+        public static class Types
+        {
+
+             public class Sandwich
+             {
+                public string? Bread { get; set; } = null!;
+                public ImmutableArray<string> Veggies { get; set; }
+            }
+        }
     }
 }

@@ -30,8 +30,11 @@
         }
       },
       "favoriteSandwich": {
-        "$ref": "#/types/configstation:config/sandwich:sandwich",
+        "$ref": "#/types/configstation:config:sandwich",
         "description": "omg my favorite sandwich"
+      },
+      "kids": {
+        "$ref": "#/types/configstation:index:child"
       }
     },
     "defaults": [
@@ -39,7 +42,7 @@
     ]
   },
   "types": {
-    "configstation:config/sandwich:sandwich": {
+    "configstation:config:sandwich": {
       "properties": {
         "bread": {
           "type": "string"
@@ -49,6 +52,17 @@
           "items": {
             "type": "string"
           }
+        }
+      },
+      "type": "object"
+    },
+    "configstation:index:child": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "age": {
+          "type": "integer"
         }
       },
       "type": "object"

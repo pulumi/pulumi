@@ -7,23 +7,23 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Configstation.Config/sandwich.Outputs
+namespace Pulumi.Configstation.Outputs
 {
 
     [OutputType]
-    public sealed class Sandwich
+    public sealed class Child
     {
-        public readonly string? Bread;
-        public readonly ImmutableArray<string> Veggies;
+        public readonly int? Age;
+        public readonly string? Name;
 
         [OutputConstructor]
-        private Sandwich(
-            string? bread,
+        private Child(
+            int? age,
 
-            ImmutableArray<string> veggies)
+            string? name)
         {
-            Bread = bread;
-            Veggies = veggies;
+            Age = age;
+            Name = name;
         }
     }
 }
