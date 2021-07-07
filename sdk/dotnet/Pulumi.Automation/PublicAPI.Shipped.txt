@@ -169,7 +169,7 @@ Pulumi.Automation.PreviewOptions.Diff.get -> bool?
 Pulumi.Automation.PreviewOptions.Diff.set -> void
 Pulumi.Automation.PreviewOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger
 Pulumi.Automation.PreviewOptions.Logger.set -> void
-Pulumi.Automation.PreviewOptions.Policy.get -> string?
+Pulumi.Automation.PreviewOptions.Policy.get -> string
 Pulumi.Automation.PreviewOptions.Policy.set -> void
 Pulumi.Automation.PreviewOptions.PreviewOptions() -> void
 Pulumi.Automation.PreviewOptions.Program.get -> Pulumi.Automation.PulumiFn
@@ -279,6 +279,8 @@ Pulumi.Automation.UpOptions.Diff.get -> bool?
 Pulumi.Automation.UpOptions.Diff.set -> void
 Pulumi.Automation.UpOptions.Logger.get -> Microsoft.Extensions.Logging.ILogger
 Pulumi.Automation.UpOptions.Logger.set -> void
+Pulumi.Automation.UpOptions.Policy.get -> string
+Pulumi.Automation.UpOptions.Policy.set -> void
 Pulumi.Automation.UpOptions.Program.get -> Pulumi.Automation.PulumiFn
 Pulumi.Automation.UpOptions.Program.set -> void
 Pulumi.Automation.UpOptions.Replace.get -> System.Collections.Generic.List<string>
@@ -306,8 +308,6 @@ Pulumi.Automation.UpdateOptions.OnStandardOutput.get -> System.Action<string>
 Pulumi.Automation.UpdateOptions.OnStandardOutput.set -> void
 Pulumi.Automation.UpdateOptions.Parallel.get -> int?
 Pulumi.Automation.UpdateOptions.Parallel.set -> void
-Pulumi.Automation.UpOptions.Policy.get -> string?
-Pulumi.Automation.UpOptions.Policy.set -> void
 Pulumi.Automation.UpdateOptions.Target.get -> System.Collections.Generic.List<string>
 Pulumi.Automation.UpdateOptions.Target.set -> void
 Pulumi.Automation.UpdateOptions.UpdateOptions() -> void
