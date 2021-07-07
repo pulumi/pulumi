@@ -65,6 +65,10 @@ var sdkTests = []sdkTest{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 	},
+	{
+		Directory:   "provider-config",
+		Description: "Simple provider config schema",
+	},
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code generator.

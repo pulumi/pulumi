@@ -1,0 +1,63 @@
+{
+  "version": "0.0.1",
+  "name": "configstation",
+  "config": {
+    "variables": {
+      "name": {
+        "type": "string"
+      },
+      "numberOfSheep": {
+        "type": "integer"
+      },
+      "isMember": {
+        "type": "boolean",
+        "default": true
+      },
+      "favoritePlants": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      },
+      "secretCode": {
+        "type": "string",
+        "description": "This is a huge secret",
+        "defaultInfo": {
+          "environment": [
+            "SECRET_CODE",
+            "MY_SUPER_SECRET_CODE"
+          ]
+        }
+      },
+      "favoriteSandwich": {
+        "$ref": "#/types/configstation:config/sandwich:sandwich",
+        "description": "omg my favorite sandwich"
+      }
+    },
+    "defaults": [
+      "name"
+    ]
+  },
+  "types": {
+    "configstation:config/sandwich:sandwich": {
+      "properties": {
+        "bread": {
+          "type": "string"
+        },
+        "veggies": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {},
+    "nodejs": {},
+    "python": {}
+  }
+}
