@@ -416,6 +416,8 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		var deps []Resource
 		var err error
 		defer func() {
+			defer ctx.endRPC(err)
+
 			var outprops resource.PropertyMap
 			if err == nil {
 				outprops, err = plugin.UnmarshalProperties(ret, plugin.MarshalOptions{
@@ -425,7 +427,9 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 				})
 			}
 			if err != nil {
+				logging.V(9).Infof("Call(%s, ...): success: w/ unmarshal error: %v", tok, err)
 				output.getState().reject(err)
+				return
 			}
 
 			// Allocate storage for the unmarshalled output.
@@ -440,8 +444,6 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 			}
 
 			logging.V(9).Infof("Call(%s, ...): success: w/ %d outs (err=%v)", tok, len(outprops), err)
-
-			ctx.endRPC(err)
 		}()
 
 		// Prepare the RPC request.
