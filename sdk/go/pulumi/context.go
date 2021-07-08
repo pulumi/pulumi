@@ -1142,8 +1142,6 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	//parent, optDeps, protect, provider, providers, deleteBeforeReplace, importID, ignoreChanges,
-	// additionalSecretOutputs,
 	resOpts, err := ctx.getOpts(t, resource.provider, opts, remote)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
