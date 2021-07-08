@@ -274,7 +274,7 @@ func newQueryResourceMonitor(
 
 	queryResmon.callInfo = plugin.CallInfo{
 		Project:        string(runinfo.Proj.Name),
-		Stack:          string(name),
+		Stack:          name,
 		Config:         config,
 		DryRun:         true,
 		Parallel:       math.MaxInt32,
