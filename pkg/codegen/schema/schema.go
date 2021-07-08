@@ -697,6 +697,371 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 	return t, ok
 }
 
+func (pkg *Package) MarshalJSON() (bytes []byte, err error) {
+	version := ""
+	if pkg.Version != nil {
+		version = pkg.Version.String()
+	}
+
+	var metadata *MetadataSpec
+	if pkg.moduleFormat != nil {
+		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
+	}
+
+	spec := PackageSpec{
+		Name:              pkg.Name,
+		Version:           version,
+		Description:       pkg.Description,
+		Keywords:          pkg.Keywords,
+		Homepage:          pkg.Homepage,
+		License:           pkg.License,
+		Attribution:       pkg.Attribution,
+		Repository:        pkg.Repository,
+		LogoURL:           pkg.LogoURL,
+		PluginDownloadURL: pkg.PluginDownloadURL,
+		Meta:              metadata,
+		Types:             map[string]ComplexTypeSpec{},
+		Resources:         map[string]ResourceSpec{},
+		Functions:         map[string]FunctionSpec{},
+	}
+
+	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling package config: %w", err)
+	}
+
+	spec.Provider, err = pkg.marshalResource(pkg.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling provider: %w", err)
+	}
+
+	for _, t := range pkg.Types {
+		switch t := t.(type) {
+		case *ObjectType:
+			if t.IsInputShape() {
+				continue
+			}
+
+			o, err := pkg.marshalObject(t)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling type '%v': %w", t.Token, err)
+			}
+			spec.Types[t.Token] = o
+		case *EnumType:
+			spec.Types[t.Token] = pkg.marshalEnum(t)
+		}
+	}
+
+	for _, res := range pkg.Resources {
+		r, err := pkg.marshalResource(res)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling resource '%v': %w", res.Token, err)
+		}
+		spec.Resources[res.Token] = r
+	}
+
+	for _, fn := range pkg.Functions {
+		f, err := pkg.marshalFunction(fn)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling function '%v': %w", fn.Token, err)
+		}
+		spec.Functions[fn.Token] = f
+	}
+
+	return json.Marshal(spec)
+}
+
+func (pkg *Package) marshalObjectData(
+	comment string, properties []*Property, language map[string]interface{}) (ObjectTypeSpec, error) {
+
+	required, props, err := pkg.marshalProperties(properties)
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
+	lang, err := marshalLanguage(language)
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
+	return ObjectTypeSpec{
+		Description: comment,
+		Properties:  props,
+		Type:        "object",
+		Required:    required,
+		Language:    lang,
+	}, nil
+}
+
+func (pkg *Package) marshalObject(t *ObjectType) (ComplexTypeSpec, error) {
+	data, err := pkg.marshalObjectData(t.Comment, t.Properties, t.Language)
+	if err != nil {
+		return ComplexTypeSpec{}, err
+	}
+	return ComplexTypeSpec{ObjectTypeSpec: data}, nil
+}
+
+func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
+	values := make([]EnumValueSpec, len(t.Elements))
+	for i, el := range t.Elements {
+		values[i] = EnumValueSpec{
+			Name:               el.Name,
+			Description:        el.Comment,
+			Value:              el.Value,
+			DeprecationMessage: el.DeprecationMessage,
+		}
+	}
+
+	return ComplexTypeSpec{
+		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType).Type},
+		Enum:           values,
+	}
+}
+
+func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
+	object, err := pkg.marshalObjectData(r.Comment, r.Properties, r.Language)
+	if err != nil {
+		return ResourceSpec{}, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	requiredInputs, inputs, err := pkg.marshalProperties(r.InputProperties)
+	if err != nil {
+		return ResourceSpec{}, fmt.Errorf("marshaling input properties: %w", err)
+	}
+
+	var stateInputs *ObjectTypeSpec
+	if r.StateInputs != nil {
+		o, err := pkg.marshalObject(r.StateInputs)
+		if err != nil {
+			return ResourceSpec{}, fmt.Errorf("marshaling state inputs: %w", err)
+		}
+		stateInputs = &o.ObjectTypeSpec
+	}
+
+	var aliases []AliasSpec
+	for _, a := range r.Aliases {
+		aliases = append(aliases, AliasSpec{
+			Name:    a.Name,
+			Project: a.Project,
+			Type:    a.Type,
+		})
+	}
+
+	var methods map[string]string
+	if len(r.Methods) != 0 {
+		methods = map[string]string{}
+		for _, m := range r.Methods {
+			methods[m.Name] = m.Function.Token
+		}
+	}
+
+	return ResourceSpec{
+		ObjectTypeSpec:     object,
+		InputProperties:    inputs,
+		RequiredInputs:     requiredInputs,
+		StateInputs:        stateInputs,
+		Aliases:            aliases,
+		DeprecationMessage: r.DeprecationMessage,
+		Language:           object.Language,
+		IsComponent:        r.IsComponent,
+		Methods:            methods,
+	}, nil
+}
+
+func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
+	var inputs *ObjectTypeSpec
+	if f.Inputs != nil {
+		ins, err := pkg.marshalObject(f.Inputs)
+		if err != nil {
+			return FunctionSpec{}, fmt.Errorf("marshaling inputs: %w", err)
+		}
+		inputs = &ins.ObjectTypeSpec
+	}
+
+	var outputs *ObjectTypeSpec
+	if f.Outputs != nil {
+		outs, err := pkg.marshalObject(f.Outputs)
+		if err != nil {
+			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+		}
+		outputs = &outs.ObjectTypeSpec
+	}
+
+	lang, err := marshalLanguage(f.Language)
+	if err != nil {
+		return FunctionSpec{}, err
+	}
+
+	return FunctionSpec{
+		Description: f.Comment,
+		Inputs:      inputs,
+		Outputs:     outputs,
+		Language:    lang,
+	}, nil
+}
+
+func (pkg *Package) marshalProperties(props []*Property) (required []string, specs map[string]PropertySpec, err error) {
+	if len(props) == 0 {
+		return
+	}
+
+	specs = make(map[string]PropertySpec, len(props))
+	for _, p := range props {
+		typ := p.Type
+		if t, optional := typ.(*OptionalType); optional {
+			typ = t.ElementType
+		} else {
+			required = append(required, p.Name)
+		}
+
+		var defaultValue interface{}
+		var defaultSpec *DefaultSpec
+		if p.DefaultValue != nil {
+			defaultValue = p.DefaultValue.Value
+			if len(p.DefaultValue.Environment) != 0 || len(p.DefaultValue.Language) != 0 {
+				lang, err := marshalLanguage(p.DefaultValue.Language)
+				if err != nil {
+					return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
+				}
+
+				defaultSpec = &DefaultSpec{
+					Environment: p.DefaultValue.Environment,
+					Language:    lang,
+				}
+			}
+		}
+
+		lang, err := marshalLanguage(p.Language)
+		if err != nil {
+			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
+		}
+
+		specs[p.Name] = PropertySpec{
+			TypeSpec:           pkg.marshalType(typ),
+			Description:        p.Comment,
+			Const:              p.ConstValue,
+			Default:            defaultValue,
+			DefaultInfo:        defaultSpec,
+			DeprecationMessage: p.DeprecationMessage,
+			Language:           lang,
+			Secret:             p.Secret,
+		}
+	}
+	return
+}
+
+func (pkg *Package) marshalType(t Type) TypeSpec {
+	switch t := t.(type) {
+	case *InputType:
+		el := pkg.marshalType(t.ElementType)
+		el.Plain = false
+		return el
+	case *ArrayType:
+		el := pkg.marshalType(t.ElementType)
+		return TypeSpec{
+			Type:  "array",
+			Items: &el,
+			Plain: true,
+		}
+	case *MapType:
+		el := pkg.marshalType(t.ElementType)
+		return TypeSpec{
+			Type:                 "object",
+			AdditionalProperties: &el,
+			Plain:                true,
+		}
+	case *UnionType:
+		oneOf := make([]TypeSpec, len(t.ElementTypes))
+		for i, el := range t.ElementTypes {
+			oneOf[i] = pkg.marshalType(el)
+		}
+
+		defaultType := ""
+		if t.DefaultType != nil {
+			defaultType = pkg.marshalType(t.DefaultType).Type
+		}
+
+		var discriminator *DiscriminatorSpec
+		if t.Discriminator != "" {
+			discriminator = &DiscriminatorSpec{
+				PropertyName: t.Discriminator,
+				Mapping:      t.Mapping,
+			}
+		}
+
+		return TypeSpec{
+			Type:          defaultType,
+			OneOf:         oneOf,
+			Discriminator: discriminator,
+			Plain:         true,
+		}
+	case *ObjectType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+	case *EnumType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+	case *ResourceType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.Package, "resources", t.Token)}
+	case *TokenType:
+		var defaultType string
+		if t.UnderlyingType != nil {
+			defaultType = pkg.marshalType(t.UnderlyingType).Type
+		}
+
+		return TypeSpec{
+			Type: defaultType,
+			Ref:  t.Token,
+		}
+	default:
+		switch t {
+		case BoolType:
+			return TypeSpec{Type: "boolean"}
+		case StringType:
+			return TypeSpec{Type: "string"}
+		case IntType:
+			return TypeSpec{Type: "integer"}
+		case NumberType:
+			return TypeSpec{Type: "number"}
+		case AnyType:
+			return TypeSpec{Ref: "pulumi.json#/Any"}
+		case ArchiveType:
+			return TypeSpec{Ref: "pulumi.json#/Archive"}
+		case AssetType:
+			return TypeSpec{Ref: "pulumi.json#/Asset"}
+		case JSONType:
+			return TypeSpec{Ref: "pulumi.json#/Json"}
+		default:
+			panic(fmt.Errorf("unexepcted type %v (%T)", t, t))
+		}
+	}
+}
+
+func (pkg *Package) marshalTypeRef(container *Package, section, token string) string {
+	token = url.PathEscape(token)
+
+	if container == pkg {
+		return fmt.Sprintf("#/%s/%s", section, token)
+	}
+
+	// TODO(schema): this isn't quite right--it doesn't handle schemas sourced from URLs--but it's good enough for now.
+	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name, container.Version, section, token)
+}
+
+func marshalLanguage(lang map[string]interface{}) (map[string]json.RawMessage, error) {
+	if len(lang) == 0 {
+		return nil, nil
+	}
+
+	result := map[string]json.RawMessage{}
+	for name, data := range lang {
+		bytes, err := json.Marshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling %v language data: %w", name, err)
+		}
+		result[name] = json.RawMessage(bytes)
+	}
+	return result, nil
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -784,7 +1149,7 @@ type ComplexTypeSpec struct {
 	ObjectTypeSpec
 
 	// Enum, if present, is the list of possible values for an enum type.
-	Enum []*EnumValueSpec `json:"enum,omitempty"`
+	Enum []EnumValueSpec `json:"enum,omitempty"`
 }
 
 // EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
@@ -1642,7 +2007,7 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 	return nil
 }
 
-func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, error) {
+func (t *types) bindEnumValues(values []EnumValueSpec, typ Type) ([]*Enum, error) {
 	var enums []*Enum
 
 	errorMessage := func(val interface{}, expectedType string) error {

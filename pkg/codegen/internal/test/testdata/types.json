@@ -1,0 +1,224 @@
+{
+  "name": "typetests",
+  "version": "0.0.1",
+  "meta": {
+    "moduleFormat": "(.*)"
+  },
+  "config": {},
+  "types": {
+    "typetests::primitives": {
+      "properties": {
+        "boolean": {
+          "type": "boolean",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cbool\u003e?",
+                  "plain": "bool?"
+                },
+                "go": {
+                  "input": "pulumi.BoolPtrInput",
+                  "plain": "*bool"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cboolean\u003e | undefined",
+                  "plain": "boolean | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[bool]]",
+                  "plain": "Optional[bool]"
+                }
+              }
+            }
+          }
+        },
+        "integer": {
+          "type": "integer",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cint\u003e?",
+                  "plain": "int?"
+                },
+                "go": {
+                  "input": "pulumi.IntPtrInput",
+                  "plain": "*int"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cnumber\u003e | undefined",
+                  "plain": "number | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[int]]",
+                  "plain": "Optional[int]"
+                }
+              }
+            }
+          }
+        },
+        "number": {
+          "type": "number",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cdouble\u003e?",
+                  "plain": "double?"
+                },
+                "go": {
+                  "input": "pulumi.Float64PtrInput",
+                  "plain": "*float64"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cnumber\u003e | undefined",
+                  "plain": "number | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[float]]",
+                  "plain": "Optional[float]"
+                }
+              }
+            }
+          }
+        },
+        "requiredBoolean": {
+          "type": "boolean",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cbool\u003e",
+                  "plain": "bool"
+                },
+                "go": {
+                  "input": "pulumi.BoolInput",
+                  "plain": "bool"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cboolean\u003e",
+                  "plain": "boolean"
+                },
+                "python": {
+                  "input": "pulumi.Input[bool]",
+                  "plain": "bool"
+                }
+              }
+            }
+          }
+        },
+        "requiredInteger": {
+          "type": "integer",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cint\u003e",
+                  "plain": "int"
+                },
+                "go": {
+                  "input": "pulumi.IntInput",
+                  "plain": "int"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cnumber\u003e",
+                  "plain": "number"
+                },
+                "python": {
+                  "input": "pulumi.Input[int]",
+                  "plain": "int"
+                }
+              }
+            }
+          }
+        },
+        "requiredNumber": {
+          "type": "number",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cdouble\u003e",
+                  "plain": "double"
+                },
+                "go": {
+                  "input": "pulumi.Float64Input",
+                  "plain": "float64"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cnumber\u003e",
+                  "plain": "number"
+                },
+                "python": {
+                  "input": "pulumi.Input[float]",
+                  "plain": "float"
+                }
+              }
+            }
+          }
+        },
+        "requiredString": {
+          "type": "string",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cstring\u003e",
+                  "plain": "string"
+                },
+                "go": {
+                  "input": "pulumi.StringInput",
+                  "plain": "string"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cstring\u003e",
+                  "plain": "string"
+                },
+                "python": {
+                  "input": "pulumi.Input[str]",
+                  "plain": "str"
+                }
+              }
+            }
+          }
+        },
+        "string": {
+          "type": "string",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input\u003cstring\u003e?",
+                  "plain": "string?"
+                },
+                "go": {
+                  "input": "pulumi.StringPtrInput",
+                  "plain": "*string"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input\u003cstring\u003e | undefined",
+                  "plain": "string | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[str]]",
+                  "plain": "Optional[str]"
+                }
+              }
+            }
+          }
+        }
+      },
+      "type": "object",
+      "required": [
+        "requiredBoolean",
+        "requiredInteger",
+        "requiredNumber",
+        "requiredString"
+      ]
+    }
+  },
+  "provider": {
+    "type": "object"
+  }
+}
