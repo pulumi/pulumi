@@ -1430,7 +1430,7 @@ func (ctx *Context) NewOutput() (Output, func(interface{}), func(error)) {
 
 // Sets marshalling flags based on `ctx.DryRun()`: we will either
 // preserve unknowns as-is or fail strictly with an exception if any
-// unkowns are found. The third option, filtering out unkown values
+// unkowns are found. The third option, filtering out unknown values
 // from the data structure being marshalled, is never used.
 func (ctx *Context) withKeepOrRejectUnknowns(options plugin.MarshalOptions) plugin.MarshalOptions {
 	if ctx.DryRun() {
