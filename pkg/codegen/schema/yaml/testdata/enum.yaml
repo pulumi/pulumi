@@ -1,0 +1,100 @@
+version: "0.0.1"
+name: plant
+language:
+  csharp:
+    namespace:
+      plant: Plant
+      tree/v1: Tree.V1
+  go:
+    importBasePath: github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant
+    packageImportAliases:
+      github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1: "treev1"
+  nodejs: {}
+  python:
+    moduleNameOverrides:
+      tree/v1: tree/v1
+members:
+  Container: !Object
+    size: !Input [ContainerSize]
+    material: !Optional [!Input [string]]
+    color: !Optional [!Input [!Union [!Input [ContainerColor], !Input [string]]]]
+    brightness:
+      type: !Optional [!Input [ContainerBrightness]]
+      default: 1.0
+
+  # plant container sizes
+  ContainerSize: !Enum
+    type: integer
+    values:
+      FourInch: 4
+      SixInch: 6
+      EightInch:
+        value: 8
+        deprecationMessage: Eight inch pots are no longer supported.
+
+  # plant container colors
+  ContainerColor: !Enum
+    type: string
+    values:
+      - red
+      - blue
+      - yellow
+
+  ContainerBrightness: !Enum
+    type: number
+    values:
+      ZeroPointOne: 0.1
+      One: 1.0
+
+  tree: !Module
+    v1: !Module
+      # types of rubber trees
+      RubberTreeVariety: !Enum
+        type: string
+        values:
+          - Burgundy # A burgundy rubber tree.
+          - Ruby     # A ruby rubber tree.
+          - Tineke   # A tineke rubber tree.
+
+      Farm: !Enum
+        type: string
+        values:
+          - Pulumi Planters Inc.
+          - Plans'R'Us
+
+      TreeSize: !Enum
+        type: string
+        values:
+          - small
+          - medium
+          - large
+
+      Diameter: !Enum
+        type: number
+        values:
+          sixinch: 6
+          twelveinch: 12
+
+      Nursery: !Resource
+        inputs:
+          varieties: !Input [!Array [!Input [RubberTreeVariety]]] # The varieties available
+          sizes: !Optional [!Input [!Map [!Input [TreeSize]]]]    # The sizes of trees available
+      RubberTree: !Resource
+        inouts:
+          container: !Optional [!Input [/Container]]
+          type:
+            type: !Input [RubberTree]
+            default: Burgundy
+          farm:
+            type: !Optional [!Input [!Union [!Input [Farm], !Input [string]]]]
+            default: (unknown)
+          size:
+            type: !Optional [!Input [TreeSize]]
+            defaut: medium
+          diameter:
+            type: !Input [Diameter]
+            default: 6
+        stateInputs:
+          farm:
+            type: !Optional [!Input [!Union [!Input [Farm], !Input [string]]]]
+            default: (unknown)

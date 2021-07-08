@@ -1,0 +1,102 @@
+{
+    "name": "plant",
+    "version": "0.0.1",
+    "config": {},
+    "types": {
+        "plant::Container": {
+            "properties": {
+                "brightness": {
+                    "$ref": "#/types/plant::ContainerBrightness",
+                    "default": 1
+                },
+                "color": {
+                    "oneOf": [
+                        {
+                            "$ref": "#/types/plant::ContainerColor"
+                        },
+                        {
+                            "type": "string"
+                        }
+                    ]
+                },
+                "material": {
+                    "type": "string"
+                },
+                "size": {
+                    "$ref": "#/types/plant::ContainerSize"
+                }
+            },
+            "type": "object",
+            "required": [
+                "size"
+            ]
+        },
+        "plant::ContainerBrightness": {
+            "type": "number",
+            "enum": [
+                {
+                    "name": "One",
+                    "value": 1
+                },
+                {
+                    "name": "ZeroPointOne",
+                    "value": 0.1
+                }
+            ]
+        },
+        "plant::ContainerColor": {
+            "description": "plant container colors\n",
+            "type": "string",
+            "enum": [
+                {
+                    "value": "red"
+                },
+                {
+                    "value": "blue"
+                },
+                {
+                    "value": "yellow"
+                }
+            ]
+        },
+        "plant::ContainerSize": {
+            "description": "plant container sizes\n",
+            "type": "integer",
+            "enum": [
+                {
+                    "name": "EightInch",
+                    "value": 8
+                },
+                {
+                    "name": "FourInch",
+                    "value": 4
+                },
+                {
+                    "name": "SixInch",
+                    "value": 6
+                }
+            ]
+        }
+    },
+    "provider": {},
+    "language": {
+        "csharp": {
+            "namespace": {
+                "plant": "Plant",
+                "tree/v1": "Tree.V1"
+            }
+        },
+        "go": {
+            "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant",
+            "packageImportAliases": {
+                "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
+            }
+        },
+        "nodejs": {},
+        "python": {
+            "moduleNameOverrides": {
+                "tree/v1": "tree/v1"
+            }
+        }
+    }
+}

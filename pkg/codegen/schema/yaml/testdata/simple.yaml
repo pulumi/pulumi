@@ -1,0 +1,28 @@
+version: "0.0.1"
+name: example
+members:
+  Object: !Object
+    foo: !Optional [!Input [Resource]]
+    bar: !Optional [!Input [string]]
+    others: !Optional [!Input [!Array [!Input [!Array [!Input [SomeOtherObject]]]]]] # List of lists of other objects
+    configs: !Optional [!Input [!Array [!Input [ConfigMap]]]]
+    stillOthers: !Optional [!Input [!Map [!Input [!Array [!Input [SomeOtherObject]]]]]] # Mapping from string to list of some other object
+  OtherResourceOutput: !Object 
+    foo: !Optional [!Input [string]]
+  SomeOtherObject: !Object 
+    baz: !Optional [!Input [string]]
+  ConfigMap: !Object 
+    config: !Optional [!Input [string]]
+  Resource: !Resource
+    inouts:
+      bar:
+        type: !Optional [!Input [string]]
+        secret: true
+  OtherResource: !Component 
+    inouts:
+      foo: !Optional [!Input [Resource]]
+  argFunction: !Function 
+    parameters:
+      arg1: !Optional [Resource]
+    returns:
+      result: !Optional [Resource]

@@ -1,0 +1,119 @@
+{
+    "name": "example",
+    "version": "0.0.1",
+    "config": {},
+    "types": {
+        "example::ConfigMap": {
+            "properties": {
+                "config": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "example::Object": {
+            "properties": {
+                "bar": {
+                    "type": "string"
+                },
+                "configs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/types/example::ConfigMap"
+                    }
+                },
+                "foo": {
+                    "$ref": "#/resources/example::Resource"
+                },
+                "others": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/example::SomeOtherObject"
+                        }
+                    },
+                    "description": "List of lists of other objects\n"
+                },
+                "stillOthers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/types/example::SomeOtherObject"
+                        }
+                    },
+                    "description": "Mapping from string to list of some other object\n"
+                }
+            },
+            "type": "object"
+        },
+        "example::OtherResourceOutput": {
+            "properties": {
+                "foo": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        },
+        "example::SomeOtherObject": {
+            "properties": {
+                "baz": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "provider": {},
+    "resources": {
+        "example::OtherResource": {
+            "properties": {
+                "foo": {
+                    "$ref": "#/resources/example::Resource"
+                }
+            },
+            "inputProperties": {
+                "foo": {
+                    "$ref": "#/resources/example::Resource"
+                }
+            },
+            "isComponent": true
+        },
+        "example::Resource": {
+            "properties": {
+                "bar": {
+                    "type": "string",
+                    "secret": true
+                }
+            },
+            "inputProperties": {
+                "bar": {
+                    "type": "string",
+                    "secret": true
+                }
+            }
+        }
+    },
+    "functions": {
+        "example::argFunction": {
+            "inputs": {
+                "properties": {
+                    "arg1": {
+                        "$ref": "#/resources/example::Resource",
+                        "plain": true
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "$ref": "#/resources/example::Resource"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    }
+}

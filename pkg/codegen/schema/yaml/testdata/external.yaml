@@ -1,0 +1,52 @@
+version: "0.0.1"
+name: example
+language:
+  csharp: {}
+  go:
+    generateResourceContainerTypes: true
+  nodejs: {}
+  python: {}
+imports:
+  random: /random/v2.3.1/schema.json 
+  aws: /aws/v3.14.0/schema.json
+  k8s263:
+    path: /kubernetes/v2.6.3/schema.json
+    package: kubernetes
+  k8s273:
+    path: /kubernetes/v2.7.3/schema.json
+    package: kubernetes
+members:
+  Pet: !Object
+    name: !Optional [!Input [/random/resources/index/randomPet/RandomPet]]
+    requiredName: !Input [/random/resources/index/randomPet/RandomPet]
+    nameArray: !Optional [!Input [!Array [!Input [/random/resources/index%2FrandomPet/RandomPet]]]]
+    requiredNameArray: !Input [!Array [!Input [/random/resources/index/randomPet/RandomPet]]]
+    nameMap: !Optional [!Input [!Map [!Input [/random/resources/index/randomPet/RandomPet]]]]
+    requireNameMap: !Input [!Map [!Input [/random/resources/index/randomPet/RandomPet]]]
+    age: !Input [integer]
+  Cat: !Resource
+    outputs:
+      name: !Optional [string]
+    inputs:
+      age: !Optional [!Input [integer]]
+      pet: !Optional [!Input [Pet]]
+  Workload: !Resource
+    outputs:
+      pod: !Optional [/k8s263/types/core/v1/Pod]
+  Component: !Component
+    outputs:
+      provider: !Optional [/k8s263/provider]
+      securityGroup: /aws/resources/ec2/securityGroup/SecurityGroup
+      storageClasses: !Optional [/k8s273/resources/storage.k8s.io/v1/StorageClass]
+    inputs:
+      metadata: !Optional [!Input [/k8s263/types/meta/v1/ObjectMeta]]
+      requiredMetadata: !Input [/k8s263/types/meta/v1/ObjectMeta]
+      metadataArray: !Optional [!Input [!Array [!Input [/k8s263/types/meta/v1/ObjectMeta]]]]
+      requiredMetadataArray: !Input [!Array [!Input [/k8s263/types/meta/v1/ObjectMeta]]]
+      metadataMap: !Optional [!Input [!Map [!Input [/k8s263/types/meta/v1/ObjectMeta]]]]
+      requiredMetadataMap: !Input [!Map [!Input [/k8s263/types/meta/v1/ObjectMeta]]]
+  argFunction: !Function
+    parameters:
+      name: !Optional [/random/resources/index/randomPet/RandomPet]
+    returns:
+      arg: !Optional [integer]

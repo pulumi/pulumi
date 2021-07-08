@@ -1,0 +1,27 @@
+version: "0.0.1"
+name: example
+imports:
+  aws: /aws/v3.14.0/schema.json
+members:
+  # A simple object type.
+  MyObject: !Object
+    foo: !Input [MyResource]
+    bar: !Optional [!Input [string]]
+    baz: !Optional [!Input [!Array [!Input [!Array [!Input [string]]]]]] # List of lists of strings
+    qux: !Optional [!Input [!Map [!Input [!Array [!Input [number]]]]]] # Mapping from string to list of numbers
+  MyResource: !Resource
+    inouts:
+      foo: !Optional [!Input [MyObject]]
+      bar: !Optional [!Input [string]]
+      bar: !Optional [!Input [string]]
+      baz: !Input [string]
+      qux: !Array [!Input [number]]
+  MyComponent: !Component
+    inouts:
+      resource: !Optional [!Input [MyResource]]
+      bucket: /aws/resources/s3/bucket/Bucket
+  myFunction: !Function
+    parameters:
+      arg1: !Optional [MyResource]
+    returns:
+      result: !Optional [MyResource]

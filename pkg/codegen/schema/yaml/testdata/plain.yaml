@@ -1,0 +1,32 @@
+version: "0.0.1"
+name: example
+language:
+  csharp: {}
+  go:
+    importBasePath: github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-plain-schema/go/example
+  nodejs: {}
+  python: {}
+members:
+  Foo: !Object
+    a: boolean
+    b: !Optional [boolean]
+    c: integer
+    d: !Optional [integer]
+    e: string
+    f: !Optional [string]
+  Component: !Component
+    inouts:
+      a: boolean
+      b: !Optional [boolean]
+      c: integer
+      d: !Optional [integer]
+      e: string
+      f: !Optional [string]
+      foo: !Optional [!Input [Foo]]
+      bar: !Optional [Foo]
+      baz: !Array [!Input [Foo]]
+    inputs:
+      bazMap: !Map [!Input [Foo]]
+  doFoo: !Function
+    parameters:
+      foo: Foo
