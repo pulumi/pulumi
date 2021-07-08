@@ -25,6 +25,7 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func readSchemaFile(file string) (pkgSpec PackageSpec) {
@@ -391,9 +392,72 @@ func TestMethods(t *testing.T) {
 				assert.Error(t, err)
 				assert.Contains(t, err.Error(), tt.expectedError)
 			} else {
-				if err != nil {
-					t.Error(err)
-				}
+				require.NoError(t, err)
+				tt.validator(pkg)
+			}
+		})
+	}
+}
+
+func TestInouts(t *testing.T) {
+	var tests = []struct {
+		filename      string
+		validator     func(pkg *Package)
+		expectedError string
+	}{
+		{
+			filename: "good-inouts-1.json",
+			validator: func(pkg *Package) {
+				assert.Len(t, pkg.Resources, 2)
+
+				res := pkg.Resources[1]
+				assert.Len(t, res.Properties, 2)
+				assert.Equal(t, res.Properties[0].Type, StringType)
+				assert.Equal(t, res.Properties[1].Type, &OptionalType{ElementType: NumberType})
+
+				assert.Len(t, res.InputProperties, 2)
+				assert.Equal(t, res.InputProperties[0].Type, &InputType{ElementType: StringType})
+				assert.Equal(t, res.InputProperties[1].Type,
+					&OptionalType{ElementType: &InputType{ElementType: NumberType}})
+
+				other := pkg.Resources[0]
+				assert.Len(t, other.Properties, 2)
+				assert.Equal(t, other.Properties[0].Type, &OptionalType{ElementType: StringType})
+				assert.Equal(t, other.Properties[1].Type, NumberType)
+
+				assert.Len(t, other.InputProperties, 2)
+				assert.Equal(t, other.InputProperties[0].Type,
+					&OptionalType{ElementType: &InputType{ElementType: IntType}})
+				assert.Equal(t, other.InputProperties[1].Type, &InputType{ElementType: NumberType})
+			},
+		},
+		{
+			filename:      "bad-inouts-1.json",
+			expectedError: "unknown type kind frob",
+		},
+		{
+			filename:      "bad-inouts-2.json",
+			expectedError: "duplicate input property 'bar' in resource 'example::Resource'",
+		},
+		{
+			filename:      "bad-inouts-3.json",
+			expectedError: "duplicate property 'baz' in resource 'example::Resource'",
+		},
+		{
+			filename:      "bad-inouts-4.json",
+			expectedError: "unknown required property \"bar\"",
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.filename, func(t *testing.T) {
+			pkgSpec := readSchemaFile(filepath.Join("schema", tt.filename))
+
+			pkg, err := ImportSpec(pkgSpec, nil)
+			if tt.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), tt.expectedError)
+			} else {
+				require.NoError(t, err)
 				tt.validator(pkg)
 			}
 		})

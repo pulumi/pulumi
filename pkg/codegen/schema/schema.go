@@ -817,6 +817,11 @@ type ResourceSpec struct {
 	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
 	// RequiredInputs is a list of the names of the resource's required input properties.
 	RequiredInputs []string `json:"requiredInputs,omitempty"`
+	// InoutProperties is a map from property name to PropertySpec that describes resource properties that are both
+	// inputs and outputs.
+	InoutProperties map[string]PropertySpec `json:"inoutProperties,omitempty"`
+	// RequiredInouts is a list of the names of the resource's required inout properties.
+	RequiredInouts []string `json:"requiredInouts,omitempty"`
 	// PlainInputs was a list of the names of the resource's plain input properties. This property is ignored:
 	// instead, property types should be marked as plain where necessary.
 	PlainInputs []string `json:"plainInputs,omitempty"`
@@ -1800,14 +1805,40 @@ func bindResource(token string, spec ResourceSpec, types *types,
 		return nil, errors.New("plainInputs has been removed; individual property types must be marked as plain instead")
 	}
 
-	properties, _, err := types.bindProperties(spec.Properties, spec.Required, false)
+	propertySpecs := make(map[string]PropertySpec, len(spec.Properties)+len(spec.InoutProperties))
+	for name, prop := range spec.Properties {
+		propertySpecs[name] = prop
+	}
+	inputPropertySpecs := make(map[string]PropertySpec, len(spec.InputProperties)+len(spec.InoutProperties))
+	for name, prop := range spec.InputProperties {
+		inputPropertySpecs[name] = prop
+	}
+	for name, prop := range spec.InoutProperties {
+		if _, ok := propertySpecs[name]; ok {
+			return nil, fmt.Errorf("duplicate property '%v' in resource '%v'", name, token)
+		}
+		propertySpecs[name] = prop
+
+		if _, ok := inputPropertySpecs[name]; ok {
+			return nil, fmt.Errorf("duplicate input property '%v' in resource '%v'", name, token)
+		}
+		inputPropertySpecs[name] = prop
+	}
+
+	required := make([]string, 0, len(spec.Required)+len(spec.RequiredInouts))
+	required = append(append(required, spec.Required...), spec.RequiredInouts...)
+
+	requiredInputs := make([]string, 0, len(spec.RequiredInputs)+len(spec.RequiredInouts))
+	requiredInputs = append(append(requiredInputs, spec.RequiredInputs...), spec.RequiredInouts...)
+
+	properties, _, err := types.bindProperties(propertySpecs, required, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs, true)
+	inputProperties, _, err := types.bindProperties(inputPropertySpecs, requiredInputs, true)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to bind properties")
+		return nil, errors.Wrap(err, "failed to bind input properties")
 	}
 
 	methods, err := bindMethods(token, spec.Methods, functionTable)

@@ -1,0 +1,21 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example::Resource": {
+      "inoutProperties": {
+        "foo": {
+          "type": "string"
+        }
+      },
+      "requiredInouts": ["bar"],
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {},
+    "nodejs": {},
+    "python": {}
+  }
+}
