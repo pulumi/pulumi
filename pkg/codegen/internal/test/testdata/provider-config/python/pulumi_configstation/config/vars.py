@@ -11,7 +11,6 @@ from . import outputs
 from .. import outputs as _root_outputs
 
 import types
-import sys
 
 __config__ = pulumi.Config('configstation')
 
@@ -51,5 +50,3 @@ class _ExportableConfig(types.ModuleType):
         """
         return __config__.get('secretCode') or _utilities.get_env('SECRET_CODE', 'MY_SUPER_SECRET_CODE')
 
-
-sys.modules[__name__].__class__ = _ExportableConfig
