@@ -5,7 +5,7 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
-TESTS_PKGS      := $(shell cd ./tests && go list ./... | grep -v tests/templates | grep -v /vendor/)
+TESTS_PKGS      := $(shell cd ./tests && go list ./... -tags all | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell pulumictl get version)
 
 TESTPARALLELISM := 10
