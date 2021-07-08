@@ -4,12 +4,14 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/stretchr/testify/assert"
 )
 
 type sdkTest struct {
 	Directory   string
 	Description string
+	Skip        codegen.StringSet
 }
 
 var sdkTests = []sdkTest{
@@ -53,11 +55,11 @@ var sdkTests = []sdkTest{
 		Directory:   "simple-resource-schema-custom-pypackage-name",
 		Description: "Simple schema with local resource properties and custom Python package name",
 	},
-	// TODO[pulumi/pulumi#7072]: Enable test after codegen support for all languages lands.
-	// {
-	// 	Directory:   "simple-methods-schema",
-	// 	Description: "Simple schema with methods",
-	// },
+	{
+		Directory:   "simple-methods-schema",
+		Description: "Simple schema with methods",
+		Skip:        codegen.NewStringSet("dotnet"),
+	},
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code generator.
@@ -78,6 +80,11 @@ func TestSDKCodegen(t *testing.T, language string, genPackage GenPkgSignature) {
 
 	for _, tt := range sdkTests {
 		t.Run(tt.Description, func(t *testing.T) {
+			if tt.Skip.Has(language) {
+				t.Skip()
+				return
+			}
+
 			files, err := GeneratePackageFilesFromSchema(
 				filepath.Join(testDir, tt.Directory, "schema.json"), genPackage)
 			assert.NoError(t, err)
