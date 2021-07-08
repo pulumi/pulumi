@@ -58,7 +58,7 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "simple-methods-schema",
 		Description: "Simple schema with methods",
-		Skip:        codegen.NewStringSet("dotnet"),
+		Skip:        codegen.NewStringSet("docs", "dotnet"),
 	},
 }
 
