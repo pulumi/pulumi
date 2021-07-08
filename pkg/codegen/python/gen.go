@@ -561,6 +561,13 @@ func (mod *modContext) fullyQualifiedImportName() string {
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false /*needsSDK*/, nil)
+	if mod.isConfig {
+		fmt.Fprintf(w, "import sys\n")
+		fmt.Fprintf(w, "from .vars import _ExportableConfig\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "sys.modules[__name__].__class__ = _ExportableConfig\n")
+		return w.String()
+	}
 	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
 	fmt.Fprintf(w, "import typing\n")
 
@@ -743,7 +750,6 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 
 	mod.genHeader(w, true /*needsSDK*/, imports)
 	fmt.Fprintf(w, "import types\n")
-	fmt.Fprintf(w, "import sys\n")
 	fmt.Fprintf(w, "\n")
 
 	// Create a config bag for the variables to pull from.
@@ -772,9 +778,6 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
 		fmt.Fprintf(w, "\n")
 	}
-
-	fmt.Fprintf(w, "\n")
-	fmt.Fprintf(w, "sys.modules[__name__].__class__ = _ExportableConfig\n")
 
 	return w.String(), nil
 }
