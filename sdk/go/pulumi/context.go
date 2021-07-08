@@ -1142,8 +1142,9 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	parent, optDeps, protect, provider, providers, deleteBeforeReplace, importID, ignoreChanges,
-		additionalSecretOutputs, err := ctx.getOpts(t, resource.provider, opts, remote)
+	//parent, optDeps, protect, provider, providers, deleteBeforeReplace, importID, ignoreChanges,
+	// additionalSecretOutputs,
+	resOpts, err := ctx.getOpts(t, resource.provider, opts, remote)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -1184,7 +1185,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
 	var deps []string
 	depMap := make(map[URN]bool)
-	for _, dep := range append(optDeps, rpcDeps...) {
+	for _, dep := range append(resOpts.depURNs, rpcDeps...) {
 		if _, has := depMap[dep]; !has {
 			deps = append(deps, string(dep))
 			depMap[dep] = true
@@ -1203,20 +1204,20 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	}
 
 	return &resourceInputs{
-		parent:                  string(parent),
+		parent:                  string(resOpts.parentURN),
 		deps:                    deps,
-		protect:                 protect,
-		provider:                provider,
-		providers:               providers,
+		protect:                 resOpts.protect,
+		provider:                resOpts.providerRef,
+		providers:               resOpts.providerRefs,
 		resolvedProps:           resolvedProps,
 		rpcProps:                rpcProps,
 		rpcPropertyDeps:         rpcPropertyDeps,
-		deleteBeforeReplace:     deleteBeforeReplace,
-		importID:                string(importID),
+		deleteBeforeReplace:     resOpts.deleteBeforeReplace,
+		importID:                string(resOpts.importID),
 		customTimeouts:          getTimeouts(opts.CustomTimeouts),
-		ignoreChanges:           ignoreChanges,
+		ignoreChanges:           resOpts.ignoreChanges,
 		aliases:                 aliases,
-		additionalSecretOutputs: additionalSecretOutputs,
+		additionalSecretOutputs: resOpts.additionalSecretOutputs,
 		version:                 resource.version,
 	}, nil
 }
@@ -1231,16 +1232,29 @@ func getTimeouts(custom *CustomTimeouts) *pulumirpc.RegisterResourceRequest_Cust
 	return &timeouts
 }
 
+// Helper struct for the return type of `getOpts`.
+type resourceOpts struct {
+	parentURN               URN
+	depURNs                 []URN
+	protect                 bool
+	providerRef             string
+	providerRefs            map[string]string
+	deleteBeforeReplace     bool
+	importID                ID
+	ignoreChanges           []string
+	additionalSecretOutputs []string
+}
+
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
 func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceOptions, remote bool,
-) (URN, []URN, bool, string, map[string]string, bool, ID, []string, []string, error) {
+) (resourceOpts, error) {
 
 	var importID ID
 	if opts.Import != nil {
 		id, _, _, err := opts.Import.ToIDOutput().awaitID(context.TODO())
 		if err != nil {
-			return "", nil, false, "", nil, false, "", nil, nil, err
+			return resourceOpts{}, err
 		}
 		importID = id
 	}
@@ -1249,7 +1263,7 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 	if opts.Parent != nil {
 		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
 		if err != nil {
-			return "", nil, false, "", nil, false, "", nil, nil, err
+			return resourceOpts{}, err
 		}
 		parentURN = urn
 	}
@@ -1260,7 +1274,7 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 		for i, r := range opts.DependsOn {
 			urn, _, _, err := r.URN().awaitURN(context.TODO())
 			if err != nil {
-				return "", nil, false, "", nil, false, "", nil, nil, err
+				return resourceOpts{}, err
 			}
 			depURNs[i] = urn
 		}
@@ -1270,7 +1284,7 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 	if provider != nil {
 		pr, err := ctx.resolveProviderReference(provider)
 		if err != nil {
-			return "", nil, false, "", nil, false, "", nil, nil, err
+			return resourceOpts{}, err
 		}
 		providerRef = pr
 	}
@@ -1282,15 +1296,24 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 			for name, provider := range opts.Providers {
 				pr, err := ctx.resolveProviderReference(provider)
 				if err != nil {
-					return "", nil, false, "", nil, false, "", nil, nil, err
+					return resourceOpts{}, err
 				}
 				providerRefs[name] = pr
 			}
 		}
 	}
 
-	return parentURN, depURNs, opts.Protect, providerRef, providerRefs, opts.DeleteBeforeReplace,
-		importID, opts.IgnoreChanges, opts.AdditionalSecretOutputs, nil
+	return resourceOpts{
+		parentURN:               parentURN,
+		depURNs:                 depURNs,
+		protect:                 opts.Protect,
+		providerRef:             providerRef,
+		providerRefs:            providerRefs,
+		deleteBeforeReplace:     opts.DeleteBeforeReplace,
+		importID:                importID,
+		ignoreChanges:           opts.IgnoreChanges,
+		additionalSecretOutputs: opts.AdditionalSecretOutputs,
+	}, nil
 }
 
 func (ctx *Context) resolveProviderReference(provider ProviderResource) (string, error) {
