@@ -1430,7 +1430,7 @@ namespace Pulumi.Automation.Tests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Flakey test - https://github.com/pulumi/pulumi/issues/7467")]
         public async Task WorkspaceStackSupportsCancel()
         {
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
