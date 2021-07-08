@@ -702,8 +702,84 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts);\n", name)
 	}
 
-	// Finish the class.
 	fmt.Fprintf(w, "    }\n")
+
+	// Generate methods.
+	genMethod := func(method *schema.Method) {
+		methodName := camel(method.Name)
+		fun := method.Function
+
+		// Write the TypeDoc/JSDoc for the data source function.
+		fmt.Fprint(w, "\n")
+		printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ")
+
+		// Now, emit the method signature.
+		var args []*schema.Property
+		var argsig string
+		argsOptional := true
+		if fun.Inputs != nil {
+			// Filter out the __self__ argument from the inputs.
+			args = make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			for _, arg := range fun.Inputs.InputShape.Properties {
+				if arg.Name == "__self__" {
+					continue
+				}
+				if arg.IsRequired() {
+					argsOptional = false
+					break
+				}
+				args = append(args, arg)
+			}
+
+			if len(args) > 0 {
+				optFlag := ""
+				if argsOptional {
+					optFlag = "?"
+				}
+				argsig = fmt.Sprintf("args%s: %s.%sArgs", optFlag, name, title(method.Name))
+			}
+		}
+		var retty string
+		if fun.Outputs == nil {
+			retty = "void"
+		} else {
+			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
+		}
+		fmt.Fprintf(w, "    %s(%s): %s {\n", methodName, argsig, retty)
+		if fun.DeprecationMessage != "" {
+			fmt.Fprintf(w, "        pulumi.log.warn(\"%s.%s is deprecated: %s\")\n", name, methodName,
+				fun.DeprecationMessage)
+		}
+
+		// Zero initialize the args if empty and necessary.
+		if len(args) > 0 && argsOptional {
+			fmt.Fprintf(w, "        args = args || {};\n")
+		}
+
+		// Now simply call the runtime function with the arguments, returning the results.
+		var ret string
+		if fun.Outputs != nil {
+			ret = "return "
+		}
+		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
+		if fun.Inputs != nil {
+			for _, p := range fun.Inputs.InputShape.Properties {
+				// Pass the argument to the invocation.
+				if p.Name == "__self__" {
+					fmt.Fprintf(w, "            \"%s\": this,\n", p.Name)
+				} else {
+					fmt.Fprintf(w, "            \"%[1]s\": args.%[1]s,\n", p.Name)
+				}
+			}
+		}
+		fmt.Fprintf(w, "        }, this);\n")
+		fmt.Fprintf(w, "    }\n")
+	}
+	for _, method := range r.Methods {
+		genMethod(method)
+	}
+
+	// Finish the class.
 	fmt.Fprintf(w, "}\n")
 
 	// Emit the state type for get methods.
@@ -717,6 +793,47 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	argsComment := fmt.Sprintf("The set of arguments for constructing a %s resource.", name)
 	mod.genPlainType(w, argsType, argsComment, r.InputProperties, true, false, 0)
 
+	// Emit any method types inside a namespace merged with the class, to represent types nested in the class.
+	// https://www.typescriptlang.org/docs/handbook/declaration-merging.html#merging-namespaces-with-classes
+	genMethodTypes := func(w io.Writer, method *schema.Method) {
+		fun := method.Function
+		methodName := title(method.Name)
+		if fun.Inputs != nil {
+			args := make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties))
+			for _, arg := range fun.Inputs.InputShape.Properties {
+				if arg.Name == "__self__" {
+					continue
+				}
+				args = append(args, arg)
+			}
+			if len(args) > 0 {
+				comment := fun.Inputs.Comment
+				if comment == "" {
+					comment = fmt.Sprintf("The set of arguments for the %s.%s method.", name, method.Name)
+				}
+				mod.genPlainType(w, methodName+"Args", comment, args, true, false, 1)
+				fmt.Fprintf(w, "\n")
+			}
+		}
+		if fun.Outputs != nil {
+			comment := fun.Inputs.Comment
+			if comment == "" {
+				comment = fmt.Sprintf("The results of the %s.%s method.", name, method.Name)
+			}
+			mod.genPlainType(w, methodName+"Result", comment, fun.Outputs.Properties, false, true, 1)
+			fmt.Fprintf(w, "\n")
+		}
+	}
+	types := &bytes.Buffer{}
+	for _, method := range r.Methods {
+		genMethodTypes(types, method)
+	}
+	typesString := types.String()
+	if typesString != "" {
+		fmt.Fprintf(w, "\nexport namespace %s {\n", name)
+		fmt.Fprintf(w, typesString)
+		fmt.Fprintf(w, "}\n")
+	}
 	return nil
 }
 
@@ -839,6 +956,10 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set) bool {
+	return mod.getTypeImportsForResource(t, recurse, externalImports, imports, seen, nil)
+}
+
+func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, externalImports codegen.StringSet, imports map[string]codegen.StringSet, seen codegen.Set, res *schema.Resource) bool {
 	if seen.Has(t) {
 		return false
 	}
@@ -895,6 +1016,11 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImpor
 			return false
 		}
 
+		// Don't import itself.
+		if t.Resource == res {
+			return false
+		}
+
 		return resourceOrTokenImport(t.Token)
 	case *schema.TokenType:
 		return resourceOrTokenImport(t.Token)
@@ -910,6 +1036,10 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, externalImpor
 }
 
 func (mod *modContext) getImports(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet) bool {
+	return mod.getImportsForResource(member, externalImports, imports, nil)
+}
+
+func (mod *modContext) getImportsForResource(member interface{}, externalImports codegen.StringSet, imports map[string]codegen.StringSet, res *schema.Resource) bool {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
@@ -924,10 +1054,24 @@ func (mod *modContext) getImports(member interface{}, externalImports codegen.St
 	case *schema.Resource:
 		needsTypes := false
 		for _, p := range member.Properties {
-			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
 		}
 		for _, p := range member.InputProperties {
-			needsTypes = mod.getTypeImports(p.Type, false, externalImports, imports, seen) || needsTypes
+			needsTypes = mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+		}
+		for _, method := range member.Methods {
+			if method.Function.Inputs != nil {
+				for _, p := range method.Function.Inputs.Properties {
+					needsTypes =
+						mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+				}
+			}
+			if method.Function.Outputs != nil {
+				for _, p := range method.Function.Outputs.Properties {
+					needsTypes =
+						mod.getTypeImportsForResource(p.Type, false, externalImports, imports, seen, res) || needsTypes
+				}
+			}
 		}
 		return needsTypes
 	case *schema.Function:
@@ -1267,7 +1411,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Resources
 	for _, r := range mod.resources {
 		externalImports, imports := codegen.NewStringSet(), map[string]codegen.StringSet{}
-		referencesNestedTypes := mod.getImports(r, externalImports, imports)
+		referencesNestedTypes := mod.getImportsForResource(r, externalImports, imports, r)
 
 		buffer := &bytes.Buffer{}
 		mod.genHeader(buffer, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
@@ -1775,7 +1919,9 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info NodePackage
 	// from function inputs and outputs, including types that have already been visited.
 	for _, f := range pkg.Functions {
 		mod := getModFromToken(f.Token)
-		mod.functions = append(mod.functions, f)
+		if !f.IsMethod {
+			mod.functions = append(mod.functions, f)
+		}
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
 				types.details(t).inputType = true
