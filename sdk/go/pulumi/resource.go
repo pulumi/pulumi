@@ -37,6 +37,10 @@ type ResourceState struct {
 
 	providers map[string]ProviderResource
 
+	provider ProviderResource
+
+	version string
+
 	aliases []URNOutput
 
 	name string
@@ -54,6 +58,14 @@ func (s ResourceState) GetProvider(token string) ProviderResource {
 
 func (s ResourceState) getProviders() map[string]ProviderResource {
 	return s.providers
+}
+
+func (s ResourceState) getProvider() ProviderResource {
+	return s.provider
+}
+
+func (s ResourceState) getVersion() string {
+	return s.version
 }
 
 func (s ResourceState) getAliases() []URNOutput {
@@ -129,6 +141,12 @@ type Resource interface {
 
 	// getProviders returns the provider map for this resource.
 	getProviders() map[string]ProviderResource
+
+	// getProvider returns the provider for the resource.
+	getProvider() ProviderResource
+
+	// getVersion returns the version for the resource.
+	getVersion() string
 
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
