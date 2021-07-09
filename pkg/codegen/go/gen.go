@@ -2162,9 +2162,14 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		"github.com/blang/semver":                   "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 	}
+
 	topLevelModule := pkg.mod == ""
 	if !topLevelModule {
-		imports[basePath] = ""
+		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
+			imports[basePath] = alias
+		} else {
+			imports[basePath] = ""
+		}
 	}
 
 	pkg.genHeader(w, []string{"fmt"}, imports)
@@ -2226,8 +2231,14 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	if topLevelModule {
 		fmt.Fprintf(w, "\tversion, err := PkgVersion()\n")
 	} else {
-		// Some package names contain '-' characters, so grab the name from the base path.
-		pkgName := basePath[strings.LastIndex(basePath, "/")+1:]
+		// Some package names contain '-' characters, so grab the name from the base path, unless there is an alias
+		// in which case we use that instead.
+		var pkgName string
+		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
+			pkgName = alias
+		} else {
+			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
+		}
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
