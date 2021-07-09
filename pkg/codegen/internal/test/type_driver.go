@@ -164,6 +164,7 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 					"plain": plain,
 					"input": input,
 				}
+				o.InputShape.Properties[i].Language["test"] = testCase
 			}
 		}
 	}
