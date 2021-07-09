@@ -183,9 +183,14 @@ func TestTypeNameCodegen(t *testing.T, language string, newTypeNameGenerator New
 		}
 	}
 
-	bytes, err := json.MarshalIndent(pkg, "", "  ")
+	f, err := os.Create(filepath.FromSlash("../internal/test/testdata/types.json"))
 	require.NoError(t, err)
+	defer f.Close()
 
-	err = os.WriteFile(filepath.FromSlash("../internal/test/testdata/types.json"), bytes, 0600)
+	encoder := json.NewEncoder(f)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+
+	err = encoder.Encode(pkg)
 	require.NoError(t, err)
 }

@@ -7,14 +7,90 @@
   "config": {},
   "types": {
     "typetests::primitives": {
+      "description": "Tests name generation for the primitive schame types. See https://pkg.go.dev/github.com/pulumi/pulumi/pkg/v3/codegen/schema#Type for a complete list",
       "properties": {
+        "any": {
+          "$ref": "pulumi.json#/Any",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input<object>?",
+                  "plain": "object?"
+                },
+                "go": {
+                  "input": "pulumi.Input",
+                  "plain": "interface{}"
+                },
+                "nodejs": {
+                  "input": "any | undefined",
+                  "plain": "any | undefined"
+                },
+                "python": {
+                  "input": "Optional[Any]",
+                  "plain": "Optional[Any]"
+                }
+              }
+            }
+          }
+        },
+        "archive": {
+          "$ref": "pulumi.json#/Archive",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input<Archive>?",
+                  "plain": "Archive?"
+                },
+                "go": {
+                  "input": "pulumi.ArchiveInput",
+                  "plain": "pulumi.Archive"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<pulumi.asset.Archive> | undefined",
+                  "plain": "pulumi.asset.Archive | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[pulumi.Archive]]",
+                  "plain": "Optional[pulumi.Archive]"
+                }
+              }
+            }
+          }
+        },
+        "asset": {
+          "$ref": "pulumi.json#/Asset",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input<AssetOrArchive>?",
+                  "plain": "AssetOrArchive?"
+                },
+                "go": {
+                  "input": "pulumi.AssetOrArchiveInput",
+                  "plain": "pulumi.AssetOrArchive"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive> | undefined",
+                  "plain": "pulumi.asset.Asset | pulumi.asset.Archive | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]]",
+                  "plain": "Optional[Union[pulumi.Asset, pulumi.Archive]]"
+                }
+              }
+            }
+          }
+        },
         "boolean": {
           "type": "boolean",
           "language": {
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cbool\u003e?",
+                  "input": "Input<bool>?",
                   "plain": "bool?"
                 },
                 "go": {
@@ -22,7 +98,7 @@
                   "plain": "*bool"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cboolean\u003e | undefined",
+                  "input": "pulumi.Input<boolean> | undefined",
                   "plain": "boolean | undefined"
                 },
                 "python": {
@@ -39,7 +115,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cint\u003e?",
+                  "input": "Input<int>?",
                   "plain": "int?"
                 },
                 "go": {
@@ -47,12 +123,37 @@
                   "plain": "*int"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cnumber\u003e | undefined",
+                  "input": "pulumi.Input<number> | undefined",
                   "plain": "number | undefined"
                 },
                 "python": {
                   "input": "Optional[pulumi.Input[int]]",
                   "plain": "Optional[int]"
+                }
+              }
+            }
+          }
+        },
+        "json": {
+          "$ref": "pulumi.json#/Json",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "InputJson?",
+                  "plain": "System.Text.Json.JsonElement?"
+                },
+                "go": {
+                  "input": "pulumi.Input",
+                  "plain": "interface{}"
+                },
+                "nodejs": {
+                  "input": "any | undefined",
+                  "plain": "any | undefined"
+                },
+                "python": {
+                  "input": "Optional[Any]",
+                  "plain": "Optional[Any]"
                 }
               }
             }
@@ -64,7 +165,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cdouble\u003e?",
+                  "input": "Input<double>?",
                   "plain": "double?"
                 },
                 "go": {
@@ -72,12 +173,87 @@
                   "plain": "*float64"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cnumber\u003e | undefined",
+                  "input": "pulumi.Input<number> | undefined",
                   "plain": "number | undefined"
                 },
                 "python": {
                   "input": "Optional[pulumi.Input[float]]",
                   "plain": "Optional[float]"
+                }
+              }
+            }
+          }
+        },
+        "requiredAny": {
+          "$ref": "pulumi.json#/Any",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input<object>",
+                  "plain": "object"
+                },
+                "go": {
+                  "input": "pulumi.Input",
+                  "plain": "interface{}"
+                },
+                "nodejs": {
+                  "input": "any",
+                  "plain": "any"
+                },
+                "python": {
+                  "input": "Any",
+                  "plain": "Any"
+                }
+              }
+            }
+          }
+        },
+        "requiredArchive": {
+          "$ref": "pulumi.json#/Archive",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input<Archive>",
+                  "plain": "Archive"
+                },
+                "go": {
+                  "input": "pulumi.ArchiveInput",
+                  "plain": "pulumi.Archive"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<pulumi.asset.Archive>",
+                  "plain": "pulumi.asset.Archive"
+                },
+                "python": {
+                  "input": "pulumi.Input[pulumi.Archive]",
+                  "plain": "pulumi.Archive"
+                }
+              }
+            }
+          }
+        },
+        "requiredAsset": {
+          "$ref": "pulumi.json#/Asset",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "Input<AssetOrArchive>",
+                  "plain": "AssetOrArchive"
+                },
+                "go": {
+                  "input": "pulumi.AssetOrArchiveInput",
+                  "plain": "pulumi.AssetOrArchive"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<pulumi.asset.Asset | pulumi.asset.Archive>",
+                  "plain": "pulumi.asset.Asset | pulumi.asset.Archive"
+                },
+                "python": {
+                  "input": "pulumi.Input[Union[pulumi.Asset, pulumi.Archive]]",
+                  "plain": "Union[pulumi.Asset, pulumi.Archive]"
                 }
               }
             }
@@ -89,7 +265,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cbool\u003e",
+                  "input": "Input<bool>",
                   "plain": "bool"
                 },
                 "go": {
@@ -97,7 +273,7 @@
                   "plain": "bool"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cboolean\u003e",
+                  "input": "pulumi.Input<boolean>",
                   "plain": "boolean"
                 },
                 "python": {
@@ -114,7 +290,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cint\u003e",
+                  "input": "Input<int>",
                   "plain": "int"
                 },
                 "go": {
@@ -122,12 +298,37 @@
                   "plain": "int"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cnumber\u003e",
+                  "input": "pulumi.Input<number>",
                   "plain": "number"
                 },
                 "python": {
                   "input": "pulumi.Input[int]",
                   "plain": "int"
+                }
+              }
+            }
+          }
+        },
+        "requiredJson": {
+          "$ref": "pulumi.json#/Json",
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "InputJson",
+                  "plain": "System.Text.Json.JsonElement"
+                },
+                "go": {
+                  "input": "pulumi.Input",
+                  "plain": "interface{}"
+                },
+                "nodejs": {
+                  "input": "any",
+                  "plain": "any"
+                },
+                "python": {
+                  "input": "Any",
+                  "plain": "Any"
                 }
               }
             }
@@ -139,7 +340,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cdouble\u003e",
+                  "input": "Input<double>",
                   "plain": "double"
                 },
                 "go": {
@@ -147,7 +348,7 @@
                   "plain": "float64"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cnumber\u003e",
+                  "input": "pulumi.Input<number>",
                   "plain": "number"
                 },
                 "python": {
@@ -164,7 +365,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cstring\u003e",
+                  "input": "Input<string>",
                   "plain": "string"
                 },
                 "go": {
@@ -172,7 +373,7 @@
                   "plain": "string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cstring\u003e",
+                  "input": "pulumi.Input<string>",
                   "plain": "string"
                 },
                 "python": {
@@ -189,7 +390,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "Input\u003cstring\u003e?",
+                  "input": "Input<string>?",
                   "plain": "string?"
                 },
                 "go": {
@@ -197,7 +398,7 @@
                   "plain": "*string"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input\u003cstring\u003e | undefined",
+                  "input": "pulumi.Input<string> | undefined",
                   "plain": "string | undefined"
                 },
                 "python": {
@@ -211,8 +412,12 @@
       },
       "type": "object",
       "required": [
+        "requiredAny",
+        "requiredArchive",
+        "requiredAsset",
         "requiredBoolean",
         "requiredInteger",
+        "requiredJson",
         "requiredNumber",
         "requiredString"
       ]

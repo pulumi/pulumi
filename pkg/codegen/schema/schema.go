@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -768,7 +769,7 @@ func (pkg *Package) MarshalJSON() (bytes []byte, err error) {
 		spec.Functions[fn.Token] = f
 	}
 
-	return json.Marshal(spec)
+	return jsonMarshal(spec)
 }
 
 func (pkg *Package) marshalObjectData(
@@ -1053,7 +1054,7 @@ func marshalLanguage(lang map[string]interface{}) (map[string]json.RawMessage, e
 
 	result := map[string]json.RawMessage{}
 	for name, data := range lang {
-		bytes, err := json.Marshal(data)
+		bytes, err := jsonMarshal(data)
 		if err != nil {
 			return nil, fmt.Errorf("marshaling %v language data: %w", name, err)
 		}
@@ -2341,4 +2342,15 @@ func bindFunctions(specs map[string]FunctionSpec, types *types) ([]*Function, ma
 	})
 
 	return functions, functionTable, nil
+}
+
+func jsonMarshal(v interface{}) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }
