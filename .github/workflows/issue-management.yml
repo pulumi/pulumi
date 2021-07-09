@@ -2,7 +2,7 @@ name: Issue management
 
 on:
   schedule:
-  - cron: '41 8 * * *'
+  - cron: '12 13 * * *'
 
 jobs:
   stale:
@@ -18,4 +18,5 @@ jobs:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         only-labels: awaiting-feedback
         stale-issue-message: 'Since we haven''t heard back from you, closing this issue for now. Please feel free to comment with more information and we can get this reopened.'
+        stale-issue-label: awaiting-feedback-stale
         days-before-stale: 14
