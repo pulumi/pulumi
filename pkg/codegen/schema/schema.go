@@ -1746,7 +1746,10 @@ func (t *types) bindType(spec TypeSpec, inputShape bool) (result Type, err error
 
 		return t.newArrayType(elementType), nil
 	case "object":
-		elementType := StringType
+		elementType, err := t.bindType(TypeSpec{Type: "string"}, inputShape)
+		if err != nil {
+			return nil, err
+		}
 		if spec.AdditionalProperties != nil {
 			et, err := t.bindType(*spec.AdditionalProperties, inputShape)
 			if err != nil {

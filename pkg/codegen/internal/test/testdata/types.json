@@ -485,6 +485,40 @@
         "requiredString"
       ]
     },
+    "typetests:regressions:inputObject": {
+      "description": "Regression test for bad input types for {\"type\": \"object\"}",
+      "properties": {
+        "object": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "InputMap<string>",
+                  "plain": "ImmutableDictionary<string, string>?"
+                },
+                "go": {
+                  "input": "pulumi.StringMapInput",
+                  "plain": "map[string]string"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>}> | undefined",
+                  "plain": "{[key: string]: string} | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]",
+                  "plain": "Optional[Mapping[str, str]]"
+                }
+              }
+            }
+          }
+        }
+      },
+      "type": "object"
+    },
     "typetests:regressions:pulumi/pulumi/7454": {
       "description": "Regression test for pulumi/pulumi#7454",
       "properties": {
