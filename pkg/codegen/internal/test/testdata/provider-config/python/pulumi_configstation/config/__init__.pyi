@@ -10,8 +10,6 @@ from .. import _utilities
 from . import outputs
 from .. import outputs as _root_outputs
 
-import types
-
 favoritePlants: Optional[Sequence[str]]
 
 favoriteSandwich: Optional[pulumi.InputType['outputs.Sandwich']]

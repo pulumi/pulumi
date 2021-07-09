@@ -790,8 +790,6 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 	mod.collectImports(variables, imports, false /*input*/)
 
 	mod.genHeader(w, true /*needsSDK*/, imports)
-	fmt.Fprintf(w, "import types\n")
-	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
