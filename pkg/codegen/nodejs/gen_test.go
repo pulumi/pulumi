@@ -15,13 +15,7 @@ func TestGeneratePackage(t *testing.T) {
 
 func TestGenerateTypeNames(t *testing.T) {
 	test.TestTypeNameCodegen(t, "nodejs", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
-		// Decode node-specific info
-		err := pkg.ImportLanguages(map[string]schema.Language{"nodejs": Importer})
-		require.NoError(t, err)
-
-		info, _ := pkg.Language["nodejs"].(NodePackageInfo)
-
-		modules, info, err := generateModuleContextMap("test", pkg, info, nil)
+		modules, info, err := generateModuleContextMap("test", pkg, nil)
 		require.NoError(t, err)
 
 		pkg.Language["nodejs"] = info
