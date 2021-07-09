@@ -726,7 +726,7 @@ func (pkg *Package) MarshalJSON() (bytes []byte, err error) {
 		Functions:         map[string]FunctionSpec{},
 	}
 
-	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config)
+	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
 	if err != nil {
 		return nil, fmt.Errorf("marshaling package config: %w", err)
 	}
@@ -743,7 +743,8 @@ func (pkg *Package) MarshalJSON() (bytes []byte, err error) {
 				continue
 			}
 
-			o, err := pkg.marshalObject(t)
+			// Use the input shape when marshaling in order to get the plain annotations right.
+			o, err := pkg.marshalObject(t.InputShape, false)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling type '%v': %w", t.Token, err)
 			}
@@ -773,9 +774,9 @@ func (pkg *Package) MarshalJSON() (bytes []byte, err error) {
 }
 
 func (pkg *Package) marshalObjectData(
-	comment string, properties []*Property, language map[string]interface{}) (ObjectTypeSpec, error) {
+	comment string, properties []*Property, language map[string]interface{}, plain bool) (ObjectTypeSpec, error) {
 
-	required, props, err := pkg.marshalProperties(properties)
+	required, props, err := pkg.marshalProperties(properties, plain)
 	if err != nil {
 		return ObjectTypeSpec{}, err
 	}
@@ -794,8 +795,8 @@ func (pkg *Package) marshalObjectData(
 	}, nil
 }
 
-func (pkg *Package) marshalObject(t *ObjectType) (ComplexTypeSpec, error) {
-	data, err := pkg.marshalObjectData(t.Comment, t.Properties, t.Language)
+func (pkg *Package) marshalObject(t *ObjectType, plain bool) (ComplexTypeSpec, error) {
+	data, err := pkg.marshalObjectData(t.Comment, t.Properties, t.Language, plain)
 	if err != nil {
 		return ComplexTypeSpec{}, err
 	}
@@ -814,25 +815,25 @@ func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
 	}
 
 	return ComplexTypeSpec{
-		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType).Type},
+		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType, false).Type},
 		Enum:           values,
 	}
 }
 
 func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
-	object, err := pkg.marshalObjectData(r.Comment, r.Properties, r.Language)
+	object, err := pkg.marshalObjectData(r.Comment, r.Properties, r.Language, true)
 	if err != nil {
 		return ResourceSpec{}, fmt.Errorf("marshaling properties: %w", err)
 	}
 
-	requiredInputs, inputs, err := pkg.marshalProperties(r.InputProperties)
+	requiredInputs, inputs, err := pkg.marshalProperties(r.InputProperties, false)
 	if err != nil {
 		return ResourceSpec{}, fmt.Errorf("marshaling input properties: %w", err)
 	}
 
 	var stateInputs *ObjectTypeSpec
 	if r.StateInputs != nil {
-		o, err := pkg.marshalObject(r.StateInputs)
+		o, err := pkg.marshalObject(r.StateInputs, false)
 		if err != nil {
 			return ResourceSpec{}, fmt.Errorf("marshaling state inputs: %w", err)
 		}
@@ -872,7 +873,7 @@ func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
 func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	var inputs *ObjectTypeSpec
 	if f.Inputs != nil {
-		ins, err := pkg.marshalObject(f.Inputs)
+		ins, err := pkg.marshalObject(f.Inputs, true)
 		if err != nil {
 			return FunctionSpec{}, fmt.Errorf("marshaling inputs: %w", err)
 		}
@@ -881,7 +882,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 
 	var outputs *ObjectTypeSpec
 	if f.Outputs != nil {
-		outs, err := pkg.marshalObject(f.Outputs)
+		outs, err := pkg.marshalObject(f.Outputs, true)
 		if err != nil {
 			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
 		}
@@ -901,7 +902,7 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	}, nil
 }
 
-func (pkg *Package) marshalProperties(props []*Property) (required []string, specs map[string]PropertySpec, err error) {
+func (pkg *Package) marshalProperties(props []*Property, plain bool) (required []string, specs map[string]PropertySpec, err error) {
 	if len(props) == 0 {
 		return
 	}
@@ -938,7 +939,7 @@ func (pkg *Package) marshalProperties(props []*Property) (required []string, spe
 		}
 
 		specs[p.Name] = PropertySpec{
-			TypeSpec:           pkg.marshalType(typ),
+			TypeSpec:           pkg.marshalType(typ, plain),
 			Description:        p.Comment,
 			Const:              p.ConstValue,
 			Default:            defaultValue,
@@ -951,35 +952,38 @@ func (pkg *Package) marshalProperties(props []*Property) (required []string, spe
 	return required, specs, nil
 }
 
-func (pkg *Package) marshalType(t Type) TypeSpec {
+// marshalType marshals the given type into a TypeSpec. If plain is true, then the type is being marshaled within a
+// plain type context (e.g. a resource output property or a function input/output object type), and therefore does not
+// require `Plain` annotations (hence the odd-looking `Plain: !plain` fields below).
+func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
 	switch t := t.(type) {
 	case *InputType:
-		el := pkg.marshalType(t.ElementType)
+		el := pkg.marshalType(t.ElementType, plain)
 		el.Plain = false
 		return el
 	case *ArrayType:
-		el := pkg.marshalType(t.ElementType)
+		el := pkg.marshalType(t.ElementType, plain)
 		return TypeSpec{
 			Type:  "array",
 			Items: &el,
-			Plain: true,
+			Plain: !plain,
 		}
 	case *MapType:
-		el := pkg.marshalType(t.ElementType)
+		el := pkg.marshalType(t.ElementType, plain)
 		return TypeSpec{
 			Type:                 "object",
 			AdditionalProperties: &el,
-			Plain:                true,
+			Plain:                !plain,
 		}
 	case *UnionType:
 		oneOf := make([]TypeSpec, len(t.ElementTypes))
 		for i, el := range t.ElementTypes {
-			oneOf[i] = pkg.marshalType(el)
+			oneOf[i] = pkg.marshalType(el, plain)
 		}
 
 		defaultType := ""
 		if t.DefaultType != nil {
-			defaultType = pkg.marshalType(t.DefaultType).Type
+			defaultType = pkg.marshalType(t.DefaultType, plain).Type
 		}
 
 		var discriminator *DiscriminatorSpec
@@ -994,7 +998,7 @@ func (pkg *Package) marshalType(t Type) TypeSpec {
 			Type:          defaultType,
 			OneOf:         oneOf,
 			Discriminator: discriminator,
-			Plain:         true,
+			Plain:         !plain,
 		}
 	case *ObjectType:
 		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
@@ -1005,7 +1009,7 @@ func (pkg *Package) marshalType(t Type) TypeSpec {
 	case *TokenType:
 		var defaultType string
 		if t.UnderlyingType != nil {
-			defaultType = pkg.marshalType(t.UnderlyingType).Type
+			defaultType = pkg.marshalType(t.UnderlyingType, plain).Type
 		}
 
 		return TypeSpec{

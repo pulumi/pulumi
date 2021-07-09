@@ -6,6 +6,69 @@
   },
   "config": {},
   "types": {
+    "typetests::plainCollections": {
+      "description": "Tests for singly-nested plain collections",
+      "properties": {
+        "array": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "plain": true,
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "ImmutableArray<Input<string>>",
+                  "plain": "ImmutableArray<string>"
+                },
+                "go": {
+                  "input": "[]pulumi.StringInput",
+                  "plain": "[]string"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<string>[] | undefined",
+                  "plain": "string[] | undefined"
+                },
+                "python": {
+                  "input": "Optional[Sequence[pulumi.Input[str]]]",
+                  "plain": "Optional[Sequence[str]]"
+                }
+              }
+            }
+          }
+        },
+        "map": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          },
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "InputMap<string>",
+                  "plain": "ImmutableDictionary<string, string>?"
+                },
+                "go": {
+                  "input": "pulumi.StringMapInput",
+                  "plain": "map[string]string"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<{[key: string]: pulumi.Input<string>}> | undefined",
+                  "plain": "{[key: string]: string} | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[Mapping[str, pulumi.Input[str]]]]",
+                  "plain": "Optional[Mapping[str, str]]"
+                }
+              }
+            }
+          }
+        }
+      },
+      "type": "object"
+    },
     "typetests::primitives": {
       "description": "Tests name generation for the primitive schame types. See https://pkg.go.dev/github.com/pulumi/pulumi/pkg/v3/codegen/schema#Type for a complete list",
       "properties": {
@@ -421,6 +484,43 @@
         "requiredNumber",
         "requiredString"
       ]
+    },
+    "typetests:regressions:pulumi/pulumi/7454": {
+      "description": "Regression test for pulumi/pulumi#7454",
+      "properties": {
+        "nestedArray": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "language": {
+            "test": {
+              "expected": {
+                "dotnet": {
+                  "input": "InputList<ImmutableArray<string>>",
+                  "plain": "ImmutableArray<ImmutableArray<string>>"
+                },
+                "go": {
+                  "input": "pulumi.StringArrayArrayInput",
+                  "plain": "[][]string"
+                },
+                "nodejs": {
+                  "input": "pulumi.Input<pulumi.Input<pulumi.Input<string>[]>[]> | undefined",
+                  "plain": "string[][] | undefined"
+                },
+                "python": {
+                  "input": "Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[str]]]]]]",
+                  "plain": "Optional[Sequence[Sequence[str]]]"
+                }
+              }
+            }
+          }
+        }
+      },
+      "type": "object"
     }
   },
   "provider": {
