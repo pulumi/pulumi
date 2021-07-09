@@ -332,7 +332,7 @@ func newImportCmd() *cobra.Command {
 			"    }\n" +
 			"\n" +
 			"The name table maps language names to parent and provider URNs. These names are\n" +
-			"used in the genrated definitions, and should match the corresponding declarations\n" +
+			"used in the generated definitions, and should match the corresponding declarations\n" +
 			"in the source program. This table is required if any parents or providers are\n" +
 			"specified by the resources to import.\n" +
 			"\n" +
