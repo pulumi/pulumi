@@ -902,7 +902,9 @@ func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
 	}, nil
 }
 
-func (pkg *Package) marshalProperties(props []*Property, plain bool) (required []string, specs map[string]PropertySpec, err error) {
+func (pkg *Package) marshalProperties(props []*Property, plain bool) (required []string, specs map[string]PropertySpec,
+	err error) {
+
 	if len(props) == 0 {
 		return
 	}
