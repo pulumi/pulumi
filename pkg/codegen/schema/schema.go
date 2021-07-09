@@ -947,7 +947,7 @@ func (pkg *Package) marshalProperties(props []*Property) (required []string, spe
 			Secret:             p.Secret,
 		}
 	}
-	return
+	return required, specs, nil
 }
 
 func (pkg *Package) marshalType(t Type) TypeSpec {
