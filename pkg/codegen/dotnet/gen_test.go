@@ -7,6 +7,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGeneratePackage(t *testing.T) {
@@ -55,4 +56,18 @@ func TestGenerateType(t *testing.T) {
 			assert.Equal(t, c.expected, typeString)
 		})
 	}
+}
+
+func TestGenerateTypeNames(t *testing.T) {
+	test.TestTypeNameCodegen(t, "dotnet", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		modules, _, err := generateModuleContextMap("test", pkg)
+		require.NoError(t, err)
+
+		root, ok := modules[""]
+		require.True(t, ok)
+
+		return func(t schema.Type) string {
+			return root.typeString(t, "", false, false, false)
+		}
+	})
 }

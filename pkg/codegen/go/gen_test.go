@@ -60,6 +60,26 @@ func TestGeneratePackage(t *testing.T) {
 	test.TestSDKCodegen(t, "go", generatePackage)
 }
 
+func TestGenerateTypeNames(t *testing.T) {
+	test.TestTypeNameCodegen(t, "go", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer})
+		require.NoError(t, err)
+
+		var goPkgInfo GoPackageInfo
+		if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			goPkgInfo = goInfo
+		}
+		packages := generatePackageContextMap("test", pkg, goPkgInfo)
+
+		root, ok := packages[""]
+		require.True(t, ok)
+
+		return func(t schema.Type) string {
+			return root.typeString(t)
+		}
+	})
+}
+
 type mocks int
 
 func (mocks) NewResource(args pulumi.MockResourceArgs) (string, resource.PropertyMap, error) {
