@@ -206,11 +206,10 @@ func newQueryResourceMonitor(
 	providerRegChan := make(chan *registerResourceEvent)
 
 	// Create a new default provider manager.
-	var config *Target
 	d := &defaultProviders{
 		defaultVersions: defaultProviderVersions,
 		providers:       make(map[string]providers.Reference),
-		config:          config,
+		config:          runinfo.Target,
 		requests:        make(chan defaultProviderRequest),
 		providerRegChan: providerRegChan,
 		cancel:          cancel,
@@ -260,15 +259,23 @@ func newQueryResourceMonitor(
 
 	monitorAddress := fmt.Sprintf("127.0.0.1:%d", port)
 
-	cfg, err := runinfo.Target.Config.Decrypt(runinfo.Target.Decrypter)
-	if err != nil {
-		return nil, err
+	var config map[config.Key]string
+	if runinfo.Target != nil {
+		config, err = runinfo.Target.Config.Decrypt(runinfo.Target.Decrypter)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var name string
+	if runinfo.Target != nil {
+		name = string(runinfo.Target.Name)
 	}
 
 	queryResmon.callInfo = plugin.CallInfo{
 		Project:        string(runinfo.Proj.Name),
-		Stack:          string(runinfo.Target.Name),
-		Config:         cfg,
+		Stack:          name,
+		Config:         config,
 		DryRun:         true,
 		Parallel:       math.MaxInt32,
 		MonitorAddress: monitorAddress,
