@@ -7,6 +7,9 @@
 - [sdk/go] - Support for calling resource methods
   [#7437](https://github.com/pulumi/pulumi/pull/7437)
 
+- [sdk/python] - Make `Output[T]` covariant
+  [#7483](https://github.com/pulumi/pulumi/pull/7483)
+
 ### Bug Fixes
 
 - [codegen/go] - Reimplement strict go enums to be Inputs.
