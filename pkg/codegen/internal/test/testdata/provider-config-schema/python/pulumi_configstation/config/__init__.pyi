@@ -10,20 +10,20 @@ from .. import _utilities
 from . import outputs
 from .. import outputs as _root_outputs
 
-favoritePlants: Optional[Sequence[str]]
+favoritePlants: Optional[str]
 
-favoriteSandwich: Optional[pulumi.InputType['outputs.Sandwich']]
+favoriteSandwich: Optional[str]
 """
 omg my favorite sandwich
 """
 
-isMember: Optional[bool]
+isMember: Optional[str]
 
-kids: Optional[pulumi.InputType['_root_outputs.Child']]
+kids: Optional[str]
 
 name: str
 
-numberOfSheep: Optional[int]
+numberOfSheep: Optional[str]
 
 secretCode: Optional[str]
 """

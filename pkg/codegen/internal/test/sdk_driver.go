@@ -66,7 +66,7 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema encoded using YAML",
 	},
 	{
-		Directory:   "provider-config",
+		Directory:   "provider-config-schema",
 		Description: "Simple provider config schema",
 	},
 }

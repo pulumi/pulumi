@@ -793,7 +793,11 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		fmt.Fprintf(w, "%s: %s\n", p.Name, mod.typeString(p.Type, false, true))
+		typeString := "Optional[str]"
+		if p.IsRequired() {
+			typeString = "str"
+		}
+		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
 		printComment(w, p.Comment, "")
 		fmt.Fprintf(w, "\n")
 	}
