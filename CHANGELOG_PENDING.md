@@ -2,3 +2,7 @@
 
 ### Bug Fixes
 
+- [codegen/python] - Recover good IDE completion experience over
+  module imports that was compromised when introducing the lazy import
+  optimization.
+  [#7487](https://github.com/pulumi/pulumi/pull/7487)

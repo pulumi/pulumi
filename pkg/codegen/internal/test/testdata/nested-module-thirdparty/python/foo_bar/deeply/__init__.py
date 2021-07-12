@@ -7,7 +7,8 @@ import typing
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import foo_bar.deeply.nested as nested
+    import foo_bar.deeply.nested as __nested
+    nested = __nested
 else:
     nested = _utilities.lazy_import('foo_bar.deeply.nested')
 
