@@ -106,7 +106,7 @@ function log(
         : Promise.resolve("");
 
     lastLog = Promise.all([lastLog, urnPromise]).then(([_, urn]) => {
-        return new Promise((resolve, reject) => {
+        return new Promise<void>((resolve, reject) => {
             try {
                 const req = new engproto.LogRequest();
                 req.setSeverity(sev);

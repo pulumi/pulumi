@@ -735,7 +735,7 @@ export function registerResourceOutputs(res: Resource, outputs: Inputs | Promise
             req.setOutputs(outputsObj);
 
             const label = `monitor.registerResourceOutputs(${urn}, ...)`;
-            await debuggablePromise(new Promise((resolve, reject) =>
+            await debuggablePromise(new Promise<void>((resolve, reject) =>
                 (monitor as any).registerResourceOutputs(req, (err: grpc.ServiceError, innerResponse: any) => {
                     log.debug(`RegisterResourceOutputs RPC finished: urn=${urn}; ` +
                         `err: ${err}, resp: ${innerResponse}`);
