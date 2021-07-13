@@ -299,6 +299,8 @@ func marshalInputAndDetermineSecret(v interface{},
 		switch rv.Type().Kind() {
 		case reflect.Array, reflect.Slice, reflect.Map:
 			// Not assignable in prompt form because of the difference in input and output shapes.
+			//
+			// TODO(7434): update these checks once fixed.
 		default:
 			contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
 				"%v: cannot assign %v to %v", v, valueType, destType)
