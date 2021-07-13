@@ -22,13 +22,15 @@ class FooArgs:
 
 
 class Foo(pulumi.ComponentResource):
+    """
+    Create a Foo resource with the given unique name, props, and options.
+    """
     @overload
     def __init__(__self__,
                  resource_name: str,
                  opts: Optional[pulumi.ResourceOptions] = None,
                  __props__=None):
         """
-        Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -39,7 +41,6 @@ class Foo(pulumi.ComponentResource):
                  args: Optional[FooArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Foo resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param FooArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

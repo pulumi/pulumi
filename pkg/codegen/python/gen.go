@@ -1959,7 +1959,7 @@ func (mod *modContext) genResourceClassDocstring(w io.Writer, res *schema.Resour
 	}
 
 	// printComment handles the prefix and triple quotes.
-	printComment(w, b.String(), "        ")
+	printComment(w, b.String(), "    ")
 }
 
 // `genResourceInitDocstring` emits the docstring for the __init__ method of the given resource type.

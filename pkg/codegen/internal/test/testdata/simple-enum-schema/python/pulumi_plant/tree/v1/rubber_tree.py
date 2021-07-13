@@ -111,6 +111,9 @@ class _RubberTreeState:
 
 
 class RubberTree(pulumi.CustomResource):
+    """
+    Create a RubberTree resource with the given unique name, props, and options.
+    """
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -122,7 +125,6 @@ class RubberTree(pulumi.CustomResource):
                  type: Optional[pulumi.Input['RubberTreeVariety']] = None,
                  __props__=None):
         """
-        Create a RubberTree resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -133,7 +135,6 @@ class RubberTree(pulumi.CustomResource):
                  args: RubberTreeArgs,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a RubberTree resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param RubberTreeArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.
