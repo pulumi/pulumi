@@ -216,7 +216,7 @@ func TestEnumUsage(t *testing.T) {
 		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
 			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
 				Container: plant.ContainerArgs{
-					Color:    plant.ContainerColor("Magenta").ToContainerColorOutput().ToStringPtrOutput(),
+					Color:    plant.ContainerColor("Magenta").ToContainerColorOutput().ToStringOutput(),
 					Material: pulumi.String("ceramic").ToStringOutput(),
 					Size:     plant.ContainerSize(22).ToContainerSizeOutput(),
 				},
