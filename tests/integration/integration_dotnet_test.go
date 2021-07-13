@@ -347,7 +347,7 @@ func TestConstructDotnet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -359,8 +359,11 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 		Env:          env,
 		Dir:          filepath.Join("construct_component", "dotnet"),
 		Dependencies: []string{"Pulumi"},
-		Quick:        true,
-		NoParallel:   true, // avoid contention for Dir
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick:      true,
+		NoParallel: true, // avoid contention for Dir
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -383,6 +386,10 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 						}
 					case "child-c":
 						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -451,7 +458,7 @@ func TestConstructPlainDotnet(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainDotnet(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -471,6 +478,11 @@ func optsForConstructPlainDotnet(t *testing.T, expectedResourceCount int,
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
 	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownDotnet(t *testing.T) {
+	testConstructUnknown(t, "dotnet", "Pulumi")
 }
 
 func TestGetResourceDotnet(t *testing.T) {

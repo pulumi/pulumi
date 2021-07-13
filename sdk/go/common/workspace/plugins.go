@@ -383,7 +383,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 		switch runtime {
 		case "nodejs":
 			var b bytes.Buffer
-			if _, err := npm.Install(finalDir, &b, &b); err != nil {
+			if _, err := npm.Install(finalDir, true /* production */, &b, &b); err != nil {
 				os.Stderr.Write(b.Bytes())
 				return errors.Wrap(err, "installing plugin dependencies")
 			}

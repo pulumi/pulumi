@@ -4,15 +4,18 @@
 package ints
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"sourcegraph.com/sourcegraph/appdash"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
-	"github.com/stretchr/testify/assert"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -432,7 +435,7 @@ func TestConstructGo(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t, optsForConstructGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
 	}
@@ -444,6 +447,9 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 		Dir: filepath.Join("construct_component", "go"),
 		Dependencies: []string{
 			"github.com/pulumi/pulumi/sdk/v3",
+		},
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
 		},
 		Quick:      true,
 		NoParallel: true, // avoid contention for Dir
@@ -472,6 +478,10 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 					case "child-c":
 						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
 							res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -542,7 +552,7 @@ func TestConstructPlainGo(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainGo(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -562,6 +572,41 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...str
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownGo(t *testing.T) {
+	testConstructUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructMethodsGo(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join("construct_component_methods", "go"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v3",
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
 	}
 }
 
@@ -585,4 +630,62 @@ func TestComponentProviderSchemaGo(t *testing.T) {
 		path += ".exe"
 	}
 	testComponentProviderSchema(t, path)
+}
+
+// TestTracePropagationGo checks that --tracing flag lets golang sub-process to emit traces.
+func TestTracePropagationGo(t *testing.T) {
+
+	// Detect a special trace coming from Go language plugin.
+	isGoListTrace := func(t *appdash.Trace) bool {
+		m := t.Span.Annotations.StringMap()
+
+		isGoCmd := strings.HasSuffix(m["command"], "go") ||
+			strings.HasSuffix(m["command"], "go.exe")
+
+		if m["component"] == "exec.Command" &&
+			m["args"] == "[list -m -json -mod=mod all]" &&
+			isGoCmd {
+			return true
+		}
+
+		return false
+	}
+
+	var foundTrace *appdash.Trace
+
+	// Look for trace mathching `isGoListTrace` in the trace file
+	// and store to `foundTrace`.
+	searchForGoListTrace := func(dir string) error {
+
+		store, err := ReadMemoryStoreFromFile(filepath.Join(dir, "pulumi.trace"))
+		if err != nil {
+			return err
+		}
+
+		foundTrace, err = FindTrace(store, isGoListTrace)
+		if err != nil {
+			return err
+		}
+
+		return nil
+	}
+
+	opts := &integration.ProgramTestOptions{
+		Dir:                    filepath.Join("empty", "go"),
+		Dependencies:           []string{"github.com/pulumi/pulumi/sdk/v3"},
+		SkipRefresh:            true,
+		SkipPreview:            false,
+		SkipUpdate:             true,
+		SkipExportImport:       true,
+		SkipEmptyPreviewUpdate: true,
+		Quick:                  false,
+		Tracing:                fmt.Sprintf("file:./pulumi.trace"),
+		PreviewCompletedHook:   searchForGoListTrace,
+	}
+
+	integration.ProgramTest(t, opts)
+
+	if foundTrace == nil {
+		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
+	}
 }

@@ -1,0 +1,29 @@
+{
+    "resources": {
+        "xyz:index:Foo": {
+            "methods": {
+                "bar": "xyz:index:Foo/bar"
+            }
+        }
+    },
+    "functions": {
+        "xyz:index:Foo/bar": {
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/xyz:index:Foo"
+                    }
+                },
+                "required": ["__self__"]
+            },
+            "outputs": {
+                "properties": {
+                    "someValue": {
+                        "type": "string"
+                    }
+                },
+                "required": ["someValue"]
+            }
+        }
+    }
+}

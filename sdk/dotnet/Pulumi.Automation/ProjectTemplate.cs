@@ -24,7 +24,7 @@ namespace Pulumi.Automation
         private sealed class ProjectTemplateComparer : IEqualityComparer<ProjectTemplate>
         {
 
-            private IEqualityComparer<IDictionary<string, ProjectTemplateConfigValue>> _configComparer =
+            private readonly IEqualityComparer<IDictionary<string, ProjectTemplateConfigValue>> _configComparer =
                 new DictionaryContentsComparer<string, ProjectTemplateConfigValue>(
                     EqualityComparer<string>.Default,
                     ProjectTemplateConfigValue.Comparer);
@@ -38,7 +38,7 @@ namespace Pulumi.Automation
 
                 if (y == null)
                 {
-                    return x == null;
+                    return false;
                 }
 
                 if (ReferenceEquals(x, y))

@@ -942,6 +942,158 @@ func TestSingleResourceIgnoreChanges(t *testing.T) {
 	}, []string{"a", "b"}, []deploy.StepOp{deploy.OpUpdate})
 }
 
+func objectDiffToDetailedDiff(prefix string, d *resource.ObjectDiff) map[string]plugin.PropertyDiff {
+	ret := map[string]plugin.PropertyDiff{}
+	for k, vd := range d.Updates {
+		var nestedPrefix string
+		if prefix == "" {
+			nestedPrefix = string(k)
+		} else {
+			nestedPrefix = fmt.Sprintf("%s.%s", prefix, string(k))
+		}
+		for kk, pd := range valueDiffToDetailedDiff(nestedPrefix, vd) {
+			ret[kk] = pd
+		}
+	}
+	return ret
+}
+
+func arrayDiffToDetailedDiff(prefix string, d *resource.ArrayDiff) map[string]plugin.PropertyDiff {
+	ret := map[string]plugin.PropertyDiff{}
+	for i, vd := range d.Updates {
+		for kk, pd := range valueDiffToDetailedDiff(fmt.Sprintf("%s[%d]", prefix, i), vd) {
+			ret[kk] = pd
+		}
+	}
+	return ret
+}
+
+func valueDiffToDetailedDiff(prefix string, vd resource.ValueDiff) map[string]plugin.PropertyDiff {
+	ret := map[string]plugin.PropertyDiff{}
+	if vd.Object != nil {
+		for kk, pd := range objectDiffToDetailedDiff(prefix, vd.Object) {
+			ret[kk] = pd
+		}
+	} else if vd.Array != nil {
+		for kk, pd := range arrayDiffToDetailedDiff(prefix, vd.Array) {
+			ret[kk] = pd
+		}
+	} else {
+		ret[prefix] = plugin.PropertyDiff{Kind: plugin.DiffUpdate}
+	}
+	return ret
+}
+
+func TestReplaceOnChanges(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					diff := olds.Diff(news)
+					if diff == nil {
+						return plugin.DiffResult{Changes: plugin.DiffNone}, nil
+					}
+					detailedDiff := objectDiffToDetailedDiff("", diff)
+					var changedKeys []resource.PropertyKey
+					for _, k := range diff.Keys() {
+						if diff.Changed(k) {
+							changedKeys = append(changedKeys, k)
+						}
+					}
+					return plugin.DiffResult{
+						Changes:      plugin.DiffSome,
+						ChangedKeys:  changedKeys,
+						DetailedDiff: detailedDiff,
+					}, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+					return news, resource.StatusOK, nil
+				},
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return resource.ID("id123"), inputs, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+	}
+
+	updateProgramWithProps := func(snap *deploy.Snapshot, props resource.PropertyMap, replaceOnChanges []string,
+		allowedOps []deploy.StepOp) *deploy.Snapshot {
+		program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Inputs:           props,
+				ReplaceOnChanges: replaceOnChanges,
+			})
+			assert.NoError(t, err)
+			return nil
+		})
+		host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+		p := &TestPlan{
+			Options: UpdateOptions{Host: host},
+			Steps: []TestStep{
+				{
+					Op: Update,
+					Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+						events []Event, res result.Result) result.Result {
+						for _, event := range events {
+							if event.Type == ResourcePreEvent {
+								payload := event.Payload().(ResourcePreEventPayload)
+								assert.Subset(t, allowedOps, []deploy.StepOp{payload.Metadata.Op})
+							}
+						}
+						return res
+					},
+				},
+			},
+		}
+		return p.Run(t, snap)
+	}
+
+	snap := updateProgramWithProps(nil, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 1,
+		"b": map[string]interface{}{
+			"c": "foo",
+		},
+	}), []string{"a", "b.c"}, []deploy.StepOp{deploy.OpCreate})
+
+	// Ensure that a change to a replaceOnChange property results in an OpReplace
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 2,
+		"b": map[string]interface{}{
+			"c": "foo",
+		},
+	}), []string{"a"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// Ensure that a change to a nested replaceOnChange property results in an OpReplace
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 2,
+		"b": map[string]interface{}{
+			"c": "bar",
+		},
+	}), []string{"b.c"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// Ensure that a change to any property of a "*" replaceOnChange results in an OpReplace
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 3,
+		"b": map[string]interface{}{
+			"c": "baz",
+		},
+	}), []string{"*"}, []deploy.StepOp{deploy.OpReplace, deploy.OpCreateReplacement, deploy.OpDeleteReplaced})
+
+	// Ensure that a change to an non-replaceOnChange property results in an OpUpdate
+	snap = updateProgramWithProps(snap, resource.NewPropertyMapFromMap(map[string]interface{}{
+		"a": 4,
+		"b": map[string]interface{}{
+			"c": "qux",
+		},
+	}), nil, []deploy.StepOp{deploy.OpUpdate})
+
+	_ = snap
+}
+
 // Resource is an abstract representation of a resource graph
 type Resource struct {
 	t                   tokens.Type
@@ -2037,6 +2189,170 @@ func TestComponentOutputs(t *testing.T) {
 	p := &TestPlan{
 		Options: UpdateOptions{Host: host},
 		Steps:   MakeBasicLifecycleSteps(t, 1),
+	}
+	p.Run(t, nil)
+}
+
+// Test calling a method.
+func TestSingleComponentMethodDefaultProviderLifecycle(t *testing.T) {
+	var urn resource.URN
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor,
+				typ, name string, parent resource.URN, inputs resource.PropertyMap,
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				var err error
+				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+					Parent:  parent,
+					Aliases: options.Aliases,
+					Protect: options.Protect,
+				})
+				assert.NoError(t, err)
+
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
+					Parent: urn,
+				})
+				assert.NoError(t, err)
+
+				outs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+				err = monitor.RegisterResourceOutputs(urn, outs)
+				assert.NoError(t, err)
+
+				return plugin.ConstructResult{
+					URN:     urn,
+					Outputs: outs,
+				}, nil
+			}
+
+			call := func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap,
+				info plugin.CallInfo, options plugin.CallOptions) (plugin.CallResult, error) {
+
+				assert.Equal(t, resource.PropertyMap{
+					"name": resource.NewStringProperty("Alice"),
+				}, args)
+				name := args["name"].StringValue()
+
+				result, _, err := monitor.Invoke("pulumi:pulumi:getResource", resource.PropertyMap{
+					"urn": resource.NewStringProperty(string(urn)),
+				}, "", "")
+				assert.NoError(t, err)
+				state := result["state"]
+				foo := state.ObjectValue()["foo"].StringValue()
+
+				message := fmt.Sprintf("%s, %s!", name, foo)
+				return plugin.CallResult{
+					Return: resource.PropertyMap{
+						"message": resource.NewStringProperty(message),
+					},
+				}, nil
+			}
+
+			return &deploytest.Provider{
+				ConstructF: construct,
+				CallF:      call,
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		}, state)
+
+		outs, _, _, err := monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{
+			"name": resource.NewStringProperty("Alice"),
+		}, "", "")
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"message": resource.NewStringProperty("Alice, bar!"),
+		}, outs)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 4),
+	}
+	p.Run(t, nil)
+}
+
+// Test creating a resource from a method.
+func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
+	var urn resource.URN
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor,
+				typ, name string, parent resource.URN, inputs resource.PropertyMap,
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				var err error
+				urn, _, _, err = monitor.RegisterResource(tokens.Type(typ), name, false, deploytest.ResourceOptions{
+					Parent:  parent,
+					Aliases: options.Aliases,
+					Protect: options.Protect,
+				})
+				assert.NoError(t, err)
+
+				_, _, _, err = monitor.RegisterResource("pkgA:m:typB", "resA", true, deploytest.ResourceOptions{
+					Parent: urn,
+				})
+				assert.NoError(t, err)
+
+				outs := resource.PropertyMap{"foo": resource.NewStringProperty("bar")}
+				err = monitor.RegisterResourceOutputs(urn, outs)
+				assert.NoError(t, err)
+
+				return plugin.ConstructResult{
+					URN:     urn,
+					Outputs: outs,
+				}, nil
+			}
+
+			call := func(monitor *deploytest.ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap,
+				info plugin.CallInfo, options plugin.CallOptions) (plugin.CallResult, error) {
+
+				_, _, _, err := monitor.RegisterResource("pkgA:m:typC", "resA", true, deploytest.ResourceOptions{
+					Parent: urn,
+				})
+				assert.NoError(t, err)
+
+				return plugin.CallResult{}, nil
+			}
+
+			return &deploytest.Provider{
+				ConstructF: construct,
+				CallF:      call,
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		assert.NoError(t, err)
+		assert.Equal(t, resource.PropertyMap{
+			"foo": resource.NewStringProperty("bar"),
+		}, state)
+
+		_, _, _, err = monitor.Call("pkgA:m:typA/methodA", resource.PropertyMap{}, "", "")
+		assert.NoError(t, err)
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
 }

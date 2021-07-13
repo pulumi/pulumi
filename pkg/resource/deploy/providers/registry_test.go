@@ -157,6 +157,10 @@ func (prov *testProvider) StreamInvoke(
 
 	return nil, fmt.Errorf("not implemented")
 }
+func (prov *testProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+	return plugin.CallResult{}, errors.New("unsupported")
+}
 func (prov *testProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	return workspace.PluginInfo{
 		Name:    "testProvider",

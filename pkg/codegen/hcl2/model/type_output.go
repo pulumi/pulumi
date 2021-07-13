@@ -67,7 +67,7 @@ func (t *OutputType) AssignableFrom(src Type) bool {
 		case *OutputType:
 			return t.ElementType.AssignableFrom(src.ElementType)
 		case *PromiseType:
-			return t.ElementType.AssignableFrom(src.ElementType)
+			return t.ElementType.AssignableFrom(ResolveOutputs(src.ElementType))
 		}
 		return t.ElementType.AssignableFrom(src)
 	})
@@ -77,16 +77,17 @@ func (t *OutputType) AssignableFrom(src Type) bool {
 // output(T) is convertible from a type U, output(U), or promise(U) if U is convertible to T. If the conversion from
 // U to T is unsafe, the entire conversion is unsafe. Otherwise, the conversion is safe.
 func (t *OutputType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
 		switch src := src.(type) {
 		case *OutputType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *PromiseType:
-			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
+			return t.ElementType.conversionFrom(ResolveOutputs(src.ElementType), unifying, seen)
 		}
 		return t.ElementType.conversionFrom(src, unifying, seen)
 	})
@@ -109,11 +110,12 @@ func (t *OutputType) unify(other Type) (Type, ConversionKind) {
 			return NewOutputType(elementType), conversionKind
 		case *PromiseType:
 			// If the other type is a promise type, unify based on the element type.
-			elementType, conversionKind := t.ElementType.unify(other.ElementType)
+			elementType, conversionKind := t.ElementType.unify(ResolveOutputs(other.ElementType))
 			return NewOutputType(elementType), conversionKind
 		default:
 			// Prefer the output type.
-			return t, t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

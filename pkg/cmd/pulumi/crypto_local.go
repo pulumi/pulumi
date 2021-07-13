@@ -34,27 +34,33 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
-func readPassphrase(prompt string) (phrase string, interactive bool, err error) {
-	if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
-		return phrase, false, nil
-	}
-	if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
-		phraseFilePath, err := filepath.Abs(phraseFile)
-		if err != nil {
-			return "", false, errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
+func readPassphraseImpl(prompt string, useEnv bool) (phrase string, interactive bool, err error) {
+	if useEnv {
+		if phrase, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE"); ok {
+			return phrase, false, nil
 		}
-		phraseDetails, err := ioutil.ReadFile(phraseFilePath)
-		if err != nil {
-			return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+		if phraseFile, ok := os.LookupEnv("PULUMI_CONFIG_PASSPHRASE_FILE"); ok {
+			phraseFilePath, err := filepath.Abs(phraseFile)
+			if err != nil {
+				return "", false, errors.Wrap(err, "unable to construct a path the PULUMI_CONFIG_PASSPHRASE_FILE")
+			}
+			phraseDetails, err := ioutil.ReadFile(phraseFilePath)
+			if err != nil {
+				return "", false, errors.Wrap(err, "unable to read PULUMI_CONFIG_PASSPHRASE_FILE")
+			}
+			return strings.TrimSpace(string(phraseDetails)), false, nil
 		}
-		return strings.TrimSpace(string(phraseDetails)), false, nil
-	}
-	if !cmdutil.Interactive() {
-		return "", false, errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE or " +
-			"PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
+		if !cmdutil.Interactive() {
+			return "", false, errors.New("passphrase must be set with PULUMI_CONFIG_PASSPHRASE or " +
+				"PULUMI_CONFIG_PASSPHRASE_FILE environment variables")
+		}
 	}
 	phrase, err = cmdutil.ReadConsoleNoEcho(prompt)
 	return phrase, true, err
+}
+
+func readPassphrase(prompt string) (phrase string, interactive bool, err error) {
+	return readPassphraseImpl(prompt, true)
 }
 
 func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
@@ -114,9 +120,13 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
 		firstMessage := "Enter your passphrase to protect config/secrets"
 		if rotatePassphraseSecretsProvider {
 			firstMessage = "Enter your new passphrase to protect config/secrets"
+
+			if test, ok := os.LookupEnv("PULUMI_TEST_PASSPHRASE"); (!ok || !cmdutil.IsTruthy(test)) && !cmdutil.Interactive() {
+				return nil, fmt.Errorf("passphrase rotation requires an interactive terminal")
+			}
 		}
 		// Here, the stack does not have an EncryptionSalt, so we will get a passphrase and create one
-		first, _, err := readPassphrase(firstMessage)
+		first, _, err := readPassphraseImpl(firstMessage, !rotatePassphraseSecretsProvider)
 		if err != nil {
 			return nil, err
 		}
@@ -124,7 +134,7 @@ func newPassphraseSecretsManager(stackName tokens.QName, configFile string,
 		if rotatePassphraseSecretsProvider {
 			secondMessage = "Re-enter your new passphrase to confirm"
 		}
-		second, _, err := readPassphrase(secondMessage)
+		second, _, err := readPassphraseImpl(secondMessage, !rotatePassphraseSecretsProvider)
 		if err != nil {
 			return nil, err
 		}

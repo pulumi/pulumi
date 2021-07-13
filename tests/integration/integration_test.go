@@ -574,32 +574,31 @@ func TestConfigPaths(t *testing.T) {
 }
 
 //nolint:golint,deadcode
-func testComponentSlowPathEnv(t *testing.T) string {
-	return componentPathEnv(t, "construct_component_slow", "testcomponent")
-}
-
-//nolint:golint,deadcode
-func testComponentPlainPathEnv(t *testing.T) string {
-	return componentPathEnv(t, "construct_component_plain", "testcomponent")
-}
-
-func componentPathEnv(t *testing.T, integrationTest, componentDir string) string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-		return ""
+func pathEnv(t *testing.T, path ...string) string {
+	pathEnv := []string{os.Getenv("PATH")}
+	for _, p := range path {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			t.Fatal(err)
+			return ""
+		}
+		pathEnv = append(pathEnv, absPath)
 	}
-	absCwd, err := filepath.Abs(cwd)
-	if err != nil {
-		t.Fatal(err)
-		return ""
-	}
-	pluginDir := filepath.Join(absCwd, integrationTest, componentDir)
 	pathSeparator := ":"
 	if runtime.GOOS == "windows" {
 		pathSeparator = ";"
 	}
-	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir
+	return "PATH=" + strings.Join(pathEnv, pathSeparator)
+}
+
+//nolint:golint,deadcode
+func testComponentSlowPathEnv(t *testing.T) string {
+	return pathEnv(t, filepath.Join("construct_component_slow", "testcomponent"))
+}
+
+//nolint:golint,deadcode
+func testComponentPlainPathEnv(t *testing.T) string {
+	return pathEnv(t, filepath.Join("construct_component_plain", "testcomponent"))
 }
 
 // nolint: unused,deadcode
@@ -694,4 +693,68 @@ func testComponentProviderSchema(t *testing.T, path string, env ...string) {
 			}
 		})
 	}
+}
+
+// Test remote component inputs properly handle unknowns.
+// nolint: unused,deadcode
+func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_unknown"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:                    append(test.env, pathEnv),
+				Dir:                    filepath.Join(testDir, lang),
+				Dependencies:           dependencies,
+				SkipRefresh:            true,
+				SkipPreview:            false,
+				SkipUpdate:             true,
+				SkipExportImport:       true,
+				SkipEmptyPreviewUpdate: true,
+				Quick:                  false,
+				NoParallel:             true,
+			})
+		})
+	}
+}
+
+func TestRotatePassphrase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("rotate_passphrase")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
+
+	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
+	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
+
+	e.Stdin, e.Passphrase = nil, "qwerty"
+	e.RunCommand("pulumi", "config", "get", "foo")
 }

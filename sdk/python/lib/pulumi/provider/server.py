@@ -70,7 +70,7 @@ class ProviderServicer(ResourceProviderServicer):
             monitor_address=_empty_as_none(request.monitorEndpoint),
             preview=request.dryRun)
 
-        pulumi.runtime.config.set_all_config(dict(request.config))
+        pulumi.runtime.config.set_all_config(dict(request.config), request.configSecretKeys)
 
         inputs = self._construct_inputs(request)
 
@@ -118,6 +118,8 @@ class ProviderServicer(ResourceProviderServicer):
 
         # Otherwise, wrap it as an output so we can handle secrets
         # and/or track dependencies.
+        # Note: If the value is or contains an unknown value, the Output will mark its value as
+        # unknown automatically, so we just pass true for is_known here.
         return pulumi.Output(
             resources=deps,
             future=_as_future(rpc.unwrap_rpc_secret(the_input)),
@@ -187,6 +189,9 @@ def main(provider: Provider, args: List[str]) -> None:  # args not in use?
 
     argp = argparse.ArgumentParser(description='Pulumi provider plugin (gRPC server)')
     argp.add_argument('engine', help='Pulumi engine address')
+    argp.add_argument('--logflow', action='store_true', help='Currently ignored')
+    argp.add_argument('--logtostderr', action='store_true', help='Currently ignored')
+
     engine_address: str = argp.parse_args().engine
 
     async def serve() -> None:

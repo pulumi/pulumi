@@ -212,6 +212,14 @@ export interface Provider {
         => Promise<ConstructResult>;
 
     /**
+     * Call calls the indicated method.
+     *
+     * @param token The token of the method to call.
+     * @param inputs The inputs to the method.
+     */
+    call?: (token: string, inputs: Inputs) => Promise<InvokeResult>;
+
+    /**
      * Invoke calls the indicated function.
      *
      * @param token The token of the function to call.

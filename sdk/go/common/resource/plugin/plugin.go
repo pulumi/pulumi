@@ -27,6 +27,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	multierror "github.com/hashicorp/go-multierror"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -112,7 +113,7 @@ var errRunPolicyModuleNotFound = errors.New("pulumi SDK does not support policy 
 // errPluginNotFound is returned when we try to execute a plugin but it is not found on disk.
 var errPluginNotFound = errors.New("plugin not found")
 
-func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plugin, error) {
+func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, options ...otgrpc.Option) (*plugin, error) {
 	if logging.V(9) {
 		var argstr string
 		for i, arg := range args {
@@ -279,6 +280,7 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string) (*plug
 // execPlugin starts the plugin executable.
 func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
 	var args []string
+	args = append(args, pluginArgs...)
 	// Flow the logging information if set.
 	if logging.LogFlow {
 		if logging.LogToStderr {
@@ -292,7 +294,6 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 	if cmdutil.TracingEndpoint != "" && !cmdutil.TracingToFile {
 		args = append(args, "--tracing", cmdutil.TracingEndpoint)
 	}
-	args = append(args, pluginArgs...)
 
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)

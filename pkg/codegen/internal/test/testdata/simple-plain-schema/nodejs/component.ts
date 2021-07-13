@@ -54,6 +54,7 @@ export class Component extends pulumi.ComponentResource {
             inputs["b"] = args ? args.b : undefined;
             inputs["bar"] = args ? args.bar : undefined;
             inputs["baz"] = args ? args.baz : undefined;
+            inputs["bazMap"] = args ? args.bazMap : undefined;
             inputs["c"] = args ? args.c : undefined;
             inputs["d"] = args ? args.d : undefined;
             inputs["e"] = args ? args.e : undefined;
@@ -83,8 +84,9 @@ export class Component extends pulumi.ComponentResource {
 export interface ComponentArgs {
     a: boolean;
     b?: boolean;
-    bar?: inputs.Foo;
-    baz?: inputs.Foo[];
+    bar?: inputs.FooArgs;
+    baz?: pulumi.Input<inputs.FooArgs>[];
+    bazMap?: {[key: string]: pulumi.Input<inputs.FooArgs>};
     c: number;
     d?: number;
     e: string;

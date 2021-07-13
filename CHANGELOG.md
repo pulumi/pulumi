@@ -1,6 +1,149 @@
 CHANGELOG
 =========
 
+## 3.7.0 (2021-07-13)
+
+### Improvements
+
+- [sdk/nodejs] - Support for calling resource methods
+  [#7377](https://github.com/pulumi/pulumi/pull/7377)
+
+- [sdk/go] - Support for calling resource methods
+  [#7437](https://github.com/pulumi/pulumi/pull/7437)
+
+### Bug Fixes
+
+- [codegen/go] - Reimplement strict go enums to be Inputs.
+  [#7383](https://github.com/pulumi/pulumi/pull/7383)
+
+- [codegen/go] - Emit To[ElementType]Output methods for go enum output types
+  [#7499](https://github.com/pulumi/pulumi/pull/7499)
+
+## 3.6.1 (2021-07-07)
+
+### Improvements
+
+- [sdk] - Add `replaceOnChanges` resource option.
+  [#7226](https://github.com/pulumi/pulumi/pull/7226)
+
+- [sdk/go] - Support for authoring resource methods in Go
+  [#7379](https://github.com/pulumi/pulumi/pull/7379)
+
+### Bug Fixes
+
+- [sdk/python] - Fix an issue where dependency keys were incorrectly translates to camelcase
+  [#7443](https://github.com/pulumi/pulumi/pull/7443)
+
+- [cli] - Fix rendering of diffs for resource without DetailedDiffs
+  [#7500](https://github.com/pulumi/pulumi/pull/7500)
+
+## 3.6.0 (2021-06-30)
+
+### Improvements
+
+- [cli] - Added support for passing custom paths that need
+  to be watched by the `pulumi watch` command.
+  [#7115](https://github.com/pulumi/pulumi/pull/7247)
+
+- [auto/nodejs] - Fail early when multiple versions of `@pulumi/pulumi` are detected in nodejs inline programs.'
+  [#7349](https://github.com/pulumi/pulumi/pull/7349)
+
+- [sdk/go] - Add preliminary support for unmarshaling plain arrays and maps of output values.
+  [#7369](https://github.com/pulumi/pulumi/pull/7369)
+
+- Initial support for resource methods (Node.js authoring, Python calling)
+  [#7363](https://github.com/pulumi/pulumi/pull/7363)
+
+### Bug Fixes
+
+- [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
+  [#7323](https://github.com/pulumi/pulumi/pull/7323)
+
+- [sdk/go] - Specify known when creating outputs for `construct`.
+  [#7343](https://github.com/pulumi/pulumi/pull/7343)
+
+- [cli] - Fix passphrase rotation.
+  [#7347](https://github.com/pulumi/pulumi/pull/7347)
+
+- [multilang/python] - Fix nested module generation.
+  [#7353](https://github.com/pulumi/pulumi/pull/7353)
+
+- [multilang/nodejs] - Fix a hang when an error is thrown within an apply in a remote component.
+  [#7365](https://github.com/pulumi/pulumi/pull/7365)
+
+- [codegen/python] - Include enum docstrings for python.
+  [#7374](https://github.com/pulumi/pulumi/pull/7374)
+
+
+## 3.5.1 (2021-06-16)
+
+**Please Note:** Release v3.5.0 failed in our build pipeline so will be rebuilt with a new tag of v3.5.1
+
+### Improvements
+
+- [dotnet/sdk] Support microsoft logging extensions with inline programs
+  [#7117](https://github.com/pulumi/pulumi/pull/7117)
+
+- [dotnet/sdk] Add create unknown to output utilities.
+  [#7173](https://github.com/pulumi/pulumi/pull/7173)
+
+- [dotnet] Fix Resharper code issues.
+  [#7178](https://github.com/pulumi/pulumi/pull/7178)
+
+- [codegen] - Include properties with an underlying type of string on Go provider instances.
+
+- [cli] - Provide a more helpful error instead of panicking when codegen fails during import.
+  [#7265](https://github.com/pulumi/pulumi/pull/7265)
+
+- [codegen/python] - Cache package version for improved performance.
+  [#7293](https://github.com/pulumi/pulumi/pull/7293)
+
+- [sdk/python] - Reduce `log.debug` calls for improved performance
+  [#7295](https://github.com/pulumi/pulumi/pull/7295)
+
+### Bug Fixes
+
+- [sdk/dotnet] - Fix resources destroyed after exception thrown during inline program
+  [#7299](https://github.com/pulumi/pulumi/pull/7299)
+
+- [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
+
+- [sdk/python] - Prevent infinite loops when iterating `Output` objects
+  [#7288](https://github.com/pulumi/pulumi/pull/7288)
+
+- [codegen/python] - Rename conflicting ResourceArgs classes
+  [#7171](https://github.com/pulumi/pulumi/pull/7171)
+
+## 3.4.0 (2021-06-05)
+
+### Improvements
+
+- [dotnet/sdk] Add get value async to output utilities.
+  [#7170](https://github.com/pulumi/pulumi/pull/7170)
+
+### Bug Fixes
+
+- [CLI] Fix broken venv for Python projects started from templates
+  [#6624](https://github.com/pulumi/pulumi/pull/6623)
+
+- [cli] - Send plugin install output to stderr, so that it doesn't
+  clutter up --json, automation API scenarios, and so on.
+  [#7115](https://github.com/pulumi/pulumi/pull/7115)
+
+- [cli] Protect against panics when using the wrong resource type with `pulumi import`
+  [#7202](https://github.com/pulumi/pulumi/pull/7202)
+
+- [auto/nodejs] - Emit warning instead of breaking on parsing JSON events for automation API.
+  [#7162](https://github.com/pulumi/pulumi/pull/7162)
+
+- [sdk/python] Improve performance of `Output.from_input` and `Output.all` on nested objects.
+  [#7175](https://github.com/pulumi/pulumi/pull/7175)
+
+### Misc
+- Update version of go-cloud used by Pulumi to `0.23.0`.
+  [#7204](https://github.com/pulumi/pulumi/pull/7204)
+
+
 ## 3.3.1 (2021-05-25)
 
 ### Improvements

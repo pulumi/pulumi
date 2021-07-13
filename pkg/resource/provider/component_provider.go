@@ -152,6 +152,12 @@ func (p *componentProvider) Invoke(ctx context.Context,
 	return nil, status.Error(codes.Unimplemented, "Invoke is not yet implemented")
 }
 
+// Call dynamically executes a method in the provider associated with a component resource.
+func (p *componentProvider) Call(ctx context.Context,
+	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
+}
+
 // Cancel signals the provider to gracefully shut down and abort any ongoing resource operations.
 // Operations aborted in this way will return an error (e.g., `Update` and `Create` will either a
 // creation error or an initialization error). Since Cancel is advisory and non-blocking, it is up

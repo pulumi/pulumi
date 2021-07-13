@@ -414,7 +414,7 @@ func TestResourceState(t *testing.T) {
 	assert.Nil(t, err)
 
 	var theResource testResource
-	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil)
+	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -436,7 +436,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(ctx, false, nil, nil, "foo", "bar", s, nil)
+	state.resolve(ctx, nil, nil, "foo", "bar", s, nil)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),

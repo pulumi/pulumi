@@ -36,6 +36,7 @@ namespace Pulumi
             Log.Debug(label);
 
             // Be resilient to misbehaving callers.
+            // ReSharper disable once ConstantNullCoalescingCondition
             args ??= InvokeArgs.Empty;
 
             // Wait for all values to be available, and then perform the RPC.

@@ -61,15 +61,9 @@ func GetComponent(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Component resources.
 type componentState struct {
-	Provider       *kubernetes.Provider               `pulumi:"provider"`
-	SecurityGroup  *ec2.SecurityGroup                 `pulumi:"securityGroup"`
-	StorageClasses map[string]*storagev1.StorageClass `pulumi:"storageClasses"`
 }
 
 type ComponentState struct {
-	Provider       kubernetes.ProviderInput
-	SecurityGroup  ec2.SecurityGroupInput
-	StorageClasses storagev1.StorageClassMapInput
 }
 
 func (ComponentState) ElementType() reflect.Type {
@@ -77,12 +71,12 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	Metadata              *metav1.ObjectMeta           `pulumi:"metadata"`
-	MetadataArray         []metav1.ObjectMeta          `pulumi:"metadataArray"`
-	MetadataMap           map[string]metav1.ObjectMeta `pulumi:"metadataMap"`
-	RequiredMetadata      metav1.ObjectMeta            `pulumi:"requiredMetadata"`
-	RequiredMetadataArray []metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
-	RequiredMetadataMap   map[string]metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
+	Metadata              *metav1.ObjectMeta            `pulumi:"metadata"`
+	MetadataArray         []*metav1.ObjectMeta          `pulumi:"metadataArray"`
+	MetadataMap           map[string]*metav1.ObjectMeta `pulumi:"metadataMap"`
+	RequiredMetadata      metav1.ObjectMeta             `pulumi:"requiredMetadata"`
+	RequiredMetadataArray []*metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
+	RequiredMetadataMap   map[string]*metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
 }
 
 // The set of arguments for constructing a Component resource.

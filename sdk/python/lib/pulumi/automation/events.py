@@ -47,7 +47,7 @@ class BaseEvent:
     def __repr__(self):
         # pylint: disable=duplicate-code
         inputs = self.__dict__
-        fields = [f"{key}={inputs[key]!r}" for key in inputs]
+        fields = [f"{key}={inputs[key]!r}" for key in inputs]  # pylint: disable=consider-using-dict-items
         fields = ", ".join(fields)
         return f"{self.__class__.__name__}({fields})"
 

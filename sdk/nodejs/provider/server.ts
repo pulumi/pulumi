@@ -37,13 +37,15 @@ const statusproto = require("../proto/status_pb.js");
 class Server implements grpc.UntypedServiceImplementation {
     readonly engineAddr: string;
     readonly provider: Provider;
+    readonly uncaughtErrors: Set<Error>;
 
     /** Queue of construct calls. */
-    constructQueue = Promise.resolve();
+    constructCallQueue = Promise.resolve();
 
-    constructor(engineAddr: string, provider: Provider) {
+    constructor(engineAddr: string, provider: Provider, uncaughtErrors: Set<Error>) {
         this.engineAddr = engineAddr;
         this.provider = provider;
+        this.uncaughtErrors = uncaughtErrors;
     }
 
     // Satisfy the grpc.UntypedServiceImplementation interface.
@@ -254,19 +256,33 @@ class Server implements grpc.UntypedServiceImplementation {
     }
 
     public async construct(call: any, callback: any): Promise<void> {
-        // Serialize invocations of `construct` so that each call runs one after another, avoiding concurrent runs.
-        // We do this because `construct` has to modify global state to reset the SDK's runtime options.
+        // Serialize invocations of `construct` and `call` so that each call runs one after another, avoiding concurrent
+        // runs. We do this because `construct` and `call` modify global state to reset the SDK's runtime options.
         // This is a short-term workaround to provide correctness, but likely isn't sustainable long-term due to the
         // limits it places on parallelism. We will likely want to investigate if it's possible to run each invocation
-        // in its own context, possibly using Node's `createContext` API:
+        // in its own context, possibly using Node's `createContext` API to avoid modifying global state:
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
-        const res = this.constructQueue.then(() => this.constructImpl(call, callback));
+        const res = this.constructCallQueue.then(() => this.constructImpl(call, callback));
         // tslint:disable:no-empty
-        this.constructQueue = res.catch(() => {});
+        this.constructCallQueue = res.catch(() => {});
         return res;
     }
 
     async constructImpl(call: any, callback: any): Promise<void> {
+        // given that construct calls are serialized, we can attach an uncaught handler to pick up exceptions
+        // in underlying user code. When we catch the error, we need to respond to the gRPC request with the error
+        // to avoid a hang.
+        const uncaughtHandler = (err: Error) => {
+            if (!this.uncaughtErrors.has(err)) {
+                this.uncaughtErrors.add(err);
+            }
+            // bubble the uncaught error in the user code back and terminate the outstanding gRPC request.
+            callback(err, undefined);
+        };
+        process.on("uncaughtException", uncaughtHandler);
+        // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
+        // just suppress the TS strictness here.
+        process.on("unhandledRejection", uncaughtHandler);
         try {
             const req: any = call.request;
             const type = req.getType();
@@ -277,41 +293,9 @@ class Server implements grpc.UntypedServiceImplementation {
                 return;
             }
 
-            // Configure the runtime.
-            //
-            // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
-            // refactor so we can avoid the global state.
-            runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), this.engineAddr,
-                                        req.getMonitorendpoint(), req.getDryrun());
+            configureRuntime(req, this.engineAddr);
 
-            const pulumiConfig: {[key: string]: string} = {};
-            const rpcConfig = req.getConfigMap();
-            if (rpcConfig) {
-                for (const [k, v] of rpcConfig.entries()) {
-                    pulumiConfig[k] = v;
-                }
-            }
-            runtime.setAllConfig(pulumiConfig);
-
-            // Deserialize the inputs and apply appropriate dependencies.
-            const inputs: Inputs = {};
-            const inputDependencies = req.getInputdependenciesMap();
-            const deserializedInputs = runtime.deserializeProperties(req.getInputs());
-            for (const k of Object.keys(deserializedInputs)) {
-                const inputDeps = inputDependencies.get(k);
-                const deps = (inputDeps ? <resource.URN[]>inputDeps.getUrnsList() : [])
-                    .map(depUrn => new resource.DependencyResource(depUrn));
-                const input = deserializedInputs[k];
-                const isSecret = runtime.isRpcSecret(input);
-                if (!isSecret && deps.length === 0) {
-                    // If it's a prompt value, return it directly without wrapping it as an output.
-                    inputs[k] = input;
-                } else {
-                    // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
-                    inputs[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
-                        Promise.resolve(isSecret), Promise.resolve([]));
-                }
-            }
+            const inputs = await deserializeInputs(req.getInputs(), req.getInputdependenciesMap());
 
             // Rebuild the resource options.
             const dependsOn: resource.Resource[] = [];
@@ -348,13 +332,94 @@ class Server implements grpc.UntypedServiceImplementation {
             }
             resp.setState(structproto.Struct.fromJavaScript(state));
 
-            // Wait for RPC operations to complete and disconnect.
-            await runtime.disconnect();
+            // Wait for RPC operations to complete.
+            await runtime.waitForRPCs();
 
             callback(undefined, resp);
         } catch (e) {
             console.error(`${e}: ${e.stack}`);
             callback(e, undefined);
+        } finally {
+            // remove these uncaught handlers that are specific to this gRPC callback context
+            process.off("uncaughtException", uncaughtHandler);
+            process.off("unhandledRejection", uncaughtHandler);
+        }
+    }
+
+    public async call(call: any, callback: any): Promise<void> {
+        // Serialize invocations of `construct` and `call` so that each call runs one after another, avoiding concurrent
+        // runs. We do this because `construct` and `call` modify global state to reset the SDK's runtime options.
+        // This is a short-term workaround to provide correctness, but likely isn't sustainable long-term due to the
+        // limits it places on parallelism. We will likely want to investigate if it's possible to run each invocation
+        // in its own context, possibly using Node's `createContext` API to avoid modifying global state:
+        // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
+        const res = this.constructCallQueue.then(() => this.callImpl(call, callback));
+        // tslint:disable:no-empty
+        this.constructCallQueue = res.catch(() => {});
+        return res;
+    }
+
+    async callImpl(call: any, callback: any): Promise<void> {
+        // given that call calls are serialized, we can attach an uncaught handler to pick up exceptions
+        // in underlying user code. When we catch the error, we need to respond to the gRPC request with the error
+        // to avoid a hang.
+        const uncaughtHandler = (err: Error) => {
+            if (!this.uncaughtErrors.has(err)) {
+                this.uncaughtErrors.add(err);
+            }
+            // bubble the uncaught error in the user code back and terminate the outstanding gRPC request.
+            callback(err, undefined);
+        };
+        process.on("uncaughtException", uncaughtHandler);
+        // @ts-ignore 'unhandledRejection' will almost always invoke uncaughtHandler with an Error. so
+        // just suppress the TS strictness here.
+        process.on("unhandledRejection", uncaughtHandler);
+        try {
+            const req: any = call.request;
+            if (!this.provider.call) {
+                callback(new Error(`unknown function ${req.getTok()}`), undefined);
+                return;
+            }
+
+            configureRuntime(req, this.engineAddr);
+
+            const args = await deserializeInputs(req.getArgs(), req.getArgdependenciesMap());
+
+            const result = await this.provider.call(req.getTok(), args);
+
+            const resp = new provproto.CallResponse();
+
+            const [ret, retDependencies] = await runtime.serializeResourceProperties(`call(${req.getTok()})`, result.outputs);
+            const returnDependenciesMap = resp.getReturndependenciesMap();
+            for (const [key, resources] of retDependencies) {
+                const deps = new provproto.CallResponse.ReturnDependencies();
+                deps.setUrnsList(await Promise.all(Array.from(resources).map(r => r.urn.promise())));
+                returnDependenciesMap.set(key, deps);
+            }
+            resp.setReturn(structproto.Struct.fromJavaScript(ret));
+
+            if ((result.failures || []).length !== 0) {
+                const failureList = [];
+                for (const f of result.failures!) {
+                    const failure = new provproto.CheckFailure();
+                    failure.setProperty(f.property);
+                    failure.setReason(f.reason);
+                    failureList.push(failure);
+                }
+                resp.setFailuresList(failureList);
+            }
+
+            // Wait for RPC operations to complete.
+            await runtime.waitForRPCs();
+
+            callback(undefined, resp);
+        } catch (e) {
+            console.error(`${e}: ${e.stack}`);
+            callback(e, undefined);
+        } finally {
+            // remove these uncaught handlers that are specific to this gRPC callback context
+            process.off("uncaughtException", uncaughtHandler);
+            process.off("unhandledRejection", uncaughtHandler);
         }
     }
 
@@ -371,7 +436,7 @@ class Server implements grpc.UntypedServiceImplementation {
             const result = await this.provider.invoke(req.getTok(), args);
 
             const resp = new provproto.InvokeResponse();
-            resp.setProperties(structproto.Struct.fromJavaScript(result.outputs));
+            resp.setReturn(structproto.Struct.fromJavaScript(result.outputs));
 
             if ((result.failures || []).length !== 0) {
                 const failureList = [];
@@ -397,6 +462,49 @@ class Server implements grpc.UntypedServiceImplementation {
             details: "Not yet implemented: StreamInvoke",
         }, undefined);
     }
+}
+
+function configureRuntime(req: any, engineAddr: string) {
+    // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
+    // refactor so we can avoid the global state.
+    runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
+                                req.getMonitorendpoint(), req.getDryrun());
+
+    const pulumiConfig: {[key: string]: string} = {};
+    const rpcConfig = req.getConfigMap();
+    if (rpcConfig) {
+        for (const [k, v] of rpcConfig.entries()) {
+            pulumiConfig[k] = v;
+        }
+    }
+    runtime.setAllConfig(pulumiConfig, req.getConfigsecretkeysList());
+}
+
+// deserializeInputs deserializes the inputs struct and applies appropriate dependencies.
+async function deserializeInputs(inputsStruct: any, inputDependencies: any): Promise<Inputs> {
+    const result: Inputs = {};
+    const deserializedInputs = runtime.deserializeProperties(inputsStruct);
+    for (const k of Object.keys(deserializedInputs)) {
+        const inputDeps = inputDependencies.get(k);
+        const depsUrns: resource.URN[] = inputDeps?.getUrnsList() ?? [];
+        const deps = depsUrns.map(depUrn => new resource.DependencyResource(depUrn));
+        const input = deserializedInputs[k];
+        const isSecret = runtime.isRpcSecret(input);
+        const isResourceReference = resource.Resource.isInstance(input)
+            && depsUrns.length === 1
+            && depsUrns[0] === await input.urn.promise();
+        if (isResourceReference || (!isSecret && deps.length === 0)) {
+            // If it's a prompt value, return it directly without wrapping it as an output.
+            result[k] = input;
+        } else {
+            // Otherwise, wrap it in an output so we can handle secrets and/or track dependencies.
+            // Note: If the value is or contains an unknown value, the Output will mark its value as
+            // unknown automatically, so we just pass true for isKnown here.
+            result[k] = new Output(deps, Promise.resolve(runtime.unwrapRpcSecret(input)), Promise.resolve(true),
+                Promise.resolve(isSecret), Promise.resolve([]));
+        }
+    }
+    return result;
 }
 
 // grpcResponseFromError creates a gRPC response representing an error from a dynamic provider's
@@ -475,7 +583,7 @@ export async function main(provider: Provider, args: string[]) {
     const server = new grpc.Server({
         "grpc.max_receive_message_length": runtime.maxRPCMessageSize,
     });
-    server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider));
+    server.addService(provrpc.ResourceProviderService, new Server(engineAddr, provider, uncaughtErrors));
     const port: number = await new Promise<number>((resolve, reject) => {
         server.bindAsync(`0.0.0.0:0`, grpc.ServerCredentials.createInsecure(), (err, p) => {
             if (err) {

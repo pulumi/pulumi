@@ -22,10 +22,11 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"golang.org/x/net/context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/net/context"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -285,9 +286,6 @@ func marshalInputAndDetermineSecret(v interface{},
 			return resource.MakeComponentResourceReference(resource.URN(urn), ""), deps, secret, nil
 		}
 
-		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
-			"%v: cannot assign %v to %v", v, valueType, destType)
-
 		if destType.Kind() == reflect.Interface {
 			// This happens in the case of Any.
 			if valueType.Kind() == reflect.Interface {
@@ -297,6 +295,17 @@ func marshalInputAndDetermineSecret(v interface{},
 		}
 
 		rv := reflect.ValueOf(v)
+
+		switch rv.Type().Kind() {
+		case reflect.Array, reflect.Slice, reflect.Map:
+			// Not assignable in prompt form because of the difference in input and output shapes.
+			//
+			// TODO(7434): update these checks once fixed.
+		default:
+			contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
+				"%v: cannot assign %v to %v", v, valueType, destType)
+		}
+
 		switch rv.Type().Kind() {
 		case reflect.Bool:
 			return resource.NewBoolProperty(rv.Bool()), deps, secret, nil

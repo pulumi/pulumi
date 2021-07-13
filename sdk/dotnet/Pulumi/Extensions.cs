@@ -21,7 +21,7 @@ namespace Pulumi
             return result;
         }
 
-        public static void Deconstruct<K, V>(this KeyValuePair<K, V> pair, out K key, out V value)
+        public static void Deconstruct<TKey, TValue>(this KeyValuePair<TKey, TValue> pair, out TKey key, out TValue value)
         {
             key = pair.Key;
             value = pair.Value;
@@ -43,6 +43,7 @@ namespace Pulumi
         {
             _ = response.ContinueWith(t =>
             {
+                // ReSharper disable once SwitchStatementHandlesSomeKnownEnumValuesWithDefault
                 switch (t.Status)
                 {
                     default: throw new InvalidOperationException("Task was not complete: " + t.Status);

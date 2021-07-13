@@ -20,7 +20,6 @@ package docs
 
 import (
 	"encoding/json"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -284,7 +283,7 @@ func TestResourceNestedPropertyPythonCasing(t *testing.T) {
 		}
 
 		t.Run("InputPropertiesAreSnakeCased", func(t *testing.T) {
-			props := mod.getProperties(r.InputProperties, "python", true, true, false, false)
+			props := mod.getProperties(r.InputProperties, "python", true, false, false)
 			for _, p := range props {
 				assert.True(t, strings.Contains(p.Name, "_"), "input property name in python must use snake_case")
 			}
@@ -495,69 +494,5 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
-	}{
-		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				"provider.md",
-				"otherresource.md",
-				"resource.md",
-				"argfunction.md",
-				"_index.md",
-			},
-		},
-		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				"provider.md",
-				"_index.md",
-				"tree/_index.md",
-				"tree/v1/nursery.md",
-				"tree/v1/rubbertree.md",
-				"tree/v1/_index.md",
-			},
-		},
-		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				"workload.md",
-				"argfunction.md",
-				"_index.md",
-				"provider.md",
-				"cat.md",
-				"component.md",
-			},
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				"_index.md",
-				"provider.md",
-				"component.md",
-			},
-		},
-	}
-	testDir := filepath.Join("..", "internal", "test", "testdata")
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), generatePackage)
-			assert.NoError(t, err)
-
-			test.RewriteFilesWhenPulumiAccept(t, filepath.Join(testDir, tt.schemaDir), "docs", files)
-
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "docs", tt.expectedFiles)
-			assert.NoError(t, err)
-
-			test.ValidateFileEquality(t, files, expectedFiles)
-		})
-	}
+	test.TestSDKCodegen(t, "docs", generatePackage)
 }

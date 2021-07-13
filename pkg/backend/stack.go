@@ -50,7 +50,7 @@ type Stack interface {
 	// Destroy this stack's resources.
 	Destroy(ctx context.Context, op UpdateOperation) (engine.ResourceChanges, result.Result)
 	// Watch this stack.
-	Watch(ctx context.Context, op UpdateOperation) result.Result
+	Watch(ctx context.Context, op UpdateOperation, paths []string) result.Result
 
 	// remove this stack.
 	Remove(ctx context.Context, force bool) (bool, error)
@@ -103,8 +103,8 @@ func DestroyStack(ctx context.Context, s Stack, op UpdateOperation) (engine.Reso
 
 // WatchStack watches the projects working directory for changes and automatically updates the
 // active stack.
-func WatchStack(ctx context.Context, s Stack, op UpdateOperation) result.Result {
-	return s.Backend().Watch(ctx, s, op)
+func WatchStack(ctx context.Context, s Stack, op UpdateOperation, paths []string) result.Result {
+	return s.Backend().Watch(ctx, s, op, paths)
 }
 
 // GetLatestConfiguration returns the configuration for the most recent deployment of the stack.

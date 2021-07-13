@@ -118,8 +118,7 @@ func TestConditionalExpression(t *testing.T) {
 		},
 	}
 	genFunc := func(w io.Writer, g *generator, e model.Expression) {
-		isInput := false
-		e, temps := g.lowerExpression(e, e.Type(), isInput)
+		e, temps := g.lowerExpression(e, e.Type())
 		g.genTemps(w, temps)
 		g.Fgenf(w, "%v", e)
 	}

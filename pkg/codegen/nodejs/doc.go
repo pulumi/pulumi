@@ -69,12 +69,18 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the language-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
+	// Remove the union with `undefined` for optional types,
+	// since we will show that information separately anyway.
+	if optional, ok := t.(*schema.OptionalType); ok {
+		t = optional.ElementType
+	}
+
 	modCtx := &modContext{
 		pkg: pkg,
 		mod: moduleName,
 	}
-	typeName := modCtx.typeString(t, input, false /*wrapInput*/, args, optional, nil)
+	typeName := modCtx.typeString(t, input, nil)
 
 	// Remove any package qualifiers from the type name.
 	typeQualifierPackage := "inputs"
@@ -84,11 +90,6 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	typeName = strings.ReplaceAll(typeName, typeQualifierPackage+".", "")
 	typeName = strings.ReplaceAll(typeName, "enums.", "")
 
-	// Remove the union with `undefined` for optional types,
-	// since we will show that information separately anyway.
-	if optional {
-		typeName = strings.ReplaceAll(typeName, " | undefined", "?")
-	}
 	return typeName
 }
 

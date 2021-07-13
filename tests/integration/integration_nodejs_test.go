@@ -875,7 +875,7 @@ func TestConstructNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -887,8 +887,13 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 		Env:          env,
 		Dir:          filepath.Join("construct_component", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		NoParallel:   true,
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick:      true,
+		NoParallel: true,
+		// verify that additional flags don't cause the component provider hang
+		UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -911,6 +916,10 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 						}
 					case "child-c":
 						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -965,7 +974,7 @@ func TestConstructPlainNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -983,6 +992,40 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownNode(t *testing.T) {
+	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
+}
+
+// Test methods on remote components.
+func TestConstructMethodsNode(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          []string{pathEnv},
+				Dir:          filepath.Join("construct_component_methods", "nodejs"),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
 	}
 }
 
@@ -1004,4 +1047,32 @@ func TestComponentProviderSchemaNode(t *testing.T) {
 		path += ".cmd"
 	}
 	testComponentProviderSchema(t, path)
+}
+
+// Test throwing an error within an apply in a remote component written in nodejs.
+// The provider should return the error and shutdown gracefully rather than hanging.
+func TestConstructNodeErrorApply(t *testing.T) {
+	dir := "construct_component_error_apply"
+	componentDir := "testcomponent"
+
+	stderr := &bytes.Buffer{}
+	expectedError := "intentional error from within an apply"
+
+	opts := &integration.ProgramTestOptions{
+		Env:           []string{pathEnv(t, filepath.Join(dir, componentDir))},
+		Dir:           filepath.Join(dir, "nodejs"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		Quick:         true,
+		NoParallel:    true,
+		Stderr:        stderr,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
+	}
+
+	t.Run(componentDir, func(t *testing.T) {
+		integration.ProgramTest(t, opts)
+	})
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/go/pulumi/config"
 	pulumiprovider "github.com/pulumi/pulumi/sdk/v3/go/pulumi/provider"
 	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 
@@ -49,8 +50,9 @@ func NewResource(ctx *pulumi.Context, name string, echo pulumi.Input,
 type Component struct {
 	pulumi.ResourceState
 
-	Echo    pulumi.Input    `pulumi:"echo"`
-	ChildID pulumi.IDOutput `pulumi:"childId"`
+	Echo    pulumi.Input        `pulumi:"echo"`
+	ChildID pulumi.IDOutput     `pulumi:"childId"`
+	Secret  pulumi.StringOutput `pulumi:"secret"`
 }
 
 type ComponentArgs struct {
@@ -62,6 +64,15 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 	if args == nil {
 		return nil, errors.New("args is required")
 	}
+
+	secretKey := "secret"
+	fullSecretKey := fmt.Sprintf("%s:%s", ctx.Project(), secretKey)
+	if !ctx.IsConfigSecret(fullSecretKey) {
+		return nil, errors.Errorf("expected configuration key to be secret: %s", fullSecretKey)
+	}
+
+	conf := config.New(ctx, "")
+	secret := conf.RequireSecret(secretKey)
 
 	component := &Component{}
 	err := ctx.RegisterComponentResource("testcomponent:index:Component", name, component, opts...)
@@ -76,8 +87,13 @@ func NewComponent(ctx *pulumi.Context, name string, args *ComponentArgs,
 
 	component.Echo = args.Echo
 	component.ChildID = res.ID()
+	component.Secret = secret
 
-	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{}); err != nil {
+	if err := ctx.RegisterResourceOutputs(component, pulumi.Map{
+		"secret":  component.Secret,
+		"echo":    component.Echo,
+		"childId": component.ChildID,
+	}); err != nil {
 		return nil, err
 	}
 
@@ -178,6 +194,11 @@ func (p *testcomponentProvider) Invoke(ctx context.Context,
 func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
 	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
 	return errors.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
+}
+
+func (p *testcomponentProvider) Call(ctx context.Context,
+	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return nil, errors.Errorf("Unknown Call token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) Check(ctx context.Context,

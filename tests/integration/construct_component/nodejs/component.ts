@@ -14,6 +14,7 @@ export class Component extends pulumi.ComponentResource {
         const inputs: any = {};
         inputs["echo"] = args.echo;
         inputs["childId"] = undefined /*out*/;
+        inputs["secret"] = undefined /*out*/;
 
         super("testcomponent:index:Component", name, inputs, opts, true);
     }

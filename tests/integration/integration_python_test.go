@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -546,7 +547,7 @@ func TestConstructPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -559,6 +560,9 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
 		},
 		Quick:      true,
 		NoParallel: true, // avoid contention for Dir
@@ -587,6 +591,10 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 					case "child-c":
 						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
 							res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -657,7 +665,7 @@ func TestConstructPlainPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -678,6 +686,42 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 			assert.NotNil(t, stackInfo.Deployment)
 			assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources))
 		},
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownPython(t *testing.T) {
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+// Test methods on remote components.
+func TestConstructMethodsPython(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join("construct_component_methods", "python"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
 	}
 }
 
@@ -980,4 +1024,28 @@ func TestComponentProviderSchemaPython(t *testing.T) {
 		path += ".cmd"
 	}
 	testComponentProviderSchema(t, path, pulumiRuntimeVirtualEnv(t, filepath.Join("..", "..")))
+}
+
+// Regresses an issue with Pulumi hanging when buggy dynamic providers
+// emit outputs that do not match the advertised type.
+func TestBrokenDynamicProvider(t *testing.T) {
+
+	// NOTE: this had some trouble on Windows CI runner with 120
+	// sec max, but passed on a Windows VM locally. IF this
+	// continues to blow the deadline, or be flaky, we should skip
+	// on Windows.
+
+	go func() {
+		<-time.After(600 * time.Second)
+		panic("TestBrokenDynamicProvider: test timed out after 600 seconds, suspect pulumi hanging")
+	}()
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-broken"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:         true,
+		ExpectFailure: true,
+	})
 }

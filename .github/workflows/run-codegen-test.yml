@@ -37,6 +37,7 @@ jobs:
     strategy:
       matrix:
         provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes", "azure-native"]
+      fail-fast: false
     steps:
       - name: Install Go
         uses: actions/setup-go@v1
@@ -61,7 +62,7 @@ jobs:
         with:
           ref: ${{ env.PR_COMMIT_SHA }}
       - name: Test Downstream
-        uses: pulumi/action-test-provider-downstream@releases/v6
+        uses: pulumi/action-test-provider-downstream@releases/v7
         env:
           GOPROXY: "https://proxy.golang.org"
         with:

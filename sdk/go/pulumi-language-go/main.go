@@ -29,6 +29,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
@@ -198,10 +199,21 @@ func (host *goLanguageHost) GetRequiredPlugins(ctx context.Context,
 		return nil, err
 	}
 
+	args := []string{"list", "-m", "-json", "-mod=mod", "all"}
+
+	tracingSpan, _ := opentracing.StartSpanFromContext(ctx,
+		fmt.Sprintf("%s %s", gobin, strings.Join(args, " ")),
+		opentracing.Tag{Key: "component", Value: "exec.Command"},
+		opentracing.Tag{Key: "command", Value: gobin},
+		opentracing.Tag{Key: "args", Value: args})
+
 	// don't wire up stderr so non-module users don't see error output from list
-	cmd := exec.Command(gobin, "list", "-m", "-json", "-mod=mod", "all")
+	cmd := exec.Command(gobin, args...)
 	cmd.Env = os.Environ()
 	stdout, err := cmd.Output()
+
+	tracingSpan.Finish()
+
 	if err != nil {
 		logging.V(5).Infof("GetRequiredPlugins: Error discovering plugin requirements using go modules: %s", err.Error())
 		return &pulumirpc.GetRequiredPluginsResponse{}, nil

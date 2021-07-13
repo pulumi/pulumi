@@ -29,9 +29,11 @@ import (
 )
 
 type bindOptions struct {
-	allowMissingVariables bool
-	loader                schema.Loader
-	packageCache          *PackageCache
+	allowMissingVariables  bool
+	allowMissingProperties bool
+	skipResourceTypecheck  bool
+	loader                 schema.Loader
+	packageCache           *PackageCache
 }
 
 func (opts bindOptions) modelOptions() []model.BindOption {
@@ -58,6 +60,14 @@ func AllowMissingVariables(options *bindOptions) {
 	options.allowMissingVariables = true
 }
 
+func AllowMissingProperties(options *bindOptions) {
+	options.allowMissingProperties = true
+}
+
+func SkipResourceTypechecking(options *bindOptions) {
+	options.skipResourceTypecheck = true
+}
+
 func PluginHost(host plugin.Host) BindOption {
 	return Loader(schema.NewPluginLoader(host))
 }
@@ -81,6 +91,9 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 	for _, o := range opts {
 		o(&options)
 	}
+
+	// TODO: remove this once the latest pulumi-terraform-bridge has been rolled out
+	options.skipResourceTypecheck = true
 
 	if options.loader == nil {
 		cwd, err := os.Getwd()

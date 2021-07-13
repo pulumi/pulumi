@@ -276,7 +276,7 @@ export class Config {
     }
 
     /**
-     * require loads a configuration value by its given key, marking it as a secet.  If it doesn't exist, an error
+     * require loads a configuration value by its given key, marking it as a secret.  If it doesn't exist, an error
      * is thrown.
      *
      * @param key The key to lookup.

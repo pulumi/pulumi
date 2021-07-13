@@ -239,6 +239,8 @@ export function hasMonitor(): boolean {
  * getMonitor returns the current resource monitoring service client for RPC communications.
  */
 export function getMonitor(): Object | undefined {
+    // pre-emptive fail fast check for node inline programs
+    runSxSCheck();
     if (monitor === undefined) {
         const addr = options().monitorAddr;
         if (addr) {
@@ -329,6 +331,8 @@ export function serialize(): boolean {
 
  */
 function options(): Options {
+    // pre-emptive fail fast check for node inline programs
+    runSxSCheck();
     // The only option that needs parsing is the parallelism flag.  Ignore any failures.
     let parallel: number | undefined;
     const parallelOpt = process.env[nodeEnvKeys.parallel];
@@ -365,6 +369,11 @@ function options(): Options {
  * queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
  */
 export function disconnect(): Promise<void> {
+    return waitForRPCs(/*disconnectFromServers*/ true);
+}
+
+/** @internal */
+export function waitForRPCs(disconnectFromServers = false): Promise<void> {
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
         if (done !== rpcDone) {
@@ -372,7 +381,9 @@ export function disconnect(): Promise<void> {
             done = rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
-        disconnectSync();
+        if (disconnectFromServers) {
+            disconnectSync();
+        }
         return Promise.resolve();
     };
     return closeCallback();
@@ -544,4 +555,38 @@ export function monitorSupportsSecrets(): Promise<boolean> {
  */
 export async function monitorSupportsResourceReferences(): Promise<boolean> {
     return monitorSupportsFeature("resourceReferences");
+}
+
+// sxsRandomIdentifier is a module level global that is transfered to process.env.
+// the goal is to detect side by side (sxs) pulumi/pulumi situations for inline programs
+// and fail fast. See https://github.com/pulumi/pulumi/issues/7333 for details.
+const sxsRandomIdentifier = Math.random().toString();
+
+// indicates that the current runtime context is via an inline program via automation api.
+let isInline = false;
+
+/** @internal only used by the internal inline language host implementation */
+export function setInline() {
+    isInline = true;
+}
+
+const pulumiSxSEnv = "PULUMI_NODEJS_SXS_FLAG";
+
+/**
+ * runSxSCheck checks an identifier stored in the environment to detect multiple versions of pulumi.
+ * if we're running in inline mode, it will throw an error to fail fast due to global state collisions that can occur.
+ */
+function runSxSCheck() {
+    const envSxS = process.env[pulumiSxSEnv];
+    process.env[pulumiSxSEnv] = sxsRandomIdentifier;
+
+    if (!isInline) {
+        return;
+    }
+
+    // if we see a different identifier, another version of pulumi has been loaded and we should fail.
+    if (!!envSxS && envSxS !== sxsRandomIdentifier) {
+        throw new Error("Detected multiple versions of '@pulumi/pulumi' in use in an inline automation api program.\n" +
+            "Use the yarn 'resolutions' field to pin to a single version: https://github.com/pulumi/pulumi/issues/5449.");
+    }
 }

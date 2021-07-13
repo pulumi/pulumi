@@ -8,7 +8,7 @@ namespace Pulumi.Automation.Tests.Serialization
 {
     public class DynamicObjectTests
     {
-        private static LocalSerializer _serializer = new LocalSerializer();
+        private static readonly LocalSerializer _serializer = new LocalSerializer();
 
         [Fact]
         public void Dynamic_With_YamlDotNet()

@@ -148,11 +148,12 @@ func (u *tupleElementUnifier) unify(t *TupleType) {
 }
 
 func (t *TupleType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
 			// When unifying, we will unify two tuples of different length to a new tuple, where elements with matching
@@ -161,47 +162,59 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 				var unifier tupleElementUnifier
 				unifier.unify(t)
 				unifier.unify(src)
-				return unifier.conversionKind
+				return unifier.conversionKind, nil
 			}
 
 			if len(t.ElementTypes) != len(src.ElementTypes) {
-				return NoConversion
+				return NoConversion, hcl.Diagnostics{tuplesHaveDifferentLengths(t, src)}
 			}
 
 			conversionKind := SafeConversion
+			var diags hcl.Diagnostics
 			for i, dst := range t.ElementTypes {
-				if ck := dst.conversionFrom(src.ElementTypes[i], unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := dst.conversionFrom(src.ElementTypes[i], unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
 
 			// When unifying, the conversion kind of two tuple types is the lesser of the conversion in each direction.
 			if unifying {
-				conversionTo := src.conversionFrom(t, false, seen)
+				conversionTo, _ := src.conversionFrom(t, false, seen)
 				if conversionTo < conversionKind {
 					conversionKind = conversionTo
 				}
 			}
 
-			return conversionKind
+			return conversionKind, diags
 		case *ListType:
 			conversionKind := UnsafeConversion
+			var diags hcl.Diagnostics
 			for _, t := range t.ElementTypes {
-				if ck := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		case *SetType:
 			conversionKind := UnsafeConversion
+			var diags hcl.Diagnostics
 			for _, t := range t.ElementTypes {
-				if ck := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		}
-		return NoConversion
+		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
 	})
 }
 
@@ -254,7 +267,8 @@ func (t *TupleType) unify(other Type) (Type, ConversionKind) {
 			return NewSetType(elementType), conversionKind
 		default:
 			// Otherwise, prefer the tuple type.
-			return t, t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

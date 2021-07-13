@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -84,7 +85,7 @@ func (primitiveType) isType() {}
 // IsPrimitiveType returns true if the given Type is a primitive type. The primitive types are bool, int, number,
 // string, archive, asset, and any.
 func IsPrimitiveType(t Type) bool {
-	_, ok := t.(primitiveType)
+	_, ok := plainType(t).(primitiveType)
 	return ok
 }
 
@@ -133,6 +134,8 @@ func (*ArrayType) isType() {}
 
 // EnumType represents an enum.
 type EnumType struct {
+	// Package is the type's package.
+	Package *Package
 	// Token is the type's Pulumi type token.
 	Token string
 	// Comment is the description of the type, if any.
@@ -204,7 +207,26 @@ type ObjectType struct {
 	// Language specifies additional language-specific data about the object type.
 	Language map[string]interface{}
 
+	// InputShape is the input shape for this object. Only valid if IsPlainShape returns true.
+	InputShape *ObjectType
+	// PlainShape is the plain shape for this object. Only valid if IsInputShape returns true.
+	PlainShape *ObjectType
+
 	properties map[string]*Property
+}
+
+// IsPlainShape returns true if this object type is the plain shape of a (plain, input)
+// pair. The plain shape of an object does not contain *InputType values and only
+// references other plain shapes.
+func (t *ObjectType) IsPlainShape() bool {
+	return t.PlainShape == nil
+}
+
+// IsInputShape returns true if this object type is the plain shape of a (plain, input)
+// pair. The input shape of an object may contain *InputType values and may
+// reference other input shapes.
+func (t *ObjectType) IsInputShape() bool {
+	return t.PlainShape != nil
 }
 
 func (t *ObjectType) Property(name string) (*Property, bool) {
@@ -219,6 +241,9 @@ func (t *ObjectType) Property(name string) (*Property, bool) {
 }
 
 func (t *ObjectType) String() string {
+	if t.PlainShape != nil {
+		return t.Token + "•Input"
+	}
 	return t.Token
 }
 
@@ -252,6 +277,30 @@ func (t *TokenType) String() string {
 
 func (*TokenType) isType() {}
 
+// InputType represents a type that accepts either a prompt value or an output value.
+type InputType struct {
+	// ElementType is the element type of the input.
+	ElementType Type
+}
+
+func (t *InputType) String() string {
+	return fmt.Sprintf("Input<%v>", t.ElementType)
+}
+
+func (*InputType) isType() {}
+
+// OptionalType represents a type that accepts an optional value.
+type OptionalType struct {
+	// ElementType is the element type of the input.
+	ElementType Type
+}
+
+func (t *OptionalType) String() string {
+	return fmt.Sprintf("Optional<%v>", t.ElementType)
+}
+
+func (*OptionalType) isType() {}
+
 // DefaultValue describes a default value for a property.
 type DefaultValue struct {
 	// Value specifies a static default value, if any. This value must be representable in the Pulumi schema type
@@ -275,16 +324,18 @@ type Property struct {
 	ConstValue interface{}
 	// DefaultValue is the default value for the property, if any.
 	DefaultValue *DefaultValue
-	// IsRequired is true if the property must always be populated.
-	IsRequired bool
-	// IsPlain is true if the property only accepts prompt values.
-	IsPlain bool
 	// DeprecationMessage indicates whether or not the property is deprecated.
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the property.
 	Language map[string]interface{}
 	// Secret is true if the property is secret (default false).
 	Secret bool
+}
+
+// IsRequired returns true if this property is required (i.e. its type is not Optional).
+func (p *Property) IsRequired() bool {
+	_, optional := p.Type.(*OptionalType)
+	return !optional
 }
 
 // Alias describes an alias for a Pulumi resource.
@@ -321,6 +372,15 @@ type Resource struct {
 	Language map[string]interface{}
 	// IsComponent indicates whether the resource is a ComponentResource.
 	IsComponent bool
+	// Methods is the list of methods for the resource.
+	Methods []*Method
+}
+
+type Method struct {
+	// Name is the name of the method.
+	Name string
+	// Function is the function definition for the method.
+	Function *Function
 }
 
 // Function describes a Pulumi function.
@@ -339,6 +399,8 @@ type Function struct {
 	DeprecationMessage string
 	// Language specifies additional language-specific data about the function.
 	Language map[string]interface{}
+	// IsMethod indicates whether the function is a method of a resource.
+	IsMethod bool
 }
 
 // Package describes a Pulumi package.
@@ -636,6 +698,377 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 	return t, ok
 }
 
+func (pkg *Package) MarshalJSON() (bytes []byte, err error) {
+	version := ""
+	if pkg.Version != nil {
+		version = pkg.Version.String()
+	}
+
+	var metadata *MetadataSpec
+	if pkg.moduleFormat != nil {
+		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
+	}
+
+	spec := PackageSpec{
+		Name:              pkg.Name,
+		Version:           version,
+		Description:       pkg.Description,
+		Keywords:          pkg.Keywords,
+		Homepage:          pkg.Homepage,
+		License:           pkg.License,
+		Attribution:       pkg.Attribution,
+		Repository:        pkg.Repository,
+		LogoURL:           pkg.LogoURL,
+		PluginDownloadURL: pkg.PluginDownloadURL,
+		Meta:              metadata,
+		Types:             map[string]ComplexTypeSpec{},
+		Resources:         map[string]ResourceSpec{},
+		Functions:         map[string]FunctionSpec{},
+	}
+
+	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling package config: %w", err)
+	}
+
+	spec.Provider, err = pkg.marshalResource(pkg.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling provider: %w", err)
+	}
+
+	for _, t := range pkg.Types {
+		switch t := t.(type) {
+		case *ObjectType:
+			if t.IsInputShape() {
+				continue
+			}
+
+			// Use the input shape when marshaling in order to get the plain annotations right.
+			o, err := pkg.marshalObject(t.InputShape, false)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling type '%v': %w", t.Token, err)
+			}
+			spec.Types[t.Token] = o
+		case *EnumType:
+			spec.Types[t.Token] = pkg.marshalEnum(t)
+		}
+	}
+
+	for _, res := range pkg.Resources {
+		r, err := pkg.marshalResource(res)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling resource '%v': %w", res.Token, err)
+		}
+		spec.Resources[res.Token] = r
+	}
+
+	for _, fn := range pkg.Functions {
+		f, err := pkg.marshalFunction(fn)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling function '%v': %w", fn.Token, err)
+		}
+		spec.Functions[fn.Token] = f
+	}
+
+	return jsonMarshal(spec)
+}
+
+func (pkg *Package) marshalObjectData(
+	comment string, properties []*Property, language map[string]interface{}, plain bool) (ObjectTypeSpec, error) {
+
+	required, props, err := pkg.marshalProperties(properties, plain)
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
+	lang, err := marshalLanguage(language)
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
+	return ObjectTypeSpec{
+		Description: comment,
+		Properties:  props,
+		Type:        "object",
+		Required:    required,
+		Language:    lang,
+	}, nil
+}
+
+func (pkg *Package) marshalObject(t *ObjectType, plain bool) (ComplexTypeSpec, error) {
+	data, err := pkg.marshalObjectData(t.Comment, t.Properties, t.Language, plain)
+	if err != nil {
+		return ComplexTypeSpec{}, err
+	}
+	return ComplexTypeSpec{ObjectTypeSpec: data}, nil
+}
+
+func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
+	values := make([]EnumValueSpec, len(t.Elements))
+	for i, el := range t.Elements {
+		values[i] = EnumValueSpec{
+			Name:               el.Name,
+			Description:        el.Comment,
+			Value:              el.Value,
+			DeprecationMessage: el.DeprecationMessage,
+		}
+	}
+
+	return ComplexTypeSpec{
+		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType, false).Type},
+		Enum:           values,
+	}
+}
+
+func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
+	object, err := pkg.marshalObjectData(r.Comment, r.Properties, r.Language, true)
+	if err != nil {
+		return ResourceSpec{}, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	requiredInputs, inputs, err := pkg.marshalProperties(r.InputProperties, false)
+	if err != nil {
+		return ResourceSpec{}, fmt.Errorf("marshaling input properties: %w", err)
+	}
+
+	var stateInputs *ObjectTypeSpec
+	if r.StateInputs != nil {
+		o, err := pkg.marshalObject(r.StateInputs, false)
+		if err != nil {
+			return ResourceSpec{}, fmt.Errorf("marshaling state inputs: %w", err)
+		}
+		stateInputs = &o.ObjectTypeSpec
+	}
+
+	var aliases []AliasSpec
+	for _, a := range r.Aliases {
+		aliases = append(aliases, AliasSpec{
+			Name:    a.Name,
+			Project: a.Project,
+			Type:    a.Type,
+		})
+	}
+
+	var methods map[string]string
+	if len(r.Methods) != 0 {
+		methods = map[string]string{}
+		for _, m := range r.Methods {
+			methods[m.Name] = m.Function.Token
+		}
+	}
+
+	return ResourceSpec{
+		ObjectTypeSpec:     object,
+		InputProperties:    inputs,
+		RequiredInputs:     requiredInputs,
+		StateInputs:        stateInputs,
+		Aliases:            aliases,
+		DeprecationMessage: r.DeprecationMessage,
+		Language:           object.Language,
+		IsComponent:        r.IsComponent,
+		Methods:            methods,
+	}, nil
+}
+
+func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
+	var inputs *ObjectTypeSpec
+	if f.Inputs != nil {
+		ins, err := pkg.marshalObject(f.Inputs, true)
+		if err != nil {
+			return FunctionSpec{}, fmt.Errorf("marshaling inputs: %w", err)
+		}
+		inputs = &ins.ObjectTypeSpec
+	}
+
+	var outputs *ObjectTypeSpec
+	if f.Outputs != nil {
+		outs, err := pkg.marshalObject(f.Outputs, true)
+		if err != nil {
+			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+		}
+		outputs = &outs.ObjectTypeSpec
+	}
+
+	lang, err := marshalLanguage(f.Language)
+	if err != nil {
+		return FunctionSpec{}, err
+	}
+
+	return FunctionSpec{
+		Description: f.Comment,
+		Inputs:      inputs,
+		Outputs:     outputs,
+		Language:    lang,
+	}, nil
+}
+
+func (pkg *Package) marshalProperties(props []*Property, plain bool) (required []string, specs map[string]PropertySpec,
+	err error) {
+
+	if len(props) == 0 {
+		return
+	}
+
+	specs = make(map[string]PropertySpec, len(props))
+	for _, p := range props {
+		typ := p.Type
+		if t, optional := typ.(*OptionalType); optional {
+			typ = t.ElementType
+		} else {
+			required = append(required, p.Name)
+		}
+
+		var defaultValue interface{}
+		var defaultSpec *DefaultSpec
+		if p.DefaultValue != nil {
+			defaultValue = p.DefaultValue.Value
+			if len(p.DefaultValue.Environment) != 0 || len(p.DefaultValue.Language) != 0 {
+				lang, err := marshalLanguage(p.DefaultValue.Language)
+				if err != nil {
+					return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
+				}
+
+				defaultSpec = &DefaultSpec{
+					Environment: p.DefaultValue.Environment,
+					Language:    lang,
+				}
+			}
+		}
+
+		lang, err := marshalLanguage(p.Language)
+		if err != nil {
+			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
+		}
+
+		specs[p.Name] = PropertySpec{
+			TypeSpec:           pkg.marshalType(typ, plain),
+			Description:        p.Comment,
+			Const:              p.ConstValue,
+			Default:            defaultValue,
+			DefaultInfo:        defaultSpec,
+			DeprecationMessage: p.DeprecationMessage,
+			Language:           lang,
+			Secret:             p.Secret,
+		}
+	}
+	return required, specs, nil
+}
+
+// marshalType marshals the given type into a TypeSpec. If plain is true, then the type is being marshaled within a
+// plain type context (e.g. a resource output property or a function input/output object type), and therefore does not
+// require `Plain` annotations (hence the odd-looking `Plain: !plain` fields below).
+func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
+	switch t := t.(type) {
+	case *InputType:
+		el := pkg.marshalType(t.ElementType, plain)
+		el.Plain = false
+		return el
+	case *ArrayType:
+		el := pkg.marshalType(t.ElementType, plain)
+		return TypeSpec{
+			Type:  "array",
+			Items: &el,
+			Plain: !plain,
+		}
+	case *MapType:
+		el := pkg.marshalType(t.ElementType, plain)
+		return TypeSpec{
+			Type:                 "object",
+			AdditionalProperties: &el,
+			Plain:                !plain,
+		}
+	case *UnionType:
+		oneOf := make([]TypeSpec, len(t.ElementTypes))
+		for i, el := range t.ElementTypes {
+			oneOf[i] = pkg.marshalType(el, plain)
+		}
+
+		defaultType := ""
+		if t.DefaultType != nil {
+			defaultType = pkg.marshalType(t.DefaultType, plain).Type
+		}
+
+		var discriminator *DiscriminatorSpec
+		if t.Discriminator != "" {
+			discriminator = &DiscriminatorSpec{
+				PropertyName: t.Discriminator,
+				Mapping:      t.Mapping,
+			}
+		}
+
+		return TypeSpec{
+			Type:          defaultType,
+			OneOf:         oneOf,
+			Discriminator: discriminator,
+			Plain:         !plain,
+		}
+	case *ObjectType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+	case *EnumType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+	case *ResourceType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.Package, "resources", t.Token)}
+	case *TokenType:
+		var defaultType string
+		if t.UnderlyingType != nil {
+			defaultType = pkg.marshalType(t.UnderlyingType, plain).Type
+		}
+
+		return TypeSpec{
+			Type: defaultType,
+			Ref:  t.Token,
+		}
+	default:
+		switch t {
+		case BoolType:
+			return TypeSpec{Type: "boolean"}
+		case StringType:
+			return TypeSpec{Type: "string"}
+		case IntType:
+			return TypeSpec{Type: "integer"}
+		case NumberType:
+			return TypeSpec{Type: "number"}
+		case AnyType:
+			return TypeSpec{Ref: "pulumi.json#/Any"}
+		case ArchiveType:
+			return TypeSpec{Ref: "pulumi.json#/Archive"}
+		case AssetType:
+			return TypeSpec{Ref: "pulumi.json#/Asset"}
+		case JSONType:
+			return TypeSpec{Ref: "pulumi.json#/Json"}
+		default:
+			panic(fmt.Errorf("unexepcted type %v (%T)", t, t))
+		}
+	}
+}
+
+func (pkg *Package) marshalTypeRef(container *Package, section, token string) string {
+	token = url.PathEscape(token)
+
+	if container == pkg {
+		return fmt.Sprintf("#/%s/%s", section, token)
+	}
+
+	// TODO(schema): this isn't quite right--it doesn't handle schemas sourced from URLs--but it's good enough for now.
+	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name, container.Version, section, token)
+}
+
+func marshalLanguage(lang map[string]interface{}) (map[string]json.RawMessage, error) {
+	if len(lang) == 0 {
+		return nil, nil
+	}
+
+	result := map[string]json.RawMessage{}
+	for name, data := range lang {
+		bytes, err := jsonMarshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling %v language data: %w", name, err)
+		}
+		result[name] = json.RawMessage(bytes)
+	}
+	return result, nil
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
@@ -658,6 +1091,8 @@ type TypeSpec struct {
 	OneOf []TypeSpec `json:"oneOf,omitempty"`
 	// Discriminator informs the consumer of an alternative schema based on the value associated with it.
 	Discriminator *DiscriminatorSpec `json:"discriminator,omitempty"`
+	// Plain indicates that when used as an input, this type does not accept eventual values.
+	Plain bool `json:"plain,omitempty"`
 }
 
 // DiscriminatorSpec informs the consumer of an alternative schema based on the value associated with it.
@@ -709,8 +1144,8 @@ type ObjectTypeSpec struct {
 	// Required, if present, is a list of the names of an object type's required properties. These properties must be set
 	// for inputs and will always be set for outputs.
 	Required []string `json:"required,omitempty"`
-	// Plain, if present, is a list of the names of an object type's plain properties. These properties only accept
-	// prompt values.
+	// Plain, was a list of the names of an object type's plain properties. This property is ignored: instead, property
+	// types should be marked as plain where necessary.
 	Plain []string `json:"plain,omitempty"`
 	// Language specifies additional language-specific data about the type.
 	Language map[string]json.RawMessage `json:"language,omitempty"`
@@ -721,7 +1156,7 @@ type ComplexTypeSpec struct {
 	ObjectTypeSpec
 
 	// Enum, if present, is the list of possible values for an enum type.
-	Enum []*EnumValueSpec `json:"enum,omitempty"`
+	Enum []EnumValueSpec `json:"enum,omitempty"`
 }
 
 // EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
@@ -754,7 +1189,8 @@ type ResourceSpec struct {
 	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
 	// RequiredInputs is a list of the names of the resource's required input properties.
 	RequiredInputs []string `json:"requiredInputs,omitempty"`
-	// PlainInputs is a list of the names of the resource's plain input properties that only accept prompt values.
+	// PlainInputs was a list of the names of the resource's plain input properties. This property is ignored:
+	// instead, property types should be marked as plain where necessary.
 	PlainInputs []string `json:"plainInputs,omitempty"`
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that mau be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
@@ -767,6 +1203,8 @@ type ResourceSpec struct {
 	Language map[string]json.RawMessage `json:"language,omitempty"`
 	// IsComponent indicates whether the resource is a ComponentResource.
 	IsComponent bool `json:"isComponent,omitempty"`
+	// Methods maps method names to functions in this schema.
+	Methods map[string]string `json:"methods,omitempty"`
 }
 
 // FunctionSpec is the serializable form of a function description.
@@ -893,19 +1331,19 @@ func importSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 		return nil, errors.Wrap(err, "binding config")
 	}
 
-	provider, err := bindProvider(spec.Name, spec.Provider, types)
+	functions, functionTable, err := bindFunctions(spec.Functions, types)
+	if err != nil {
+		return nil, errors.Wrap(err, "binding functions")
+	}
+
+	provider, err := bindProvider(spec.Name, spec.Provider, types, functionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding provider")
 	}
 
-	resources, resourceTable, err := bindResources(spec.Resources, types)
+	resources, resourceTable, err := bindResources(spec.Resources, types, functionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "binding resources")
-	}
-
-	functions, functionTable, err := bindFunctions(spec.Functions, types)
-	if err != nil {
-		return nil, errors.Wrap(err, "binding functions")
 	}
 
 	// Build the type list.
@@ -914,7 +1352,9 @@ func importSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 		typeList = append(typeList, t)
 	}
 	for _, t := range types.objects {
+		// t is a plain shape: add it and its coresponding input shape to the type list.
 		typeList = append(typeList, t)
+		typeList = append(typeList, t.InputShape)
 	}
 	for _, t := range types.arrays {
 		typeList = append(typeList, t)
@@ -990,6 +1430,8 @@ type types struct {
 	tokens    map[string]*TokenType
 	enums     map[string]*EnumType
 	named     map[string]Type // objects and enums
+	inputs    map[Type]*InputType
+	optionals map[Type]*OptionalType
 }
 
 func (t *types) bindPrimitiveType(name string) (Type, error) {
@@ -1107,7 +1549,65 @@ func versionEquals(a, b *semver.Version) bool {
 	return a.Equals(*b)
 }
 
-func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
+func (t *types) newInputType(elementType Type) Type {
+	if _, ok := elementType.(*InputType); ok {
+		return elementType
+	}
+
+	typ, ok := t.inputs[elementType]
+	if !ok {
+		typ = &InputType{ElementType: elementType}
+		t.inputs[elementType] = typ
+	}
+	return typ
+}
+
+func (t *types) newOptionalType(elementType Type) Type {
+	if _, ok := elementType.(*OptionalType); ok {
+		return elementType
+	}
+	typ, ok := t.optionals[elementType]
+	if !ok {
+		typ = &OptionalType{ElementType: elementType}
+		t.optionals[elementType] = typ
+	}
+	return typ
+}
+
+func (t *types) newMapType(elementType Type) Type {
+	typ, ok := t.maps[elementType]
+	if !ok {
+		typ = &MapType{ElementType: elementType}
+		t.maps[elementType] = typ
+	}
+	return typ
+}
+
+func (t *types) newArrayType(elementType Type) Type {
+	typ, ok := t.arrays[elementType]
+	if !ok {
+		typ = &ArrayType{ElementType: elementType}
+		t.arrays[elementType] = typ
+	}
+	return typ
+}
+
+func (t *types) newUnionType(
+	elements []Type, defaultType Type, discriminator string, mapping map[string]string) *UnionType {
+	union := &UnionType{
+		ElementTypes:  elements,
+		DefaultType:   defaultType,
+		Discriminator: discriminator,
+		Mapping:       mapping,
+	}
+	if typ, ok := t.unions[union.String()]; ok {
+		return typ
+	}
+	t.unions[union.String()] = union
+	return union
+}
+
+func (t *types) bindTypeSpecRef(spec TypeSpec, inputShape bool) (Type, error) {
 	// Explicitly handle built-in types so that we don't have to handle this type of path during ref parsing.
 	switch spec.Ref {
 	case "pulumi.json#/Archive":
@@ -1139,6 +1639,9 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 			if !ok {
 				return nil, fmt.Errorf("type %v not found in package %v", ref.Token, ref.Package)
 			}
+			if obj, ok := typ.(*ObjectType); ok && inputShape {
+				typ = obj.InputShape
+			}
 			return typ, nil
 		case resourcesRef, providerRef:
 			typ, ok := pkg.GetResourceType(ref.Token)
@@ -1152,6 +1655,9 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 	switch ref.Kind {
 	case typesRef:
 		if typ, ok := t.objects[ref.Token]; ok {
+			if inputShape {
+				return typ.InputShape, nil
+			}
 			return typ, nil
 		}
 		if typ, ok := t.enums[ref.Token]; ok {
@@ -1161,7 +1667,7 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 		if !ok {
 			typ = &TokenType{Token: ref.Token}
 			if spec.Type != "" {
-				ut, err := t.bindType(TypeSpec{Type: spec.Type})
+				ut, err := t.bindPrimitiveType(spec.Type)
 				if err != nil {
 					return nil, err
 				}
@@ -1182,9 +1688,15 @@ func (t *types) bindTypeSpecRef(spec TypeSpec) (Type, error) {
 	}
 }
 
-func (t *types) bindType(spec TypeSpec) (Type, error) {
+func (t *types) bindType(spec TypeSpec, inputShape bool) (result Type, err error) {
+	if inputShape && !spec.Plain {
+		defer func() {
+			result = t.newInputType(result)
+		}()
+	}
+
 	if spec.Ref != "" {
-		return t.bindTypeSpecRef(spec)
+		return t.bindTypeSpecRef(spec, inputShape)
 	}
 
 	if spec.OneOf != nil {
@@ -1203,7 +1715,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 
 		elements := make([]Type, len(spec.OneOf))
 		for i, spec := range spec.OneOf {
-			e, err := t.bindType(spec)
+			e, err := t.bindType(spec, inputShape)
 			if err != nil {
 				return nil, err
 			}
@@ -1217,17 +1729,7 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			mapping = spec.Discriminator.Mapping
 		}
 
-		union := &UnionType{
-			ElementTypes:  elements,
-			DefaultType:   defaultType,
-			Discriminator: discriminator,
-			Mapping:       mapping,
-		}
-		if typ, ok := t.unions[union.String()]; ok {
-			return typ, nil
-		}
-		t.unions[union.String()] = union
-		return union, nil
+		return t.newUnionType(elements, defaultType, discriminator, mapping), nil
 	}
 
 	// nolint: goconst
@@ -1239,35 +1741,46 @@ func (t *types) bindType(spec TypeSpec) (Type, error) {
 			return nil, errors.Errorf("missing \"items\" property in type spec")
 		}
 
-		elementType, err := t.bindType(*spec.Items)
+		elementType, err := t.bindType(*spec.Items, inputShape)
 		if err != nil {
 			return nil, err
 		}
 
-		typ, ok := t.arrays[elementType]
-		if !ok {
-			typ = &ArrayType{ElementType: elementType}
-			t.arrays[elementType] = typ
-		}
-		return typ, nil
+		return t.newArrayType(elementType), nil
 	case "object":
-		elementType := StringType
+		elementType, err := t.bindType(TypeSpec{Type: "string"}, inputShape)
+		if err != nil {
+			return nil, err
+		}
 		if spec.AdditionalProperties != nil {
-			et, err := t.bindType(*spec.AdditionalProperties)
+			et, err := t.bindType(*spec.AdditionalProperties, inputShape)
 			if err != nil {
 				return nil, err
 			}
 			elementType = et
 		}
 
-		typ, ok := t.maps[elementType]
-		if !ok {
-			typ = &MapType{ElementType: elementType}
-			t.maps[elementType] = typ
-		}
-		return typ, nil
+		return t.newMapType(elementType), nil
 	default:
 		return nil, errors.Errorf("unknown type kind %v", spec.Type)
+	}
+}
+
+func plainType(typ Type) Type {
+	for {
+		switch t := typ.(type) {
+		case *InputType:
+			typ = t.ElementType
+		case *OptionalType:
+			typ = t.ElementType
+		case *ObjectType:
+			if t.PlainShape == nil {
+				return t
+			}
+			typ = t.PlainShape
+		default:
+			return t
+		}
 	}
 }
 
@@ -1276,7 +1789,7 @@ func bindConstValue(value interface{}, typ Type) (interface{}, error) {
 		return nil, nil
 	}
 
-	switch typ {
+	switch plainType(typ) {
 	case BoolType:
 		if _, ok := value.(bool); !ok {
 			return nil, errors.Errorf("invalid constant of type %T for boolean property", value)
@@ -1311,6 +1824,7 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 	}
 
 	if value != nil {
+		typ = plainType(typ)
 		switch typ := typ.(type) {
 		case *UnionType:
 			if typ.DefaultType != nil {
@@ -1367,14 +1881,14 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 
 // bindProperties binds the map of property specs and list of required properties into a sorted list of properties and
 // a lookup table.
-func (t *types) bindProperties(properties map[string]PropertySpec, required []string,
-	plain []string) ([]*Property, map[string]*Property, error) {
+func (t *types) bindProperties(properties map[string]PropertySpec,
+	required []string, inputShape bool) ([]*Property, map[string]*Property, error) {
 
 	// Bind property types and constant or default values.
 	propertyMap := map[string]*Property{}
 	var result []*Property
 	for name, spec := range properties {
-		typ, err := t.bindType(spec.TypeSpec)
+		typ, err := t.bindType(spec.TypeSpec, inputShape)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "error binding type for property %q", name)
 		}
@@ -1397,7 +1911,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 		p := &Property{
 			Name:               name,
 			Comment:            spec.Description,
-			Type:               typ,
+			Type:               t.newOptionalType(typ),
 			ConstValue:         cv,
 			DefaultValue:       dv,
 			DeprecationMessage: spec.DeprecationMessage,
@@ -1414,16 +1928,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 		if !ok {
 			return nil, nil, errors.Errorf("unknown required property %q", name)
 		}
-		p.IsRequired = true
-	}
-
-	// Compute plain properties.
-	for _, name := range plain {
-		p, ok := propertyMap[name]
-		if !ok {
-			return nil, nil, errors.Errorf("unknown plain property %q", name)
-		}
-		p.IsPlain = true
+		p.Type = p.Type.(*OptionalType).ElementType
 	}
 
 	sort.Slice(result, func(i, j int) bool {
@@ -1433,14 +1938,17 @@ func (t *types) bindProperties(properties map[string]PropertySpec, required []st
 	return result, propertyMap, nil
 }
 
-func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ObjectTypeSpec,
-	supportsPlainProperties bool) error {
-
-	if !supportsPlainProperties && len(spec.Plain) > 0 {
-		return errors.New("plain cannot be specified")
+func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec ObjectTypeSpec) error {
+	if len(spec.Plain) > 0 {
+		return errors.New("plain has been removed; the property type must be marked as plain instead")
 	}
 
-	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required, spec.Plain)
+	properties, propertyMap, err := t.bindProperties(spec.Properties, spec.Required, false)
+	if err != nil {
+		return err
+	}
+
+	inputProperties, inputPropertyMap, err := t.bindProperties(spec.Properties, spec.Required, true)
 	if err != nil {
 		return err
 	}
@@ -1456,12 +1964,21 @@ func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec Object
 	obj.Language = language
 	obj.Properties = properties
 	obj.properties = propertyMap
+
+	obj.InputShape.Package = t.pkg
+	obj.InputShape.Token = token
+	obj.InputShape.Comment = spec.Description
+	obj.InputShape.Language = language
+	obj.InputShape.Properties = inputProperties
+	obj.InputShape.properties = inputPropertyMap
+
 	return nil
 }
 
-func (t *types) bindObjectType(token string, spec ObjectTypeSpec, supportsPlainProperties bool) (*ObjectType, error) {
+func (t *types) bindObjectType(token string, spec ObjectTypeSpec) (*ObjectType, error) {
 	obj := &ObjectType{}
-	if err := t.bindObjectTypeDetails(obj, token, spec, supportsPlainProperties); err != nil {
+	obj.InputShape = &ObjectType{PlainShape: obj}
+	if err := t.bindObjectTypeDetails(obj, token, spec); err != nil {
 		return nil, err
 	}
 	return obj, nil
@@ -1481,7 +1998,7 @@ func (t *types) bindResourceType(token string) (*ResourceType, error) {
 }
 
 func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTypeSpec) error {
-	typ, err := t.bindType(TypeSpec{Type: spec.Type})
+	typ, err := t.bindPrimitiveType(spec.Type)
 	if err != nil {
 		return err
 	}
@@ -1491,6 +2008,7 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 		return err
 	}
 
+	enum.Package = t.pkg
 	enum.Token = token
 	enum.Elements = values
 	enum.ElementType = typ
@@ -1499,7 +2017,7 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 	return nil
 }
 
-func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, error) {
+func (t *types) bindEnumValues(values []EnumValueSpec, typ Type) ([]*Enum, error) {
 	var enums []*Enum
 
 	errorMessage := func(val interface{}, expectedType string) error {
@@ -1551,7 +2069,6 @@ func (t *types) bindEnumType(token string, spec ComplexTypeSpec) (*EnumType, err
 }
 
 func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loader) (*types, error) {
-
 	typs := &types{
 		pkg:       pkg,
 		loader:    loader,
@@ -1563,6 +2080,8 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 		tokens:    map[string]*TokenType{},
 		enums:     map[string]*EnumType{},
 		named:     map[string]Type{},
+		inputs:    map[Type]*InputType{},
+		optionals: map[Type]*OptionalType{},
 	}
 
 	// Declare object and enum types before processing properties.
@@ -1573,6 +2092,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 			// object type is its token. While this doesn't affect object types directly, it breaks the interning of types
 			// that reference object types (e.g. arrays, maps, unions)
 			typ := &ObjectType{Token: token}
+			typ.InputShape = &ObjectType{Token: token, PlainShape: typ}
 			typs.objects[token] = typ
 			typs.named[token] = typ
 		} else if len(spec.Enum) > 0 {
@@ -1596,7 +2116,7 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 	for token, spec := range complexTypes {
 		if spec.Type == "object" {
 			if err := typs.bindObjectTypeDetails(
-				typs.objects[token], token, spec.ObjectTypeSpec, true /*supportsPlainProperties*/); err != nil {
+				typs.objects[token], token, spec.ObjectTypeSpec); err != nil {
 				return nil, errors.Wrapf(err, "failed to bind type %s", token)
 			}
 		}
@@ -1605,36 +2125,84 @@ func bindTypes(pkg *Package, complexTypes map[string]ComplexTypeSpec, loader Loa
 	return typs, nil
 }
 
+func bindMethods(resourceToken string, methods map[string]string,
+	functionTable map[string]*Function) ([]*Method, error) {
+
+	names := make([]string, 0, len(methods))
+	for name := range methods {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	result := make([]*Method, 0, len(methods))
+	for _, name := range names {
+		token := methods[name]
+		function, ok := functionTable[token]
+		if !ok {
+			return nil, errors.Errorf("unknown function %s for method %s", token, name)
+		}
+		if function.IsMethod {
+			return nil, errors.Errorf("function %s for method %s is already a method", token, name)
+		}
+		idx := strings.LastIndex(function.Token, "/")
+		if idx == -1 || function.Token[:idx] != resourceToken {
+			return nil, errors.Errorf("invalid function token format %s for method %s", token, name)
+		}
+		if function.Inputs == nil || function.Inputs.Properties == nil || len(function.Inputs.Properties) == 0 ||
+			function.Inputs.Properties[0].Name != "__self__" {
+			return nil, errors.Errorf("function %s for method %s is missing __self__ parameter", token, name)
+		}
+		function.IsMethod = true
+		result = append(result, &Method{
+			Name:     name,
+			Function: function,
+		})
+	}
+	return result, nil
+}
+
 func bindConfig(spec ConfigSpec, types *types) ([]*Property, error) {
-	properties, _, err := types.bindProperties(spec.Variables, spec.Required, nil)
+	properties, _, err := types.bindProperties(spec.Variables, spec.Required, false)
 	return properties, err
 }
 
-func bindResource(token string, spec ResourceSpec, types *types) (*Resource, error) {
+func bindResource(token string, spec ResourceSpec, types *types,
+	functionTable map[string]*Function) (*Resource, error) {
 	if len(spec.Plain) > 0 {
-		return nil, errors.New("plain cannot be specified on resources")
+		return nil, errors.New("plain has been removed; property types must be marked as plain instead")
 	}
-	if len(spec.PlainInputs) > 0 && !spec.IsComponent {
-		return nil, errors.New("plainInputs can only be specified on component resources")
+	if len(spec.PlainInputs) > 0 {
+		return nil, errors.New("plainInputs has been removed; individual property types must be marked as plain instead")
 	}
 
-	properties, _, err := types.bindProperties(spec.Properties, spec.Required, nil)
+	properties, _, err := types.bindProperties(spec.Properties, spec.Required, false)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
 	}
 
-	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs, spec.PlainInputs)
+	inputProperties, _, err := types.bindProperties(spec.InputProperties, spec.RequiredInputs, true)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to bind properties")
+	}
+
+	methods, err := bindMethods(token, spec.Methods, functionTable)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to bind methods")
+	}
+
+	for _, method := range methods {
+		if _, ok := spec.Properties[method.Name]; ok {
+			return nil, errors.Errorf("property and method have the same name %s", method.Name)
+		}
 	}
 
 	var stateInputs *ObjectType
 	if spec.StateInputs != nil {
-		si, err := types.bindObjectType(token+"Args", *spec.StateInputs, false /*supportsPlainProperties*/)
+		si, err := types.bindObjectType(token+"Args", *spec.StateInputs)
 		if err != nil {
 			return nil, errors.Wrap(err, "error binding inputs")
 		}
-		stateInputs = si
+		stateInputs = si.InputShape
 	}
 
 	var aliases []*Alias
@@ -1658,11 +2226,13 @@ func bindResource(token string, spec ResourceSpec, types *types) (*Resource, err
 		DeprecationMessage: spec.DeprecationMessage,
 		Language:           language,
 		IsComponent:        spec.IsComponent,
+		Methods:            methods,
 	}, nil
 }
 
-func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, error) {
-	res, err := bindResource("pulumi:providers:"+pkgName, spec, types)
+func bindProvider(pkgName string, spec ResourceSpec, types *types,
+	functionTable map[string]*Function) (*Resource, error) {
+	res, err := bindResource("pulumi:providers:"+pkgName, spec, types, functionTable)
 	if err != nil {
 		return nil, errors.Wrap(err, "error binding provider")
 	}
@@ -1671,15 +2241,23 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, e
 	// Since non-primitive provider configuration is currently JSON serialized, we can't handle it without
 	// modifying the path by which it's looked up. As a temporary workaround to enable access to config which
 	// values which are primitives, we'll simply remove any properties for the provider resource which are not
-	// here, before we generate the provider code.
-	var primitiveProperties []*Property
+	// strings, or types with an underlying type of string, before we generate the provider code.
+	var stringProperties []*Property
 	for _, prop := range res.Properties {
-		if prop.Type != stringType {
-			continue
+		typ := plainType(prop.Type)
+		if tokenType, isTokenType := typ.(*TokenType); isTokenType {
+			if tokenType.UnderlyingType != stringType {
+				continue
+			}
+		} else {
+			if typ != stringType {
+				continue
+			}
 		}
-		primitiveProperties = append(primitiveProperties, prop)
+
+		stringProperties = append(stringProperties, prop)
 	}
-	res.Properties = primitiveProperties
+	res.Properties = stringProperties
 
 	types.resources[res.Token] = &ResourceType{
 		Token:    res.Token,
@@ -1689,11 +2267,12 @@ func bindProvider(pkgName string, spec ResourceSpec, types *types) (*Resource, e
 	return res, nil
 }
 
-func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, map[string]*Resource, error) {
+func bindResources(specs map[string]ResourceSpec, types *types,
+	functionTable map[string]*Function) ([]*Resource, map[string]*Resource, error) {
 	resourceTable := map[string]*Resource{}
 	var resources []*Resource
 	for token, spec := range specs {
-		res, err := bindResource(token, spec, types)
+		res, err := bindResource(token, spec, types, functionTable)
 		if err != nil {
 			return nil, nil, errors.Wrapf(err, "error binding resource %v", token)
 		}
@@ -1723,7 +2302,7 @@ func bindResources(specs map[string]ResourceSpec, types *types) ([]*Resource, ma
 func bindFunction(token string, spec FunctionSpec, types *types) (*Function, error) {
 	var inputs *ObjectType
 	if spec.Inputs != nil {
-		ins, err := types.bindObjectType(token+"Args", *spec.Inputs, false /*supportsPlainProperties*/)
+		ins, err := types.bindObjectType(token+"Args", *spec.Inputs)
 		if err != nil {
 			return nil, errors.Wrap(err, "error binding inputs")
 		}
@@ -1732,7 +2311,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, err
 
 	var outputs *ObjectType
 	if spec.Outputs != nil {
-		outs, err := types.bindObjectType(token+"Result", *spec.Outputs, false /*supportsPlainProperties*/)
+		outs, err := types.bindObjectType(token+"Result", *spec.Outputs)
 		if err != nil {
 			return nil, errors.Wrap(err, "error binding inputs")
 		}
@@ -1772,4 +2351,15 @@ func bindFunctions(specs map[string]FunctionSpec, types *types) ([]*Function, ma
 	})
 
 	return functions, functionTable, nil
+}
+
+func jsonMarshal(v interface{}) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }

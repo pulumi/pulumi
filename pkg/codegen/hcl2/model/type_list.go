@@ -88,11 +88,12 @@ func (t *ListType) AssignableFrom(src Type) bool {
 // to T. If any element type is unsafely convertible to T and no element type is safely convertible to T, the
 // conversion is unsafe. Otherwise, no conversion exists.
 func (t *ListType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
 		switch src := src.(type) {
 		case *ListType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
@@ -100,14 +101,18 @@ func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *TupleType:
 			conversionKind := SafeConversion
+			var diags hcl.Diagnostics
 			for _, src := range src.ElementTypes {
-				if ck := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
-					conversionKind = ck
+				if ck, why := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
+					conversionKind, diags = ck, why
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		}
-		return NoConversion
+		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
 	})
 }
 
@@ -143,7 +148,8 @@ func (t *ListType) unify(other Type) (Type, ConversionKind) {
 			return NewListType(elementType), conversionKind
 		default:
 			// Prefer the list type.
-			return t, t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

@@ -87,6 +87,10 @@ type Provider interface {
 		tok tokens.ModuleMember,
 		args resource.PropertyMap,
 		onNext func(resource.PropertyMap) error) ([]CheckFailure, error)
+	// Call dynamically executes a method in the provider associated with a component resource.
+	Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo,
+		options CallOptions) (CallResult, error)
+
 	// GetPluginInfo returns this plugin's information.
 	GetPluginInfo() (workspace.PluginInfo, error)
 
@@ -151,6 +155,28 @@ func (d DiffKind) IsReplace() bool {
 	}
 }
 
+// AsReplace converts a DiffKind into the equivalent replacement if it not already
+// a replacement.
+func (d DiffKind) AsReplace() DiffKind {
+	switch d {
+	case DiffAdd:
+		return DiffAddReplace
+	case DiffAddReplace:
+		return DiffAddReplace
+	case DiffDelete:
+		return DiffDeleteReplace
+	case DiffDeleteReplace:
+		return DiffDeleteReplace
+	case DiffUpdate:
+		return DiffUpdateReplace
+	case DiffUpdateReplace:
+		return DiffUpdateReplace
+	default:
+		contract.Failf("Unknown diff kind %v", int(d))
+		return DiffUpdateReplace
+	}
+}
+
 const (
 	// DiffAdd indicates that the property was added.
 	DiffAdd DiffKind = 0
@@ -170,6 +196,15 @@ const (
 type PropertyDiff struct {
 	Kind      DiffKind // The kind of diff.
 	InputDiff bool     // True if this is a diff between old and new inputs rather than old state and new inputs.
+}
+
+// ToReplace converts the kind of a PropertyDiff into the equivalent replacement if it not already
+// a replacement.
+func (p PropertyDiff) ToReplace() PropertyDiff {
+	return PropertyDiff{
+		InputDiff: p.InputDiff,
+		Kind:      p.Kind.AsReplace(),
+	}
 }
 
 // DiffResult indicates whether an operation should replace or update an existing resource.
@@ -222,12 +257,13 @@ type ReadResult struct {
 
 // ConstructInfo contains all of the information required to register resources as part of a call to Construct.
 type ConstructInfo struct {
-	Project        string                // the project name housing the program being run.
-	Stack          string                // the stack name being evaluated.
-	Config         map[config.Key]string // the configuration variables to apply before running.
-	DryRun         bool                  // true if we are performing a dry-run (preview).
-	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
-	MonitorAddress string                // the RPC address to the host resource monitor.
+	Project          string                // the project name housing the program being run.
+	Stack            string                // the stack name being evaluated.
+	Config           map[config.Key]string // the configuration variables to apply before running.
+	ConfigSecretKeys []config.Key          // the configuration keys that have secret values.
+	DryRun           bool                  // true if we are performing a dry-run (preview).
+	Parallel         int                   // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress   string                // the RPC address to the host resource monitor.
 }
 
 // ConstructOptions captures options for a call to Construct.
@@ -252,4 +288,30 @@ type ConstructResult struct {
 	Outputs resource.PropertyMap
 	// The resources that each output property depends on.
 	OutputDependencies map[resource.PropertyKey][]resource.URN
+}
+
+// CallInfo contains all of the information required to register resources as part of a call to Construct.
+type CallInfo struct {
+	Project        string                // the project name housing the program being run.
+	Stack          string                // the stack name being evaluated.
+	Config         map[config.Key]string // the configuration variables to apply before running.
+	DryRun         bool                  // true if we are performing a dry-run (preview).
+	Parallel       int                   // the degree of parallelism for resource operations (<=1 for serial).
+	MonitorAddress string                // the RPC address to the host resource monitor.
+}
+
+// CallOptions captures options for a call to Call.
+type CallOptions struct {
+	// ArgDependencies is a map from argument keys to a list of resources that the argument depends on.
+	ArgDependencies map[resource.PropertyKey][]resource.URN
+}
+
+// CallResult is the result of a call to Call.
+type CallResult struct {
+	// The returned values, if the call was successful.
+	Return resource.PropertyMap
+	// A map from return value keys to the dependencies of the return value.
+	ReturnDependencies map[resource.PropertyKey][]resource.URN
+	// The failures if any arguments didn't pass verification.
+	Failures []CheckFailure
 }

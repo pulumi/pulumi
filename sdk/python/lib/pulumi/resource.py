@@ -381,6 +381,13 @@ class ResourceOptions:
     The URN of a previously-registered resource of this type to read from the engine.
     """
 
+    replace_on_changes: Optional[List[str]]
+    """
+    Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes
+    to any properties will force a replacement.  Initialization errors from previous deployments will
+    require replacement instead of update only if `"*"` is passed.
+    """
+
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
@@ -397,7 +404,8 @@ class ResourceOptions:
                  import_: Optional[str] = None,
                  custom_timeouts: Optional['CustomTimeouts'] = None,
                  transformations: Optional[List[ResourceTransformation]] = None,
-                 urn: Optional[str] = None) -> None:
+                 urn: Optional[str] = None,
+                 replace_on_changes: Optional[List[str]] = None) -> None:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
@@ -430,6 +438,9 @@ class ResourceOptions:
         :param Optional[List[ResourceTransformation]] transformations: If provided, a list of transformations to apply
                to this resource during construction.
         :param Optional[str] urn: The URN of a previously-registered resource of this type to read from the engine.
+        :param Optional[List[str]] replace_on_changes: Changes to any of these property paths will force a replacement.
+               If this list includes `"*"`, changes to any properties will force a replacement.  Initialization errors
+               from previous deployments will require replacement instead of update only if `"*"` is passed.
         """
 
         # Expose 'merge' again this this object, but this time as an instance method.
@@ -452,6 +463,7 @@ class ResourceOptions:
         self.import_ = import_
         self.transformations = transformations
         self.urn = urn
+        self.replace_on_changes = replace_on_changes
 
         if depends_on is not None:
             for dep in depends_on:
@@ -511,6 +523,7 @@ class ResourceOptions:
         dest.providers = _merge_lists(dest.providers, source.providers)
         dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
+        dest.replace_on_changes = _merge_lists(dest.replace_on_changes, source.replace_on_changes)
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
         dest.additional_secret_outputs = _merge_lists(dest.additional_secret_outputs, source.additional_secret_outputs)
         dest.transformations = _merge_lists(dest.transformations, source.transformations)
@@ -583,6 +596,16 @@ class Resource:
     _providers: Mapping[str, 'ProviderResource']
     """
     The set of providers to use for child resources. Keyed by package name (e.g. "aws").
+    """
+
+    _provider: Optional['ProviderResource']
+    """
+    The specified provider or provider determined from the parent for custom resources, or None.
+    """
+
+    _version: Optional[str]
+    """
+    The specified provider version or None.
     """
 
     _protect: bool
@@ -729,6 +752,8 @@ class Resource:
             self._providers = {**self._providers, **providers}
 
         self._protect = bool(opts.protect)
+        self._provider = opts.provider if custom else None
+        self._version = opts.version
 
         # Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we
         # do not know the default `name` and `type` to apply until we are inside the resource
@@ -816,12 +841,6 @@ class CustomResource(Resource):
     dynamically loaded plugin for the defining package.
     """
 
-    __pulumi_type: str
-    """
-    Private field containing the type ID for this object. Useful for implementing `isInstance` on
-    classes that inherit from `CustomResource`.
-    """
-
     def __init__(self,
                  t: str,
                  name: str,
@@ -837,7 +856,6 @@ class CustomResource(Resource):
         :param bool dependency: True if this is a synthetic resource used internally for dependency tracking.
         """
         Resource.__init__(self, t, name, True, props, opts, False, dependency)
-        self.__pulumi_type = t
 
     @property
     def id(self) -> 'Output[str]':

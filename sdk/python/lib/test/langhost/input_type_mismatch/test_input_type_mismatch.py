@@ -23,9 +23,9 @@ class InputTypeMismatchTest(LanghostTest):
             program=path.join(self.base_path(), "input_type_mismatch"),
             expected_resource_count=2)
 
-    def register_resource(self, ctx, dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect, _provider, _property_deps, _delete_before_replace,
-                          _ignore_changes, _version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         self.assertEqual("test:index:MyResource", ty)
 
         policy = _resource["policy"]
