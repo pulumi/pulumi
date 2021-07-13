@@ -2,6 +2,7 @@
 ### Improvements
 
 - [sdk/go] - Add pulumi.Getenv() convenience function
+  [#7491](https://github.com/pulumi/pulumi/pull/7491)
 
 - [sdk/nodejs] - Support for calling resource methods
   [#7377](https://github.com/pulumi/pulumi/pull/7377)
