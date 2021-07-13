@@ -1,0 +1,16 @@
+version: "0.0.1"
+name: hyphenated-package
+resources:
+  hyphenated-package::Resource:
+    properties:
+      foo:
+        type: string
+    inputProperties:
+      foo:
+        type: string
+    type: object
+language:
+  csharp: {}
+  go: {}
+  nodejs: {}
+  python: {}
