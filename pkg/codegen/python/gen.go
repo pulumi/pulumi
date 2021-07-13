@@ -2021,8 +2021,6 @@ func (mod *modContext) genInitDocstring(w io.Writer, comment string, properties 
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
-	fmt.Fprintln(b, "# BUILT BY genInitDocstring()")
-
 	// If this type has documentation, write it at the top of the docstring.
 	if comment != "" {
 		fmt.Fprintln(b, comment)
