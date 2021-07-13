@@ -1,0 +1,44 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example::Resource": {
+      "inoutProperties": {
+        "foo": {
+          "type": "number"
+        },
+        "bar": {
+          "type": "string"
+        }
+      },
+      "requiredInouts": ["bar"],
+      "type": "object"
+    },
+    "example::OtherResource": {
+      "isComponent": true,
+      "inoutProperties": {
+        "foo": {
+          "type": "number"
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "integer"
+        }
+      },
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      },
+      "requiredInouts": ["foo"],
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {},
+    "nodejs": {},
+    "python": {}
+  }
+}

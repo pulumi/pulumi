@@ -1,0 +1,31 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "resources": {
+    "example::Resource": {
+      "isComponent": true,
+      "inoutProperties": {
+        "baz": {
+          "$ref": "#/resources/example::Resource"
+        }
+      },
+      "inputProperties": {
+        "bar": {
+          "type": "integer"
+        }
+      },
+      "properties": {
+        "baz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {},
+    "go": {},
+    "nodejs": {},
+    "python": {}
+  }
+}
