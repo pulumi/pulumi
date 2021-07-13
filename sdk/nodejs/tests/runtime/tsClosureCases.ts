@@ -6128,6 +6128,7 @@ return function () { const v = testConfig.get("TestingKey1"); console.log(v); };
            func: function () { const v = new deploymentOnlyModule.Config("test").get("TestingKey2"); console.log(v); },
            expectText: `exports.handler = __f0;
 
+var __deploymentOnlyModule = {};
 var __f1_prototype = {};
 Object.defineProperty(__f1_prototype, "constructor", { configurable: true, writable: true, value: __f1 });
 var __config = {["test:TestingKey1"]: "TestingValue1", ["test:TestingKey2"]: "TestingValue2"};
@@ -6135,7 +6136,10 @@ var __runtimeConfig_1 = {getConfig: __getConfig};
 Object.defineProperty(__f1_prototype, "get", { configurable: true, writable: true, value: __f2 });
 Object.defineProperty(__f1_prototype, "fullKey", { configurable: true, writable: true, value: __f3 });
 __f1.prototype = __f1_prototype;
-var __deploymentOnlyModule = {Config: __f1};
+var __m = {};
+Object.defineProperty(__m, "__esModule", { value: true });
+__m.Config = __f1;
+Object.defineProperty(__deploymentOnlyModule, "Config", { enumerable: true, get: __f4 });
 
 function __f1(__0) {
   return (function() {
@@ -6187,6 +6191,16 @@ function __f3(__0) {
 return function /*fullKey*/(key) {
         return this.name + ":" + key;
     };
+
+    }
+  }).apply(undefined, undefined).apply(this, arguments);
+}
+
+function __f4() {
+  return (function() {
+    with({ m: __m, k: "Config" }) {
+
+return function () { return m[k]; };
 
     }
   }).apply(undefined, undefined).apply(this, arguments);
@@ -6625,7 +6639,7 @@ return function () { console.log(regex); foo(); };
             });
         }
         else if (test.factoryFunc) {
-            return await runtime.serializeFunction(test.factoryFunc!, { 
+            return await runtime.serializeFunction(test.factoryFunc!, {
               allowSecrets: test.allowSecrets,
               isFactoryFunction: true,
             });
