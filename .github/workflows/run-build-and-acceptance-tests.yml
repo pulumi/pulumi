@@ -158,6 +158,13 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: gotestyourself/gotestsum
+      - name: Install goteststats
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goteststats
+          tag: v0.0.2
+      - name: Verify goteststats
+        run: goteststats --help
       - name: Ensure
         run: |
           make ensure
@@ -186,8 +193,10 @@ jobs:
         if: always()
         with:
           files: test-results/**/*.xml
-      - name: Summarize Test Timings
-        run: python scripts/test_timings.py
+      - name: Summarize Test Time by Package
+        run: goteststats -statistic pkg-time test-results/*.json
+      - name: Summarize Test Times by Indivudal Test
+        run: goteststats -statistic test-time test-results/*.json
 
 
   windows-build:
