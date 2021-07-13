@@ -211,15 +211,16 @@ func TestEnumUsage(t *testing.T) {
 		}, pulumi.WithMocks("project", "stack", mocks(1))))
 	})
 
+	// Tests that the enum output values
 	t.Run("EnumOutputs", func(t *testing.T) {
 		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
 			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{
 				Container: plant.ContainerArgs{
-					Color:    pulumi.String("Magenta").ToStringOutput(),
+					Color:    plant.ContainerColor("Magenta").ToContainerColorOutput().ToStringPtrOutput(),
 					Material: pulumi.String("ceramic").ToStringOutput(),
 					Size:     plant.ContainerSize(22).ToContainerSizeOutput(),
 				},
-				Farm: tree.Farm_Plants_R_Us.ToStringPtrOutput(),
+				Farm: tree.Farm_Plants_R_Us.ToFarmPtrOutput().ToStringPtrOutput(),
 				Type: tree.RubberTreeVarietyBurgundy.ToRubberTreeVarietyOutput(),
 			})
 			require.NoError(t, err)
