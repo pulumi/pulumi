@@ -16,6 +16,9 @@ CHANGELOG
 - [sdk/python] - Fix an issue where dependency keys were incorrectly translates to camelcase
   [#7443](https://github.com/pulumi/pulumi/pull/7443)
 
+- [cli] - Fix rendering of diffs for resource without DetailedDiffs
+  [#7500](https://github.com/pulumi/pulumi/pull/7500)
+
 ## 3.6.0 (2021-06-30)
 
 ### Improvements
