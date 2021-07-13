@@ -154,10 +154,10 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
-      - name: Setup gotestsum
-        uses: autero1/action-gotestsum@v0.1.0
+      - name: Install gotestsum
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
-          gotestsum_version: 1.6.4
+          repo: gotestyourself/gotestsum
       - name: Ensure
         run: |
           make ensure
