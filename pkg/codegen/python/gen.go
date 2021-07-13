@@ -1962,7 +1962,7 @@ func (mod *modContext) genResourceClassDocstring(w io.Writer, res *schema.Resour
 	printComment(w, b.String(), "        ")
 }
 
-// genInitDocstring emits the docstring for the __init__ method of the given resource type.
+// `genResourceInitDocstring` emits the docstring for the __init__ method of the given resource type.
 //
 // The docstring we generate here describes the arguments to the class's
 // constructor. The format of the docstring is in "Sphinx form":
@@ -2016,7 +2016,7 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	printComment(w, b.String(), "        ")
 }
 
-// For resources, consider genResourceInitDocstring instead.
+// For resources, consider `genResourceInitDocstring` instead.
 func (mod *modContext) genInitDocstring(w io.Writer, comment string, properties []*schema.Property) {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
