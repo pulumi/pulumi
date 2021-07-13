@@ -162,7 +162,7 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: t0yv0/goteststats
-          tag: 0.0.2
+          tag: v0.0.3
       - name: Verify goteststats
         run: goteststats --help
       - name: Ensure
