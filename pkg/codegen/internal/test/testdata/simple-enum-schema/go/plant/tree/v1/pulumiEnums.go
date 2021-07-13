@@ -93,8 +93,8 @@ func (o DiameterOutput) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
 
 func (o DiameterOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e Diameter) *float64 {
-		s := float64(e)
-		return &s
+		v := float64(e)
+		return &v
 	}).(pulumi.Float64PtrOutput)
 }
 
@@ -121,8 +121,8 @@ func (o DiameterPtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pu
 		if e == nil {
 			return nil
 		}
-		s := float64(*e)
-		return &s
+		v := float64(*e)
+		return &v
 	}).(pulumi.Float64PtrOutput)
 }
 
@@ -257,8 +257,8 @@ func (o FarmOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 
 func (o FarmOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e Farm) *string {
-		s := string(e)
-		return &s
+		v := string(e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -285,8 +285,8 @@ func (o FarmPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.
 		if e == nil {
 			return nil
 		}
-		s := string(*e)
-		return &s
+		v := string(*e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -426,8 +426,8 @@ func (o RubberTreeVarietyOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 
 func (o RubberTreeVarietyOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e RubberTreeVariety) *string {
-		s := string(e)
-		return &s
+		v := string(e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -454,8 +454,8 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 		if e == nil {
 			return nil
 		}
-		s := string(*e)
-		return &s
+		v := string(*e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -636,8 +636,8 @@ func (o TreeSizeOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 
 func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e TreeSize) *string {
-		s := string(e)
-		return &s
+		v := string(e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -664,8 +664,8 @@ func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pul
 		if e == nil {
 			return nil
 		}
-		s := string(*e)
-		return &s
+		v := string(*e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 

@@ -782,7 +782,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	case "number":
 		goElementType = "float64"
 	}
-	asFuncName := Title(strings.Replace(elementType, "pulumi.", "", -1))
+	asFuncName := strings.TrimPrefix(elementType, "pulumi.")
 
 	fmt.Fprintf(w, "type %s %s\n\n", name, goElementType)
 
@@ -895,8 +895,8 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementType, goElem
 
 	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[3]sPtrOutput {\n", name, asFuncName, elementType)
 	fmt.Fprintf(w, "return o.ApplyTWithContext(ctx, func(_ context.Context, e %s) *%s {\n", name, goElementType)
-	fmt.Fprintf(w, "s := %s(e)\n", goElementType)
-	fmt.Fprintf(w, "return &s\n")
+	fmt.Fprintf(w, "v := %s(e)\n", goElementType)
+	fmt.Fprintf(w, "return &v\n")
 	fmt.Fprintf(w, "}).(%sPtrOutput)\n", elementType)
 	fmt.Fprint(w, "}\n\n")
 
@@ -924,8 +924,8 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementType, goElem
 	fmt.Fprintf(w, "if e == nil {\n")
 	fmt.Fprintf(w, "return nil\n")
 	fmt.Fprintf(w, "}\n")
-	fmt.Fprintf(w, "s := %s(*e)\n", goElementType)
-	fmt.Fprintf(w, "return &s\n")
+	fmt.Fprintf(w, "v := %s(*e)\n", goElementType)
+	fmt.Fprintf(w, "return &v\n")
 	fmt.Fprintf(w, "}).(%sPtrOutput)\n", elementType)
 	fmt.Fprint(w, "}\n\n")
 

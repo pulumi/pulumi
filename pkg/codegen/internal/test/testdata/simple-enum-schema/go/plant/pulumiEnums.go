@@ -93,8 +93,8 @@ func (o ContainerBrightnessOutput) ToFloat64PtrOutput() pulumi.Float64PtrOutput 
 
 func (o ContainerBrightnessOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pulumi.Float64PtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e ContainerBrightness) *float64 {
-		s := float64(e)
-		return &s
+		v := float64(e)
+		return &v
 	}).(pulumi.Float64PtrOutput)
 }
 
@@ -121,8 +121,8 @@ func (o ContainerBrightnessPtrOutput) ToFloat64PtrOutputWithContext(ctx context.
 		if e == nil {
 			return nil
 		}
-		s := float64(*e)
-		return &s
+		v := float64(*e)
+		return &v
 	}).(pulumi.Float64PtrOutput)
 }
 
@@ -259,8 +259,8 @@ func (o ContainerColorOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 
 func (o ContainerColorOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e ContainerColor) *string {
-		s := string(e)
-		return &s
+		v := string(e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -287,8 +287,8 @@ func (o ContainerColorPtrOutput) ToStringPtrOutputWithContext(ctx context.Contex
 		if e == nil {
 			return nil
 		}
-		s := string(*e)
-		return &s
+		v := string(*e)
+		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
@@ -426,8 +426,8 @@ func (o ContainerSizeOutput) ToIntPtrOutput() pulumi.IntPtrOutput {
 
 func (o ContainerSizeOutput) ToIntPtrOutputWithContext(ctx context.Context) pulumi.IntPtrOutput {
 	return o.ApplyTWithContext(ctx, func(_ context.Context, e ContainerSize) *int {
-		s := int(e)
-		return &s
+		v := int(e)
+		return &v
 	}).(pulumi.IntPtrOutput)
 }
 
@@ -454,8 +454,8 @@ func (o ContainerSizePtrOutput) ToIntPtrOutputWithContext(ctx context.Context) p
 		if e == nil {
 			return nil
 		}
-		s := int(*e)
-		return &s
+		v := int(*e)
+		return &v
 	}).(pulumi.IntPtrOutput)
 }
 
