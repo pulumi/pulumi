@@ -42,10 +42,4 @@ type ResolvedSimple<T> = T extends primitive
 
 interface ResolvedArray<T> extends Array<Resolved<T>> {}
 
-type ResolvedObject<T> = ModifyOptionalProperties<{ [P in keyof T]: Resolved<T[P]> }>;
-
-type RequiredKeys<T> = { [P in keyof T]: undefined extends T[P] ? never : P }[keyof T];
-type OptionalKeys<T> = { [P in keyof T]: undefined extends T[P] ? P : never }[keyof T];
-
-type ModifyOptionalProperties<T> = { [P in RequiredKeys<T>]: T[P] } &
-    { [P in OptionalKeys<T>]?: T[P] };
+type ResolvedObject<T> = { [P in keyof T]: Resolved<T[P]> };
