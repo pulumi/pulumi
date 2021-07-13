@@ -939,8 +939,10 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 			properties = make([]*schema.Property, len(obj.Properties))
 			for i, p := range obj.Properties {
 				copy := *p
-				if optional, ok := copy.Type.(*schema.OptionalType); ok && required.Has(p.Name) {
-					copy.Type = optional.ElementType
+				if required.Has(p.Name) {
+					copy.Type = codegen.RequiredType(&copy)
+				} else {
+					copy.Type = codegen.OptionalType(&copy)
 				}
 				properties[i] = &copy
 			}

@@ -65,6 +65,23 @@
         }
       },
       "type": "object"
+    },
+    "example::ObjectWithNodeOptionalInputs": {
+      "properties": {
+        "foo": {
+          "type": "string"
+        },
+        "bar": {
+          "type": "integer"
+        }
+      },
+      "required": ["foo"],
+      "language": {
+        "nodejs": {
+          "requiredInputs": []
+        }
+      },
+      "type": "object"
     }
   },
   "resources": {
@@ -93,6 +110,31 @@
       "inputProperties": {
         "foo": {
           "$ref": "#/resources/example::Resource"
+        }
+      },
+      "type": "object"
+    },
+    "example::TypeUses": {
+      "properties": {
+        "foo": {
+          "$ref": "#/types/example::Object"
+        },
+        "bar": {
+          "$ref": "#/types/example::SomeOtherObject"
+        },
+        "baz": {
+          "$ref": "#/types/example::ObjectWithNodeOptionalInputs"
+        }
+      },
+      "inputProperties": {
+        "foo": {
+          "$ref": "#/types/example::Object"
+        },
+        "bar": {
+          "$ref": "#/types/example::SomeOtherObject"
+        },
+        "baz": {
+          "$ref": "#/types/example::ObjectWithNodeOptionalInputs"
         }
       },
       "type": "object"

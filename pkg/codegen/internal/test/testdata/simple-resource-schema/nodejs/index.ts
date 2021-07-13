@@ -9,6 +9,7 @@ export * from "./argFunction";
 export * from "./otherResource";
 export * from "./provider";
 export * from "./resource";
+export * from "./typeUses";
 
 // Export sub-modules:
 import * as types from "./types";
@@ -20,6 +21,7 @@ export {
 // Import resources to register:
 import { OtherResource } from "./otherResource";
 import { Resource } from "./resource";
+import { TypeUses } from "./typeUses";
 
 const _module = {
     version: utilities.getVersion(),
@@ -29,6 +31,8 @@ const _module = {
                 return new OtherResource(name, <any>undefined, { urn })
             case "example::Resource":
                 return new Resource(name, <any>undefined, { urn })
+            case "example::TypeUses":
+                return new TypeUses(name, <any>undefined, { urn })
             default:
                 throw new Error(`unknown resource type ${type}`);
         }

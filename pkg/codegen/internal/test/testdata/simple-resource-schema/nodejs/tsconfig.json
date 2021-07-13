@@ -18,6 +18,7 @@
         "otherResource.ts",
         "provider.ts",
         "resource.ts",
+        "typeUses.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",
