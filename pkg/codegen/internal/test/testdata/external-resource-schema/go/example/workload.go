@@ -46,11 +46,9 @@ func GetWorkload(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Workload resources.
 type workloadState struct {
-	Pod *corev1.Pod `pulumi:"pod"`
 }
 
 type WorkloadState struct {
-	Pod corev1.PodPtrInput
 }
 
 func (WorkloadState) ElementType() reflect.Type {

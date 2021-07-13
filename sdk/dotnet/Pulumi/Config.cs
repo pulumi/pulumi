@@ -2,6 +2,7 @@
 
 using System;
 using System.Diagnostics.CodeAnalysis;
+using System.Runtime.CompilerServices;
 using System.Text.Json;
 
 namespace Pulumi
@@ -30,14 +31,10 @@ namespace Pulumi
         /// </summary>
         public Config(string? name = null)
         {
-            if (name == null)
-            {
-                name = Deployment.Instance.ProjectName;
-            }
-
+            name ??= Deployment.Instance.ProjectName;
             if (name.EndsWith(":config", StringComparison.Ordinal))
             {
-                name = name[0..^":config".Length];
+                name = name[..^":config".Length];
             }
 
             _name = name;
@@ -54,30 +51,49 @@ namespace Pulumi
             => Output.CreateSecret(value);
 
 
+        private string? GetImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
+        {
+            var fullKey = FullKey(key);
+            // TODO[pulumi/pulumi#7127]: Re-enable the warning.
+            // if (use != null && Deployment.InternalInstance.IsConfigSecret(fullKey))
+            // {
+            //     Debug.Assert(insteadOf != null);
+            //     Log.Warn($"Configuration '{fullKey}' value is a secret; use `{use}` instead of `{insteadOf}`");
+            // }
+            return Deployment.InternalInstance.GetConfig(fullKey);
+        }
+
         /// <summary>
         /// Loads an optional configuration value by its key, or <see langword="null"/> if it doesn't exist.
         /// </summary>
         public string? Get(string key)
-            => Deployment.InternalInstance.GetConfig(FullKey(key));
+            => GetImpl(key, nameof(GetSecret));
 
         /// <summary>
         /// Loads an optional configuration value by its key, marking it as a secret, or <see
         /// langword="null"/> if it doesn't exist.
         /// </summary>
         public Output<string>? GetSecret(string key)
-            => MakeClassSecret(Get(key));
+            => MakeClassSecret(GetImpl(key));
+
+        private bool? GetBooleanImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
+        {
+            var v = GetImpl(key, use, insteadOf);
+            return v switch
+            {
+                null => default(bool?),
+                "true" => true,
+                "false" => false,
+                _ => throw new ConfigTypeException(FullKey(key), v, nameof(Boolean))
+            };
+        }
 
         /// <summary>
         /// Loads an optional configuration value, as a boolean, by its key, or null if it doesn't exist.
         /// If the configuration value isn't a legal boolean, this function will throw an error.
         /// </summary>
         public bool? GetBoolean(string key)
-        {
-            var v = Get(key);
-            return v == null ? default(bool?) :
-                   v == "true" ? true :
-                   v == "false" ? false : throw new ConfigTypeException(FullKey(key), v, nameof(Boolean));
-        }
+            => GetBooleanImpl(key, nameof(GetSecretBoolean));
 
         /// <summary>
         /// Loads an optional configuration value, as a boolean, by its key, making it as a secret or
@@ -85,15 +101,11 @@ namespace Pulumi
         /// function will throw an error.
         /// </summary>
         public Output<bool>? GetSecretBoolean(string key)
-            => MakeStructSecret(GetBoolean(key));
+            => MakeStructSecret(GetBooleanImpl(key));
 
-        /// <summary>
-        /// Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
-        /// If the configuration value isn't a legal number, this function will throw an error.
-        /// </summary>
-        public int? GetInt32(string key)
+        private int? GetInt32Impl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
         {
-            var v = Get(key);
+            var v = GetImpl(key, use, insteadOf);
             return v == null
                 ? default(int?)
                 : int.TryParse(v, out var result)
@@ -102,22 +114,24 @@ namespace Pulumi
         }
 
         /// <summary>
+        /// Loads an optional configuration value, as a number, by its key, or null if it doesn't exist.
+        /// If the configuration value isn't a legal number, this function will throw an error.
+        /// </summary>
+        public int? GetInt32(string key)
+            => GetInt32Impl(key, nameof(GetSecretInt32));
+
+        /// <summary>
         /// Loads an optional configuration value, as a number, by its key, marking it as a secret
         /// or null if it doesn't exist.
         /// If the configuration value isn't a legal number, this function will throw an error.
         /// </summary>
         public Output<int>? GetSecretInt32(string key)
-            => MakeStructSecret(GetInt32(key));
+            => MakeStructSecret(GetInt32Impl(key));
 
-        /// <summary>
-        /// Loads an optional configuration value, as an object, by its key, or null if it doesn't
-        /// exist. This works by taking the value associated with <paramref name="key"/> and passing
-        /// it to <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>.
-        /// </summary>
         [return: MaybeNull]
-        public T GetObject<T>(string key)
+        private T GetObjectImpl<T>(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
         {
-            var v = Get(key);
+            var v = GetImpl(key, use, insteadOf);
             try
             {
                 return v == null ? default : JsonSerializer.Deserialize<T>(v);
@@ -129,60 +143,86 @@ namespace Pulumi
         }
 
         /// <summary>
+        /// Loads an optional configuration value, as an object, by its key, or null if it doesn't
+        /// exist. This works by taking the value associated with <paramref name="key"/> and passing
+        /// it to <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>.
+        /// </summary>
+        [return: MaybeNull]
+        public T GetObject<T>(string key)
+            => GetObjectImpl<T>(key, nameof(GetSecretObject));
+
+        /// <summary>
         /// Loads an optional configuration value, as an object, by its key, marking it as a secret
         /// or null if it doesn't exist. This works by taking the value associated with <paramref
-        /// name="key"/> and passing it to <see cref="JsonSerializer.Deserialize{TValue}(string,
-        /// JsonSerializerOptions)"/>.
+        /// name="key"/> and passing it to <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>.
         /// </summary>
         public Output<T>? GetSecretObject<T>(string key)
         {
-            var v = Get(key);
+            var v = GetImpl(key);
             if (v == null)
                 return null;
 
-            return Output.CreateSecret(GetObject<T>(key)!);
+            return Output.CreateSecret(GetObjectImpl<T>(key)!);
         }
+
+        private string RequireImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
+            => GetImpl(key, use, insteadOf) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// Loads a configuration value by its given key.  If it doesn't exist, an error is thrown.
         /// </summary>
         public string Require(string key)
-            => Get(key) ?? throw new ConfigMissingException(FullKey(key));
+            => RequireImpl(key, nameof(RequireSecret));
 
         /// <summary>
         /// Loads a configuration value by its given key, marking it as a secret.  If it doesn't exist, an error
         /// is thrown.
         /// </summary>
         public Output<string> RequireSecret(string key)
-            => MakeClassSecret(Require(key));
+            => MakeClassSecret(RequireImpl(key));
+
+        private bool RequireBooleanImpl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
+            => GetBooleanImpl(key, use, insteadOf) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// Loads a configuration value, as a boolean, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public bool RequireBoolean(string key)
-            => GetBoolean(key) ?? throw new ConfigMissingException(FullKey(key));
+            => RequireBooleanImpl(key, nameof(RequireSecretBoolean));
 
         /// <summary>
         /// Loads a configuration value, as a boolean, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal boolean, an error is thrown.
         /// </summary>
         public Output<bool> RequireSecretBoolean(string key)
-            => MakeStructSecret(RequireBoolean(key));
+            => MakeStructSecret(RequireBooleanImpl(key));
+
+        private int RequireInt32Impl(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
+            => GetInt32Impl(key, use, insteadOf) ?? throw new ConfigMissingException(FullKey(key));
 
         /// <summary>
         /// Loads a configuration value, as a number, by its given key.  If it doesn't exist, or the
         /// configuration value is not a legal number, an error is thrown.
         /// </summary>
         public int RequireInt32(string key)
-            => GetInt32(key) ?? throw new ConfigMissingException(FullKey(key));
+            => RequireInt32Impl(key, nameof(RequireSecretInt32));
 
         /// <summary>
         /// Loads a configuration value, as a number, by its given key, marking it as a secret.
         /// If it doesn't exist, or the configuration value is not a legal number, an error is thrown.
         /// </summary>
         public Output<int> RequireSecretInt32(string key)
-            => MakeStructSecret(RequireInt32(key));
+            => MakeStructSecret(RequireInt32Impl(key));
+
+        private T RequireObjectImpl<T>(string key, string? use = null, [CallerMemberName] string? insteadOf = null)
+        {
+            var v = GetImpl(key);
+            if (v == null)
+                throw new ConfigMissingException(FullKey(key));
+
+            return GetObjectImpl<T>(key, use, insteadOf)!;
+        }
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into an object.
@@ -191,22 +231,16 @@ namespace Pulumi
         /// thrown.
         /// </summary>
         public T RequireObject<T>(string key)
-        {
-            var v = Get(key);
-            if (v == null)
-                throw new ConfigMissingException(FullKey(key));
-
-            return GetObject<T>(key)!;
-        }
+            => RequireObjectImpl<T>(key, nameof(RequireSecretObject));
 
         /// <summary>
         /// Loads a configuration value as a JSON string and deserializes the JSON into a JavaScript
         /// object, marking it as a secret. If it doesn't exist, or the configuration value cannot
-        /// be converted using <see cref="JsonSerializer.Deserialize{TValue}(string,
-        /// JsonSerializerOptions)"/>. an error is thrown.
+        /// be converted using <see cref="JsonSerializer.Deserialize{TValue}(string, JsonSerializerOptions)"/>,
+        /// an error is thrown.
         /// </summary>
         public Output<T> RequireSecretObject<T>(string key)
-            => Output.CreateSecret(RequireObject<T>(key));
+            => Output.CreateSecret(RequireObjectImpl<T>(key));
 
         /// <summary>
         /// Turns a simple configuration key into a fully resolved one, by prepending the bag's name.

@@ -77,6 +77,62 @@ func NewConstructResult(resource pulumi.ComponentResource) (*ConstructResult, er
 	}, nil
 }
 
+type CallFunc func(ctx *pulumi.Context, tok string, args CallArgs) (*CallResult, error)
+
+// Call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
+func Call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
+	call CallFunc) (*pulumirpc.CallResponse, error) {
+	return linkedCall(ctx, req, engineConn, func(pulumiCtx *pulumi.Context, tok string,
+		args map[string]interface{}) (pulumi.Input, error) {
+		ca := CallArgs{ctx: pulumiCtx, args: args}
+		result, err := call(pulumiCtx, tok, ca)
+		if err != nil {
+			return nil, err
+		}
+		return result.Return, nil
+	})
+}
+
+// CallArgs represents the Call's arguments.
+type CallArgs struct {
+	ctx  *pulumi.Context
+	args map[string]interface{}
+}
+
+// Map returns the args as a Map.
+func (a CallArgs) Map() (pulumi.Map, error) {
+	// Use the same implementation as construct.
+	return linkedConstructInputsMap(a.ctx, a.args)
+}
+
+// CopyTo sets the args on the given args struct. If there is a `__self__` argument, it will be
+// returned, otherwise it will return nil.
+func (a CallArgs) CopyTo(args interface{}) (pulumi.Resource, error) {
+	return linkedCallArgsCopyTo(a.ctx, a.args, args)
+}
+
+// Self retrieves the `__self__` argument. If `__self__` is present the value is returned,
+// otherwise the returned value will be nil.
+func (a CallArgs) Self() (pulumi.Resource, error) {
+	return linkedCallArgsSelf(a.ctx, a.args)
+}
+
+// CallResult is the result of the Call.
+type CallResult struct {
+	Return pulumi.Input
+}
+
+// NewCallResult creates a CallResult from the given result.
+func NewCallResult(result interface{}) (*CallResult, error) {
+	ret, err := linkedNewCallResult(result)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResult{
+		Return: ret,
+	}, nil
+}
+
 type constructFunc func(ctx *pulumi.Context, typ, name string, inputs map[string]interface{},
 	options pulumi.ResourceOption) (pulumi.URNInput, pulumi.Input, error)
 
@@ -92,3 +148,19 @@ func linkedConstructInputsCopyTo(ctx *pulumi.Context, inputs map[string]interfac
 
 // linkedNewConstructResult is made available here from ../provider_linked.go via go:linkname.
 func linkedNewConstructResult(resource pulumi.ComponentResource) (pulumi.URNInput, pulumi.Input, error)
+
+type callFunc func(ctx *pulumi.Context, tok string, args map[string]interface{}) (pulumi.Input, error)
+
+// linkedCall is made available here from ../provider_linked.go via go:linkname.
+func linkedCall(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
+	callF callFunc) (*pulumirpc.CallResponse, error)
+
+// linkedCallArgsCopyTo is made available here from ../provider_linked.go via go:linkname.
+func linkedCallArgsCopyTo(ctx *pulumi.Context, source map[string]interface{},
+	args interface{}) (pulumi.Resource, error)
+
+// linkedCallArgsSelf is made available here from ../provider_linked.go via go:linkname.
+func linkedCallArgsSelf(ctx *pulumi.Context, source map[string]interface{}) (pulumi.Resource, error)
+
+// linkedNewCallResult is made available here from ../provider_linked.go via go:linkname.
+func linkedNewCallResult(result interface{}) (pulumi.Input, error)

@@ -17,6 +17,7 @@ menu:
     <li><a href="otherresource" title="OtherResource"><span class="symbol resource"></span>OtherResource</a></li>
     <li><a href="provider" title="Provider"><span class="symbol resource"></span>Provider</a></li>
     <li><a href="resource" title="Resource"><span class="symbol resource"></span>Resource</a></li>
+    <li><a href="typeuses" title="TypeUses"><span class="symbol resource"></span>TypeUses</a></li>
 </ul>
 
 <h2 id="functions">Functions</h2>

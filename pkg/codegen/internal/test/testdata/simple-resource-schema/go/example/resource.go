@@ -23,6 +23,13 @@ func NewResource(ctx *pulumi.Context,
 		args = &ResourceArgs{}
 	}
 
+	if args.Bar != nil {
+		args.Bar = pulumi.ToSecret(args.Bar).(pulumi.StringPtrOutput)
+	}
+	secrets := pulumi.AdditionalSecretOutputs([]string{
+		"bar",
+	})
+	opts = append(opts, secrets)
 	var resource Resource
 	err := ctx.RegisterResource("example::Resource", name, args, &resource, opts...)
 	if err != nil {
@@ -45,11 +52,9 @@ func GetResource(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Resource resources.
 type resourceState struct {
-	Bar *string `pulumi:"bar"`
 }
 
 type ResourceState struct {
-	Bar pulumi.StringPtrInput
 }
 
 func (ResourceState) ElementType() reflect.Type {

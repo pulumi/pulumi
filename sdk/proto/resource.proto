@@ -25,6 +25,7 @@ service ResourceMonitor {
     rpc SupportsFeature(SupportsFeatureRequest) returns (SupportsFeatureResponse) {}
     rpc Invoke(InvokeRequest) returns (InvokeResponse) {}
     rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
+    rpc Call(CallRequest) returns (CallResponse) {}
     rpc ReadResource(ReadResourceRequest) returns (ReadResourceResponse) {}
     rpc RegisterResource(RegisterResourceRequest) returns (RegisterResourceResponse) {}
     rpc RegisterResourceOutputs(RegisterResourceOutputsRequest) returns (google.protobuf.Empty) {}
@@ -103,6 +104,7 @@ message RegisterResourceRequest {
     bool remote = 20;                                           // true if the resource is a plugin-managed component resource.
     bool acceptResources = 21;                                  // when true operations should return resource references as strongly typed.
     map<string, string> providers = 22;                         // an optional reference to the provider map to manage this resource's CRUD operations.
+    repeated string replaceOnChanges = 23;                      // a list of properties that if changed should force a replacement.
 }
 
 // RegisterResourceResponse is returned by the engine after a resource has finished being initialized.  It includes the

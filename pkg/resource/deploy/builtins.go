@@ -204,6 +204,12 @@ func (p *builtinProvider) StreamInvoke(
 	return nil, fmt.Errorf("the builtin provider does not implement streaming invokes")
 }
 
+func (p *builtinProvider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+
+	return plugin.CallResult{}, fmt.Errorf("the builtin provider does not implement call")
+}
+
 func (p *builtinProvider) GetPluginInfo() (workspace.PluginInfo, error) {
 	// return an error: this should not be called for the builtin provider
 	return workspace.PluginInfo{}, errors.New("the builtin provider does not report plugin info")

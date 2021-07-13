@@ -115,7 +115,9 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 			if err != nil {
 				return nil, err
 			}
-			elems = append(elems, e)
+			if e != nil {
+				elems = append(elems, e)
+			}
 		}
 		return &structpb.Value{
 			Kind: &structpb.Value_ListValue{

@@ -13,6 +13,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -85,6 +86,145 @@ func TestConfigBasicPython(t *testing.T) {
 			{Key: "a.b[1].c", Value: "false", Path: true},
 			{Key: "tokens[0]", Value: "shh", Path: true, Secret: true},
 			{Key: "foo.bar", Value: "don't tell", Path: true, Secret: true},
+		},
+	})
+}
+
+// Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+func TestConfigSecretsWarnPython(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("config_secrets_warn", "python"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick: true,
+		Config: map[string]string{
+			"plainstr1":   "1",
+			"plainstr2":   "2",
+			"plainstr3":   "3",
+			"plainstr4":   "4",
+			"plainbool1":  "true",
+			"plainbool2":  "true",
+			"plainbool3":  "true",
+			"plainbool4":  "true",
+			"plainint1":   "1",
+			"plainint2":   "2",
+			"plainint3":   "3",
+			"plainint4":   "4",
+			"plainfloat1": "1.1",
+			"plainfloat2": "2.2",
+			"plainfloat3": "3.3",
+			"plainfloat4": "4.4",
+			"plainobj1":   "{}",
+			"plainobj2":   "{}",
+			"plainobj3":   "{}",
+			"plainobj4":   "{}",
+		},
+		Secrets: map[string]string{
+			"str1":   "1",
+			"str2":   "2",
+			"str3":   "3",
+			"str4":   "4",
+			"bool1":  "true",
+			"bool2":  "true",
+			"bool3":  "true",
+			"bool4":  "true",
+			"int1":   "1",
+			"int2":   "2",
+			"int3":   "3",
+			"int4":   "4",
+			"float1": "1.1",
+			"float2": "2.2",
+			"float3": "3.3",
+			"float4": "4.4",
+			"obj1":   "{}",
+			"obj2":   "{}",
+			"obj3":   "{}",
+			"obj4":   "{}",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "parent1.foo", Value: "plain1", Path: true},
+			{Key: "parent1.bar", Value: "secret1", Path: true, Secret: true},
+			{Key: "parent2.foo", Value: "plain2", Path: true},
+			{Key: "parent2.bar", Value: "secret2", Path: true, Secret: true},
+			{Key: "names1[0]", Value: "plain1", Path: true},
+			{Key: "names1[1]", Value: "secret1", Path: true, Secret: true},
+			{Key: "names2[0]", Value: "plain2", Path: true},
+			{Key: "names2[1]", Value: "secret2", Path: true, Secret: true},
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			//nolint:lll
+			expectedWarnings := []string{
+				"Configuration 'config_secrets_python:str1' value is a secret; use `get_secret` instead of `get`",
+				"Configuration 'config_secrets_python:str2' value is a secret; use `require_secret` instead of `require`",
+				"Configuration 'config_secrets_python:bool1' value is a secret; use `get_secret_bool` instead of `get_bool`",
+				"Configuration 'config_secrets_python:bool2' value is a secret; use `require_secret_bool` instead of `require_bool`",
+				"Configuration 'config_secrets_python:int1' value is a secret; use `get_secret_int` instead of `get_int`",
+				"Configuration 'config_secrets_python:int2' value is a secret; use `require_secret_int` instead of `require_int`",
+				"Configuration 'config_secrets_python:float1' value is a secret; use `get_secret_float` instead of `get_float`",
+				"Configuration 'config_secrets_python:float2' value is a secret; use `require_secret_float` instead of `require_float`",
+				"Configuration 'config_secrets_python:obj1' value is a secret; use `get_secret_object` instead of `get_object`",
+				"Configuration 'config_secrets_python:obj2' value is a secret; use `require_secret_object` instead of `require_object`",
+				"Configuration 'config_secrets_python:parent1' value is a secret; use `get_secret_object` instead of `get_object`",
+				"Configuration 'config_secrets_python:parent2' value is a secret; use `require_secret_object` instead of `require_object`",
+				"Configuration 'config_secrets_python:names1' value is a secret; use `get_secret_object` instead of `get_object`",
+				"Configuration 'config_secrets_python:names2' value is a secret; use `require_secret_object` instead of `require_object`",
+			}
+			for _, warning := range expectedWarnings {
+				var found bool
+				for _, event := range stackInfo.Events {
+					if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "warning" &&
+						strings.Contains(event.DiagnosticEvent.Message, warning) {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected warning %q", warning)
+			}
+
+			// These keys should not be in any warning messages.
+			unexpectedWarnings := []string{
+				"plainstr1",
+				"plainstr2",
+				"plainstr3",
+				"plainstr4",
+				"plainbool1",
+				"plainbool2",
+				"plainbool3",
+				"plainbool4",
+				"plainint1",
+				"plainint2",
+				"plainint3",
+				"plainint4",
+				"plainfloat1",
+				"plainfloat2",
+				"plainfloat3",
+				"plainfloat4",
+				"plainobj1",
+				"plainobj2",
+				"plainobj3",
+				"plainobj4",
+				"str3",
+				"str4",
+				"bool3",
+				"bool4",
+				"int3",
+				"int4",
+				"float3",
+				"float4",
+				"obj3",
+				"obj4",
+			}
+			for _, warning := range unexpectedWarnings {
+				for _, event := range stackInfo.Events {
+					if event.DiagnosticEvent != nil {
+						assert.NotContains(t, event.DiagnosticEvent.Message, warning)
+					}
+				}
+			}
 		},
 	})
 }
@@ -407,7 +547,7 @@ func TestConstructPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -420,6 +560,9 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 		Dir: filepath.Join("construct_component", "python"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
 		},
 		Quick:      true,
 		NoParallel: true, // avoid contention for Dir
@@ -448,6 +591,10 @@ func optsForConstructPython(t *testing.T, expectedResourceCount int, env ...stri
 					case "child-c":
 						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
 							res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -518,7 +665,7 @@ func TestConstructPlainPython(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainPython(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -542,6 +689,42 @@ func optsForConstructPlainPython(t *testing.T, expectedResourceCount int,
 	}
 }
 
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownPython(t *testing.T) {
+	testConstructUnknown(t, "python", filepath.Join("..", "..", "sdk", "python", "env", "src"))
+}
+
+// Test methods on remote components.
+func TestConstructMethodsPython(t *testing.T) {
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join("construct_component_methods", "python"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
 func TestGetResourcePython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
@@ -561,7 +744,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	// handling by test harness; we actually are testing venv
 	// handling by the pulumi CLI itself.
 
-	check := func(t *testing.T, venvPathTemplate string) {
+	check := func(t *testing.T, venvPathTemplate string, dir string) {
 
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -573,7 +756,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		venvPath := strings.ReplaceAll(venvPathTemplate, "${root}", e.RootPath)
 		t.Logf("venvPath = %s (IsAbs = %v)", venvPath, filepath.IsAbs(venvPath))
 
-		e.ImportDirectory(filepath.Join("python", "venv"))
+		e.ImportDirectory(dir)
 
 		// replace "virtualenv: venv" with "virtualenv: ${venvPath}" in Pulumi.yaml
 		pulumiYaml := filepath.Join(e.RootPath, "Pulumi.yaml")
@@ -586,6 +769,7 @@ func TestAutomaticVenvCreation(t *testing.T) {
 		newYaml := []byte(strings.ReplaceAll(string(oldYaml),
 			"virtualenv: venv",
 			fmt.Sprintf("virtualenv: >-\n      %s", venvPath)))
+
 		if err := ioutil.WriteFile(pulumiYaml, newYaml, 0644); err != nil {
 			t.Error(err)
 			return
@@ -611,11 +795,19 @@ func TestAutomaticVenvCreation(t *testing.T) {
 	}
 
 	t.Run("RelativePath", func(t *testing.T) {
-		check(t, "venv")
+		check(t, "venv", filepath.Join("python", "venv"))
 	})
 
 	t.Run("AbsolutePath", func(t *testing.T) {
-		check(t, filepath.Join("${root}", "absvenv"))
+		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv"))
+	})
+
+	t.Run("RelativePathWithMain", func(t *testing.T) {
+		check(t, "venv", filepath.Join("python", "venv-with-main"))
+	})
+
+	t.Run("AbsolutePathWithMain", func(t *testing.T) {
+		check(t, filepath.Join("${root}", "absvenv"), filepath.Join("python", "venv-with-main"))
 	})
 }
 
@@ -823,5 +1015,37 @@ func TestPythonTranslation(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		Quick: true,
+	})
+}
+
+func TestComponentProviderSchemaPython(t *testing.T) {
+	path := filepath.Join("component_provider_schema", "testcomponent-python", "pulumi-resource-testcomponent")
+	if runtime.GOOS == WindowsOS {
+		path += ".cmd"
+	}
+	testComponentProviderSchema(t, path, pulumiRuntimeVirtualEnv(t, filepath.Join("..", "..")))
+}
+
+// Regresses an issue with Pulumi hanging when buggy dynamic providers
+// emit outputs that do not match the advertised type.
+func TestBrokenDynamicProvider(t *testing.T) {
+
+	// NOTE: this had some trouble on Windows CI runner with 120
+	// sec max, but passed on a Windows VM locally. IF this
+	// continues to blow the deadline, or be flaky, we should skip
+	// on Windows.
+
+	go func() {
+		<-time.After(600 * time.Second)
+		panic("TestBrokenDynamicProvider: test timed out after 600 seconds, suspect pulumi hanging")
+	}()
+
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-broken"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+		Quick:         true,
+		ExpectFailure: true,
 	})
 }

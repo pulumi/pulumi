@@ -41,6 +41,7 @@ class ConstructRequest:
     providers: Dict[str, str]
     aliases: List[str]
     dependencies: List[str]
+    configSecretKeys: List[str]
 
 
 class ConstructResponse:
@@ -85,3 +86,12 @@ class ConfigureResponse:
     acceptSecrets: bool
     supportsPreview: bool
     acceptResources: bool
+
+
+class GetSchemaRequest:
+    version: int
+
+
+class GetSchemaResponse:
+    def __init__(self, schema: str):
+        pass

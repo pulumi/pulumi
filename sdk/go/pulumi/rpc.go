@@ -413,7 +413,7 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 			return resourcePackage.ConstructProvider(ctx, resName, string(resType), string(ref.URN))
 		}
 		id, _ := ref.IDString()
-		return newDependencyProviderResource(URN(ref.URN), ID(id)), nil
+		return ctx.newDependencyProviderResource(URN(ref.URN), ID(id)), nil
 	}
 
 	modName := resType.Module().String()
@@ -422,9 +422,9 @@ func unmarshalResourceReference(ctx *Context, ref resource.ResourceReference) (R
 		return resourceModule.Construct(ctx, resName, string(resType), string(ref.URN))
 	}
 	if id, hasID := ref.IDString(); hasID {
-		return newDependencyCustomResource(URN(ref.URN), ID(id)), nil
+		return ctx.newDependencyCustomResource(URN(ref.URN), ID(id)), nil
 	}
-	return newDependencyResource(URN(ref.URN)), nil
+	return ctx.newDependencyResource(URN(ref.URN)), nil
 }
 
 func unmarshalPropertyValue(ctx *Context, v resource.PropertyValue) (interface{}, bool, error) {

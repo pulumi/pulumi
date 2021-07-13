@@ -3,6 +3,8 @@
 package ints
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,11 +14,16 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
+
+	"google.golang.org/grpc"
+
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/config"
 	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
-	"github.com/stretchr/testify/assert"
+	pulumirpc "github.com/pulumi/pulumi/sdk/v3/proto/go"
 )
 
 const WindowsOS = "windows"
@@ -567,32 +574,31 @@ func TestConfigPaths(t *testing.T) {
 }
 
 //nolint:golint,deadcode
-func testComponentSlowPathEnv(t *testing.T) string {
-	return componentPathEnv(t, "construct_component_slow", "testcomponent")
-}
-
-//nolint:golint,deadcode
-func testComponentPlainPathEnv(t *testing.T) string {
-	return componentPathEnv(t, "construct_component_plain", "testcomponent")
-}
-
-func componentPathEnv(t *testing.T, integrationTest, componentDir string) string {
-	cwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-		return ""
+func pathEnv(t *testing.T, path ...string) string {
+	pathEnv := []string{os.Getenv("PATH")}
+	for _, p := range path {
+		absPath, err := filepath.Abs(p)
+		if err != nil {
+			t.Fatal(err)
+			return ""
+		}
+		pathEnv = append(pathEnv, absPath)
 	}
-	absCwd, err := filepath.Abs(cwd)
-	if err != nil {
-		t.Fatal(err)
-		return ""
-	}
-	pluginDir := filepath.Join(absCwd, integrationTest, componentDir)
 	pathSeparator := ":"
 	if runtime.GOOS == "windows" {
 		pathSeparator = ";"
 	}
-	return "PATH=" + os.Getenv("PATH") + pathSeparator + pluginDir
+	return "PATH=" + strings.Join(pathEnv, pathSeparator)
+}
+
+//nolint:golint,deadcode
+func testComponentSlowPathEnv(t *testing.T) string {
+	return pathEnv(t, filepath.Join("construct_component_slow", "testcomponent"))
+}
+
+//nolint:golint,deadcode
+func testComponentPlainPathEnv(t *testing.T) string {
+	return pathEnv(t, filepath.Join("construct_component_plain", "testcomponent"))
 }
 
 // nolint: unused,deadcode
@@ -624,4 +630,131 @@ func pulumiRuntimeVirtualEnv(t *testing.T, pulumiRepoRootDir string) string {
 	}
 	r := fmt.Sprintf("PULUMI_RUNTIME_VIRTUALENV=%s", venvFolder)
 	return r
+}
+
+// nolint: unused,deadcode
+func testComponentProviderSchema(t *testing.T, path string, env ...string) {
+	tests := []struct {
+		name          string
+		env           []string
+		version       int32
+		expected      string
+		expectedError string
+	}{
+		{
+			name:     "Default",
+			expected: "{}",
+		},
+		{
+			name:     "Schema",
+			env:      []string{"INCLUDE_SCHEMA=true"},
+			expected: `{"hello": "world"}`,
+		},
+		{
+			name:          "Invalid Version",
+			version:       15,
+			expectedError: "unsupported schema version 15",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Start the plugin binary.
+			cmd := exec.Command(path, "ignored")
+			cmd.Env = os.Environ()
+			cmd.Env = append(cmd.Env, env...)
+			cmd.Env = append(cmd.Env, test.env...)
+			stdout, err := cmd.StdoutPipe()
+			assert.NoError(t, err)
+			err = cmd.Start()
+			assert.NoError(t, err)
+			defer func() {
+				// Ignore the error as it may fail with access denied on Windows.
+				cmd.Process.Kill() // nolint: errcheck
+			}()
+
+			// Read the port from standard output.
+			reader := bufio.NewReader(stdout)
+			bytes, err := reader.ReadBytes('\n')
+			assert.NoError(t, err)
+			port := strings.TrimSpace(string(bytes))
+
+			// Create a connection to the server.
+			conn, err := grpc.Dial("127.0.0.1:"+port, grpc.WithInsecure(), rpcutil.GrpcChannelOptions())
+			assert.NoError(t, err)
+			client := pulumirpc.NewResourceProviderClient(conn)
+
+			// Call GetSchema and verify the results.
+			resp, err := client.GetSchema(context.Background(), &pulumirpc.GetSchemaRequest{Version: test.version})
+			if test.expectedError != "" {
+				assert.Error(t, err)
+				assert.Contains(t, err.Error(), test.expectedError)
+			} else {
+				assert.Equal(t, test.expected, resp.GetSchema())
+			}
+		})
+	}
+}
+
+// Test remote component inputs properly handle unknowns.
+// nolint: unused,deadcode
+func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_unknown"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:                    append(test.env, pathEnv),
+				Dir:                    filepath.Join(testDir, lang),
+				Dependencies:           dependencies,
+				SkipRefresh:            true,
+				SkipPreview:            false,
+				SkipUpdate:             true,
+				SkipExportImport:       true,
+				SkipEmptyPreviewUpdate: true,
+				Quick:                  false,
+				NoParallel:             true,
+			})
+		})
+	}
+}
+
+func TestRotatePassphrase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("rotate_passphrase")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
+
+	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
+	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
+
+	e.Stdin, e.Passphrase = nil, "qwerty"
+	e.RunCommand("pulumi", "config", "get", "foo")
 }

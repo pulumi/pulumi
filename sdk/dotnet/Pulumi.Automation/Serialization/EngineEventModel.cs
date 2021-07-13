@@ -1,7 +1,7 @@
 // Copyright 2016-2021, Pulumi Corporation
 
-using Pulumi.Automation.Serialization.Json;
 using Pulumi.Automation.Events;
+using Pulumi.Automation.Serialization.Json;
 
 // NOTE: The classes in this file are intended to align with the serialized
 // JSON types defined and versioned in sdk/go/common/apitype/events.go
@@ -13,7 +13,7 @@ namespace Pulumi.Automation.Serialization
 
         public int Timestamp { get; set; }
 
-        public CancelEvent? CancelEvent { get; set; }
+        public CancelEventModel? CancelEvent { get; set; }
         public StandardOutputEngineEventModel? StdoutEvent { get; set; }
         public DiagnosticEventModel? DiagnosticEvent { get; set; }
         public PreludeEventModel? PreludeEvent { get; set; }
@@ -27,7 +27,7 @@ namespace Pulumi.Automation.Serialization
             new EngineEvent(
                 this.Sequence,
                 this.Timestamp,
-                this.CancelEvent,
+                this.CancelEvent?.Convert(),
                 this.StdoutEvent?.Convert(),
                 this.DiagnosticEvent?.Convert(),
                 this.PreludeEvent?.Convert(),

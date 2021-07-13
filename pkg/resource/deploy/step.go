@@ -326,7 +326,10 @@ func (s *DeleteStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 	// Refuse to delete protected resources.
 	if s.old.Protect {
 		return resource.StatusOK, nil,
-			errors.Errorf("refusing to delete protected resource '%s'", s.old.URN)
+			errors.Errorf("unable to delete resource %q\n"+
+				"as it is currently marked for protection. To unprotect the resource, "+
+				"either remove the `protect` flag from the resource in your Pulumi program or use the command:\n"+
+				"`pulumi state unprotect %s`", s.old.URN, s.old.URN)
 	}
 
 	// Deleting an External resource is a no-op, since Pulumi does not own the lifecycle.
@@ -916,7 +919,7 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 			return resource.StatusOK, nil, errors.Errorf("unknown resource type '%v'", s.new.Type)
 		}
 		for _, p := range r.InputProperties {
-			if p.IsRequired {
+			if p.IsRequired() {
 				k := resource.PropertyKey(p.Name)
 				s.new.Inputs[k] = s.old.Inputs[k]
 			}

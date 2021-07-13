@@ -148,6 +148,11 @@ export interface Provider {
     version: string;
 
     /**
+     * The JSON-encoded schema for this provider's package.
+     */
+    schema?: string;
+
+    /**
      * Check validates that the given property bag is valid for a resource of the given type.
      *
      * @param olds The old input properties to use for validation.
@@ -205,6 +210,14 @@ export interface Provider {
      */
     construct?: (name: string, type: string, inputs: Inputs, options: resource.ComponentResourceOptions)
         => Promise<ConstructResult>;
+
+    /**
+     * Call calls the indicated method.
+     *
+     * @param token The token of the method to call.
+     * @param inputs The inputs to the method.
+     */
+    call?: (token: string, inputs: Inputs) => Promise<InvokeResult>;
 
     /**
      * Invoke calls the indicated function.

@@ -80,8 +80,9 @@ namespace Pulumi.Automation.Tests
                 var program = PulumiFn.Create(() =>
                 {
                     hitSemaphore = true;
+                    // ReSharper disable once AccessToDisposedClosure
                     semaphore.Wait();
-                    return new Dictionary<string, object?>()
+                    return new Dictionary<string, object?>
                     {
                         ["test"] = "doesnt matter",
                     };

@@ -152,6 +152,11 @@ export async function serializeProperties(label: string, props: Inputs) {
     return result;
 }
 
+/** @internal */
+export async function serializePropertiesReturnDeps(label: string, props: Inputs) {
+    return serializeFilteredProperties(label, props, _ => true);
+}
+
 /**
  * deserializeProperties fetches the raw outputs and deserializes them from a gRPC call result.
  */
@@ -628,10 +633,12 @@ export function register<T extends { readonly version?: string }>(source: Map<st
         for (const existing of items) {
             if (sameVersion(existing.version, item.version)) {
                 // It is possible for the same version of the same provider SDK to be loaded multiple times in Node.js.
-                // In this case, we might legitimately get mutliple registrations of the same resource.  It should not
+                // In this case, we might legitimately get multiple registrations of the same resource.  It should not
                 // matter which we use, so we can just skip re-registering.  De-serialized resources will always be
                 // instances of classes from the first registered package.
-                log.debug(`skip re-registering already registered ${registrationType} ${key}@${item.version}.`);
+                if (excessiveDebugOutput) {
+                    log.debug(`skip re-registering already registered ${registrationType} ${key}@${item.version}.`);
+                }
                 return false;
             }
         }
@@ -640,7 +647,9 @@ export function register<T extends { readonly version?: string }>(source: Map<st
         source.set(key, items);
     }
 
-    log.debug(`registering ${registrationType} ${key}@${item.version}`);
+    if (excessiveDebugOutput) {
+        log.debug(`registering ${registrationType} ${key}@${item.version}`);
+    }
     items.push(item);
     return true;
 }

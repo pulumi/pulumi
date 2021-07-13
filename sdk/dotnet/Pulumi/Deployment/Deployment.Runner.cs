@@ -2,8 +2,12 @@
 
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
 
 namespace Pulumi
 {
@@ -12,6 +16,7 @@ namespace Pulumi
         private class Runner : IRunner
         {
             private readonly IDeploymentInternal _deployment;
+            private readonly ILogger _deploymentLogger;
 
             /// <summary>
             /// The set of tasks that we have fired off.  We issue tasks in a Fire-and-Forget manner
@@ -25,11 +30,17 @@ namespace Pulumi
             /// exiting once the set becomes empty.
             /// </summary>
             private readonly Dictionary<Task, List<string>> _inFlightTasks = new Dictionary<Task, List<string>>();
+            private readonly List<Exception> _exceptions = new List<Exception>();
 
-            public Runner(IDeploymentInternal deployment)
-                => _deployment = deployment;
+            public ImmutableList<Exception> SwallowedExceptions => this._exceptions.ToImmutableList();
 
-            public Task<int> RunAsync<TStack>(IServiceProvider serviceProvider) where TStack : Stack
+            public Runner(IDeploymentInternal deployment, ILogger deploymentLogger)
+            {
+                _deployment = deployment;
+                _deploymentLogger = deploymentLogger;
+            }
+
+            Task<int> IRunner.RunAsync<TStack>(IServiceProvider serviceProvider)
             {
                 if (serviceProvider == null)
                 {
@@ -40,8 +51,7 @@ namespace Pulumi
                     ?? throw new ApplicationException($"Failed to resolve instance of type {typeof(TStack)} from service provider. Register the type with the service provider before calling {nameof(RunAsync)}."));
             }
 
-            public Task<int> RunAsync<TStack>() where TStack : Stack, new()
-                => RunAsync(() => new TStack());
+            Task<int> IRunner.RunAsync<TStack>() => RunAsync(() => new TStack());
 
             public Task<int> RunAsync<TStack>(Func<TStack> stackFactory) where TStack : Stack
             {
@@ -50,7 +60,7 @@ namespace Pulumi
                     var stack = stackFactory();
                     // Stack doesn't call RegisterOutputs, so we register them on its behalf.
                     stack.RegisterPropertyOutputs();
-                    RegisterTask("User program code.", stack.Outputs.DataTask);
+                    RegisterTask($"{nameof(RunAsync)}: {stack.GetType().FullName}", stack.Outputs.DataTask);
                 }
                 catch (Exception ex)
                 {
@@ -60,16 +70,16 @@ namespace Pulumi
                 return WhileRunningAsync();
             }
 
-            public Task<int> RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options)
+            Task<int> IRunner.RunAsync(Func<Task<IDictionary<string, object?>>> func, StackOptions? options)
             {
                 var stack = new Stack(func, options);
-                RegisterTask("User program code.", stack.Outputs.DataTask);
+                RegisterTask($"{nameof(RunAsync)}: {stack.GetType().FullName}", stack.Outputs.DataTask);
                 return WhileRunningAsync();
             }
 
             public void RegisterTask(string description, Task task)
             {
-                Serilog.Log.Information($"Registering task: {description}");
+                _deploymentLogger.LogDebug($"Registering task: {description}");
 
                 lock (_inFlightTasks)
                 {
@@ -138,7 +148,7 @@ namespace Pulumi
                             }
                             foreach (var description in descriptions)
                             {
-                                Serilog.Log.Information($"Completed task: {description}");
+                                _deploymentLogger.LogDebug($"Completed task: {description}");
                             }
 
                             // Check if all the tasks are completed and signal the completion source if so.
@@ -184,12 +194,14 @@ namespace Pulumi
 
             private async Task<int> HandleExceptionAsync(Exception exception)
             {
+                this._exceptions.Add(exception);
+
                 if (exception is LogException)
                 {
                     // We got an error while logging itself.  Nothing to do here but print some errors
                     // and fail entirely.
-                    Serilog.Log.Error(exception, "Error occurred trying to send logging message to engine.");
-                    await Console.Error.WriteLineAsync("Error occurred trying to send logging message to engine:\n" + exception).ConfigureAwait(false);
+                    _deploymentLogger.LogError(exception, "Error occurred trying to send logging message to engine");
+                    await Console.Error.WriteLineAsync($"Error occurred trying to send logging message to engine:\n{exception.ToStringDemystified()}").ConfigureAwait(false);
                     return 1;
                 }
 
@@ -207,20 +219,16 @@ namespace Pulumi
                 }
                 else if (exception is ResourceException resourceEx)
                 {
-                    var message = resourceEx.HideStack
-                        ? resourceEx.Message
-                        : resourceEx.ToString();
+                    var message = resourceEx.HideStack ? resourceEx.Message : resourceEx.ToStringDemystified();
                     await _deployment.Logger.ErrorAsync(message, resourceEx.Resource).ConfigureAwait(false);
                 }
                 else
                 {
-                    var location = System.Reflection.Assembly.GetEntryAssembly()?.Location;
-                    await _deployment.Logger.ErrorAsync(
-    $@"Running program '{location}' failed with an unhandled exception:
-{exception.ToString()}").ConfigureAwait(false);
+                    var location = Assembly.GetEntryAssembly()?.Location;
+                    await _deployment.Logger.ErrorAsync($"Running program '{location}' failed with an unhandled exception:\n{exception.ToStringDemystified()}").ConfigureAwait(false);
                 }
 
-                Serilog.Log.Debug("Wrote last error.  Returning from program.");
+                _deploymentLogger.LogDebug("Returning from program after last error");
                 return _processExitedAfterLoggingUserActionableMessage;
             }
         }

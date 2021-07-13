@@ -1,25 +1,16 @@
-### Breaking Changes
-
-
 
 ### Improvements
 
-- [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
-  [#6910](https://github.com/pulumi/pulumi/pull/6910)
+- [sdk/nodejs] - Support for calling resource methods
+  [#7377](https://github.com/pulumi/pulumi/pull/7377)
 
-- [auto/go] - Provide GetPermalink for all results
-  [#6875](https://github.com/pulumi/pulumi/pull/6875)
+- [sdk/go] - Support for calling resource methods
+  [#7437](https://github.com/pulumi/pulumi/pull/7437)
   
 ### Bug Fixes
 
- - [auto/python] - Export missing `ProjectBackend` type
-   [#6984](https://github.com/pulumi/pulumi/pull/6984)
+- [codegen/go] - Reimplement strict go enums to be Inputs.
+  [#7383](https://github.com/pulumi/pulumi/pull/7383)
 
- - [sdk/nodejs] Fix a bug in closure serialization. 
-   [#6999](https://github.com/pulumi/pulumi/pull/6999)
-
- - [sdk/nodejs] - Fix noisy errors.
-   [#6995](https://github.com/pulumi/pulumi/pull/6995)
-
- - Config: Avoid emitting integers in objects using exponential notation.
-   [#7005](https://github.com/pulumi/pulumi/pull/7005)
+- [sdk/nodejs] Fix a bug in closure serialization. 
+  [#6999](https://github.com/pulumi/pulumi/pull/6999)

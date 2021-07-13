@@ -45,11 +45,9 @@ func GetCat(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Cat resources.
 type catState struct {
-	Name *string `pulumi:"name"`
 }
 
 type CatState struct {
-	Name pulumi.StringPtrInput
 }
 
 func (CatState) ElementType() reflect.Type {

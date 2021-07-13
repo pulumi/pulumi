@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -112,4 +113,84 @@ func TestIgnoreChanges(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestApplyReplaceOnChangesEmptyDetailedDiff(t *testing.T) {
+	cases := []struct {
+		name             string
+		diff             plugin.DiffResult
+		replaceOnChanges []string
+		hasInitErrors    bool
+		expected         plugin.DiffResult
+	}{
+		{
+			name:             "Empty diff and replaceOnChanges",
+			diff:             plugin.DiffResult{},
+			replaceOnChanges: []string{},
+			hasInitErrors:    false,
+			expected:         plugin.DiffResult{},
+		},
+		{
+			name:             "DiffSome and empty replaceOnChanges",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{},
+			hasInitErrors:    false,
+			expected:         plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+		},
+		{
+			name:             "DiffSome and non-empty replaceOnChanges",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{"a"},
+			hasInitErrors:    false,
+			expected: plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ChangedKeys: []resource.PropertyKey{"a"},
+				ReplaceKeys: []resource.PropertyKey{"a"},
+			},
+		},
+		{
+			name:             "Empty diff and replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{},
+			replaceOnChanges: []string{},
+			hasInitErrors:    true,
+			expected:         plugin.DiffResult{},
+		},
+		{
+			name:             "DiffSome and empty replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{},
+			hasInitErrors:    true,
+			expected:         plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+		},
+		{
+			name:             "DiffSome and non-empty replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{Changes: plugin.DiffSome, ChangedKeys: []resource.PropertyKey{"a"}},
+			replaceOnChanges: []string{"a"},
+			hasInitErrors:    true,
+			expected: plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ChangedKeys: []resource.PropertyKey{"a"},
+				ReplaceKeys: []resource.PropertyKey{"a"},
+			},
+		},
+		{
+			name:             "Empty diff and non-empty replaceOnChanges w/ init errors",
+			diff:             plugin.DiffResult{},
+			replaceOnChanges: []string{"*"},
+			hasInitErrors:    true,
+			expected: plugin.DiffResult{
+				Changes:     plugin.DiffSome,
+				ReplaceKeys: []resource.PropertyKey{"#initerror"},
+			},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			newdiff, err := applyReplaceOnChanges(c.diff, c.replaceOnChanges, c.hasInitErrors)
+			assert.NoError(t, err)
+			assert.Equal(t, c.expected, newdiff)
+		})
+	}
+
 }

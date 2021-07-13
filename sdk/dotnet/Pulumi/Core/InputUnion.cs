@@ -1,7 +1,5 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
-using System;
-
 namespace Pulumi
 {
     /// <summary>
@@ -29,10 +27,10 @@ namespace Pulumi
             => Output.Create(value);
 
         public static implicit operator InputUnion<T0, T1>(Output<T0> value)
-            => new InputUnion<T0, T1>(value.Apply(v => Union<T0, T1>.FromT0(v)));
+            => new InputUnion<T0, T1>(value.Apply(Union<T0, T1>.FromT0));
 
         public static implicit operator InputUnion<T0, T1>(Output<T1> value)
-            => new InputUnion<T0, T1>(value.Apply(v => Union<T0, T1>.FromT1(v)));
+            => new InputUnion<T0, T1>(value.Apply(Union<T0, T1>.FromT1));
 
         #endregion
     }

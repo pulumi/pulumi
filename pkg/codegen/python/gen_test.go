@@ -1,11 +1,11 @@
 package python
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/stretchr/testify/assert"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/stretchr/testify/require"
 )
 
 var pathTests = []struct {
@@ -34,83 +34,25 @@ func TestRelPathToRelImport(t *testing.T) {
 }
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
-	}{
-		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				filepath.Join("pulumi_example", "resource.py"),
-				filepath.Join("pulumi_example", "other_resource.py"),
-				filepath.Join("pulumi_example", "arg_function.py"),
-			},
-		},
-		{
-			"Simple schema with local resource properties and custom Python package name",
-			"simple-resource-schema-custom-pypackage-name",
-			[]string{
-				filepath.Join("custom_py_package", "resource.py"),
-				filepath.Join("custom_py_package", "other_resource.py"),
-				filepath.Join("custom_py_package", "arg_function.py"),
-			},
-		},
-		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				filepath.Join("pulumi_example", "_inputs.py"),
-				filepath.Join("pulumi_example", "arg_function.py"),
-				filepath.Join("pulumi_example", "cat.py"),
-				filepath.Join("pulumi_example", "component.py"),
-				filepath.Join("pulumi_example", "workload.py"),
-			},
-		},
-		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				filepath.Join("pulumi_plant", "_enums.py"),
-				filepath.Join("pulumi_plant", "_inputs.py"),
-				filepath.Join("pulumi_plant", "outputs.py"),
-				filepath.Join("pulumi_plant", "__init__.py"),
-				filepath.Join("pulumi_plant", "tree", "__init__.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "_enums.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "__init__.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "rubber_tree.py"),
-				filepath.Join("pulumi_plant", "tree", "v1", "nursery.py"),
-			},
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				filepath.Join("pulumi_example", "_inputs.py"),
-				filepath.Join("pulumi_example", "component.py"),
-				filepath.Join("pulumi_example", "outputs.py"),
-			},
-		},
-	}
+	test.TestSDKCodegen(t, "python", GeneratePackage)
+}
 
-	testDir := filepath.Join("..", "internal", "test", "testdata")
+func TestGenerateTypeNames(t *testing.T) {
+	test.TestTypeNameCodegen(t, "python", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		// Decode python-specific info
+		err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer})
+		require.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), GeneratePackage)
-			assert.NoError(t, err)
+		info, _ := pkg.Language["python"].(PackageInfo)
 
-			dir := filepath.Join(testDir, tt.schemaDir)
-			lang := "python"
+		modules, err := generateModuleContextMap("test", pkg, info, nil)
+		require.NoError(t, err)
 
-			test.RewriteFilesWhenPulumiAccept(t, dir, lang, files)
+		root, ok := modules[""]
+		require.True(t, ok)
 
-			expectedFiles, err := test.LoadFiles(dir, lang, tt.expectedFiles)
-			assert.NoError(t, err)
-
-			test.ValidateFileEquality(t, files, expectedFiles)
-		})
-	}
+		return func(t schema.Type) string {
+			return root.typeString(t, false, false)
+		}
+	})
 }

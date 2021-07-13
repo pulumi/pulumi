@@ -29,7 +29,7 @@ type DocLanguageHelper interface {
 	GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string
 	GetDocLinkForResourceInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
 	GetDocLinkForFunctionInputOrOutputType(pkg *schema.Package, moduleName, typeName string, input bool) string
-	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string
+	GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string
 
 	GetFunctionName(modName string, f *schema.Function) string
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup

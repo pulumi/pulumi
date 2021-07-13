@@ -5,7 +5,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
-using System.IO;
 using System.Linq;
 using System.Net;
 using System.Runtime.ExceptionServices;
@@ -19,6 +18,7 @@ using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Pulumi.Automation.Commands;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -116,30 +116,23 @@ namespace Pulumi.Automation
             this.Name = name;
             this.Workspace = workspace;
 
-            switch (mode)
+            this._readyTask = mode switch
             {
-                case WorkspaceStackInitMode.Create:
-                    this._readyTask = workspace.CreateStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.Select:
-                    this._readyTask = workspace.SelectStackAsync(name, cancellationToken);
-                    break;
-                case WorkspaceStackInitMode.CreateOrSelect:
-                    this._readyTask = Task.Run(async () =>
+                WorkspaceStackInitMode.Create => workspace.CreateStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.Select => workspace.SelectStackAsync(name, cancellationToken),
+                WorkspaceStackInitMode.CreateOrSelect => Task.Run(async () =>
+                {
+                    try
                     {
-                        try
-                        {
-                            await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                        catch (StackAlreadyExistsException)
-                        {
-                            await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
-                        }
-                    });
-                    break;
-                default:
-                    throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}");
-            }
+                        await workspace.CreateStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (StackAlreadyExistsException)
+                    {
+                        await workspace.SelectStackAsync(name, cancellationToken).ConfigureAwait(false);
+                    }
+                }),
+                _ => throw new InvalidOperationException($"Unexpected Stack creation mode: {mode}")
+            };
         }
 
         /// <summary>
@@ -210,6 +203,7 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var logger = this.Workspace.Logger;
             var args = new List<string>()
             {
                 "up",
@@ -221,6 +215,9 @@ namespace Pulumi.Automation
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -269,7 +266,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, logger, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -278,9 +275,25 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var upResult = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, options?.OnEvent, cancellationToken).ConfigureAwait(false);
-                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
-                    exceptionInfo.Throw();
+                CommandResult upResult;
+                try
+                {
+                    upResult = await this.RunCommandAsync(
+                        args,
+                        options?.OnStandardOutput,
+                        options?.OnStandardError,
+                        options?.OnEvent,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                        exceptionInfo.Throw();
+
+                    // this won't be hit if we have an inline
+                    // program exception
+                    throw;
+                }
 
                 var output = await this.GetOutputsAsync(cancellationToken).ConfigureAwait(false);
                 var summary = await this.GetInfoAsync(cancellationToken).ConfigureAwait(false);
@@ -312,12 +325,16 @@ namespace Pulumi.Automation
         {
             var execKind = ExecKind.Local;
             var program = this.Workspace.Program;
+            var logger = this.Workspace.Logger;
             var args = new List<string>() { "preview" };
 
             if (options != null)
             {
                 if (options.Program != null)
                     program = options.Program;
+
+                if (options.Logger != null)
+                    logger = options.Logger;
 
                 if (!string.IsNullOrWhiteSpace(options.Message))
                 {
@@ -380,7 +397,7 @@ namespace Pulumi.Automation
                 if (program != null)
                 {
                     execKind = ExecKind.Inline;
-                    inlineHost = new InlineLanguageHost(program, cancellationToken);
+                    inlineHost = new InlineLanguageHost(program, logger, cancellationToken);
                     await inlineHost.StartAsync().ConfigureAwait(false);
                     var port = await inlineHost.GetPortAsync().ConfigureAwait(false);
                     args.Add($"--client=127.0.0.1:{port}");
@@ -389,9 +406,25 @@ namespace Pulumi.Automation
                 args.Add("--exec-kind");
                 args.Add(execKind);
 
-                var result = await this.RunCommandAsync(args, options?.OnStandardOutput, options?.OnStandardError, OnPreviewEvent, cancellationToken).ConfigureAwait(false);
-                if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
-                    exceptionInfo.Throw();
+                CommandResult result;
+                try
+                {
+                    result = await this.RunCommandAsync(
+                        args,
+                        options?.OnStandardOutput,
+                        options?.OnStandardError,
+                        OnPreviewEvent,
+                        cancellationToken).ConfigureAwait(false);
+                }
+                catch
+                {
+                    if (inlineHost != null && inlineHost.TryGetExceptionInfo(out var exceptionInfo))
+                        exceptionInfo.Throw();
+
+                    // this won't be hit if we have an inline
+                    // program exception
+                    throw;
+                }
 
                 if (summaryEvent is null)
                 {
@@ -422,7 +455,7 @@ namespace Pulumi.Automation
             RefreshOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "refresh",
                 "--yes",
@@ -477,7 +510,7 @@ namespace Pulumi.Automation
             DestroyOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "destroy",
                 "--yes",
@@ -538,7 +571,7 @@ namespace Pulumi.Automation
             HistoryOptions? options = null,
             CancellationToken cancellationToken = default)
         {
-            var args = new List<string>()
+            var args = new List<string>
             {
                 "stack",
                 "history",
@@ -615,14 +648,13 @@ namespace Pulumi.Automation
         }
 
         private async Task<CommandResult> RunCommandAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             Action<string>? onStandardOutput,
             Action<string>? onStandardError,
             Action<EngineEvent>? onEngineEvent,
             CancellationToken cancellationToken)
         {
-            var argsList = args.ToList();
-            argsList.AddRange(new List<string>() { "--stack", this.Name });
+            args = args.Concat(new[] { "--stack", this.Name }).ToList();
             return await this.Workspace.RunStackCommandAsync(this.Name, args, onStandardOutput, onStandardError, onEngineEvent, cancellationToken);
         }
 
@@ -651,6 +683,7 @@ namespace Pulumi.Automation
 
             public InlineLanguageHost(
                 PulumiFn program,
+                ILogger? logger,
                 CancellationToken cancellationToken)
             {
                 this._cancelToken = cancellationToken;
@@ -665,12 +698,21 @@ namespace Pulumi.Automation
                                     listenOptions.Protocols = HttpProtocols.Http2;
                                 });
                             })
+                            .ConfigureAppConfiguration((context, config) =>
+                            {
+                                // clear so we don't read appsettings.json
+                                // note that we also won't read environment variables for config
+                                config.Sources.Clear();
+                            })
+                            .ConfigureLogging(loggingBuilder =>
+                            {
+                                // disable default logging
+                                loggingBuilder.ClearProviders();
+                            })
                             .ConfigureServices(services =>
                             {
-                                services.AddLogging();
-
                                 // to be injected into LanguageRuntimeService
-                                var callerContext = new LanguageRuntimeService.CallerContext(program, cancellationToken);
+                                var callerContext = new LanguageRuntimeService.CallerContext(program, logger, cancellationToken);
                                 services.AddSingleton(callerContext);
 
                                 services.AddGrpc(grpcOptions =>

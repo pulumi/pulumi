@@ -47,6 +47,11 @@ class ResourceProviderStub(object):
         request_serializer=provider__pb2.InvokeRequest.SerializeToString,
         response_deserializer=provider__pb2.InvokeResponse.FromString,
         )
+    self.Call = channel.unary_unary(
+        '/pulumirpc.ResourceProvider/Call',
+        request_serializer=provider__pb2.CallRequest.SerializeToString,
+        response_deserializer=provider__pb2.CallResponse.FromString,
+        )
     self.Check = channel.unary_unary(
         '/pulumirpc.ResourceProvider/Check',
         request_serializer=provider__pb2.CheckRequest.SerializeToString,
@@ -137,6 +142,13 @@ class ResourceProviderServicer(object):
   def StreamInvoke(self, request, context):
     """StreamInvoke dynamically executes a built-in function in the provider, which returns a stream
     of responses.
+    """
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def Call(self, request, context):
+    """Call dynamically executes a method in the provider associated with a component resource.
     """
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
     context.set_details('Method not implemented!')
@@ -243,6 +255,11 @@ def add_ResourceProviderServicer_to_server(servicer, server):
           servicer.StreamInvoke,
           request_deserializer=provider__pb2.InvokeRequest.FromString,
           response_serializer=provider__pb2.InvokeResponse.SerializeToString,
+      ),
+      'Call': grpc.unary_unary_rpc_method_handler(
+          servicer.Call,
+          request_deserializer=provider__pb2.CallRequest.FromString,
+          response_serializer=provider__pb2.CallResponse.SerializeToString,
       ),
       'Check': grpc.unary_unary_rpc_method_handler(
           servicer.Check,

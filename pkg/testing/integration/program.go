@@ -216,8 +216,17 @@ type ProgramTestOptions struct {
 	// environment during tests.
 	StackName string
 
-	// Tracing specifies the Zipkin endpoint if any to use for tracing Pulumi invocations.
+	// If non-empty, specifies the value of the `--tracing` flag to pass
+	// to Pulumi CLI, which may be a Zipkin endpoint or a
+	// `file:./local.trace` style url for AppDash tracing.
+	//
+	// Template `{command}` syntax will be expanded to the current
+	// command name such as `pulumi-stack-rm`. This is useful for
+	// file-based tracing since `ProgramTest` performs multiple
+	// CLI invocations that can inadvertently overwrite the trace
+	// file.
 	Tracing string
+
 	// NoParallel will opt the test out of being ran in parallel.
 	NoParallel bool
 
@@ -264,6 +273,9 @@ type ProgramTestOptions struct {
 	UseAutomaticVirtualEnv bool
 	// Use the Pipenv tool to manage the virtual environment.
 	UsePipenv bool
+
+	// If set, this hook is called after the `pulumi preview` command has completed.
+	PreviewCompletedHook func(dir string) error
 }
 
 func (opts *ProgramTestOptions) GetDebugLogLevel() int {
@@ -716,7 +728,7 @@ func (pt *ProgramTester) getDotNetBin() (string, error) {
 	return getCmdBin(&pt.dotNetBin, "dotnet", pt.opts.DotNetBin)
 }
 
-func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
+func (pt *ProgramTester) pulumiCmd(name string, args []string) ([]string, error) {
 	bin, err := pt.getBin()
 	if err != nil {
 		return nil, err
@@ -727,7 +739,7 @@ func (pt *ProgramTester) pulumiCmd(args []string) ([]string, error) {
 	}
 	cmd = append(cmd, args...)
 	if tracing := pt.opts.Tracing; tracing != "" {
-		cmd = append(cmd, "--tracing", tracing)
+		cmd = append(cmd, "--tracing", strings.ReplaceAll(tracing, "{command}", name))
 	}
 	return cmd, nil
 }
@@ -767,7 +779,7 @@ func (pt *ProgramTester) runCommand(name string, args []string, wd string) error
 }
 
 func (pt *ProgramTester) runPulumiCommand(name string, args []string, wd string, expectFailure bool) error {
-	cmd, err := pt.pulumiCmd(args)
+	cmd, err := pt.pulumiCmd(name, args)
 	if err != nil {
 		return err
 	}
@@ -1259,6 +1271,11 @@ func (pt *ProgramTester) PreviewAndUpdate(dir string, name string, shouldFail, e
 				return nil
 			}
 			return err
+		}
+		if pt.opts.PreviewCompletedHook != nil {
+			if err := pt.opts.PreviewCompletedHook(dir); err != nil {
+				return err
+			}
 		}
 	}
 
