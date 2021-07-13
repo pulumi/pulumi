@@ -211,7 +211,6 @@ func TestEnumUsage(t *testing.T) {
 		}, pulumi.WithMocks("project", "stack", mocks(1))))
 	})
 
-	// Tests that the enum output values
 	t.Run("EnumOutputs", func(t *testing.T) {
 		require.NoError(t, pulumi.RunErr(func(ctx *pulumi.Context) error {
 			rubberTree, err := tree.NewRubberTree(ctx, "blah", &tree.RubberTreeArgs{

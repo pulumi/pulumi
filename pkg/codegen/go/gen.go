@@ -782,6 +782,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	case "number":
 		goElementType = "float64"
 	}
+	asFuncName := Title(strings.Replace(elementType, "pulumi.", "", -1))
 
 	fmt.Fprintf(w, "type %s %s\n\n", name, goElementType)
 
@@ -811,9 +812,9 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	fmt.Fprintln(w, ")")
 
 	inputType := pkg.inputType(enumType)
-	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType)
+	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType, asFuncName)
 
-	pkg.genEnumOutputTypes(w, name, elementType, goElementType)
+	pkg.genEnumOutputTypes(w, name, elementType, goElementType, asFuncName)
 	pkg.genEnumInputTypes(w, name, enumType, goElementType)
 
 	details := pkg.detailsForType(enumType)
@@ -864,9 +865,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	return nil
 }
 
-func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementType, goElementType string) {
-	asFuncName := Title(strings.Replace(elementType, "pulumi.", "", -1))
-
+func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementType, goElementType, asFuncName string) {
 	fmt.Fprintf(w, "type %sOutput struct{ *pulumi.OutputState }\n\n", name)
 	genOutputMethods(w, name, name, false)
 
@@ -998,9 +997,7 @@ func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
 	}
 }
 
-func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType string) {
-	asFuncName := Title(strings.Replace(elementType, "pulumi.", "", -1))
-
+func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType, asFuncName string) {
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", typeName)
 	fmt.Fprintf(w, "return reflect.TypeOf((*%s)(nil)).Elem()\n", typeName)
