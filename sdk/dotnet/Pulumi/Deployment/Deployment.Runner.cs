@@ -1,6 +1,7 @@
 ﻿// Copyright 2016-2020, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -29,8 +30,11 @@ namespace Pulumi
             /// continuously, asynchronously loop, waiting for these tasks to complete, and only
             /// exiting once the set becomes empty.
             /// </summary>
-            private readonly Dictionary<Task, List<string>> _inFlightTasks = new Dictionary<Task, List<string>>();
+            private readonly TaskMonitoringHelper _inFlightTasks = new TaskMonitoringHelper();
             private readonly List<Exception> _exceptions = new List<Exception>();
+
+            private readonly ConcurrentDictionary<Tuple<int,string>,int> _descriptions =
+                new ConcurrentDictionary<Tuple<int,string>,int>();
 
             public ImmutableList<Exception> SwallowedExceptions => this._exceptions.ToImmutableList();
 
@@ -80,21 +84,31 @@ namespace Pulumi
             public void RegisterTask(string description, Task task)
             {
                 _deploymentLogger.LogDebug($"Registering task: {description}");
+                _inFlightTasks.AddTask(task);
 
-                lock (_inFlightTasks)
+                // Ensure completion message is logged at most once when the task finishes.
+                if (_deploymentLogger.IsEnabled(LogLevel.Debug))
                 {
                     // We may get several of the same tasks with different descriptions.  That can
                     // happen when the runtime reuses cached tasks that it knows are value-identical
                     // (for example Task.CompletedTask).  In that case, we just store all the
                     // descriptions. We'll print them all out as done once this task actually
                     // finishes.
-                    if (!_inFlightTasks.TryGetValue(task, out var descriptions))
-                    {
-                        descriptions = new List<string>();
-                        _inFlightTasks.Add(task, descriptions);
-                    }
 
-                    descriptions.Add(description);
+                    var key = new Tuple<int,string>(task.Id, description);
+                    int timesSeen = _descriptions.AddOrUpdate(
+                        key,
+                        (Tuple<int,string> key) => 1,
+                        (Tuple<int,string> key, int value) => value + 1
+                    );
+                    if (timesSeen == 1)
+                    {
+                        task.ContinueWith(task => {
+                            _deploymentLogger.LogDebug($"Completed task: {description}");
+                            int old;
+                            _descriptions.TryRemove(key, out old);
+                        });
+                    }
                 }
             }
 
@@ -107,84 +121,10 @@ namespace Pulumi
 
             private async Task<int> WhileRunningAsync()
             {
-                var tasks = new List<Task>();
-
-                // Keep looping as long as there are outstanding tasks that are still running.
-                while (true)
+                var err = await _inFlightTasks.AwaitIdleOrFirstExceptionAsync();
+                if (err != null)
                 {
-                    tasks.Clear();
-                    lock (_inFlightTasks)
-                    {
-                        if (_inFlightTasks.Count == 0)
-                        {
-                            // No more tasks in flight: exit the loop.
-                            break;
-                        }
-
-                        // Grab all the tasks we currently have running.
-                        tasks.AddRange(_inFlightTasks.Keys);
-                    }
-
-                    // Wait for one of the two events to happen:
-                    // 1. All tasks in the list complete successfully, or
-                    // 2. Any task throws an exception.
-                    // There's no standard API with this semantics, so we create a custom completion source that is
-                    // completed when remaining count is zero, or when an exception is thrown.
-                    var remaining = tasks.Count;
-                    var tcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
-                    tasks.ForEach(HandleCompletion);
-                    async void HandleCompletion(Task task)
-                    {
-                        try
-                        {
-                            // Wait for the task completion.
-                            await task.ConfigureAwait(false);
-
-                            // Log the descriptions of completed tasks.
-                            List<string> descriptions;
-                            lock (_inFlightTasks)
-                            {
-                                descriptions = _inFlightTasks[task];
-                            }
-                            foreach (var description in descriptions)
-                            {
-                                _deploymentLogger.LogDebug($"Completed task: {description}");
-                            }
-
-                            // Check if all the tasks are completed and signal the completion source if so.
-                            if (Interlocked.Decrement(ref remaining) == 0)
-                            {
-                                tcs.TrySetResult(0);
-                            }
-                        }
-                        catch (OperationCanceledException)
-                        {
-                            tcs.TrySetCanceled();
-                        }
-                        catch (Exception ex)
-                        {
-                            tcs.TrySetException(ex);
-                        }
-                        finally
-                        {
-                            // Once finished, remove the task from the set of tasks that are running.
-                            lock (_inFlightTasks)
-                            {
-                                _inFlightTasks.Remove(task);
-                            }
-                        }
-                    }
-                    
-                    try
-                    {
-                        // Now actually await that combined task and realize any exceptions it may have thrown.
-                        await tcs.Task.ConfigureAwait(false);
-                    }
-                    catch (Exception e)
-                    {
-                        // if it threw, report it as necessary, then quit.
-                        return await HandleExceptionAsync(e).ConfigureAwait(false);
-                    }
+                    return await HandleExceptionAsync(err).ConfigureAwait(false);
                 }
 
                 // there were no more tasks we were waiting on.  Quit out, reporting if we had any
