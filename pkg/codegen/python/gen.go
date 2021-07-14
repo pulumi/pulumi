@@ -756,6 +756,10 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	fmt.Fprintf(w, "__config__ = pulumi.Config('%s')\n", mod.pkg.Name)
 	fmt.Fprintf(w, "\n\n")
 
+	// To avoid a breaking change to the existing config getters, we define a class that extends
+	// the `ModuleType` type and implements property getters for each config key. We then overwrite
+	// the `__class__` attribute of the current module as described in the proposal for PEP-549. This allows
+	// us to maintain the existing interface for users but implement dynamic getters behind the scenes.
 	fmt.Fprintf(w, "class _ExportableConfig(types.ModuleType):\n")
 	indent := "    "
 
@@ -770,8 +774,16 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 			configFetch += " or " + v
 		}
 
+		// For historical reasons and to maintain backwards compatibility, the config variables for python
+		// are always typed as `Optional[str`] or `str` since the getters only use config.get().
+		// To return the rich objects would be a breaking change, tracked in https://github.com/pulumi/pulumi/issues/7493
+		typeString := "Optional[str]"
+		if p.IsRequired() {
+			typeString = "str"
+		}
+
 		fmt.Fprintf(w, "%s@property\n", indent)
-		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), mod.typeString(p.Type, false, true))
+		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
 
 		printComment(w, p.Comment, dblIndent)
@@ -783,6 +795,8 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 }
 
 // genConfigStubs emits all type information for the config variables in the given module, returning the resulting file.
+// We do this because we lose IDE autocomplete by implementing the dynamic config getters described in genConfig.
+// Emitting these stubs allows us to maintain type hints and autocomplete for users.
 func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 

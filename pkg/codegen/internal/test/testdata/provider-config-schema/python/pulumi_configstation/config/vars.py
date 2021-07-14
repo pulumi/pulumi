@@ -17,22 +17,22 @@ __config__ = pulumi.Config('configstation')
 
 class _ExportableConfig(types.ModuleType):
     @property
-    def favorite_plants(self) -> Optional[Sequence[str]]:
+    def favorite_plants(self) -> Optional[str]:
         return __config__.get('favoritePlants')
 
     @property
-    def favorite_sandwich(self) -> Optional[pulumi.InputType['outputs.Sandwich']]:
+    def favorite_sandwich(self) -> Optional[str]:
         """
         omg my favorite sandwich
         """
         return __config__.get('favoriteSandwich')
 
     @property
-    def is_member(self) -> Optional[bool]:
+    def is_member(self) -> Optional[str]:
         return __config__.get('isMember') or True
 
     @property
-    def kids(self) -> Optional[pulumi.InputType['_root_outputs.Child']]:
+    def kids(self) -> Optional[str]:
         return __config__.get('kids')
 
     @property
@@ -40,7 +40,7 @@ class _ExportableConfig(types.ModuleType):
         return __config__.get('name')
 
     @property
-    def number_of_sheep(self) -> Optional[int]:
+    def number_of_sheep(self) -> Optional[str]:
         return __config__.get('numberOfSheep')
 
     @property
