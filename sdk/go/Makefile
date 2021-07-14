@@ -4,8 +4,6 @@ VERSION          := $(shell cd ../../ && pulumictl get version)
 PROJECT_PKGS     := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... ./auto/...| grep -v /vendor/ | grep -v templates)
 PROJECT_ROOT     := $(realpath ../..)
 
-TESTPARALLELISM := 10
-
 include ../../build/common.mk
 
 gen::
@@ -22,7 +20,7 @@ install:: install_plugin
 test_all:: test_fast
 
 test_fast:: install
-	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
