@@ -71,12 +71,12 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	Metadata              *metav1.ObjectMeta            `pulumi:"metadata"`
-	MetadataArray         []*metav1.ObjectMeta          `pulumi:"metadataArray"`
-	MetadataMap           map[string]*metav1.ObjectMeta `pulumi:"metadataMap"`
-	RequiredMetadata      metav1.ObjectMeta             `pulumi:"requiredMetadata"`
-	RequiredMetadataArray []*metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
-	RequiredMetadataMap   map[string]*metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
+	Metadata              *metav1.ObjectMeta           `pulumi:"metadata"`
+	MetadataArray         []metav1.ObjectMeta          `pulumi:"metadataArray"`
+	MetadataMap           map[string]metav1.ObjectMeta `pulumi:"metadataMap"`
+	RequiredMetadata      metav1.ObjectMeta            `pulumi:"requiredMetadata"`
+	RequiredMetadataArray []metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
+	RequiredMetadataMap   map[string]metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
 }
 
 // The set of arguments for constructing a Component resource.
