@@ -500,7 +500,7 @@ func ExampleLocalWorkspace_RemoveStack() {
 	// create a workspace from a local project
 	w, _ := NewLocalWorkspace(ctx, WorkDir(filepath.Join(".", "program")))
 	stackName := FullyQualifiedStackName("org", "proj", "stack")
-	_ = w.RemoveStack(ctx, stackName)
+	_ = w.RemoveStack(ctx, stackName, false)
 }
 
 func ExampleLocalWorkspace_SelectStack() {
@@ -631,7 +631,7 @@ func ExampleStack() error {
 	defer func() {
 		// Workspace operations can be accessed via Stack.Workspace()
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 	}()
 
 	err = s.SetAllConfig(ctx, cfg)

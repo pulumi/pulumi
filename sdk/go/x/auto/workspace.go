@@ -81,8 +81,9 @@ type Workspace interface {
 	CreateStack(context.Context, string) error
 	// SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
 	SelectStack(context.Context, string) error
-	// RemoveStack deletes the stack and all associated configuration and history.
-	RemoveStack(context.Context, string) error
+	// RemoveStack deletes the stack and all associated configuration and history,
+	// pass true if you want to forcibly remove the stack
+	RemoveStack(context.Context, string, bool) error
 	// ListStacks returns all Stacks created under the current Project.
 	// This queries underlying backend and may return stacks not present in the Workspace.
 	ListStacks(context.Context) ([]StackSummary, error)

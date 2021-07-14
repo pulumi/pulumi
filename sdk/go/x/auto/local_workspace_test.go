@@ -68,7 +68,7 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 		assert.Nil(t, err, "failed to unset EnvVar.")
 
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -110,6 +110,88 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+
+func TestRemoveWithForce(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// Set environment variables scoped to the workspace.
+	envvars := map[string]string{
+		"foo":    "bar",
+		"barfoo": "foobar",
+	}
+	err = s.Workspace().SetEnvVars(envvars)
+	assert.Nil(t, err, "failed to set environment values")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+
+	s.Workspace().SetEnvVar("bar", "buzz")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment value after setting")
+
+	s.Workspace().UnsetEnvVar("bar")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	const permalinkSearchStr = "https://app.pulumi.com"
+	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	permalink, err := GetPermalink(res.StdOut)
+	assert.Nil(t, err, "failed to get permalink.")
+	assert.True(t, startRegex.MatchString(permalink))
+
+	if err = s.Workspace().RemoveStack(ctx, stackName, true); err != nil {
+		t.Errorf("remove stack with force failed")
+		t.FailNow()
+	}
+}
+
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -134,7 +216,7 @@ func TestNewStackLocalSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -242,7 +324,7 @@ func TestUpsertStackLocalSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -353,7 +435,7 @@ func TestNewStackRemoteSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -441,7 +523,7 @@ func TestUpsertStackRemoteSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -541,7 +623,7 @@ func TestNewStackRemoteSourceWithSetup(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -641,7 +723,7 @@ func TestUpsertStackRemoteSourceWithSetup(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -730,7 +812,7 @@ func TestNewStackInlineSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -819,7 +901,7 @@ func TestUpsertStackInlineSource(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -908,10 +990,10 @@ func TestNestedStackFails(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(testCtx, s.Name())
+		err = s.Workspace().RemoveStack(testCtx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 
-		err = nestedStack.Workspace().RemoveStack(testCtx, nestedStack.Name())
+		err = nestedStack.Workspace().RemoveStack(testCtx, nestedStack.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -971,7 +1053,7 @@ func TestProgressStreams(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -1041,7 +1123,7 @@ func TestImportExportStack(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 

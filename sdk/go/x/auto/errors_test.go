@@ -43,7 +43,7 @@ func TestConcurrentUpdateError(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -98,7 +98,7 @@ func TestInlineConcurrentUpdateError(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -150,7 +150,7 @@ func TestCompilationErrorGo(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -202,7 +202,7 @@ func TestCreateStack409Error(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -235,7 +235,7 @@ func TestCompilationErrorDotnet(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -276,7 +276,7 @@ func TestCompilationErrorTypescript(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -310,7 +310,7 @@ func TestRuntimeErrorGo(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -345,7 +345,7 @@ func TestRuntimeErrorInlineGo(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -388,7 +388,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -429,7 +429,7 @@ func TestRuntimeErrorJavascript(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -470,7 +470,7 @@ func TestRuntimeErrorTypescript(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
@@ -502,7 +502,7 @@ func TestRuntimeErrorDotnet(t *testing.T) {
 
 	defer func() {
 		// -- pulumi stack rm --
-		err = s.Workspace().RemoveStack(ctx, s.Name())
+		err = s.Workspace().RemoveStack(ctx, s.Name(), false)
 		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
 	}()
 
