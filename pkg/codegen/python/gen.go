@@ -1777,24 +1777,28 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "from subprocess import check_call\n")
 	fmt.Fprintf(w, "\n\n")
 
+	// Create a constant for the version number to replace during build
+	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
+	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
+
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
 	fmt.Fprintf(w, "    def run(self):\n")
 	fmt.Fprintf(w, "        install.run(self)\n")
 	fmt.Fprintf(w, "        try:\n")
 	if pkg.PluginDownloadURL == "" {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}'])\n", pkg.Name)
+		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', PLUGIN_VERSION])\n", pkg.Name)
 	} else {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}', '--server', '%s'])\n", pkg.Name, pkg.PluginDownloadURL)
+		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', PLUGIN_VERSION, '--server', '%s'])\n", pkg.Name, pkg.PluginDownloadURL)
 	}
 	fmt.Fprintf(w, "        except OSError as error:\n")
 	fmt.Fprintf(w, "            if error.errno == errno.ENOENT:\n")
-	fmt.Fprintf(w, "                print(\"\"\"\n")
+	fmt.Fprintf(w, "                print(f\"\"\"\n")
 	fmt.Fprintf(w, "                There was an error installing the %s resource provider plugin.\n", pkg.Name)
 	fmt.Fprintf(w, "                It looks like `pulumi` is not installed on your system.\n")
 	fmt.Fprintf(w, "                Please visit https://pulumi.com/ to install the Pulumi CLI.\n")
 	fmt.Fprintf(w, "                You may try manually installing the plugin by running\n")
-	fmt.Fprintf(w, "                `pulumi plugin install resource %s ${PLUGIN_VERSION}`\n", pkg.Name)
+	fmt.Fprintf(w, "                `pulumi plugin install resource %s {PLUGIN_VERSION}`\n", pkg.Name)
 	fmt.Fprintf(w, "                \"\"\")\n")
 	fmt.Fprintf(w, "            else:\n")
 	fmt.Fprintf(w, "                raise\n")
@@ -1812,7 +1816,7 @@ func genPackageMetadata(
 
 	// Finally, the actual setup part.
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
-	fmt.Fprintf(w, "      version='${VERSION}',\n")
+	fmt.Fprintf(w, "      version=VERSION,\n")
 	if pkg.Description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
 	}
