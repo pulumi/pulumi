@@ -1,5 +1,7 @@
 ### Improvements
 
+- [automation] - Add force flag for RemoveStack in workspace
+  [#7523](https://github.com/pulumi/pulumi/pull/7523)
 ### Bug Fixes
 
 - [cli] - Properly parse Git remotes with periods or hyphens.
