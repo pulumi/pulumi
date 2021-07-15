@@ -43,7 +43,7 @@ Object.defineProperty(exports, "kids", {
     enumerable: true,
 });
 
-export declare const name: string;
+export declare const name: string | undefined;
 Object.defineProperty(exports, "name", {
     get() {
         return __config.get("name");

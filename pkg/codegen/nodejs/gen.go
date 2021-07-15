@@ -1180,7 +1180,7 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			configFetch += " ?? " + v
 		}
 		optType := codegen.OptionalType(p)
-		if p.IsRequired() || (p.DefaultValue != nil && p.DefaultValue.Value != nil) {
+		if p.DefaultValue != nil && p.DefaultValue.Value != nil {
 			optType = codegen.RequiredType(p)
 		}
 
