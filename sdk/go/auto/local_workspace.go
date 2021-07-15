@@ -335,8 +335,13 @@ func (l *LocalWorkspace) SelectStack(ctx context.Context, stackName string) erro
 }
 
 // RemoveStack deletes the stack and all associated configuration and history.
-func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string) error {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "rm", "--yes", stackName)
+func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts ...RemoveStackOption) error {
+	args := []string{"stack", "rm", "--yes", stackName}
+	for _, opt := range opts {
+		args = append(args, opt.getRemoveStackFlag())
+	}
+	
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to remove stack"), stdout, stderr, errCode)
 	}

@@ -84,7 +84,7 @@ type Workspace interface {
 	// SelectStack selects and sets an existing stack matching the stack name, failing if none exists.
 	SelectStack(context.Context, string) error
 	// RemoveStack deletes the stack and all associated configuration and history.
-	RemoveStack(context.Context, string) error
+	RemoveStack(context.Context, string, ...RemoveStackOption) error
 	// ListStacks returns all Stacks created under the current Project.
 	// This queries underlying backend and may return stacks not present in the Workspace.
 	ListStacks(context.Context) ([]StackSummary, error)
@@ -107,6 +107,22 @@ type Workspace interface {
 	ImportStack(context.Context, string, apitype.UntypedDeployment) error
 	// Outputs get the current set of Stack outputs from the last Stack.Up().
 	StackOutputs(context.Context, string) (OutputMap, error)
+}
+
+type RemoveStackOption interface {
+	getRemoveStackFlag() string
+}
+
+func RemoveStackForce() RemoveStackOption {
+	return &removeStackFlagOption{flag: "--force"}
+}
+
+type removeStackFlagOption struct {
+	flag string
+}
+
+func (r *removeStackFlagOption) getRemoveStackFlag() string {
+	return r.flag
 }
 
 // ConfigValue is a configuration value used by a Pulumi program.
