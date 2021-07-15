@@ -726,7 +726,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				}
 				if arg.IsRequired() {
 					argsOptional = false
-					break
 				}
 				args = append(args, arg)
 			}

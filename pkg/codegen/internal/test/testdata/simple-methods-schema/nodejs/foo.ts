@@ -68,6 +68,16 @@ export class Foo extends pulumi.ComponentResource {
             "__self__": this,
         }, this);
     }
+
+    /**
+     * Do something with something else
+     */
+    generateKubeconfig(args: Foo.GenerateKubeconfigArgs): pulumi.Output<Foo.GenerateKubeconfigResult> {
+        return pulumi.runtime.call("example::Foo/generateKubeconfig", {
+            "__self__": this,
+            "boolValue": args.boolValue,
+        }, this);
+    }
 }
 
 /**
@@ -100,6 +110,20 @@ export namespace Foo {
      */
     export interface BarResult {
         readonly someValue: string;
+    }
+
+    /**
+     * The set of arguments for the Foo.generateKubeconfig method.
+     */
+    export interface GenerateKubeconfigArgs {
+        boolValue: boolean;
+    }
+
+    /**
+     * The results of the Foo.generateKubeconfig method.
+     */
+    export interface GenerateKubeconfigResult {
+        readonly kubeconfig: string;
     }
 
 }
