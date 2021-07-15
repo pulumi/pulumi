@@ -12,7 +12,7 @@
 - [sdk/go] - Add preliminary support for unmarshaling plain arrays and maps of output values.
   [#7369](https://github.com/pulumi/pulumi/pull/7369)
 
-- [cli] - Add global flag to print fully qualified stack names.
+- [cli] - Add global flag to print fully qualified stack names. [#7388](https://github.com/pulumi/pulumi/pull/7388)
 
 ### Bug Fixes
 
