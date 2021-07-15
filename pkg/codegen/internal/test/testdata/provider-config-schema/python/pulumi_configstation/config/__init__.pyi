@@ -17,13 +17,13 @@ favoriteSandwich: Optional[str]
 omg my favorite sandwich
 """
 
-isMember: Optional[str]
+isMember: bool
 
 kids: Optional[str]
 
-name: str
+name: Optional[str]
 
-numberOfSheep: Optional[str]
+numberOfSheep: Optional[int]
 
 secretCode: Optional[str]
 """
