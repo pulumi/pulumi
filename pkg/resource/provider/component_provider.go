@@ -32,6 +32,33 @@ type componentProvider struct {
 	version   string
 	schema    []byte
 	construct provider.ConstructFunc
+	call      provider.CallFunc
+}
+
+type Options struct {
+	Name      string
+	Version   string
+	Schema    []byte
+	Construct provider.ConstructFunc
+	Call      provider.CallFunc
+}
+
+// MainWithOptions is an entrypoint for a resource provider plugin that implements `Construct` and optionally also
+// `Call` for component resources.
+//
+// Using it isn't required but can cut down significantly on the amount of boilerplate necessary to fire up a new
+// resource provider for components.
+func MainWithOptions(opts Options) error {
+	return Main(opts.Name, func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
+		return &componentProvider{
+			host:      host,
+			name:      opts.Name,
+			version:   opts.Version,
+			schema:    opts.Schema,
+			construct: opts.Construct,
+			call:      opts.Call,
+		}, nil
+	})
 }
 
 // ComponentMain is an entrypoint for a resource provider plugin that implements `Construct` for component resources.
@@ -82,7 +109,10 @@ func (p *componentProvider) Configure(ctx context.Context,
 // Construct creates a new instance of the provided component resource and returns its state.
 func (p *componentProvider) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
-	return provider.Construct(ctx, req, p.host.conn, p.construct)
+	if p.construct != nil {
+		return provider.Construct(ctx, req, p.host.conn, p.construct)
+	}
+	return nil, status.Error(codes.Unimplemented, "Construct is not yet implemented")
 }
 
 // CheckConfig validates the configuration for this provider.
@@ -155,6 +185,9 @@ func (p *componentProvider) Invoke(ctx context.Context,
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *componentProvider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	if p.call != nil {
+		return provider.Call(ctx, req, p.host.conn, p.call)
+	}
 	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
