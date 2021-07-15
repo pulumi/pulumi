@@ -12,13 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-export {
-    serializeFunctionAsync,
-    serializeFunction,
-    SerializedFunction,
-    SerializeFunctionArgs,
-}  from "./closure/serializeClosure";
-
 export { CodePathOptions, computeCodePaths } from "./closure/codePaths";
 export { leakedPromises } from "./debuggable";
 export { Mocks, setMocks, MockResourceArgs, MockCallArgs } from "./mocks";
