@@ -10,7 +10,7 @@ namespace Pulumi
     /// state when all monitored tasks finish. Allows awaiting next
     /// IDLE state or the first exception, whichever comes first.
     /// Thread-safe.
-    internal class TaskMonitoringHelper
+    internal sealed class TaskMonitoringHelper
     {
         private readonly object _lockObject = new object();
         private int _activeTasks = 0;
