@@ -33,8 +33,8 @@ namespace Pulumi
             private readonly TaskMonitoringHelper _inFlightTasks = new TaskMonitoringHelper();
             private readonly List<Exception> _exceptions = new List<Exception>();
 
-            private readonly ConcurrentDictionary<Tuple<int,string>,int> _descriptions =
-                new ConcurrentDictionary<Tuple<int,string>,int>();
+            private readonly ConcurrentDictionary<(int TaskId, string Desc),int> _descriptions =
+                new ConcurrentDictionary<(int TaskId, string Desc),int>();
 
             public ImmutableList<Exception> SwallowedExceptions => this._exceptions.ToImmutableList();
 
@@ -95,12 +95,8 @@ namespace Pulumi
                     // descriptions. We'll print them all out as done once this task actually
                     // finishes.
 
-                    var key = new Tuple<int,string>(task.Id, description);
-                    int timesSeen = _descriptions.AddOrUpdate(
-                        key,
-                        (Tuple<int,string> key) => 1,
-                        (Tuple<int,string> key, int value) => value + 1
-                    );
+                    var key = (TaskId: task.Id, Desc: description);
+                    int timesSeen = _descriptions.AddOrUpdate(key, _ => 1, (_, v) => v + 1);
                     if (timesSeen == 1)
                     {
                         task.ContinueWith(task => {
