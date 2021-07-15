@@ -1518,7 +1518,7 @@ const (
 )
 
 // Regex used to parse external schema paths. This is declared at the package scope to avoid repeated recompilation.
-var refPathRegex = regexp.MustCompile(`^/?(?P<package>\w+)/(?P<version>v[^/]*)/schema\.json$`)
+var refPathRegex = regexp.MustCompile(`^/?(?P<package>[^/]+)/(?P<version>v[^/]*)/schema\.json$`)
 
 func (t *types) parseTypeSpecRef(ref string) (typeSpecRef, error) {
 	parsedURL, err := url.Parse(ref)

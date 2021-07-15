@@ -21,6 +21,10 @@ var sdkTests = []sdkTest{
 		Description: "External resource schema",
 	},
 	{
+		Directory:   "naming/hyphenated-package",
+		Description: "Test that code generators generate valid code for hyphenated package names",
+	},
+	{
 		Directory:   "nested-module",
 		Description: "Nested module",
 	},
