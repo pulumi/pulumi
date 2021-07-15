@@ -105,7 +105,6 @@ namespace Pulumi
                     {
                         task.ContinueWith(task => {
                             _deploymentLogger.LogDebug($"Completed task: {description}");
-                            int old;
                             _descriptions.TryRemove(key, out _);
                         });
                     }
