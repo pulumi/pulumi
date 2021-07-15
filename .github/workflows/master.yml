@@ -115,22 +115,22 @@ jobs:
         with:
           version: latest
           args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate
-  examples_smoke_test:
-    name: Trigger Examples Smoke Test
-    runs-on: ubuntu-latest
-    needs: publish-sdks
-    steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v2
-      - name: Install pulumictl
-        uses: jaxxstorm/action-install-gh-release@v1.2.0
-        with:
-          repo: pulumi/pulumictl
-      - name: Repository Dispatch
-        run: |
-          pulumictl dispatch -r pulumi/examples -c smoke-test-cli $(pulumictl get version --language generic -o)
-        env:
-          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
+#  examples_smoke_test:
+#    name: Trigger Examples Smoke Test
+#    runs-on: ubuntu-latest
+#    needs: publish-sdks
+#    steps:
+#      - name: Checkout Repo
+#        uses: actions/checkout@v2
+#      - name: Install pulumictl
+#        uses: jaxxstorm/action-install-gh-release@v1.2.0
+#        with:
+#          repo: pulumi/pulumictl
+#      - name: Repository Dispatch
+#        run: |
+#          pulumictl dispatch -r pulumi/examples -c smoke-test-cli $(pulumictl get version --language generic -o)
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
