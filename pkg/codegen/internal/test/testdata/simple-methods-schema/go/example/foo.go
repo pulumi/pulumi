@@ -105,6 +105,42 @@ func (r *Foo) Baz(ctx *pulumi.Context) error {
 	return err
 }
 
+// Do something with something else
+func (r *Foo) GenerateKubeconfig(ctx *pulumi.Context, args *FooGenerateKubeconfigArgs) (FooGenerateKubeconfigResultOutput, error) {
+	out, err := ctx.Call("example::Foo/generateKubeconfig", args, FooGenerateKubeconfigResultOutput{}, r)
+	if err != nil {
+		return FooGenerateKubeconfigResultOutput{}, err
+	}
+	return out.(FooGenerateKubeconfigResultOutput), nil
+}
+
+type fooGenerateKubeconfigArgs struct {
+	BoolValue bool `pulumi:"boolValue"`
+}
+
+// The set of arguments for the GenerateKubeconfig method of the Foo resource.
+type FooGenerateKubeconfigArgs struct {
+	BoolValue bool
+}
+
+func (FooGenerateKubeconfigArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*fooGenerateKubeconfigArgs)(nil)).Elem()
+}
+
+type FooGenerateKubeconfigResult struct {
+	Kubeconfig string `pulumi:"kubeconfig"`
+}
+
+type FooGenerateKubeconfigResultOutput struct{ *pulumi.OutputState }
+
+func (FooGenerateKubeconfigResultOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*FooGenerateKubeconfigResult)(nil)).Elem()
+}
+
+func (o FooGenerateKubeconfigResultOutput) Kubeconfig() pulumi.StringOutput {
+	return o.ApplyT(func(v FooGenerateKubeconfigResult) string { return v.Kubeconfig }).(pulumi.StringOutput)
+}
+
 type FooInput interface {
 	pulumi.Input
 
@@ -143,4 +179,5 @@ func (o FooOutput) ToFooOutputWithContext(ctx context.Context) FooOutput {
 func init() {
 	pulumi.RegisterOutputType(FooOutput{})
 	pulumi.RegisterOutputType(FooBarResultOutput{})
+	pulumi.RegisterOutputType(FooGenerateKubeconfigResultOutput{})
 }
