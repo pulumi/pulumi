@@ -774,14 +774,7 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 			configFetch += " or " + v
 		}
 
-		// For historical reasons and to maintain backwards compatibility, the config variables for python
-		// are always typed as `Optional[str`] or `str` since the getters only use config.get().
-		// To return the rich objects would be a breaking change, tracked in https://github.com/pulumi/pulumi/issues/7493
-		typeString := "Optional[str]"
-		if p.IsRequired() {
-			typeString = "str"
-		}
-
+		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s@property\n", indent)
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
@@ -792,6 +785,17 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	}
 
 	return w.String(), nil
+}
+
+func genConfigVarType(configVar *schema.Property) string {
+	// For historical reasons and to maintain backwards compatibility, the config variables for python
+	// are always typed as `Optional[str`] or `str` since the getters only use config.get().
+	// To return the rich objects would be a breaking change, tracked in https://github.com/pulumi/pulumi/issues/7493
+	typeString := "Optional[str]"
+	if configVar.DefaultValue != nil && configVar.DefaultValue.Value != nil {
+		typeString = "str"
+	}
+	return typeString
 }
 
 // genConfigStubs emits all type information for the config variables in the given module, returning the resulting file.
@@ -807,10 +811,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		typeString := "Optional[str]"
-		if p.IsRequired() {
-			typeString = "str"
-		}
+		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
 		printComment(w, p.Comment, "")
 		fmt.Fprintf(w, "\n")

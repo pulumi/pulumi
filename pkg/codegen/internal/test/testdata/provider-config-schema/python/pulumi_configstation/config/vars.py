@@ -28,7 +28,7 @@ class _ExportableConfig(types.ModuleType):
         return __config__.get('favoriteSandwich')
 
     @property
-    def is_member(self) -> Optional[str]:
+    def is_member(self) -> str:
         return __config__.get('isMember') or True
 
     @property
@@ -36,7 +36,7 @@ class _ExportableConfig(types.ModuleType):
         return __config__.get('kids')
 
     @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         return __config__.get('name')
 
     @property
