@@ -27,7 +27,7 @@ Object.defineProperty(exports, "favoriteSandwich", {
     enumerable: true,
 });
 
-export declare const isMember: boolean | undefined;
+export declare const isMember: boolean;
 Object.defineProperty(exports, "isMember", {
     get() {
         return __config.getObject<boolean>("isMember") ?? true;
