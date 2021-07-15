@@ -47,7 +47,7 @@ namespace Pulumi
                 if (_next != null)
                 {
                     return _next.Task;
-                } 
+                }
                 else
                 {
                     // In IDLE state already.
@@ -62,21 +62,14 @@ namespace Pulumi
             {
                 _activeTasks--;
 
-                // If entering IDLE state or observing an exception, 
-                // notify waiters and reset state with a fresh promise.
+                // Notify waiters and reset on IDLE or exception.
                 if (_activeTasks == 0 || task.Exception != null)
                 {
                     if (_next != null)
                     {
                         _next.SetResult(task.Exception);
                     }
-                    _next = new TaskCompletionSource<Exception?>();
-                }
-
-                // Clean up if entering IDLE state.
-                if (_activeTasks == 0)
-                {
-                    _next = null;
+                    _next = (_activeTasks == 0) ? null : new TaskCompletionSource<Exception?>();
                 }
 
                 CheckInvariants();
