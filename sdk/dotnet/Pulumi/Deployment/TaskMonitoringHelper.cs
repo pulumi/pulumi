@@ -13,8 +13,8 @@ namespace Pulumi
     internal sealed class TaskMonitoringHelper
     {
         private readonly object _lockObject = new object();
-        private int _activeTasks = 0;
-        private TaskCompletionSource<Exception?>? _next = null;
+        private int _activeTasks;
+        private TaskCompletionSource<Exception?>? _next;
 
         public TaskMonitoringHelper()
         {
