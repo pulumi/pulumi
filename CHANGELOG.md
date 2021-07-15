@@ -19,7 +19,7 @@ CHANGELOG
 - [codegen/go] - Emit To[ElementType]Output methods for go enum output types
   [#7499](https://github.com/pulumi/pulumi/pull/7499)
 
-- [sdk/nodejs] - Wait on remote componet dependencies
+- [sdk/nodejs] - Wait on remote component dependencies
   [#7541](https://github.com/pulumi/pulumi/pull/7541)
 
 ## 3.6.1 (2021-07-07)
