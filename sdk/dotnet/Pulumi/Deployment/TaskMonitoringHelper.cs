@@ -12,7 +12,7 @@ namespace Pulumi
     /// Thread-safe.
     internal class TaskMonitoringHelper
     {
-        private readonly object _lockObject = new Object();
+        private readonly object _lockObject = new object();
         private int _activeTasks = 0;
         private TaskCompletionSource<Exception?>? _next = null;
 
