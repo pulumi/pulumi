@@ -16,8 +16,12 @@ namespace Pulumi
         private int _activeTasks;
         private TaskCompletionSource<Exception?>? _next;
 
+        // Cache the delegate instance to avoid repeated allocations.
+        private readonly Action<Task> _onTaskCompleted;
+
         public TaskMonitoringHelper()
         {
+            _onTaskCompleted = OnTaskCompleted;
             CheckInvariants();
         }
 
@@ -35,7 +39,7 @@ namespace Pulumi
                 _activeTasks++;
                 CheckInvariants();
             };
-            task.ContinueWith(this.OnTaskCompleted);
+            task.ContinueWith(_onTaskCompleted);
         }
 
         /// Awaits the next IDLE period (reprsented by null) or the first exception
