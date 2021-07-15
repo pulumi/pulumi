@@ -6,7 +6,7 @@ import { input as inputs, output as outputs } from "../types";
 import * as utilities from "../utilities";
 
 declare var exports: any;
-let __config = new pulumi.Config("configstation");
+const __config = new pulumi.Config("configstation");
 
 export declare const favoritePlants: string[] | undefined;
 Object.defineProperty(exports, "favoritePlants", {
@@ -30,7 +30,7 @@ Object.defineProperty(exports, "favoriteSandwich", {
 export declare const isMember: boolean | undefined;
 Object.defineProperty(exports, "isMember", {
     get() {
-        return __config.getObject<boolean>("isMember") || true;
+        return __config.getObject<boolean>("isMember") ?? true;
     },
     enumerable: true,
 });
@@ -43,7 +43,7 @@ Object.defineProperty(exports, "kids", {
     enumerable: true,
 });
 
-export declare const name: string | undefined;
+export declare const name: string;
 Object.defineProperty(exports, "name", {
     get() {
         return __config.get("name");
@@ -65,7 +65,7 @@ Object.defineProperty(exports, "numberOfSheep", {
 export declare const secretCode: string | undefined;
 Object.defineProperty(exports, "secretCode", {
     get() {
-        return __config.get("secretCode") || utilities.getEnv("SECRET_CODE", "MY_SUPER_SECRET_CODE");
+        return __config.get("secretCode") ?? utilities.getEnv("SECRET_CODE", "MY_SUPER_SECRET_CODE");
     },
     enumerable: true,
 });
