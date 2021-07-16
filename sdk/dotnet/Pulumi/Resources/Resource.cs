@@ -20,46 +20,70 @@ namespace Pulumi
         /// The child resources of this resource.  We use these (only from a ComponentResource) to
         /// allow code to dependOn a ComponentResource and have that effectively mean that it is
         /// depending on all the CustomResource children of that component.
-        /// 
+        ///
         /// Important!  We only walk through ComponentResources.They're the only resources that
         /// serve as an aggregation of other primitive(i.e.custom) resources.While a custom resource
         /// can be a parent of other resources, we don't want to ever depend on those child
         /// resource.  If we do, it's simple to end up in a situation where we end up depending on a
         /// child resource that has a data cycle dependency due to the data passed into it. An
         /// example of how this would be bad is:
-        /// 
+        ///
         /// <c>
         ///     var c1 = new CustomResource("c1");
         ///     var c2 = new CustomResource("c2", { parentId = c1.id }, { parent = c1 });
         ///     var c3 = new CustomResource("c3", { parentId = c1.id }, { parent = c1 });
         /// </c>
-        /// 
+        ///
         /// The problem here is that 'c2' has a data dependency on 'c1'.  If it tries to wait on
         /// 'c1' it will walk to the children and wait on them.This will mean it will wait on 'c3'.
         /// But 'c3' will be waiting in the same manner on 'c2', and a cycle forms. This normally
         /// does not happen with ComponentResources as they do not have any data flowing into
         /// them.The only way you would be able to have a problem is if you had this sort of coding
         /// pattern:
-        /// 
+        ///
         /// <c>
         ///     var c1 = new ComponentResource("c1");
         ///     var c2 = new CustomResource("c2", { parentId = c1.urn }, { parent: c1 });
         ///     var c3 = new CustomResource("c3", { parentId = c1.urn }, { parent: c1 });
         /// </c>
-        /// 
+        ///
         /// However, this would be pretty nonsensical as there is zero need for a custom resource to
         /// ever need to reference the urn of a component resource.  So it's acceptable if that sort
         /// of pattern failed in practice.
         /// </summary>
         internal HashSet<Resource> ChildResources { get; } = new HashSet<Resource>();
 
+
         /// <summary>
         /// Urn is the stable logical URN used to distinctly address a resource, both before and
         /// after deployments.
         /// </summary>
-        // Set using reflection, so we silence the NRT warnings with `null!`.
+        //
+        // Set using reflection in `ReadOrRegisterResource`, so we
+        // silence the NRT warnings with `null!`.
         [Output(Constants.UrnPropertyName)]
-        public Output<string> Urn { get; private protected set; } = null!;
+        public Output<string> Urn {
+            get
+            {
+                if (_urn != null)
+                {
+                    return _urn;
+                }
+                throw new Exception($"Uninitialized `Urn` property on {this} resource. " +
+                                    "Please report to https://github.com/pulumi/pulumi/issues");
+            }
+            private protected set
+            {
+                if (_urn == null)
+                {
+                    _urn = value;
+                }
+                throw new Exception($"Attempting to repeatedly set `Urn` property on {this} resource. " +
+                                    "Please report to https://github.com/pulumi/pulumi/issues");
+            }
+        }
+
+        private Output<string> _urn = null!;
 
         /// <summary>
         /// When set to true, protect ensures this resource cannot be deleted.
