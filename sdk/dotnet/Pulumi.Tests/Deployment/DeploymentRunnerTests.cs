@@ -42,8 +42,11 @@ namespace Pulumi.Tests
         [Fact]
         public async Task TerminatesEarlyOnException()
         {
-            var resources = await Deployment.TestAsync<TerminatesEarlyOnExceptionStack>(new EmptyMocks());
-            var stack = (TerminatesEarlyOnExceptionStack)resources[0];
+            var deployResult = await Deployment.TryTestAsync<TerminatesEarlyOnExceptionStack>(new EmptyMocks());
+            Assert.NotNull(deployResult.Exception);
+            Assert.IsType<RunException>(deployResult.Exception!);
+            Assert.Contains("Deliberate test error", deployResult.Exception!.Message);
+            var stack = (TerminatesEarlyOnExceptionStack)deployResult.Resources[0];
             var result = await stack.RunnerResult;
             Assert.Equal(0, result);
         }
@@ -73,13 +76,6 @@ namespace Pulumi.Tests
                     Assert.Contains(error, runner.SwallowedExceptions);
                     return 0;
                 });
-
-                // Need to undo the recording of the error in the engine, otherwise
-                // `Deployment.TestAsync` fails and does not let our test inspect
-                // the RunnerResult promise.
-                var deployment = (Deployment)Pulumi.Deployment.Instance.Internal;
-                var engine = (MockEngine)deployment.Engine;
-                engine.Errors.RemoveAll(err => err.Contains("Deliberate test error"));
             }
         }
 
