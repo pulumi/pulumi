@@ -4,6 +4,9 @@
 - [codegen/python,nodejs] - Emit dynamic config-getters.
   [#7447](https://github.com/pulumi/pulumi/pull/7447),  [#7530](https://github.com/pulumi/pulumi/pull/7530)
 
+- [sdk/python] - Make `Output[T]` covariant
+  [#7483](https://github.com/pulumi/pulumi/pull/7483)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a bug in closure serialization. 
