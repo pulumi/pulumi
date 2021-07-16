@@ -81,6 +81,11 @@ namespace Pulumi
                 {
                     _urn = value;
                 }
+                else if (value == null)
+                {
+                    throw new Exception($"Attempting to set `Urn` property on {this} resource to null. " +
+                                        "Please report to https://github.com/pulumi/pulumi/issues");
+                }
                 else
                 {
                     throw new Exception($"Attempting to repeatedly set `Urn` property on {this} resource. " +
