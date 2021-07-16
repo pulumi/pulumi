@@ -52,6 +52,8 @@ type NodePackageInfo struct {
 	DisableUnionOutputTypes bool `json:"disableUnionOutputTypes,omitempty"`
 	// An indicator for whether the package contains enums.
 	ContainsEnums bool `json:"containsEnums,omitempty"`
+	// A map allowing you to map the name of a provider to the name of the module encapsulating the provider
+	ProviderNameToModuleName map[string]string `json:"providerNameToModuleName,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.

@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
-import * as random from "@pulumi/random";
+import * as pulumiRandom from "@pulumi/random";
 
 export function argFunction(args?: ArgFunctionArgs, opts?: pulumi.InvokeOptions): Promise<ArgFunctionResult> {
     args = args || {};
@@ -22,7 +22,7 @@ export function argFunction(args?: ArgFunctionArgs, opts?: pulumi.InvokeOptions)
 }
 
 export interface ArgFunctionArgs {
-    name?: random.RandomPet;
+    name?: pulumiRandom.RandomPet;
 }
 
 export interface ArgFunctionResult {

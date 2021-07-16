@@ -459,7 +459,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#requiredname_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">random<wbr>Random<wbr>Pet</span>
+        <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -467,7 +467,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#requirednamearray_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">random<wbr>Random<wbr>Pet[]</span>
+        <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet[]</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-required"
             title="Required">
@@ -475,7 +475,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#requirednamemap_nodejs" style="color: inherit; text-decoration: inherit;">required<wbr>Name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">{[key: string]: random<wbr>Random<wbr>Pet}</span>
+        <span class="property-type">{[key: string]: pulumi<wbr>Random<wbr>Random<wbr>Pet}</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -491,7 +491,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">random<wbr>Random<wbr>Pet</span>
+        <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -499,7 +499,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#namearray_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Array</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">random<wbr>Random<wbr>Pet[]</span>
+        <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet[]</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
             title="Optional">
@@ -507,7 +507,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#namemap_nodejs" style="color: inherit; text-decoration: inherit;">name<wbr>Map</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">{[key: string]: random<wbr>Random<wbr>Pet}</span>
+        <span class="property-type">{[key: string]: pulumi<wbr>Random<wbr>Random<wbr>Pet}</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}

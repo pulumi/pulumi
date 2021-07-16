@@ -79,7 +79,7 @@ The following arguments are supported:
 <a href="#name_nodejs" style="color: inherit; text-decoration: inherit;">name</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">random<wbr>Random<wbr>Pet</span>
+        <span class="property-type">pulumi<wbr>Random<wbr>Random<wbr>Pet</span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
