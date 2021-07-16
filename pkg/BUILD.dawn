@@ -5,7 +5,7 @@ debug = parse_flag("debug", type=bool, help="run a debug build of the CLI")
 
 version = get_version()
 
-@target(sources=os.glob(["codegen/docs/bundler.go", "codegen/docs/templates/**"]))
+@target(sources=glob(["codegen/docs/bundler.go", "codegen/docs/templates/**"]))
 def gen():
     sh.exec("go generate ./codegen/docs/gen.go")
 

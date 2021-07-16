@@ -1,4 +1,4 @@
-version_cache = cache()
+version_cache = Cache()
 
 def get_version(language = None):
     cmd = "pulumictl get version"

@@ -9,13 +9,13 @@ def yarn_install():
 
 @target(
     deps=[yarn_install],
-    sources=os.glob(["tsconfig.json", "**.ts"], exclude=["node_modules/**", "bin/**"]))
+    sources=glob(["tsconfig.json", "**.ts"], exclude=["node_modules/**", "bin/**"]))
 def run_tsc():
     sh.exec("./node_modules/.bin/tsc")
 
 @target(
     deps=[run_tsc, "//sdk/proto:gen"],
-    sources=os.glob([
+    sources=glob([
         "tests/runtime/jsClosureCases_8.js",
         "tests/runtime/jsClosureCases_10_4.js",
         "tests/automation/data/**",

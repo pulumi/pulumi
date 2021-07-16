@@ -4,6 +4,7 @@ load("//build:go_sources.dawn", "go_sources")
 @target(deps=[
     "//sdk/dotnet:build",
     "//sdk/go:build",
+    "//sdk/nodejs:build",
     "//sdk/python:build",
     "//pkg:build",
 ])
@@ -27,4 +28,25 @@ def lint():
 
 @target(deps=[build, lint])
 def default():
+    pass
+
+@target(deps=[
+    "//pkg:test_fast",
+    "//sdk/dotnet:test_fast",
+    "//sdk/go:test_fast",
+    "//sdk/nodejs:test_fast",
+    "//sdk/python:test_fast",
+])
+def test_fast():
+    pass
+
+@target(deps=[
+    "//pkg:test_all",
+    "//sdk/dotnet:test_all",
+    "//sdk/go:test_all",
+    "//sdk/nodejs:test_all",
+    "//sdk/python:test_all",
+    "//tests:test_all",
+])
+def test_all():
     pass

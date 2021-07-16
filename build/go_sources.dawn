@@ -1,4 +1,4 @@
-source_cache = cache()
+source_cache = Cache()
 
 def go_sources(package_dir=None):
     packages = {}
@@ -67,3 +67,13 @@ def go_sources(package_dir=None):
 
     package_dir = os.path.abs(package_dir or ".")
     return source_cache.once(package_dir, lambda: find_sources(package_dir))
+
+def go_binary(name, package_dir, out=None, debug=None, ldflags=None, deps=None, default=None, always=None, docs=None):
+    @target(name, sources=go_sources(package_dir), deps=deps, default=default, always=always, docs=docs)
+    def build():
+        gcflags = "-gcflags=\"all=-N -l\"" if debug else ""
+        opts = f"{gcflags} {ldflags or ""} ./{package_dir}"
+        if out:
+            sh.exec(f"go build -o {out} {opts}")
+        else:
+            sh.exec(f"go install {opts}")

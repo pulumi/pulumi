@@ -739,6 +739,12 @@
             A Pulumi program as an inline function (in process).
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.PulumiFn.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <summary>
+            Invoke the appropriate run function on the <see cref="T:Pulumi.IRunner"/> instance. The exit code returned
+            from the appropriate run function should be forwarded here as well.
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
             <summary>
             Creates an asynchronous inline (in process) pulumi program.
@@ -802,6 +808,15 @@
             </summary>
             <param name="serviceProvider">The service provider that will be used to resolve an instance of type <paramref name="stackType"/>.</param>
             <param name="stackType">The stack type, which must derive from <see cref="T:Pulumi.Stack"/>.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnInline.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnServiceProvider.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn`1.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
         </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>

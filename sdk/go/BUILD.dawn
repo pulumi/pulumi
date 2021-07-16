@@ -3,7 +3,7 @@ load("//build:go_sources.dawn", "go_sources")
 
 version = get_version()
 
-@target(deps=["//sdk/proto:gen"], sources=os.glob(["pulumi/generate.go", "pulumi/templates/**"]))
+@target(deps=["//sdk/proto:gen"], sources=glob(["pulumi/generate.go", "pulumi/templates/**"]))
 def gen():
     sh.exec("go generate ./pulumi/...")
 
