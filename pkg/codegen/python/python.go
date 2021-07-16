@@ -105,6 +105,10 @@ func pyName(name string, legacy bool) string {
 
 	var result strings.Builder           // The components of the name, joined together with underscores.
 	var currentComponent strings.Builder // The characters composing the current component being built
+
+	result.Grow(len(name) + len(name)/5)
+	currentComponent.Grow(len(name) + len(name)/5)
+
 	state := stateFirst
 	for _, char := range name {
 		// If this is an illegal character for a Python identifier, replace it.
