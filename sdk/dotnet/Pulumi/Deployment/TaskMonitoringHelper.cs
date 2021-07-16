@@ -30,7 +30,7 @@ namespace Pulumi
         {
             var error = errTracker.AwaitExceptionAsync();
             var idle = idleTracker.AwaitIdleAsync();
-            var first = await Task.WhenAny((Task)error, idle);
+            var first = await Task.WhenAny((Task)error, idle).ConfigureAwait(false);
             if (first == idle)
             {
                 return null;
