@@ -604,9 +604,11 @@ async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>
     //              /                 \
     //          Cust4                Cust5
     //
-    // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1]. It
-    // will *not* include Cust4 because it is a child of a Custom Resoruce, and will not include Comp3
-    // or it's children because it is a child of a remote component resource.
+    // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
+    // It will *not* include:
+    // * Cust4 because it is a child of a custom resource
+    // * Comp2 because it is a non-remote component resoruce
+    // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
 
     // To do this, first we just get the transitively reachable set of resources (not diving
     // into custom resources).  In the above picture, if we start with 'Comp1', this will be
@@ -616,7 +618,7 @@ async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>
     // Then we filter to only include Custom and Remote resources.
     const transitivelyReachableCustomResources =
         [...transitivelyReachableResources]
-        .filter(r => CustomResource.isInstance(r) || (r as ComponentResource).__remote.valueOf);
+        .filter(r => CustomResource.isInstance(r) || (r as ComponentResource).__remote);
     const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
