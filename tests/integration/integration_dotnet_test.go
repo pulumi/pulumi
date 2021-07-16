@@ -380,12 +380,17 @@ func optsForConstructDotnet(t *testing.T, expectedResourceCount int, env ...stri
 
 					urns[string(res.URN.Name())] = res.URN
 					switch res.URN.Name() {
-					case "child-a", "child-b":
+					case "child-a":
 						for _, deps := range res.PropertyDependencies {
 							assert.Empty(t, deps)
 						}
+					case "child-b":
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
 						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
 						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
 						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
