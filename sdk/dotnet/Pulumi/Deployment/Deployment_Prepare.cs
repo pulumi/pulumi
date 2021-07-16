@@ -77,14 +77,16 @@ namespace Pulumi
             // The list of all dependencies (implicit or explicit).
             var allDirectDependencies = new HashSet<Resource>(explicitDirectDependencies);
 
-            var allDirectDependencyUrns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(explicitDirectDependencies).ConfigureAwait(false);
+            var allDirectDependencyUrns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(
+                res, explicitDirectDependencies).ConfigureAwait(false);
             var propertyToDirectDependencyUrns = new Dictionary<string, HashSet<string>>();
 
             foreach (var (propertyName, directDependencies) in propertyToDirectDependencies)
             {
                 allDirectDependencies.AddRange(directDependencies);
 
-                var urns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(directDependencies).ConfigureAwait(false);
+                var urns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(
+                    res, directDependencies).ConfigureAwait(false);
                 allDirectDependencyUrns.AddRange(urns);
                 propertyToDirectDependencyUrns[propertyName] = urns;
             }
@@ -124,6 +126,7 @@ namespace Pulumi
             => resources.ToOutput().GetValueAsync();
 
         private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceUrnsAsync(
+            Resource rootResource,
             HashSet<Resource> resources)
         {
             // Go through 'resources', but transitively walk through **Component** resources,
@@ -149,7 +152,15 @@ namespace Pulumi
             var transitivelyReachableResources = GetTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
             var transitivelyReachableCustomResources = transitivelyReachableResources.OfType<CustomResource>();
-            var tasks = transitivelyReachableCustomResources.Select(r => r.Urn.GetValueAsync());
+            var tasks = transitivelyReachableCustomResources.Select((CustomResource r) => {
+                if (r == null)
+                {
+                    throw new System.Exception(
+                        $"When traversing dependencies of {rootResource} " +
+                        "encountered a null value of type CustomResource; this should not happen.");
+                }
+                return r.Urn.GetValueAsync();
+            });
             var urns = await Task.WhenAll(tasks).ConfigureAwait(false);
             return new HashSet<string>(urns);
         }
