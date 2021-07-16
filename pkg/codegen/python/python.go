@@ -106,8 +106,10 @@ func pyName(name string, legacy bool) string {
 	var result strings.Builder           // The components of the name, joined together with underscores.
 	var currentComponent strings.Builder // The characters composing the current component being built
 
-	result.Grow(len(name) + len(name)/5)
-	currentComponent.Grow(len(name) + len(name)/5)
+	// Preallocate enough space for the name + 5 underscores. '5' is based on a wild guess that most names will consist
+	// of 5 or fewer words.
+	result.Grow(len(name) + 5)
+	currentComponent.Grow(len(name) + 5)
 
 	state := stateFirst
 	for _, char := range name {
