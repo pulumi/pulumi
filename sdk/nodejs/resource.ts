@@ -803,6 +803,10 @@ export class ComponentResource<TData = any> extends Resource {
     // tslint:disable-next-line:variable-name
     private __registered = false;
 
+    /** @internal */
+    // tslint:disable-next-line:variable-name
+    public readonly __remote: boolean;
+
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
@@ -834,6 +838,7 @@ export class ComponentResource<TData = any> extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ remote || opts?.urn ? args : {}, opts, remote);
+        this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
     }

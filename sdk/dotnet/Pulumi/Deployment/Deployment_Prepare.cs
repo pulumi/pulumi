@@ -77,14 +77,14 @@ namespace Pulumi
             // The list of all dependencies (implicit or explicit).
             var allDirectDependencies = new HashSet<Resource>(explicitDirectDependencies);
 
-            var allDirectDependencyUrns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(explicitDirectDependencies).ConfigureAwait(false);
+            var allDirectDependencyUrns = await GetAllTransitivelyReferencedResourceUrnsAsync(explicitDirectDependencies).ConfigureAwait(false);
             var propertyToDirectDependencyUrns = new Dictionary<string, HashSet<string>>();
 
             foreach (var (propertyName, directDependencies) in propertyToDirectDependencies)
             {
                 allDirectDependencies.AddRange(directDependencies);
 
-                var urns = await GetAllTransitivelyReferencedCustomResourceUrnsAsync(directDependencies).ConfigureAwait(false);
+                var urns = await GetAllTransitivelyReferencedResourceUrnsAsync(directDependencies).ConfigureAwait(false);
                 allDirectDependencyUrns.AddRange(urns);
                 propertyToDirectDependencyUrns[propertyName] = urns;
             }
@@ -123,32 +123,42 @@ namespace Pulumi
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
             => resources.ToOutput().GetValueAsync();
 
-        private static async Task<HashSet<string>> GetAllTransitivelyReferencedCustomResourceUrnsAsync(
+        private static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
             HashSet<Resource> resources)
         {
-            // Go through 'resources', but transitively walk through **Component** resources,
-            // collecting any of their child resources.  This way, a Component acts as an
-            // aggregation really of all the reachable custom resources it parents.  This walking
-            // will transitively walk through other child ComponentResources, but will stop when it
-            // hits custom resources.  in other words, if we had:
+            // Go through 'resources', but transitively walk through **Component** resources, collecting any
+            // of their child resources.  This way, a Component acts as an aggregation really of all the
+            // reachable resources it parents.  This walking will stop when it hits custom resources.
             //
-            //              Comp1
-            //              /   \
-            //          Cust1   Comp2
-            //                  /   \
-            //              Cust2   Cust3
-            //              /
-            //          Cust4
+            // This function also terminates at remote components, whose children are not known to the Node SDK directly.
+            // Remote components will always wait on all of their children, so ensuring we return the remote component
+            // itself here and waiting on it will accomplish waiting on all of it's children regardless of whether they
+            // are returned explicitly here.
             //
-            // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2,
-            // Cust3]. It will *not* include 'Cust4'.
-
-            // To do this, first we just get the transitively reachable set of resources (not diving
-            // into custom resources).  In the above picture, if we start with 'Comp1', this will be
-            // [Comp1, Cust1, Comp2, Cust2, Cust3]
+            // In other words, if we had:
+            //
+            //                  Comp1
+            //              /     |     \
+            //          Cust1   Comp2  Remote1
+            //                  /   \       \
+            //              Cust2   Cust3  Comp3
+            //              /                 \
+            //          Cust4                Cust5
+            //
+            // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1]. It
+            // will *not* include:
+            // * Cust4 because it is a child of a custom resource
+            // * Comp2 because it is a non-remote component resoruce
+            // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
             var transitivelyReachableResources = GetTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-            var transitivelyReachableCustomResources = transitivelyReachableResources.OfType<CustomResource>();
+            var transitivelyReachableCustomResources = transitivelyReachableResources.Where(res => {
+                switch (res) {
+                    case CustomResource custom: return true;
+                    case ComponentResource component: return component.remote;
+                    default: return false; // Unreachable
+                }
+            });
             var tasks = transitivelyReachableCustomResources.Select(r => r.Urn.GetValueAsync());
             var urns = await Task.WhenAll(tasks).ConfigureAwait(false);
             return new HashSet<string>(urns);
