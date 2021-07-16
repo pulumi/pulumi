@@ -1,7 +1,10 @@
 // Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
+
+using Microsoft.Extensions.Logging;
 using Xunit;
 
 using Pulumi.Testing;
@@ -77,6 +80,98 @@ namespace Pulumi.Tests
                 var deployment = (Deployment)Pulumi.Deployment.Instance.Internal;
                 var engine = (MockEngine)deployment.Engine;
                 engine.Errors.RemoveAll(err => err.Contains("Deliberate test error"));
+            }
+        }
+
+        [Fact]
+        public async Task LogsTaskDescriptions()
+        {
+            var resources = await Deployment.TestAsync<LogsTaskDescriptionsStack>(new EmptyMocks());
+            var stack = (LogsTaskDescriptionsStack)resources[0];
+            var messages = await stack.Logs;
+            for (var i = 0; i < 2; i++)
+            {
+                Assert.Contains($"Debug 0 Registering task: task{i}", messages);
+                Assert.Contains($"Debug 0 Completed task: task{i}", messages);
+            }
+        }
+
+        class LogsTaskDescriptionsStack : Stack
+        {
+            public Task<IEnumerable<string>> Logs { get; private set; }
+
+            public LogsTaskDescriptionsStack()
+            {
+                var deployment = Pulumi.Deployment.Instance.Internal;
+                var logger = new InMemoryLogger();
+                var runner = new Deployment.Runner(deployment, logger);
+
+                for (var i = 0; i < 2; i++)
+                {
+                    runner.RegisterTask($"task{i}", Task.Delay(100 + i));
+                }
+
+                this.Logs = ((IRunner)runner).RunAsync<EmptyStack>().ContinueWith(_ => logger.Messages);
+            }
+        }
+
+        class InMemoryLogger : ILogger
+        {
+            private readonly object _lockObject = new object();
+            private readonly List<string> _messages = new List<string>();
+
+            public void Log<TState>(
+                LogLevel level,
+                EventId eventId,
+                TState state,
+                Exception exc,
+                Func<TState, Exception, string> formatter)
+            {
+                var msg = formatter(state, exc);
+                Write($"{level} {eventId} {msg}");
+            }
+
+            public IEnumerable<String> Messages {
+                get {
+                    lock (_lockObject)
+                    {
+                        return _messages.ToArray();
+                    }
+                }
+            }
+
+            public IDisposable BeginScope<TState>(TState state)
+            {
+                Write($"BeginScope state={state}");
+                return new Scope()
+                {
+                    Close = () => {
+                        Write($"EndScope state={state}");
+                    }
+                };
+            }
+
+            public bool IsEnabled(LogLevel level)
+            {
+                return true;
+            }
+
+            private void Write(string message)
+            {
+                lock (_lockObject)
+                {
+                    _messages.Add(message);
+                }
+            }
+
+            class Scope : IDisposable
+            {
+                public Action Close { get; set; } = () => {};
+
+                public void Dispose()
+                {
+                    Close();
+                }
             }
         }
 

@@ -14,7 +14,7 @@ namespace Pulumi
 {
     public partial class Deployment
     {
-        private class Runner : IRunner
+        internal class Runner : IRunner
         {
             private readonly IDeploymentInternal _deployment;
             private readonly ILogger _deploymentLogger;
