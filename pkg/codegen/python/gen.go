@@ -403,7 +403,9 @@ func (mod *modContext) gen(fs fs) error {
 
 	addFile := func(name, contents string) {
 		p := path.Join(dir, name)
-		exports = append(exports, name[:len(name)-len(".py")])
+		if !strings.HasSuffix(name, ".pyi") {
+			exports = append(exports, name[:len(name)-len(".py")])
+		}
 		fs.add(p, []byte(contents))
 	}
 
@@ -442,6 +444,11 @@ func (mod *modContext) gen(fs fs) error {
 				return err
 			}
 			addFile("vars.py", vars)
+			typeStubs, err := mod.genConfigStubs(mod.pkg.Config)
+			if err != nil {
+				return err
+			}
+			addFile("__init__.pyi", typeStubs)
 		}
 	}
 
@@ -554,6 +561,13 @@ func (mod *modContext) fullyQualifiedImportName() string {
 func (mod *modContext) genInit(exports []string) string {
 	w := &bytes.Buffer{}
 	mod.genHeader(w, false /*needsSDK*/, nil)
+	if mod.isConfig {
+		fmt.Fprintf(w, "import sys\n")
+		fmt.Fprintf(w, "from .vars import _ExportableConfig\n")
+		fmt.Fprintf(w, "\n")
+		fmt.Fprintf(w, "sys.modules[__name__].__class__ = _ExportableConfig\n")
+		return w.String()
+	}
 	fmt.Fprintf(w, "%s\n", mod.genUtilitiesImport())
 	fmt.Fprintf(w, "import typing\n")
 
@@ -727,7 +741,7 @@ func (mod *modContext) importResourceType(r *schema.ResourceType) string {
 	return fmt.Sprintf("from %s%s import %s", importPath, name, components[0])
 }
 
-// emitConfigVariables emits all config variables in the given module, returning the resulting file.
+// genConfig emits all config variables in the given module, returning the resulting file.
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
@@ -735,32 +749,98 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	mod.collectImports(variables, imports, false /*input*/)
 
 	mod.genHeader(w, true /*needsSDK*/, imports)
-
-	// Export only the symbols we want exported.
-	if len(variables) > 0 {
-		fmt.Fprintf(w, "__all__ = [\n")
-		for _, p := range variables {
-			fmt.Fprintf(w, "    '%s',\n", PyName(p.Name))
-		}
-		fmt.Fprintf(w, "]\n\n")
-	}
+	fmt.Fprintf(w, "import types\n")
+	fmt.Fprintf(w, "\n")
 
 	// Create a config bag for the variables to pull from.
 	fmt.Fprintf(w, "__config__ = pulumi.Config('%s')\n", mod.pkg.Name)
-	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "\n\n")
+
+	// To avoid a breaking change to the existing config getters, we define a class that extends
+	// the `ModuleType` type and implements property getters for each config key. We then overwrite
+	// the `__class__` attribute of the current module as described in the proposal for PEP-549. This allows
+	// us to maintain the existing interface for users but implement dynamic getters behind the scenes.
+	fmt.Fprintf(w, "class _ExportableConfig(types.ModuleType):\n")
+	indent := "    "
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		configFetch := fmt.Sprintf("__config__.get('%s')", p.Name)
-		if p.DefaultValue != nil {
-			v, err := getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
-			if err != nil {
-				return "", err
-			}
-			configFetch += " or " + v
+		configFetch, err := genConfigFetch(p)
+		if err != nil {
+			return "", err
 		}
 
-		fmt.Fprintf(w, "%s = %s\n", PyName(p.Name), configFetch)
+		typeString := genConfigVarType(p)
+		fmt.Fprintf(w, "%s@property\n", indent)
+		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
+		dblIndent := strings.Repeat(indent, 2)
+
+		printComment(w, p.Comment, dblIndent)
+		fmt.Fprintf(w, "%sreturn %s\n", dblIndent, configFetch)
+		fmt.Fprintf(w, "\n")
+	}
+
+	return w.String(), nil
+}
+
+func genConfigFetch(configVar *schema.Property) (string, error) {
+	getFunc := "get"
+	unwrappedType := codegen.UnwrapType(configVar.Type)
+	switch unwrappedType {
+	case schema.BoolType:
+		getFunc = "get_bool"
+	case schema.IntType:
+		getFunc = "get_int"
+	case schema.NumberType:
+		getFunc = "get_float"
+	}
+
+	configFetch := fmt.Sprintf("__config__.%s('%s')", getFunc, configVar.Name)
+	if configVar.DefaultValue != nil {
+		v, err := getDefaultValue(configVar.DefaultValue, unwrappedType)
+		if err != nil {
+			return "", err
+		}
+		configFetch += " or " + v
+	}
+	return configFetch, nil
+}
+
+func genConfigVarType(configVar *schema.Property) string {
+	// For historical reasons and to maintain backwards compatibility, the config variables for python
+	// are typed as `Optional[str`] or `str` for complex objects since the getters only use config.get().
+	// To return the rich objects would be a breaking change, tracked in https://github.com/pulumi/pulumi/issues/7493
+	typeString := "str"
+	switch codegen.UnwrapType(configVar.Type) {
+	case schema.BoolType:
+		typeString = "bool"
+	case schema.IntType:
+		typeString = "int"
+	case schema.NumberType:
+		typeString = "float"
+	}
+
+	if configVar.DefaultValue == nil || configVar.DefaultValue.Value == nil {
+		typeString = "Optional[" + typeString + "]"
+	}
+	return typeString
+}
+
+// genConfigStubs emits all type information for the config variables in the given module, returning the resulting file.
+// We do this because we lose IDE autocomplete by implementing the dynamic config getters described in genConfig.
+// Emitting these stubs allows us to maintain type hints and autocomplete for users.
+func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, error) {
+	w := &bytes.Buffer{}
+
+	imports := imports{}
+	mod.collectImports(variables, imports, false /*input*/)
+
+	mod.genHeader(w, true /*needsSDK*/, imports)
+
+	// Emit an entry for all config variables.
+	for _, p := range variables {
+		typeString := genConfigVarType(p)
+		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
 		printComment(w, p.Comment, "")
 		fmt.Fprintf(w, "\n")
 	}
@@ -1726,24 +1806,28 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "from subprocess import check_call\n")
 	fmt.Fprintf(w, "\n\n")
 
+	// Create a constant for the version number to replace during build
+	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
+	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
+
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
 	fmt.Fprintf(w, "    def run(self):\n")
 	fmt.Fprintf(w, "        install.run(self)\n")
 	fmt.Fprintf(w, "        try:\n")
 	if pkg.PluginDownloadURL == "" {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}'])\n", pkg.Name)
+		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', PLUGIN_VERSION])\n", pkg.Name)
 	} else {
-		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', '${PLUGIN_VERSION}', '--server', '%s'])\n", pkg.Name, pkg.PluginDownloadURL)
+		fmt.Fprintf(w, "            check_call(['pulumi', 'plugin', 'install', 'resource', '%s', PLUGIN_VERSION, '--server', '%s'])\n", pkg.Name, pkg.PluginDownloadURL)
 	}
 	fmt.Fprintf(w, "        except OSError as error:\n")
 	fmt.Fprintf(w, "            if error.errno == errno.ENOENT:\n")
-	fmt.Fprintf(w, "                print(\"\"\"\n")
+	fmt.Fprintf(w, "                print(f\"\"\"\n")
 	fmt.Fprintf(w, "                There was an error installing the %s resource provider plugin.\n", pkg.Name)
 	fmt.Fprintf(w, "                It looks like `pulumi` is not installed on your system.\n")
 	fmt.Fprintf(w, "                Please visit https://pulumi.com/ to install the Pulumi CLI.\n")
 	fmt.Fprintf(w, "                You may try manually installing the plugin by running\n")
-	fmt.Fprintf(w, "                `pulumi plugin install resource %s ${PLUGIN_VERSION}`\n", pkg.Name)
+	fmt.Fprintf(w, "                `pulumi plugin install resource %s {PLUGIN_VERSION}`\n", pkg.Name)
 	fmt.Fprintf(w, "                \"\"\")\n")
 	fmt.Fprintf(w, "            else:\n")
 	fmt.Fprintf(w, "                raise\n")
@@ -1761,7 +1845,7 @@ func genPackageMetadata(
 
 	// Finally, the actual setup part.
 	fmt.Fprintf(w, "setup(name='%s',\n", pyPkgName)
-	fmt.Fprintf(w, "      version='${VERSION}',\n")
+	fmt.Fprintf(w, "      version=VERSION,\n")
 	if pkg.Description != "" {
 		fmt.Fprintf(w, "      description=%q,\n", sanitizePackageDescription(pkg.Description))
 	}
