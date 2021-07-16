@@ -5,18 +5,68 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 import * as utilities from "../utilities";
 
-let __config = new pulumi.Config("configstation");
+declare var exports: any;
+const __config = new pulumi.Config("configstation");
 
-export let favoritePlants: string[] | undefined = __config.getObject<string[]>("favoritePlants");
+export declare const favoritePlants: string[] | undefined;
+Object.defineProperty(exports, "favoritePlants", {
+    get() {
+        return __config.getObject<string[]>("favoritePlants");
+    },
+    enumerable: true,
+});
+
 /**
  * omg my favorite sandwich
  */
-export let favoriteSandwich: outputs.config.Sandwich | undefined = __config.getObject<outputs.config.Sandwich>("favoriteSandwich");
-export let isMember: boolean | undefined = __config.getObject<boolean>("isMember") || true;
-export let kids: outputs.Child | undefined = __config.getObject<outputs.Child>("kids");
-export let name: string | undefined = __config.get("name");
-export let numberOfSheep: number | undefined = __config.getObject<number>("numberOfSheep");
+export declare const favoriteSandwich: outputs.config.Sandwich | undefined;
+Object.defineProperty(exports, "favoriteSandwich", {
+    get() {
+        return __config.getObject<outputs.config.Sandwich>("favoriteSandwich");
+    },
+    enumerable: true,
+});
+
+export declare const isMember: boolean;
+Object.defineProperty(exports, "isMember", {
+    get() {
+        return __config.getObject<boolean>("isMember") ?? true;
+    },
+    enumerable: true,
+});
+
+export declare const kids: outputs.Child | undefined;
+Object.defineProperty(exports, "kids", {
+    get() {
+        return __config.getObject<outputs.Child>("kids");
+    },
+    enumerable: true,
+});
+
+export declare const name: string | undefined;
+Object.defineProperty(exports, "name", {
+    get() {
+        return __config.get("name");
+    },
+    enumerable: true,
+});
+
+export declare const numberOfSheep: number | undefined;
+Object.defineProperty(exports, "numberOfSheep", {
+    get() {
+        return __config.getObject<number>("numberOfSheep");
+    },
+    enumerable: true,
+});
+
 /**
  * This is a huge secret
  */
-export let secretCode: string | undefined = __config.get("secretCode") || utilities.getEnv("SECRET_CODE", "MY_SUPER_SECRET_CODE");
+export declare const secretCode: string | undefined;
+Object.defineProperty(exports, "secretCode", {
+    get() {
+        return __config.get("secretCode") ?? utilities.getEnv("SECRET_CODE", "MY_SUPER_SECRET_CODE");
+    },
+    enumerable: true,
+});
+

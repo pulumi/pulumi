@@ -1157,8 +1157,10 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 
 	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
+	fmt.Fprintf(w, "declare var exports: any;\n")
+
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "let __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
+	fmt.Fprintf(w, "const __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
 	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
@@ -1174,14 +1176,20 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			if err != nil {
 				return err
 			}
-			// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
-			// Specifically, this doesn't work right if the first value is set to false but the default value
-			// is true.
-			configFetch += " || " + v
+			configFetch += " ?? " + v
+		}
+		optType := codegen.OptionalType(p)
+		if p.DefaultValue != nil && p.DefaultValue.Value != nil {
+			optType = codegen.RequiredType(p)
 		}
 
-		fmt.Fprintf(w, "export let %s: %s = %s;\n",
-			p.Name, mod.typeString(codegen.OptionalType(p), false, nil), configFetch)
+		fmt.Fprintf(w, "export declare const %s: %s;\n", p.Name, mod.typeString(optType, false, nil))
+		fmt.Fprintf(w, "Object.defineProperty(exports, %q, {\n", p.Name)
+		fmt.Fprintf(w, "    get() {\n")
+		fmt.Fprintf(w, "        return %s;\n", configFetch)
+		fmt.Fprintf(w, "    },\n")
+		fmt.Fprintf(w, "    enumerable: true,\n")
+		fmt.Fprintf(w, "});\n\n")
 	}
 
 	return nil
@@ -1742,6 +1750,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	devDependencies := map[string]string{}
 	if info.TypeScriptVersion != "" {
 		devDependencies["typescript"] = info.TypeScriptVersion
+	} else {
+		devDependencies["typescript"] = "^4.3.5"
 	}
 
 	// Create info that will get serialized into an NPM package.json.
