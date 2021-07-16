@@ -69,8 +69,11 @@ namespace Pulumi
                 {
                     return _urn;
                 }
-                throw new Exception($"Uninitialized `Urn` property on {this} resource. " +
-                                    "Please report to https://github.com/pulumi/pulumi/issues");
+                else
+                {
+                    throw new Exception($"Uninitialized `Urn` property on {this} resource. " +
+                                        "Please report to https://github.com/pulumi/pulumi/issues");
+                }
             }
             private protected set
             {
@@ -78,8 +81,11 @@ namespace Pulumi
                 {
                     _urn = value;
                 }
-                throw new Exception($"Attempting to repeatedly set `Urn` property on {this} resource. " +
-                                    "Please report to https://github.com/pulumi/pulumi/issues");
+                else
+                {
+                    throw new Exception($"Attempting to repeatedly set `Urn` property on {this} resource. " +
+                                        "Please report to https://github.com/pulumi/pulumi/issues");
+                }
             }
         }
 
