@@ -396,15 +396,9 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		return pkg.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		typ := "[]"
-		if !argsType && pkg.isExternalObjectType(t.ElementType) {
-			typ += "*"
-		}
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
 	case *schema.MapType:
 		typ := "map[string]"
-		if !argsType && pkg.isExternalObjectType(t.ElementType) {
-			typ += "*"
-		}
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
@@ -782,6 +776,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	case "number":
 		goElementType = "float64"
 	}
+	asFuncName := strings.TrimPrefix(elementType, "pulumi.")
 
 	fmt.Fprintf(w, "type %s %s\n\n", name, goElementType)
 
@@ -811,9 +806,9 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	fmt.Fprintln(w, ")")
 
 	inputType := pkg.inputType(enumType)
-	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType)
+	pkg.genEnumInputFuncs(w, name, enumType, elementType, inputType, asFuncName)
 
-	pkg.genEnumOutputTypes(w, name)
+	pkg.genEnumOutputTypes(w, name, elementType, goElementType, asFuncName)
 	pkg.genEnumInputTypes(w, name, enumType, goElementType)
 
 	details := pkg.detailsForType(enumType)
@@ -864,7 +859,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 	return nil
 }
 
-func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name string) {
+func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name, elementType, goElementType, asFuncName string) {
 	fmt.Fprintf(w, "type %sOutput struct{ *pulumi.OutputState }\n\n", name)
 	genOutputMethods(w, name, name, false)
 
@@ -876,6 +871,27 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name string) {
 	fmt.Fprintf(w, "return o.ApplyTWithContext(ctx, func(_ context.Context, v %[1]s) *%[1]s {\n", name)
 	fmt.Fprintf(w, "return &v\n")
 	fmt.Fprintf(w, "}).(%sPtrOutput)\n", name)
+	fmt.Fprint(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutput() %[3]sOutput {\n", name, asFuncName, elementType)
+	fmt.Fprintf(w, "return o.To%sOutputWithContext(context.Background())\n", asFuncName)
+	fmt.Fprint(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sOutputWithContext(ctx context.Context) %[3]sOutput {\n", name, asFuncName, elementType)
+	fmt.Fprintf(w, "return o.ApplyTWithContext(ctx, func(_ context.Context, e %s) %s {\n", name, goElementType)
+	fmt.Fprintf(w, "return %s(e)\n", goElementType)
+	fmt.Fprintf(w, "}).(%sOutput)\n", elementType)
+	fmt.Fprint(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutput() %[3]sPtrOutput {\n", name, asFuncName, elementType)
+	fmt.Fprintf(w, "return o.To%sPtrOutputWithContext(context.Background())\n", asFuncName)
+	fmt.Fprint(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (o %[1]sOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[3]sPtrOutput {\n", name, asFuncName, elementType)
+	fmt.Fprintf(w, "return o.ApplyTWithContext(ctx, func(_ context.Context, e %s) *%s {\n", name, goElementType)
+	fmt.Fprintf(w, "v := %s(e)\n", goElementType)
+	fmt.Fprintf(w, "return &v\n")
+	fmt.Fprintf(w, "}).(%sPtrOutput)\n", elementType)
 	fmt.Fprint(w, "}\n\n")
 
 	ptrName := name + "Ptr"
@@ -891,6 +907,20 @@ func (pkg *pkgContext) genEnumOutputTypes(w io.Writer, name string) {
 
 	fmt.Fprintf(w, "func (o %[1]sPtrOutput) To%[1]sPtrOutputWithContext(ctx context.Context) %[1]sPtrOutput {\n", name)
 	fmt.Fprintf(w, "return o\n")
+	fmt.Fprint(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (o %[1]sPtrOutput) To%[2]sPtrOutput() %[3]sPtrOutput {\n", name, asFuncName, elementType)
+	fmt.Fprintf(w, "return o.To%sPtrOutputWithContext(context.Background())\n", asFuncName)
+	fmt.Fprint(w, "}\n\n")
+
+	fmt.Fprintf(w, "func (o %[1]sPtrOutput) To%[2]sPtrOutputWithContext(ctx context.Context) %[3]sPtrOutput {\n", name, asFuncName, elementType)
+	fmt.Fprintf(w, "return o.ApplyTWithContext(ctx, func(_ context.Context, e *%s) *%s {\n", name, goElementType)
+	fmt.Fprintf(w, "if e == nil {\n")
+	fmt.Fprintf(w, "return nil\n")
+	fmt.Fprintf(w, "}\n")
+	fmt.Fprintf(w, "v := %s(*e)\n", goElementType)
+	fmt.Fprintf(w, "return &v\n")
+	fmt.Fprintf(w, "}).(%sPtrOutput)\n", elementType)
 	fmt.Fprint(w, "}\n\n")
 
 	fmt.Fprintf(w, "func (o %[1]sPtrOutput) Elem() %[1]sOutput {\n", name)
@@ -961,9 +991,7 @@ func (pkg *pkgContext) enumElementType(t schema.Type, optional bool) string {
 	}
 }
 
-func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType string) {
-	asFuncName := Title(strings.Replace(elementType, "pulumi.", "", -1))
-
+func (pkg *pkgContext) genEnumInputFuncs(w io.Writer, typeName string, enum *schema.EnumType, elementType, inputType, asFuncName string) {
 	fmt.Fprintln(w)
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", typeName)
 	fmt.Fprintf(w, "return reflect.TypeOf((*%s)(nil)).Elem()\n", typeName)
@@ -2162,9 +2190,14 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 		"github.com/blang/semver":                   "",
 		"github.com/pulumi/pulumi/sdk/v3/go/pulumi": "",
 	}
+
 	topLevelModule := pkg.mod == ""
 	if !topLevelModule {
-		imports[basePath] = ""
+		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
+			imports[basePath] = alias
+		} else {
+			imports[basePath] = ""
+		}
 	}
 
 	pkg.genHeader(w, []string{"fmt"}, imports)
@@ -2226,8 +2259,14 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 	if topLevelModule {
 		fmt.Fprintf(w, "\tversion, err := PkgVersion()\n")
 	} else {
-		// Some package names contain '-' characters, so grab the name from the base path.
-		pkgName := basePath[strings.LastIndex(basePath, "/")+1:]
+		// Some package names contain '-' characters, so grab the name from the base path, unless there is an alias
+		// in which case we use that instead.
+		var pkgName string
+		if alias, ok := pkg.pkgImportAliases[basePath]; ok {
+			pkgName = alias
+		} else {
+			pkgName = basePath[strings.LastIndex(basePath, "/")+1:]
+		}
 		fmt.Fprintf(w, "\tversion, err := %s.PkgVersion()\n", pkgName)
 	}
 	fmt.Fprintf(w, "\tif err != nil {\n")
