@@ -584,10 +584,10 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>) {
+async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>): Promise<Set<string>> {
     // Go through 'resources', but transitively walk through **Component** resources, collecting any
     // of their child resources.  This way, a Component acts as an aggregation really of all the
-    // reachable resources it parents.  This walking will stop when it hits custom resources. 
+    // reachable resources it parents.  This walking will stop when it hits custom resources.
     //
     // This function also terminates at remote components, whose children are not known to the Node SDK directly.
     // Remote components will always wait on all of their children, so ensuring we return the remote component
@@ -614,9 +614,9 @@ async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>
     const transitivelyReachableResources = await getTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
     // Then we filter to only include Custom and Remote resources.
-    const transitivelyReachableCustomResources = [...transitivelyReachableResources].filter(r => 
-        CustomResource.isInstance(r) || (r as ComponentResource).__remote
-    );
+    const transitivelyReachableCustomResources =
+        [...transitivelyReachableResources]
+        .filter(r => CustomResource.isInstance(r) || (r as ComponentResource).__remote.valueOf);
     const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
