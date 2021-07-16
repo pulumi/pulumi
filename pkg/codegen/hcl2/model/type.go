@@ -45,7 +45,6 @@ type Type interface {
 
 	equals(other Type, seen map[Type]struct{}) bool
 	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
-	//conversionTo(dest Type, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
