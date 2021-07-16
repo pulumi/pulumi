@@ -765,23 +765,12 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		configFetch := fmt.Sprintf("__config__.get('%s')", p.Name)
-		if p.DefaultValue != nil {
-			v, err := getDefaultValue(p.DefaultValue, codegen.UnwrapType(p.Type))
-			if err != nil {
-				return "", err
-			}
-			configFetch += " or " + v
+		configFetch, err := genConfigFetch(p)
+		if err != nil {
+			return "", err
 		}
 
-		// For historical reasons and to maintain backwards compatibility, the config variables for python
-		// are always typed as `Optional[str`] or `str` since the getters only use config.get().
-		// To return the rich objects would be a breaking change, tracked in https://github.com/pulumi/pulumi/issues/7493
-		typeString := "Optional[str]"
-		if p.IsRequired() {
-			typeString = "str"
-		}
-
+		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s@property\n", indent)
 		fmt.Fprintf(w, "%sdef %s(self) -> %s:\n", indent, PyName(p.Name), typeString)
 		dblIndent := strings.Repeat(indent, 2)
@@ -792,6 +781,49 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	}
 
 	return w.String(), nil
+}
+
+func genConfigFetch(configVar *schema.Property) (string, error) {
+	getFunc := "get"
+	unwrappedType := codegen.UnwrapType(configVar.Type)
+	switch unwrappedType {
+	case schema.BoolType:
+		getFunc = "get_bool"
+	case schema.IntType:
+		getFunc = "get_int"
+	case schema.NumberType:
+		getFunc = "get_float"
+	}
+
+	configFetch := fmt.Sprintf("__config__.%s('%s')", getFunc, configVar.Name)
+	if configVar.DefaultValue != nil {
+		v, err := getDefaultValue(configVar.DefaultValue, unwrappedType)
+		if err != nil {
+			return "", err
+		}
+		configFetch += " or " + v
+	}
+	return configFetch, nil
+}
+
+func genConfigVarType(configVar *schema.Property) string {
+	// For historical reasons and to maintain backwards compatibility, the config variables for python
+	// are typed as `Optional[str`] or `str` for complex objects since the getters only use config.get().
+	// To return the rich objects would be a breaking change, tracked in https://github.com/pulumi/pulumi/issues/7493
+	typeString := "str"
+	switch codegen.UnwrapType(configVar.Type) {
+	case schema.BoolType:
+		typeString = "bool"
+	case schema.IntType:
+		typeString = "int"
+	case schema.NumberType:
+		typeString = "float"
+	}
+
+	if configVar.DefaultValue == nil || configVar.DefaultValue.Value == nil {
+		typeString = "Optional[" + typeString + "]"
+	}
+	return typeString
 }
 
 // genConfigStubs emits all type information for the config variables in the given module, returning the resulting file.
@@ -807,10 +839,7 @@ func (mod *modContext) genConfigStubs(variables []*schema.Property) (string, err
 
 	// Emit an entry for all config variables.
 	for _, p := range variables {
-		typeString := "Optional[str]"
-		if p.IsRequired() {
-			typeString = "str"
-		}
+		typeString := genConfigVarType(p)
 		fmt.Fprintf(w, "%s: %s\n", p.Name, typeString)
 		printComment(w, p.Comment, "")
 		fmt.Fprintf(w, "\n")

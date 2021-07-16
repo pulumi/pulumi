@@ -28,20 +28,20 @@ class _ExportableConfig(types.ModuleType):
         return __config__.get('favoriteSandwich')
 
     @property
-    def is_member(self) -> Optional[str]:
-        return __config__.get('isMember') or True
+    def is_member(self) -> bool:
+        return __config__.get_bool('isMember') or True
 
     @property
     def kids(self) -> Optional[str]:
         return __config__.get('kids')
 
     @property
-    def name(self) -> str:
+    def name(self) -> Optional[str]:
         return __config__.get('name')
 
     @property
-    def number_of_sheep(self) -> Optional[str]:
-        return __config__.get('numberOfSheep')
+    def number_of_sheep(self) -> Optional[int]:
+        return __config__.get_int('numberOfSheep')
 
     @property
     def secret_code(self) -> Optional[str]:
