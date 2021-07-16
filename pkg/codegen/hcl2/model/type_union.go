@@ -198,6 +198,7 @@ func (t *UnionType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 			return NoConversion, func() hcl.Diagnostics {
 				var all hcl.Diagnostics
 				for _, why := range diags {
+					//nolint:errcheck
 					all.Extend(why())
 				}
 				return all
