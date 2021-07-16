@@ -21,7 +21,6 @@ package gen
 import (
 	"testing"
 
-	"github.com/blang/semver"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
@@ -72,19 +71,10 @@ func getTestPackage(t *testing.T) *schema.Package {
 func TestGetDocLinkForPulumiType(t *testing.T) {
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
-	t.Run("GenerateResourceOptionsLink", func(t *testing.T) {
-		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption"
-		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
-		assert.Equal(t, expected, link)
-	})
-	t.Run("Generate_V2_ResourceOptionsLink", func(t *testing.T) {
-		pkg.Version = &semver.Version{
-			Major: 3,
-		}
+	t.Run("Generate_ResourceOptionsLink", func(t *testing.T) {
 		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption"
 		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
 		assert.Equal(t, expected, link)
-		pkg.Version = nil
 	})
 }
 

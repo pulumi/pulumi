@@ -36,7 +36,7 @@ type DocLanguageHelper struct {
 var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForPulumiType returns the doc link for a Pulumi type.
-func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
+func (d DocLanguageHelper) GetDocLinkForPulumiType(_ *schema.Package, typeName string) string {
 	pulumiModuleVersion := "v3"
 	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%s/go/pulumi?tab=doc#%s", pulumiModuleVersion, typeName)
 }
