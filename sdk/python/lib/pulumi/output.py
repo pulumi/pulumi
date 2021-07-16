@@ -440,6 +440,23 @@ def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)
 
 
+def _is_prompt(value: Input[T]) -> bool:
+    """Checks if the value is prompty available."""
+
+    # the checks follow the structure of `Output.from_input`.
+
+    if isawaitable(value):
+        return False
+
+    if _types.is_input_type(type(value)):
+        return False
+
+    if isinstance(value, Output):
+        return False
+
+    return True
+
+
 async def _gather_from_dict(tasks: dict) -> dict:
     results = await asyncio.gather(*tasks.values())
     return dict(zip(tasks.keys(), results))
