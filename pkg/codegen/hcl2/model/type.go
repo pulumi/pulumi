@@ -19,6 +19,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+type lazyDiagnostics func() hcl.Diagnostics
+
 type ConversionKind int
 
 const (
@@ -42,7 +44,8 @@ type Type interface {
 	String() string
 
 	equals(other Type, seen map[Type]struct{}) bool
-	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics)
+	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
+	//conversionTo(dest Type, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
@@ -74,14 +77,16 @@ func assignableFrom(dest, src Type, assignableFromImpl func() bool) bool {
 }
 
 func conversionFrom(dest, src Type, unifying bool, seen map[Type]struct{},
-	conversionFromImpl func() (ConversionKind, hcl.Diagnostics)) (ConversionKind, hcl.Diagnostics) {
+	conversionFromImpl func() (ConversionKind, lazyDiagnostics)) (ConversionKind, lazyDiagnostics) {
+
 	if dest.Equals(src) || dest == DynamicType {
 		return SafeConversion, nil
 	}
-	if src, isUnion := src.(*UnionType); isUnion {
+
+	switch src := src.(type) {
+	case *UnionType:
 		return src.conversionTo(dest, unifying, seen)
-	}
-	if src, isConst := src.(*ConstType); isConst {
+	case *ConstType:
 		return conversionFrom(dest, src.Type, unifying, seen, conversionFromImpl)
 	}
 	if src == DynamicType {

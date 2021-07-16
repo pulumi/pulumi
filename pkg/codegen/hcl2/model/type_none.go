@@ -49,8 +49,8 @@ func (noneType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(NoneType, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (noneType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(NoneType, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		return NoConversion, nil
 	})
 }

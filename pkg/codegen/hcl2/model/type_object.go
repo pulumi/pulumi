@@ -183,13 +183,13 @@ func (t *ObjectType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ObjectType:
 			if seen != nil {
 				if _, ok := seen[t]; ok {
-					return NoConversion, hcl.Diagnostics{invalidRecursiveType(t)}
+					return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{invalidRecursiveType(t)} }
 				}
 			} else {
 				seen = map[Type]struct{}{}
@@ -205,7 +205,7 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 			}
 
 			conversionKind := SafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for k, dst := range t.Properties {
 				src, ok := src.Properties[k]
 				if !ok {
@@ -221,7 +221,7 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 			return conversionKind, diags
 		case *MapType:
 			conversionKind := UnsafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for _, dst := range t.Properties {
 				if ck, why := dst.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
 					conversionKind, diags = ck, why
@@ -232,7 +232,7 @@ func (t *ObjectType) conversionFrom(src Type, unifying bool, seen map[Type]struc
 			}
 			return conversionKind, diags
 		}
-		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 
