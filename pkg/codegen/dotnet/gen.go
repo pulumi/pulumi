@@ -1476,7 +1476,7 @@ func (mod *modContext) getConfigProperty(schemaType schema.Type) (string, string
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
-	mod.genHeader(w, []string{"System.Collections.Immutable"})
+	mod.genHeader(w, []string{"System", "System.Collections.Immutable"})
 	// Use the root namespace to avoid `Pulumi.Provider.Config.Config.VarName` usage.
 	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
 	fmt.Fprintf(w, "{\n")
@@ -1485,8 +1485,32 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	fmt.Fprintf(w, "    public static class Config\n")
 	fmt.Fprintf(w, "    {\n")
 
+	fmt.Fprintf(w, "        [System.Diagnostics.CodeAnalysis.SuppressMessage(\"Microsoft.Design\", \"IDE1006\", Justification = \n")
+	fmt.Fprintf(w, "        \"Double underscore prefix used to avoid conflicts with variable names.\")]\n")
+	fmt.Fprintf(w, "        private sealed class __Value<T>\n")
+	fmt.Fprintf(w, "        {\n")
+
+	fmt.Fprintf(w, "            private readonly Func<T> _getter;\n")
+	fmt.Fprintf(w, "            private T _value = default!;\n")
+	fmt.Fprintf(w, "            private bool _set;\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "            public __Value(Func<T> getter)\n")
+	fmt.Fprintf(w, "            {\n")
+	fmt.Fprintf(w, "                _getter = getter;\n")
+	fmt.Fprintf(w, "            }\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "            public T Get() => _set ? _value : _getter();\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "            public void Set(T value)\n")
+	fmt.Fprintf(w, "            {\n")
+	fmt.Fprintf(w, "                _value = value;\n")
+	fmt.Fprintf(w, "                _set = true;\n")
+	fmt.Fprintf(w, "            }\n")
+	fmt.Fprintf(w, "        }\n")
+	fmt.Fprintf(w, "\n")
+
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "        private static readonly Pulumi.Config __config = new Pulumi.Config(\"%v\");", mod.pkg.Name)
+	fmt.Fprintf(w, "        private static readonly Pulumi.Config __config = new Pulumi.Config(\"%v\");\n", mod.pkg.Name)
 	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
@@ -1504,8 +1528,13 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 			initializer += " ?? " + dv
 		}
 
+		fmt.Fprintf(w, "        private static readonly __Value<%[1]s> _%[2]s = new __Value<%[1]s>(() => %[3]s);\n", propertyType, p.Name, initializer)
 		printComment(w, p.Comment, "        ")
-		fmt.Fprintf(w, "        public static %s %s { get; set; } = %s;\n", propertyType, propertyName, initializer)
+		fmt.Fprintf(w, "        public static %s %s\n", propertyType, propertyName)
+		fmt.Fprintf(w, "        {\n")
+		fmt.Fprintf(w, "            get => _%s.Get();\n", p.Name)
+		fmt.Fprintf(w, "            set => _%s.Set(value);\n", p.Name)
+		fmt.Fprintf(w, "        }\n")
 		fmt.Fprintf(w, "\n")
 	}
 
