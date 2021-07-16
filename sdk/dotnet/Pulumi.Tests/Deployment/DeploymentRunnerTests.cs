@@ -12,7 +12,7 @@ using Pulumi.Tests.Mocks;
 
 namespace Pulumi.Tests
 {
-    public class DeploymentRunerTests
+    public class DeploymentRunnerTests
     {
         [Fact]
         public async Task WorksUnderStress()
