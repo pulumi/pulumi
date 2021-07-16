@@ -8,4 +8,5 @@
 
 - [sdk/nodejs] Fix a bug in closure serialization. 
   [#6999](https://github.com/pulumi/pulumi/pull/6999)
-
+- Normalize cloud URL during login
+  [#7544](https://github.com/pulumi/pulumi/pull/7544)
