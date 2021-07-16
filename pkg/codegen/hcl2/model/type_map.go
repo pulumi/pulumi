@@ -93,14 +93,14 @@ func (t *MapType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ObjectType:
 			conversionKind := SafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for _, src := range src.Properties {
 				if ck, _ := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
 					conversionKind = ck
@@ -111,7 +111,7 @@ func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 			}
 			return conversionKind, diags
 		}
-		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 

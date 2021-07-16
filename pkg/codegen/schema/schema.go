@@ -447,6 +447,8 @@ type Package struct {
 	resourceTypeTable map[string]*ResourceType
 	functionTable     map[string]*Function
 	typeTable         map[string]Type
+
+	importedLanguages map[string]struct{}
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -598,7 +600,18 @@ func importFunctionLanguages(function *Function, languages map[string]Language) 
 }
 
 func (pkg *Package) ImportLanguages(languages map[string]Language) error {
-	if len(languages) == 0 {
+	if pkg.importedLanguages == nil {
+		pkg.importedLanguages = map[string]struct{}{}
+	}
+
+	any := false
+	for lang := range languages {
+		if _, ok := pkg.importedLanguages[lang]; !ok {
+			any = true
+			break
+		}
+	}
+	if !any {
 		return nil
 	}
 
@@ -647,6 +660,10 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 		}
 	}
 
+	for lang := range languages {
+		pkg.importedLanguages[lang] = struct{}{}
+	}
+
 	return nil
 }
 
@@ -662,6 +679,10 @@ func (pkg *Package) TokenToModule(tok string) string {
 	case "providers":
 		return ""
 	default:
+		if pkg.moduleFormat == nil {
+			pkg.moduleFormat = defaultModuleFormat
+		}
+
 		matches := pkg.moduleFormat.FindStringSubmatch(components[1])
 		if len(matches) < 2 || strings.HasPrefix(matches[1], "index") {
 			return ""
@@ -1329,6 +1350,8 @@ type PackageSpec struct {
 	// Language specifies additional language-specific data about the package.
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
+
+var defaultModuleFormat = regexp.MustCompile("(.*)")
 
 // importSpec converts a serializable PackageSpec into a Package. This function includes a loader parameter which
 // works as a singleton -- if it is nil, a new loader is instantiated, else the provided loader is used. This avoids

@@ -2,8 +2,8 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 // Export sub-modules:
-import * as nested/module from "./nested/module";
+import * as module from "./module";
 
 export {
-    nested/module,
+    module,
 };

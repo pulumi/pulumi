@@ -229,7 +229,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#pod_nodejs" style="color: inherit; text-decoration: inherit;">pod</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type"><a href="#pod">kubernetestypesoutputcorev1Pod</a></span>
+        <span class="property-type"><a href="#pod">pulumi<wbr>Kubernetestypesoutputcorev1Pod</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd></dl>
 {{% /choosable %}}
