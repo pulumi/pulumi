@@ -556,8 +556,8 @@ Unfortunately, the initial release did not include that change. We apologize for
   [#6572](https://github.com/pulumi/pulumi/pull/6572)
 
 - [cli] Support full fidelity YAML round-tripping
-  Strip Byte-order Mark (BOM) from YAML configs during load. [#6636](https://github.com/pulumi/pulumi/pull/6636)
-  Swap out YAML parser library [#6642](https://github.com/pulumi/pulumi/pull/6642)
+  - Strip Byte-order Mark (BOM) from YAML configs during load. [#6636](https://github.com/pulumi/pulumi/pull/6636)
+  - Swap out YAML parser library [#6642](https://github.com/pulumi/pulumi/pull/6642)
 
 - [sdk/python] Ensure all async tasks are awaited prior to exit.
   [#6606](https://github.com/pulumi/pulumi/pull/6606)
@@ -590,10 +590,10 @@ Unfortunately, the initial release did not include that change. We apologize for
   [#6551](https://github.com/pulumi/pulumi/pull/6551)
 
 - [automation/*] Implement minimum version checking and add:
-  Go: `LocalWorkspace.PulumiVersion()` [#6577](https://github.com/pulumi/pulumi/pull/6577)
-  Nodejs: `LocalWorkspace.pulumiVersion` [#6580](https://github.com/pulumi/pulumi/pull/6580)
-  Python: `LocalWorkspace.pulumi_version` [#6589](https://github.com/pulumi/pulumi/pull/6589)
-  Dotnet: `LocalWorkspace.PulumiVersion` [#6590](https://github.com/pulumi/pulumi/pull/6590)
+  - Go: `LocalWorkspace.PulumiVersion()` [#6577](https://github.com/pulumi/pulumi/pull/6577)
+  - Nodejs: `LocalWorkspace.pulumiVersion` [#6580](https://github.com/pulumi/pulumi/pull/6580)
+  - Python: `LocalWorkspace.pulumi_version` [#6589](https://github.com/pulumi/pulumi/pull/6589)
+  - Dotnet: `LocalWorkspace.PulumiVersion` [#6590](https://github.com/pulumi/pulumi/pull/6590)
 
 ### Bug Fixes
 
