@@ -342,7 +342,9 @@ func TestRegistryAliases(t *testing.T) {
 		old.URN: alias.URN,
 	}
 
-	r.RegisterAliases(aliases)
+	for k, v := range aliases {
+		r.RegisterAlias(k, v)
+	}
 
 	all := []*resource.State{
 		old, alias,
