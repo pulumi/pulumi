@@ -2,6 +2,7 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
 VERSION          := $(shell cd ../../ && pulumictl get version)
 PYPI_VERSION 	 := $(shell cd ../../ && pulumictl get version --language python)
+PROJECT_ROOT     := $(realpath ../..)
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -42,7 +43,7 @@ install_plugin:: build_plugin
 install:: install_package install_plugin
 
 test_fast:: build
-	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	$(GO_TEST) ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
 	pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py
