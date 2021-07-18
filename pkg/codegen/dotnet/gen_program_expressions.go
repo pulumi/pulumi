@@ -524,16 +524,21 @@ func (g *generator) GenSplatExpression(w io.Writer, expr *model.SplatExpression)
 func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpression) {
 	multiLine := false
 	expressions := false
+	hasOutput := false
 	for _, expr := range expr.Parts {
 		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			if strings.Contains(lit.Value.AsString(), "\n") {
 				multiLine = true
 			}
 		} else {
+			hasOutput = true
 			expressions = true
 		}
 	}
 
+	if hasOutput {
+		g.Fgen(w, "Output.Format(")
+	}
 	if multiLine {
 		g.Fgen(w, "@")
 	}
@@ -549,6 +554,9 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 		}
 	}
 	g.Fgen(w, "\"")
+	if hasOutput {
+		g.Fgen(w, ")")
+	}
 }
 
 func (g *generator) GenTemplateJoinExpression(w io.Writer, expr *model.TemplateJoinExpression) {
