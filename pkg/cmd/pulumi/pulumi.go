@@ -180,6 +180,8 @@ func NewPulumiCmd() *cobra.Command {
 		"Enable verbose logging (e.g., v=3); anything >3 is very verbose")
 	cmd.PersistentFlags().StringVar(
 		&color, "color", "auto", "Colorize output. Choices are: always, never, raw, auto")
+	cmd.PersistentFlags().BoolVar(&httpstate.PrintFullStackNames, "full-name", false,
+		"Print fully qualified stack names")
 
 	// Common commands:
 	//     - Getting Started Commands:

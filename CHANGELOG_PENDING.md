@@ -7,6 +7,8 @@
 - [sdk/python] Make `Output[T]` covariant
   [#7483](https://github.com/pulumi/pulumi/pull/7483)
 
+- [cli] - Add global flag to print fully qualified stack names. [#7388](https://github.com/pulumi/pulumi/pull/7388)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a bug in closure serialization. 

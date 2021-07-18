@@ -30,6 +30,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 )
 
+// PrintFullStackNames can be set to have stacks print fully qualified names, instead of eliding org or project name.
+var PrintFullStackNames bool
+
 // Stack is a cloud stack.  This simply adds some cloud-specific properties atop the standard backend stack interface.
 type Stack interface {
 	backend.Stack
@@ -49,17 +52,19 @@ type cloudBackendReference struct {
 }
 
 func (c cloudBackendReference) String() string {
-	curUser, err := c.b.CurrentUser()
-	if err != nil {
-		curUser = ""
-	}
-
-	// If the project names match, we can elide them.
-	if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
-		if c.owner == curUser {
-			return string(c.name) // Elide owner too, if it is the current user.
+	if !PrintFullStackNames {
+		curUser, err := c.b.CurrentUser()
+		if err != nil {
+			curUser = ""
 		}
-		return fmt.Sprintf("%s/%s", c.owner, c.name)
+
+		// If the project names match, we can elide them.
+		if c.b.currentProject != nil && c.project == string(c.b.currentProject.Name) {
+			if c.owner == curUser {
+				return string(c.name) // Elide owner too, if it is the current user.
+			}
+			return fmt.Sprintf("%s/%s", c.owner, c.name)
+		}
 	}
 
 	return fmt.Sprintf("%s/%s/%s", c.owner, c.project, c.name)
