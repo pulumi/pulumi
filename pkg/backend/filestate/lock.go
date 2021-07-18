@@ -27,8 +27,6 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/backend"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/fsutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -62,7 +60,12 @@ func newLockContent() (*lockContent, error) {
 
 // checkForLock looks for any existing locks for this stack, and returns a helpful diagnostic if there is one.
 func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackReference) error {
-	allFiles, err := listBucket(b.bucket, stackLockDir(stackRef.Name()))
+	localStackRef, err := getLocalBackendStackReference(stackRef)
+	if err != nil {
+		return err
+	}
+
+	allFiles, err := listBucket(b.bucket, stackLockDir(localStackRef))
 	if err != nil {
 		return err
 	}
@@ -72,7 +75,7 @@ func (b *localBackend) checkForLock(ctx context.Context, stackRef backend.StackR
 		if file.IsDir {
 			continue
 		}
-		if file.Key != b.lockPath(stackRef.Name()) {
+		if file.Key != b.lockPath(localStackRef) {
 			lockKeys = append(lockKeys, file.Key)
 		}
 	}
@@ -120,7 +123,11 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 	if err != nil {
 		return err
 	}
-	err = b.bucket.WriteAll(ctx, b.lockPath(stackRef.Name()), content, nil)
+	localStackRef, err := getLocalBackendStackReference(stackRef)
+	if err != nil {
+		return err
+	}
+	err = b.bucket.WriteAll(ctx, b.lockPath(localStackRef), content, nil)
 	if err != nil {
 		return err
 	}
@@ -133,25 +140,31 @@ func (b *localBackend) Lock(ctx context.Context, stackRef backend.StackReference
 }
 
 func (b *localBackend) Unlock(ctx context.Context, stackRef backend.StackReference) {
-	err := b.bucket.Delete(ctx, b.lockPath(stackRef.Name()))
+	localStackRef, err := getLocalBackendStackReference(stackRef)
+	if err != nil {
+		b.d.Errorf(
+			diag.Message("", "there was a problem deleting the lock for '%s', manual clean up may be required: %v"),
+			stackRef.String(),
+			err)
+	}
+
+	err = b.bucket.Delete(ctx, b.lockPath(localStackRef))
 	if err != nil {
 		b.d.Errorf(
 			diag.Message("", "there was a problem deleting the lock at %v, manual clean up may be required: %v"),
-			path.Join(b.url, b.lockPath(stackRef.Name())),
+			path.Join(b.url, b.lockPath(localStackRef)),
 			err)
 	}
 }
 
-func lockDir() string {
-	return path.Join(workspace.BookkeepingDir, workspace.LockDir)
+func lockDir(stackRef localBackendReference) string {
+	return path.Join(stateDir(stackRef.project), workspace.LockDir)
 }
 
-func stackLockDir(stack tokens.QName) string {
-	contract.Require(stack != "", "stack")
-	return path.Join(lockDir(), fsutil.QnamePath(stack))
+func stackLockDir(stackRef localBackendReference) string {
+	return path.Join(lockDir(stackRef), fsutil.QnamePath(stackRef.Name()))
 }
 
-func (b *localBackend) lockPath(stack tokens.QName) string {
-	contract.Require(stack != "", "stack")
-	return path.Join(stackLockDir(stack), b.lockID+".json")
+func (b *localBackend) lockPath(stackRef localBackendReference) string {
+	return path.Join(stackLockDir(stackRef), b.lockID+".json")
 }
