@@ -32,6 +32,7 @@ func TestPrettyKeyForProject(t *testing.T) {
 
 	assert.Equal(t, "foo", prettyKeyForProject(config.MustMakeKey("test-package", "foo"), proj))
 	assert.Equal(t, "other-package:bar", prettyKeyForProject(config.MustMakeKey("other-package", "bar"), proj))
+	assert.Panics(t, func() { config.MustMakeKey("other:package", "bar") })
 }
 
 func TestSecretDetection(t *testing.T) {
