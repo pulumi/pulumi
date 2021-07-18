@@ -3,9 +3,11 @@ title: "{{ .Title }}"
 title_tag: "{{ .TitleTag }}"
 meta_desc: "{{ .PackageDescription }}"
 {{- if .Menu }}
+linkTitle: Resources and Functions
 menu:
-    reference:
-        parent: API Reference
+    packages:
+        parent: {{ .Provider }}
+        identifier: {{ .Provider }}-reference
 {{- end }}
 ---
 
