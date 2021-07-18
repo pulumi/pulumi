@@ -1,0 +1,158 @@
+{
+    "name": "example",
+    "version": "0.0.1",
+    "config": {},
+    "types": {
+        "example::Pet": {
+            "properties": {
+                "age": {
+                    "type": "integer"
+                },
+                "name": {
+                    "$ref": "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"
+                },
+                "nameArray": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+                    }
+                },
+                "nameMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"
+                    }
+                },
+                "requireNameMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"
+                    }
+                },
+                "requiredName": {
+                    "$ref": "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"
+                },
+                "requiredNameArray": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"
+                    }
+                }
+            },
+            "type": "object",
+            "required": [
+                "age",
+                "requireNameMap",
+                "requiredName",
+                "requiredNameArray"
+            ]
+        }
+    },
+    "provider": {},
+    "resources": {
+        "example::Cat": {
+            "properties": {
+                "name": {
+                    "type": "string"
+                }
+            },
+            "inputProperties": {
+                "age": {
+                    "type": "integer"
+                },
+                "pet": {
+                    "$ref": "#/types/example::Pet"
+                }
+            }
+        },
+        "example::Component": {
+            "properties": {
+                "provider": {
+                    "$ref": "/kubernetes/v2.6.3/schema.json#/provider"
+                },
+                "securityGroup": {
+                    "$ref": "/aws/v3.14.0/schema.json#/resources/aws:ec2/securityGroup:SecurityGroup"
+                },
+                "storageClasses": {
+                    "$ref": "/kubernetes/v2.7.3/schema.json#/resources/kubernetes:storage.k8s.io/v1:StorageClass"
+                }
+            },
+            "required": [
+                "securityGroup"
+            ],
+            "inputProperties": {
+                "metadata": {
+                    "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta/v1:ObjectMeta"
+                },
+                "metadataArray": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta/v1:ObjectMeta"
+                    }
+                },
+                "metadataMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta/v1:ObjectMeta"
+                    }
+                },
+                "requiredMetadata": {
+                    "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta/v1:ObjectMeta"
+                },
+                "requiredMetadataArray": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta/v1:ObjectMeta"
+                    }
+                },
+                "requiredMetadataMap": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta/v1:ObjectMeta"
+                    }
+                }
+            },
+            "requiredInputs": [
+                "requiredMetadata",
+                "requiredMetadataArray",
+                "requiredMetadataMap"
+            ],
+            "isComponent": true
+        },
+        "example::Workload": {
+            "properties": {
+                "pod": {
+                    "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:core/v1:Pod"
+                }
+            }
+        }
+    },
+    "functions": {
+        "example::argFunction": {
+            "inputs": {
+                "properties": {
+                    "name": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index/randomPet:RandomPet"
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "properties": {
+                    "arg": {
+                        "type": "integer"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    },
+    "language": {
+        "csharp": {},
+        "go": {
+            "generateResourceContainerTypes": true
+        },
+        "nodejs": {},
+        "python": {}
+    }
+}

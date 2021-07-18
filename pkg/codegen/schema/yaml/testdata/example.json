@@ -1,0 +1,136 @@
+{
+    "name": "example",
+    "version": "0.0.1",
+    "config": {},
+    "types": {
+        "example::MyObject": {
+            "description": "A simple object type.\n",
+            "properties": {
+                "bar": {
+                    "type": "string"
+                },
+                "baz": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "description": "List of lists of strings\n"
+                },
+                "foo": {
+                    "$ref": "#/resources/example::MyResource"
+                },
+                "qux": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "number"
+                        }
+                    },
+                    "description": "Mapping from string to list of numbers\n"
+                }
+            },
+            "type": "object",
+            "required": [
+                "foo"
+            ]
+        }
+    },
+    "provider": {},
+    "resources": {
+        "example::MyComponent": {
+            "properties": {
+                "bucket": {
+                    "$ref": "/aws/v3.14.0/schema.json#/resources/aws:s3/bucket:Bucket"
+                },
+                "resource": {
+                    "$ref": "#/resources/example::MyResource"
+                }
+            },
+            "required": [
+                "bucket"
+            ],
+            "inputProperties": {
+                "bucket": {
+                    "$ref": "/aws/v3.14.0/schema.json#/resources/aws:s3/bucket:Bucket"
+                },
+                "resource": {
+                    "$ref": "#/resources/example::MyResource"
+                }
+            },
+            "requiredInputs": [
+                "bucket"
+            ],
+            "isComponent": true
+        },
+        "example::MyResource": {
+            "properties": {
+                "bar": {
+                    "type": "string"
+                },
+                "baz": {
+                    "type": "string"
+                },
+                "foo": {
+                    "$ref": "#/types/example::MyObject"
+                },
+                "qux": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    }
+                }
+            },
+            "required": [
+                "baz",
+                "qux"
+            ],
+            "inputProperties": {
+                "bar": {
+                    "type": "string"
+                },
+                "baz": {
+                    "type": "string"
+                },
+                "foo": {
+                    "$ref": "#/types/example::MyObject"
+                },
+                "qux": {
+                    "type": "array",
+                    "items": {
+                        "type": "number"
+                    },
+                    "plain": true
+                }
+            },
+            "requiredInputs": [
+                "baz",
+                "qux"
+            ]
+        }
+    },
+    "functions": {
+        "example::myFunction": {
+            "inputs": {
+                "properties": {
+                    "arg1": {
+                        "$ref": "#/resources/example::MyResource",
+                        "plain": true
+                    }
+                },
+                "type": "object"
+            },
+            "outputs": {
+                "properties": {
+                    "result": {
+                        "$ref": "#/resources/example::MyResource"
+                    }
+                },
+                "type": "object"
+            }
+        }
+    }
+}
