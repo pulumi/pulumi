@@ -257,6 +257,12 @@ namespace Pulumi.Automation
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
                 }
+
+                if(!string.IsNullOrWhiteSpace(options.Policy))
+                {
+                    args.Add("--policy-pack");
+                    args.Add(options.Policy);
+                }
             }
 
             InlineLanguageHost? inlineHost = null;
@@ -373,6 +379,12 @@ namespace Pulumi.Automation
                 {
                     args.Add("--parallel");
                     args.Add(options.Parallel.Value.ToString());
+                }
+
+                if(!string.IsNullOrWhiteSpace(options.Policy))
+                {
+                    args.Add("--policy-pack");
+                    args.Add(options.Policy);
                 }
             }
 

@@ -217,6 +217,9 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	var sharedArgs []string
 
 	sharedArgs = debug.AddArgs(&preOpts.DebugLogOpts, sharedArgs)
+	if preOpts.Policy != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack %q", preOpts.Policy))
+	}
 	if preOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", preOpts.Message))
 	}
@@ -314,6 +317,9 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	sharedArgs = debug.AddArgs(&upOpts.DebugLogOpts, sharedArgs)
 	if upOpts.Message != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--message=%q", upOpts.Message))
+	}
+	if upOpts.Policy != "" {
+		sharedArgs = append(sharedArgs, fmt.Sprintf("--policy-pack %q", upOpts.Policy))
 	}
 	if upOpts.ExpectNoChanges {
 		sharedArgs = append(sharedArgs, "--expect-no-changes")

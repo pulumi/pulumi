@@ -7,6 +7,9 @@
 - [sdk/python] Make `Output[T]` covariant
   [#7483](https://github.com/pulumi/pulumi/pull/7483)
 
+- [auto] - Support for policy packs in all languages
+  [#7432](https://github.com/pulumi/pulumi/pull/7432)
+
 ### Bug Fixes
 
 - [sdk/nodejs] Fix a bug in closure serialization. 

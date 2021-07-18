@@ -25,5 +25,6 @@ namespace Pulumi.Automation
         /// if <see cref="Program"/> is also provided.
         /// </summary>
         public ILogger? Logger { get; set; }
+        public string? Policy { get; set; }
     }
 }
