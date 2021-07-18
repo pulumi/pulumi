@@ -374,7 +374,7 @@ func (info PluginInfo) Install(tgz io.ReadCloser) error {
 	if err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "loading PulumiPlugin.yaml")
 	}
-	if proj != nil {
+	if proj != nil && !proj.SkipInstall {
 		runtime := strings.ToLower(proj.Runtime.Name())
 		// For now, we only do this for Node.js and Python. For Go, the expectation is the binary is
 		// already built. For .NET, similarly, a single self-contained binary could be used, but
