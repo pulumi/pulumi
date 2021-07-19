@@ -24,10 +24,13 @@ from .. import log
 from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
-from .. import _types, Output, ResourceOptions
+from ..output import Output
+from .. import _types
+
 
 if TYPE_CHECKING:
     from .. import Resource, CustomResource, Inputs, ProviderResource
+    from ..resource import ResourceOptions
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -658,7 +661,7 @@ def convert_providers(
     return result
 
 
-async def _resolve_depends_on_urns(options: ResourceOptions) -> List[str]:
+async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
     """
     Resolves the set of all dependnet resources implied by
     `depends_on`, either directly listed or implied in the Input
