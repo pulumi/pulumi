@@ -1,6 +1,27 @@
 CHANGELOG
 =========
 
+## 3.7.1 (2021-07-19)
+
+### Improvements
+
+- [codegen/python,nodejs] Emit dynamic config-getters.
+  [#7447](https://github.com/pulumi/pulumi/pull/7447), [#7530](https://github.com/pulumi/pulumi/pull/7530)
+
+- [sdk/python] Make `Output[T]` covariant
+  [#7483](https://github.com/pulumi/pulumi/pull/7483)
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix a bug in closure serialization.
+  [#6999](https://github.com/pulumi/pulumi/pull/6999)
+
+- [cli] Normalize cloud URL during login
+  [#7544](https://github.com/pulumi/pulumi/pull/7544)
+
+- [sdk/nodejs,dotnet] Wait on remote component dependencies
+  [#7541](https://github.com/pulumi/pulumi/pull/7541)
+
 ## 3.7.0 (2021-07-13)
 
 ### Improvements
