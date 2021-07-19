@@ -676,13 +676,20 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
                                                    .apply(lambda xs: Output.all(*xs))
 
     directList: Optional[List['Resource']] = await directOutput.future()
-    direct: Set['Resource'] = Set()
+    direct: Set['Resource'] = set()
 
     # None represents unknown; continue as if no dependency was present
     if directList is not None:
-        direct = Set(directList)
+        direct = set(directList)
 
     indirect: Set['Resource'] = await directOutput.resources()
     deps: Set['Resource'] = direct | indirect
 
-    return [urn for urn in (await d.urn.future() for d in deps) if urn]
+    urns = []
+
+    for d in deps:
+        urn = await d.urn.future()
+        if urn:
+            urns.append(urn)
+
+    return urns
