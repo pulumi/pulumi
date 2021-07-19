@@ -127,10 +127,10 @@ namespace Pulumi
 
             private async Task<int> WhileRunningAsync()
             {
-                var err = await _inFlightTasks.AwaitIdleOrFirstExceptionAsync().ConfigureAwait(false);
-                if (err != null)
+                var errs = await _inFlightTasks.AwaitIdleOrFirstExceptionAsync().ConfigureAwait(false);
+                if (errs.Any())
                 {
-                    return await HandleExceptionAsync(err).ConfigureAwait(false);
+                    return await HandleExceptionsAsync(errs).ConfigureAwait(false);
                 }
 
                 // there were no more tasks we were waiting on.  Quit out, reporting if we had any

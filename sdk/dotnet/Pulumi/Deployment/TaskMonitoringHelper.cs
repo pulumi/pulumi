@@ -3,6 +3,7 @@
 using System;
 using System.Linq;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -24,16 +25,19 @@ namespace Pulumi
             idleTracker.AddTask(task);
         }
 
-        /// Awaits next IDLE state or an exception, whichever comes first.
-        /// IDLE state is represented as `null` in the result.
-        public async Task<Exception?> AwaitIdleOrFirstExceptionAsync()
+        /// Awaits next IDLE state or an exception, whichever comes
+        /// first. Several exceptions may be returned if they have
+        /// been observed prior to this call.
+        ///
+        /// IDLE state is represented as an empty sequence in the result.
+        public async Task<IEnumerable<Exception>> AwaitIdleOrFirstExceptionAsync()
         {
             var error = errTracker.AwaitExceptionAsync();
             var idle = idleTracker.AwaitIdleAsync();
             var first = await Task.WhenAny((Task)error, idle).ConfigureAwait(false);
             if (first == idle)
             {
-                return null;
+                return Enumerable.Empty<Exception>();
             }
             var err = await error;
             return err;
@@ -101,7 +105,7 @@ namespace Pulumi
     {
         private readonly object _lockObject = new object();
         private readonly List<Exception> _exceptions = new List<Exception>();
-        private TaskCompletionSource<Exception>? _promise;
+        private TaskCompletionSource<IEnumerable<Exception>>? _promise;
 
         // Caches the delegate instance to avoid repeated allocations.
         private readonly Action<Task> _onTaskCompleted;
@@ -117,9 +121,9 @@ namespace Pulumi
             task.ContinueWith(_onTaskCompleted);
         }
 
-        /// Awaits the next `Exception` in the monitored tasks. May never complete. May return
-        /// `AggregateException` if more than one monitored task fails.
-        public Task<Exception> AwaitExceptionAsync()
+        /// Awaits the next set of `Exception` in the monitored tasks.
+        /// May never complete. Never returns an empty sequence.
+        public Task<IEnumerable<Exception>> AwaitExceptionAsync()
         {
             lock (_lockObject)
             {
@@ -133,17 +137,30 @@ namespace Pulumi
                 }
                 if (_promise == null)
                 {
-                    _promise = new TaskCompletionSource<Exception>();
+                    _promise = new TaskCompletionSource<IEnumerable<Exception>>();
                 }
                 return _promise.Task;
             }
         }
 
-        private Exception? Flush()
+        private IEnumerable<Exception> Flush()
         {
-            var err = CombineExceptions(_exceptions);
+            // It is possible for multiple tasks to complete with the
+            // same exception. This is happening in the test suite. It
+            // is also possible to register the same task twice,
+            // causing duplication.
+            //
+            // The `Distinct` here ensures this class does not report
+            // the same exception twice to the single call of
+            // `AwaitExceptionsAsync`.
+            //
+            // Note it is still possible to observe the same
+            // exception twice from separate calls to
+            // `AwaitExceptionsAsync`. This class opts not to keep
+            // state to track that global invariant.
+            var errs = _exceptions.Distinct().ToImmutableArray();
             _exceptions.Clear();
-            return err;
+            return errs;
         }
 
         private void OnTaskCompleted(Task task)
@@ -168,39 +185,6 @@ namespace Pulumi
                         _promise = null;
                     }
                 }
-            }
-        }
-
-        /// Deduplicates and packs exceptions into AggregateException if necessary.
-        private static Exception? CombineExceptions(IEnumerable<Exception> exceptions)
-        {
-            // It is possible for multiple tasks to complete with the
-            // same exception. This is happening in the test suite. It
-            // is also possible to register the same task twice,
-            // causing duplication.
-            //
-            // The `Distinct` here ensures this class does not report
-            // the same exception twice to the single call of
-            // `AwaitExceptionsAsync`.
-            //
-            // Note it is still possible to observe the same
-            // exception twice from separate calls to
-            // `AwaitExceptionsAsync`. This class opts not to keep
-            // state to track that global invariant.
-            return PackException(exceptions.Distinct());
-        }
-
-        /// Packs an AggregateException if necesssary.
-        private static Exception? PackException(IEnumerable<Exception> exceptions)
-        {
-            switch (exceptions.Count())
-            {
-                case 0:
-                    return null;
-                case 1:
-                    return exceptions.First();
-                default:
-                    return new AggregateException(exceptions);
             }
         }
     }
