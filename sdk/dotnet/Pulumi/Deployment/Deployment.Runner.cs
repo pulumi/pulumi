@@ -1,10 +1,11 @@
-﻿// Copyright 2016-2020, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
@@ -137,29 +138,56 @@ namespace Pulumi
                 return _deployment.Logger.LoggedErrors ? 1 : 0;
             }
 
-            private async Task<int> HandleExceptionAsync(Exception exception)
+            private Task<int> HandleExceptionAsync(Exception exception)
             {
+                return HandleExceptionsAsync(new Exception[]{exception});
+            }
+
+            private async Task<int> HandleExceptionsAsync(IEnumerable<Exception> exceptions)
+            {
+                if (!exceptions.Any())
+                {
+                    return 0;
+                }
                 lock (_exceptionsLock)
                 {
-                    _exceptions.Add(exception);
+                    _exceptions.AddRange(exceptions);
                 }
 
+                var loggedExceptionCount = 0;
+                foreach (var exception in exceptions)
+                {
+                    var logged = await LogExceptionToErrorStream(exception);
+                    loggedExceptionCount += logged ? 1 : 0;
+                }
+
+                // If we logged any exceptions, then return with a
+                // special error code stating as such so that our host
+                // does not print out another set of errors.
+                return (loggedExceptionCount > 0)
+                    ? _processExitedAfterLoggingUserActionableMessage
+                    : 1;
+            }
+
+            private async Task<bool> LogExceptionToErrorStream(Exception exception)
+            {
                 if (exception is LogException)
                 {
-                    // We got an error while logging itself.  Nothing to do here but print some errors
-                    // and fail entirely.
+                    // We got an error while logging itself. Nothing
+                    // to do here but print some errors and abort.
                     _deploymentLogger.LogError(exception, "Error occurred trying to send logging message to engine");
                     await Console.Error.WriteLineAsync($"Error occurred trying to send logging message to engine:\n{exception.ToStringDemystified()}").ConfigureAwait(false);
-                    return 1;
+                    return false;
                 }
 
-                // For the rest of the issue we encounter log the problem to the error stream. if we
-                // successfully do this, then return with a special error code stating as such so that
-                // our host doesn't print out another set of errors.
+                // For all other issues we encounter we log the
+                // problem to the error stream.
                 //
-                // Note: if these logging calls fail, they will just end up bubbling up an exception
-                // that will be caught by nothing.  This will tear down the actual process with a
-                // non-zero error which our host will handle properly.
+                // Note: if these logging calls fail, they will just
+                // end up bubbling up an exception that will be caught
+                // by nothing. This will tear down the actual process
+                // with a non-zero error which our host will handle
+                // properly.
                 if (exception is RunException)
                 {
                     // Always hide the stack for RunErrors.
@@ -177,7 +205,7 @@ namespace Pulumi
                 }
 
                 _deploymentLogger.LogDebug("Returning from program after last error");
-                return _processExitedAfterLoggingUserActionableMessage;
+                return true;
             }
         }
     }
