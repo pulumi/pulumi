@@ -1010,9 +1010,14 @@ func TestConstructUnknownNode(t *testing.T) {
 func TestConstructMethodsNode(t *testing.T) {
 	tests := []struct {
 		componentDir string
+		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1022,7 +1027,7 @@ func TestConstructMethodsNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				Env:          append(test.env, pathEnv),
 				Dir:          filepath.Join("construct_component_methods", "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
