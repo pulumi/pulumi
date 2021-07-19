@@ -32,7 +32,7 @@ namespace Pulumi
             /// </summary>
             private readonly TaskMonitoringHelper _inFlightTasks = new TaskMonitoringHelper();
 
-            private readonly _exceptionsLock = new object();
+            private readonly object _exceptionsLock = new object();
             private readonly List<Exception> _exceptions = new List<Exception>();
 
             private readonly ConcurrentDictionary<(int TaskId, string Desc),int> _descriptions =
@@ -40,9 +40,11 @@ namespace Pulumi
 
             public ImmutableList<Exception> SwallowedExceptions
             {
-                lock (_exceptionsLock)
-                {
-                    return _exceptions.ToImmutableList();
+                get {
+                    lock (_exceptionsLock)
+                    {
+                        return _exceptions.ToImmutableList();
+                    }
                 }
             }
 
@@ -135,9 +137,9 @@ namespace Pulumi
                 return _deployment.Logger.LoggedErrors ? 1 : 0;
             }
 
-            private async Task<int> HandleExceptionsAsync(Exception exceptions)
+            private async Task<int> HandleExceptionAsync(Exception exception)
             {
-                lock (_exceptionLock)
+                lock (_exceptionsLock)
                 {
                     _exceptions.Add(exception);
                 }
