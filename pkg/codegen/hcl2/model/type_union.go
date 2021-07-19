@@ -16,6 +16,7 @@ package model
 
 import (
 	"fmt"
+	"reflect"
 	"sort"
 	"strings"
 
@@ -32,38 +33,69 @@ type UnionType struct {
 	Annotations []interface{}
 
 	s string
+	h uint32
+}
+
+func containsType(t Type, types []Type) bool {
+	for _, u := range types {
+		if t.Equals(u) {
+			return true
+		}
+	}
+	return false
 }
 
 // NewUnionTypeAnnotated creates a new union type with the given element types and annotations.
 // Any element types that are union types are replaced with their element types.
 func NewUnionTypeAnnotated(types []Type, annotations ...interface{}) Type {
-	var elementTypes []Type
+	lenTypes := 0
 	for _, t := range types {
-		if union, isUnion := t.(*UnionType); isUnion {
-			elementTypes = append(elementTypes, union.ElementTypes...)
+		if u, isUnion := t.(*UnionType); isUnion {
+			lenTypes += len(u.ElementTypes)
 		} else {
-			elementTypes = append(elementTypes, t)
+			lenTypes++
 		}
 	}
 
-	sort.Slice(elementTypes, func(i, j int) bool {
-		return elementTypes[i].String() < elementTypes[j].String()
-	})
-
-	dst := 0
-	for src := 0; src < len(elementTypes); {
-		for src < len(elementTypes) && elementTypes[src].Equals(elementTypes[dst]) {
-			src++
+	elementTypes := make([]Type, 0, lenTypes)
+	if lenTypes < 16 {
+		for _, t := range types {
+			if union, ok := t.(*UnionType); ok {
+				for _, t := range union.ElementTypes {
+					if !containsType(t, elementTypes) {
+						elementTypes = append(elementTypes, t)
+					}
+				}
+			} else {
+				if !containsType(t, elementTypes) {
+					elementTypes = append(elementTypes, t)
+				}
+			}
 		}
-		dst++
-
-		if src < len(elementTypes) {
-			elementTypes[dst] = elementTypes[src]
+	} else {
+		var tt typeTable
+		for _, t := range types {
+			if union, isUnion := t.(*UnionType); isUnion {
+				for _, t := range union.ElementTypes {
+					if _, ok := tt.lookup(t, nil); !ok {
+						tt.insert(t, nil)
+						elementTypes = append(elementTypes, t)
+					}
+				}
+			} else {
+				if _, ok := tt.lookup(t, nil); !ok {
+					tt.insert(t, nil)
+					elementTypes = append(elementTypes, t)
+				}
+			}
 		}
 	}
-	elementTypes = elementTypes[:dst]
 
 	if len(elementTypes) == 1 {
+		tt := reflect.ValueOf(elementTypes[0])
+		if !tt.Elem().IsValid() {
+			panic("what?")
+		}
 		return elementTypes[0]
 	}
 
@@ -126,6 +158,38 @@ func (t *UnionType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 	}
 }
 
+type codeSlice []uint32
+
+func (s codeSlice) Len() int {
+	return len(s)
+}
+
+func (s codeSlice) Less(i, j int) bool {
+	return s[i] < s[j]
+}
+
+func (s codeSlice) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
+}
+
+func (t *UnionType) hash(stack objTypeSet) uint32 {
+	if t.h == 0 {
+		codes := make([]uint32, len(t.ElementTypes))
+		for i, t := range t.ElementTypes {
+			codes[i] = t.hash(stack)
+		}
+		sort.Sort(codeSlice(codes))
+
+		fnv := newFNV()
+		fnv.addUint32(hashKindUnion)
+		for _, c := range codes {
+			fnv.addUint32(c)
+		}
+		t.h = fnv.sum()
+	}
+	return t.h
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *UnionType) Equals(other Type) bool {
 	return t.equals(other, nil)
@@ -142,8 +206,32 @@ func (t *UnionType) equals(other Type, seen map[Type]struct{}) bool {
 	if len(t.ElementTypes) != len(otherUnion.ElementTypes) {
 		return false
 	}
-	for i, t := range t.ElementTypes {
-		if !t.equals(otherUnion.ElementTypes[i], seen) {
+	if t.hash(nil) != otherUnion.hash(nil) {
+		return false
+	}
+
+	if len(t.ElementTypes) < 16 {
+		for _, t := range t.ElementTypes {
+			found := false
+			for _, u := range otherUnion.ElementTypes {
+				if t.equals(u, seen) {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return false
+			}
+		}
+		return true
+	}
+
+	var tt typeTable
+	for _, t := range t.ElementTypes {
+		tt.insert(t, nil)
+	}
+	for _, t := range otherUnion.ElementTypes {
+		if _, ok := tt.lookup(t, seen); !ok {
 			return false
 		}
 	}

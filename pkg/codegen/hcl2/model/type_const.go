@@ -45,6 +45,14 @@ func (t *ConstType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnost
 	return t.Type.Traverse(traverser)
 }
 
+func (t *ConstType) hash(stack objTypeSet) uint32 {
+	fnv := newFNV()
+	fnv.addUint32(hashKindConst)
+	fnv.addUint32(uint32(t.Value.Hash()))
+	fnv.addUint32(t.Type.hash(stack))
+	return fnv.sum()
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *ConstType) Equals(other Type) bool {
 	return t.equals(other, nil)

@@ -15,6 +15,8 @@
 package model
 
 import (
+	_ "unsafe" // for linkname
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -43,11 +45,82 @@ type Type interface {
 	ConversionFrom(src Type) ConversionKind
 	String() string
 
+	hash(stack objTypeSet) uint32
 	equals(other Type, seen map[Type]struct{}) bool
 	conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics)
 	string(seen map[Type]struct{}) string
 	unify(other Type) (Type, ConversionKind)
 	isType()
+}
+
+type objTypeSet map[*ObjectType]struct{}
+
+func (s *objTypeSet) add(t *ObjectType) bool {
+	m := *s
+	if m == nil {
+		m = map[*ObjectType]struct{}{}
+		*s = m
+	}
+
+	_, has := m[t]
+	m[t] = struct{}{}
+	return has
+}
+
+func (s objTypeSet) delete(t *ObjectType) {
+	delete(s, t)
+}
+
+const (
+	hashKindNone uint32 = iota + 1
+	hashKindConst
+	hashKindList
+	hashKindMap
+	hashKindNamed
+	hashKindObject
+	hashKindOpaque
+	hashKindOutput
+	hashKindPromise
+	hashKindSet
+	hashKindTuple
+	hashKindUnion
+)
+
+//go:linkname hashString runtime.stringHash
+func hashString(s string, seed uintptr) uintptr
+
+type fnvHash uint32
+
+func newFNV() fnvHash {
+	return fnvHash(2166136261)
+}
+
+func (f *fnvHash) sum() uint32 {
+	return uint32(*f)
+}
+
+func (f *fnvHash) addString(s string) {
+	f.addUint32(uint32(hashString(s, 0)))
+}
+
+func (f *fnvHash) addUint32(c uint32) {
+	h := uint32(*f)
+	h ^= c & 0xff
+	h *= 16777619
+	h ^= (c >> 8) & 0xff
+	h *= 16777619
+	h ^= (c >> 16) & 0xff
+	h *= 16777619
+	h ^= (c >> 24) & 0xff
+	h *= 16777619
+	*f = fnvHash(h)
+}
+
+func hashCombine(code1, code2 uint32) uint32 {
+	fnv := newFNV()
+	fnv.addUint32(code1)
+	fnv.addUint32(code2)
+	return fnv.sum()
 }
 
 var (

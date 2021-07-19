@@ -46,6 +46,10 @@ func (t *OutputType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	return NewOutputType(element.(Type)), diagnostics
 }
 
+func (t *OutputType) hash(stack objTypeSet) uint32 {
+	return hashCombine(hashKindOutput, t.ElementType.hash(stack))
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *OutputType) Equals(other Type) bool {
 	return t.equals(other, nil)

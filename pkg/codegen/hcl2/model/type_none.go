@@ -30,6 +30,12 @@ func (noneType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostics)
 	return NoneType, hcl.Diagnostics{unsupportedReceiverType(NoneType, traverser.SourceRange())}
 }
 
+func (noneType) hash(_ objTypeSet) uint32 {
+	fnv := newFNV()
+	fnv.addUint32(hashKindNone)
+	return fnv.sum()
+}
+
 func (n noneType) Equals(other Type) bool {
 	return n.equals(other, nil)
 }
