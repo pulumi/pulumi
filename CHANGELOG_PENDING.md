@@ -9,6 +9,8 @@
 
 ### Bug Fixes
 
+- [cli] - Respect provider aliases
+  [#7166](https://github.com/pulumi/pulumi/pull/7166)
 - [sdk/nodejs] Fix a bug in closure serialization. 
   [#6999](https://github.com/pulumi/pulumi/pull/6999)
 

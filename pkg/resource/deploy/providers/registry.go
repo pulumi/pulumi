@@ -254,6 +254,15 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	return inputs, nil, nil
 }
 
+// RegisterAlias updates the registry such that the new URN points to the aliased provider
+func (r *Registry) RegisterAlias(alias, urn resource.URN) {
+	for ref, prov := range r.providers {
+		if ref.urn == alias {
+			r.setProvider(mustNewReference(urn, ref.id), prov)
+		}
+	}
+}
+
 // Diff diffs the configuration of the indicated provider. The provider corresponding to the given URN must have
 // previously been loaded by a call to Check.
 func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.PropertyMap,

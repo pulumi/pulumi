@@ -338,6 +338,126 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Run(t, snap)
 }
 
+// TestSingleResourceExplicitProviderAliasReplace verifies that providers respect aliases,
+// and propagate replaces as a result of an aliased provider diff.
+func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					// Always require replacement.
+					keys := []resource.PropertyKey{}
+					for k := range news {
+						keys = append(keys, k)
+					}
+					return plugin.DiffResult{ReplaceKeys: keys}, nil
+				},
+			}, nil
+		}),
+	}
+
+	providerInputs := resource.PropertyMap{
+		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+	}
+	providerName := "provA"
+	aliases := []resource.URN{}
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), providerName, true,
+			deploytest.ResourceOptions{
+				Inputs:  providerInputs,
+				Aliases: aliases,
+			})
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Provider: provRef.String(),
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	// Build a basic lifecycle.
+	steps := MakeBasicLifecycleSteps(t, 2)
+
+	// Run the lifecycle through its no-op update+refresh.
+	p.Steps = steps[:4]
+	snap := p.Run(t, nil)
+
+	// add a provider alias to the original URN
+	aliases = []resource.URN{
+		p.NewProviderURN("pkgA", "provA", ""),
+	}
+	// change the provider name
+	providerName = "provB"
+	// run an update expecting no-op respecting the aliases.
+	p.Steps = []TestStep{{
+		Op: Update,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			_ []Event, res result.Result) result.Result {
+			for _, entry := range entries {
+				if entry.Step.Op() != deploy.OpSame {
+					t.Fatalf("update should contain no changes: %v", entry.Step.URN())
+				}
+			}
+			return res
+		},
+	}}
+	snap = p.Run(t, snap)
+
+	// Change the config and run an update maintaining the alias. We expect everything to require replacement.
+	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	p.Steps = []TestStep{{
+		Op: Update,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			_ []Event, res result.Result) result.Result {
+
+			provURN := p.NewProviderURN("pkgA", providerName, "")
+			resURN := p.NewURN("pkgA:m:typA", "resA", "")
+
+			// Look for replace steps on the provider and the resource.
+			replacedProvider, replacedResource := false, false
+			for _, entry := range entries {
+				op := entry.Step.Op()
+				if entry.Kind != JournalEntrySuccess || op != deploy.OpDeleteReplaced {
+					continue
+				}
+
+				switch urn := entry.Step.URN(); urn {
+				case provURN:
+					replacedProvider = true
+				case resURN:
+					replacedResource = true
+				default:
+					t.Fatalf("unexpected resource %v", urn)
+				}
+			}
+			assert.True(t, replacedProvider)
+			assert.True(t, replacedResource)
+
+			return res
+		},
+	}}
+	snap = p.Run(t, snap)
+
+	// Resume the lifecycle with another no-op update.
+	p.Steps = steps[2:]
+	p.Run(t, snap)
+}
+
 func TestSingleResourceExplicitProviderDeleteBeforeReplace(t *testing.T) {
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
