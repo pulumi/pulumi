@@ -63,6 +63,8 @@
       <VersionPart>$(Version.Split("-")[0])</VersionPart>
       <VersionPrefix>$(VersionPart.Replace("v",""))</VersionPrefix>
     </PropertyGroup>
+    <Exec Command="dotnet clean"
+          WorkingDirectory="$(DotNetSdkDirectory)" />
     <Exec Command="dotnet build dotnet.sln /p:Version=$(Version)"
           WorkingDirectory="$(DotNetSdkDirectory)" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet"
