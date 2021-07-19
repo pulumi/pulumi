@@ -118,15 +118,11 @@ class ProviderServicer(ResourceProviderServicer):
 
     @staticmethod
     async def _create_output(the_input: Any, deps: Set[str]) -> Any:
-        is_resource_reference = (known_types.is_resource(the_input)
-            and len(deps) == 1
-            and next(iter(deps)) == await cast(Resource, the_input).urn.future())
-
         is_secret = rpc.is_rpc_secret(the_input)
 
         # If it's a resource reference or a prompt value, return it directly without wrapping
         # it as an output.
-        if is_resource_reference or (not is_secret and len(deps) == 0):
+        if await _is_resource_reference(the_input, deps) or (not is_secret and len(deps) == 0):
             return the_input
 
         # Otherwise, wrap it as an output so we can handle secrets
@@ -323,3 +319,12 @@ def _empty_as_none(text: str) -> Optional[str]:
 
 def _zero_as_none(value: int) -> Optional[int]:
     return None if value == 0 else value
+
+
+async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
+    """
+    Returns True if `the_input` is a Resource and only depends on itself.
+    """
+    return (known_types.is_resource(the_input)
+        and len(deps) == 1
+        and next(iter(deps)) == await cast(Resource, the_input).urn.future())
