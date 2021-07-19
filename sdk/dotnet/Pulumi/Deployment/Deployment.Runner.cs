@@ -31,12 +31,20 @@ namespace Pulumi
             /// exiting once the set becomes empty.
             /// </summary>
             private readonly TaskMonitoringHelper _inFlightTasks = new TaskMonitoringHelper();
+
+            private readonly _exceptionsLock = new object();
             private readonly List<Exception> _exceptions = new List<Exception>();
 
             private readonly ConcurrentDictionary<(int TaskId, string Desc),int> _descriptions =
                 new ConcurrentDictionary<(int TaskId, string Desc),int>();
 
-            public ImmutableList<Exception> SwallowedExceptions => this._exceptions.ToImmutableList();
+            public ImmutableList<Exception> SwallowedExceptions
+            {
+                lock (_exceptionsLock)
+                {
+                    return _exceptions.ToImmutableList();
+                }
+            }
 
             public Runner(IDeploymentInternal deployment, ILogger deploymentLogger)
             {
@@ -127,9 +135,12 @@ namespace Pulumi
                 return _deployment.Logger.LoggedErrors ? 1 : 0;
             }
 
-            private async Task<int> HandleExceptionAsync(Exception exception)
+            private async Task<int> HandleExceptionsAsync(Exception exceptions)
             {
-                this._exceptions.Add(exception);
+                lock (_exceptionLock)
+                {
+                    _exceptions.Add(exception);
+                }
 
                 if (exception is LogException)
                 {
