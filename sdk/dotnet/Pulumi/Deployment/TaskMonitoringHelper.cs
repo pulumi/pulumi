@@ -125,7 +125,11 @@ namespace Pulumi
             {
                 if (_exceptions.Count > 0)
                 {
-                    return Task.FromResult(Flush());
+                    var err = Flush();
+                    if (err != null)
+                    {
+                        return Task.FromResult(err);
+                    }
                 }
                 if (_promise == null)
                 {
@@ -135,9 +139,9 @@ namespace Pulumi
             }
         }
 
-        private Exception Flush()
+        private Exception? Flush()
         {
-            var err = CombineExceptions(_exceptions[0], _exceptions.Skip(1));
+            var err = CombineExceptions(_exceptions);
             _exceptions.Clear();
             return err;
         }
@@ -156,23 +160,47 @@ namespace Pulumi
                     _exceptions.AddRange(errs.InnerExceptions);
                     if (_promise != null)
                     {
-                        _promise.SetResult(Flush());
+                        var err = Flush();
+                        if (err != null)
+                        {
+                            _promise.SetResult(err);
+                        }
                         _promise = null;
                     }
                 }
             }
         }
 
-        /// Packs an AggregateException if necesssary.
-        private static Exception CombineExceptions(Exception exception, IEnumerable<Exception> exceptions)
+        /// Deduplicates and packs exceptions into AggregateException if necessary.
+        private static Exception? CombineExceptions(IEnumerable<Exception> exceptions)
         {
-            if (!exceptions.Any())
+            // It is possible for multiple tasks to complete with the
+            // same exception. This is happening in the test suite. It
+            // is also possible to register the same task twice,
+            // causing duplication.
+            //
+            // The `Distinct` here ensures this class does not report
+            // the same exception twice to the single call of
+            // `AwaitExceptionsAsync`.
+            //
+            // Note it is still possible to observe the same
+            // exception twice from separate calls to
+            // `AwaitExceptionsAsync`. This class opts not to keep
+            // state to track that global invariant.
+            return PackException(exceptions.Distinct());
+        }
+
+        /// Packs an AggregateException if necesssary.
+        private static Exception? PackException(IEnumerable<Exception> exceptions)
+        {
+            switch (exceptions.Count())
             {
-                return exception;
-            }
-            else
-            {
-                return new AggregateException((new []{exception}).Concat(exceptions));
+                case 0:
+                    return null;
+                case 1:
+                    return exceptions.First();
+                default:
+                    return new AggregateException(exceptions);
             }
         }
     }
