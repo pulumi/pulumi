@@ -663,7 +663,7 @@ def convert_providers(
 
 async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
     """
-    Resolves the set of all dependnet resources implied by
+    Resolves the set of all dependent resources implied by
     `depends_on`, either directly listed or implied in the Input
     layer. Returns a deduplicated URN list.
     """
