@@ -19,6 +19,7 @@
 package gen
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
@@ -71,8 +72,22 @@ func getTestPackage(t *testing.T) *schema.Package {
 func TestGetDocLinkForPulumiType(t *testing.T) {
 	pkg := getTestPackage(t)
 	d := DocLanguageHelper{}
-	t.Run("Generate_ResourceOptionsLink", func(t *testing.T) {
-		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v3/go/pulumi?tab=doc#ResourceOption"
+	t.Run("Generate_ResourceOptionsLink_Specified", func(t *testing.T) {
+		pkg.Language["go"] = GoPackageInfo{PulumiSDKVersion: 1}
+		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#ResourceOption"
+		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
+		assert.Equal(t, expected, link)
+		pkg.Language["go"] = nil
+	})
+	t.Run("Generate_ResourceOptionsLink_Specified", func(t *testing.T) {
+		pkg.Language["go"] = GoPackageInfo{PulumiSDKVersion: 2}
+		expected := "https://pkg.go.dev/github.com/pulumi/pulumi/sdk/v2/go/pulumi?tab=doc#ResourceOption"
+		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
+		assert.Equal(t, expected, link)
+		pkg.Language["go"] = nil
+	})
+	t.Run("Generate_ResourceOptionsLink_Unspecified", func(t *testing.T) {
+		expected := fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%s/go/pulumi?tab=doc#ResourceOption", pulumiSDKVersion)
 		link := d.GetDocLinkForPulumiType(pkg, "ResourceOption")
 		assert.Equal(t, expected, link)
 	})
