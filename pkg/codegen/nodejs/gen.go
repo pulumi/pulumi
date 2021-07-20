@@ -32,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -144,6 +145,7 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if external {
+		pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
 		root = "types.output."
 		if input {
 			root = "types.input."
@@ -165,6 +167,10 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if strings.HasPrefix(r.Token, "pulumi:providers:") {
 		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+		if pkgName != mod.pkg.Name {
+			pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+		}
+
 		return fmt.Sprintf("%s.Provider", pkgName)
 	}
 
@@ -172,7 +178,10 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if r.Resource != nil {
 		pkg = r.Resource.Package
 	}
-	namingCtx, pkgName, _ := mod.namingContext(pkg)
+	namingCtx, pkgName, external := mod.namingContext(pkg)
+	if external {
+		pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+	}
 
 	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
 
@@ -986,6 +995,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return false
 	}
 
+	var nodePackageInfo NodePackageInfo
+	if languageInfo, hasLanguageInfo := mod.pkg.Language["nodejs"]; hasLanguageInfo {
+		nodePackageInfo = languageInfo.(NodePackageInfo)
+	}
+
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
@@ -1001,7 +1015,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Package != nil && t.Package != mod.pkg {
 			pkg := t.Package.Name
-			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
+			} else {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", fmt.Sprintf("pulumi%s", title(pkg)), pkg))
+			}
 			return false
 		}
 
@@ -1013,7 +1031,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Resource != nil && t.Resource.Package != mod.pkg {
 			pkg := t.Resource.Package.Name
-			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
+			} else {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", fmt.Sprintf("pulumi%s", title(pkg)), pkg))
+			}
 			return false
 		}
 

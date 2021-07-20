@@ -4,14 +4,14 @@
 import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "../types";
 
-import * as random from "@pulumi/random";
+import * as pulumiRandom from "@pulumi/random";
 
 export interface PetArgs {
     age?: pulumi.Input<number>;
-    name?: pulumi.Input<random.RandomPet>;
-    nameArray?: pulumi.Input<pulumi.Input<random.RandomPet>[]>;
-    nameMap?: pulumi.Input<{[key: string]: pulumi.Input<random.RandomPet>}>;
-    requiredName: pulumi.Input<random.RandomPet>;
-    requiredNameArray: pulumi.Input<pulumi.Input<random.RandomPet>[]>;
-    requiredNameMap: pulumi.Input<{[key: string]: pulumi.Input<random.RandomPet>}>;
+    name?: pulumi.Input<pulumiRandom.RandomPet>;
+    nameArray?: pulumi.Input<pulumi.Input<pulumiRandom.RandomPet>[]>;
+    nameMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiRandom.RandomPet>}>;
+    requiredName: pulumi.Input<pulumiRandom.RandomPet>;
+    requiredNameArray: pulumi.Input<pulumi.Input<pulumiRandom.RandomPet>[]>;
+    requiredNameMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiRandom.RandomPet>}>;
 }

@@ -303,7 +303,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#bucket_nodejs" style="color: inherit; text-decoration: inherit;">bucket</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">awss3Bucket</span>
+        <span class="property-type">pulumi<wbr>Awss3Bucket</span>
     </dt>
     <dd>{{% md %}}The bucket resource.{{% /md %}}</dd><dt class="property-"
             title="">

@@ -539,13 +539,13 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
     // The list of all dependencies (implicit or explicit).
     const allDirectDependencies = new Set<Resource>(explicitDirectDependencies);
 
-    const allDirectDependencyURNs = await getAllTransitivelyReferencedCustomResourceURNs(explicitDirectDependencies);
+    const allDirectDependencyURNs = await getAllTransitivelyReferencedResourceURNs(explicitDirectDependencies);
     const propertyToDirectDependencyURNs = new Map<string, Set<URN>>();
 
     for (const [propertyName, directDependencies] of propertyToDirectDependencies) {
         addAll(allDirectDependencies, directDependencies);
 
-        const urns = await getAllTransitivelyReferencedCustomResourceURNs(directDependencies);
+        const urns = await getAllTransitivelyReferencedResourceURNs(directDependencies);
         addAll(allDirectDependencyURNs, urns);
         propertyToDirectDependencyURNs.set(propertyName, urns);
     }
@@ -584,30 +584,41 @@ function addAll<T>(to: Set<T>, from: Set<T>) {
     }
 }
 
-async function getAllTransitivelyReferencedCustomResourceURNs(resources: Set<Resource>) {
+async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>): Promise<Set<string>> {
     // Go through 'resources', but transitively walk through **Component** resources, collecting any
     // of their child resources.  This way, a Component acts as an aggregation really of all the
-    // reachable custom resources it parents.  This walking will transitively walk through other
-    // child ComponentResources, but will stop when it hits custom resources.  in other words, if we
-    // had:
+    // reachable resources it parents.  This walking will stop when it hits custom resources.
     //
-    //              Comp1
-    //              /   \
-    //          Cust1   Comp2
-    //                  /   \
-    //              Cust2   Cust3
-    //              /
-    //          Cust4
+    // This function also terminates at remote components, whose children are not known to the Node SDK directly.
+    // Remote components will always wait on all of their children, so ensuring we return the remote component
+    // itself here and waiting on it will accomplish waiting on all of it's children regardless of whether they
+    // are returned explicitly here.
     //
-    // Then the transitively reachable custom resources of Comp1 will be [Cust1, Cust2, Cust3]. It
-    // will *not* include `Cust4`.
+    // In other words, if we had:
+    //
+    //                  Comp1
+    //              /     |     \
+    //          Cust1   Comp2  Remote1
+    //                  /   \       \
+    //              Cust2   Cust3  Comp3
+    //              /                 \
+    //          Cust4                Cust5
+    //
+    // Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
+    // It will *not* include:
+    // * Cust4 because it is a child of a custom resource
+    // * Comp2 because it is a non-remote component resoruce
+    // * Comp3 and Cust5 because Comp3 is a child of a remote component resource
 
     // To do this, first we just get the transitively reachable set of resources (not diving
     // into custom resources).  In the above picture, if we start with 'Comp1', this will be
     // [Comp1, Cust1, Comp2, Cust2, Cust3]
     const transitivelyReachableResources = await getTransitivelyReferencedChildResourcesOfComponentResources(resources);
 
-    const transitivelyReachableCustomResources = [...transitivelyReachableResources].filter(r => CustomResource.isInstance(r));
+    // Then we filter to only include Custom and Remote resources.
+    const transitivelyReachableCustomResources =
+        [...transitivelyReachableResources]
+        .filter(r => CustomResource.isInstance(r) || (r as ComponentResource).__remote);
     const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);

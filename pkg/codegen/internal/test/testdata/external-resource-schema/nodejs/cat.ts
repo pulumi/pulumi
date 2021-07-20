@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
-import * as random from "@pulumi/random";
+import * as pulumiRandom from "@pulumi/random";
 
 export class Cat extends pulumi.CustomResource {
     /**

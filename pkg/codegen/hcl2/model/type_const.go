@@ -74,8 +74,8 @@ func (t *ConstType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ConstType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *ConstType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		if t.Type.ConversionFrom(src) != NoConversion {
 			return UnsafeConversion, nil
 		}

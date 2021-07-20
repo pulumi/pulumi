@@ -81,8 +81,8 @@ func (t *OutputType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *OutputType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *OutputType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
