@@ -68,8 +68,8 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component_methods/testcomponent-go && go build -o pulumi-resource-testcomponent
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
-	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
-	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
+	cd pkg && $(GO_TEST) -p=10 ${PROJECT_PKGS}
+	cd tests && $(GO_TEST) -p=10 ${TESTS_PKGS}
 
 .PHONY: test_containers
 test_containers:
