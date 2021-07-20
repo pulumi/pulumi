@@ -16,16 +16,17 @@
 
 import asyncio
 import copy
-from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
+from typing import Optional, List, Any, Mapping, Union, Set, Callable, TYPE_CHECKING, cast
 from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
 from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource, \
     convert_providers
 from .runtime.settings import get_root_resource
+from .output import _is_prompt, T, Output
 
 if TYPE_CHECKING:
-    from .output import Input, Inputs, Output
+    from .output import Input, Inputs
     from .runtime.stack import Stack
 
 
@@ -78,7 +79,6 @@ def inherited_child_alias(
 #   * parentAliasName: "app"
 #   * aliasName: "app-function"
 #   * childAlias: "urn:pulumi:stackname::projectname::aws:s3/bucket:Bucket::app-function"
-    from . import Output  # pylint: disable=import-outside-toplevel
     alias_name = Output.from_input(child_name)
     if child_name.startswith(parent_name):
         alias_name = Output.from_input(parent_alias).apply(
@@ -185,7 +185,6 @@ def collapse_alias_to_urn(
     """
     collapse_alias_to_urn turns an Alias into a URN given a set of default data
     """
-    from . import Output  # pylint: disable=import-outside-toplevel
 
     def collapse_alias_to_urn_worker(inner: Union[Alias, str]) -> Output[str]:
         if isinstance(inner, str):
@@ -298,9 +297,9 @@ class ResourceOptions:
     resource.
     """
 
-    depends_on: Optional[List['Resource']]
+    depends_on: Optional['Input[List[Input[Resource]]]']
     """
-    If provided, the currently-constructing resource depends on the provided list of resources.
+    If provided, declares that the currently-constructing resource depends on the given resources.
     """
 
     protect: Optional[bool]
@@ -391,7 +390,7 @@ class ResourceOptions:
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
-                 depends_on: Optional[List['Resource']] = None,
+                 depends_on: Optional['Input[List[Input[Resource]]]'] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]] = None,
@@ -409,8 +408,8 @@ class ResourceOptions:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
-        :param Optional[List[Resource]] depends_on: If provided, the currently-constructing resource depends on the
-               provided list of resources.
+        :param Optional[Input[List[Input[Resource]]]] depends_on: If provided, declares that the
+               currently-constructing resource depends on the given resources.
         :param Optional[bool] protect: If provided and True, this resource is not allowed to be deleted.
         :param Optional[ProviderResource] provider: An optional provider to use for this resource's CRUD operations.
                If no provider is supplied, the default provider for the resource's package will be used. The default
@@ -443,6 +442,15 @@ class ResourceOptions:
                from previous deployments will require replacement instead of update only if `"*"` is passed.
         """
 
+        # Proactively check that `depends_on` values are of type
+        # `Resource`. We cannot complete the check in the general case
+        # and can only do it on promptly available arguments.
+        if depends_on is not None and isinstance(depends_on, list):
+            for dep in depends_on:
+                if _is_prompt(dep) and not isinstance(dep, Resource):
+                    raise Exception(
+                        "'depends_on' was passed a value that was not a Resource.")
+
         # Expose 'merge' again this this object, but this time as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
         self.merge = self._merge_instance # type: ignore
@@ -465,11 +473,6 @@ class ResourceOptions:
         self.urn = urn
         self.replace_on_changes = replace_on_changes
 
-        if depends_on is not None:
-            for dep in depends_on:
-                if not isinstance(dep, Resource):
-                    raise Exception(
-                        "'depends_on' was passed a value that was not a Resource.")
 
     def _merge_instance(self, opts: 'ResourceOptions') -> 'ResourceOptions':
         return ResourceOptions.merge(self, opts)
@@ -521,7 +524,7 @@ class ResourceOptions:
         _expand_providers(source)
 
         dest.providers = _merge_lists(dest.providers, source.providers)
-        dest.depends_on = _merge_lists(dest.depends_on, source.depends_on)
+        dest.depends_on = _append_input_lists(dest.depends_on, source.depends_on)
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
         dest.replace_on_changes = _merge_lists(dest.replace_on_changes, source.replace_on_changes)
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
@@ -584,6 +587,26 @@ def _merge_lists(dest, source):
         return dest
 
     return dest + source
+
+
+def _append_input_lists(a: Optional['Input[List[T]]'],
+                        b: Optional['Input[List[T]]']) -> Optional['Input[List[T]]']:
+
+    if a is None and b is None:
+        return None
+
+    if a is None:
+        return b
+
+    if b is None:
+        return a
+
+    if _is_prompt(a) and _is_prompt(b):
+        return cast(List[T], a) + cast(List[T], b)
+
+    result: 'Output[List[T]]' = Output.all(a, b).apply(lambda xxs: [x for xs in xxs for x in xs])
+    return result
+
 
 
 # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
@@ -945,8 +968,6 @@ class DependencyResource(CustomResource):
     def __init__(self, urn: str) -> None:
         super().__init__(t="", name="", props={}, opts=None, dependency=True)
 
-        from . import Output  # pylint: disable=import-outside-toplevel
-
         urn_future: asyncio.Future[str] = asyncio.Future()
         urn_known: asyncio.Future[bool] = asyncio.Future()
         urn_secret: asyncio.Future[bool] = asyncio.Future()
@@ -969,8 +990,6 @@ class DependencyProviderResource(ProviderResource):
         last_sep = ref.rindex("::")
         ref_urn = ref[:last_sep]
         ref_id = ref[last_sep+2:]
-
-        from . import Output  # pylint: disable=import-outside-toplevel
 
         urn_future: asyncio.Future[str] = asyncio.Future()
         urn_known: asyncio.Future[bool] = asyncio.Future()
@@ -1013,7 +1032,6 @@ def create_urn(
     create_urn computes a URN from the combination of a resource name, resource type, optional
     parent, optional project and optional stack.
     """
-    from . import Output  # pylint: disable=import-outside-toplevel
     parent_prefix: Optional[Output[str]] = None
     if parent is not None:
         parent_urn = None
