@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from .resource import Resource
 
 T = TypeVar('T')
+T_co = TypeVar('T_co', covariant=True)
 U = TypeVar('U')
 
 Input = Union[T, Awaitable[T], 'Output[T]']
@@ -46,7 +47,7 @@ Inputs = Mapping[str, Input[Any]]
 InputType = Union[T, Mapping[str, Any]]
 
 
-class Output(Generic[T]):
+class Output(Generic[T_co]):
     """
     Output helps encode the relationship between Resources in a Pulumi application. Specifically an
     Output holds onto a piece of Data and the Resource it was generated from. An Output value can
@@ -71,7 +72,7 @@ class Output(Generic[T]):
     our state file, they are encrypted instead of being in plaintext.
     """
 
-    _future: Awaitable[T]
+    _future: Awaitable[T_co]
     """
     Future that actually produces the concrete value of this output.
     """
@@ -82,7 +83,7 @@ class Output(Generic[T]):
     """
 
     def __init__(self, resources: Union[Awaitable[Set['Resource']], Set['Resource']],
-                 future: Awaitable[T], is_known: Awaitable[bool],
+                 future: Awaitable[T_co], is_known: Awaitable[bool],
                  is_secret: Optional[Awaitable[bool]] = None) -> None:
         is_known = asyncio.ensure_future(is_known)
         future = asyncio.ensure_future(future)
@@ -109,10 +110,10 @@ class Output(Generic[T]):
     def resources(self) -> Awaitable[Set['Resource']]:
         return self._resources
 
-    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T]]:
+    def future(self, with_unknowns: Optional[bool] = None) -> Awaitable[Optional[T_co]]:
         # If the caller did not explicitly ask to see unknown values and the value of this output contains unnkowns,
         # return None. This preserves compatibility with earlier versios of the Pulumi SDK.
-        async def get_value() -> Optional[T]:
+        async def get_value() -> Optional[T_co]:
             val = await self._future
             return None if not with_unknowns and contains_unknowns(val) else val
         return asyncio.ensure_future(get_value())
@@ -124,7 +125,7 @@ class Output(Generic[T]):
     def is_secret(self) -> Awaitable[bool]:
         return self._is_secret
 
-    def apply(self, func: Callable[[T], Input[U]], run_with_unknowns: Optional[bool] = None) -> 'Output[U]':
+    def apply(self, func: Callable[[T_co], Input[U]], run_with_unknowns: Optional[bool] = None) -> 'Output[U]':
         """
         Transforms the data of the output with the provided func.  The result remains a
         Output so that dependent resources can be properly tracked.
@@ -137,7 +138,7 @@ class Output(Generic[T]):
         This function will be called during execution of a 'pulumi up' request.  It may not run
         during 'pulumi preview' (as the values of resources are of course may not be known then).
 
-        :param Callable[[T],Input[U]] func: A function that will, given this Output's value, transform the value to
+        :param Callable[[T_co],Input[U]] func: A function that will, given this Output's value, transform the value to
                an Input of some kind, where an Input is either a prompt value, a Future, or another Output of the given
                type.
         :return: A transformed Output obtained from running the transformation function on this Output's value.
@@ -173,7 +174,7 @@ class Output(Generic[T]):
                     # contain any unknown values, collapse its value to the unknown value. This ensures that callbacks
                     # that expect to see unknowns during preview in outputs that are not known will always do so.
                     if not is_known and run_with_unknowns and not contains_unknowns(value):
-                        value = cast(T, UNKNOWN)
+                        value = cast(T_co, UNKNOWN)
 
                 transformed: Input[U] = func(value)
                 # Transformed is an Input, meaning there are three cases:
@@ -223,7 +224,9 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value's property with the given name.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else getattr(v, item), True)
+        def lift(v: Any) -> Any:
+            return UNKNOWN if isinstance(v, Unknown) else getattr(v, item)
+        return self.apply(lift, True)
 
     def __getitem__(self, key: Any) -> 'Output[Any]':
         """
@@ -233,7 +236,9 @@ class Output(Generic[T]):
         :return: An Output of this Output's underlying value, keyed with the given key as if it were a dictionary.
         :rtype: Output[Any]
         """
-        return self.apply(lambda v: UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key], True)
+        def lift(v: Any) -> Any:
+            return UNKNOWN if isinstance(v, Unknown) else cast(Any, v)[key]
+        return self.apply(lift, True)
 
     def __iter__(self) -> Any:
         """
@@ -243,14 +248,14 @@ class Output(Generic[T]):
         raise TypeError("'Output' object is not iterable, consider iterating the underlying value inside an 'apply'")
 
     @staticmethod
-    def from_input(val: Input[T]) -> 'Output[T]':
+    def from_input(val: Input[T_co]) -> 'Output[T_co]':
         """
         Takes an Input value and produces an Output value from it, deeply unwrapping nested Input values through nested
         lists, dicts, and input classes.  Nested objects of other types (including Resources) are not deeply unwrapped.
 
-        :param Input[T] val: An Input to be converted to an Output.
+        :param Input[T_co] val: An Input to be converted to an Output.
         :return: A deeply-unwrapped Output that is guaranteed to not contain any Input values.
-        :rtype: Output[T]
+        :rtype: Output[T_co]
         """
 
         # Is it an output already? Recurse into the value contained within it.
@@ -263,16 +268,16 @@ class Output(Generic[T]):
             # We know that any input type can safely be decomposed into it's `__dict__`, and then reconstructed
             # via `type(**d)` from the (unwrapped) properties.
             o_typ: Output[typ] = Output.all(**val.__dict__).apply(lambda d: typ(**d)) # type:ignore
-            return cast(Output[T], o_typ)
+            return cast(Output[T_co], o_typ)
 
         # Is a (non-empty) dict or list? Recurse into the values within them.
         if val and isinstance(val, dict):
             o_dict: Output[dict] = Output.all(**val)
-            return cast(Output[T], o_dict)
+            return cast(Output[T_co], o_dict)
 
         if val and isinstance(val, list):
             o_list: Output[list] = Output.all(*val)
-            return cast(Output[T], o_list)
+            return cast(Output[T_co], o_list)
 
         # If it's not an output, list, or dict, it must be known and not secret
         is_known_fut: asyncio.Future[bool] = asyncio.Future()
