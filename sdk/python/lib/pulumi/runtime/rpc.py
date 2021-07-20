@@ -331,7 +331,9 @@ async def serialize_property(value: 'Input[Any]',
 
 
 # pylint: disable=too-many-return-statements
-def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_properties(props_struct: struct_pb2.Struct,
+                           keep_unknowns: Optional[bool] = None,
+                           keep_internal: Optional[bool] = None) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
@@ -377,7 +379,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
         # not need to be passed back to the engine, and often will not match the
         # expected type we are deserializing into.
         # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if k.startswith("__") and k != "__provider":
+        if not keep_internal and k.startswith("__") and k != "__provider":
             continue
 
         value = deserialize_property(v, keep_unknowns)
@@ -768,6 +770,10 @@ def resolve_outputs(res: 'Resource',
 
         all_properties[translated_key] = translated_value
 
+    translated_deps = {}
+    for key, property_deps in deps.items():
+        translated_deps[translate(key)] = property_deps
+
     if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
         for key, value in list(serialized_props.items()):
             translated_key = translate(key)
@@ -781,7 +787,7 @@ def resolve_outputs(res: 'Resource',
                                                                              path=_Path(translated_key,
                                                                                         resource=f'{res._name}'))
 
-    resolve_properties(resolvers, all_properties, deps)
+    resolve_properties(resolvers, all_properties, translated_deps)
 
 
 def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):

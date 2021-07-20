@@ -1,11 +1,11 @@
 
 ### Improvements
   
-- [sdk] - Add `replaceOnChanges` resource option.
-  [#7226](https://github.com/pulumi/pulumi/pull/722
+- [codegen/dotnet] - Emit dynamic config-getters.
+  [#7549](https://github.com/pulumi/pulumi/pull/7549)
 
-- [sdk/go] - Support for authoring resource methods in Go
-  [#7379](https://github.com/pulumi/pulumi/pull/7379)
+- [sdk/python] - Support for authoring resource methods in Python.
+  [#7555](https://github.com/pulumi/pulumi/pull/7555)
 
 ### Bug Fixes
 

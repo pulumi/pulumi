@@ -72,7 +72,7 @@ var (
 		"alicloud":      "AliCloud",
 		"auth0":         "Auth0",
 		"aws":           "AWS",
-		"azure":         "Azure",
+		"azure":         "Azure Classic",
 		"azure-native":  "Azure Native",
 		"azuread":       "Azure AD",
 		"azuredevops":   "Azure DevOps",
@@ -1499,7 +1499,7 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	addFile := func(name, contents string) {
-		p := path.Join(modName, name)
+		p := path.Join(modName, name, "_index.md")
 		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
@@ -1516,7 +1516,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(strings.ToLower(title)+".md", buffer.String())
+		addFile(strings.ToLower(title), buffer.String())
 	}
 
 	// Functions
@@ -1529,7 +1529,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(strings.ToLower(tokenToName(f.Token))+".md", buffer.String())
+		addFile(strings.ToLower(tokenToName(f.Token)), buffer.String())
 	}
 
 	// Generate the index files.

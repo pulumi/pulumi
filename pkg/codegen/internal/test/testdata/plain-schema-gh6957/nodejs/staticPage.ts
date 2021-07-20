@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
-import * as aws from "@pulumi/aws";
+import * as pulumiAws from "@pulumi/aws";
 
 export class StaticPage extends pulumi.ComponentResource {
     /** @internal */
@@ -25,7 +25,7 @@ export class StaticPage extends pulumi.ComponentResource {
     /**
      * The bucket resource.
      */
-    public /*out*/ readonly bucket!: pulumi.Output<aws.s3.Bucket>;
+    public /*out*/ readonly bucket!: pulumi.Output<pulumiAws.s3.Bucket>;
     /**
      * The website URL.
      */

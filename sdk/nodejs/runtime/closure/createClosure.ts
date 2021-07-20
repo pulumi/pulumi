@@ -486,9 +486,11 @@ async function analyzeFunctionInfoAsync(
                 continue;
             }
 
-            functionInfo.env.set(
-                await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo),
-                { entry: await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo) });
+            const keyEntry = await getOrCreateEntryAsync(getNameOrSymbol(descriptor), undefined, context, serialize, logInfo);
+            const valEntry = await getOrCreateEntryAsync(funcProp, undefined, context, serialize, logInfo);
+            const propertyInfo = await createPropertyInfoAsync(descriptor, context, serialize, logInfo);
+
+            functionInfo.env.set(keyEntry, { info: propertyInfo, entry: valEntry });
         }
 
         const superEntry = context.classInstanceMemberToSuperEntry.get(func) ||
@@ -779,6 +781,28 @@ async function isDefaultFunctionPrototypeAsync(func: Function, prototypeProp: an
     return false;
 }
 
+async function createPropertyInfoAsync(
+        descriptor: ClosurePropertyDescriptor,
+        context: Context,
+        serialize: (o: any) => boolean,
+        logInfo: boolean | undefined): Promise<PropertyInfo> {
+
+    const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
+    propertyInfo.configurable = descriptor.configurable;
+    propertyInfo.enumerable = descriptor.enumerable;
+    propertyInfo.writable = descriptor.writable;
+    if (descriptor.get) {
+        propertyInfo.get = await getOrCreateEntryAsync(
+          descriptor.get, undefined, context, serialize, logInfo);
+    }
+    if (descriptor.set) {
+        propertyInfo.set = await getOrCreateEntryAsync(
+          descriptor.set, undefined, context, serialize, logInfo);
+    }
+
+    return propertyInfo;
+}
+
 function getOrCreateNameEntryAsync(
     name: string, capturedObjectProperties: CapturedPropertyChain[] | undefined,
     context: Context,
@@ -996,7 +1020,7 @@ async function getOrCreateEntryAsync(
             }
             object.env.set(keyEntry, <any>undefined);
 
-            const propertyInfo = await createPropertyInfoAsync(descriptor);
+            const propertyInfo = await createPropertyInfoAsync(descriptor, context, serialize, logInfo);
             const prop = await getOwnPropertyAsync(obj, descriptor);
             const valEntry = await getOrCreateEntryAsync(
                 prop, undefined, context, serialize, logInfo);
@@ -1145,29 +1169,12 @@ async function getOrCreateEntryAsync(
             const desc = Object.getOwnPropertyDescriptor(current, key);
             if (desc) {
                 const closurePropDescriptor = createClosurePropertyDescriptor(key, desc);
-                const propertyInfo = await createPropertyInfoAsync(closurePropDescriptor);
+                const propertyInfo = await createPropertyInfoAsync(closurePropDescriptor, context, serialize, logInfo);
                 return propertyInfo;
             }
         }
 
         return undefined;
-    }
-
-    async function createPropertyInfoAsync(descriptor: ClosurePropertyDescriptor): Promise<PropertyInfo> {
-        const propertyInfo = <PropertyInfo>{ hasValue: descriptor.value !== undefined };
-        propertyInfo.configurable = descriptor.configurable;
-        propertyInfo.enumerable = descriptor.enumerable;
-        propertyInfo.writable = descriptor.writable;
-        if (descriptor.get) {
-            propertyInfo.get = await getOrCreateEntryAsync(
-                descriptor.get, undefined, context, serialize, logInfo);
-        }
-        if (descriptor.set) {
-            propertyInfo.set = await getOrCreateEntryAsync(
-                descriptor.set, undefined, context, serialize, logInfo);
-        }
-
-        return propertyInfo;
     }
 
     function usesNonLexicalThis(localEntry: Entry | undefined) {
@@ -1414,7 +1421,9 @@ async function getOwnPropertyDescriptors(obj: any): Promise<ClosurePropertyDescr
 }
 
 async function getOwnPropertyAsync(obj: any, descriptor: ClosurePropertyDescriptor): Promise<any> {
-    return obj[getNameOrSymbol(descriptor)];
+    return (descriptor.get || descriptor.set) ?
+      undefined :
+      obj[getNameOrSymbol(descriptor)];
 }
 
 async function getPropertyAsync(obj: any, name: string): Promise<any> {
