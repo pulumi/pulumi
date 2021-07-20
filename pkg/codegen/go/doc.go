@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+const pulumiSDKVersion = "v3"
+
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
 type DocLanguageHelper struct {
 	packages map[string]*pkgContext
@@ -37,8 +39,7 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForPulumiType returns the doc link for a Pulumi type.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(_ *schema.Package, typeName string) string {
-	pulumiModuleVersion := "v3"
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%s/go/pulumi?tab=doc#%s", pulumiModuleVersion, typeName)
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%s/go/pulumi?tab=doc#%s", pulumiSDKVersion, typeName)
 }
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
