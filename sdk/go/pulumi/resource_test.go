@@ -344,31 +344,69 @@ func TestNewResourceInput(t *testing.T) {
 }
 
 func TestDependsOnInputs(t *testing.T) {
-	err := RunErr(func(ctx *Context) error {
-		depTracker := trackDependencies(ctx)
+	t.Run("known", func(t *testing.T) {
+		err := RunErr(func(ctx *Context) error {
+			depTracker := trackDependencies(ctx)
 
-		dep1 := newTestRes(t, ctx, "resDependency1")
-		dep2 := newTestRes(t, ctx, "resDependency2")
+			dep1 := newTestRes(t, ctx, "dep1")
+			dep2 := newTestRes(t, ctx, "dep2")
 
-		// Construct an output that resolve to `dep2` but also
-		// implicitly depends on `dep1`.
-		output := ResourceOutput{
-			Any(dep1).
-				ApplyT(func(interface{}) interface{} { return dep2 }).
-				getState(),
-		}
+			output := outputDependingOnResource(dep1, true).
+				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
 
-		res := newTestRes(t, ctx, "resDependent", DependsOnInputs([]ResourceInput{output}))
+			res := newTestRes(t, ctx, "res", DependsOnInputs([]ResourceInput{output}))
 
-		assert.Containsf(t, depTracker.dependencies(urn(t, ctx, res)), urn(t, ctx, dep2),
-			"Failed to propagate direct dependencies via DependsOnInputs")
+			resDeps := depTracker.dependencies(urn(t, ctx, res))
 
-		assert.Containsf(t, depTracker.dependencies(urn(t, ctx, res)), urn(t, ctx, dep1),
-			"Failed to propagate indirect dependencies via DependsOnInputs")
+			assert.Containsf(t, resDeps, urn(t, ctx, dep2),
+				"Failed to propagate direct dependencies via DependsOnInputs")
 
-		return nil
-	}, WithMocks("project", "stack", &testMonitor{}))
-	assert.NoError(t, err)
+			assert.Containsf(t, resDeps, urn(t, ctx, dep1),
+				"Failed to propagate indirect dependencies via DependsOnInputs")
+
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
+		assert.NoError(t, err)
+	})
+	t.Run("unknown", func(t *testing.T) {
+		err := RunErr(func(ctx *Context) error {
+			depTracker := trackDependencies(ctx)
+
+			dep1 := newTestRes(t, ctx, "dep1")
+			dep2 := newTestRes(t, ctx, "dep2")
+			dep3 := newTestRes(t, ctx, "dep3")
+
+			out := outputDependingOnResource(dep1, true).
+				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
+
+			out2 := outputDependingOnResource(dep3, false).
+				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
+
+			res := newTestRes(t, ctx, "res", DependsOnInputs([]ResourceInput{
+				out, out2,
+			}))
+
+			resDeps := depTracker.dependencies(urn(t, ctx, res))
+
+			assert.Containsf(t, resDeps, urn(t, ctx, dep2),
+				"Failed to propagate direct dependencies via DependsOnInputs")
+
+			assert.Containsf(t, resDeps, urn(t, ctx, dep1),
+				"Failed to propagate indirect dependencies via DependsOnInputs")
+
+			assert.Containsf(t, resDeps, urn(t, ctx, dep3),
+				"Failed to propagate indirect dependencies via DependsOnInputs")
+
+			return nil
+		}, WithMocks("project", "stack", &testMonitor{}))
+		assert.NoError(t, err)
+	})
+}
+
+func outputDependingOnResource(res Resource, isKnown bool) IntOutput {
+	out := newIntOutput()
+	out.resolve(0, isKnown, false /* secret */, []Resource{res})
+	return out
 }
 
 func newTestRes(t *testing.T, ctx *Context, name string, opts ...ResourceOption) Resource {
