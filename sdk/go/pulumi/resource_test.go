@@ -317,3 +317,39 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	opts = merge(ReplaceOnChanges([]string{i1, i2}), ReplaceOnChanges([]string{i2, i3}))
 	assert.Equal(t, []string{i1, i2, i2, i3}, opts.ReplaceOnChanges)
 }
+
+func TestConsistencyOfDependencyCounts(t *testing.T) {
+
+	outputDependingOnResource := func(res Resource) IntOutput {
+		out := newIntOutput()
+		out.resolve(0, true /* known */, false /* secret */, []Resource{res})
+		return out
+	}
+
+	checkConsistentDependencyCounts := func(ctx *Context, out Output) {
+		st := out.getState()
+		_, known, _, deps1, err := st.await(ctx.ctx)
+		assert.True(t, known)
+		assert.NoError(t, err)
+
+		deps2 := st.dependencies()
+
+		assert.Equalf(t, len(deps1), len(deps2),
+			"Dependency count reported by await() is %d but dependencies() have %d",
+			len(deps1),
+			len(deps2))
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		res := &testRes{foo: "a"}
+
+		out := outputDependingOnResource(res).
+			ApplyT(func(int) AnyOutput { return Any(1) }).(AnyOutput)
+
+		checkConsistentDependencyCounts(ctx, out)
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+
+	assert.NoError(t, err)
+}
