@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from typing import Optional
+import asyncio
 import pytest
 
 from pulumi.runtime import settings, mocks
@@ -22,11 +23,11 @@ import pulumi
 
 @pulumi.runtime.test
 def test_depends_on_accepts_outputs(dep_tracker):
-    dep1 = MockResource(name='resDependency1')
-    dep2 = MockResource(name='resDependency2')
-    out = output_depending_on_resource(dep1).apply(lambda _: dep2)
+    dep1 = MockResource(name='dep1')
+    dep2 = MockResource(name='dep2')
+    out = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: dep2)
 
-    res = MockResource(name='resDependent', opts=pulumi.ResourceOptions(depends_on=[out]))
+    res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=[out]))
 
     def check(urns):
         (dep1_urn, dep2_urn, res_urn) = urns
@@ -37,12 +38,36 @@ def test_depends_on_accepts_outputs(dep_tracker):
     return pulumi.Output.all(dep1.urn, dep2.urn, res.urn).apply(check)
 
 
-def output_depending_on_resource(r: pulumi.Resource) -> pulumi.Output[None]:
+@pulumi.runtime.test
+def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker):
+    dep1 = MockResource(name='dep1')
+    dep2 = MockResource(name='dep2')
+    dep3 = MockResource(name='dep3')
+    out = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: dep2)
+    out2 = output_depending_on_resource(dep3, isKnown=False).apply(lambda _: dep2)
+
+    res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=[out, out2]))
+
+    def check(urns):
+        (dep1_urn, dep2_urn, dep3_urn, res_urn) = urns
+        res_deps = dep_tracker.dependencies[res_urn]
+
+        assert dep1_urn in res_deps, "Failed to propagate indirect dependencies via depends_on in presence of unknowns"
+        assert dep3_urn in res_deps, "Failed to propagate indirect dependencies via depends_on in presence of unknowns"
+        assert dep2_urn in res_deps, "Failed to propagate direct dependencies via depends_on in presence of unknowns"
+
+    return pulumi.Output.all(dep1.urn, dep2.urn, dep3.urn, res.urn).apply(check)
+
+
+def output_depending_on_resource(r: pulumi.Resource, isKnown: bool) -> pulumi.Output[None]:
     """Returns an output that depends on the given resource."""
     o = pulumi.Output.from_input(None)
+    is_known_fut: asyncio.Future[bool] = asyncio.Future()
+    is_known_fut.set_result(isKnown)
+
     return pulumi.Output(
         resources=set([r]),
-        is_known=o.is_known(),
+        is_known=is_known_fut,
         future=o.future())
 
 
@@ -51,7 +76,7 @@ def dep_tracker():
     old_settings = settings.SETTINGS
 
     mm = MinimalMocks()
-    mocks.set_mocks(mm)
+    mocks.set_mocks(mm, preview=True)
     dt = DependencyTrackingMonitorWrapper(settings.SETTINGS.monitor)
     settings.SETTINGS.monitor = dt
 

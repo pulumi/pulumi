@@ -671,25 +671,24 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
     if options.depends_on is None:
         return []
 
-    # NOTE: if any inputs are unknown, losing all of them.
-    directOutput: Output[List['Resource']] = Output.from_input(options.depends_on) \
-                                                   .apply(lambda xs: Output.all(*xs))
+    outer = Output._from_input_shallow(options.depends_on)
+    all_deps = await outer.resources()
+    inner_list = await outer.future()
 
-    directList: Optional[List['Resource']] = await directOutput.future()
-    direct: Set['Resource'] = set()
+    if inner_list is not None:
+        for i in inner_list:
+            inner = Output.from_input(i)
+            more_deps = await inner.resources()
+            all_deps = all_deps | more_deps
+            direct_dep = await inner.future()
+            if direct_dep is not None:
+                all_deps.add(direct_dep)
 
-    # None represents unknown; continue as if no dependency was present
-    if directList is not None:
-        direct = set(directList)
+    urns = set()
 
-    indirect: Set['Resource'] = await directOutput.resources()
-    deps: Set['Resource'] = direct | indirect
-
-    urns = []
-
-    for d in deps:
+    for d in all_deps:
         urn = await d.urn.future()
         if urn:
-            urns.append(urn)
+            urns.add(urn)
 
-    return urns
+    return list(urns)

@@ -293,6 +293,35 @@ class Output(Generic[T]):
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
     @staticmethod
+    def _from_input_shallow(val: Input[T]) -> 'Output[T]':
+        """
+        Like `from_output`, but does not recur deeply. Instead, checks if `val` is an `Output` value
+        and returns it as is. Otherwise, promotes a known value or future to `Output`.
+
+        :param Input[T] val: An Input to be converted to an Output.
+        :return: An Output corresponding to `val`.
+        :rtype: Output[T]
+        """
+
+        if isinstance(val, Output):
+            return val
+
+        # If it's not an output, it must be known and not secret
+        is_known_fut: asyncio.Future[bool] = asyncio.Future()
+        is_secret_fut: asyncio.Future[bool] = asyncio.Future()
+        is_known_fut.set_result(True)
+        is_secret_fut.set_result(False)
+
+        if isawaitable(val):
+            val_fut = cast(asyncio.Future, val)
+            return Output(set(), asyncio.ensure_future(val_fut), is_known_fut, is_secret_fut)
+
+        # Is it a prompt value? Set up a new resolved future and use that as the value future.
+        value_fut: asyncio.Future[Any] = asyncio.Future()
+        value_fut.set_result(val)
+        return Output(set(), value_fut, is_known_fut, is_secret_fut)
+
+    @staticmethod
     def unsecret(val: 'Output[T]') -> 'Output[T]':
         """
         Takes an existing Output, deeply unwraps the nested values and returns a new Output without any secrets included
