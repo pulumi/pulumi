@@ -38,5 +38,22 @@ namespace Pulumi
         /// return value is ignored.
         /// </summary>
         Task InvokeAsync(string token, InvokeArgs args, InvokeOptions? options = null);
+
+        /// <summary>
+        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// provider plugin.
+        /// <para/>
+        /// The result of <see cref="Call{T}"/> will be a <see cref="Output{T}"/> resolved to the
+        /// result value of the provider plugin.
+        /// <para/>
+        /// The <paramref name="args"/> inputs can be a bag of computed values(including, `T`s,
+        /// <see cref="Task{TResult}"/>s, <see cref="Output{T}"/>s etc.).
+        /// </summary>
+        Output<T> Call<T>(string token, InvokeArgs args, Resource? self = null, InvokeOptions? options = null);
+
+        /// <summary>
+        /// Same as <see cref="Call{T}"/>, however the return value is ignored.
+        /// </summary>
+        void Call(string token, InvokeArgs args, Resource? self = null, InvokeOptions? options = null);
     }
 }

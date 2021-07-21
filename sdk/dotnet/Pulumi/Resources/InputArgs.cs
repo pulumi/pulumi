@@ -17,8 +17,6 @@ namespace Pulumi
     {
         private readonly ImmutableArray<InputInfo> _inputInfos;
 
-        private protected abstract void ValidateMember(Type memberType, string fullName);
-
         protected InputArgs()
         {
             var fieldQuery =
@@ -34,13 +32,6 @@ namespace Pulumi
                 select (attr, memberName: prop.Name, memberType: prop.PropertyType, getValue: (Func<object, object?>)prop.GetValue);
 
             var all = fieldQuery.Concat(propQuery).ToList();
-
-            foreach (var (_, memberName, memberType, _) in all)
-            {
-                var fullName = $"[Input] {this.GetType().FullName}.{memberName}";
-                // ReSharper disable once VirtualMemberCallInConstructor
-                ValidateMember(memberType, fullName);
-            }
 
             _inputInfos = all.Select(t =>
                 new InputInfo(t.attr!, t.memberName, t.memberType, t.getValue)).ToImmutableArray();
