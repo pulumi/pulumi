@@ -15,14 +15,14 @@ namespace Pulumi
     /// Thread-safe.
     internal sealed class TaskMonitoringHelper
     {
-        private readonly TaskExceptionTracker errTracker = new TaskExceptionTracker();
-        private readonly TaskIdleTracker idleTracker = new TaskIdleTracker();
+        private readonly TaskExceptionTracker _exceptionTracker = new TaskExceptionTracker();
+        private readonly TaskIdleTracker _idleTracker = new TaskIdleTracker();
 
         /// Starts monitoring the given task.
         public void AddTask(Task task)
         {
-            errTracker.AddTask(task);
-            idleTracker.AddTask(task);
+            _exceptionTracker.AddTask(task);
+            _idleTracker.AddTask(task);
         }
 
         /// Awaits next IDLE state or an exception, whichever comes
@@ -32,8 +32,8 @@ namespace Pulumi
         /// IDLE state is represented as an empty sequence in the result.
         public async Task<IEnumerable<Exception>> AwaitIdleOrFirstExceptionAsync()
         {
-            var error = errTracker.AwaitExceptionAsync();
-            var idle = idleTracker.AwaitIdleAsync();
+            var error = _exceptionTracker.AwaitExceptionAsync();
+            var idle = _idleTracker.AwaitIdleAsync();
             var first = await Task.WhenAny((Task)error, idle).ConfigureAwait(false);
             if (first == idle)
             {
