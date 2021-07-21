@@ -216,6 +216,8 @@ type UpdateOperation struct {
 	SecretsManager     secrets.Manager
 	StackConfiguration StackConfiguration
 	Scopes             CancellationScopeSource
+	InitOnly           bool   // if true, "allocate" an update ID but do not preform the actual update
+	UpdateID           string // specifies a pre-allocated updateID to attach this operation to
 }
 
 // QueryOperation configures a query operation.

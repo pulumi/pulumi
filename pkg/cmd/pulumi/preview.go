@@ -55,6 +55,8 @@ func newPreviewCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var initOnly bool
+	var updateID string
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -91,6 +93,10 @@ func newPreviewCmd() *cobra.Command {
 				JSONDisplay:          jsonDisplay,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+			}
+
+			if initOnly {
+				displayOpts.JSONDisplay = true
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -184,6 +190,8 @@ func newPreviewCmd() *cobra.Command {
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
+				InitOnly:           initOnly,
+				UpdateID:           updateID,
 			})
 
 			switch {
@@ -293,6 +301,12 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+	cmd.PersistentFlags().BoolVar(&initOnly, "init-only", false, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("init-only")
+	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("update-id")
 
 	return cmd
 }

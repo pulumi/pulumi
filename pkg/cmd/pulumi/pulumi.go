@@ -19,7 +19,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	user "github.com/tweekmonster/luser"
 	"net/http"
 	"net/url"
 	"os"
@@ -29,6 +28,8 @@ import (
 	"runtime"
 	"strings"
 	"time"
+
+	user "github.com/tweekmonster/luser"
 
 	"github.com/blang/semver"
 	"github.com/djherbis/times"
@@ -188,6 +189,7 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newUpCmd())
 	cmd.AddCommand(newPreviewCmd())
 	cmd.AddCommand(newDestroyCmd())
+	cmd.AddCommand(newLogCmd())
 	cmd.AddCommand(newWatchCmd())
 	//     - Stack Management Commands:
 	cmd.AddCommand(newStackCmd())

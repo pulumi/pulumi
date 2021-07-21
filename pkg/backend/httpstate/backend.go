@@ -18,6 +18,7 @@ import (
 	"context"
 	cryptorand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net"
@@ -108,6 +109,7 @@ type Backend interface {
 
 	CancelCurrentUpdate(ctx context.Context, stackRef backend.StackReference) error
 	StackConsoleURL(stackRef backend.StackReference) (string, error)
+	Log(ctx context.Context, stackRef backend.StackReference, updateID string, updateKind string, message string, sequenceNumber int) error
 	Client() *client.Client
 }
 
@@ -379,6 +381,34 @@ func (b *cloudBackend) StackConsoleURL(stackRef backend.StackReference) (string,
 		return "", errors.New("could not determine cloud console URL")
 	}
 	return url, nil
+}
+
+func (b *cloudBackend) Log(ctx context.Context, stackRef backend.StackReference, updateID string, updateKind string, message string, sequenceNumber int) error {
+	stackID, err := b.getCloudStackIdentifier(stackRef)
+	if err != nil {
+		return err
+	}
+	update := client.UpdateIdentifier{
+		StackIdentifier: stackID,
+		UpdateKind:      apitype.UpdateKind(updateKind),
+		UpdateID:        updateID,
+	}
+	events := apitype.EngineEventBatch{
+		Events: []apitype.EngineEvent{
+			{
+				Sequence:  sequenceNumber,
+				Timestamp: int(time.Now().Unix()),
+				StdoutEvent: &apitype.StdoutEngineEvent{
+					Message: message,
+				},
+			},
+		},
+	}
+
+	// hacked api causes empty token to get replaced by the root api token for the user
+	tokenHack := ""
+
+	return b.client.RecordEngineEvents(ctx, update, events, tokenHack)
 }
 
 func (b *cloudBackend) Name() string {
@@ -866,19 +896,39 @@ func (b *cloudBackend) createAndStartUpdate(
 	op *backend.UpdateOperation, dryRun bool) (client.UpdateIdentifier, int, string, error) {
 
 	stackRef := stack.Ref()
-
 	stackID, err := b.getCloudStackIdentifier(stackRef)
 	if err != nil {
 		return client.UpdateIdentifier{}, 0, "", err
 	}
-	metadata := apitype.UpdateMetadata{
-		Message:     op.M.Message,
-		Environment: op.M.Environment,
+
+	update := client.UpdateIdentifier{}
+	reqdPolicies := []apitype.RequiredPolicy{}
+
+	// if the user has specified a pre-allocated update ID, attach to the existing update
+	// instead of creating a new one.
+	if op.UpdateID != "" {
+		update.Owner = stackID.Owner
+		update.Project = stackID.Project
+		update.Stack = stackID.Stack
+		update.UpdateKind = action
+		update.UpdateID = op.UpdateID
+		// TODO: next fetch reqd policies via `/stacks/{orgName}/{projectName}/{stackName}/policypacks`
+		// https://github.com/pulumi/pulumi-service/issues/3745#issuecomment-538143929
+	} else {
+		metadata := apitype.UpdateMetadata{
+			Message:     op.M.Message,
+			Environment: op.M.Environment,
+		}
+		update, reqdPolicies, err = b.client.CreateUpdate(
+			ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
+		if err != nil {
+			return client.UpdateIdentifier{}, 0, "", err
+		}
 	}
-	update, reqdPolicies, err := b.client.CreateUpdate(
-		ctx, action, stackID, op.Proj, op.StackConfiguration.Config, metadata, op.Opts.Engine, dryRun)
-	if err != nil {
-		return client.UpdateIdentifier{}, 0, "", err
+
+	// short circuit the rest of the update after allocating an update id
+	if op.InitOnly {
+		return update, 0, "", nil
 	}
 
 	//
@@ -939,6 +989,17 @@ func (b *cloudBackend) apply(
 		b.createAndStartUpdate(ctx, kind, stack, &op, opts.DryRun)
 	if err != nil {
 		return nil, result.FromError(err)
+	}
+
+	if op.InitOnly {
+		// hack print out update id here
+		b, err := json.Marshal(update)
+		if err != nil {
+			fmt.Printf("Error: %s", err)
+			return nil, result.FromError(err)
+		}
+		fmt.Println(string(b))
+		return nil, nil
 	}
 
 	if !op.Opts.Display.SuppressPermaLink && opts.ShowLink && !op.Opts.Display.JSONDisplay {

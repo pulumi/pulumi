@@ -51,6 +51,8 @@ func newDestroyCmd() *cobra.Command {
 	var yes bool
 	var targets *[]string
 	var targetDependents bool
+	var initOnly bool
+	var updateID string
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -91,6 +93,10 @@ func newDestroyCmd() *cobra.Command {
 				Type:                 displayType,
 				EventLogPath:         eventLogPath,
 				Debug:                debug,
+			}
+
+			if initOnly {
+				opts.Display.JSONDisplay = true
 			}
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
@@ -162,9 +168,11 @@ func newDestroyCmd() *cobra.Command {
 				StackConfiguration: cfg,
 				SecretsManager:     sm,
 				Scopes:             cancellationScopes,
+				InitOnly:           initOnly,
+				UpdateID:           updateID,
 			})
 
-			if res == nil && len(*targets) == 0 {
+			if res == nil && len(*targets) == 0 && !opts.Display.JSONDisplay {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
 					"associated with the stack are still maintained. \nIf you want to remove the stack "+
 					"completely, run 'pulumi stack rm %s'.\n", s.Ref())
@@ -243,6 +251,12 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+	cmd.PersistentFlags().BoolVar(&initOnly, "init-only", false, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("init-only")
+	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("update-id")
 
 	return cmd
 }

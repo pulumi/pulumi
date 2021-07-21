@@ -74,6 +74,8 @@ func newUpCmd() *cobra.Command {
 	var replaces []string
 	var targetReplaces []string
 	var targetDependents bool
+	var initOnly bool
+	var updateID string
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -144,6 +146,8 @@ func newUpCmd() *cobra.Command {
 			StackConfiguration: cfg,
 			SecretsManager:     sm,
 			Scopes:             cancellationScopes,
+			InitOnly:           initOnly,
+			UpdateID:           updateID,
 		})
 		switch {
 		case res != nil && res.Error() == context.Canceled:
@@ -371,6 +375,10 @@ func newUpCmd() *cobra.Command {
 				Debug:                debug,
 			}
 
+			if initOnly {
+				opts.Display.JSONDisplay = true
+			}
+
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
 			if suppressPermaLink == "true" {
@@ -501,6 +509,12 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&execAgent, "exec-agent", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("exec-agent")
+	cmd.PersistentFlags().BoolVar(&initOnly, "init-only", false, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("init-only")
+	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("update-id")
 
 	return cmd
 }

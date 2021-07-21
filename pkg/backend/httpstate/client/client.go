@@ -876,10 +876,18 @@ func (pc *Client) RecordEngineEvents(
 		GzipCompress:    true,
 		RetryAllMethods: true,
 	}
-	return pc.updateRESTCall(
+
+	if token != "" {
+		return pc.updateRESTCall(
+			ctx, "POST", getUpdatePath(update, "events/batch"),
+			nil, batch, nil,
+			updateAccessToken(token), callOpts)
+	}
+
+	// if no token is specified, use the api token
+	return pc.restCallWithOptions(
 		ctx, "POST", getUpdatePath(update, "events/batch"),
-		nil, batch, nil,
-		updateAccessToken(token), callOpts)
+		nil, batch, nil, callOpts)
 }
 
 // UpdateStackTags updates the stacks's tags, replacing all existing tags.
