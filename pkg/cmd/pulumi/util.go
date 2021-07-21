@@ -775,13 +775,24 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	return c
 }
 
+func makeJSONString(v interface{}) (string, error) {
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(v); err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
 func printJSON(v interface{}) error {
-	out, err := json.MarshalIndent(v, "", "  ")
+	jsonStr, err := makeJSONString(v)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(out))
+	fmt.Print(jsonStr)
 	return nil
 }
 
