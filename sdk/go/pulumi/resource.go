@@ -349,13 +349,13 @@ func DependsOnInputs(o []ResourceInput) ResourceOption {
 func DependsOnOutput(any AnyOutput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) ([]URN, error) {
-			v, known, _ /* secret */, toplevelDeps, err := any.await(ctx)
-			if err != nil {
+			v, known, _ /* secret */, _ /* deps */, err := any.await(ctx)
+			if err != nil || !known {
 				return nil, err
 			}
-			if !known {
-				return nil, nil
-			}
+
+			// For some reason, deps returned above are incorrect; instead:
+			toplevelDeps := any.dependencies()
 
 			inputs, err := autocastSliceToResourceInput(v)
 			if err != nil {

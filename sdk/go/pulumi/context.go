@@ -1283,7 +1283,6 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 
 	var depURNs []URN
 	if opts.DependsOn != nil {
-		depURNs = make([]URN, len(opts.DependsOn))
 		for _, awaitDeps := range opts.DependsOn {
 			moreDeps, err := awaitDeps(ctx.ctx)
 			if err != nil {
