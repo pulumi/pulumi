@@ -229,3 +229,38 @@ func TestReadingGitLabMetadata(t *testing.T) {
 		assertEnvValue(t, test, backend.VCSRepoKind, gitutil.GitLabHostName)
 	}
 }
+
+func Test_makeJSONString(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    interface{}
+		expected string
+	}{
+		{
+			"simple-string",
+			map[string]interface{}{"my_password": "password"},
+			`{
+  "my_password": "password"
+}
+`},
+		{
+			"special-char-string",
+			map[string]interface{}{"special_password": "pass&word"},
+			`{
+  "special_password": "pass&word"
+}
+`},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := makeJSONString(tt.input)
+			if err != nil {
+				t.Errorf("makeJSONString() error = %v", err)
+				return
+			}
+			if got != tt.expected {
+				t.Errorf("makeJSONString() got = %v, expected %v", got, tt.expected)
+			}
+		})
+	}
+}
