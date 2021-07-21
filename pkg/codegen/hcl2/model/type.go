@@ -76,7 +76,6 @@ const (
 	hashKindConst
 	hashKindList
 	hashKindMap
-	hashKindNamed
 	hashKindObject
 	hashKindOpaque
 	hashKindOutput

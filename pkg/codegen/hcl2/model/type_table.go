@@ -34,7 +34,7 @@ func (tt *typeTable) init(size int) {
 	tt.tail = &tt.head
 }
 
-func (tt *typeTable) insert(k Type, v interface{}) error {
+func (tt *typeTable) insert(k Type, v interface{}) {
 	if tt.table == nil {
 		tt.init(1)
 	}
@@ -61,7 +61,7 @@ retry:
 			if k.Equals(e.key) {
 				// Key already present; update value.
 				e.value = v
-				return nil
+				return
 			}
 		}
 		if p.next == nil {
@@ -97,7 +97,7 @@ retry:
 
 	tt.len++
 
-	return nil
+	return
 }
 
 func overloaded(elems, buckets int) bool {
