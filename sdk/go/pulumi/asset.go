@@ -46,9 +46,10 @@ type Asset interface {
 }
 
 type asset struct {
-	path string
-	text string
-	uri  string
+	path    string
+	text    string
+	uri     string
+	invalid bool
 }
 
 // NewFileAsset creates an asset backed by a file and specified by that file's path.
@@ -98,9 +99,10 @@ type Archive interface {
 }
 
 type archive struct {
-	assets map[string]interface{}
-	path   string
-	uri    string
+	assets  map[string]interface{}
+	path    string
+	uri     string
+	invalid bool
 }
 
 // NewAssetArchive creates a new archive from an in-memory collection of named assets or other archives.

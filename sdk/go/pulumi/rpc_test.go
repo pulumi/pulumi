@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type simpleComponentResource struct {
@@ -799,4 +800,32 @@ func TestRegisterResourceModule(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestInvalidAsset(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	var d Asset
+	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.True(t, d.(*asset).invalid)
+
+	_, _, err = marshalInput(d, assetType, true)
+	assert.Error(t, err)
+}
+
+func TestInvalidArchive(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	var d Archive
+	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.True(t, d.(*archive).invalid)
+
+	_, _, err = marshalInput(d, archiveType, true)
+	assert.Error(t, err)
 }

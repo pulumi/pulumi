@@ -241,12 +241,19 @@ func marshalInputAndDetermineSecret(v interface{},
 		// Look for some well known types.
 		switch v := v.(type) {
 		case *asset:
+			if v.invalid {
+				return resource.PropertyValue{}, nil, false, fmt.Errorf("invalid asset")
+			}
 			return resource.NewAssetProperty(&resource.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
 			}), deps, secret, nil
 		case *archive:
+			if v.invalid {
+				return resource.PropertyValue{}, nil, false, fmt.Errorf("invalid archive")
+			}
+
 			var assets map[string]interface{}
 			if as := v.Assets(); as != nil {
 				assets = make(map[string]interface{})
@@ -662,7 +669,28 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.Set(result)
 		return secret, nil
 	case reflect.Interface:
-		if !anyType.Implements(dest.Type()) {
+		// Tolerate invalid asset or archive values.
+		typ := dest.Type()
+		switch typ {
+		case assetType:
+			_, secret, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return false, err
+			}
+			asset := &asset{invalid: true}
+			dest.Set(reflect.ValueOf(asset))
+			return secret, nil
+		case archiveType:
+			_, secret, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return false, err
+			}
+			archive := &archive{invalid: true}
+			dest.Set(reflect.ValueOf(archive))
+			return secret, nil
+		}
+
+		if !anyType.Implements(typ) {
 			return false, fmt.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
 		}
 
@@ -674,12 +702,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.Set(reflect.ValueOf(result))
 		return secret, nil
 	case reflect.Struct:
+		typ := dest.Type()
 		if !v.IsObject() {
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 
 		obj := v.ObjectValue()
-		typ := dest.Type()
 		secret := false
 		for i := 0; i < typ.NumField(); i++ {
 			fieldV := dest.Field(i)
