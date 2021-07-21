@@ -14,6 +14,10 @@ namespace Pulumi.Tests
 {
     public class DeploymentRunnerTests
     {
+        // Regression test. This used to fail with
+        // "System.Collections.Generic.KeyNotFoundException: The given
+        // key 'System.Threading.Tasks.Task+DelayPromise' was not
+        // present in the dictionary."
         [Fact]
         public async Task WorksUnderStress()
         {
@@ -24,10 +28,18 @@ namespace Pulumi.Tests
         {
             public StressRunnerStack()
             {
+                var runner = Pulumi.Deployment.Instance.Internal.Runner;
+
                 for (var i = 0; i < 100; i++)
                 {
-                    Output<int> output = Output.Create(Task.Delay(100 + i).ContinueWith(_ => i));
+                    runner.RegisterTask($"task{i}", Task.Delay(100 + i));
                 }
+
+                // This introduces a race between two simultaneous
+                // `WhileRunningAsync`, the second one being implicit
+                // in runing this stack, and is necessary for the
+                // repro.
+                ((Deployment.Runner)runner).WhileRunningAsync();
             }
         }
 
