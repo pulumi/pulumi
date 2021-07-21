@@ -15,7 +15,9 @@
 package pulumi
 
 import (
+	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -320,15 +322,37 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 
 func TestConsistencyOfDependencyCounts(t *testing.T) {
 
-	outputDependingOnResource := func(res Resource) IntOutput {
-		out := newIntOutput()
-		out.resolve(0, true /* known */, false /* secret */, []Resource{res})
+	// Inline version of newAnyOutput with extra deps.
+	newAnyOutputWithDeps := func(wg *sync.WaitGroup, deps []Resource) (Output, func(interface{}), func(error)) {
+		out := newOutputState(wg, anyType)
+
+		resolve := func(v interface{}) {
+			out.resolve(v, true, false, deps)
+		}
+
+		reject := func(err error) {
+			out.getState().reject(err)
+		}
+
+		return AnyOutput{out}, resolve, reject
+	}
+
+	// Inlined version of ctx.NewOutput with extra deps.
+	NewOutputWithDeps := func(ctx *Context, deps []Resource) (Output, func(interface{}), func(error)) {
+		return newAnyOutputWithDeps(&ctx.join, deps)
+	}
+
+	// Creates an output that depends on the given resource.
+	outputDependingOnResource := func(ctx *Context, res Resource) Output {
+		out, resolve, _ := NewOutputWithDeps(ctx, []Resource{res})
+		resolve(0)
 		return out
 	}
 
 	checkConsistentDependencyCounts := func(ctx *Context, out Output) {
 		st := out.getState()
-		_, known, _, deps1, err := st.await(ctx.ctx)
+		valu, known, _, deps1, err := st.await(ctx.ctx)
+		fmt.Printf("Note: value of the output is %v with known = %v\n", valu, known)
 		assert.True(t, known)
 		assert.NoError(t, err)
 
@@ -343,8 +367,8 @@ func TestConsistencyOfDependencyCounts(t *testing.T) {
 	err := RunErr(func(ctx *Context) error {
 		res := &testRes{foo: "a"}
 
-		out := outputDependingOnResource(res).
-			ApplyT(func(int) AnyOutput { return Any(1) }).(AnyOutput)
+		out := outputDependingOnResource(ctx, res).
+			ApplyT(func(interface{}) AnyOutput { return Any(1) }).(AnyOutput)
 
 		checkConsistentDependencyCounts(ctx, out)
 
