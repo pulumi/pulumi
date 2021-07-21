@@ -9,3 +9,5 @@
 
 ### Bug Fixes
 
+- [sdk/go] - Fix target and replace options for the Automation API
+  [#7426](https://github.com/pulumi/pulumi/pull/7426)
