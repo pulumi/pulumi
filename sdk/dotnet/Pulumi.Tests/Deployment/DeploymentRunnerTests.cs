@@ -91,6 +91,7 @@ namespace Pulumi.Tests
                 this.RunnerResult = jointTask.ContinueWith(t => {
                     Assert.True(task1.IsFaulted, "task1 should be IsFaulted");
                     Assert.False(task2.IsCompleted, "task2 should not be IsCompleted yet");
+                    Assert.Single(runner.SwallowedExceptions);
                     Assert.Contains(error, runner.SwallowedExceptions);
                     return 0;
                 });
