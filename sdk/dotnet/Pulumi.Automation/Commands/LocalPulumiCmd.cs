@@ -34,12 +34,12 @@ namespace Pulumi.Automation.Commands
                 using var eventLogWatcher = new EventLogWatcher(eventLogFile.FilePath, onEngineEvent, cancellationToken);
                 try
                 {
-                    return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken);
+                    return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken).ConfigureAwait(false);
                 } finally {
-                    await eventLogWatcher.Stop();
+                    await eventLogWatcher.Stop().ConfigureAwait(false);
                 }
             }
-            return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken);
+            return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<CommandResult> RunAsyncInner(

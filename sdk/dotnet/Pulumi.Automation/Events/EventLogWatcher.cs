@@ -37,7 +37,7 @@ namespace Pulumi.Automation.Events
         internal async Task Stop()
         {
             this._internalCancellationTokenSource.Cancel();
-            await this.AwaitPollingTask();
+            await this.AwaitPollingTask().ConfigureAwait(false);
 
             // Race condition workaround.
             //
@@ -53,8 +53,8 @@ namespace Pulumi.Automation.Events
             // a CommandDone or some such EngineEvent, and we would
             // keep reading until we see one.
 
-            await Task.Delay(_pollingIntervalMilliseconds);
-            await ReadEventsOnce();
+            await Task.Delay(_pollingIntervalMilliseconds).ConfigureAwait(false);
+            await ReadEventsOnce().ConfigureAwait(false);
         }
 
         /// Exposed for testing; use Stop instead.
@@ -62,7 +62,7 @@ namespace Pulumi.Automation.Events
         {
             try
             {
-                await this._pollingTask;
+                await this._pollingTask.ConfigureAwait(false);
             }
             catch (OperationCanceledException error) when (error.CancellationToken == this._cancellationToken)
             {
@@ -79,8 +79,8 @@ namespace Pulumi.Automation.Events
 
             while (true)
             {
-                await ReadEventsOnce();
-                await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token);
+                await ReadEventsOnce().ConfigureAwait(false);
+                await Task.Delay(_pollingIntervalMilliseconds, linkedSource.Token).ConfigureAwait(false);
             }
             // ReSharper disable once FunctionNeverReturns
         }
@@ -96,7 +96,7 @@ namespace Pulumi.Automation.Events
             using var reader = new StreamReader(fs);
             while (reader.Peek() >= 0)
             {
-                var line = await reader.ReadLineAsync();
+                var line = await reader.ReadLineAsync().ConfigureAwait(false);
                 this._position = fs.Position;
                 if (!string.IsNullOrWhiteSpace(line))
                 {

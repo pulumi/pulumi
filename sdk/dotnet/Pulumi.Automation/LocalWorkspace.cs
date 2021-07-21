@@ -354,10 +354,10 @@ namespace Pulumi.Automation
             // the working dir. We do not want to override existing
             // settings with default settings though.
 
-            var existingSettings = await this.GetProjectSettingsAsync(cancellationToken);
+            var existingSettings = await this.GetProjectSettingsAsync(cancellationToken).ConfigureAwait(false);
             if (existingSettings == null)
             {
-                await this.SaveProjectSettingsAsync(projectSettings, cancellationToken);
+                await this.SaveProjectSettingsAsync(projectSettings, cancellationToken).ConfigureAwait(false);
             }
             else if (!projectSettings.IsDefault &&
                      !ProjectSettings.Comparer.Equals(projectSettings, existingSettings))
@@ -539,9 +539,7 @@ namespace Pulumi.Automation
 
         /// <inheritdoc/>
         public override async Task RemoveConfigAsync(string stackName, string key, CancellationToken cancellationToken = default)
-        {
-            await this.RunCommandAsync(new[] { "config", "rm", key, "--stack", stackName }, cancellationToken).ConfigureAwait(false);
-        }
+            => await this.RunCommandAsync(new[] { "config", "rm", key, "--stack", stackName }, cancellationToken).ConfigureAwait(false);
 
         /// <inheritdoc/>
         public override async Task RemoveAllConfigAsync(string stackName, IEnumerable<string> keys, CancellationToken cancellationToken = default)
@@ -615,7 +613,7 @@ namespace Pulumi.Automation
             var tempFileName = Path.GetTempFileName();
             try
             {
-                await File.WriteAllTextAsync(tempFileName, state.Json.GetRawText(), cancellationToken);
+                await File.WriteAllTextAsync(tempFileName, state.Json.GetRawText(), cancellationToken).ConfigureAwait(false);
                 await this.RunCommandAsync(new[] { "stack", "import", "--file", tempFileName, "--stack", stackName },
                                            cancellationToken).ConfigureAwait(false);
             }

@@ -21,7 +21,7 @@ namespace Pulumi
         
         public async Task LogAsync(LogRequest request)
             => await this._engine.LogAsync(request);
-        
+
         public async Task<SetRootResourceResponse> SetRootResourceAsync(SetRootResourceRequest request)
             => await this._engine.SetRootResourceAsync(request);
 
