@@ -47,36 +47,18 @@ namespace Pulumi.Tests
             Assert.IsType<RunException>(deployResult.Exception!);
             Assert.Contains("Deliberate test error", deployResult.Exception!.Message);
             var stack = (TerminatesEarlyOnExceptionStack)deployResult.Resources[0];
-            var result = await stack.RunnerResult;
-            Assert.Equal(0, result);
+            Assert.False(stack.SlowOutput.GetValueAsync().IsCompleted);
         }
 
         class TerminatesEarlyOnExceptionStack : Stack
         {
-            public Task<int> RunnerResult { get; private set; }
+            [Output]
+            public Output<int> SlowOutput { get; private set; }
 
             public TerminatesEarlyOnExceptionStack()
             {
-                var runner = Pulumi.Deployment.Instance.Internal.Runner;
-                var error = new Exception("Deliberate test error");
-
-                Task task1 = Task.FromException(error);
-                Task task2 = Task.Delay(100);
-
-                runner.RegisterTask("task2", task2);
-                runner.RegisterTask("task1", task1);
-
-                var jointTask = runner.RunAsync<EmptyStack>();
-
-                // The joinTask will await register tasks. We check here that it
-                // finishes early because task1 failed, and does not wait for task2.
-                this.RunnerResult = jointTask.ContinueWith(t => {
-                    Assert.True(task1.IsFaulted, "task1 should be IsFaulted");
-                    Assert.False(task2.IsCompleted, "task2 should not be IsCompleted yet");
-                    Assert.Single(runner.SwallowedExceptions);
-                    Assert.Contains(error, runner.SwallowedExceptions);
-                    return 0;
-                });
+                Output.Create(Task.FromException<int>(new Exception("Deliberate test error")));
+                SlowOutput = Output.Create(Task.Delay(1000).ContinueWith(_ => 1));
             }
         }
 
