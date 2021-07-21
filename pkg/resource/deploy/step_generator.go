@@ -819,9 +819,13 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 			}
 
 			if _, has := resourcesToDelete[res.Parent]; has {
-				sg.deployment.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(res.Parent),
-					res.Parent, res.URN)
-				return nil, result.Bail()
+				if sg.opts.TargetDependents {
+					resourcesToDelete[res.URN] = true
+				} else {
+					sg.deployment.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(res.Parent),
+						res.Parent, res.URN)
+					return nil, result.Bail()
+				}
 			}
 		}
 	}

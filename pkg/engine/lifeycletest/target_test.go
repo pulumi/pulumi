@@ -1,6 +1,7 @@
 package lifecycletest
 
 import (
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"testing"
 
 	"github.com/blang/semver"
@@ -574,6 +575,170 @@ func TestReplaceSpecificTargets(t *testing.T) {
 				assert.NotContains(t, sames, target)
 			}
 
+			return res
+		},
+	}}
+
+	p.Run(t, old)
+}
+
+var simpleTestDependencyGraphNames = []string{"A", "B", "C", "D", "E"}
+
+func generateSimpleParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
+	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	resTypeComponent := tokens.Type("pkgA:index:Component")
+	resTypeResource := tokens.Type("pkgA:index:Resource")
+
+	names := simpleTestDependencyGraphNames
+
+	urnA := p.NewProviderURN("pkgA", names[0], "")
+	urnB := p.NewURN(resTypeComponent, names[1], "")
+	urnC := p.NewURN(resTypeResource, names[2], urnB)
+	urnD := p.NewURN(resTypeResource, names[3], urnB)
+	urnE := p.NewURN(resTypeResource, names[4], "")
+
+	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE}
+
+	newResource := func(urn, parent resource.URN, id resource.ID, provider string) *resource.State {
+		return &resource.State{
+			Type:     urn.Type(),
+			URN:      urn,
+			Custom:   urn.Type() != resTypeComponent,
+			Delete:   false,
+			ID:       id,
+			Provider: provider,
+			Parent:   parent,
+		}
+	}
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			newResource(urnA, "", "0", ""),
+			newResource(urnB, "", "1", ""),
+			newResource(urnC, urnB, "2", string(urnA)+"::0"),
+			newResource(urnD, urnB, "3", ""),
+			newResource(urnE, "", "4", string(urnA)+"::0"),
+		},
+	}
+
+	program := deploytest.NewLanguageRuntime(
+		func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			register := func(urn, parent resource.URN, provider string) resource.ID {
+				_, id, _, err := monitor.RegisterResource(
+					urn.Type(),
+					string(urn.Name()),
+					urn.Type() != resTypeComponent,
+					deploytest.ResourceOptions{
+						Provider: provider,
+						Inputs:   nil,
+						Parent:   parent,
+					})
+				assert.NoError(t, err)
+				return id
+			}
+
+			idA := register(urnA, "", "")
+			register(urnB, "", "")
+			register(urnC, urnB, string(urnA)+"::"+string(idA))
+			register(urnD, urnB, "")
+			register(urnE, "", string(urnA)+"::"+string(idA))
+
+			return nil
+		})
+
+	return urns, old, program
+}
+
+func TestDestroyTargetWithChildren(t *testing.T) {
+	destroySpecificTargetsWithChildren(
+		t, []string{"B"}, true, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {
+			// when deleting 'B' we expect C and D to be deleted
+			names := simpleTestDependencyGraphNames
+			assert.Equal(t, map[resource.URN]bool{
+				pickURN(t, urns, names, "B"): true,
+				pickURN(t, urns, names, "C"): true,
+				pickURN(t, urns, names, "D"): true,
+			}, deleted)
+		})
+
+	destroySpecificTargetsWithChildren(
+		t, []string{"B"}, false, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {})
+}
+
+func destroySpecificTargetsWithChildren(
+	t *testing.T, targets []string, targetDependents bool,
+	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
+
+	//      A
+	//      |______
+	//      B     E
+	//    __|__
+	//    C   D
+
+	p := &TestPlan{}
+
+	urns, old, program := generateSimpleParentedTestDependencyGraph(t, p)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.TargetDependents = targetDependents
+
+	destroyTargets := []resource.URN{}
+	for _, target := range targets {
+		destroyTargets = append(destroyTargets, pickURN(t, urns, simpleTestDependencyGraphNames, target))
+	}
+
+	p.Options.DestroyTargets = destroyTargets
+	t.Logf("Destroying targets: %v", destroyTargets)
+
+	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
+	// we'll have downstream resources to delete that weren't specified explicitly.
+	p.Steps = []TestStep{{
+		Op:            Destroy,
+		ExpectFailure: !targetDependents,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+			assert.True(t, len(entries) > 0)
+
+			deleted := make(map[resource.URN]bool)
+			for _, entry := range entries {
+				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
+				deleted[entry.Step.URN()] = true
+			}
+
+			for _, target := range p.Options.DestroyTargets {
+				assert.Contains(t, deleted, target)
+			}
+
+			validate(urns, deleted)
 			return res
 		},
 	}}
