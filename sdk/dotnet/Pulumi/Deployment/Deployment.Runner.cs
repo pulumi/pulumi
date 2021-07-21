@@ -41,7 +41,8 @@ namespace Pulumi
 
             public ImmutableList<Exception> SwallowedExceptions
             {
-                get {
+                get
+                {
                     lock (_exceptionsLock)
                     {
                         return _exceptions.ToImmutableList();
