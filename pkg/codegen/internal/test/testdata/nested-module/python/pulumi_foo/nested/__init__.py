@@ -7,7 +7,8 @@ import typing
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import pulumi_foo.nested.module as module
+    import pulumi_foo.nested.module as __module
+    module = __module
 else:
     module = _utilities.lazy_import('pulumi_foo.nested.module')
 

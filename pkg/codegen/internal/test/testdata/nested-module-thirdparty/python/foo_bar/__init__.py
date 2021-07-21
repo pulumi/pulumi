@@ -9,7 +9,8 @@ from .provider import *
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import foo_bar.deeply as deeply
+    import foo_bar.deeply as __deeply
+    deeply = __deeply
 else:
     deeply = _utilities.lazy_import('foo_bar.deeply')
 
