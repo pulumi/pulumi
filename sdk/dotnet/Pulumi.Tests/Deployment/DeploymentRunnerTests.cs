@@ -44,26 +44,8 @@ namespace Pulumi.Tests
         {
             var deployResult = await Deployment.TryTestAsync<TerminatesEarlyOnExceptionStack>(new EmptyMocks());
             Assert.NotNull(deployResult.Exception);
-            if (deployResult.Exception! is AggregateException)
-            {
-                // The "Deliberate test error" should really be thrown
-                // only once, but unfortunately observing the multiple
-                // exceptions case in CI, so adding this clause to
-                // ensure all of them are test errors, and we just
-                // have unintentional duplication.
-                var e = (AggregateException)deployResult.Exception!;
-                foreach (var err in e.InnerExceptions)
-                {
-                    Assert.IsType<RunException>(err);
-                    Assert.Contains("Deliberate test error", err.Message);
-                }
-            }
-            else
-            {
-                Assert.IsType<RunException>(deployResult.Exception!);
-                Assert.Contains("Deliberate test error", deployResult.Exception!.Message);
-            }
-
+            Assert.IsType<RunException>(deployResult.Exception!);
+            Assert.Contains("Deliberate test error", deployResult.Exception!.Message);
             var stack = (TerminatesEarlyOnExceptionStack)deployResult.Resources[0];
             var result = await stack.RunnerResult;
             Assert.Equal(0, result);
