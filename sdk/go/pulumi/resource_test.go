@@ -15,7 +15,9 @@
 package pulumi
 
 import (
+	"fmt"
 	"reflect"
+	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -316,4 +318,62 @@ func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
 	// multivalue arrays
 	opts = merge(ReplaceOnChanges([]string{i1, i2}), ReplaceOnChanges([]string{i2, i3}))
 	assert.Equal(t, []string{i1, i2, i2, i3}, opts.ReplaceOnChanges)
+}
+
+func TestConsistencyOfDependencyCounts(t *testing.T) {
+
+	// Inline version of newAnyOutput with extra deps.
+	newAnyOutputWithDeps := func(wg *sync.WaitGroup, deps []Resource) (Output, func(interface{}), func(error)) {
+		out := newOutputState(wg, anyType)
+
+		resolve := func(v interface{}) {
+			out.resolve(v, true, false, deps)
+		}
+
+		reject := func(err error) {
+			out.getState().reject(err)
+		}
+
+		return AnyOutput{out}, resolve, reject
+	}
+
+	// Inlined version of ctx.NewOutput with extra deps.
+	NewOutputWithDeps := func(ctx *Context, deps []Resource) (Output, func(interface{}), func(error)) {
+		return newAnyOutputWithDeps(&ctx.join, deps)
+	}
+
+	// Creates an output that depends on the given resource.
+	outputDependingOnResource := func(ctx *Context, res Resource) Output {
+		out, resolve, _ := NewOutputWithDeps(ctx, []Resource{res})
+		resolve(0)
+		return out
+	}
+
+	checkConsistentDependencyCounts := func(ctx *Context, out Output) {
+		st := out.getState()
+		valu, known, _, deps1, err := st.await(ctx.ctx)
+		fmt.Printf("Note: value of the output is %v with known = %v\n", valu, known)
+		assert.True(t, known)
+		assert.NoError(t, err)
+
+		deps2 := st.dependencies()
+
+		assert.Equalf(t, len(deps1), len(deps2),
+			"Dependency count reported by await() is %d but dependencies() have %d",
+			len(deps1),
+			len(deps2))
+	}
+
+	err := RunErr(func(ctx *Context) error {
+		res := &testRes{foo: "a"}
+
+		out := outputDependingOnResource(ctx, res).
+			ApplyT(func(interface{}) AnyOutput { return Any(1) }).(AnyOutput)
+
+		checkConsistentDependencyCounts(ctx, out)
+
+		return nil
+	}, WithMocks("project", "stack", &testMonitor{}))
+
+	assert.NoError(t, err)
 }
