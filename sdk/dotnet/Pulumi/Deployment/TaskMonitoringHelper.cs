@@ -188,20 +188,21 @@ namespace Pulumi
                 return;
             }
             AggregateException? errs = task.Exception;
-            if (errs != null)
+            if (errs == null)
             {
-                lock (_lockObject)
+                return;
+            }
+            lock (_lockObject)
+            {
+                _exceptions.AddRange(errs.InnerExceptions);
+                if (_promise != null)
                 {
-                    _exceptions.AddRange(errs.InnerExceptions);
-                    if (_promise != null)
+                    var err = Flush();
+                    if (err != null)
                     {
-                        var err = Flush();
-                        if (err != null)
-                        {
-                            _promise.SetResult(err);
-                        }
-                        _promise = null;
+                        _promise.SetResult(err);
                     }
+                    _promise = null;
                 }
             }
         }
