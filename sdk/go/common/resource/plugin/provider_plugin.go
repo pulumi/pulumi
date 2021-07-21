@@ -917,12 +917,23 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
-	// is not fully known, hand back the inputs as the state.
+	// is not fully known, hand back an empty property map. This will force the language SDK will to treat all properties
+	// as unknown, which is conservatively correct.
 	//
-	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
-	// but expect differently-shaped values.
-	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
-		return news, resource.StatusOK, nil
+	// If the provider does not support previews, return the inputs as the state. Note that this can cause problems for
+	// the language SDKs if there are input and state properties that share a name but expect differently-shaped values.
+	if preview {
+		// TODO: it would be great to swap the order of these if statements. This would prevent a behavioral change for
+		// providers that do not support provider previews, which will always return the inputs as state regardless of
+		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
+		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
+		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
+		if !p.cfgknown {
+			return resource.PropertyMap{}, resource.StatusOK, nil
+		}
+		if !p.supportsPreview {
+			return news, resource.StatusOK, nil
+		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
