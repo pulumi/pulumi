@@ -442,7 +442,13 @@ func TestDependsOnOutput(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func assertHasDeps(t *testing.T, ctx *Context, depTracker *dependenciesTracker, res Resource, expectedDeps ...Resource) {
+func assertHasDeps(
+	t *testing.T,
+	ctx *Context,
+	depTracker *dependenciesTracker,
+	res Resource,
+	expectedDeps ...Resource) {
+
 	name := res.getName()
 	resDeps := depTracker.dependencies(urn(t, ctx, res))
 
