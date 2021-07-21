@@ -105,7 +105,26 @@ namespace Pulumi
             // 32 was picked so as to be very unlikely to collide with any other error codes.
             private const int _processExitedAfterLoggingUserActionableMessage = 32;
 
+            private int _concurrentWhileRunningAsyncInvocations = 0;
+
             private async Task<int> WhileRunningAsync()
+            {
+                if (Interlocked.Increment(ref _concurrentWhileRunningAsyncInvocations) > 1)
+                {
+                    throw new Exception("Attempting to run several concurrent instances of WhileRunningAsync, " +
+                                        "please report to https://github.com/pulumi/pulumi/issues");
+                }
+                try
+                {
+                    return await WhileRunningAsyncInner();
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _concurrentWhileRunningAsyncInvocations);
+                }
+            }
+
+            private async Task<int> WhileRunningAsyncInner()
             {
                 var tasks = new List<Task>();
 
@@ -174,7 +193,7 @@ namespace Pulumi
                             }
                         }
                     }
-                    
+
                     try
                     {
                         // Now actually await that combined task and realize any exceptions it may have thrown.
