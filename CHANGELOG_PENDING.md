@@ -17,6 +17,9 @@
 
 - [sdk/go] - Fix target and replace options for the Automation API.
   [#7426](https://github.com/pulumi/pulumi/pull/7426)
-  
+
 - [cli] - Don't escape special characters when printing JSON.
   [#7593](https://github.com/pulumi/pulumi/pull/7593)
+
+- [sdk/go] - Fix panic when marshaling `self` in a method.
+  [#7604](https://github.com/pulumi/pulumi/pull/7604)
