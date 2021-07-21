@@ -776,12 +776,11 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 }
 
 func makeJSONString(v interface{}) (string, error) {
-	out := bytes.NewBuffer([]byte{})
-	encoder := json.NewEncoder(out)
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
 	encoder.SetEscapeHTML(false)
 	encoder.SetIndent("", "  ")
-	err := encoder.Encode(v)
-	if err != nil {
+	if err := encoder.Encode(v); err != nil {
 		return "", err
 	}
 	return out.String(), nil
