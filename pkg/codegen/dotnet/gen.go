@@ -253,6 +253,30 @@ func ignoreOptional(t *schema.OptionalType, requireInitializers bool) bool {
 	return false
 }
 
+func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
+	elements := make([]schema.Type, len(union.ElementTypes))
+	for i, et := range union.ElementTypes {
+		if input, ok := et.(*schema.InputType); ok {
+			switch input.ElementType.(type) {
+			case *schema.ArrayType, *schema.MapType:
+				// do not replace Input<{Array,Map}> with {Array,Map}: typeString needs to see the enclosing input type in order to
+				// generate correct type names.
+				elements[i] = input
+			default:
+				elements[i] = input.ElementType
+			}
+		} else {
+			elements[i] = et
+		}
+	}
+	return &schema.UnionType{
+		ElementTypes:  elements,
+		DefaultType:   union.DefaultType,
+		Discriminator: union.Discriminator,
+		Mapping:       union.Mapping,
+	}
+}
+
 func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, input, wrapInput, state, requireInitializers bool) string {
 	elementTypeSet := stringSet{}
 	var elementTypes []string
@@ -310,7 +334,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		if union, ok := elem.(*schema.UnionType); ok {
-			union = codegen.SimplifyInputUnion(union).(*schema.UnionType)
+			union = simplifyInputUnion(union)
 			if inputType == "Input" {
 				return mod.unionTypeString(union, qualifier, input, true, state, requireInitializers)
 			}
