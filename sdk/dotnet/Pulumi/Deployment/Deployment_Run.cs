@@ -176,10 +176,12 @@ namespace Pulumi
             return result.Resources;
         }
 
+        /// <summary>
         /// Like `TestAsync`, but instead of throwing the errors
         /// detected in the engine, returns them in the result tuple.
         /// This enables tests to observe partially constructed
         /// `Resources` vector in presence of deliberate errors.
+        /// </summary>
         internal static async Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync(
             IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
         {

@@ -9,27 +9,33 @@ using System.Threading.Tasks;
 
 namespace Pulumi
 {
+    /// <summary>
     /// Monitors dynamically added tasks for completion. Enters IDLE
     /// state when all monitored tasks finish. Allows awaiting next
     /// IDLE state or an exception, whichever comes first.
     /// Thread-safe.
+    /// </summary>
     internal sealed class TaskMonitoringHelper
     {
         private readonly TaskExceptionTracker _exceptionTracker = new TaskExceptionTracker();
         private readonly TaskIdleTracker _idleTracker = new TaskIdleTracker();
 
+        /// <summary>
         /// Starts monitoring the given task.
+        /// </summary>
         public void AddTask(Task task)
         {
             _exceptionTracker.AddTask(task);
             _idleTracker.AddTask(task);
         }
 
+        /// <summary>
         /// Awaits next IDLE state or an exception, whichever comes
         /// first. Several exceptions may be returned if they have
         /// been observed prior to this call.
         ///
         /// IDLE state is represented as an empty sequence in the result.
+        /// </summary>
         public async Task<IEnumerable<Exception>> AwaitIdleOrFirstExceptionAsync()
         {
             var error = _exceptionTracker.AwaitExceptionAsync();
@@ -44,7 +50,9 @@ namespace Pulumi
         }
     }
 
+    /// <summary>
     /// Monitors dynamically added tasks for completion, allows awaiting IDLE state.
+    /// </summary>
     internal sealed class TaskIdleTracker
     {
         private readonly object _lockObject = new object();
@@ -59,7 +67,9 @@ namespace Pulumi
             _onTaskCompleted = OnTaskCompleted;
         }
 
+        /// <summary>
         /// Awaits next IDLE state when no monitored tasks are running.
+        /// </summary>
         public Task AwaitIdleAsync()
         {
             lock (_lockObject)
@@ -76,7 +86,9 @@ namespace Pulumi
             }
         }
 
+        /// <summary>
         /// Monitors the given task.
+        /// </summary>
         public void AddTask(Task task)
         {
             lock (_lockObject)
@@ -100,7 +112,9 @@ namespace Pulumi
         }
     }
 
+    /// <summary>
     /// Monitors dynamically added tasks for exceptions, allows awaiting exceptions.
+    /// </summary>
     internal sealed class TaskExceptionTracker
     {
         private readonly object _lockObject = new object();
@@ -115,14 +129,18 @@ namespace Pulumi
             _onTaskCompleted = OnTaskCompleted;
         }
 
+        /// <summary>
         /// Monitors the given task.
+        /// </summary>
         public void AddTask(Task task)
         {
             task.ContinueWith(_onTaskCompleted);
         }
 
+        /// <summary>
         /// Awaits the next set of `Exception` in the monitored tasks.
         /// May never complete. Never returns an empty sequence.
+        /// </summary>
         public Task<IEnumerable<Exception>> AwaitExceptionAsync()
         {
             lock (_lockObject)
