@@ -183,7 +183,11 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
-                ProjectSettings = projectSettings
+                ProjectSettings = projectSettings,
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                }
             });
 
             var stackName = $"{RandomStackName()}";
@@ -1531,7 +1535,11 @@ namespace Pulumi.Automation.Tests
             var stack = await LocalWorkspace.CreateStackAsync(
                 new InlineProgramArgs(projectName, stackName, program)
                 {
-                    WorkDir = workdir
+                    WorkDir = workdir,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             var settings = await stack.Workspace.GetProjectSettingsAsync();
@@ -1580,6 +1588,10 @@ namespace Pulumi.Automation.Tests
                 new InlineProgramArgs(projectName, stackName, program)
                 {
                     Logger = logger,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             // make sure workspace logger is used
@@ -1620,7 +1632,11 @@ namespace Pulumi.Automation.Tests
             using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
                 new InlineProgramArgs(projectName, stackName, program)
                 {
-                    Logger = TestLogger
+                    Logger = TestLogger,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             TestLogger.LogInformation("Previewing stack...");
