@@ -21,10 +21,11 @@ func main() {
 	if _, ok := os.LookupEnv("INCLUDE_SCHEMA"); ok {
 		schema = `{"hello": "world"}`
 	}
-	err := provider.ComponentMain(providerName, version, []byte(schema), func(ctx *pulumi.Context, typ, name string,
-		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
-		return nil, errors.Errorf("unknown resource type %s", typ)
-	})
+	err := provider.ProviderMain(providerName, version, []byte(schema),
+		provider.WithConstructFunc(func(ctx *pulumi.Context, typ, name string,
+			inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
+			return nil, errors.Errorf("unknown resource type %s", typ)
+		}))
 	if err != nil {
 		cmdutil.ExitError(err.Error())
 	}

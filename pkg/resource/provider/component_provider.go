@@ -32,6 +32,46 @@ type componentProvider struct {
 	version   string
 	schema    []byte
 	construct provider.ConstructFunc
+	call      provider.CallFunc
+}
+
+type ProviderOption func(*componentProvider)
+
+func WithConstructFunc(f provider.ConstructFunc) ProviderOption {
+	return func(p *componentProvider) {
+		p.construct = f
+	}
+}
+
+func WithCallFunc(f provider.CallFunc) ProviderOption {
+	return func(p *componentProvider) {
+		p.call = f
+	}
+}
+
+// ProviderMain is an entrypoint for a resource provider plugin that implements `Construct` and optionally also
+// `Call` for component resources.
+//
+// Using it isn't required but can cut down significantly on the amount of boilerplate necessary to fire up a new
+// resource provider for components.
+//
+// `WithConstructFunc` and `WithCallFunc` can be used to provide implementations of the `Construct` and `Call` functions
+// respectively. This is also extensible for future operations without breaking changes.
+func ProviderMain(name, version string, schema []byte, funcs ...ProviderOption) error {
+	return Main(name, func(host *HostClient) (pulumirpc.ResourceProviderServer, error) {
+		p := &componentProvider{
+			host:    host,
+			name:    name,
+			version: version,
+			schema:  schema,
+		}
+
+		for _, f := range funcs {
+			f(p)
+		}
+
+		return p, nil
+	})
 }
 
 // ComponentMain is an entrypoint for a resource provider plugin that implements `Construct` for component resources.
@@ -82,7 +122,10 @@ func (p *componentProvider) Configure(ctx context.Context,
 // Construct creates a new instance of the provided component resource and returns its state.
 func (p *componentProvider) Construct(ctx context.Context,
 	req *pulumirpc.ConstructRequest) (*pulumirpc.ConstructResponse, error) {
-	return provider.Construct(ctx, req, p.host.conn, p.construct)
+	if p.construct != nil {
+		return provider.Construct(ctx, req, p.host.conn, p.construct)
+	}
+	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
 // CheckConfig validates the configuration for this provider.
@@ -155,6 +198,9 @@ func (p *componentProvider) Invoke(ctx context.Context,
 // Call dynamically executes a method in the provider associated with a component resource.
 func (p *componentProvider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	if p.call != nil {
+		return provider.Call(ctx, req, p.host.conn, p.call)
+	}
 	return nil, status.Error(codes.Unimplemented, "Call is not yet implemented")
 }
 
