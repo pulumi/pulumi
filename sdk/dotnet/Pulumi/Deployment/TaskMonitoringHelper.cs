@@ -38,15 +38,14 @@ namespace Pulumi
         /// </summary>
         public async Task<IEnumerable<Exception>> AwaitIdleOrFirstExceptionAsync()
         {
-            var error = _exceptionTracker.AwaitExceptionAsync();
-            var idle = _idleTracker.AwaitIdleAsync();
-            var first = await Task.WhenAny((Task)error, idle).ConfigureAwait(false);
-            if (first == idle)
+            var exceptionTask = _exceptionTracker.AwaitExceptionAsync();
+            var idleTask = _idleTracker.AwaitIdleAsync();
+            var firstTask = await Task.WhenAny((Task)exceptionTask, idleTask).ConfigureAwait(false);
+            if (firstTask == idleTask)
             {
                 return Enumerable.Empty<Exception>();
             }
-            var err = await error;
-            return err;
+            return await exceptionTask;
         }
     }
 
