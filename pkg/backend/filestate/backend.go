@@ -237,12 +237,14 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
-	return apitype.ListPolicyGroupsResponse{}, fmt.Errorf("File state backend does not support resource policy")
+func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
+	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
+	return apitype.ListPolicyGroupsResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
-	return apitype.ListPolicyPacksResponse{}, fmt.Errorf("File state backend does not support resource policy")
+func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
+	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
@@ -329,10 +331,11 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *localBackend) ListStacks(
-	ctx context.Context, _ backend.ListStacksFilter) ([]backend.StackSummary, error) {
+	ctx context.Context, _ backend.ListStacksFilter, _ backend.ContinuationToken) (
+	[]backend.StackSummary, backend.ContinuationToken, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Note that the provided stack filter is not honored, since fields like
@@ -341,7 +344,7 @@ func (b *localBackend) ListStacks(
 	for _, stackName := range stacks {
 		chk, err := b.getCheckpoint(stackName)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		stackRef, err := b.ParseStackReference(string(stackName))
 		if err != nil {
@@ -350,7 +353,7 @@ func (b *localBackend) ListStacks(
 		results = append(results, newLocalStackSummary(stackRef, chk))
 	}
 
-	return results, nil
+	return results, nil, nil
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
