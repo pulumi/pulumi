@@ -35,7 +35,9 @@ type ObjectType struct {
 	Annotations []interface{}
 
 	propertyUnion Type
-	s             string
+
+	s string
+	h uint32
 }
 
 // NewObjectType creates a new object type with the given properties and annotations.
@@ -80,6 +82,32 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	return propertyType, nil
 }
 
+func (t *ObjectType) hash(stack objTypeSet) uint32 {
+	if t.h == 0 {
+		if stack.add(t) {
+			return hashKindObject
+		}
+		defer stack.delete(t)
+
+		fnv := newFNV()
+		fnv.addUint32(hashKindObject)
+
+		keys := make([]string, 0, len(t.Properties))
+		for k := range t.Properties {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+
+		for _, k := range keys {
+			fnv.addString(k)
+			fnv.addUint32(t.Properties[k].hash(stack))
+		}
+
+		t.h = fnv.sum()
+	}
+	return t.h
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *ObjectType) Equals(other Type) bool {
 	return t.equals(other, nil)
@@ -89,6 +117,15 @@ func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
 	if t == other {
 		return true
 	}
+
+	otherObject, ok := other.(*ObjectType)
+	if !ok {
+		return false
+	}
+	if len(t.Properties) != len(otherObject.Properties) {
+		return false
+	}
+
 	if seen != nil {
 		if _, ok := seen[t]; ok {
 			return true
@@ -98,13 +135,6 @@ func (t *ObjectType) equals(other Type, seen map[Type]struct{}) bool {
 	}
 	seen[t] = struct{}{}
 
-	otherObject, ok := other.(*ObjectType)
-	if !ok {
-		return false
-	}
-	if len(t.Properties) != len(otherObject.Properties) {
-		return false
-	}
 	for k, t := range t.Properties {
 		if u, ok := otherObject.Properties[k]; !ok || !t.equals(u, seen) {
 			return false

@@ -46,6 +46,10 @@ func (t *PromiseType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagno
 	return NewPromiseType(element.(Type)), diagnostics
 }
 
+func (t *PromiseType) hash(stack objTypeSet) uint32 {
+	return hashCombine(hashKindPromise, t.ElementType.hash(stack))
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *PromiseType) Equals(other Type) bool {
 	return t.equals(other, nil)

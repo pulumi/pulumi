@@ -161,6 +161,7 @@ func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
 
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
+
 		b.schemaTypes[src] = objType
 		for _, prop := range src.Properties {
 			typ := prop.Type

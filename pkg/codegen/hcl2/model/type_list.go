@@ -50,6 +50,10 @@ func (t *ListType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnosti
 	return t.ElementType, diagnostics
 }
 
+func (t *ListType) hash(stack objTypeSet) uint32 {
+	return hashCombine(hashKindList, t.ElementType.hash(stack))
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *ListType) Equals(other Type) bool {
 	return t.equals(other, nil)

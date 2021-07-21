@@ -78,6 +78,13 @@ func (t *OpaqueType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 	return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
+func (t *OpaqueType) hash(_ objTypeSet) uint32 {
+	fnv := newFNV()
+	fnv.addUint32(hashKindOpaque)
+	fnv.addString(t.Name)
+	return fnv.sum()
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *OpaqueType) Equals(other Type) bool {
 	return t.equals(other, nil)

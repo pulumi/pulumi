@@ -43,6 +43,10 @@ func (t *SetType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnostic
 	return DynamicType, hcl.Diagnostics{unsupportedReceiverType(t, traverser.SourceRange())}
 }
 
+func (t *SetType) hash(stack objTypeSet) uint32 {
+	return hashCombine(hashKindSet, t.ElementType.hash(stack))
+}
+
 // Equals returns true if this type has the same identity as the given type.
 func (t *SetType) Equals(other Type) bool {
 	return t.equals(other, nil)
