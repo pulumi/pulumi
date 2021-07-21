@@ -126,7 +126,7 @@ namespace Pulumi
             // 32 was picked so as to be very unlikely to collide with any other error codes.
             private const int _processExitedAfterLoggingUserActionableMessage = 32;
 
-            private async Task<int> WhileRunningAsync()
+            internal async Task<int> WhileRunningAsync()
             {
                 var errs = await _inFlightTasks.AwaitIdleOrFirstExceptionAsync().ConfigureAwait(false);
                 if (errs.Any())

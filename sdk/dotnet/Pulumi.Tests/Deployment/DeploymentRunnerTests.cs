@@ -17,25 +17,17 @@ namespace Pulumi.Tests
         [Fact]
         public async Task WorksUnderStress()
         {
-            var resources = await Deployment.TestAsync<StressRunnerStack>(new EmptyMocks());
-            var stack = (StressRunnerStack)resources[0];
-            var result = await stack.RunnerResult;
-            Assert.Equal(0, result);
+            await Deployment.TestAsync<StressRunnerStack>(new EmptyMocks());
         }
 
         class StressRunnerStack : Stack
         {
-            public Task<int> RunnerResult { get; private set; }
             public StressRunnerStack()
             {
-                var runner = Pulumi.Deployment.Instance.Internal.Runner;
-
                 for (var i = 0; i < 100; i++)
                 {
-                    runner.RegisterTask($"task{i}", Task.Delay(100 + i));
+                    Output<int> output = Output.Create(Task.Delay(100 + i).ContinueWith(_ => i));
                 }
-
-                this.RunnerResult = runner.RunAsync<EmptyStack>();
             }
         }
 
@@ -90,7 +82,7 @@ namespace Pulumi.Tests
                     runner.RegisterTask($"task{i}", Task.Delay(100 + i));
                 }
 
-                this.Logs = ((IRunner)runner).RunAsync<EmptyStack>().ContinueWith(_ => logger.Messages);
+                this.Logs = runner.WhileRunningAsync().ContinueWith(_ => logger.Messages);
             }
         }
 
@@ -152,10 +144,6 @@ namespace Pulumi.Tests
                     Close();
                 }
             }
-        }
-
-        class EmptyStack : Stack
-        {
         }
 
         class EmptyMocks : IMocks
