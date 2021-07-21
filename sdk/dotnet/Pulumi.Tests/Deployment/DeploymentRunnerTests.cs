@@ -81,8 +81,8 @@ namespace Pulumi.Tests
                 Task task1 = Task.FromException(error);
                 Task task2 = Task.Delay(100);
 
-                runner.RegisterTask("task1", task1);
                 runner.RegisterTask("task2", task2);
+                runner.RegisterTask("task1", task1);
 
                 var jointTask = runner.RunAsync<EmptyStack>();
 
