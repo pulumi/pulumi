@@ -300,7 +300,7 @@ class Output(Generic[T_co]):
     @staticmethod
     def _from_input_shallow(val: Input[T]) -> 'Output[T]':
         """
-        Like `from_output`, but does not recur deeply. Instead, checks if `val` is an `Output` value
+        Like `from_input`, but does not recur deeply. Instead, checks if `val` is an `Output` value
         and returns it as is. Otherwise, promotes a known value or future to `Output`.
 
         :param Input[T] val: An Input to be converted to an Output.
