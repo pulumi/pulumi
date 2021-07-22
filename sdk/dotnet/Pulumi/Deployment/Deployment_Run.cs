@@ -29,7 +29,7 @@ namespace Pulumi
         /// <returns>A dictionary of stack outputs.</returns>
         public static Task<int> RunAsync(Func<IDictionary<string, object?>> func)
             => RunAsync(() => Task.FromResult(func()));
-        
+
         /// <summary>
         /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
@@ -149,7 +149,7 @@ namespace Pulumi
         /// <returns>Test result containing created resources and errors, if any.</returns>
         public static Task<ImmutableArray<Resource>> TestWithServiceProviderAsync<TStack>(IMocks mocks, IServiceProvider serviceProvider, TestOptions? options = null)
             where TStack : Stack
-            => TestAsync(mocks, runner => runner.RunAsync<TStack>(serviceProvider), options);
+            => TestAsync(mocks, runner => runner.RunAsync<TStack>(serviceProvider), InternalTestOptions.Create(options));
 
         /// <summary>
         /// Entry point to test a Pulumi application. Deployment will
@@ -164,13 +164,51 @@ namespace Pulumi
         /// <returns>Test result containing created resources and errors, if any.</returns>
         public static Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, TestOptions? options = null)
             where TStack : Stack, new()
+            => TestAsync(mocks, runner => runner.RunAsync<TStack>(), InternalTestOptions.Create(options));
+
+        /// <summary>
+        /// A version of TestAsync that exposes additional internal-only options for testing.
+        /// </summary>
+        /// <param name="mocks">Hooks to mock the engine calls.</param>
+        /// <param name="options">Optional settings for the test run.</param>
+        /// <typeparam name="TStack">The type of the stack to test.</typeparam>
+        /// <returns>Test result containing created resources and errors, if any.</returns>
+        internal static Task<ImmutableArray<Resource>> TestAsync<TStack>(IMocks mocks, InternalTestOptions? options = null)
+            where TStack : Stack, new()
             => TestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
 
-        private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
+        internal sealed class InternalTestOptions
         {
+            public TestOptions TestOptions { get; set; } = new TestOptions();
+
+            public Func<IMockMonitor,IMockMonitor> ConfigureMonitor { get; set; } = (m) => m;
+
+            public static InternalTestOptions Create(TestOptions? options)
+            {
+                return new InternalTestOptions()
+                {
+                    TestOptions = options ?? new TestOptions()
+                };
+            }
+        }
+
+        private static async Task<ImmutableArray<Resource>> TestAsync(
+            IMocks mocks,
+            Func<IRunner, Task<int>> runAsync,
+            TestOptions? options = null)
+        {
+            return await TestAsync(mocks, runAsync, InternalTestOptions.Create(options));
+        }
+
+        private static async Task<ImmutableArray<Resource>> TestAsync(
+            IMocks mocks,
+            Func<IRunner, Task<int>> runAsync,
+            InternalTestOptions? options = null)
+        {
+            var opts = options ?? new InternalTestOptions();
             var engine = new MockEngine();
-            var monitor = new MockMonitor(mocks);
-            await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, options), runAsync).ConfigureAwait(false);
+            var monitor = opts.ConfigureMonitor(new MockMonitor(mocks));
+            await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, opts.TestOptions), runAsync).ConfigureAwait(false);
             return engine.Errors.Count switch
             {
                 1 => throw new RunException(engine.Errors.Single()),

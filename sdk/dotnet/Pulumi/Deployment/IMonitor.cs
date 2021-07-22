@@ -10,11 +10,11 @@ namespace Pulumi
         Task<SupportsFeatureResponse> SupportsFeatureAsync(SupportsFeatureRequest request);
 
         Task<InvokeResponse> InvokeAsync(InvokeRequest request);
-        
+
         Task<ReadResourceResponse> ReadResourceAsync(Resource resource, ReadResourceRequest request);
-        
+
         Task<RegisterResourceResponse> RegisterResourceAsync(Resource resource, RegisterResourceRequest request);
-        
+
         Task RegisterResourceOutputsAsync(RegisterResourceOutputsRequest request);
     }
 }

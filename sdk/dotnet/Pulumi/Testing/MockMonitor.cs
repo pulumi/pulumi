@@ -11,7 +11,12 @@ using Pulumirpc;
 
 namespace Pulumi.Testing
 {
-    internal class MockMonitor : IMonitor
+    internal interface IMockMonitor : IMonitor
+    {
+        public ImmutableList<Resource> Resources { get; }
+    }
+
+    internal class MockMonitor : IMonitor, IMockMonitor
     {
         private readonly IMocks _mocks;
         private readonly Serializer _serializer = new Serializer(excessiveDebugOutput: false);
@@ -47,7 +52,7 @@ namespace Pulumi.Testing
                 }
                 return new InvokeResponse { Return = await SerializeAsync(registeredResource).ConfigureAwait(false) };
             }
-            
+
             var result = await _mocks.CallAsync(new MockCallArgs
                 {
                     Token = request.Tok,
@@ -182,6 +187,14 @@ namespace Pulumi.Testing
         {
             var dict = await SerializeToDictionary(o).ConfigureAwait(false);
             return Serializer.CreateStruct(dict);
+        }
+
+        ImmutableList<Resource> IMockMonitor.Resources
+        {
+            get
+            {
+                return Resources.ToImmutableList();
+            }
         }
     }
 }

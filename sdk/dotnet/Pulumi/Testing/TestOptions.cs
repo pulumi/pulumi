@@ -1,7 +1,7 @@
 namespace Pulumi.Testing
 {
     /// <summary>
-    /// Optional settings for <see cref="Deployment.TestAsync{T}"/>.
+    /// Optional settings for <see cref="Deployment.TestAsync{T}(IMocks, TestOptions?)"/>.
     /// </summary>
     public class TestOptions
     {
@@ -9,12 +9,12 @@ namespace Pulumi.Testing
         /// Project name. Defaults to <b>"project"</b> if not specified.
         /// </summary>
         public string? ProjectName { get; set; }
-        
+
         /// <summary>
         /// Stack name. Defaults to <b>"stack"</b> if not specified.
         /// </summary>
         public string? StackName { get; set; }
-        
+
         /// <summary>
         /// Whether the test runs in Preview mode. Defaults to <b>true</b> if not specified.
         /// </summary>
