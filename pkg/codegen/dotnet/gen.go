@@ -253,6 +253,31 @@ func ignoreOptional(t *schema.OptionalType, requireInitializers bool) bool {
 	return false
 }
 
+func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
+	elements := make([]schema.Type, len(union.ElementTypes))
+	for i, et := range union.ElementTypes {
+		if input, ok := et.(*schema.InputType); ok {
+			switch input.ElementType.(type) {
+			case *schema.ArrayType, *schema.MapType:
+				// Instead of just replacing Input<{Array,Map}<T>> with {Array,Map}<T>, replace it with
+				// {Array,Map}<Plain(T)>. This matches the behavior of typeString when presented with an
+				// Input<{Array,Map}<T>>.
+				elements[i] = codegen.PlainType(input.ElementType)
+			default:
+				elements[i] = input.ElementType
+			}
+		} else {
+			elements[i] = et
+		}
+	}
+	return &schema.UnionType{
+		ElementTypes:  elements,
+		DefaultType:   union.DefaultType,
+		Discriminator: union.Discriminator,
+		Mapping:       union.Mapping,
+	}
+}
+
 func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, input, wrapInput, state, requireInitializers bool) string {
 	elementTypeSet := stringSet{}
 	var elementTypes []string
@@ -310,7 +335,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		if union, ok := elem.(*schema.UnionType); ok {
-			union = codegen.SimplifyInputUnion(union).(*schema.UnionType)
+			union = simplifyInputUnion(union)
 			if inputType == "Input" {
 				return mod.unionTypeString(union, qualifier, input, true, state, requireInitializers)
 			}
