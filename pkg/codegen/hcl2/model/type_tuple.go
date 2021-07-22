@@ -152,8 +152,8 @@ func (t *TupleType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *TupleType:
 			// When unifying, we will unify two tuples of different length to a new tuple, where elements with matching
@@ -166,11 +166,11 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 			}
 
 			if len(t.ElementTypes) != len(src.ElementTypes) {
-				return NoConversion, hcl.Diagnostics{tuplesHaveDifferentLengths(t, src)}
+				return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{tuplesHaveDifferentLengths(t, src)} }
 			}
 
 			conversionKind := SafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for i, dst := range t.ElementTypes {
 				if ck, why := dst.conversionFrom(src.ElementTypes[i], unifying, seen); ck < conversionKind {
 					conversionKind, diags = ck, why
@@ -191,7 +191,7 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 			return conversionKind, diags
 		case *ListType:
 			conversionKind := UnsafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for _, t := range t.ElementTypes {
 				if ck, why := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
 					conversionKind, diags = ck, why
@@ -203,7 +203,7 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 			return conversionKind, diags
 		case *SetType:
 			conversionKind := UnsafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for _, t := range t.ElementTypes {
 				if ck, why := t.conversionFrom(src.ElementType, unifying, seen); ck < conversionKind {
 					conversionKind, diags = ck, why
@@ -214,7 +214,7 @@ func (t *TupleType) conversionFrom(src Type, unifying bool, seen map[Type]struct
 			}
 			return conversionKind, diags
 		}
-		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 

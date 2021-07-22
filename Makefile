@@ -5,7 +5,7 @@ include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
-TESTS_PKGS      := $(shell cd ./tests && go list ./... | grep -v tests/templates | grep -v /vendor/)
+TESTS_PKGS      := $(shell cd ./tests && go list -tags all ./... | grep -v tests/templates | grep -v /vendor/)
 VERSION         := $(shell pulumictl get version)
 
 TESTPARALLELISM := 10
@@ -65,6 +65,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/component_provider_schema/testcomponent-go && go build -o pulumi-resource-testcomponent
 	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_methods/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_methods/testcomponent-go && go build -o pulumi-resource-testcomponent
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}

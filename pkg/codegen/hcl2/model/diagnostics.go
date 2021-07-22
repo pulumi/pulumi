@@ -35,7 +35,8 @@ func diagf(severity hcl.DiagnosticSeverity, subject hcl.Range, f string, args ..
 }
 
 func ExprNotConvertible(destType Type, expr Expression) *hcl.Diagnostic {
-	_, why := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	_, whyF := destType.conversionFrom(expr.Type(), false, map[Type]struct{}{})
+	why := whyF()
 	if len(why) != 0 {
 		return errorf(expr.SyntaxNode().Range(), why[0].Summary)
 	}

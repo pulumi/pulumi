@@ -6,7 +6,7 @@ namespace Pulumi
 {
     internal class InlineDeploymentResult
     {
-        public int ExitCode { get; set; } = 0;
+        public int ExitCode { get; set; }
 
         public ExceptionDispatchInfo? ExceptionDispatchInfo { get; set; }
     }

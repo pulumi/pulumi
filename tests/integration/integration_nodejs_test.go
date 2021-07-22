@@ -892,6 +892,8 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 		},
 		Quick:      true,
 		NoParallel: true,
+		// verify that additional flags don't cause the component provider hang
+		UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -908,12 +910,18 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 
 					urns[string(res.URN.Name())] = res.URN
 					switch res.URN.Name() {
-					case "child-a", "child-b":
+					case "child-a":
 						for _, deps := range res.PropertyDependencies {
 							assert.Empty(t, deps)
 						}
+					case "child-b":
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
 						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
@@ -996,6 +1004,40 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownNode(t *testing.T) {
 	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
+}
+
+// Test methods on remote components.
+func TestConstructMethodsNode(t *testing.T) {
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join("construct_component_methods", "nodejs"),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
 }
 
 func TestGetResourceNode(t *testing.T) {

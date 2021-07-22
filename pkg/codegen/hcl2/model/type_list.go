@@ -92,8 +92,8 @@ func (t *ListType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *ListType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
@@ -101,7 +101,7 @@ func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *TupleType:
 			conversionKind := SafeConversion
-			var diags hcl.Diagnostics
+			var diags lazyDiagnostics
 			for _, src := range src.ElementTypes {
 				if ck, why := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
 					conversionKind, diags = ck, why
@@ -112,7 +112,7 @@ func (t *ListType) conversionFrom(src Type, unifying bool, seen map[Type]struct{
 			}
 			return conversionKind, diags
 		}
-		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 

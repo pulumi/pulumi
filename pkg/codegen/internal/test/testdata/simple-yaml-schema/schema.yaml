@@ -1,0 +1,126 @@
+version: "0.0.1"
+name: example
+types:
+  example::Object:
+    properties:
+      foo:
+        "$ref": "#/resources/example::Resource"
+      bar:
+        type: string
+      others:
+        type: array
+        items:
+          type: array
+          items:
+            "$ref": "#/types/example::SomeOtherObject"
+        description: List of lists of other objects
+      configs:
+        type: array
+        items:
+          "$ref": "#/types/example::ConfigMap"
+      stillOthers:
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            "$ref": "#/types/example::SomeOtherObject"
+        description: Mapping from string to list of some other object
+    type: object
+  example::OtherResourceOutput:
+    properties:
+      foo:
+        type: string
+    type: object
+  example::SomeOtherObject:
+    properties:
+      baz:
+        type: string
+    type: object
+  example::ConfigMap:
+    properties:
+      config:
+        type: string
+    type: object
+  example::ObjectWithNodeOptionalInputs:
+    properties:
+      foo:
+        type: string
+      bar:
+        type: integer
+    required: [foo]
+    language:
+      nodejs:
+        "requiredInputs": []
+    type: object
+  example::RubberTreeVariety:
+    type: string
+    description: types of rubber trees
+    enum:
+      - value: Burgundy
+        description: A burgundy rubber tree.
+      - value: Ruby
+        description: A ruby rubber tree.
+      - value: Tineke
+        description: A tineke rubber tree.
+resources:
+  example::Resource:
+    properties:
+      bar:
+        type: string
+        secret: true
+    inputProperties:
+      bar:
+        type: string
+        secret: true
+    type: object
+  example::OtherResource:
+    isComponent: true
+    properties:
+      foo:
+        "$ref": "#/resources/example::Resource"
+    inputProperties:
+      foo:
+        "$ref": "#/resources/example::Resource"
+      bar:
+        type: array
+        items:
+          type: string
+        plain: true
+    type: object
+  example::TypeUses:
+    properties:
+      foo:
+        "$ref": "#/types/example::Object"
+      bar:
+        "$ref": "#/types/example::SomeOtherObject"
+      baz:
+        "$ref": "#/types/example::ObjectWithNodeOptionalInputs"
+      qux:
+        "$ref": "#/types/example::RubberTreeVariety"
+    inputProperties:
+      foo:
+        "$ref": "#/types/example::Object"
+      bar:
+        "$ref": "#/types/example::SomeOtherObject"
+      baz:
+        "$ref": "#/types/example::ObjectWithNodeOptionalInputs"
+      qux:
+        "$ref": "#/types/example::RubberTreeVariety"
+    type: object
+functions:
+  example::argFunction:
+    inputs:
+      properties:
+        arg1:
+          "$ref": "#/resources/example::Resource"
+    outputs:
+      properties:
+        result:
+          "$ref": "#/resources/example::Resource"
+language:
+  csharp: {}
+  go: {
+    "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-resource-schema/go/example"
+  }
+  nodejs: {}
+  python: {}

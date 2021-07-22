@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -37,6 +37,10 @@ type ResourceState struct {
 
 	providers map[string]ProviderResource
 
+	provider ProviderResource
+
+	version string
+
 	aliases []URNOutput
 
 	name string
@@ -54,6 +58,14 @@ func (s ResourceState) GetProvider(token string) ProviderResource {
 
 func (s ResourceState) getProviders() map[string]ProviderResource {
 	return s.providers
+}
+
+func (s ResourceState) getProvider() ProviderResource {
+	return s.provider
+}
+
+func (s ResourceState) getVersion() string {
+	return s.version
 }
 
 func (s ResourceState) getAliases() []URNOutput {
@@ -130,6 +142,12 @@ type Resource interface {
 	// getProviders returns the provider map for this resource.
 	getProviders() map[string]ProviderResource
 
+	// getProvider returns the provider for the resource.
+	getProvider() ProviderResource
+
+	// getVersion returns the version for the resource.
+	getVersion() string
+
 	// getAliases returns the list of aliases for this resource
 	getAliases() []URNOutput
 
@@ -205,6 +223,10 @@ type resourceOptions struct {
 	Provider ProviderResource
 	// Providers is an optional map of package to provider resource for a component resource.
 	Providers map[string]ProviderResource
+	// ReplaceOnChanges will force a replacement when any of these property paths are set.  If this list includes `"*"`,
+	// changes to any properties will force a replacement.  Initialization errors from previous deployments will
+	// require replacement instead of update only if `"*"` is passed.
+	ReplaceOnChanges []string
 	// Transformations is an optional list of transformations to apply to this resource during construction.
 	// The transformations are applied in order, and are applied prior to transformation and to parents
 	// walking from the resource up to the stack.
@@ -365,6 +387,15 @@ func Providers(o ...ProviderResource) ResourceOption {
 		m[p.getPackage()] = p
 	}
 	return ProviderMap(m)
+}
+
+// ReplaceOnChanges will force a replacement when any of these property paths are set.  If this list includes `"*"`,
+// changes to any properties will force a replacement.  Initialization errors from previous deployments will
+// require replacement instead of update only if `"*"` is passed.
+func ReplaceOnChanges(o []string) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.ReplaceOnChanges = append(ro.ReplaceOnChanges, o...)
+	})
 }
 
 // Timeouts is an optional configuration block used for CRUD operations

@@ -19,6 +19,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -68,6 +69,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	return files, g.diagnostics, nil
 }
 
+var caseTableCache sync.Map
+
 func newGenerator(program *hcl2.Program) (*generator, error) {
 	// Import Python-specific schema info.
 	casingTables := map[string]map[string]string{}
@@ -77,9 +80,14 @@ func newGenerator(program *hcl2.Program) (*generator, error) {
 		}
 
 		// Build the case mapping table.
-		camelCaseToSnakeCase := map[string]string{}
-		seenTypes := codegen.Set{}
-		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
+		var camelCaseToSnakeCase map[string]string
+		if table, ok := caseTableCache.Load(p); ok {
+			camelCaseToSnakeCase = table.(map[string]string)
+		} else {
+			seenTypes := codegen.Set{}
+			buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
+			caseTableCache.Store(p, camelCaseToSnakeCase)
+		}
 		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
 	}
 

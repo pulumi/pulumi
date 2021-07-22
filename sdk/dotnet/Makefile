@@ -21,7 +21,7 @@ build::
 	# following:
 	#
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
-	#dotnet clean
+	dotnet clean
 	dotnet build dotnet.sln /p:Version=${DOTNET_VERSION}
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 

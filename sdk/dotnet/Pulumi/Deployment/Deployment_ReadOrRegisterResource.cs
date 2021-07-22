@@ -45,7 +45,7 @@ namespace Pulumi
                 var result = await InvokeRawAsync(
                     "pulumi:pulumi:getResource",
                     new GetResourceInvokeArgs {Urn = options.Urn},
-                    new InvokeOptions());
+                    new InvokeOptions()).ConfigureAwait(false);
                 
                 var urn = result.Fields["urn"].StringValue;
                 var id = result.Fields["id"].StringValue;

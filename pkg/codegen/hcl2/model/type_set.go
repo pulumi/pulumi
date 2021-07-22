@@ -76,8 +76,8 @@ func (t *SetType) ConversionFrom(src Type) ConversionKind {
 	return kind
 }
 
-func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, hcl.Diagnostics) {
-	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, hcl.Diagnostics) {
+func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *SetType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
@@ -94,7 +94,7 @@ func (t *SetType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}
 			}
 			return UnsafeConversion, nil
 		}
-		return NoConversion, hcl.Diagnostics{typeNotConvertible(t, src)}
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 

@@ -342,3 +342,175 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 
 	return resource.URN(), state, nil
 }
+
+type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, error)
+
+// call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
+func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
+	callF callFunc) (*pulumirpc.CallResponse, error) {
+
+	// Configure the RunInfo.
+	runInfo := RunInfo{
+		Project:     req.GetProject(),
+		Stack:       req.GetStack(),
+		Config:      req.GetConfig(),
+		Parallel:    int(req.GetParallel()),
+		DryRun:      req.GetDryRun(),
+		MonitorAddr: req.GetMonitorEndpoint(),
+		engineConn:  engineConn,
+	}
+	pulumiCtx, err := NewContext(ctx, runInfo)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing run context")
+	}
+
+	// Deserialize the inputs and apply appropriate dependencies.
+	argDependencies := req.GetArgDependencies()
+	deserializedArgs, err := plugin.UnmarshalProperties(
+		req.GetArgs(),
+		plugin.MarshalOptions{KeepSecrets: true, KeepResources: true, KeepUnknowns: req.GetDryRun()},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshaling inputs")
+	}
+	args := make(map[string]interface{}, len(deserializedArgs))
+	for key, value := range deserializedArgs {
+		k := string(key)
+		var deps []Resource
+		if inputDeps, ok := argDependencies[k]; ok {
+			deps = make([]Resource, len(inputDeps.GetUrns()))
+			for i, depURN := range inputDeps.GetUrns() {
+				deps[i] = pulumiCtx.newDependencyResource(URN(depURN))
+			}
+		}
+
+		args[k] = &constructInput{
+			value: value,
+			deps:  deps,
+		}
+	}
+
+	result, err := callF(pulumiCtx, req.GetTok(), args)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
+		return nil, err
+	}
+
+	// Serialize all result properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	resolvedProps, propertyDeps, _, err := marshalInputs(result)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling properties")
+	}
+
+	// Marshal all properties for the RPC call.
+	keepUnknowns := req.GetDryRun()
+	rpcProps, err := plugin.MarshalProperties(
+		resolvedProps,
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling properties")
+	}
+
+	// Convert the property dependencies map for RPC and remove duplicates.
+	rpcPropertyDeps := make(map[string]*pulumirpc.CallResponse_ReturnDependencies)
+	for k, deps := range propertyDeps {
+		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+
+		urns := make([]string, 0, len(deps))
+		for i, d := range deps {
+			if i > 0 && urns[i-1] == string(d) {
+				continue
+			}
+			urns = append(urns, string(d))
+		}
+
+		rpcPropertyDeps[k] = &pulumirpc.CallResponse_ReturnDependencies{
+			Urns: urns,
+		}
+	}
+
+	return &pulumirpc.CallResponse{
+		Return:             rpcProps,
+		ReturnDependencies: rpcPropertyDeps,
+	}, nil
+}
+
+// callArgsCopyTo sets the args on the given args struct. If there is a `__self__` argument, it will be
+// returned, otherwise it will return nil.
+func callArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{}) (Resource, error) {
+	// Use the same implementation as construct.
+	if err := constructInputsCopyTo(ctx, source, args); err != nil {
+		return nil, err
+	}
+
+	// Retrieve the `__self__` arg.
+	self, err := callArgsSelf(ctx, source)
+	if err != nil {
+		return nil, err
+	}
+
+	return self, nil
+}
+
+// callArgsSelf retrieves the `__self__` argument. If `__self__` is present the value is returned,
+// otherwise the returned value will be nil.
+func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error) {
+	v, ok := source["__self__"]
+	if !ok {
+		return nil, nil
+	}
+
+	ci := v.(*constructInput)
+	if ci.value.ContainsUnknowns() {
+		return nil, errors.New("__self__ is unknown")
+	}
+
+	value, secret, err := unmarshalPropertyValue(ctx, ci.value)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshaling __self__")
+	}
+	if secret {
+		return nil, errors.New("__self__ is a secret")
+	}
+
+	return value.(Resource), nil
+}
+
+// newCallResult converts a result struct into an input Map that can be marshalled.
+func newCallResult(result interface{}) (Input, error) {
+	if result == nil {
+		return nil, errors.New("result must not be nil")
+	}
+
+	resultV := reflect.ValueOf(result)
+	typ := resultV.Type()
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+		return nil, errors.New("result must be a pointer to a struct")
+	}
+	resultV, typ = resultV.Elem(), typ.Elem()
+
+	ret := make(Map)
+	for i := 0; i < typ.NumField(); i++ {
+		fieldV := resultV.Field(i)
+		if !fieldV.CanInterface() {
+			continue
+		}
+		field := typ.Field(i)
+		tag, has := field.Tag.Lookup("pulumi")
+		if !has {
+			continue
+		}
+		val := fieldV.Interface()
+		if v, ok := val.(Input); ok {
+			ret[tag] = v
+		} else {
+			ret[tag] = ToOutput(val)
+		}
+	}
+
+	return ret, nil
+}

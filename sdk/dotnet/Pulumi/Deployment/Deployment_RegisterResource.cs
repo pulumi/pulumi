@@ -30,7 +30,7 @@ namespace Pulumi
             PopulateRequest(request, prepareResult);
 
             Log.Debug($"Registering resource monitor start: t={type}, name={name}, custom={custom}, remote={remote}");
-            var result = await this.Monitor.RegisterResourceAsync(resource, request);
+            var result = await this.Monitor.RegisterResourceAsync(resource, request).ConfigureAwait(false);
             Log.Debug($"Registering resource monitor end: t={type}, name={name}, custom={custom}, remote={remote}");
 
             var dependencies = ImmutableDictionary.CreateBuilder<string, ImmutableHashSet<Resource>>();
