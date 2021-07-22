@@ -87,7 +87,8 @@ namespace Pulumi.Tests
 
             public IEnumerable<String> Messages
             {
-                get {
+                get
+                {
                     lock (_lockObject)
                     {
                         return _messages.ToArray();
