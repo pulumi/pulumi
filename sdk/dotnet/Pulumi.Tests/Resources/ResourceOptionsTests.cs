@@ -1,6 +1,7 @@
 // Copyright 2016-2021, Pulumi Corporation
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -8,195 +9,232 @@ using System.Threading.Tasks;
 using Xunit;
 
 using Pulumirpc;
+using Pulumi.Serialization;
 using Pulumi.Testing;
+
 
 namespace Pulumi.Tests.Resources
 {
+    using static Testing;
+
     public class ResourceOptionsTests
     {
         [Fact]
-        public async Task DependsOnAcceptsInputs()
+        public async Task DependsOnRespectsDirectOutput()
         {
-            var resources = await Testing.RunAsync<DependsOnAcceptsInputsStack>();
-
-            var stack = resources.OfType<DependsOnAcceptsInputsStack>().FirstOrDefault();
-            Assert.NotNull(stack);
+            var results = await Testing.RunAsync<DependsOnRespectsDirectOutputStack>();
+            AssertDependsOn(results.Dependencies, "res", "dep1");
         }
 
-        class DependsOnAcceptsInputsStack : Stack
+        class DependsOnRespectsDirectOutputStack : Stack
         {
-            public DependsOnAcceptsInputsStack()
+            public DependsOnRespectsDirectOutputStack()
             {
-                var arg = new TestResourceArgs() { N = 1 };
-                new TestResource("r1", arg);
+                var dep1 = NewResource("dep1", 1);
+                NewResource("res", 3, DependsOn(Output.Create(dep1)));
             }
         }
-    }
 
-    public sealed class TestResourceArgs : ResourceArgs
-    {
-	[Input("n", required: true)]
-	public Input<int> N { get; set; } = null!;
-
-	public TestResourceArgs()
-	{
-	}
-    }
-
-    sealed class TestResource : CustomResource
-    {
-	[Output("nextInteger")]
-	public Output<int> NextInteger { get; private set; } = null!;
-
-	public TestResource(string name, TestResourceArgs args, CustomResourceOptions? options = null)
-		: base("test:index:TestResource", name, args, options)
-	{
-            NextInteger = args.N.Apply(n => n + 1);
-	}
-    }
-
-    sealed class MyMocks : IMocks
-    {
-        public Task<object> CallAsync(MockCallArgs args)
+        [Fact]
+        public async Task DependsOnRespectsIndirectOutput()
         {
-            return Task.FromResult<object>(args);
+            var results = await Testing.RunAsync<DependsOnRespectsIndirectOutputStack>();
+            AssertDependsOn(results.Dependencies, "res", "dep2");
         }
 
-        public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
+        class DependsOnRespectsIndirectOutputStack : Stack
         {
-            return Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs));
+            public DependsOnRespectsIndirectOutputStack()
+            {
+                var dep1 = NewResource("dep1", 1);
+                var dep2 = NewResource("dep2", 2);
+                var dep = OutputDependingOnResource(dep2, isKnown: true).Apply(_ => dep1);
+                NewResource("res", 3, DependsOn(dep));
+            }
+        }
+
+        [Fact]
+        public async Task DependsOnDoesNotLoseInfoWithUnknowns()
+        {
+            var results = await Testing.RunAsync<DependsOnDoesNotLoseInfoWithUnknownsStack>(isPreview: true);
+            AssertDependsOn(results.Dependencies, "res", "dep1");
+        }
+
+        class DependsOnDoesNotLoseInfoWithUnknownsStack : Stack
+        {
+            public DependsOnDoesNotLoseInfoWithUnknownsStack()
+            {
+                var dep1 = NewResource("dep1", 1);
+                var dep2 = NewResource("dep2", 2);
+                var dep3 = NewResource("dep3", 3);
+                var known = Output.Create(dep1);
+                var unknown = OutputDependingOnResource(dep3, isKnown: false).Apply(_ => dep2);
+                NewResource("res", 4, DependsOn(known, unknown));
+            }
+        }
+
+        [Fact]
+        public async Task DependsOnRespectsIndirectTopLevelOutput()
+        {
+            var results = await Testing.RunAsync<DependsOnRespectsIndirectTopLevelOutputStack>();
+            AssertDependsOn(results.Dependencies, "res", "dep2");
+        }
+
+        class DependsOnRespectsIndirectTopLevelOutputStack : Stack
+        {
+            public DependsOnRespectsIndirectTopLevelOutputStack()
+            {
+                var dep1 = NewResource("dep1", 1);
+                var dep2 = NewResource("dep2", 2);
+                Output<IEnumerable<Resource>> dep = OutputDependingOnResource(dep2, isKnown: true)
+                    .Apply(_ => Enumerable.Repeat(dep1, 1));
+                NewResource("res", 3, DependsOn(dep));
+            }
         }
     }
 
     static class Testing
     {
-        public static Task<ImmutableArray<Resource>> RunAsync<T>() where T : Stack, new()
+        public static CustomResourceOptions DependsOn(params Output<Resource>[] resources)
         {
-            var opts = new TestOptions { IsPreview = false };
-            var internalTestOpts = Deployment.InternalTestOptions.Create(opts);
-            internalTestOpts.ConfigureMonitor = m => new DependencyTrackingMonitor(m);
-            return Deployment.TestAsync<T>(new MyMocks(), internalTestOpts);
-        }
-    }
-
-    class DependencyTrackingMonitor : IMockMonitor, IMonitor
-    {
-        private IMockMonitor Inner { get; }
-
-        public DependencyTrackingMonitor(IMockMonitor inner)
-        {
-            Inner = inner;
-        }
-
-        ImmutableList<Resource> IMockMonitor.Resources
-        {
-            get
+            var opts = new CustomResourceOptions();
+            foreach (var dep in resources)
             {
-                return Inner.Resources;
+                opts.DependsOn.Add(dep);
+            }
+            return opts;
+        }
+
+        public static CustomResourceOptions DependsOn(Output<IEnumerable<Resource>> resources)
+        {
+            var opts = new CustomResourceOptions();
+            opts.DependsOn = resources;
+            return opts;
+        }
+
+        sealed class MyMocks : IMocks
+        {
+            public Task<object> CallAsync(MockCallArgs args)
+            {
+                return Task.FromResult<object>(args);
+            }
+
+            public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
+            {
+                return Task.FromResult<(string?, object)>((args.Name + "_id", args.Inputs));
             }
         }
 
-        async Task<SupportsFeatureResponse> IMonitor.SupportsFeatureAsync(SupportsFeatureRequest request)
+        public sealed class TestResourceArgs : ResourceArgs
         {
-            return await Inner.SupportsFeatureAsync(request);
+            [Input("n", required: true)]
+            public Input<int> N { get; set; } = null!;
+
+            public TestResourceArgs()
+            {
+            }
         }
 
-        async Task<InvokeResponse> IMonitor.InvokeAsync(InvokeRequest request)
+        sealed class TestResource : CustomResource
         {
-            return await Inner.InvokeAsync(request);
+            [Output("nextInteger")]
+            public Output<int> NextInteger { get; private set; } = null!;
+
+            public TestResource(string name, TestResourceArgs args, CustomResourceOptions? options = null)
+		: base("test:index:TestResource", name, args, options)
+            {
+                NextInteger = args.N.Apply(n => n + 1);
+            }
         }
 
-        async Task<ReadResourceResponse> IMonitor.ReadResourceAsync(Resource resource, ReadResourceRequest request)
+        /// <summary>
+        /// Like RunAsync, but also helps the test track dependencies
+        /// as a mapping from a resource URN to a list of URNs
+        /// identifying resources it depends on.
+        /// </summary>
+        public static async Task<(
+            ImmutableArray<Resource> Resources,
+            ImmutableDictionary<string,ImmutableList<string>> Dependencies
+        )> RunAsync<T>(bool isPreview = false) where T : Stack, new()
         {
-            return await Inner.ReadResourceAsync(resource, request);
+            var deps = new ConcurrentDictionary<string,ImmutableList<string>>();
+            var opts = new TestOptions { IsPreview = isPreview };
+            var internalTestOpts = Deployment.InternalTestOptions.Create(opts);
+            internalTestOpts.ConfigureMonitor = m => new DependencyTrackingMonitor(m, deps);
+            var resources = await Deployment.TestAsync<T>(new MyMocks(), internalTestOpts);
+
+            return (Resources: resources, Dependencies: deps.ToImmutableDictionary());
         }
 
-        async Task<RegisterResourceResponse> IMonitor.RegisterResourceAsync(Resource resource, RegisterResourceRequest request)
+        public static void AssertDependsOn(ImmutableDictionary<string,ImmutableList<string>> dependencies,
+                                           string resourceName,
+                                           string dependentResourceName)
         {
-            var resp = await Inner.RegisterResourceAsync(resource, request);
-            Console.WriteLine($"resp.URN = {resp.Urn}; req.DEps = ${request.Dependencies}");
-            return resp;
+            string key = dependencies.Keys.Where(urn => urn.EndsWith(resourceName)).FirstOrDefault();
+            Assert.NotNull(key);
+            Assert.Contains(dependencies[key], urn => urn.EndsWith(dependentResourceName));
         }
 
-        async Task IMonitor.RegisterResourceOutputsAsync(RegisterResourceOutputsRequest request)
+        public static Resource NewResource(string name, int n, CustomResourceOptions? opts = null)
         {
-            await Inner.RegisterResourceOutputsAsync(request);
+            return new TestResource(name, new TestResourceArgs() { N = n }, opts);
+        }
+
+        public static Output<int> OutputDependingOnResource(Resource resource, bool isKnown)
+        {
+            var od = new OutputData<int>(ImmutableHashSet.Create(resource), 0, isKnown, false);
+            return new Output<int>(Task.FromResult(od));
+        }
+
+        class DependencyTrackingMonitor : IMockMonitor, IMonitor
+        {
+            private IMockMonitor Inner { get; }
+            private ConcurrentDictionary<string, ImmutableList<string>> Dependencies { get; }
+
+            public DependencyTrackingMonitor(IMockMonitor inner, ConcurrentDictionary<string, ImmutableList<string>> deps)
+            {
+                Inner = inner;
+                Dependencies = deps;
+            }
+
+            ImmutableList<Resource> IMockMonitor.Resources
+            {
+                get
+                {
+                    return Inner.Resources;
+                }
+            }
+
+            async Task<SupportsFeatureResponse> IMonitor.SupportsFeatureAsync(SupportsFeatureRequest request)
+            {
+                return await Inner.SupportsFeatureAsync(request);
+            }
+
+            async Task<InvokeResponse> IMonitor.InvokeAsync(InvokeRequest request)
+            {
+                return await Inner.InvokeAsync(request);
+            }
+
+            async Task<ReadResourceResponse> IMonitor.ReadResourceAsync(Resource resource, ReadResourceRequest request)
+            {
+                return await Inner.ReadResourceAsync(resource, request);
+            }
+
+            async Task<RegisterResourceResponse> IMonitor.RegisterResourceAsync(Resource resource, RegisterResourceRequest request)
+            {
+                var resp = await Inner.RegisterResourceAsync(resource, request);
+                Console.WriteLine($"Registered {resp.Urn}");
+                var deps = request.Dependencies.ToImmutableList();
+                Dependencies.AddOrUpdate(resp.Urn,
+                                         _ => request.Dependencies.Distinct().ToImmutableList(),
+                                         (_, oldDeps) => oldDeps.Concat(deps).Distinct().ToImmutableList());
+                return resp;
+            }
+
+            async Task IMonitor.RegisterResourceOutputsAsync(RegisterResourceOutputsRequest request)
+            {
+                await Inner.RegisterResourceOutputsAsync(request);
+            }
         }
     }
 }
-
-
-// func TestDependsOnInputs(t *testing.T) {
-// 	t.Run("known", func(t *testing.T) {
-// 		err := RunErr(func(ctx *Context) error {
-// 			depTracker := trackDependencies(ctx)
-
-// 			dep1 := newTestRes(t, ctx, "dep1")
-// 			dep2 := newTestRes(t, ctx, "dep2")
-
-// 			output := outputDependingOnResource(dep1, true).
-// 				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
-
-// 			res := newTestRes(t, ctx, "res", DependsOnInputs([]ResourceInput{output}))
-// 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
-// 			return nil
-// 		}, WithMocks("project", "stack", &testMonitor{}))
-// 		assert.NoError(t, err)
-// 	})
-// 	t.Run("unknown", func(t *testing.T) {
-// 		err := RunErr(func(ctx *Context) error {
-// 			depTracker := trackDependencies(ctx)
-
-// 			dep1 := newTestRes(t, ctx, "dep1")
-// 			dep2 := newTestRes(t, ctx, "dep2")
-// 			dep3 := newTestRes(t, ctx, "dep3")
-
-// 			out := outputDependingOnResource(dep1, true).
-// 				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
-
-// 			out2 := outputDependingOnResource(dep3, false).
-// 				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
-
-// 			res := newTestRes(t, ctx, "res", DependsOnInputs([]ResourceInput{out, out2}))
-// 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2, dep3)
-// 			return nil
-// 		}, WithMocks("project", "stack", &testMonitor{}))
-// 		assert.NoError(t, err)
-// 	})
-// }
-
-// func TestDependsOnOutput(t *testing.T) {
-// 	err := RunErr(func(ctx *Context) error {
-// 		depTracker := trackDependencies(ctx)
-
-// 		anyOut := func(value interface{}) AnyOutput {
-// 			out, resolve, _ := ctx.NewOutput()
-// 			resolve(value)
-// 			return out.(AnyOutput)
-// 		}
-
-// 		checkDeps := func(name string, dependsOn AnyOutput, expectedDeps ...Resource) {
-// 			res := newTestRes(t, ctx, name, DependsOnOutput(dependsOn))
-// 			assertHasDeps(t, ctx, depTracker, res, expectedDeps...)
-// 		}
-
-// 		dep1 := newTestRes(t, ctx, "dep1")
-// 		dep2 := newTestRes(t, ctx, "dep2")
-// 		dep3 := newTestRes(t, ctx, "dep3")
-
-// 		out := outputDependingOnResource(dep1, true).
-// 			ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
-
-// 		checkDeps("r1", anyOut([]Resource{dep1, dep2}), dep1, dep2)
-// 		checkDeps("r2", anyOut([]ResourceInput{out}), dep1, dep2)
-// 		checkDeps("r3", anyOut([]interface{}{out, dep3}), dep1, dep2, dep3)
-
-// 		dep4 := newTestRes(t, ctx, "dep4")
-// 		out4 := outputDependingOnResource(dep4, true).
-// 			ApplyT(func(int) AnyOutput { return anyOut([]Resource{dep1, dep2}) }).(AnyOutput)
-// 		checkDeps("r4", out4, dep1, dep2, dep4)
-
-// 		return nil
-// 	}, WithMocks("project", "stack", &testMonitor{}))
-// 	assert.NoError(t, err)
-// }
