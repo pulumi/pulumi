@@ -47,9 +47,8 @@ func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
 	return s.GetOutput(name).ApplyT(func(out interface{}) (float64, error) {
 		if numf, ok := out.(float64); ok {
 			return numf, nil
-		} else {
-			return 0.0, fmt.Errorf("failed to convert %T to float64", out)
 		}
+		return 0.0, fmt.Errorf("failed to convert %T to float64", out)
 	}).(Float64Output)
 }
 
