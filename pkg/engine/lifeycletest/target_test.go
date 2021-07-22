@@ -582,42 +582,46 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	p.Run(t, old)
 }
 
-var simpleTestDependencyGraphNames = []string{"A", "B", "C", "D", "E"}
+var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I"}
 
-func generateSimpleParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
+func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 	resTypeComponent := tokens.Type("pkgA:index:Component")
 	resTypeResource := tokens.Type("pkgA:index:Resource")
 
-	names := simpleTestDependencyGraphNames
+	names := componentBasedTestDependencyGraphNames
 
 	urnA := p.NewProviderURN("pkgA", names[0], "")
 	urnB := p.NewURN(resTypeComponent, names[1], "")
 	urnC := p.NewURN(resTypeResource, names[2], urnB)
 	urnD := p.NewURN(resTypeResource, names[3], urnB)
-	urnE := p.NewURN(resTypeResource, names[4], "")
+	urnE := p.NewURN(resTypeComponent, names[4], "")
+	urnF := p.NewURN(resTypeResource, names[5], urnE)
+	urnG := p.NewURN(resTypeResource, names[6], urnE)
+	urnH := p.NewURN(resTypeResource, names[7], "")
+	urnI := p.NewURN(resTypeResource, names[8], "")
 
-	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE}
+	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE, urnF, urnG, urnH, urnI}
 
-	newResource := func(urn, parent resource.URN, id resource.ID, provider string) *resource.State {
-		return &resource.State{
-			Type:     urn.Type(),
-			URN:      urn,
-			Custom:   urn.Type() != resTypeComponent,
-			Delete:   false,
-			ID:       id,
-			Provider: provider,
-			Parent:   parent,
-		}
+	newResource := func(urn, parent resource.URN, id resource.ID, provider string,
+		dependencies []resource.URN, propertyDeps propertyDependencies) *resource.State {
+		return newResource(urn, parent, id, provider, dependencies, propertyDeps,
+			nil, urn.Type() != resTypeComponent)
 	}
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
-			newResource(urnA, "", "0", ""),
-			newResource(urnB, "", "1", ""),
-			newResource(urnC, urnB, "2", string(urnA)+"::0"),
-			newResource(urnD, urnB, "3", ""),
-			newResource(urnE, "", "4", string(urnA)+"::0"),
+			newResource(urnA, "", "0", "", nil, nil),
+			newResource(urnB, "", "1", "", []resource.URN{urnE},
+				propertyDependencies{"A": []resource.URN{urnE}}),
+			newResource(urnC, urnB, "2", string(urnA)+"::0", nil, nil),
+			newResource(urnD, urnB, "3", "", nil, nil),
+			newResource(urnE, "", "4", "", nil, nil),
+			newResource(urnF, urnE, "5", string(urnA)+"::0", nil, nil),
+			newResource(urnG, urnE, "6", "", nil, nil),
+			newResource(urnH, "", "7", string(urnA)+"::0", nil, nil),
+			newResource(urnI, "", "8", "", []resource.URN{urnB},
+				propertyDependencies{"A": []resource.URN{urnB}}),
 		},
 	}
 
@@ -641,7 +645,11 @@ func generateSimpleParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 			register(urnB, "", "")
 			register(urnC, urnB, string(urnA)+"::"+string(idA))
 			register(urnD, urnB, "")
-			register(urnE, "", string(urnA)+"::"+string(idA))
+			register(urnE, "", "")
+			register(urnF, urnE, string(urnA)+"::"+string(idA))
+			register(urnG, urnE, "")
+			register(urnH, "", string(urnA)+"::"+string(idA))
+			register(urnI, "", "")
 
 			return nil
 		})
@@ -654,11 +662,15 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 		t, []string{"B"}, true, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {
 			// when deleting 'B' we expect C and D to be deleted
-			names := simpleTestDependencyGraphNames
+			names := componentBasedTestDependencyGraphNames
 			assert.Equal(t, map[resource.URN]bool{
 				pickURN(t, urns, names, "B"): true,
 				pickURN(t, urns, names, "C"): true,
 				pickURN(t, urns, names, "D"): true,
+				pickURN(t, urns, names, "E"): true,
+				pickURN(t, urns, names, "F"): true,
+				pickURN(t, urns, names, "G"): true,
+				pickURN(t, urns, names, "I"): true,
 			}, deleted)
 		})
 
@@ -679,7 +691,7 @@ func destroySpecificTargetsWithChildren(
 
 	p := &TestPlan{}
 
-	urns, old, program := generateSimpleParentedTestDependencyGraph(t, p)
+	urns, old, program := generateParentedTestDependencyGraph(t, p)
 
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
@@ -711,7 +723,7 @@ func destroySpecificTargetsWithChildren(
 
 	destroyTargets := []resource.URN{}
 	for _, target := range targets {
-		destroyTargets = append(destroyTargets, pickURN(t, urns, simpleTestDependencyGraphNames, target))
+		destroyTargets = append(destroyTargets, pickURN(t, urns, componentBasedTestDependencyGraphNames, target))
 	}
 
 	p.Options.DestroyTargets = destroyTargets
@@ -744,4 +756,27 @@ func destroySpecificTargetsWithChildren(
 	}}
 
 	p.Run(t, old)
+}
+
+func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
+	propertyDeps propertyDependencies, outputs resource.PropertyMap, custom bool) *resource.State {
+
+	inputs := resource.PropertyMap{}
+	for k := range propertyDeps {
+		inputs[k] = resource.NewStringProperty("foo")
+	}
+
+	return &resource.State{
+		Type:                 urn.Type(),
+		URN:                  urn,
+		Custom:               custom,
+		Delete:               false,
+		ID:                   id,
+		Inputs:               inputs,
+		Outputs:              outputs,
+		Dependencies:         dependencies,
+		PropertyDependencies: propertyDeps,
+		Provider:             provider,
+		Parent:               parent,
+	}
 }
