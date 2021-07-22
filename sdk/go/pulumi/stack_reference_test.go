@@ -64,6 +64,9 @@ func TestStackReference(t *testing.T) {
 		numi, _, _, _, err := await(ref1.GetIntOutput(String("numi")))
 		assert.NoError(t, err)
 		assert.Equal(t, int(outputs["numi"].(float64)), numi)
+		_, _, _, _, err = await(ref1.GetIntOutput(String("foo")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf("failed to convert %T to int", outputs["foo"]), err)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)
