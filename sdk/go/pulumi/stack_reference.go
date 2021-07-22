@@ -55,8 +55,12 @@ func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
 
 // GetIntOutput returns a stack output keyed by the given name as an IntOutput
 func (s *StackReference) GetIntOutput(name StringInput) IntOutput {
-	return s.GetFloat64Output(name).ApplyT(func(out float64) int {
-		return int(out)
+	return s.GetOutput(name).ApplyT(func(out interface{}) (int, error) {
+		numf, ok := out.(float64)
+		if !ok {
+			return 0, fmt.Errorf("failed to convert %T to int", out)
+		}
+		return int(numf), nil
 	}).(IntOutput)
 }
 
