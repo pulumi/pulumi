@@ -33,7 +33,7 @@ namespace Pulumi.Tests
             public TerminatesEarlyOnExceptionStack()
             {
                 Output.Create(Task.FromException<int>(new Exception("Deliberate test error")));
-                SlowOutput = Output.Create(Task.Delay(1000).ContinueWith(_ => 1));
+                SlowOutput = Output.Create(Task.Delay(60000).ContinueWith(_ => 1));
             }
         }
 
