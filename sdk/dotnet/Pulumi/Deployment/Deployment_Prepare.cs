@@ -154,7 +154,7 @@ namespace Pulumi
 
             var transitivelyReachableCustomResources = transitivelyReachableResources.Where(res => {
                 switch (res) {
-                    case CustomResource custom: return true;
+                    case CustomResource _: return true;
                     case ComponentResource component: return component.remote;
                     default: return false; // Unreachable
                 }

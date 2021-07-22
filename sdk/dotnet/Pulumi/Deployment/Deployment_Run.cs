@@ -29,7 +29,7 @@ namespace Pulumi
         /// <returns>A dictionary of stack outputs.</returns>
         public static Task<int> RunAsync(Func<IDictionary<string, object?>> func)
             => RunAsync(() => Task.FromResult(func()));
-        
+
         /// <summary>
         /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
@@ -37,7 +37,7 @@ namespace Pulumi
         public static Task<int> RunAsync(Func<Task> func)
             => RunAsync(async () =>
             {
-                await func();
+                await func().ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
             });
 
@@ -168,16 +168,39 @@ namespace Pulumi
 
         private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
         {
+            var result = await TryTestAsync(mocks, runAsync, options);
+            if (result.Exception != null)
+            {
+                throw result.Exception;
+            }
+            return result.Resources;
+        }
+
+        /// <summary>
+        /// Like `TestAsync`, but instead of throwing the errors
+        /// detected in the engine, returns them in the result tuple.
+        /// This enables tests to observe partially constructed
+        /// `Resources` vector in presence of deliberate errors.
+        /// </summary>
+        internal static async Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync(
+            IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
+        {
             var engine = new MockEngine();
             var monitor = new MockMonitor(mocks);
             await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, options), runAsync).ConfigureAwait(false);
-            return engine.Errors.Count switch
+            Exception? err = engine.Errors.Count switch
             {
-                1 => throw new RunException(engine.Errors.Single()),
-                var v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
-                _ => monitor.Resources.ToImmutableArray()
+                1 => new RunException(engine.Errors.Single()),
+                var v when v > 1 => new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                _ => null
             };
+            return (Resources: monitor.Resources.ToImmutableArray(), Exception: err);
         }
+
+        internal static Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync<TStack>(
+            IMocks mocks, TestOptions? options = null)
+            where TStack : Stack, new()
+            => TryTestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
 
         // this method *must* remain marked async
         // in order to protect the scope of the AsyncLocal Deployment.Instance we cannot elide the task (return it early)
