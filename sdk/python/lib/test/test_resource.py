@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Optional
+from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import pytest
 
@@ -21,12 +21,14 @@ from pulumi.runtime.proto import resource_pb2
 import pulumi
 
 
+T = TypeVar('T')
+
+
 @pulumi.runtime.test
 def test_depends_on_accepts_outputs(dep_tracker):
     dep1 = MockResource(name='dep1')
     dep2 = MockResource(name='dep2')
     out = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: dep2)
-
     res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=[out]))
 
     def check(urns):
@@ -39,24 +41,82 @@ def test_depends_on_accepts_outputs(dep_tracker):
 
 
 @pulumi.runtime.test
-def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker):
+def test_depends_on_outputs_works_in_presence_of_unknowns(dep_tracker_preview):
     dep1 = MockResource(name='dep1')
     dep2 = MockResource(name='dep2')
     dep3 = MockResource(name='dep3')
-    out = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: dep2)
-    out2 = output_depending_on_resource(dep3, isKnown=False).apply(lambda _: dep2)
-
-    res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=[out, out2]))
+    known = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: dep2)
+    unknown = output_depending_on_resource(dep2, isKnown=False).apply(lambda _: dep2)
+    res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=[known, unknown]))
 
     def check(urns):
-        (dep1_urn, dep2_urn, dep3_urn, res_urn) = urns
-        res_deps = dep_tracker.dependencies[res_urn]
+        (dep1_urn, res_urn) = urns
+        assert dep1_urn in dep_tracker_preview.dependencies[res_urn]
 
-        assert dep1_urn in res_deps, "Failed to propagate indirect dependencies via depends_on in presence of unknowns"
-        assert dep3_urn in res_deps, "Failed to propagate indirect dependencies via depends_on in presence of unknowns"
-        assert dep2_urn in res_deps, "Failed to propagate direct dependencies via depends_on in presence of unknowns"
+    return pulumi.Output.all(dep1.urn, res.urn).apply(check)
 
-    return pulumi.Output.all(dep1.urn, dep2.urn, dep3.urn, res.urn).apply(check)
+
+@pulumi.runtime.test
+def test_depends_on_respects_top_level_implicit_dependencies(dep_tracker):
+    dep1 = MockResource(name='dep1')
+    dep2 = MockResource(name='dep2')
+    out = output_depending_on_resource(dep1, isKnown=True).apply(lambda _: [dep2])
+    res = MockResource(name='res', opts=pulumi.ResourceOptions(depends_on=out))
+
+    def check(urns):
+        (dep1_urn, dep2_urn, res_urn) = urns
+        assert set(dep_tracker.dependencies[res_urn]) == set([dep1_urn, dep2_urn])
+
+    return pulumi.Output.all(dep1.urn, dep2.urn, res.urn).apply(check)
+
+
+def promise(x: T) -> Awaitable[T]:
+    fut: asyncio.Future[T] = asyncio.Future()
+    fut.set_result(x)
+    return fut
+
+
+def out(x: T) -> pulumi.Output[T]:
+    return pulumi.Output.from_input(x)
+
+
+def depends_on_variations(dep: pulumi.Resource) -> List[pulumi.ResourceOptions]:
+    return [
+        pulumi.ResourceOptions(depends_on=None),
+        #  pulumi.ResourceOptions(depends_on=dep),  # not type-checking?
+        pulumi.ResourceOptions(depends_on=[dep]),
+        # pulumi.ResourceOptions(depends_on=promise(dep)),  # not type-checking?
+        # pulumi.ResourceOptions(depends_on=out(dep)),  # not type-checking?
+        pulumi.ResourceOptions(depends_on=promise([dep])),
+        pulumi.ResourceOptions(depends_on=out([dep])),
+        pulumi.ResourceOptions(depends_on=promise([promise(dep)])),
+        pulumi.ResourceOptions(depends_on=promise([out(dep)])),
+        pulumi.ResourceOptions(depends_on=out([promise(dep)])),
+        pulumi.ResourceOptions(depends_on=out([out(dep)])),
+    ]
+
+
+@pulumi.runtime.test
+def test_depends_on_typing_variations(dep_tracker) -> None:
+    dep: pulumi.Resource = MockResource(name='dep1')
+
+    def check(i, urns):
+        (dep_urn, res_urn) = urns
+
+        if i == 0:
+            assert dep_tracker.dependencies[res_urn] == set([])
+        else:
+            assert dep_urn in dep_tracker.dependencies[res_urn]
+
+    def check_opts(i, name, opts):
+        res = MockResource(name, opts)
+        return pulumi.Output.all(dep.urn, res.urn).apply(lambda urns: check(i, urns))
+
+    return pulumi.Output.all([
+        check_opts(i, f'res{i}', opts)
+        for i, opts
+        in enumerate(depends_on_variations(dep))
+    ])
 
 
 def output_depending_on_resource(r: pulumi.Resource, isKnown: bool) -> pulumi.Output[None]:
@@ -73,10 +133,20 @@ def output_depending_on_resource(r: pulumi.Resource, isKnown: bool) -> pulumi.Ou
 
 @pytest.fixture
 def dep_tracker():
-    old_settings = settings.SETTINGS
+    for dt in build_dep_tracker():
+        yield dt
 
+
+@pytest.fixture
+def dep_tracker_preview():
+    for dt in build_dep_tracker(preview=True):
+        yield dt
+
+
+def build_dep_tracker(preview: bool=False):
+    old_settings = settings.SETTINGS
     mm = MinimalMocks()
-    mocks.set_mocks(mm, preview=True)
+    mocks.set_mocks(mm, preview=preview)
     dt = DependencyTrackingMonitorWrapper(settings.SETTINGS.monitor)
     settings.SETTINGS.monitor = dt
 
@@ -101,7 +171,7 @@ class DependencyTrackingMonitorWrapper:
         self.inner = inner
         self.dependencies = {}
 
-    def RegisterResource(self, req: resource_pb2.RegisterResourceRequest):
+    def RegisterResource(self, req: Any):
         resp = self.inner.RegisterResource(req)
         self.dependencies[resp.urn] = self.dependencies.get(resp.urn, set()) | set(req.dependencies)
         return resp
