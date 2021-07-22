@@ -1,4 +1,3 @@
-
 ### Improvements
   
 - [sdk/dotnet] - Fix async await warnings
@@ -15,7 +14,11 @@
 
 ### Bug Fixes
 
-- [sdk/go] - Fix target and replace options for the Automation API.
+- [sdk/dotnet] - Fix for race conditions in .NET SDK that used to
+  manifest as a `KeyNotFoundException` from `WhileRunningAsync`
+  [#7529](https://github.com/pulumi/pulumi/pull/7529)
+
+- [sdk/go] - Fix target and replace options for the Automation API
   [#7426](https://github.com/pulumi/pulumi/pull/7426)
 
 - [cli] - Don't escape special characters when printing JSON.
