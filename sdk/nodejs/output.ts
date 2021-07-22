@@ -25,7 +25,7 @@ import * as utils from "./utils";
  * value as well as the Resource the value came from.  This allows for a precise 'Resource
  * dependency graph' to be created, which properly tracks the relationship between resources.
  */
-class OutputImpl<T> implements OutputInstance<T> {
+export class OutputImpl<T> implements OutputInstance<T> {
     /**
      * A private field to help with RTTI that works in SxS scenarios.
      *

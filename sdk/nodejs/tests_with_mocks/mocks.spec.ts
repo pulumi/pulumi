@@ -16,6 +16,9 @@ import * as assert from "assert";
 import * as pulumi from "../index";
 import { CustomResourceOptions } from "../resource";
 import { MockCallArgs, MockResourceArgs } from "../runtime";
+import * as settings from "../runtime/settings";
+
+let DEPS: { [urn: string]: string[] } = {};
 
 pulumi.runtime.setMocks({
     call: (args: MockCallArgs) => {
@@ -49,10 +52,34 @@ pulumi.runtime.setMocks({
     },
 });
 
+function wrapMonitor(m: any): any {
+
+    var p = Object.create(m);
+
+    function registerResource(req: any, callback: (err: any, innerResponse: any) => void) {
+        m.registerResource(req, (err: any, resp: any) => {
+            if (err != null) {
+                callback(err, null);
+                return;
+            }
+            console.log("DEPS", resp.getUrn(), req.getDependenciesList());
+            DEPS[resp.getUrn()] = req.getDependenciesList();
+            callback(null, resp);
+        });
+    }
+
+    p.registerResource = registerResource;
+
+    return p;
+}
+
+settings.setMockOptions(wrapMonitor(settings.getMonitor()));
+
 class MyComponent extends pulumi.ComponentResource {
     outprop: pulumi.Output<string>;
     constructor(name: string, inprop: pulumi.Input<string>, opts?: pulumi.ComponentResourceOptions) {
         super("pkg:index:MyComponent", name, {}, opts);
+
         this.outprop = pulumi.output(inprop).apply(x => `output: ${x}`);
     }
 }
@@ -88,12 +115,16 @@ async function invoke(): Promise<number> {
     return value["out_value"];
 }
 
+
 const mycomponent = new MyComponent("mycomponent", "hello");
 const myinstance = new Instance("instance");
 const mycustom = new MyCustom("mycustom", { instance: myinstance });
 const invokeResult = invoke();
 
+const customInstance = new Instance("customInstance", {dependsOn: [mycomponent]});
+
 describe("mocks", function() {
+
     describe("component", function() {
         it("has expected output value", done => {
             mycomponent.outprop.apply(outprop => {
@@ -125,5 +156,15 @@ describe("mocks", function() {
                 done();
             });
         });
+    });
+
+    describe("dependsOn", function() {
+        it("does not ignore ComponentResource", done => {
+            customInstance.urn.apply(customInstanceUrn => {
+                assert.strictEqual(DEPS[customInstanceUrn],
+                                   ["urn:pulumi:stack::project::pkg:index:MyComponent::mycomponent"]);
+                done();
+            });
+        })
     });
 });
