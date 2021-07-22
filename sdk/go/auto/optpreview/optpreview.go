@@ -101,6 +101,27 @@ func UserAgent(agent string) Option {
 	})
 }
 
+// InitOnly creates the preview without starting it.
+func InitOnly() Option {
+	return optionFunc(func(opts *Options) {
+		opts.InitOnly = true
+	})
+}
+
+// UpdateID creates the preview without starting it.
+func UpdateID(updateID string) Option {
+	return optionFunc(func(opts *Options) {
+		opts.UpdateID = updateID
+	})
+}
+
+// SequenceStart sets the event sequence number (for use in conjunction with Stack.LogToUpdate)
+func SequenceStart(sequencedStart int) Option {
+	return optionFunc(func(opts *Options) {
+		opts.SequenceStart = sequencedStart
+	})
+}
+
 // Option is a parameter to be applied to a Stack.Preview() operation
 type Option interface {
 	ApplyOption(*Options)
@@ -133,6 +154,12 @@ type Options struct {
 	EventStreams []chan<- events.EngineEvent
 	// UserAgent specifies the agent responsible for the update, stored in backends as "environment.exec.agent"
 	UserAgent string
+	// InitOnly creates the preview without starting it.
+	InitOnly bool
+	// UpdateID attaches the operation to a pre-existing update identifier (created via InitOnly)
+	UpdateID string
+	// SequenceStart sets the event sequence number (for use in conjunction with Stack.LogToUpdate)
+	SequenceStart int
 }
 
 type optionFunc func(*Options)

@@ -25,6 +25,7 @@ package apitype
 // the update successfully completes.
 type CancelEvent struct{}
 
+// TODO - why do these not render in the pulumi console?
 // StdoutEngineEvent is emitted whenever a generic message is written, for example warnings
 // from the pulumi CLI itself. Less common that DiagnosticEvent
 type StdoutEngineEvent struct {

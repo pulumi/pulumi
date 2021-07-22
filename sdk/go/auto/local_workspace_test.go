@@ -121,6 +121,120 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
 }
 
+func TestTwoPhaseUpdate(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+	// preview
+	identifier, err := s.CreateUpdate(ctx, apitype.PreviewUpdate)
+	if err != nil {
+		t.Errorf("failed to create update, err: %v", err)
+		t.FailNow()
+	}
+	t.Log(fmt.Printf("%v%v\n", identifier.UpdateID, identifier))
+	sequence := 0
+	err = s.LogToUpdate(ctx, identifier.UpdateID, apitype.PreviewUpdate, sequence, "hello friends")
+	if err != nil {
+		t.Errorf("failed to log, err: %v", err)
+		t.FailNow()
+	}
+	sequence++
+	_, err = s.Preview(ctx, optpreview.UpdateID(identifier.UpdateID), optpreview.SequenceStart(sequence))
+	if err != nil {
+		t.Errorf("failed to run attached preview, err: %v", err)
+		t.FailNow()
+	}
+
+	// update
+	identifier, err = s.CreateUpdate(ctx, apitype.UpdateUpdate)
+	if err != nil {
+		t.Errorf("failed to create update, err: %v", err)
+		t.FailNow()
+	}
+	t.Log(fmt.Printf("%v%v\n", identifier.UpdateID, identifier))
+	sequence = 0
+	err = s.LogToUpdate(ctx, identifier.UpdateID, apitype.UpdateUpdate, sequence, "hello friends")
+	if err != nil {
+		t.Errorf("failed to log, err: %v", err)
+		t.FailNow()
+	}
+	sequence++
+	_, err = s.Up(ctx, optup.UpdateID(identifier.UpdateID), optup.SequenceStart(sequence))
+	if err != nil {
+		t.Errorf("failed to run attached update, err: %v", err)
+		t.FailNow()
+	}
+
+	// refresh
+	identifier, err = s.CreateUpdate(ctx, apitype.RefreshUpdate)
+	if err != nil {
+		t.Errorf("failed to create refresh, err: %v", err)
+		t.FailNow()
+	}
+	t.Log(fmt.Printf("%v%v\n", identifier.UpdateID, identifier))
+	sequence = 0
+	err = s.LogToUpdate(ctx, identifier.UpdateID, apitype.RefreshUpdate, sequence, "hello friends")
+	if err != nil {
+		t.Errorf("failed to log, err: %v", err)
+		t.FailNow()
+	}
+	sequence++
+	_, err = s.Refresh(ctx, optrefresh.UpdateID(identifier.UpdateID), optrefresh.SequenceStart(sequence))
+	if err != nil {
+		t.Errorf("failed to run attached refresh, err: %v", err)
+		t.FailNow()
+	}
+
+	// destroy
+	identifier, err = s.CreateUpdate(ctx, apitype.DestroyUpdate)
+	if err != nil {
+		t.Errorf("failed to create destroy, err: %v", err)
+		t.FailNow()
+	}
+	t.Log(fmt.Printf("%v%v\n", identifier.UpdateID, identifier))
+	sequence = 0
+	err = s.LogToUpdate(ctx, identifier.UpdateID, apitype.DestroyUpdate, sequence, "hello friends")
+	if err != nil {
+		t.Errorf("failed to log, err: %v", err)
+		t.FailNow()
+	}
+	sequence++
+	_, err = s.Destroy(ctx, optdestroy.UpdateID(identifier.UpdateID), optdestroy.SequenceStart(sequence))
+	if err != nil {
+		t.Errorf("failed to run attached destroy, err: %v", err)
+		t.FailNow()
+	}
+}
+
 func TestNewStackLocalSource(t *testing.T) {
 	ctx := context.Background()
 	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
@@ -2203,7 +2317,7 @@ func BenchmarkBulkSetConfigSecret(b *testing.B) {
 }
 
 func getTestOrg() string {
-	testOrg := "pulumi-test"
+	testOrg := "evan"
 	if _, set := os.LookupEnv("PULUMI_TEST_ORG"); set {
 		testOrg = os.Getenv("PULUMI_TEST_ORG")
 	}

@@ -204,6 +204,69 @@ func (s *Stack) Workspace() Workspace {
 	return s.workspace
 }
 
+type UpdateIdentifier struct {
+	Owner      string
+	Project    string
+	Stack      string
+	UpdateKind apitype.UpdateKind
+	UpdateID   string
+}
+
+func (s *Stack) CreateUpdate(ctx context.Context, updateKind apitype.UpdateKind) (UpdateIdentifier, error) {
+	var res UpdateIdentifier
+
+	var out string
+
+	switch updateKind {
+	case apitype.UpdateUpdate:
+		upRes, err := s.Up(ctx, optup.InitOnly())
+		if err != nil {
+			return res, err
+		}
+		out = upRes.StdOut
+	case apitype.PreviewUpdate:
+		preRes, err := s.Preview(ctx, optpreview.InitOnly())
+		if err != nil {
+			return res, err
+		}
+		out = preRes.StdOut
+	case apitype.RefreshUpdate:
+		refRes, err := s.Refresh(ctx, optrefresh.InitOnly())
+		if err != nil {
+			return res, err
+		}
+		out = refRes.StdOut
+	case apitype.DestroyUpdate:
+		desRes, err := s.Destroy(ctx, optdestroy.InitOnly())
+		if err != nil {
+			return res, err
+		}
+		out = desRes.StdOut
+	default:
+		return res, errors.Errorf("unsupported update kind: %s", updateKind)
+	}
+
+	err := json.Unmarshal([]byte(out), &res)
+
+	return res, err
+}
+
+func (s *Stack) LogToUpdate(ctx context.Context, updateID string, updateKind apitype.UpdateKind, sequenceNumber int, message string) error {
+	args := []string{
+		"log",
+		updateID,
+		string(updateKind),
+		fmt.Sprintf("%d", sequenceNumber),
+		message,
+	}
+
+	stdout, stderr, code, err := s.runPulumiCmdSync(ctx, nil /* additionalOutput */, args...)
+	if err != nil {
+		return newAutoError(errors.Wrap(err, "failed to log"), stdout, stderr, code)
+	}
+	return nil
+}
+
 // Preview preforms a dry-run update to a stack, returning pending changes.
 // https://www.pulumi.com/docs/reference/cli/pulumi_preview/
 func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (PreviewResult, error) {
@@ -240,6 +303,15 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 	}
 	if preOpts.UserAgent != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", preOpts.UserAgent))
+	}
+	if preOpts.InitOnly {
+		sharedArgs = append(sharedArgs, "--init-only")
+	}
+	if preOpts.UpdateID != "" {
+		sharedArgs = append(sharedArgs, "--update-id", preOpts.UpdateID)
+	}
+	if preOpts.SequenceStart > 0 {
+		sharedArgs = append(sharedArgs, "--sequence-start", fmt.Sprintf("%d", preOpts.SequenceStart))
 	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"preview"}
@@ -285,16 +357,18 @@ func (s *Stack) Preview(ctx context.Context, opts ...optpreview.Option) (Preview
 		return res, newAutoError(errors.Wrap(err, "failed to run preview"), stdout, stderr, code)
 	}
 
-	if len(summaryEvents) == 0 {
-		return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
-	}
-	if len(summaryEvents) > 1 {
-		return res, newAutoError(errors.New("got multiple preview summaries"), stdout, stderr, code)
+	if !preOpts.InitOnly {
+		if len(summaryEvents) == 0 {
+			return res, newAutoError(errors.New("failed to get preview summary"), stdout, stderr, code)
+		}
+		if len(summaryEvents) > 1 {
+			return res, newAutoError(errors.New("got multiple preview summaries"), stdout, stderr, code)
+		}
+		res.ChangeSummary = summaryEvents[0].ResourceChanges
 	}
 
 	res.StdOut = stdout
 	res.StdErr = stderr
-	res.ChangeSummary = summaryEvents[0].ResourceChanges
 
 	return res, nil
 }
@@ -336,6 +410,15 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 	if upOpts.UserAgent != "" {
 		sharedArgs = append(sharedArgs, fmt.Sprintf("--exec-agent=%s", upOpts.UserAgent))
 	}
+	if upOpts.InitOnly {
+		sharedArgs = append(sharedArgs, "--init-only")
+	}
+	if upOpts.UpdateID != "" {
+		sharedArgs = append(sharedArgs, "--update-id", upOpts.UpdateID)
+	}
+	if upOpts.SequenceStart > 0 {
+		sharedArgs = append(sharedArgs, "--sequence-start", fmt.Sprintf("%d", upOpts.SequenceStart))
+	}
 
 	kind, args := constant.ExecKindAutoLocal, []string{"up", "--yes", "--skip-preview"}
 	if program := s.Workspace().Program(); program != nil {
@@ -365,24 +448,27 @@ func (s *Stack) Up(ctx context.Context, opts ...optup.Option) (UpResult, error) 
 		return res, newAutoError(errors.Wrap(err, "failed to run update"), stdout, stderr, code)
 	}
 
-	outs, err := s.Outputs(ctx)
-	if err != nil {
-		return res, err
-	}
-
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
-	if err != nil {
-		return res, err
-	}
-
 	res = UpResult{
-		Outputs: outs,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		StdOut: stdout,
+		StdErr: stderr,
 	}
 
-	if len(history) > 0 {
-		res.Summary = history[0]
+	if !upOpts.InitOnly {
+		outs, err := s.Outputs(ctx)
+		if err != nil {
+			return res, err
+		}
+
+		res.Outputs = outs
+
+		history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+		if err != nil {
+			return res, err
+		}
+
+		if len(history) > 0 {
+			res.Summary = history[0]
+		}
 	}
 
 	return res, nil
@@ -422,6 +508,15 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		execKind = constant.ExecKindAutoInline
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
+	if refreshOpts.InitOnly {
+		args = append(args, "--init-only")
+	}
+	if refreshOpts.UpdateID != "" {
+		args = append(args, "--update-id", refreshOpts.UpdateID)
+	}
+	if refreshOpts.SequenceStart > 0 {
+		args = append(args, "--sequence-start", fmt.Sprintf("%d", refreshOpts.SequenceStart))
+	}
 
 	if len(refreshOpts.EventStreams) > 0 {
 		eventChannels := refreshOpts.EventStreams
@@ -438,20 +533,22 @@ func (s *Stack) Refresh(ctx context.Context, opts ...optrefresh.Option) (Refresh
 		return res, newAutoError(errors.Wrap(err, "failed to refresh stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
-	if err != nil {
-		return res, errors.Wrap(err, "failed to refresh stack")
-	}
-
-	var summary UpdateSummary
-	if len(history) > 0 {
-		summary = history[0]
-	}
-
 	res = RefreshResult{
-		Summary: summary,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		StdOut: stdout,
+		StdErr: stderr,
+	}
+
+	if !refreshOpts.InitOnly {
+		history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to refresh stack")
+		}
+
+		var summary UpdateSummary
+		if len(history) > 0 {
+			summary = history[0]
+		}
+		res.Summary = summary
 	}
 
 	return res, nil
@@ -490,6 +587,15 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		execKind = constant.ExecKindAutoInline
 	}
 	args = append(args, fmt.Sprintf("--exec-kind=%s", execKind))
+	if destroyOpts.InitOnly {
+		args = append(args, "--init-only")
+	}
+	if destroyOpts.UpdateID != "" {
+		args = append(args, "--update-id", destroyOpts.UpdateID)
+	}
+	if destroyOpts.SequenceStart > 0 {
+		args = append(args, "--sequence-start", fmt.Sprintf("%d", destroyOpts.SequenceStart))
+	}
 
 	if len(destroyOpts.EventStreams) > 0 {
 		eventChannels := destroyOpts.EventStreams
@@ -506,20 +612,22 @@ func (s *Stack) Destroy(ctx context.Context, opts ...optdestroy.Option) (Destroy
 		return res, newAutoError(errors.Wrap(err, "failed to destroy stack"), stdout, stderr, code)
 	}
 
-	history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
-	if err != nil {
-		return res, errors.Wrap(err, "failed to destroy stack")
-	}
-
-	var summary UpdateSummary
-	if len(history) > 0 {
-		summary = history[0]
-	}
-
 	res = DestroyResult{
-		Summary: summary,
-		StdOut:  stdout,
-		StdErr:  stderr,
+		StdOut: stdout,
+		StdErr: stderr,
+	}
+
+	if !destroyOpts.InitOnly {
+		history, err := s.History(ctx, 1 /*pageSize*/, 1 /*page*/)
+		if err != nil {
+			return res, errors.Wrap(err, "failed to destroy stack")
+		}
+
+		var summary UpdateSummary
+		if len(history) > 0 {
+			summary = history[0]
+		}
+		res.Summary = summary
 	}
 
 	return res, nil
