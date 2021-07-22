@@ -259,9 +259,10 @@ func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
 		if input, ok := et.(*schema.InputType); ok {
 			switch input.ElementType.(type) {
 			case *schema.ArrayType, *schema.MapType:
-				// do not replace Input<{Array,Map}> with {Array,Map}: typeString needs to see the enclosing input type in order to
-				// generate correct type names.
-				elements[i] = input
+				// Instead of just replacing Input<{Array,Map}<T>> with {Array,Map}<T>, replace it with
+				// {Array,Map}<Plain(T)>. This matches the behavior of typeString when presented with an
+				// Input<{Array,Map}<T>>.
+				elements[i] = codegen.PlainType(input.ElementType)
 			default:
 				elements[i] = input.ElementType
 			}

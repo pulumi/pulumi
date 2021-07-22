@@ -541,7 +541,7 @@
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputUnion<Pulumi.Types.ObjectArgs, InputList<System.Text.Json.JsonElement>>?",
+                  "input": "InputUnion<Pulumi.Types.ObjectArgs, ImmutableArray<System.Text.Json.JsonElement>>?",
                   "plain": "Union<Pulumi.Types.Object, ImmutableArray<System.Text.Json.JsonElement>>?"
                 },
                 "go": {
