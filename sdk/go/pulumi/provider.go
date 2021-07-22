@@ -88,14 +88,11 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 	providers := make(map[string]ProviderResource, len(req.GetProviders()))
 	for pkg, ref := range req.GetProviders() {
-		// Parse the URN and ID out of the provider reference.
-		lastSep := strings.LastIndex(ref, "::")
-		if lastSep == -1 {
-			return nil, errors.Errorf("expected '::' in provider reference %s", ref)
+		resource, err := createProviderResource(pulumiCtx, ref)
+		if err != nil {
+			return nil, err
 		}
-		urn := ref[0:lastSep]
-		id := ref[lastSep+2:]
-		providers[pkg] = pulumiCtx.newDependencyProviderResource(URN(urn), ID(id))
+		providers[pkg] = resource
 	}
 	var parent Resource
 	if req.GetParent() != "" {
@@ -162,6 +159,29 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 		State:             rpcProps,
 		StateDependencies: rpcPropertyDeps,
 	}, nil
+}
+
+// createProviderResource rehydrates the provider reference into a registered ProviderResource,
+// otherwise it returns an instance of DependencyProviderResource.
+func createProviderResource(ctx *Context, ref string) (ProviderResource, error) {
+	// Parse the URN and ID out of the provider reference.
+	lastSep := strings.LastIndex(ref, "::")
+	if lastSep == -1 {
+		return nil, errors.Errorf("expected '::' in provider reference %s", ref)
+	}
+	urn := ref[0:lastSep]
+	id := ref[lastSep+2:]
+
+	// Unmarshal the provider resource as a resource reference so we get back
+	// the intended provider type with its state, if it's been registered.
+	resource, err := unmarshalResourceReference(ctx, resource.ResourceReference{
+		URN: resource.URN(urn),
+		ID:  resource.NewStringProperty(id),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resource.(ProviderResource), nil
 }
 
 type constructInput struct {

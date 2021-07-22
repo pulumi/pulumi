@@ -733,6 +733,34 @@ func TestConstructMethodsPython(t *testing.T) {
 	}
 }
 
+func TestConstructProviderPython(t *testing.T) {
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+	}{
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: []string{pathEnv},
+				Dir: filepath.Join(testDir, "python"),
+				Dependencies: []string{
+					filepath.Join("..", "..", "sdk", "python", "env", "src"),
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
 func TestGetResourcePython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")
