@@ -477,18 +477,7 @@ def contains_unknowns(val: Any) -> bool:
 def _is_prompt(value: Input[T]) -> bool:
     """Checks if the value is prompty available."""
 
-    # the checks follow the structure of `Output.from_input`.
-
-    if isawaitable(value):
-        return False
-
-    if _types.is_input_type(type(value)):
-        return False
-
-    if isinstance(value, Output):
-        return False
-
-    return True
+    return not isawaitable(value) and not isinstance(value, Output)
 
 
 async def _gather_from_dict(tasks: dict) -> dict:
