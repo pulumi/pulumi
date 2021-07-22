@@ -364,7 +364,7 @@ func (ctx *Context) Call(tok string, args Input, output Output, self Resource, o
 		// If we have a value for self, add it to the arguments.
 		if self != nil {
 			var deps []URN
-			resolvedSelf, selfDeps, err := marshalInput(self, nil, true)
+			resolvedSelf, selfDeps, err := marshalInput(self, reflect.TypeOf(self), true)
 			if err != nil {
 				return nil, fmt.Errorf("marshaling __self__: %w", err)
 			}
