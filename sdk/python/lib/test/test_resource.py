@@ -95,7 +95,7 @@ class MinimalMocks(pulumi.runtime.Mocks):
         return {}
 
 
-class DependencyTrackingMonitorWrapper(object):
+class DependencyTrackingMonitorWrapper:
 
     def __init__(self, inner):
         self.inner = inner
