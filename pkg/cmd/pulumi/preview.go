@@ -57,6 +57,7 @@ func newPreviewCmd() *cobra.Command {
 	var targetDependents bool
 	var initOnly bool
 	var updateID string
+	var sequenceStart int
 
 	var cmd = &cobra.Command{
 		Use:        "preview",
@@ -182,7 +183,7 @@ func newPreviewCmd() *cobra.Command {
 				Display: displayOpts,
 			}
 
-			changes, res := s.Preview(commandContext(), backend.UpdateOperation{
+			op := backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -192,7 +193,13 @@ func newPreviewCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 				InitOnly:           initOnly,
 				UpdateID:           updateID,
-			})
+			}
+
+			if sequenceStart > 0 {
+				op.SequenceStart = &sequenceStart
+			}
+
+			changes, res := s.Preview(commandContext(), op)
 
 			switch {
 			case res != nil:
@@ -307,6 +314,9 @@ func newPreviewCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("update-id")
+	cmd.PersistentFlags().IntVar(&sequenceStart, "sequence-start", 0, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("sequence-start")
 
 	return cmd
 }

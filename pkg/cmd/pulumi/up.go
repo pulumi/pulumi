@@ -76,6 +76,7 @@ func newUpCmd() *cobra.Command {
 	var targetDependents bool
 	var initOnly bool
 	var updateID string
+	var sequenceStart int
 
 	// up implementation used when the source of the Pulumi program is in the current working directory.
 	upWorkingDirectory := func(opts backend.UpdateOptions) result.Result {
@@ -138,7 +139,7 @@ func newUpCmd() *cobra.Command {
 			TargetDependents:          targetDependents,
 		}
 
-		changes, res := s.Update(commandContext(), backend.UpdateOperation{
+		op := backend.UpdateOperation{
 			Proj:               proj,
 			Root:               root,
 			M:                  m,
@@ -148,7 +149,13 @@ func newUpCmd() *cobra.Command {
 			Scopes:             cancellationScopes,
 			InitOnly:           initOnly,
 			UpdateID:           updateID,
-		})
+		}
+
+		if sequenceStart > 0 {
+			op.SequenceStart = &sequenceStart
+		}
+
+		changes, res := s.Update(commandContext(), op)
 		switch {
 		case res != nil && res.Error() == context.Canceled:
 			return result.FromError(errors.New("update cancelled"))
@@ -515,6 +522,9 @@ func newUpCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("update-id")
+	cmd.PersistentFlags().IntVar(&sequenceStart, "sequence-start", 0, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("sequence-start")
 
 	return cmd
 }

@@ -53,6 +53,7 @@ func newDestroyCmd() *cobra.Command {
 	var targetDependents bool
 	var initOnly bool
 	var updateID string
+	var sequenceStart int
 
 	var cmd = &cobra.Command{
 		Use:        "destroy",
@@ -160,7 +161,7 @@ func newDestroyCmd() *cobra.Command {
 				DisableResourceReferences: disableResourceReferences(),
 			}
 
-			_, res := s.Destroy(commandContext(), backend.UpdateOperation{
+			op := backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -170,7 +171,13 @@ func newDestroyCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 				InitOnly:           initOnly,
 				UpdateID:           updateID,
-			})
+			}
+
+			if sequenceStart > 0 {
+				op.SequenceStart = &sequenceStart
+			}
+
+			_, res := s.Destroy(commandContext(), op)
 
 			if res == nil && len(*targets) == 0 && !opts.Display.JSONDisplay {
 				fmt.Printf("The resources in the stack have been deleted, but the history and configuration "+
@@ -257,6 +264,9 @@ func newDestroyCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("update-id")
+	cmd.PersistentFlags().IntVar(&sequenceStart, "sequence-start", 0, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("sequence-start")
 
 	return cmd
 }

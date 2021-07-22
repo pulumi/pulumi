@@ -210,7 +210,7 @@ func (u *cloudUpdate) RecordAndDisplayEvents(
 		displayEvents, displayEventsDone, opts, isPreview)
 	go persistEngineEvents(
 		u, opts.Debug, /* persist debug events */
-		persistEvents, persistEventsDone)
+		persistEvents, persistEventsDone, op.SequenceStart)
 
 	for e := range events {
 		displayEvents <- e
@@ -316,7 +316,7 @@ type engineEventBatch struct {
 // Pulumi Service. This is the data that powers the logs display.
 func persistEngineEvents(
 	update *cloudUpdate, persistDebugEvents bool,
-	events <-chan engine.Event, done chan<- bool) {
+	events <-chan engine.Event, done chan<- bool, sequenceStart *int) {
 	// A single update can emit hundreds, if not thousands, or tens of thousands of
 	// engine events. We transmit engine events in large batches to reduce the overhead
 	// associated with each HTTP request to the service. We also send multiple HTTP
@@ -347,6 +347,9 @@ func persistEngineEvents(
 	// ensure events can be reconstructured in the same order they were emitted. (And not
 	// out of order from parallel writes and/or network delays.)
 	eventIdx := 0
+	if sequenceStart != nil {
+		eventIdx = *sequenceStart
+	}
 
 	// As we identify batches of engine events to transmit, we put them into a channel.
 	// This will allow us to issue HTTP requests concurrently, but also limit the maximum

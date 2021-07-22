@@ -50,6 +50,7 @@ func newRefreshCmd() *cobra.Command {
 	var targets *[]string
 	var initOnly bool
 	var updateID string
+	var sequenceStart int
 
 	var cmd = &cobra.Command{
 		Use:   "refresh",
@@ -155,7 +156,7 @@ func newRefreshCmd() *cobra.Command {
 				RefreshTargets:            targetUrns,
 			}
 
-			changes, res := s.Refresh(commandContext(), backend.UpdateOperation{
+			op := backend.UpdateOperation{
 				Proj:               proj,
 				Root:               root,
 				M:                  m,
@@ -165,7 +166,13 @@ func newRefreshCmd() *cobra.Command {
 				Scopes:             cancellationScopes,
 				InitOnly:           initOnly,
 				UpdateID:           updateID,
-			})
+			}
+
+			if sequenceStart > 0 {
+				op.SequenceStart = &sequenceStart
+			}
+
+			changes, res := s.Refresh(commandContext(), op)
 
 			switch {
 			case res != nil && res.Error() == context.Canceled:
@@ -247,6 +254,9 @@ func newRefreshCmd() *cobra.Command {
 	cmd.PersistentFlags().StringVar(&updateID, "update-id", "", "")
 	// ignore err, only happens if flag does not exist
 	_ = cmd.PersistentFlags().MarkHidden("update-id")
+	cmd.PersistentFlags().IntVar(&sequenceStart, "sequence-start", 0, "")
+	// ignore err, only happens if flag does not exist
+	_ = cmd.PersistentFlags().MarkHidden("sequence-start")
 
 	return cmd
 }

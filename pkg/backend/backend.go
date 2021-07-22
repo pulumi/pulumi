@@ -218,6 +218,7 @@ type UpdateOperation struct {
 	Scopes             CancellationScopeSource
 	InitOnly           bool   // if true, "allocate" an update ID but do not preform the actual update
 	UpdateID           string // specifies a pre-allocated updateID to attach this operation to
+	SequenceStart      *int   // optional starting point for the event sequence, enables logging pre-update (builds)
 }
 
 // QueryOperation configures a query operation.

@@ -398,8 +398,10 @@ func (b *cloudBackend) Log(ctx context.Context, stackRef backend.StackReference,
 			{
 				Sequence:  sequenceNumber,
 				Timestamp: int(time.Now().Unix()),
-				StdoutEvent: &apitype.StdoutEngineEvent{
-					Message: message,
+				DiagnosticEvent: &apitype.DiagnosticEvent{
+					Message:  message,
+					Color:    "always",
+					Severity: "info",
 				},
 			},
 		},
