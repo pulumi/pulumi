@@ -791,11 +791,10 @@ func listConfig(stack backend.Stack, showSecrets bool, jsonOut bool) error {
 
 			configValues[key.String()] = entry
 		}
-		out, err := json.MarshalIndent(configValues, "", "  ")
+		err := printJSON(configValues)
 		if err != nil {
 			return err
 		}
-		fmt.Println(string(out))
 	} else {
 		rows := []cmdutil.TableRow{}
 		for _, key := range keys {
