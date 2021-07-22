@@ -306,7 +306,7 @@ class Server implements grpc.UntypedServiceImplementation {
             const rpcProviders = req.getProvidersMap();
             if (rpcProviders) {
                 for (const [pkg, ref] of rpcProviders.entries()) {
-                    providers[pkg] = new resource.DependencyProviderResource(ref);
+                    providers[pkg] = createProviderResource(ref);
                 }
             }
             const opts: resource.ComponentResourceOptions = {
@@ -597,4 +597,27 @@ export async function main(provider: Provider, args: string[]) {
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
     console.log(port);
+}
+
+/**
+ * Rehydrate the provider reference into a registered ProviderResource,
+ * otherwise return an instance of DependencyProviderResource.
+ */
+function createProviderResource(ref: string): resource.ProviderResource {
+    const version = "";
+
+    const [urn, _] = resource.parseResourceReference(ref);
+    const urnParts = urn.split("::");
+    const qualifiedType = urnParts[2];
+    const urnName = urnParts[3];
+
+    const type = qualifiedType.split("$").pop()!;
+    const typeParts = type.split(":");
+    const typName = typeParts.length > 2 ? typeParts[2] : "";
+
+    const resourcePackage = runtime.getResourcePackage(typName, version);
+    if (resourcePackage) {
+        return resourcePackage.constructProvider(urnName, type, urn);
+    }
+    return new resource.DependencyProviderResource(ref);
 }

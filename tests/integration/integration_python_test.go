@@ -739,6 +739,9 @@ func TestConstructProviderPython(t *testing.T) {
 		componentDir string
 	}{
 		{
+			componentDir: "testcomponent",
+		},
+		{
 			componentDir: "testcomponent-go",
 		},
 	}
