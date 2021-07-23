@@ -2,6 +2,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
 
 using Microsoft.Extensions.Logging;
@@ -42,7 +43,22 @@ namespace Pulumi.Tests
         {
             var resources = await Deployment.TestAsync<LogsTaskDescriptionsStack>(new EmptyMocks());
             var stack = (LogsTaskDescriptionsStack)resources[0];
-            var messages = await stack.Logs;
+            var logger = await stack.Logger;
+
+            // Logs are fire-and-forget, and we poll here until it propagates.
+            var pollAttempt = 0;
+            while (logger.Messages.Count() < 4)
+            {
+                await Task.Delay(10);
+                pollAttempt++;
+                if (pollAttempt == 20)
+                {
+                    break;
+                }
+            }
+
+            var messages = logger.Messages;
+
             for (var i = 0; i < 2; i++)
             {
                 Assert.Contains($"Debug 0 Registering task: task{i}", messages);
@@ -52,7 +68,7 @@ namespace Pulumi.Tests
 
         class LogsTaskDescriptionsStack : Stack
         {
-            public Task<IEnumerable<string>> Logs { get; private set; }
+            public Task<InMemoryLogger> Logger { get; private set; }
 
             public LogsTaskDescriptionsStack()
             {
@@ -65,7 +81,7 @@ namespace Pulumi.Tests
                     runner.RegisterTask($"task{i}", Task.Delay(100 + i));
                 }
 
-                this.Logs = runner.WhileRunningAsync().ContinueWith(_ => logger.Messages);
+                this.Logger = runner.WhileRunningAsync().ContinueWith(_ => logger);
             }
         }
 
