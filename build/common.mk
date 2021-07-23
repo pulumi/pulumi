@@ -110,6 +110,7 @@ PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
+RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
 GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" python3 ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
 GO_TEST = PATH="$(PULUMI_BIN):$(PATH)" python3 $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM}
 GOPROXY = 'https://proxy.golang.org'

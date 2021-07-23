@@ -37,7 +37,7 @@ install:: build install_plugin
 
 dotnet_test:: install
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	dotnet test /p:Version=${DOTNET_VERSION}
+	$(RUN_TESTSUITE) dotnet-test dotnet test /p:Version=${DOTNET_VERSION}
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}

@@ -2,19 +2,13 @@
 Wraps `go test`.
 """
 
+from test_subsets import TEST_SUBSETS
 import os
 import pathlib
 import shutil
 import subprocess as sp
 import sys
 import uuid
-
-
-TEST_SUBSETS = {
-    'integration': ['github.com/pulumi/pulumi/tests/integration'],
-    'lifecycletest': ['github.com/pulumi/pulumi/pkg/v3/engine/lifeycletest'],
-    'auto': ['github.com/pulumi/pulumi/sdk/v3/go/auto'],
-}
 
 
 def options(options_and_packages):
