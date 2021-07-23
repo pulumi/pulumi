@@ -198,10 +198,11 @@ jobs:
         with:
           files: test-results/**/*.xml
       - name: Summarize Test Time by Package
-        run: goteststats -statistic pkg-time test-results/*.json
+        run: |
+          touch test-results/empty.json # otherwise goteststats fails below when no files match
+          goteststats -statistic pkg-time test-results/*.json
       - name: Summarize Test Times by Indivudal Test
         run: |
-          touch test-results/empty.json # otherwise goteststats fails below
           goteststats -statistic test-time test-results/*.json | head -n 100
 
 
