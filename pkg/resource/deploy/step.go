@@ -942,6 +942,12 @@ func (s *ImportStep) Apply(preview bool) (resource.Status, StepCompleteFunc, err
 		return rst, nil, errors.New("one or more inputs failed to validate")
 	}
 	s.new.Inputs = inputs
+	// copy any default input values not present in the outputs
+	for k, v := range inputs {
+		if _, ok := s.new.Outputs[k]; !ok && k != "__defaults" {
+			s.new.Outputs[k] = v
+		}
+	}
 
 	// Diff the user inputs against the provider inputs. If there are any differences, fail the import unless this step
 	// is from an import deployment.
