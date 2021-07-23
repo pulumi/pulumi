@@ -194,7 +194,7 @@ jobs:
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Publish Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1
-        if: always()
+        if: matrix.platform == 'ubuntu-latest'
         with:
           files: test-results/**/*.xml
       - name: Summarize Test Time by Package
