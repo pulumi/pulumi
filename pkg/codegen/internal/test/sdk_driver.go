@@ -1,6 +1,7 @@
 package test
 
 import (
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -60,6 +61,14 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with methods",
 		Skip:        codegen.NewStringSet("docs", "dotnet"),
 	},
+	{
+		Directory:   "simple-yaml-schema",
+		Description: "Simple schema encoded using YAML",
+	},
+	{
+		Directory:   "provider-config-schema",
+		Description: "Simple provider config schema",
+	},
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code generator.
@@ -68,7 +77,7 @@ var sdkTests = []sdkTest{
 // structured as a directory that contains that information:
 //
 //     test-directory/
-//         schema.json
+//         schema.(json|yaml)
 //         language-0
 //         ...
 //         language-n
@@ -85,8 +94,14 @@ func TestSDKCodegen(t *testing.T, language string, genPackage GenPkgSignature) {
 				return
 			}
 
-			files, err := GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.Directory, "schema.json"), genPackage)
+			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
+
+			schemaPath := filepath.Join(dirPath, "schema.json")
+			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
+				schemaPath = filepath.Join(dirPath, "schema.yaml")
+			}
+
+			files, err := GeneratePackageFilesFromSchema(schemaPath, genPackage)
 			assert.NoError(t, err)
 
 			dir := filepath.Join(testDir, tt.Directory)

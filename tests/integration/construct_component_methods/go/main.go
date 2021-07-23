@@ -72,6 +72,10 @@ func (o ComponentGetMessageResultOutput) Message() pulumi.StringOutput {
 	return o.ApplyT(func(v ComponentGetMessageResult) string { return v.Message }).(pulumi.StringOutput)
 }
 
+func (*Component) ElementType() reflect.Type {
+	return reflect.TypeOf((*Component)(nil))
+}
+
 func init() {
 	pulumi.RegisterOutputType(ComponentGetMessageResultOutput{})
 }

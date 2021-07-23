@@ -5,7 +5,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
-import * as random from "@pulumi/random";
+import * as pulumiRandom from "@pulumi/random";
 
 export class Foo extends pulumi.ComponentResource {
     /** @internal */
@@ -68,6 +68,16 @@ export class Foo extends pulumi.ComponentResource {
             "__self__": this,
         }, this);
     }
+
+    /**
+     * Do something with something else
+     */
+    generateKubeconfig(args: Foo.GenerateKubeconfigArgs): pulumi.Output<Foo.GenerateKubeconfigResult> {
+        return pulumi.runtime.call("example::Foo/generateKubeconfig", {
+            "__self__": this,
+            "boolValue": args.boolValue,
+        }, this);
+    }
 }
 
 /**
@@ -87,9 +97,9 @@ export namespace Foo {
         boolValue?: pulumi.Input<boolean>;
         boolValuePlain?: boolean;
         boolValueRequired: pulumi.Input<boolean>;
-        name?: pulumi.Input<random.RandomPet>;
-        namePlain?: random.RandomPet;
-        nameRequired: pulumi.Input<random.RandomPet>;
+        name?: pulumi.Input<pulumiRandom.RandomPet>;
+        namePlain?: pulumiRandom.RandomPet;
+        nameRequired: pulumi.Input<pulumiRandom.RandomPet>;
         stringValue?: pulumi.Input<string>;
         stringValuePlain?: string;
         stringValueRequired: pulumi.Input<string>;
@@ -100,6 +110,20 @@ export namespace Foo {
      */
     export interface BarResult {
         readonly someValue: string;
+    }
+
+    /**
+     * The set of arguments for the Foo.generateKubeconfig method.
+     */
+    export interface GenerateKubeconfigArgs {
+        boolValue: boolean;
+    }
+
+    /**
+     * The results of the Foo.generateKubeconfig method.
+     */
+    export interface GenerateKubeconfigResult {
+        readonly kubeconfig: string;
     }
 
 }

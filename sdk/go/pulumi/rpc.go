@@ -22,10 +22,11 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"golang.org/x/net/context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/net/context"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -240,12 +241,19 @@ func marshalInputAndDetermineSecret(v interface{},
 		// Look for some well known types.
 		switch v := v.(type) {
 		case *asset:
+			if v.invalid {
+				return resource.PropertyValue{}, nil, false, fmt.Errorf("invalid asset")
+			}
 			return resource.NewAssetProperty(&resource.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
 			}), deps, secret, nil
 		case *archive:
+			if v.invalid {
+				return resource.PropertyValue{}, nil, false, fmt.Errorf("invalid archive")
+			}
+
 			var assets map[string]interface{}
 			if as := v.Assets(); as != nil {
 				assets = make(map[string]interface{})
@@ -285,9 +293,6 @@ func marshalInputAndDetermineSecret(v interface{},
 			return resource.MakeComponentResourceReference(resource.URN(urn), ""), deps, secret, nil
 		}
 
-		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
-			"%v: cannot assign %v to %v", v, valueType, destType)
-
 		if destType.Kind() == reflect.Interface {
 			// This happens in the case of Any.
 			if valueType.Kind() == reflect.Interface {
@@ -297,6 +302,17 @@ func marshalInputAndDetermineSecret(v interface{},
 		}
 
 		rv := reflect.ValueOf(v)
+
+		switch rv.Type().Kind() {
+		case reflect.Array, reflect.Slice, reflect.Map:
+			// Not assignable in prompt form because of the difference in input and output shapes.
+			//
+			// TODO(7434): update these checks once fixed.
+		default:
+			contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
+				"%v: cannot assign %v to %v", v, valueType, destType)
+		}
+
 		switch rv.Type().Kind() {
 		case reflect.Bool:
 			return resource.NewBoolProperty(rv.Bool()), deps, secret, nil
@@ -653,7 +669,28 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.Set(result)
 		return secret, nil
 	case reflect.Interface:
-		if !anyType.Implements(dest.Type()) {
+		// Tolerate invalid asset or archive values.
+		typ := dest.Type()
+		switch typ {
+		case assetType:
+			_, secret, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return false, err
+			}
+			asset := &asset{invalid: true}
+			dest.Set(reflect.ValueOf(asset))
+			return secret, nil
+		case archiveType:
+			_, secret, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return false, err
+			}
+			archive := &archive{invalid: true}
+			dest.Set(reflect.ValueOf(archive))
+			return secret, nil
+		}
+
+		if !anyType.Implements(typ) {
 			return false, fmt.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
 		}
 
@@ -665,12 +702,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.Set(reflect.ValueOf(result))
 		return secret, nil
 	case reflect.Struct:
+		typ := dest.Type()
 		if !v.IsObject() {
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 
 		obj := v.ObjectValue()
-		typ := dest.Type()
 		secret := false
 		for i := 0; i < typ.NumField(); i++ {
 			fieldV := dest.Field(i)

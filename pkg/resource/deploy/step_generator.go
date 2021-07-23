@@ -527,7 +527,7 @@ func (sg *stepGenerator) generateStepsFromDiff(
 	hasInitErrors := len(old.InitErrors) > 0
 
 	// Update the diff to apply any replaceOnChanges annotations and to include initErrors in the diff.
-	diff, err = sg.applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
+	diff, err = applyReplaceOnChanges(diff, goal.ReplaceOnChanges, hasInitErrors)
 	if err != nil {
 		return nil, result.FromError(err)
 	}
@@ -1196,7 +1196,7 @@ const initErrorSpecialKey = "#initerror"
 
 // applyReplaceOnChanges adjusts a DiffResult returned from a provider to apply the ReplaceOnChange
 // settings in the desired state and init errors from the previous state.
-func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
+func applyReplaceOnChanges(diff plugin.DiffResult,
 	replaceOnChanges []string, hasInitErrors bool) (plugin.DiffResult, error) {
 
 	// No further work is necessary for DiffNone unless init errors are present.
@@ -1214,23 +1214,26 @@ func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
 	}
 
 	// Calculate the new DetailedDiff
-	modifiedDiff := map[string]plugin.PropertyDiff{}
-	for p, v := range diff.DetailedDiff {
-		diffPath, err := resource.ParsePropertyPath(p)
-		if err != nil {
-			return diff, err
-		}
-		changeToReplace := false
-		for _, replaceOnChangePath := range replaceOnChangePaths {
-			if replaceOnChangePath.Contains(diffPath) {
-				changeToReplace = true
-				break
+	var modifiedDiff map[string]plugin.PropertyDiff
+	if diff.DetailedDiff != nil {
+		modifiedDiff = map[string]plugin.PropertyDiff{}
+		for p, v := range diff.DetailedDiff {
+			diffPath, err := resource.ParsePropertyPath(p)
+			if err != nil {
+				return diff, err
 			}
+			changeToReplace := false
+			for _, replaceOnChangePath := range replaceOnChangePaths {
+				if replaceOnChangePath.Contains(diffPath) {
+					changeToReplace = true
+					break
+				}
+			}
+			if changeToReplace {
+				v = v.ToReplace()
+			}
+			modifiedDiff[p] = v
 		}
-		if changeToReplace {
-			v = v.ToReplace()
-		}
-		modifiedDiff[p] = v
 	}
 
 	// Calculate the new ReplaceKeys
@@ -1264,9 +1267,11 @@ func (sg *stepGenerator) applyReplaceOnChanges(diff plugin.DiffResult,
 			}
 			if replaceOnChangePath.Contains(initErrPath) {
 				modifiedReplaceKeys = append(modifiedReplaceKeys, initErrorSpecialKey)
-				modifiedDiff[initErrorSpecialKey] = plugin.PropertyDiff{
-					Kind:      plugin.DiffUpdateReplace,
-					InputDiff: false,
+				if modifiedDiff != nil {
+					modifiedDiff[initErrorSpecialKey] = plugin.PropertyDiff{
+						Kind:      plugin.DiffUpdateReplace,
+						InputDiff: false,
+					}
 				}
 				// If an init error is present on a path that causes replacement, then trigger a replacement.
 				modifiedChanges = plugin.DiffSome

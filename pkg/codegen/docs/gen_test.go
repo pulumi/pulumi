@@ -19,7 +19,6 @@
 package docs
 
 import (
-	"encoding/json"
 	"strings"
 	"testing"
 
@@ -58,8 +57,8 @@ var (
 func initTestPackageSpec(t *testing.T) {
 	t.Helper()
 
-	pythonMapCase := map[string]json.RawMessage{
-		"python": json.RawMessage(`{"mapCase":false}`),
+	pythonMapCase := map[string]schema.RawMessage{
+		"python": schema.RawMessage(`{"mapCase":false}`),
 	}
 	testPackageSpec = schema.PackageSpec{
 		Name:        providerPackage,

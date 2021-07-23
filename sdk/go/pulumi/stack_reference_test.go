@@ -1,6 +1,7 @@
 package pulumi
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -15,6 +16,8 @@ func TestStackReference(t *testing.T) {
 		"zed": map[string]interface{}{
 			"alpha": "beta",
 		},
+		"numf": 123.4,
+		"numi": 567.0,
 	}
 	mocks := &testMonitor{
 		NewResourceF: func(args MockResourceArgs) (string, resource.PropertyMap, error) {
@@ -52,6 +55,18 @@ func TestStackReference(t *testing.T) {
 		zed1, _, _, _, err := await(ref1.GetOutput(String("zed")))
 		assert.NoError(t, err)
 		assert.Equal(t, outputs["zed"], zed1)
+		numf, _, _, _, err := await(ref1.GetFloat64Output(String("numf")))
+		assert.NoError(t, err)
+		assert.Equal(t, outputs["numf"], numf)
+		_, _, _, _, err = await(ref1.GetFloat64Output(String("foo")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf("failed to convert %T to float64", outputs["foo"]), err)
+		numi, _, _, _, err := await(ref1.GetIntOutput(String("numi")))
+		assert.NoError(t, err)
+		assert.Equal(t, int(outputs["numi"].(float64)), numi)
+		_, _, _, _, err = await(ref1.GetIntOutput(String("foo")))
+		assert.Error(t, err)
+		assert.Equal(t, fmt.Errorf("failed to convert %T to int", outputs["foo"]), err)
 		return nil
 	}, WithMocks("project", "stack", mocks))
 	assert.NoError(t, err)

@@ -24,20 +24,22 @@ import google.protobuf.struct_pb2 as struct_pb2
 import pulumi.output
 
 
-def test_construct_inputs_parses_request():
+@pytest.mark.asyncio
+async def test_construct_inputs_parses_request():
     value = 'foobar'
     inputs = _as_struct({'echo': value})
     req = ConstructRequest(inputs=inputs)
-    inputs = ProviderServicer._construct_inputs(req)
+    inputs = await ProviderServicer._construct_inputs(req)
     assert len(inputs) == 1
     assert inputs['echo'] == value
 
 
-def test_construct_inputs_preserves_unknowns():
+@pytest.mark.asyncio
+async def test_construct_inputs_preserves_unknowns():
     unknown = '04da6b54-80e4-46f7-96ec-b56ff0331ba9'
     inputs = _as_struct({'echo': unknown})
     req = ConstructRequest(inputs=inputs)
-    inputs = ProviderServicer._construct_inputs(req)
+    inputs = await ProviderServicer._construct_inputs(req)
     assert len(inputs) == 1
     assert isinstance(inputs['echo'], pulumi.output.Unknown)
 
