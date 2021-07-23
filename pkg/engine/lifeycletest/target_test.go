@@ -582,7 +582,8 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	p.Run(t, old)
 }
 
-var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I"}
+var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H",
+	"I", "J", "K", "L", "M", "N"}
 
 func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
@@ -591,65 +592,80 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 
 	names := componentBasedTestDependencyGraphNames
 
-	urnA := p.NewProviderURN("pkgA", names[0], "")
+	urnA := p.NewURN(resTypeComponent, names[0], "")
 	urnB := p.NewURN(resTypeComponent, names[1], "")
-	urnC := p.NewURN(resTypeResource, names[2], urnB)
-	urnD := p.NewURN(resTypeResource, names[3], urnB)
-	urnE := p.NewURN(resTypeComponent, names[4], "")
-	urnF := p.NewURN(resTypeResource, names[5], urnE)
-	urnG := p.NewURN(resTypeResource, names[6], urnE)
-	urnH := p.NewURN(resTypeResource, names[7], "")
-	urnI := p.NewURN(resTypeResource, names[8], "")
+	urnC := p.NewURN(resTypeResource, names[2], "")
+	urnD := p.NewURN(resTypeComponent, names[3], urnA)
+	urnE := p.NewURN(resTypeComponent, names[4], urnB)
+	urnF := p.NewURN(resTypeComponent, names[5], urnB)
+	urnG := p.NewURN(resTypeResource, names[6], urnD)
+	urnH := p.NewURN(resTypeResource, names[7], urnD)
+	urnI := p.NewURN(resTypeResource, names[8], urnA)
+	urnJ := p.NewURN(resTypeResource, names[9], urnE)
+	urnK := p.NewURN(resTypeResource, names[10], urnE)
+	urnL := p.NewURN(resTypeResource, names[11], urnF)
+	urnM := p.NewURN(resTypeResource, names[12], urnF)
+	urnN := p.NewURN(resTypeResource, names[13], "")
 
-	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE, urnF, urnG, urnH, urnI}
+	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE, urnF, urnG, urnH, urnI, urnJ, urnK, urnL, urnM, urnN}
 
-	newResource := func(urn, parent resource.URN, id resource.ID, provider string,
+	newResource := func(urn, parent resource.URN, id resource.ID,
 		dependencies []resource.URN, propertyDeps propertyDependencies) *resource.State {
-		return newResource(urn, parent, id, provider, dependencies, propertyDeps,
+		return newResource(urn, parent, id, "", dependencies, propertyDeps,
 			nil, urn.Type() != resTypeComponent)
 	}
 
 	old := &deploy.Snapshot{
 		Resources: []*resource.State{
-			newResource(urnA, "", "0", "", nil, nil),
-			newResource(urnB, "", "1", "", []resource.URN{urnE},
-				propertyDependencies{"A": []resource.URN{urnE}}),
-			newResource(urnC, urnB, "2", string(urnA)+"::0", nil, nil),
-			newResource(urnD, urnB, "3", "", nil, nil),
-			newResource(urnE, "", "4", "", nil, nil),
-			newResource(urnF, urnE, "5", string(urnA)+"::0", nil, nil),
-			newResource(urnG, urnE, "6", "", nil, nil),
-			newResource(urnH, "", "7", string(urnA)+"::0", nil, nil),
-			newResource(urnI, "", "8", "", []resource.URN{urnB},
-				propertyDependencies{"A": []resource.URN{urnB}}),
+			newResource(urnA, "", "0", nil, nil),
+			newResource(urnB, "", "1", nil, nil),
+			newResource(urnC, "", "2", nil, nil),
+			newResource(urnD, urnA, "3", nil, nil),
+			newResource(urnE, urnB, "4", nil, nil),
+			newResource(urnF, urnB, "5", nil, nil),
+			newResource(urnG, urnD, "6", nil, nil),
+			newResource(urnH, urnD, "7", nil, nil),
+			newResource(urnI, urnA, "8", []resource.URN{urnG},
+				propertyDependencies{"A": []resource.URN{urnG}}),
+			newResource(urnJ, urnE, "9", nil, nil),
+			newResource(urnK, urnE, "10", []resource.URN{urnH},
+				propertyDependencies{"A": []resource.URN{urnH}}),
+			newResource(urnL, urnF, "11", nil, nil),
+			newResource(urnM, urnF, "12", nil, nil),
+			newResource(urnN, "", "13", []resource.URN{urnH},
+				propertyDependencies{"A": []resource.URN{urnH}}),
 		},
 	}
 
 	program := deploytest.NewLanguageRuntime(
 		func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
-			register := func(urn, parent resource.URN, provider string) resource.ID {
+			register := func(urn, parent resource.URN) resource.ID {
 				_, id, _, err := monitor.RegisterResource(
 					urn.Type(),
 					string(urn.Name()),
 					urn.Type() != resTypeComponent,
 					deploytest.ResourceOptions{
-						Provider: provider,
-						Inputs:   nil,
-						Parent:   parent,
+						Inputs: nil,
+						Parent: parent,
 					})
 				assert.NoError(t, err)
 				return id
 			}
 
-			idA := register(urnA, "", "")
-			register(urnB, "", "")
-			register(urnC, urnB, string(urnA)+"::"+string(idA))
-			register(urnD, urnB, "")
-			register(urnE, "", "")
-			register(urnF, urnE, string(urnA)+"::"+string(idA))
-			register(urnG, urnE, "")
-			register(urnH, "", string(urnA)+"::"+string(idA))
-			register(urnI, "", "")
+			register(urnA, "")
+			register(urnB, "")
+			register(urnC, "")
+			register(urnD, urnA)
+			register(urnE, urnB)
+			register(urnF, urnB)
+			register(urnG, urnD)
+			register(urnH, urnD)
+			register(urnI, urnA)
+			register(urnJ, urnE)
+			register(urnK, urnE)
+			register(urnL, urnF)
+			register(urnM, urnF)
+			register(urnN, "")
 
 			return nil
 		})
@@ -659,23 +675,38 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 
 func TestDestroyTargetWithChildren(t *testing.T) {
 	destroySpecificTargetsWithChildren(
-		t, []string{"B"}, true, /*targetDependents*/
+		t, []string{"A"}, true, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {
 			// when deleting 'B' we expect C and D to be deleted
 			names := componentBasedTestDependencyGraphNames
 			assert.Equal(t, map[resource.URN]bool{
-				pickURN(t, urns, names, "B"): true,
-				pickURN(t, urns, names, "C"): true,
+				pickURN(t, urns, names, "A"): true,
 				pickURN(t, urns, names, "D"): true,
-				pickURN(t, urns, names, "E"): true,
-				pickURN(t, urns, names, "F"): true,
 				pickURN(t, urns, names, "G"): true,
+				pickURN(t, urns, names, "H"): true,
 				pickURN(t, urns, names, "I"): true,
+				pickURN(t, urns, names, "K"): true,
+				pickURN(t, urns, names, "N"): true,
 			}, deleted)
 		})
 
 	destroySpecificTargetsWithChildren(
 		t, []string{"B"}, false, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {
+			names := componentBasedTestDependencyGraphNames
+			assert.Equal(t, map[resource.URN]bool{
+				pickURN(t, urns, names, "B"): true,
+				pickURN(t, urns, names, "E"): true,
+				pickURN(t, urns, names, "F"): true,
+				pickURN(t, urns, names, "J"): true,
+				pickURN(t, urns, names, "K"): true,
+				pickURN(t, urns, names, "L"): true,
+				pickURN(t, urns, names, "M"): true,
+			}, deleted)
+		})
+
+	destroySpecificTargetsWithChildren(
+		t, []string{"A"}, false, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {})
 }
 
