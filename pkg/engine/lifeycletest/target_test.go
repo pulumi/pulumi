@@ -1,7 +1,6 @@
 package lifecycletest
 
 import (
-	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"testing"
 
 	"github.com/blang/semver"
@@ -13,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -586,6 +586,28 @@ var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "
 	"I", "J", "K", "L", "M", "N"}
 
 func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
+	// Parent-child graph
+	//      A               B
+	//    __|__         ____|____
+	//    D   I         E       F
+	//  __|__         __|__   __|__
+	//  G   H         J   K   L   M
+	//
+	// A has children D, I
+	// D has children G, H
+	// B has children E, F
+	// E has children J, K
+	// F has children L, M
+	//
+	// Dependency graph
+	//  G        H
+	//  |      __|__
+	//  I      K   N
+	//
+	// I depends on G
+	// K depends on H
+	// N depends on H
+
 	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 	resTypeComponent := tokens.Type("pkgA:index:Component")
 	resTypeResource := tokens.Type("pkgA:index:Resource")
@@ -674,10 +696,10 @@ func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
 }
 
 func TestDestroyTargetWithChildren(t *testing.T) {
+	// when deleting 'A' with targetDependents specified we expect A, D, G, H, I, K and N to be deleted.
 	destroySpecificTargetsWithChildren(
 		t, []string{"A"}, true, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {
-			// when deleting 'B' we expect C and D to be deleted
 			names := componentBasedTestDependencyGraphNames
 			assert.Equal(t, map[resource.URN]bool{
 				pickURN(t, urns, names, "A"): true,
@@ -690,6 +712,12 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 			}, deleted)
 		})
 
+	// when deleting 'A' with targetDependents not specified, we expect an error.
+	destroySpecificTargetsWithChildren(
+		t, []string{"A"}, false, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {})
+
+	// when deleting 'B' we expect B, E, F, J, K, L, M to be deleted.
 	destroySpecificTargetsWithChildren(
 		t, []string{"B"}, false, /*targetDependents*/
 		func(urns []resource.URN, deleted map[resource.URN]bool) {
@@ -704,21 +732,11 @@ func TestDestroyTargetWithChildren(t *testing.T) {
 				pickURN(t, urns, names, "M"): true,
 			}, deleted)
 		})
-
-	destroySpecificTargetsWithChildren(
-		t, []string{"A"}, false, /*targetDependents*/
-		func(urns []resource.URN, deleted map[resource.URN]bool) {})
 }
 
 func destroySpecificTargetsWithChildren(
 	t *testing.T, targets []string, targetDependents bool,
 	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
-
-	//      A
-	//      |______
-	//      B     E
-	//    __|__
-	//    C   D
 
 	p := &TestPlan{}
 

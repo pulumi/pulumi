@@ -805,6 +805,7 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	targetsIncludingChildren := make(map[resource.URN]bool)
 
 	for target := range targetsOpt {
+		// If target is a component, include all its children as targets too.
 		children := sg.getChildrenOfTarget(target)
 		for child := range children {
 			targetsIncludingChildren[child] = true
