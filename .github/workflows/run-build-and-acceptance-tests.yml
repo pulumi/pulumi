@@ -199,6 +199,7 @@ jobs:
           files: test-results/**/*.xml
       - name: Summarize Test Time by Package
         run: |
+          mkdir -p test-results
           touch test-results/empty.json # otherwise goteststats fails below when no files match
           goteststats -statistic pkg-time test-results/*.json
       - name: Summarize Test Times by Indivudal Test
