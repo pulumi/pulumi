@@ -196,7 +196,8 @@ jobs:
       - name: Summarize Test Time by Package
         run: goteststats -statistic pkg-time test-results/*.json
       - name: Summarize Test Times by Indivudal Test
-        run: goteststats -statistic test-time test-results/*.json
+        run: |
+          goteststats -statistic test-time test-results/*.json | head -n 100
 
 
   windows-build:
