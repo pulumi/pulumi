@@ -39,8 +39,8 @@ namespace Pulumi.Example
         /// <summary>
         /// A description of bar.
         /// </summary>
-        public Pulumi.Output<BarResult> Bar(BarArgs args)
-            => Pulumi.Deployment.Instance.Call<BarResult>("example::Foo/bar", args ?? new BarArgs(), this);
+        public Pulumi.Output<FooBarResult> Bar(FooBarArgs args)
+            => Pulumi.Deployment.Instance.Call<FooBarResult>("example::Foo/bar", args ?? new FooBarArgs(), this);
 
         public void Baz()
             => Pulumi.Deployment.Instance.Call("example::Foo/baz", CallArgs.Empty, this);
@@ -48,8 +48,8 @@ namespace Pulumi.Example
         /// <summary>
         /// Do something with something else
         /// </summary>
-        public Pulumi.Output<GenerateKubeconfigResult> GenerateKubeconfig(GenerateKubeconfigArgs args)
-            => Pulumi.Deployment.Instance.Call<GenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new GenerateKubeconfigArgs(), this);
+        public Pulumi.Output<FooGenerateKubeconfigResult> GenerateKubeconfig(FooGenerateKubeconfigArgs args)
+            => Pulumi.Deployment.Instance.Call<FooGenerateKubeconfigResult>("example::Foo/generateKubeconfig", args ?? new FooGenerateKubeconfigArgs(), this);
     }
 
     public sealed class FooArgs : Pulumi.ResourceArgs
@@ -62,7 +62,7 @@ namespace Pulumi.Example
     /// <summary>
     /// The set of arguments for the <see cref="Foo.Bar"/> method.
     /// </summary>
-    public sealed class BarArgs : Pulumi.CallArgs
+    public sealed class FooBarArgs : Pulumi.CallArgs
     {
         [Input("baz")]
         public Input<Pulumi.Example.Nested.Inputs.BazArgs>? Baz { get; set; }
@@ -100,7 +100,7 @@ namespace Pulumi.Example
         [Input("stringValueRequired", required: true)]
         public Input<string> StringValueRequired { get; set; } = null!;
 
-        public BarArgs()
+        public FooBarArgs()
         {
         }
     }
@@ -109,12 +109,12 @@ namespace Pulumi.Example
     /// The results of the <see cref="Foo.Bar"/> method.
     /// </summary>
     [OutputType]
-    public sealed class BarResult
+    public sealed class FooBarResult
     {
         public readonly string SomeValue;
 
         [OutputConstructor]
-        private BarResult(string someValue)
+        private FooBarResult(string someValue)
         {
             SomeValue = someValue;
         }
@@ -123,12 +123,12 @@ namespace Pulumi.Example
     /// <summary>
     /// The set of arguments for the <see cref="Foo.GenerateKubeconfig"/> method.
     /// </summary>
-    public sealed class GenerateKubeconfigArgs : Pulumi.CallArgs
+    public sealed class FooGenerateKubeconfigArgs : Pulumi.CallArgs
     {
         [Input("boolValue", required: true)]
         public bool BoolValue { get; set; }
 
-        public GenerateKubeconfigArgs()
+        public FooGenerateKubeconfigArgs()
         {
         }
     }
@@ -137,12 +137,12 @@ namespace Pulumi.Example
     /// The results of the <see cref="Foo.GenerateKubeconfig"/> method.
     /// </summary>
     [OutputType]
-    public sealed class GenerateKubeconfigResult
+    public sealed class FooGenerateKubeconfigResult
     {
         public readonly string Kubeconfig;
 
         [OutputConstructor]
-        private GenerateKubeconfigResult(string kubeconfig)
+        private FooGenerateKubeconfigResult(string kubeconfig)
         {
             Kubeconfig = kubeconfig;
         }

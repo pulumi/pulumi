@@ -1056,7 +1056,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 
 		returnType, typeParameter := "void", ""
 		if fun.Outputs != nil {
-			typeParameter = fmt.Sprintf("<%sResult>", methodName)
+			typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
 			returnType = fmt.Sprintf("Pulumi.Output%s", typeParameter)
 		}
 
@@ -1079,8 +1079,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 					argsDefault, sigil = " = null", "?"
 				}
 
-				argsParamDef = fmt.Sprintf("%sArgs%s args%s", methodName, sigil, argsDefault)
-				argsParamRef = fmt.Sprintf("args ?? new %sArgs()", methodName)
+				argsParamDef = fmt.Sprintf("%s%sArgs%s args%s", className, methodName, sigil, argsDefault)
+				argsParamRef = fmt.Sprintf("args ?? new %s%sArgs()", className, methodName)
 			}
 		}
 
@@ -1170,7 +1170,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				mod:                   mod,
 				comment:               comment,
 				unescapeComment:       !escape,
-				name:                  methodName + "Args",
+				name:                  fmt.Sprintf("%s%sArgs", className, methodName),
 				baseClass:             "CallArgs",
 				propertyTypeQualifier: "Inputs",
 				properties:            args,
@@ -1192,7 +1192,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				mod:                   mod,
 				comment:               comment,
 				unescapeComment:       !escape,
-				name:                  methodName + "Result",
+				name:                  fmt.Sprintf("%s%sResult", className, methodName),
 				propertyTypeQualifier: "Outputs",
 				properties:            fun.Outputs.Properties,
 			}
