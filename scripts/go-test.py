@@ -55,8 +55,13 @@ options_and_packages = options(options_and_packages) + packages
 
 if shutil.which('gotestsum') is not None:
     test_run = str(uuid.uuid4())
-    json_file = str(root.joinpath('test-results').joinpath(f'{test_run}.json'))
-    junit_file = str(root.joinpath('test-results').joinpath(f'{test_run}.xml'))
+
+    test_results_dir = root.joinpath('test-results')
+    if not test_results_dir.is_dir():
+        os.mkdir(str(test_results_dir))
+
+    json_file = str(test_results_dir.joinpath(f'{test_run}.json'))
+    junit_file = str(test_results_dir.joinpath(f'{test_run}.xml'))
     sp.check_call(['gotestsum', '--jsonfile', json_file, '--junitfile', junit_file, '--'] + \
                   options_and_packages, shell=False)
 else:
