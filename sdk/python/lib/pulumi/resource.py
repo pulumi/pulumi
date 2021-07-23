@@ -23,7 +23,7 @@ from .runtime import known_types
 from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource, \
     convert_providers
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, _map_input, T, Output
+from .output import _is_prompt, _map_input, _map2_input, T, Output
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -530,7 +530,11 @@ class ResourceOptions:
         _expand_providers(source)
 
         dest.providers = _merge_lists(dest.providers, source.providers)
-        dest.depends_on = _append_input_lists(dest._depends_on_list(), source._depends_on_list())
+
+        dest.depends_on = _map2_input(dest._depends_on_list(),
+                                      source._depends_on_list(),
+                                      lambda xs, ys: xs + ys)
+
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
         dest.replace_on_changes = _merge_lists(dest.replace_on_changes, source.replace_on_changes)
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
@@ -593,17 +597,6 @@ def _merge_lists(dest, source):
         return dest
 
     return dest + source
-
-
-def _append_input_lists(a: 'Input[List[T]]',
-                        b: 'Input[List[T]]') -> 'Input[List[T]]':
-
-    if _is_prompt(a) and _is_prompt(b):
-        return cast(List[T], a) + cast(List[T], b)
-
-    result: 'Output[List[T]]' = Output.all(a, b).apply(lambda xxs: [x for xs in xxs for x in xs])
-    return result
-
 
 
 # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
