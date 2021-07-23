@@ -33,6 +33,7 @@ def should_run():
 
 if not should_run():
     print(f'TESTSUITE {testsuite_name} skipped according to PULUMI_TEST_SUBSET={test_subset}')
+    sys.exit(0)
 
 
 t0 = timeit.timeit()
