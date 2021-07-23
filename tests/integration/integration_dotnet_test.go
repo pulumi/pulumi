@@ -495,9 +495,14 @@ func TestConstructProviderDotnet(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
 		componentDir string
+		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -507,7 +512,7 @@ func TestConstructProviderDotnet(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				Env:          append(test.env, pathEnv),
 				Dir:          filepath.Join(testDir, "dotnet"),
 				Dependencies: []string{"Pulumi"},
 				Quick:        true,

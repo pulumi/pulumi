@@ -26,7 +26,8 @@ import grpc
 import grpc.aio
 
 from pulumi.provider.provider import Provider, CallResult, ConstructResult
-from pulumi.resource import Resource, DependencyResource, DependencyProviderResource
+from pulumi.resource import ProviderResource, Resource, DependencyResource, DependencyProviderResource, \
+    _parse_resource_reference
 from pulumi.runtime import known_types, proto, rpc
 from pulumi.runtime.proto import provider_pb2_grpc, ResourceProviderServicer
 from pulumi.runtime.stack import wait_for_rpcs
@@ -145,7 +146,7 @@ class ProviderServicer(ResourceProviderServicer):
             depends_on=[DependencyResource(urn)
                         for urn in request.dependencies],
             protect=request.protect,
-            providers={pkg: DependencyProviderResource(ref)
+            providers={pkg: _create_provider_resource(ref)
                        for pkg, ref in request.providers.items()},
             parent=parent)
 
@@ -328,3 +329,23 @@ async def _is_resource_reference(the_input: Any, deps: Set[str]) -> bool:
     return (known_types.is_resource(the_input)
         and len(deps) == 1
         and next(iter(deps)) == await cast(Resource, the_input).urn.future())
+
+
+def _create_provider_resource(ref: str) -> ProviderResource:
+    """
+    Rehydrate the provider reference into a registered ProviderResource,
+    otherwise return an instance of DependencyProviderResource.
+    """
+    urn, _ = _parse_resource_reference(ref)
+    urn_parts = urn.split("::")
+    urn_name = urn_parts[3]
+    qualified_type = urn_parts[2]
+    typ = qualified_type.split("$")[-1]
+    typ_parts = typ.split(":")
+    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
+
+    resource_package = rpc.get_resource_package(typ_name, version="")
+    if resource_package is not None:
+        return cast(ProviderResource, resource_package.construct_provider(urn_name, typ, urn))
+
+    return DependencyProviderResource(ref)
