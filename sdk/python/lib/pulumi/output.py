@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     from .resource import Resource
 
 T = TypeVar('T')
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
 T_co = TypeVar('T_co', covariant=True)
 U = TypeVar('U')
 
@@ -483,21 +485,36 @@ def _is_prompt(value: Input[T]) -> bool:
 def _map_output(o: Output[T], transform: Callable[[T],U]) -> Output[U]:
     """Transforms an output's result value with a pure function."""
 
-    def convert(value: Optional[T]) -> U:
-        if value is not None:
-            return transform(value)
-
-        # unknown case - unsafely return `None`, it should not be
-        # inspected as `is_known` will be `False`.
-        return cast(U, None)
-
     async def fut() -> U:
-        return convert(await o.future())
+        value = await o.future()
+        return transform(value) if value is not None else cast(U, UNKNOWN)
 
     return Output(resources=o.resources(),
                   future=asyncio.ensure_future(fut()),
                   is_known=o.is_known(),
                   is_secret=o.is_secret())
+
+
+def _map2_output(o1: Output[T1], o2: Output[T2], transform: Callable[[T1,T2],U]) -> Output[U]:
+    """
+    Joins two outputs and transforms their result with a pure function.
+    Similar to `all` but does not deeply await.
+    """
+
+    async def fut() -> U:
+        v1 = await o1.future()
+        v2 = await o2.future()
+        return transform(v1, v2) if (v1 is not None) and (v2 is not None) else cast(U, UNKNOWN)
+
+    async def res() -> Set['Resource']:
+        r1 = await o1.resources()
+        r2 = await o2.resources()
+        return r1 | r2
+
+    return Output(resources=asyncio.ensure_future(res()),
+                  future=asyncio.ensure_future(fut()),
+                  is_known=o1.is_known() and o2.is_known(),
+                  is_secret=o2.is_secret() or o2.is_secret())
 
 
 def _map_input(i: Input[T], transform: Callable[[T],U]) -> Input[U]:
@@ -515,6 +532,35 @@ def _map_input(i: Input[T], transform: Callable[[T],U]) -> Input[U]:
         return asyncio.ensure_future(fut())
 
     return _map_output(cast(Output[T], i), transform)
+
+
+def _map2_input(i1: Input[T1], i2: Input[T2], transform: Callable[[T1,T2],U]) -> Input[U]:
+    """
+    Joins two inputs and transforms their result with a pure function.
+    """
+
+    if _is_prompt(i1):
+        v1 = cast(T1, i1)
+        return _map_input(i2, lambda v2: transform(v1, v2))
+
+    if _is_prompt(i2):
+        v2 = cast(T2, i2)
+        return _map_input(i1, lambda v1: transform(v1, v2))
+
+    if isawaitable(i1) and isawaitable(i2):
+        a1 = cast(Awaitable[T1], i1)
+        a2 = cast(Awaitable[T2], i2)
+
+        async def join() -> U:
+            v1 = await a1
+            v2 = await a2
+            return transform(v1, v2)
+
+        return asyncio.ensure_future(join())
+
+    return _map2_output(Output._from_input_shallow(i1),
+                        Output._from_input_shallow(i2),
+                        transform)
 
 
 async def _gather_from_dict(tasks: dict) -> dict:
