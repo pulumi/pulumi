@@ -604,8 +604,6 @@ export async function main(provider: Provider, args: string[]) {
  * otherwise return an instance of DependencyProviderResource.
  */
 function createProviderResource(ref: string): resource.ProviderResource {
-    const version = "";
-
     const [urn, _] = resource.parseResourceReference(ref);
     const urnParts = urn.split("::");
     const qualifiedType = urnParts[2];
@@ -615,7 +613,7 @@ function createProviderResource(ref: string): resource.ProviderResource {
     const typeParts = type.split(":");
     const typName = typeParts.length > 2 ? typeParts[2] : "";
 
-    const resourcePackage = runtime.getResourcePackage(typName, version);
+    const resourcePackage = runtime.getResourcePackage(typName, /*version:*/ "");
     if (resourcePackage) {
         return resourcePackage.constructProvider(urnName, type, urn);
     }
