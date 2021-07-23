@@ -480,6 +480,43 @@ def _is_prompt(value: Input[T]) -> bool:
     return not isawaitable(value) and not isinstance(value, Output)
 
 
+def _map_output(o: Output[T], transform: Callable[[T],U]) -> Output[U]:
+    """Transforms an output's result value with a pure function."""
+
+    def convert(value: Optional[T]) -> U:
+        if value is not None:
+            return transform(value)
+
+        # unknown case - unsafely return `None`, it should not be
+        # inspected as `is_known` will be `False`.
+        return cast(U, None)
+
+    async def fut() -> U:
+        return convert(await o.future())
+
+    return Output(resources=o.resources(),
+                  future=asyncio.ensure_future(fut()),
+                  is_known=o.is_known(),
+                  is_secret=o.is_secret())
+
+
+def _map_input(i: Input[T], transform: Callable[[T],U]) -> Input[U]:
+    """Transforms an input's result value with a pure function."""
+
+    if _is_prompt(i):
+        return transform(cast(T, i))
+
+    if isawaitable(i):
+        inp = cast(Awaitable[T], i)
+
+        async def fut() -> U:
+            return transform(await inp)
+
+        return asyncio.ensure_future(fut())
+
+    return _map_output(cast(Output[T], i), transform)
+
+
 async def _gather_from_dict(tasks: dict) -> dict:
     results = await asyncio.gather(*tasks.values())
     return dict(zip(tasks.keys(), results))

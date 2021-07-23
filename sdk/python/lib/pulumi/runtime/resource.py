@@ -671,18 +671,17 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
     if options.depends_on is None:
         return []
 
-    outer = Output._from_input_shallow(options.depends_on)
+    outer = Output._from_input_shallow(options._depends_on_list())
     all_deps = await outer.resources()
-    inner_list = await outer.future()
+    inner_list = await outer.future() or []
 
-    if inner_list is not None:
-        for i in inner_list:
-            inner = Output.from_input(i)
-            more_deps = await inner.resources()
-            all_deps = all_deps | more_deps
-            direct_dep = await inner.future()
-            if direct_dep is not None:
-                all_deps.add(direct_dep)
+    for i in inner_list:
+        inner = Output.from_input(i)
+        more_deps = await inner.resources()
+        all_deps = all_deps | more_deps
+        direct_dep = await inner.future()
+        if direct_dep is not None:
+            all_deps.add(direct_dep)
 
     urns = set()
 

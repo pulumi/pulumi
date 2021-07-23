@@ -83,10 +83,10 @@ def out(x: T) -> pulumi.Output[T]:
 def depends_on_variations(dep: pulumi.Resource) -> List[pulumi.ResourceOptions]:
     return [
         pulumi.ResourceOptions(depends_on=None),
-        #  pulumi.ResourceOptions(depends_on=dep),  # not type-checking?
+        pulumi.ResourceOptions(depends_on=dep),
         pulumi.ResourceOptions(depends_on=[dep]),
-        # pulumi.ResourceOptions(depends_on=promise(dep)),  # not type-checking?
-        # pulumi.ResourceOptions(depends_on=out(dep)),  # not type-checking?
+        pulumi.ResourceOptions(depends_on=promise(dep)),
+        pulumi.ResourceOptions(depends_on=out(dep)),
         pulumi.ResourceOptions(depends_on=promise([dep])),
         pulumi.ResourceOptions(depends_on=out([dep])),
         pulumi.ResourceOptions(depends_on=promise([promise(dep)])),

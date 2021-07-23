@@ -23,7 +23,7 @@ from .runtime import known_types
 from .runtime.resource import get_resource, register_resource, register_resource_outputs, read_resource, \
     convert_providers
 from .runtime.settings import get_root_resource
-from .output import _is_prompt, T, Output
+from .output import _is_prompt, _map_input, T, Output
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -297,7 +297,7 @@ class ResourceOptions:
     resource.
     """
 
-    depends_on: Optional['Input[List[Input[Resource]]]']
+    depends_on: Optional['Input[Union[List[Input[Resource]], Resource]]']
     """
     If provided, declares that the currently-constructing resource depends on the given resources.
     """
@@ -390,7 +390,7 @@ class ResourceOptions:
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
-                 depends_on: Optional['Input[List[Input[Resource]]]'] = None,
+                 depends_on: Optional['Input[Union[List[Input[Resource]], Resource]]'] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]] = None,
@@ -408,7 +408,7 @@ class ResourceOptions:
         """
         :param Optional[Resource] parent: If provided, the currently-constructing resource should be the child of
                the provided parent resource.
-        :param Optional[Input[List[Input[Resource]]]] depends_on: If provided, declares that the
+        :param Optional[Input[Union[List[Input[Resource]],Resource]]] depends_on: If provided, declares that the
                currently-constructing resource depends on the given resources.
         :param Optional[bool] protect: If provided and True, this resource is not allowed to be deleted.
         :param Optional[ProviderResource] provider: An optional provider to use for this resource's CRUD operations.
@@ -442,22 +442,12 @@ class ResourceOptions:
                from previous deployments will require replacement instead of update only if `"*"` is passed.
         """
 
-        # Proactively check that `depends_on` values are of type
-        # `Resource`. We cannot complete the check in the general case
-        # and can only do it on promptly available arguments.
-        if depends_on is not None and isinstance(depends_on, list):
-            for dep in depends_on:
-                if _is_prompt(dep) and not isinstance(dep, Resource):
-                    raise Exception(
-                        "'depends_on' was passed a value that was not a Resource.")
-
         # Expose 'merge' again this this object, but this time as an instance method.
         # TODO[python/mypy#2427]: mypy disallows method assignment
         self.merge = self._merge_instance # type: ignore
         self.merge.__func__.__doc__ = ResourceOptions.merge.__doc__ # type: ignore
 
         self.parent = parent
-        self.depends_on = depends_on
         self.protect = protect
         self.provider = provider
         self.providers = providers
@@ -472,10 +462,26 @@ class ResourceOptions:
         self.transformations = transformations
         self.urn = urn
         self.replace_on_changes = replace_on_changes
+        self.depends_on = depends_on
 
+        # Proactively check that `depends_on` values are of type
+        # `Resource`. We cannot complete the check in the general case
+        # and can only do it on promptly available arguments.
+        deps = self._depends_on_list()
+        if isinstance(deps, list):
+            for dep in deps:
+                if _is_prompt(dep) and not isinstance(dep, Resource):
+                    raise Exception(f"'depends_on' was passed a value {dep} that was not a Resource.")
 
     def _merge_instance(self, opts: 'ResourceOptions') -> 'ResourceOptions':
         return ResourceOptions.merge(self, opts)
+
+    def _depends_on_list(self) -> 'Input[List[Input[Resource]]]':
+
+        if self.depends_on is None:
+            return []
+
+        return _map_input(self.depends_on, lambda x: x if isinstance(x, list) else [cast(Any, x)])
 
     # pylint: disable=method-hidden
     @staticmethod
@@ -524,7 +530,7 @@ class ResourceOptions:
         _expand_providers(source)
 
         dest.providers = _merge_lists(dest.providers, source.providers)
-        dest.depends_on = _append_input_lists(dest.depends_on, source.depends_on)
+        dest.depends_on = _append_input_lists(dest._depends_on_list(), source._depends_on_list())
         dest.ignore_changes = _merge_lists(dest.ignore_changes, source.ignore_changes)
         dest.replace_on_changes = _merge_lists(dest.replace_on_changes, source.replace_on_changes)
         dest.aliases = _merge_lists(dest.aliases, source.aliases)
@@ -589,17 +595,8 @@ def _merge_lists(dest, source):
     return dest + source
 
 
-def _append_input_lists(a: Optional['Input[List[T]]'],
-                        b: Optional['Input[List[T]]']) -> Optional['Input[List[T]]']:
-
-    if a is None and b is None:
-        return None
-
-    if a is None:
-        return b
-
-    if b is None:
-        return a
+def _append_input_lists(a: 'Input[List[T]]',
+                        b: 'Input[List[T]]') -> 'Input[List[T]]':
 
     if _is_prompt(a) and _is_prompt(b):
         return cast(List[T], a) + cast(List[T], b)
