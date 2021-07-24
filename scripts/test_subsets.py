@@ -1,9 +1,5 @@
 TEST_SUBSETS = {
-    'integration': [
-        'github.com/pulumi/pulumi/tests/integration',
-        'github.com/pulumi/pulumi/tests/integration/aliases',
-        'github.com/pulumi/pulumi/tests/integration/transformations'
-    ],
+    'integration': ['github.com/pulumi/pulumi/tests/integration'],
     'lifecycletest': ['github.com/pulumi/pulumi/pkg/v3/engine/lifeycletest'],
     'auto': ['github.com/pulumi/pulumi/sdk/v3/go/auto'],
     'native': [
