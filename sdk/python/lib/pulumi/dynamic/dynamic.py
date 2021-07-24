@@ -242,6 +242,9 @@ class Resource(CustomResource):
     Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
     """
 
+    def __init_subclass__(cls, name: str ='dynamic:Resource'):
+        cls._resource_type_name = name
+
     def __init__(self,
                  provider: ResourceProvider,
                  name: str,
@@ -261,4 +264,4 @@ class Resource(CustomResource):
         props = cast(dict, props)
         props[PROVIDER_KEY] = serialize_provider(provider)
 
-        super().__init__("pulumi-python:dynamic:Resource", name, props, opts)
+        super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)
