@@ -963,9 +963,15 @@ class DependencyProviderResource(ProviderResource):
     """
 
     def __init__(self, ref: str) -> None:
-        super().__init__(pkg="", name="", props={}, opts=None, dependency=True)
-
         ref_urn, ref_id = _parse_resource_reference(ref)
+        urn_parts = ref_urn.split("::")
+        qualified_type = urn_parts[2]
+        typ = qualified_type.split("$")[-1]
+        typ_parts = typ.split(":")
+        # typ will be "pulumi:providers:<package>" and we want the last part.
+        pkg = typ_parts[2] if len(typ_parts) > 2 else ""
+
+        super().__init__(pkg=pkg, name="", props={}, opts=None, dependency=True)
 
         from . import Output  # pylint: disable=import-outside-toplevel
 
