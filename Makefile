@@ -52,7 +52,7 @@ lint::
 test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_build:: $(SUB_PROJECTS:%=%_install)
+test_build:: $(SUB_PROJECTS:%=%_install_test_all)
 	cd tests/testprovider && go build -o pulumi-resource-testprovider
 	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component/testcomponent-go && go build -o pulumi-resource-testcomponent
@@ -69,7 +69,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component_provider/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_provider/testcomponent-go && go build -o pulumi-resource-testcomponent
 
-test_all:: build test_build $(SUB_PROJECTS:%=%_install)
+test_all:: build test_build
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 
