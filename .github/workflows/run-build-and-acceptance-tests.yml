@@ -164,7 +164,14 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Install and Test
+      - name: Install
+        run: |
+          make install_all
+        env:
+          PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
+          PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
+          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Test
         run: make test_all
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
