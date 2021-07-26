@@ -546,6 +546,32 @@ function grpcResponseFromError(e: {id: string, properties: any, message: string,
     };
 }
 
+// The parsing here is approximate for the moment.
+//
+// When Pulumi CLI decides how to structure command line arguments for
+// plugins that will be parsed with this function, it uses the
+// following code:
+//
+// https://github.com/pulumi/pulumi/blob/master/sdk/go/common/resource/plugin/plugin.go#L281
+//
+// The code can prepend `--logtostderr` and verbosity e.g. `-v=9`
+// arguments. We ignore these for the moment.
+function parseArgs(args: string[]): ({engineAddress: string} | undefined) {
+    const cleanArgs = args.filter(v => {
+        if (v == "--logtostderr") {
+            return false;
+        }
+        if (v.startsWith("-v=")) {
+            return false;
+        }
+        return true;
+    });
+    if (cleanArgs.length == 0) {
+        return undefined;
+    }
+    return {engineAddress: cleanArgs[0]};
+}
+
 export async function main(provider: Provider, args: string[]) {
     // We track all uncaught errors here.  If we have any, we will make sure we always have a non-0 exit
     // code.
@@ -570,14 +596,16 @@ export async function main(provider: Provider, args: string[]) {
         }
     });
 
+    const parsedArgs = parseArgs(args);
+
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
-    if (args.length === 0) {
+    if (parsedArgs === undefined) {
         console.error("fatal: Missing <engine> address");
         process.exit(-1);
         return;
     }
-    const engineAddr: string = args[0];
+    const engineAddr: string = parsedArgs.engineAddress;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
