@@ -33,6 +33,12 @@ type StackSummary struct {
 // ListStacksResponse returns a set of stack summaries. This call is designed to be inexpensive.
 type ListStacksResponse struct {
 	Stacks []StackSummary `json:"stacks"`
+
+	// ContinuationToken is an opaque value used to mark the end of the all stacks. If non-nil,
+	// pass it into a subsequent call in order to get the next batch of results.
+	//
+	// A value of nil means that all stacks have been returned.
+	ContinuationToken *string `json:"continuationToken,omitempty"`
 }
 
 // CreateStackRequest defines the request body for creating a new Stack

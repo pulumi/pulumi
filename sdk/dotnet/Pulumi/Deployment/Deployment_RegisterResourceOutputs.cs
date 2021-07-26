@@ -37,7 +37,7 @@ namespace Pulumi
             {
                 Urn = urn,
                 Outputs = serialized,
-            });
+            }).ConfigureAwait(false);
         }
     }
 }

@@ -910,12 +910,18 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 
 					urns[string(res.URN.Name())] = res.URN
 					switch res.URN.Name() {
-					case "child-a", "child-b":
+					case "child-a":
 						for _, deps := range res.PropertyDependencies {
 							assert.Empty(t, deps)
 						}
+					case "child-b":
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
 						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
@@ -1004,9 +1010,14 @@ func TestConstructUnknownNode(t *testing.T) {
 func TestConstructMethodsNode(t *testing.T) {
 	tests := []struct {
 		componentDir string
+		env          []string
 	}{
 		{
 			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
 		},
 		{
 			componentDir: "testcomponent-go",
@@ -1016,13 +1027,47 @@ func TestConstructMethodsNode(t *testing.T) {
 		t.Run(test.componentDir, func(t *testing.T) {
 			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
 			integration.ProgramTest(t, &integration.ProgramTestOptions{
-				Env:          []string{pathEnv},
+				Env:          append(test.env, pathEnv),
 				Dir:          filepath.Join("construct_component_methods", "nodejs"),
 				Dependencies: []string{"@pulumi/pulumi"},
 				Quick:        true,
 				NoParallel:   true, // avoid contention for Dir
 				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructProviderNode(t *testing.T) {
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join(testDir, "nodejs"),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
 				},
 			})
 		})

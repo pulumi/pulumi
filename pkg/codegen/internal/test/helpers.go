@@ -21,9 +21,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -37,8 +39,14 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
+	ext := filepath.Ext(schemaPath)
+
 	var pkgSpec schema.PackageSpec
-	err = json.Unmarshal(schemaBytes, &pkgSpec)
+	if ext == ".yaml" || ext == ".yml" {
+		err = yaml.Unmarshal(schemaBytes, &pkgSpec)
+	} else {
+		err = json.Unmarshal(schemaBytes, &pkgSpec)
+	}
 	if err != nil {
 		return nil, err
 	}

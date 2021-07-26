@@ -19,7 +19,8 @@
             "isComponent": true,
             "methods": {
                 "bar": "example::Foo/bar",
-                "baz": "example::Foo/baz"
+                "baz": "example::Foo/baz",
+                "generateKubeconfig": "example::Foo/generateKubeconfig"
             }
         }
     },
@@ -100,6 +101,34 @@
                 },
                 "required": [
                     "__self__"
+                ]
+            }
+        },
+        "example::Foo/generateKubeconfig": {
+            "description": "Do something with something else",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/example::Foo"
+                    },
+                    "boolValue": {
+                        "type": "boolean",
+                        "plain": true
+                    }
+                },
+                "required": [
+                    "__self__",
+                    "boolValue"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "kubeconfig": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "kubeconfig"
                 ]
             }
         }

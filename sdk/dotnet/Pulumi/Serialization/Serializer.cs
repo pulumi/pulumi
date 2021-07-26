@@ -290,6 +290,11 @@ $"Tasks are not allowed inside ResourceArgs. Please wrap your Task in an Output:
                 Log.Debug($"Serialize property[{ctx}]: asset/archive={assetOrArchive.GetType().Name}");
             }
 
+            if (assetOrArchive is InvalidAsset)
+                throw new InvalidOperationException("Cannot serialize invalid asset");
+            if (assetOrArchive is InvalidArchive)
+                throw new InvalidOperationException("Cannot serialize invalid archive");
+
             var propName = assetOrArchive.PropName;
             var value = await SerializeAsync(ctx + "." + propName, assetOrArchive.Value, keepResources).ConfigureAwait(false);
 
