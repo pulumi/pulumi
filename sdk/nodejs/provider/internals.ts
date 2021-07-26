@@ -27,23 +27,24 @@
 export function parseArgs(args: string[]): ({engineAddress: string} | undefined) {
     const cleanArgs = [];
 
-    for (var i = 0; i < args.length; i++) {
+    for (let i = 0; i < args.length; i++) {
         const v = args[i];
-        if (v == "--logtostderr") {
+        if (v === "--logtostderr") {
             continue;
         }
         if (v.startsWith("-v=")) {
             continue;
         }
-        if (v == "--tracing") {
+        if (v === "--tracing") {
             i += 1;
             continue;
         }
         cleanArgs.push(v);
     }
 
-    if (cleanArgs.length == 0) {
+    if (cleanArgs.length === 0) {
         return undefined;
     }
+
     return {engineAddress: cleanArgs[0]};
 }
