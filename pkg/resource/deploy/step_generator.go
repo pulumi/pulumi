@@ -230,7 +230,7 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 				sg.aliased[urnOrAlias] = urn
 
 				// register the alias with the provider registry
-				sg.deployment.providers.RegisterAlias(urnOrAlias, urn)
+				sg.deployment.providers.RegisterAlias(urn, urnOrAlias)
 			}
 			break
 		}

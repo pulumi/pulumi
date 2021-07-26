@@ -65,6 +65,7 @@ type Registry struct {
 	isPreview bool
 	providers map[Reference]plugin.Provider
 	builtins  plugin.Provider
+	aliases   map[resource.URN]resource.URN
 	m         sync.RWMutex
 }
 
@@ -91,6 +92,7 @@ func NewRegistry(host plugin.Host, prev []*resource.State, isPreview bool,
 		isPreview: isPreview,
 		providers: make(map[Reference]plugin.Provider),
 		builtins:  builtins,
+		aliases:   make(map[resource.URN]resource.URN),
 	}
 
 	for _, res := range prev {
@@ -156,6 +158,10 @@ func (r *Registry) setProvider(ref Reference, provider plugin.Provider) {
 	logging.V(7).Infof("setProvider(%v)", ref)
 
 	r.providers[ref] = provider
+
+	if alias, ok := r.aliases[ref.URN()]; ok {
+		r.providers[mustNewReference(alias, ref.ID())] = provider
+	}
 }
 
 func (r *Registry) deleteProvider(ref Reference) (plugin.Provider, bool) {
@@ -254,12 +260,11 @@ func (r *Registry) Check(urn resource.URN, olds, news resource.PropertyMap,
 	return inputs, nil, nil
 }
 
-// RegisterAlias updates the registry such that the new URN points to the aliased provider
-func (r *Registry) RegisterAlias(alias, urn resource.URN) {
-	for ref, prov := range r.providers {
-		if ref.urn == alias {
-			r.setProvider(mustNewReference(urn, ref.id), prov)
-		}
+// RegisterAliases informs the registry that the new provider object with the given URN is aliased to the given list
+// of URNs.
+func (r *Registry) RegisterAlias(providerURN, alias resource.URN) {
+	if providerURN != alias {
+		r.aliases[providerURN] = alias
 	}
 }
 
@@ -311,6 +316,24 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
 
 	return diff, nil
+}
+
+// Same executes as part of the "Same" step for a provider that has not changed. It exists solely to allow the registry
+// to point aliases for a provider to the proper object.
+func (r *Registry) Same(ref Reference) error {
+	r.m.RLock()
+	defer r.m.RUnlock()
+
+	logging.V(7).Infof("Same(%v)", ref)
+
+	// If this provider is aliased to a different old URN, make sure that it is present under both the old reference and
+	// the new reference.
+	if alias, ok := r.aliases[ref.URN()]; ok {
+		aliasRef := mustNewReference(alias, ref.ID())
+		r.providers[ref] = r.providers[aliasRef]
+	}
+
+	return nil
 }
 
 // Create coonfigures the provider with the given URN using the indicated configuration, assigns it an ID, and
