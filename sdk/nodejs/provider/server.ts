@@ -24,6 +24,7 @@ import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
 import * as runtime from "../runtime";
 import { version } from "../version";
+import { parseArgs } from "./internals";
 
 const requireFromString = require("require-from-string");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
@@ -570,14 +571,16 @@ export async function main(provider: Provider, args: string[]) {
         }
     });
 
+    const parsedArgs = parseArgs(args);
+
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
-    if (args.length === 0) {
+    if (parsedArgs === undefined) {
         console.error("fatal: Missing <engine> address");
         process.exit(-1);
         return;
     }
-    const engineAddr: string = args[0];
+    const engineAddr: string = parsedArgs.engineAddress;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
