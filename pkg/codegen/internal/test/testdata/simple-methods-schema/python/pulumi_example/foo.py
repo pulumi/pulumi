@@ -125,3 +125,25 @@ class Foo(pulumi.ComponentResource):
         __args__['__self__'] = __self__
         pulumi.runtime.call('example::Foo/baz', __args__, res=__self__)
 
+    @pulumi.output_type
+    class GenerateKubeconfigResult:
+        def __init__(__self__, kubeconfig=None):
+            if kubeconfig and not isinstance(kubeconfig, str):
+                raise TypeError("Expected argument 'kubeconfig' to be a str")
+            pulumi.set(__self__, "kubeconfig", kubeconfig)
+
+        @property
+        @pulumi.getter
+        def kubeconfig(self) -> str:
+            return pulumi.get(self, "kubeconfig")
+
+    def generate_kubeconfig(__self__, *,
+                            bool_value: bool) -> pulumi.Output['Foo.GenerateKubeconfigResult']:
+        """
+        Do something with something else
+        """
+        __args__ = dict()
+        __args__['__self__'] = __self__
+        __args__['boolValue'] = bool_value
+        return pulumi.runtime.call('example::Foo/generateKubeconfig', __args__, res=__self__, typ=Foo.GenerateKubeconfigResult)
+

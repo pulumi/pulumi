@@ -803,6 +803,10 @@ export class ComponentResource<TData = any> extends Resource {
     // tslint:disable-next-line:variable-name
     private __registered = false;
 
+    /** @internal */
+    // tslint:disable-next-line:variable-name
+    public readonly __remote: boolean;
+
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
@@ -834,6 +838,7 @@ export class ComponentResource<TData = any> extends Resource {
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
         super(type, name, /*custom:*/ false, /*props:*/ remote || opts?.urn ? args : {}, opts, remote);
+        this.__remote = remote;
         this.__registered = remote || !!opts?.urn;
         this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
     }
@@ -1032,15 +1037,22 @@ export class DependencyProviderResource extends ProviderResource {
     constructor(ref: string) {
         super("", "", {}, {}, true);
 
-        // Parse the URN and ID out of the provider reference.
-        const lastSep = ref.lastIndexOf("::");
-        if (lastSep === -1) {
-            throw new Error(`expected '::' in provider reference ${ref}`);
-        }
-        const urn = ref.slice(0, lastSep);
-        const id = ref.slice(lastSep+2);
-
+        const [urn, id] = parseResourceReference(ref);
         (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
         (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
     }
+}
+
+/**
+ * parseResourceReference parses the URN and ID out of the provider reference.
+ * @internal
+ */
+export function parseResourceReference(ref: string): [string, string] {
+    const lastSep = ref.lastIndexOf("::");
+    if (lastSep === -1) {
+        throw new Error(`expected '::' in provider reference ${ref}`);
+    }
+    const urn = ref.slice(0, lastSep);
+    const id = ref.slice(lastSep+2);
+    return [urn, id];
 }

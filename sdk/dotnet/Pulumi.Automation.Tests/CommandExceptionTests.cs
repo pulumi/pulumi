@@ -41,6 +41,10 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                }
             });
 
             var stackName = $"already_existing_stack{GetTestSuffix()}";
@@ -66,6 +70,10 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 ProjectSettings = projectSettings,
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                }
             });
 
             var stackName = $"concurrent_update_stack{GetTestSuffix()}";

@@ -6,3 +6,29 @@ import { input as inputs, output as outputs } from "../types";
 
 import {Resource} from "..";
 
+export interface ConfigMapArgs {
+    config?: pulumi.Input<string>;
+}
+
+export interface ObjectArgs {
+    bar?: pulumi.Input<string>;
+    configs?: pulumi.Input<pulumi.Input<inputs.ConfigMapArgs>[]>;
+    foo?: pulumi.Input<Resource>;
+    /**
+     * List of lists of other objects
+     */
+    others?: pulumi.Input<pulumi.Input<pulumi.Input<inputs.SomeOtherObjectArgs>[]>[]>;
+    /**
+     * Mapping from string to list of some other object
+     */
+    stillOthers?: pulumi.Input<{[key: string]: pulumi.Input<pulumi.Input<inputs.SomeOtherObjectArgs>[]>}>;
+}
+
+export interface ObjectWithNodeOptionalInputsArgs {
+    bar?: pulumi.Input<number>;
+    foo?: pulumi.Input<string>;
+}
+
+export interface SomeOtherObjectArgs {
+    baz?: pulumi.Input<string>;
+}

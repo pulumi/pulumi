@@ -16,7 +16,7 @@
 
 import asyncio
 import copy
-from typing import Optional, List, Any, Mapping, Union, Callable, TYPE_CHECKING, cast
+from typing import Optional, List, Any, Mapping, Union, Callable, Tuple, TYPE_CHECKING, cast
 from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
@@ -965,10 +965,7 @@ class DependencyProviderResource(ProviderResource):
     def __init__(self, ref: str) -> None:
         super().__init__(pkg="", name="", props={}, opts=None, dependency=True)
 
-        # Parse the URN and ID out of the provider reference.
-        last_sep = ref.rindex("::")
-        ref_urn = ref[:last_sep]
-        ref_id = ref[last_sep+2:]
+        ref_urn, ref_id = _parse_resource_reference(ref)
 
         from . import Output  # pylint: disable=import-outside-toplevel
 
@@ -1036,3 +1033,13 @@ def create_urn(
     all_args = [parent_prefix, type_, name]
     # invariant http://mypy.readthedocs.io/en/latest/common_issues.html#variance
     return Output.all(*all_args).apply(lambda arr: arr[0] + arr[1] + "::" + arr[2]) # type: ignore
+
+
+def _parse_resource_reference(ref: str) -> Tuple[str, str]:
+    """
+    Parses the URN and ID out of the provider reference.
+    """
+    last_sep = ref.rindex("::")
+    ref_urn = ref[:last_sep]
+    ref_id = ref[last_sep+2:]
+    return (ref_urn, ref_id)

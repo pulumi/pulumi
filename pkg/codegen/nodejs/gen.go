@@ -32,6 +32,7 @@ import (
 	"unicode"
 
 	"github.com/pkg/errors"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -144,6 +145,7 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 
 	namingCtx, pkgName, external := mod.namingContext(pkg)
 	if external {
+		pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
 		root = "types.output."
 		if input {
 			root = "types.input."
@@ -165,6 +167,10 @@ func (mod *modContext) objectType(pkg *schema.Package, tok string, input, args, 
 func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if strings.HasPrefix(r.Token, "pulumi:providers:") {
 		pkgName := strings.TrimPrefix(r.Token, "pulumi:providers:")
+		if pkgName != mod.pkg.Name {
+			pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+		}
+
 		return fmt.Sprintf("%s.Provider", pkgName)
 	}
 
@@ -172,7 +178,10 @@ func (mod *modContext) resourceType(r *schema.ResourceType) string {
 	if r.Resource != nil {
 		pkg = r.Resource.Package
 	}
-	namingCtx, pkgName, _ := mod.namingContext(pkg)
+	namingCtx, pkgName, external := mod.namingContext(pkg)
+	if external {
+		pkgName = fmt.Sprintf("pulumi%s", title(pkgName))
+	}
 
 	modName, name := namingCtx.tokenToModName(r.Token), tokenToName(r.Token)
 
@@ -726,7 +735,6 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 				}
 				if arg.IsRequired() {
 					argsOptional = false
-					break
 				}
 				args = append(args, arg)
 			}
@@ -939,8 +947,10 @@ func (mod *modContext) genType(w io.Writer, obj *schema.ObjectType, input bool, 
 			properties = make([]*schema.Property, len(obj.Properties))
 			for i, p := range obj.Properties {
 				copy := *p
-				if optional, ok := copy.Type.(*schema.OptionalType); ok && required.Has(p.Name) {
-					copy.Type = optional.ElementType
+				if required.Has(p.Name) {
+					copy.Type = codegen.RequiredType(&copy)
+				} else {
+					copy.Type = codegen.OptionalType(&copy)
 				}
 				properties[i] = &copy
 			}
@@ -985,6 +995,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return false
 	}
 
+	var nodePackageInfo NodePackageInfo
+	if languageInfo, hasLanguageInfo := mod.pkg.Language["nodejs"]; hasLanguageInfo {
+		nodePackageInfo = languageInfo.(NodePackageInfo)
+	}
+
 	switch t := t.(type) {
 	case *schema.OptionalType:
 		return mod.getTypeImports(t.ElementType, recurse, externalImports, imports, seen)
@@ -1000,7 +1015,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Package != nil && t.Package != mod.pkg {
 			pkg := t.Package.Name
-			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
+			} else {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", fmt.Sprintf("pulumi%s", title(pkg)), pkg))
+			}
 			return false
 		}
 
@@ -1012,7 +1031,11 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		// If it's from another package, add an import for the external package.
 		if t.Resource != nil && t.Resource.Package != mod.pkg {
 			pkg := t.Resource.Package.Name
-			externalImports.Add(fmt.Sprintf("import * as %[1]s from \"@pulumi/%[1]s\";", pkg))
+			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
+			} else {
+				externalImports.Add(fmt.Sprintf("import * as %s from \"@pulumi/%s\";", fmt.Sprintf("pulumi%s", title(pkg)), pkg))
+			}
 			return false
 		}
 
@@ -1156,8 +1179,10 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 
 	mod.genHeader(w, mod.sdkImports(referencesNestedTypes, true), externalImports, imports)
 
+	fmt.Fprintf(w, "declare var exports: any;\n")
+
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "let __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
+	fmt.Fprintf(w, "const __config = new pulumi.Config(\"%v\");\n", mod.pkg.Name)
 	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
@@ -1173,14 +1198,20 @@ func (mod *modContext) genConfig(w io.Writer, variables []*schema.Property) erro
 			if err != nil {
 				return err
 			}
-			// Note: this logic isn't quite correct, but already exists in all of the TF-based providers.
-			// Specifically, this doesn't work right if the first value is set to false but the default value
-			// is true.
-			configFetch += " || " + v
+			configFetch += " ?? " + v
+		}
+		optType := codegen.OptionalType(p)
+		if p.DefaultValue != nil && p.DefaultValue.Value != nil {
+			optType = codegen.RequiredType(p)
 		}
 
-		fmt.Fprintf(w, "export let %s: %s = %s;\n",
-			p.Name, mod.typeString(codegen.OptionalType(p), false, nil), configFetch)
+		fmt.Fprintf(w, "export declare const %s: %s;\n", p.Name, mod.typeString(optType, false, nil))
+		fmt.Fprintf(w, "Object.defineProperty(exports, %q, {\n", p.Name)
+		fmt.Fprintf(w, "    get() {\n")
+		fmt.Fprintf(w, "        return %s;\n", configFetch)
+		fmt.Fprintf(w, "    },\n")
+		fmt.Fprintf(w, "    enumerable: true,\n")
+		fmt.Fprintf(w, "});\n\n")
 	}
 
 	return nil
@@ -1546,7 +1577,12 @@ func (mod *modContext) genIndex(exports []string) string {
 		}
 		fmt.Fprintf(w, "// Export sub-modules:\n")
 
-		sorted := children.SortedValues()
+		directChildren := codegen.NewStringSet()
+		for _, child := range children.SortedValues() {
+			directChildren.Add(path.Base(child))
+		}
+		sorted := directChildren.SortedValues()
+
 		for _, mod := range sorted {
 			fmt.Fprintf(w, "import * as %[1]s from \"./%[1]s\";\n", mod)
 		}
@@ -1670,7 +1706,12 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 		if len(children) > 0 {
 			fmt.Fprintf(buffer, "// Export sub-modules:\n")
 
-			sorted := children.SortedValues()
+			directChildren := codegen.NewStringSet()
+			for _, child := range children.SortedValues() {
+				directChildren.Add(path.Base(child))
+			}
+			sorted := directChildren.SortedValues()
+
 			for _, mod := range sorted {
 				fmt.Fprintf(buffer, "import * as %[1]s from \"./%[1]s\";\n", mod)
 			}
@@ -1731,6 +1772,8 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	devDependencies := map[string]string{}
 	if info.TypeScriptVersion != "" {
 		devDependencies["typescript"] = info.TypeScriptVersion
+	} else {
+		devDependencies["typescript"] = "^4.3.5"
 	}
 
 	// Create info that will get serialized into an NPM package.json.

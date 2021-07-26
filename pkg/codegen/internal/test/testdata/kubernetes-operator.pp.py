@@ -22,9 +22,9 @@ pulumi_kubernetes_operator_deployment = kubernetes.apps.v1.Deployment("pulumi_ku
             ),
             spec=kubernetes.core.v1.PodSpecArgs(
                 service_account_name="pulumi-kubernetes-operator",
-                image_pull_secrets=[{
-                    "name": "pulumi-kubernetes-operator",
-                }],
+                image_pull_secrets=[kubernetes.core.v1.LocalObjectReferenceArgs(
+                    name="pulumi-kubernetes-operator",
+                )],
                 containers=[kubernetes.core.v1.ContainerArgs(
                     name="pulumi-kubernetes-operator",
                     image="pulumi/pulumi-kubernetes-operator:v0.0.2",
@@ -34,19 +34,19 @@ pulumi_kubernetes_operator_deployment = kubernetes.apps.v1.Deployment("pulumi_ku
                     env=[
                         kubernetes.core.v1.EnvVarArgs(
                             name="WATCH_NAMESPACE",
-                            value_from={
-                                "field_ref": {
-                                    "field_path": "metadata.namespace",
-                                },
-                            },
+                            value_from=kubernetes.core.v1.EnvVarSourceArgs(
+                                field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                                    field_path="metadata.namespace",
+                                ),
+                            ),
                         ),
                         kubernetes.core.v1.EnvVarArgs(
                             name="POD_NAME",
-                            value_from={
-                                "field_ref": {
-                                    "field_path": "metadata.name",
-                                },
-                            },
+                            value_from=kubernetes.core.v1.EnvVarSourceArgs(
+                                field_ref=kubernetes.core.v1.ObjectFieldSelectorArgs(
+                                    field_path="metadata.name",
+                                ),
+                            ),
                         ),
                         kubernetes.core.v1.EnvVarArgs(
                             name="OPERATOR_NAME",

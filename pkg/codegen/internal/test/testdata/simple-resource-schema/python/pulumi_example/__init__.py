@@ -9,6 +9,9 @@ from .arg_function import *
 from .other_resource import *
 from .provider import *
 from .resource import *
+from .type_uses import *
+from ._inputs import *
+from . import outputs
 _utilities.register(
     resource_modules="""
 [
@@ -18,7 +21,8 @@ _utilities.register(
   "fqn": "pulumi_example",
   "classes": {
    "example::OtherResource": "OtherResource",
-   "example::Resource": "Resource"
+   "example::Resource": "Resource",
+   "example::TypeUses": "TypeUses"
   }
  }
 ]

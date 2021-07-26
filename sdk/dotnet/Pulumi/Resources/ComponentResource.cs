@@ -14,6 +14,8 @@ namespace Pulumi
     /// </summary>
     public class ComponentResource : Resource
     {
+        internal readonly bool remote;
+
         /// <summary>
         /// Creates and registers a new component resource.  <paramref name="type"/> is the fully
         /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
@@ -47,6 +49,7 @@ namespace Pulumi
             : base(type, name, custom: false, args ?? ResourceArgs.Empty, options ?? new ComponentResourceOptions(), remote)
 #pragma warning restore RS0022 // Constructor make noninheritable base class inheritable
         {
+            this.remote = remote;
         }
 
         /// <summary>
