@@ -11,6 +11,10 @@ TESTPARALLELISM := 10
 
 include ../../build/common.mk
 
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = build
+
 ensure::
 	pipenv install --dev
 	mkdir -p $(PYENVSRC)
@@ -41,7 +45,7 @@ install_plugin:: build_plugin
 
 install:: install_package install_plugin
 
-test_fast:: build
+test_fast:: $(TEST_ALL_DEPS)
 	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why

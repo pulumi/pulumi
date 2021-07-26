@@ -9,6 +9,10 @@ TESTPARALLELISM := 10
 
 include ../../build/common.mk
 
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = install
+
 build::
 	# From the nuget docs:
 	#
@@ -34,7 +38,7 @@ install:: build install_plugin
 	rm -f $(PULUMI_NUGET)/*.nupkg
 	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
-dotnet_test:: install
+dotnet_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
 	dotnet test /p:Version=${DOTNET_VERSION}
 
@@ -55,4 +59,3 @@ publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
 	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
 		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
-
