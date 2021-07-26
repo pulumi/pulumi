@@ -2,10 +2,13 @@
 package lifecycletest
 
 import (
+	"sync"
 	"testing"
 
 	"github.com/blang/semver"
+	"github.com/gofrs/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
@@ -338,27 +341,155 @@ func TestSingleResourceExplicitProviderReplace(t *testing.T) {
 	p.Run(t, snap)
 }
 
-// TestSingleResourceExplicitProviderAliasReplace verifies that providers respect aliases,
-// and propagate replaces as a result of an aliased provider diff.
-func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
+type configurableProvider struct {
+	id      string
+	replace bool
+	creates *sync.Map
+	deletes *sync.Map
+}
+
+func (p *configurableProvider) configure(news resource.PropertyMap) error {
+	p.id = news["id"].StringValue()
+	return nil
+}
+
+func (p *configurableProvider) create(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+	preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+	uid, err := uuid.NewV4()
+	if err != nil {
+		return "", nil, resource.StatusUnknown, err
+	}
+	id := resource.ID(uid.String())
+
+	p.creates.Store(id, p.id)
+	return id, inputs, resource.StatusOK, nil
+}
+
+func (p *configurableProvider) delete(urn resource.URN, id resource.ID, olds resource.PropertyMap,
+	timeout float64) (resource.Status, error) {
+	p.deletes.Store(id, p.id)
+	return resource.StatusOK, nil
+}
+
+// TestSingleResourceExplicitProviderAliasUpdateDelete verifies that providers respect aliases during updates, and
+// that the correct instance of an explicit provider is used to delete a removed resource.
+func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
+	var creates, deletes sync.Map
+
 	loaders := []*deploytest.ProviderLoader{
 		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			configurable := &configurableProvider{
+				creates: &creates,
+				deletes: &deletes,
+			}
+
 			return &deploytest.Provider{
 				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
 					ignoreChanges []string) (plugin.DiffResult, error) {
-					// Always require replacement.
+					return plugin.DiffResult{}, nil
+				},
+				ConfigureF: configurable.configure,
+				CreateF:    configurable.create,
+				DeleteF:    configurable.delete,
+			}, nil
+		}),
+	}
+
+	providerInputs := resource.PropertyMap{
+		resource.PropertyKey("id"): resource.NewStringProperty("first"),
+	}
+	providerName := "provA"
+	aliases := []resource.URN{}
+	registerResource := true
+	var resourceID resource.ID
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		provURN, provID, _, err := monitor.RegisterResource(providers.MakeProviderType("pkgA"), providerName, true,
+			deploytest.ResourceOptions{
+				Inputs:  providerInputs,
+				Aliases: aliases,
+			})
+		assert.NoError(t, err)
+
+		if provID == "" {
+			provID = providers.UnknownID
+		}
+
+		provRef, err := providers.NewReference(provURN, provID)
+		assert.NoError(t, err)
+
+		if registerResource {
+			_, resourceID, _, err = monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+				Provider: provRef.String(),
+			})
+			assert.NoError(t, err)
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	// Build a basic lifecycle.
+	steps := MakeBasicLifecycleSteps(t, 2)
+
+	// Run the lifecycle through its initial update+refresh.
+	p.Steps = steps[:4]
+	snap := p.Run(t, nil)
+
+	// Add a provider alias to the original URN.
+	aliases = []resource.URN{
+		p.NewProviderURN("pkgA", "provA", ""),
+	}
+	// Change the provider name and configuration and remove the resource. This will cause an Update for the provider
+	// and a Delete for the resource. The updated provider instance should be used to perform the delete.
+	providerName = "provB"
+	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
+	registerResource = false
+
+	p.Steps = []TestStep{{Op: Update}}
+	snap = p.Run(t, snap)
+
+	// Check the identity of the provider that performed the delete.
+	deleterID, ok := deletes.Load(resourceID)
+	require.True(t, ok)
+	assert.Equal(t, "second", deleterID)
+}
+
+// TestSingleResourceExplicitProviderAliasReplace verifies that providers respect aliases,
+// and propagate replaces as a result of an aliased provider diff.
+func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
+	var creates, deletes sync.Map
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			configurable := &configurableProvider{
+				replace: true,
+				creates: &creates,
+				deletes: &deletes,
+			}
+
+			return &deploytest.Provider{
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
 					keys := []resource.PropertyKey{}
 					for k := range news {
 						keys = append(keys, k)
 					}
 					return plugin.DiffResult{ReplaceKeys: keys}, nil
 				},
+				ConfigureF: configurable.configure,
+				CreateF:    configurable.create,
+				DeleteF:    configurable.delete,
 			}, nil
 		}),
 	}
 
 	providerInputs := resource.PropertyMap{
-		resource.PropertyKey("foo"): resource.NewStringProperty("bar"),
+		resource.PropertyKey("id"): resource.NewStringProperty("first"),
 	}
 	providerName := "provA"
 	aliases := []resource.URN{}
@@ -419,7 +550,7 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 	snap = p.Run(t, snap)
 
 	// Change the config and run an update maintaining the alias. We expect everything to require replacement.
-	providerInputs[resource.PropertyKey("foo")] = resource.NewStringProperty("baz")
+	providerInputs[resource.PropertyKey("id")] = resource.NewStringProperty("second")
 	p.Steps = []TestStep{{
 		Op: Update,
 		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
@@ -428,10 +559,23 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 			provURN := p.NewProviderURN("pkgA", providerName, "")
 			resURN := p.NewURN("pkgA:m:typA", "resA", "")
 
+			// Find the delete and create IDs for the resource.
+			var createdID, deletedID resource.ID
+
 			// Look for replace steps on the provider and the resource.
 			replacedProvider, replacedResource := false, false
 			for _, entry := range entries {
 				op := entry.Step.Op()
+
+				if entry.Step.URN() == resURN {
+					switch op {
+					case deploy.OpCreateReplacement:
+						createdID = entry.Step.New().ID
+					case deploy.OpDeleteReplaced:
+						deletedID = entry.Step.Old().ID
+					}
+				}
+
 				if entry.Kind != JournalEntrySuccess || op != deploy.OpDeleteReplaced {
 					continue
 				}
@@ -447,6 +591,18 @@ func TestSingleResourceExplicitProviderAliasReplace(t *testing.T) {
 			}
 			assert.True(t, replacedProvider)
 			assert.True(t, replacedResource)
+
+			// Check the identities of the providers that performed the create and delete.
+			//
+			// For a replacement, the newly-created provider should be used to create the new resource, and the original
+			// provider should be used to delete the old resource.
+			creatorID, ok := creates.Load(createdID)
+			require.True(t, ok)
+			assert.Equal(t, "second", creatorID)
+
+			deleterID, ok := deletes.Load(deletedID)
+			require.True(t, ok)
+			assert.Equal(t, "first", deleterID)
 
 			return res
 		},

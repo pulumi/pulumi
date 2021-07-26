@@ -308,6 +308,8 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 		contract.IgnoreError(closeErr)
 	}
 
+	logging.V(7).Infof("%s: executed (%#v, %#v)", label, diff.Changes, diff.ReplaceKeys)
+
 	return diff, nil
 }
 
