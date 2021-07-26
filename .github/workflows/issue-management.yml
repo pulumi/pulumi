@@ -20,4 +20,5 @@ jobs:
         stale-issue-message: 'Since we haven''t heard back from you, closing this issue for now. Please feel free to comment with more information and we can get this reopened.'
         stale-issue-label: awaiting-feedback-stale
         days-before-stale: 14
+        close-issue-label: resolution/no-repro
         days-before-close: 1
