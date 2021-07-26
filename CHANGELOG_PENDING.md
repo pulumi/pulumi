@@ -4,9 +4,6 @@
 - [sdk/go] - Add stack output helpers for numeric types.
   [#7410](https://github.com/pulumi/pulumi/pull/7410)
 
-- [sdk/go] - Add pulumi.Getenv() convenience function
-  [#7491](https://github.com/pulumi/pulumi/pull/7491)
-
 ### Bug Fixes
 
 - [sdk/{go,python,nodejs}] - Rehydrate provider resources in `Construct`.
