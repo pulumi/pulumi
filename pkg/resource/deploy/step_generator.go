@@ -769,27 +769,19 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	return dels, nil
 }
 
-func (sg *stepGenerator) getChildrenOfTarget(target resource.URN) map[resource.URN]bool {
+func (sg *stepGenerator) getTargetIncludingChildren(target resource.URN) map[resource.URN]bool {
 	allTargets := make(map[resource.URN]bool)
 	allTargets[target] = true
 
-	var findChildren func(urn resource.URN)
-	findChildren = func(urn resource.URN) {
-		for _, res := range sg.deployment.prev.Resources {
-			if res.Parent != "" {
-				if _, has := allTargets[res.URN]; has {
-					// already included
-					continue
-				}
-
-				if _, has := allTargets[res.Parent]; has {
-					allTargets[res.URN] = true
-					findChildren(res.URN)
-				}
-			}
+	// The list of resources is a topological sort of the reverse-dependency graph, so any
+	// resource R will appear in a list before its dependents and its children. We can use this
+	// to our advantage here and find all of a resource's children via a linear scan of the list
+	// starting from R.
+	for _, res := range sg.deployment.prev.Resources {
+		if _, has := allTargets[res.Parent]; has {
+			allTargets[res.URN] = true
 		}
 	}
-	findChildren(target)
 
 	return allTargets
 }
@@ -804,10 +796,10 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 
 	targetsIncludingChildren := make(map[resource.URN]bool)
 
+	// Include all the children of each target.
 	for target := range targetsOpt {
-		// If target is a component, include all its children as targets too.
-		children := sg.getChildrenOfTarget(target)
-		for child := range children {
+		allTargets := sg.getTargetIncludingChildren(target)
+		for child := range allTargets {
 			targetsIncludingChildren[child] = true
 		}
 	}
