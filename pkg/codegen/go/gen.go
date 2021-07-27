@@ -706,7 +706,7 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 	}, "\n")
 }
 
-func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
+func genInputImplementation(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
 	if resourceType {
 		fmt.Fprintf(w, "\treturn reflect.TypeOf((*%s)(nil))\n", elementType)
@@ -797,7 +797,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]s\n\n", name)
 
-		genInputMethods(w, name+"Array", name+"Array", "[]"+name, false, false)
+		genInputImplementation(w, name+"Array", name+"Array", "[]"+name, false, false)
 	}
 
 	// Generate the map input.
@@ -806,7 +806,7 @@ func (pkg *pkgContext) genEnumType(w io.Writer, name string, enumType *schema.En
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]s\n\n", name)
 
-		genInputMethods(w, name+"Map", name+"Map", "map[string]"+name, false, false)
+		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false, false)
 	}
 
 	// Generate the array output
@@ -1046,7 +1046,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 	}
 	fmt.Fprintf(w, "}\n\n")
 
-	genInputMethods(w, name, name+"Args", name, details.ptrElement, false)
+	genInputImplementation(w, name, name+"Args", name, details.ptrElement, false)
 
 	// Generate the pointer input.
 	if details.ptrElement {
@@ -1060,7 +1060,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 		fmt.Fprintf(w, "\treturn (*%s)(v)\n", ptrTypeName)
 		fmt.Fprintf(w, "}\n\n")
 
-		genInputMethods(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, false)
+		genInputImplementation(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, false)
 	}
 
 	// Generate the array input.
@@ -1069,7 +1069,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 		fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
 
-		genInputMethods(w, name+"Array", name+"Array", "[]"+name, false, false)
+		genInputImplementation(w, name+"Array", name+"Array", "[]"+name, false, false)
 	}
 
 	// Generate the map input.
@@ -1078,7 +1078,7 @@ func (pkg *pkgContext) genInputTypes(w io.Writer, t *schema.ObjectType, details 
 
 		fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
 
-		genInputMethods(w, name+"Map", name+"Map", "map[string]"+name, false, false)
+		genInputImplementation(w, name+"Map", name+"Map", "map[string]"+name, false, false)
 	}
 }
 
@@ -1596,7 +1596,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	fmt.Fprintf(w, "\tTo%[1]sOutputWithContext(ctx context.Context) %[1]sOutput\n", name)
 	fmt.Fprintf(w, "}\n\n")
 
-	genInputMethods(w, name, "*"+name, name, generateResourceContainerTypes, true)
+	genInputImplementation(w, name, "*"+name, name, generateResourceContainerTypes, true)
 
 	if generateResourceContainerTypes {
 		// Emit the resource pointer input type.
@@ -1607,7 +1607,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "}\n\n")
 		ptrTypeName := camel(name) + "PtrType"
 		fmt.Fprintf(w, "type %s %sArgs\n\n", ptrTypeName, name)
-		genInputMethods(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, true)
+		genInputImplementation(w, name+"Ptr", "*"+ptrTypeName, "*"+name, false, true)
 
 		if !r.IsProvider {
 			// Generate the resource array input.
@@ -1794,7 +1794,7 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 	for _, name := range names {
 		if strings.HasSuffix(name, "Array") {
 			fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
-			genInputMethods(w, name, name, elementTypeName, false, false)
+			genInputImplementation(w, name, name, elementTypeName, false, false)
 
 			fmt.Fprintf(w, "type %sOutput struct { *pulumi.OutputState }\n\n", name)
 			genOutputMethods(w, name, elementTypeName, false)
@@ -1808,7 +1808,7 @@ func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []s
 
 		if strings.HasSuffix(name, "Map") {
 			fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
-			genInputMethods(w, name, name, elementTypeName, false, false)
+			genInputImplementation(w, name, name, elementTypeName, false, false)
 
 			fmt.Fprintf(w, "type %sOutput struct { *pulumi.OutputState }\n\n", name)
 			genOutputMethods(w, name, elementTypeName, false)
