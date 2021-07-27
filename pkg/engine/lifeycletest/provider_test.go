@@ -451,7 +451,7 @@ func TestSingleResourceExplicitProviderAliasUpdateDelete(t *testing.T) {
 	registerResource = false
 
 	p.Steps = []TestStep{{Op: Update}}
-	snap = p.Run(t, snap)
+	_ = p.Run(t, snap)
 
 	// Check the identity of the provider that performed the delete.
 	deleterID, ok := deletes.Load(resourceID)
