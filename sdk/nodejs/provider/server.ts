@@ -24,6 +24,7 @@ import { Inputs, Output, output } from "../output";
 import * as resource from "../resource";
 import * as runtime from "../runtime";
 import { version } from "../version";
+import { parseArgs } from "./internals";
 
 const requireFromString = require("require-from-string");
 const anyproto = require("google-protobuf/google/protobuf/any_pb.js");
@@ -306,7 +307,7 @@ class Server implements grpc.UntypedServiceImplementation {
             const rpcProviders = req.getProvidersMap();
             if (rpcProviders) {
                 for (const [pkg, ref] of rpcProviders.entries()) {
-                    providers[pkg] = new resource.DependencyProviderResource(ref);
+                    providers[pkg] = createProviderResource(ref);
                 }
             }
             const opts: resource.ComponentResourceOptions = {
@@ -570,14 +571,16 @@ export async function main(provider: Provider, args: string[]) {
         }
     });
 
+    const parsedArgs = parseArgs(args);
+
     // The program requires a single argument: the address of the RPC endpoint for the engine.  It
     // optionally also takes a second argument, a reference back to the engine, but this may be missing.
-    if (args.length === 0) {
+    if (parsedArgs === undefined) {
         console.error("fatal: Missing <engine> address");
         process.exit(-1);
         return;
     }
-    const engineAddr: string = args[0];
+    const engineAddr: string = parsedArgs.engineAddress;
 
     // Finally connect up the gRPC client/server and listen for incoming requests.
     const server = new grpc.Server({
@@ -597,4 +600,25 @@ export async function main(provider: Provider, args: string[]) {
 
     // Emit the address so the monitor can read it to connect.  The gRPC server will keep the message loop alive.
     console.log(port);
+}
+
+/**
+ * Rehydrate the provider reference into a registered ProviderResource,
+ * otherwise return an instance of DependencyProviderResource.
+ */
+function createProviderResource(ref: string): resource.ProviderResource {
+    const [urn, _] = resource.parseResourceReference(ref);
+    const urnParts = urn.split("::");
+    const qualifiedType = urnParts[2];
+    const urnName = urnParts[3];
+
+    const type = qualifiedType.split("$").pop()!;
+    const typeParts = type.split(":");
+    const typName = typeParts.length > 2 ? typeParts[2] : "";
+
+    const resourcePackage = runtime.getResourcePackage(typName, /*version:*/ "");
+    if (resourcePackage) {
+        return resourcePackage.constructProvider(urnName, type, urn);
+    }
+    return new resource.DependencyProviderResource(ref);
 }
