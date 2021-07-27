@@ -17,7 +17,7 @@ def options(options_and_packages, test_subset=None):
         if test_subset is None or o != '-tags=all' or test_subset == 'etc':
             return o
 
-        tags = TEST_SUBSETS[test_subset].tags
+        tags = TEST_SUBSETS[test_subset].go_tags
 
         if len(tags) == 0:
             return o
