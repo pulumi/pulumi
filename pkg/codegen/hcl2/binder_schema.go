@@ -28,7 +28,7 @@ import (
 	"github.com/zclconf/go-cty/cty"
 )
 
-type packageSchema struct {
+type PackageSchema struct {
 	schema    *schema.Package
 	resources map[string]*schema.Resource
 	functions map[string]*schema.Function
@@ -37,16 +37,16 @@ type packageSchema struct {
 type PackageCache struct {
 	m sync.RWMutex
 
-	entries map[string]*packageSchema
+	entries map[string]*PackageSchema
 }
 
 func NewPackageCache() *PackageCache {
 	return &PackageCache{
-		entries: map[string]*packageSchema{},
+		entries: map[string]*PackageSchema{},
 	}
 }
 
-func (c *PackageCache) getPackageSchema(name string) (*packageSchema, bool) {
+func (c *PackageCache) getPackageSchema(name string) (*PackageSchema, bool) {
 	c.m.RLock()
 	defer c.m.RUnlock()
 
@@ -58,7 +58,7 @@ func (c *PackageCache) getPackageSchema(name string) (*packageSchema, bool) {
 // GetSchema method.
 //
 // TODO: schema and provider versions
-func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*packageSchema, error) {
+func (c *PackageCache) LoadPackageSchema(loader schema.Loader, name string) (*PackageSchema, error) {
 	if s, ok := c.getPackageSchema(name); ok {
 		return s, nil
 	}
@@ -78,7 +78,7 @@ func (c *PackageCache) loadPackageSchema(loader schema.Loader, name string) (*pa
 		functions[canonicalizeToken(f.Token, pkg)] = f
 	}
 
-	schema := &packageSchema{
+	schema := &PackageSchema{
 		schema:    pkg,
 		resources: resources,
 		functions: functions,
@@ -135,7 +135,7 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 		if _, ok := b.referencedPackages[name]; ok {
 			continue
 		}
-		pkg, err := b.options.packageCache.loadPackageSchema(b.options.loader, name)
+		pkg, err := b.options.packageCache.LoadPackageSchema(b.options.loader, name)
 		if err != nil {
 			return err
 		}
