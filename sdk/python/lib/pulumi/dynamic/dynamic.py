@@ -243,9 +243,9 @@ class Resource(CustomResource):
     """
 
     def __init_subclass__(cls, module: str = '', name: str ='Resource'):
-        if module != '':
-            module = '/' + module
-        cls._resource_type_name = f"dynamic{module}:{name}"
+        if module:
+            module = f'/{module}'
+        cls._resource_type_name = f'dynamic{module}:{name}'
 
     def __init__(self,
                  provider: ResourceProvider,
