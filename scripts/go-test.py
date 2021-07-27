@@ -14,7 +14,7 @@ import uuid
 def options(options_and_packages, test_subset=None):
 
     def rewrite(o):
-        if test_subset is None or o != '-tags=all':
+        if test_subset is None or o != '-tags=all' or test_subset == 'etc':
             return o
 
         tags = TEST_SUBSETS[test_subset].tags
