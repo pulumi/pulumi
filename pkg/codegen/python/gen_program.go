@@ -19,7 +19,6 @@ import (
 	"io"
 	"sort"
 	"strings"
-	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -39,13 +38,7 @@ type generator struct {
 	diagnostics hcl.Diagnostics
 
 	configCreated bool
-	casingTables  map[string]map[string]string
 	quotes        map[model.Expression]string
-}
-
-type objectTypeInfo struct {
-	isDictionary         bool
-	camelCaseToSnakeCase map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -69,32 +62,17 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	return files, g.diagnostics, nil
 }
 
-var caseTableCache sync.Map
-
 func newGenerator(program *hcl2.Program) (*generator, error) {
 	// Import Python-specific schema info.
-	casingTables := map[string]map[string]string{}
 	for _, p := range program.Packages() {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, err
 		}
-
-		// Build the case mapping table.
-		var camelCaseToSnakeCase map[string]string
-		if table, ok := caseTableCache.Load(p); ok {
-			camelCaseToSnakeCase = table.(map[string]string)
-		} else {
-			seenTypes := codegen.Set{}
-			buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
-			caseTableCache.Store(p, camelCaseToSnakeCase)
-		}
-		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
 	}
 
 	g := &generator{
-		program:      program,
-		casingTables: casingTables,
-		quotes:       map[model.Expression]string{},
+		program: program,
+		quotes:  map[model.Expression]string{},
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -226,15 +204,6 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		return ""
 	}
 
-	if objType.Language != nil {
-		pyTypeInfo, ok := objType.Language["python"].(objectTypeInfo)
-		if ok {
-			if pyTypeInfo.isDictionary {
-				return ""
-			}
-		}
-	}
-
 	token := objType.Token
 	tokenRange := expr.SyntaxNode().Range()
 
@@ -356,10 +325,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
-	casingTable := g.casingTables[pkg]
 	for _, input := range r.Inputs {
-		g.lowerObjectKeys(input.Value, casingTable)
-
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
 		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))

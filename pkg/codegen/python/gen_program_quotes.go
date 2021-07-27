@@ -10,7 +10,6 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 )
@@ -53,19 +52,8 @@ func (g *generator) rewriteTraversal(traversal hcl.Traversal, source model.Expre
 		keyVal, objectKey := key.AsString(), false
 
 		receiver := parts[i]
-		if schemaType, ok := hcl2.GetSchemaForType(model.GetTraversableType(receiver)); ok {
-			obj := schemaType.(*schema.ObjectType)
-
-			info, ok := obj.Language["python"].(objectTypeInfo)
-			if ok {
-				objectKey = !info.isDictionary
-				if mapped, ok := info.camelCaseToSnakeCase[keyVal]; ok {
-					keyVal = mapped
-				}
-			} else {
-				objectKey, keyVal = true, PyName(keyVal)
-			}
-
+		if _, ok := hcl2.GetSchemaForType(model.GetTraversableType(receiver)); ok {
+			objectKey, keyVal = true, PyName(keyVal)
 			switch t := traverser.(type) {
 			case hcl.TraverseAttr:
 				t.Name = keyVal
