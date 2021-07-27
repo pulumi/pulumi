@@ -45,6 +45,9 @@ class PersonArgs:
 
 
 class Person(pulumi.CustomResource):
+    """
+    Create a Person resource with the given unique name, props, and options.
+    """
     @overload
     def __init__(__self__,
                  resource_name: str,
@@ -53,7 +56,6 @@ class Person(pulumi.CustomResource):
                  pets: Optional[pulumi.Input[Sequence[pulumi.Input[pulumi.InputType['PetArgs']]]]] = None,
                  __props__=None):
         """
-        Create a Person resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param pulumi.ResourceOptions opts: Options for the resource.
         """
@@ -64,7 +66,6 @@ class Person(pulumi.CustomResource):
                  args: Optional[PersonArgs] = None,
                  opts: Optional[pulumi.ResourceOptions] = None):
         """
-        Create a Person resource with the given unique name, props, and options.
         :param str resource_name: The name of the resource.
         :param PersonArgs args: The arguments to use to populate this resource's properties.
         :param pulumi.ResourceOptions opts: Options for the resource.

@@ -1086,6 +1086,9 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 
 	// Produce a class definition with optional """ comment.
 	fmt.Fprintf(w, "class %s(%s):\n", name, baseType)
+
+	mod.genResourceClassDocstring(w, res)
+
 	if res.DeprecationMessage != "" && mod.compatibility != kubernetes20 {
 		escaped := strings.ReplaceAll(res.DeprecationMessage, `"`, `\"`)
 		fmt.Fprintf(w, "    warnings.warn(\"\"\"%s\"\"\", DeprecationWarning)\n\n", escaped)
@@ -1117,7 +1120,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 	// Emit an __init__ overload that accepts the resource's inputs as function arguments.
 	fmt.Fprintf(w, "    @overload\n")
 	emitInitMethodSignature("__init__")
-	mod.genInitDocstring(w, res, resourceArgsName, false /*argsOverload*/)
+	mod.genResourceInitDocstring(w, res, resourceArgsName, false /*argsOverload*/)
 	fmt.Fprintf(w, "        ...\n")
 
 	// Emit an __init__ overload that accepts the resource's inputs from the args class.
@@ -1130,7 +1133,7 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "                 args: %s,\n", resourceArgsName)
 	}
 	fmt.Fprintf(w, "                 opts: Optional[pulumi.ResourceOptions] = None):\n")
-	mod.genInitDocstring(w, res, resourceArgsName, true /*argsOverload*/)
+	mod.genResourceInitDocstring(w, res, resourceArgsName, true /*argsOverload*/)
 	fmt.Fprintf(w, "        ...\n")
 
 	// Emit the actual implementation of __init__, which does the appropriate thing based on which
@@ -2017,15 +2020,35 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 	}
 }
 
-// genInitDocstring emits the docstring for the __init__ method of the given resource type.
+// `genResourceClassDocstring` emits the class docstring for the given
+// resource type.
 //
-// Sphinx (the documentation generator that we use to generate Python docs) does not draw a
-// distinction between documentation comments on the class itself and documentation comments on the
-// __init__ method of a class. The docs repo instructs Sphinx to concatenate the two together, which
-// means that we don't need to emit docstrings on the class at all as long as the __init__ docstring
-// is good enough.
+// Sphinx (the documentation generator that we use to generate Python
+// docs) does not draw a distinction between documentation comments on
+// the class itself and documentation comments on the `__init__`
+// method of a class. The docs repo instructs Sphinx to concatenate
+// the two together.
 //
-// The docstring we generate here describes both the class itself and the arguments to the class's
+// However, IDEs benefit from class docstrings. In PyCharm, emitting a
+// class docstring enables better `F1` help accessor when hovering
+// over a class name. VSCode experience is similarly improved.
+func (mod *modContext) genResourceClassDocstring(w io.Writer, res *schema.Resource) {
+	b := &bytes.Buffer{}
+
+	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	if res.Comment != "" {
+		fmt.Fprintln(b, codegen.FilterExamples(res.Comment, "python"))
+	} else {
+		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
+	}
+
+	// printComment handles the prefix and triple quotes.
+	printComment(w, b.String(), "    ")
+}
+
+// `genResourceInitDocstring` emits the docstring for the __init__ method of the given resource type.
+//
+// The docstring we generate here describes the arguments to the class's
 // constructor. The format of the docstring is in "Sphinx form":
 //   1. Parameters are introduced using the syntax ":param <type> <name>: <comment>". Sphinx parses this and uses it
 //      to populate the list of parameters for this function.
@@ -2035,16 +2058,9 @@ func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnak
 //
 // This function does the best it can to navigate these constraints and produce a docstring that
 // Sphinx can make sense of.
-func (mod *modContext) genInitDocstring(w io.Writer, res *schema.Resource, resourceArgsName string, argOverload bool) {
+func (mod *modContext) genResourceInitDocstring(w io.Writer, res *schema.Resource, resourceArgsName string, argOverload bool) {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
-
-	// If this resource has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	if res.Comment != "" {
-		fmt.Fprintln(b, codegen.FilterExamples(res.Comment, "python"))
-	} else {
-		fmt.Fprintf(b, "Create a %s resource with the given unique name, props, and options.\n", tokenToName(res.Token))
-	}
 
 	// All resources have a resource_name parameter and opts parameter.
 	fmt.Fprintln(b, ":param str resource_name: The name of the resource.")
@@ -2084,7 +2100,8 @@ func (mod *modContext) genGetDocstring(w io.Writer, res *schema.Resource) {
 	printComment(w, b.String(), "        ")
 }
 
-func (mod *modContext) genTypeDocstring(w io.Writer, comment string, properties []*schema.Property) {
+// For resources, consider `genResourceInitDocstring` instead.
+func (mod *modContext) genInitDocstring(w io.Writer, comment string, properties []*schema.Property) {
 	// b contains the full text of the docstring, without the leading and trailing triple quotes.
 	b := &bytes.Buffer{}
 
@@ -2370,7 +2387,7 @@ func (mod *modContext) genType(w io.Writer, name, comment string, properties []*
 		fmt.Fprintf(w, ",\n                 %s: %s%s", pname, ty, defaultValue)
 	}
 	fmt.Fprintf(w, "):\n")
-	mod.genTypeDocstring(w, comment, props)
+	mod.genInitDocstring(w, comment, props)
 	if len(props) == 0 {
 		fmt.Fprintf(w, "        pass\n")
 	}
