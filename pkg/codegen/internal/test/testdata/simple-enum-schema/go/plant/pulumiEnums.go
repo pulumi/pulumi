@@ -101,7 +101,7 @@ func (o ContainerBrightnessOutput) ToFloat64PtrOutputWithContext(ctx context.Con
 type ContainerBrightnessPtrOutput struct{ *pulumi.OutputState }
 
 func (ContainerBrightnessPtrOutput) ElementType() reflect.Type {
-	return containerBrightnessPtrType
+	return reflect.TypeOf((**ContainerBrightness)(nil)).Elem()
 }
 
 func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutput() ContainerBrightnessPtrOutput {
@@ -110,6 +110,16 @@ func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutput() Container
 
 func (o ContainerBrightnessPtrOutput) ToContainerBrightnessPtrOutputWithContext(ctx context.Context) ContainerBrightnessPtrOutput {
 	return o
+}
+
+func (o ContainerBrightnessPtrOutput) Elem() ContainerBrightnessOutput {
+	return o.ApplyT(func(v *ContainerBrightness) ContainerBrightness {
+		if v != nil {
+			return *v
+		}
+		var ret ContainerBrightness
+		return ret
+	}).(ContainerBrightnessOutput)
 }
 
 func (o ContainerBrightnessPtrOutput) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
@@ -124,16 +134,6 @@ func (o ContainerBrightnessPtrOutput) ToFloat64PtrOutputWithContext(ctx context.
 		v := float64(*e)
 		return &v
 	}).(pulumi.Float64PtrOutput)
-}
-
-func (o ContainerBrightnessPtrOutput) Elem() ContainerBrightnessOutput {
-	return o.ApplyT(func(v *ContainerBrightness) ContainerBrightness {
-		var ret ContainerBrightness
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(ContainerBrightnessOutput)
 }
 
 // ContainerBrightnessInput is an input type that accepts ContainerBrightnessArgs and ContainerBrightnessOutput values.
@@ -267,7 +267,7 @@ func (o ContainerColorOutput) ToStringPtrOutputWithContext(ctx context.Context) 
 type ContainerColorPtrOutput struct{ *pulumi.OutputState }
 
 func (ContainerColorPtrOutput) ElementType() reflect.Type {
-	return containerColorPtrType
+	return reflect.TypeOf((**ContainerColor)(nil)).Elem()
 }
 
 func (o ContainerColorPtrOutput) ToContainerColorPtrOutput() ContainerColorPtrOutput {
@@ -276,6 +276,16 @@ func (o ContainerColorPtrOutput) ToContainerColorPtrOutput() ContainerColorPtrOu
 
 func (o ContainerColorPtrOutput) ToContainerColorPtrOutputWithContext(ctx context.Context) ContainerColorPtrOutput {
 	return o
+}
+
+func (o ContainerColorPtrOutput) Elem() ContainerColorOutput {
+	return o.ApplyT(func(v *ContainerColor) ContainerColor {
+		if v != nil {
+			return *v
+		}
+		var ret ContainerColor
+		return ret
+	}).(ContainerColorOutput)
 }
 
 func (o ContainerColorPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -290,16 +300,6 @@ func (o ContainerColorPtrOutput) ToStringPtrOutputWithContext(ctx context.Contex
 		v := string(*e)
 		return &v
 	}).(pulumi.StringPtrOutput)
-}
-
-func (o ContainerColorPtrOutput) Elem() ContainerColorOutput {
-	return o.ApplyT(func(v *ContainerColor) ContainerColor {
-		var ret ContainerColor
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(ContainerColorOutput)
 }
 
 // ContainerColorInput is an input type that accepts ContainerColorArgs and ContainerColorOutput values.
@@ -434,7 +434,7 @@ func (o ContainerSizeOutput) ToIntPtrOutputWithContext(ctx context.Context) pulu
 type ContainerSizePtrOutput struct{ *pulumi.OutputState }
 
 func (ContainerSizePtrOutput) ElementType() reflect.Type {
-	return containerSizePtrType
+	return reflect.TypeOf((**ContainerSize)(nil)).Elem()
 }
 
 func (o ContainerSizePtrOutput) ToContainerSizePtrOutput() ContainerSizePtrOutput {
@@ -443,6 +443,16 @@ func (o ContainerSizePtrOutput) ToContainerSizePtrOutput() ContainerSizePtrOutpu
 
 func (o ContainerSizePtrOutput) ToContainerSizePtrOutputWithContext(ctx context.Context) ContainerSizePtrOutput {
 	return o
+}
+
+func (o ContainerSizePtrOutput) Elem() ContainerSizeOutput {
+	return o.ApplyT(func(v *ContainerSize) ContainerSize {
+		if v != nil {
+			return *v
+		}
+		var ret ContainerSize
+		return ret
+	}).(ContainerSizeOutput)
 }
 
 func (o ContainerSizePtrOutput) ToIntPtrOutput() pulumi.IntPtrOutput {
@@ -457,16 +467,6 @@ func (o ContainerSizePtrOutput) ToIntPtrOutputWithContext(ctx context.Context) p
 		v := int(*e)
 		return &v
 	}).(pulumi.IntPtrOutput)
-}
-
-func (o ContainerSizePtrOutput) Elem() ContainerSizeOutput {
-	return o.ApplyT(func(v *ContainerSize) ContainerSize {
-		var ret ContainerSize
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(ContainerSizeOutput)
 }
 
 // ContainerSizeInput is an input type that accepts ContainerSizeArgs and ContainerSizeOutput values.

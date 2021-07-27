@@ -114,9 +114,7 @@ func (i *RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTr
 	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeOutput)
 }
 
-type RubberTreeOutput struct {
-	*pulumi.OutputState
-}
+type RubberTreeOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*RubberTree)(nil))

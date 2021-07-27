@@ -167,9 +167,7 @@ func (i CatMap) ToCatMapOutputWithContext(ctx context.Context) CatMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(CatMapOutput)
 }
 
-type CatOutput struct {
-	*pulumi.OutputState
-}
+type CatOutput struct{ *pulumi.OutputState }
 
 func (CatOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Cat)(nil))
@@ -188,14 +186,12 @@ func (o CatOutput) ToCatPtrOutput() CatPtrOutput {
 }
 
 func (o CatOutput) ToCatPtrOutputWithContext(ctx context.Context) CatPtrOutput {
-	return o.ApplyT(func(v Cat) *Cat {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Cat) *Cat {
 		return &v
 	}).(CatPtrOutput)
 }
 
-type CatPtrOutput struct {
-	*pulumi.OutputState
-}
+type CatPtrOutput struct{ *pulumi.OutputState }
 
 func (CatPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**Cat)(nil))
@@ -207,6 +203,16 @@ func (o CatPtrOutput) ToCatPtrOutput() CatPtrOutput {
 
 func (o CatPtrOutput) ToCatPtrOutputWithContext(ctx context.Context) CatPtrOutput {
 	return o
+}
+
+func (o CatPtrOutput) Elem() CatOutput {
+	return o.ApplyT(func(v *Cat) Cat {
+		if v != nil {
+			return *v
+		}
+		var ret Cat
+		return ret
+	}).(CatOutput)
 }
 
 type CatArrayOutput struct{ *pulumi.OutputState }

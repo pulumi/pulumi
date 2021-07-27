@@ -101,10 +101,11 @@ func (o FooOutput) ToFooPtrOutput() FooPtrOutput {
 }
 
 func (o FooOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutput {
-	return o.ApplyT(func(v Foo) *Foo {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Foo) *Foo {
 		return &v
 	}).(FooPtrOutput)
 }
+
 func (o FooOutput) A() pulumi.BoolPtrOutput {
 	return o.ApplyT(func(v Foo) *bool { return v.A }).(pulumi.BoolPtrOutput)
 }
@@ -124,7 +125,13 @@ func (o FooPtrOutput) ToFooPtrOutputWithContext(ctx context.Context) FooPtrOutpu
 }
 
 func (o FooPtrOutput) Elem() FooOutput {
-	return o.ApplyT(func(v *Foo) Foo { return *v }).(FooOutput)
+	return o.ApplyT(func(v *Foo) Foo {
+		if v != nil {
+			return *v
+		}
+		var ret Foo
+		return ret
+	}).(FooOutput)
 }
 
 func (o FooPtrOutput) A() pulumi.BoolPtrOutput {
