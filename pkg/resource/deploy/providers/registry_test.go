@@ -321,57 +321,6 @@ func TestNewRegistryOldState(t *testing.T) {
 	}
 }
 
-func TestRegistryAliases(t *testing.T) {
-	old := newProviderState("pkgA", "a", "id1", false, nil)
-	olds := []*resource.State{
-		old,
-	}
-	loaders := []*providerLoader{
-		newSimpleLoader(t, "pkgA", "", nil),
-	}
-	host := newPluginHost(t, loaders)
-
-	r, err := NewRegistry(host, olds, false, nil)
-	assert.NoError(t, err)
-	assert.NotNil(t, r)
-
-	assert.Equal(t, len(olds), len(r.providers))
-
-	alias := newProviderState("pkgA", "alias", "id1", false, nil)
-	aliases := map[resource.URN]resource.URN{
-		old.URN: alias.URN,
-	}
-
-	for k, v := range aliases {
-		r.RegisterAlias(k, v)
-	}
-
-	all := []*resource.State{
-		old, alias,
-	}
-
-	for _, old := range all {
-		ref, err := NewReference(old.URN, old.ID)
-		assert.NoError(t, err)
-
-		p, ok := r.GetProvider(ref)
-		assert.True(t, ok)
-		assert.NotNil(t, p)
-
-		assert.True(t, p.(*testProvider).configured)
-
-		assert.Equal(t, GetProviderPackage(old.Type), p.Pkg())
-
-		ver, err := GetProviderVersion(old.Inputs)
-		assert.NoError(t, err)
-		if ver != nil {
-			info, err := p.GetPluginInfo()
-			assert.NoError(t, err)
-			assert.True(t, info.Version.GTE(*ver))
-		}
-	}
-}
-
 func TestNewRegistryOldStateNoProviders(t *testing.T) {
 	olds := []*resource.State{
 		newProviderState("pkgA", "a", "id1", false, nil),
