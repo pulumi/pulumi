@@ -128,7 +128,7 @@ type WorkloadArrayInput interface {
 type WorkloadArray []WorkloadInput
 
 func (WorkloadArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Workload)(nil))
+	return reflect.TypeOf((*[]*Workload)(nil)).Elem()
 }
 
 func (i WorkloadArray) ToWorkloadArrayOutput() WorkloadArrayOutput {
@@ -153,7 +153,7 @@ type WorkloadMapInput interface {
 type WorkloadMap map[string]WorkloadInput
 
 func (WorkloadMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Workload)(nil))
+	return reflect.TypeOf((*map[string]*Workload)(nil)).Elem()
 }
 
 func (i WorkloadMap) ToWorkloadMapOutput() WorkloadMapOutput {
