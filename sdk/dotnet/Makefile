@@ -2,6 +2,7 @@ PROJECT_NAME    := Pulumi .NET Core SDK
 LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
+PROJECT_ROOT    := $(realpath ../..)
 
 DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
 
@@ -36,7 +37,7 @@ install:: build install_plugin
 
 dotnet_test:: install
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	dotnet test /p:Version=${DOTNET_VERSION}
+	$(RUN_TESTSUITE) dotnet-test dotnet test /p:Version=${DOTNET_VERSION}
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
@@ -55,4 +56,3 @@ publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
 	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
 		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
-
