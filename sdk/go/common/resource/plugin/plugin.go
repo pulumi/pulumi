@@ -279,22 +279,14 @@ func newPlugin(ctx *Context, pwd, bin, prefix string, args, env []string, option
 
 // execPlugin starts the plugin executable.
 func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plugin, error) {
-	var args []string
-	args = append(args, pluginArgs...)
-	// Flow the logging information if set.
-	if logging.LogFlow {
-		if logging.LogToStderr {
-			args = append(args, "--logtostderr")
-		}
-		if logging.Verbose > 0 {
-			args = append(args, "-v="+strconv.Itoa(logging.Verbose))
-		}
-	}
-	// Flow tracing settings if we are using a remote collector.
-	if cmdutil.TracingEndpoint != "" && !cmdutil.TracingToFile {
-		args = append(args, "--tracing", cmdutil.TracingEndpoint)
-	}
-
+	args := buildPluginArguments(pluginArgumentOptions{
+		pluginArgs:      pluginArgs,
+		tracingEndpoint: cmdutil.TracingEndpoint,
+		tracingToFile:   cmdutil.TracingToFile,
+		logFlow:         logging.LogFlow,
+		logToStderr:     logging.LogToStderr,
+		verbose:         logging.Verbose,
+	})
 	cmd := exec.Command(bin, args...)
 	cmdutil.RegisterProcessGroup(cmd)
 	cmd.Dir = pwd
@@ -331,6 +323,32 @@ func execPlugin(bin string, pluginArgs []string, pwd string, env []string) (*plu
 		Stdout: out,
 		Stderr: err,
 	}, nil
+}
+
+type pluginArgumentOptions struct {
+	pluginArgs                          []string
+	tracingEndpoint                     string
+	tracingToFile, logFlow, logToStderr bool
+	verbose                             int
+}
+
+func buildPluginArguments(opts pluginArgumentOptions) []string {
+	var args []string
+	// Flow the logging information if set.
+	if opts.logFlow {
+		if opts.logToStderr {
+			args = append(args, "--logtostderr")
+		}
+		if opts.verbose > 0 {
+			args = append(args, "-v="+strconv.Itoa(opts.verbose))
+		}
+	}
+	// Flow tracing settings if we are using a remote collector.
+	if opts.tracingEndpoint != "" && !opts.tracingToFile {
+		args = append(args, "--tracing", opts.tracingEndpoint)
+	}
+	args = append(args, opts.pluginArgs...)
+	return args
 }
 
 func (p *plugin) Close() error {

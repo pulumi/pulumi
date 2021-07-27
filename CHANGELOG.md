@@ -1,90 +1,138 @@
 CHANGELOG
 =========
 
+## 3.8.0 (2021-07-22)
+
+### Improvements
+
+- [sdk/dotnet] - Fix async await warnings.
+  [#7537](https://github.com/pulumi/pulumi/pull/7537)
+
+- [codegen/dotnet] - Emit dynamic config-getters.
+  [#7549](https://github.com/pulumi/pulumi/pull/7549)
+
+- [sdk/python] - Support for authoring resource methods in Python.
+  [#7555](https://github.com/pulumi/pulumi/pull/7555)
+
+- [sdk/{go,dotnet}] - Admit non-asset/archive values when unmarshalling into assets and archives.
+  [#7579](https://github.com/pulumi/pulumi/pull/7579)
+
+### Bug Fixes
+
+- [sdk/dotnet] - Fix for race conditions in .NET SDK that used to
+  manifest as a `KeyNotFoundException` from `WhileRunningAsync`.
+  [#7529](https://github.com/pulumi/pulumi/pull/7529)
+
+- [sdk/go] - Fix target and replace options for the Automation API.
+  [#7426](https://github.com/pulumi/pulumi/pull/7426)
+
+- [cli] - Don't escape special characters when printing JSON.
+  [#7593](https://github.com/pulumi/pulumi/pull/7593)
+
+- [sdk/go] - Fix panic when marshaling `self` in a method.
+  [#7604](https://github.com/pulumi/pulumi/pull/7604)
+  
+## 3.7.1 (2021-07-19)
+
+### Improvements
+
+- [codegen/python,nodejs] Emit dynamic config-getters.
+  [#7447](https://github.com/pulumi/pulumi/pull/7447), [#7530](https://github.com/pulumi/pulumi/pull/7530)
+
+- [sdk/python] Make `Output[T]` covariant
+  [#7483](https://github.com/pulumi/pulumi/pull/7483)
+
+### Bug Fixes
+
+- [sdk/nodejs] Fix a bug in closure serialization.
+  [#6999](https://github.com/pulumi/pulumi/pull/6999)
+
+- [cli] Normalize cloud URL during login
+  [#7544](https://github.com/pulumi/pulumi/pull/7544)
+
+- [sdk/nodejs,dotnet] Wait on remote component dependencies
+  [#7541](https://github.com/pulumi/pulumi/pull/7541)
+
 ## 3.7.0 (2021-07-13)
 
 ### Improvements
 
-- [sdk/nodejs] - Support for calling resource methods
+- [sdk/nodejs] Support for calling resource methods.
   [#7377](https://github.com/pulumi/pulumi/pull/7377)
 
-- [sdk/go] - Support for calling resource methods
+- [sdk/go] Support for calling resource methods.
   [#7437](https://github.com/pulumi/pulumi/pull/7437)
 
 ### Bug Fixes
 
-- [codegen/go] - Reimplement strict go enums to be Inputs.
+- [codegen/go] Reimplement strict go enums to be Inputs.
   [#7383](https://github.com/pulumi/pulumi/pull/7383)
 
-- [codegen/go] - Emit To[ElementType]Output methods for go enum output types
+- [codegen/go] Emit To[ElementType]Output methods for go enum output types.
   [#7499](https://github.com/pulumi/pulumi/pull/7499)
-
-- [sdk/nodejs] - Wait on remote component dependencies
-  [#7541](https://github.com/pulumi/pulumi/pull/7541)
 
 ## 3.6.1 (2021-07-07)
 
 ### Improvements
 
-- [sdk] - Add `replaceOnChanges` resource option.
+- [sdk] Add `replaceOnChanges` resource option.
   [#7226](https://github.com/pulumi/pulumi/pull/7226)
 
-- [sdk/go] - Support for authoring resource methods in Go
+- [sdk/go] Support for authoring resource methods in Go.
   [#7379](https://github.com/pulumi/pulumi/pull/7379)
 
 ### Bug Fixes
 
-- [sdk/python] - Fix an issue where dependency keys were incorrectly translates to camelcase
+- [sdk/python] Fix an issue where dependency keys were incorrectly translates to camelcase.
   [#7443](https://github.com/pulumi/pulumi/pull/7443)
 
-- [cli] - Fix rendering of diffs for resource without DetailedDiffs
+- [cli] Fix rendering of diffs for resource without DetailedDiffs.
   [#7500](https://github.com/pulumi/pulumi/pull/7500)
 
 ## 3.6.0 (2021-06-30)
 
-### Improvements
+### Improvements 
 
-- [cli] - Added support for passing custom paths that need
+- [cli] Added support for passing custom paths that need
   to be watched by the `pulumi watch` command.
   [#7115](https://github.com/pulumi/pulumi/pull/7247)
 
-- [auto/nodejs] - Fail early when multiple versions of `@pulumi/pulumi` are detected in nodejs inline programs.'
+- [auto/nodejs] Fail early when multiple versions of `@pulumi/pulumi` are detected in nodejs inline programs.
   [#7349](https://github.com/pulumi/pulumi/pull/7349)
 
-- [sdk/go] - Add preliminary support for unmarshaling plain arrays and maps of output values.
+- [sdk/go] Add preliminary support for unmarshaling plain arrays and maps of output values.
   [#7369](https://github.com/pulumi/pulumi/pull/7369)
 
-- Initial support for resource methods (Node.js authoring, Python calling)
+- Initial support for resource methods (Node.js authoring, Python calling).
   [#7363](https://github.com/pulumi/pulumi/pull/7363)
 
 ### Bug Fixes
 
-- [sdk/dotnet] - Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
+- [sdk/dotnet] Fix swallowed nested exceptions with inline program, so they correctly bubble to the consumer.
   [#7323](https://github.com/pulumi/pulumi/pull/7323)
 
-- [sdk/go] - Specify known when creating outputs for `construct`.
+- [sdk/go] Specify known when creating outputs for `construct`.
   [#7343](https://github.com/pulumi/pulumi/pull/7343)
 
-- [cli] - Fix passphrase rotation.
+- [cli] Fix passphrase rotation.
   [#7347](https://github.com/pulumi/pulumi/pull/7347)
 
-- [multilang/python] - Fix nested module generation.
+- [multilang/python] Fix nested module generation.
   [#7353](https://github.com/pulumi/pulumi/pull/7353)
 
-- [multilang/nodejs] - Fix a hang when an error is thrown within an apply in a remote component.
+- [multilang/nodejs] Fix a hang when an error is thrown within an apply in a remote component.
   [#7365](https://github.com/pulumi/pulumi/pull/7365)
 
-- [codegen/python] - Include enum docstrings for python.
+- [codegen/python] Include enum docstrings for python.
   [#7374](https://github.com/pulumi/pulumi/pull/7374)
-
 
 ## 3.5.1 (2021-06-16)
 
-**Please Note:** Release v3.5.0 failed in our build pipeline so will be rebuilt with a new tag of v3.5.1
+**Please Note:** The v3.5.0 release did not complete and was re-released at the same commit as v3.5.1.
 
 ### Improvements
 
-- [dotnet/sdk] Support microsoft logging extensions with inline programs
+- [dotnet/sdk] Support microsoft logging extensions with inline programs.
   [#7117](https://github.com/pulumi/pulumi/pull/7117)
 
 - [dotnet/sdk] Add create unknown to output utilities.
@@ -93,28 +141,30 @@ CHANGELOG
 - [dotnet] Fix Resharper code issues.
   [#7178](https://github.com/pulumi/pulumi/pull/7178)
 
-- [codegen] - Include properties with an underlying type of string on Go provider instances.
+- [codegen] Include properties with an underlying type of string on Go provider instances.
+  [#7230](https://github.com/pulumi/pulumi/pull/7230)
 
-- [cli] - Provide a more helpful error instead of panicking when codegen fails during import.
+- [cli] Provide a more helpful error instead of panicking when codegen fails during import.
   [#7265](https://github.com/pulumi/pulumi/pull/7265)
 
-- [codegen/python] - Cache package version for improved performance.
+- [codegen/python] Cache package version for improved performance.
   [#7293](https://github.com/pulumi/pulumi/pull/7293)
 
-- [sdk/python] - Reduce `log.debug` calls for improved performance
+- [sdk/python] Reduce `log.debug` calls for improved performance.
   [#7295](https://github.com/pulumi/pulumi/pull/7295)
 
 ### Bug Fixes
 
-- [sdk/dotnet] - Fix resources destroyed after exception thrown during inline program
+- [sdk/dotnet] Fix resources destroyed after exception thrown during inline program.
   [#7299](https://github.com/pulumi/pulumi/pull/7299)
 
-- [sdk/python] - Fix regression in behaviour for `Output.from_input({})`
+- [sdk/python] Fix regression in behaviour for `Output.from_input({})`.
+  [#7254](https://github.com/pulumi/pulumi/pull/7254)
 
-- [sdk/python] - Prevent infinite loops when iterating `Output` objects
+- [sdk/python] Prevent infinite loops when iterating `Output` objects.
   [#7288](https://github.com/pulumi/pulumi/pull/7288)
 
-- [codegen/python] - Rename conflicting ResourceArgs classes
+- [codegen/python] Rename conflicting ResourceArgs classes.
   [#7171](https://github.com/pulumi/pulumi/pull/7171)
 
 ## 3.4.0 (2021-06-05)
@@ -126,59 +176,58 @@ CHANGELOG
 
 ### Bug Fixes
 
-- [CLI] Fix broken venv for Python projects started from templates
+- [CLI] Fix broken venv for Python projects started from templates.
   [#6624](https://github.com/pulumi/pulumi/pull/6623)
 
-- [cli] - Send plugin install output to stderr, so that it doesn't
+- [cli] Send plugin install output to stderr, so that it doesn't
   clutter up --json, automation API scenarios, and so on.
   [#7115](https://github.com/pulumi/pulumi/pull/7115)
 
-- [cli] Protect against panics when using the wrong resource type with `pulumi import`
+- [cli] Protect against panics when using the wrong resource type with `pulumi import`.
   [#7202](https://github.com/pulumi/pulumi/pull/7202)
 
-- [auto/nodejs] - Emit warning instead of breaking on parsing JSON events for automation API.
+- [auto/nodejs] Emit warning instead of breaking on parsing JSON events for automation API.
   [#7162](https://github.com/pulumi/pulumi/pull/7162)
 
 - [sdk/python] Improve performance of `Output.from_input` and `Output.all` on nested objects.
   [#7175](https://github.com/pulumi/pulumi/pull/7175)
 
 ### Misc
-- Update version of go-cloud used by Pulumi to `0.23.0`.
+- [cli] Update version of go-cloud used by Pulumi to `0.23.0`.
   [#7204](https://github.com/pulumi/pulumi/pull/7204)
-
 
 ## 3.3.1 (2021-05-25)
 
 ### Improvements
 
-- [dotnet/sdk] - Use source context with serilog
+- [dotnet/sdk] Use source context with serilog.
   [#7095](https://github.com/pulumi/pulumi/pull/7095)
 
-- [auto/dotnet] - Make StackDeployment.FromJsonString public
+- [auto/dotnet] Make StackDeployment.FromJsonString public.
   [#7067](https://github.com/pulumi/pulumi/pull/7067)
 
-- [sdk/python] - Generated SDKs may now be installed from in-tree source.
+- [sdk/python] Generated SDKs may now be installed from in-tree source.
   [#7097](https://github.com/pulumi/pulumi/pull/7097)
 
 ### Bug Fixes
 
-- [auto/nodejs] - Fix an intermittent bug in parsing JSON events
+- [auto/nodejs] Fix an intermittent bug in parsing JSON events.
   [#7032](https://github.com/pulumi/pulumi/pull/7032)
 
-- [auto/dotnet] - Fix deserialization of CancelEvent in .NET 5
+- [auto/dotnet] Fix deserialization of CancelEvent in .NET 5.
   [#7051](https://github.com/pulumi/pulumi/pull/7051)
 
-- Temporarily disable warning when a secret config is read as a non-secret
+- Temporarily disable warning when a secret config is read as a non-secret.
   [#7129](https://github.com/pulumi/pulumi/pull/7129)
 
 ## 3.3.0 (2021-05-20)
 
 ### Improvements
 
-- [cli] - Provide user information when protected resources are not able to be deleted
+- [cli] Provide user information when protected resources are not able to be deleted
   [#7055](https://github.com/pulumi/pulumi/pull/7055)
 
-- [cli] - Error instead of panic on invalid state file import
+- [cli] Error instead of panic on invalid state file import
   [#7065](https://github.com/pulumi/pulumi/pull/7065)
 
 - Warn when a secret config is read as a non-secret
@@ -187,13 +236,13 @@ CHANGELOG
   [#7079](https://github.com/pulumi/pulumi/pull/7079)
   [#7080](https://github.com/pulumi/pulumi/pull/7080)
 
-- [sdk/nodejs|python] - Add GetSchema support to providers
+- [sdk/nodejs|python] Add GetSchema support to providers
   [#6892](https://github.com/pulumi/pulumi/pull/6892)
 
-- [auto/dotnet] - Provide PulumiFn implementation that allows runtime stack type
+- [auto/dotnet] Provide PulumiFn implementation that allows runtime stack type
   [#6910](https://github.com/pulumi/pulumi/pull/6910)
 
-- [auto/go] - Provide GetPermalink for all results
+- [auto/go] Provide GetPermalink for all results
   [#6875](https://github.com/pulumi/pulumi/pull/6875)
 
 ### Bug Fixes
@@ -201,19 +250,19 @@ CHANGELOG
 - [sdk/python] Fix relative `runtime:options:virtualenv` path resolution to ignore `main` project attribute
   [#6966](https://github.com/pulumi/pulumi/pull/6966)
 
-- [auto/dotnet] - Disable Language Server Host logging and checking appsettings.json config
+- [auto/dotnet] Disable Language Server Host logging and checking appsettings.json config
   [#7023](https://github.com/pulumi/pulumi/pull/7023)
 
-- [auto/python] - Export missing `ProjectBackend` type
+- [auto/python] Export missing `ProjectBackend` type
   [#6984](https://github.com/pulumi/pulumi/pull/6984)
 
-- [sdk/nodejs] - Fix noisy errors.
+- [sdk/nodejs] Fix noisy errors.
   [#6995](https://github.com/pulumi/pulumi/pull/6995)
 
 - Config: Avoid emitting integers in objects using exponential notation.
   [#7005](https://github.com/pulumi/pulumi/pull/7005)
 
-- [codegen/python] - Fix issue with lazy_import affecting pulumi-eks
+- [codegen/python] Fix issue with lazy_import affecting pulumi-eks
   [#7024](https://github.com/pulumi/pulumi/pull/7024)
 
 - Ensure that all outstanding asynchronous work is awaited before returning from a .NET
@@ -243,7 +292,7 @@ CHANGELOG
 
 ### Enhancements
 
-- [auto/go] - Provide GetPermalink for all results
+- [auto/go] Provide GetPermalink for all results
   [#6875](https://github.com/pulumi/pulumi/pull/6875)
 
 - [automation/*] Add support for getting stack outputs using Workspace
@@ -265,7 +314,7 @@ CHANGELOG
 - [cli] Prevent against panic when using a ResourceReference as a program output
   [#6962](https://github.com/pulumi/pulumi/pull/6962)
 
-- [sdk/python] - Fix bug in MockResourceArgs.
+- [sdk/python] Fix bug in MockResourceArgs.
   [#6863](https://github.com/pulumi/pulumi/pull/6863)
 
 - [sdk/python] Address issues when using resource subclasses.
@@ -294,7 +343,7 @@ CHANGELOG
 - [sdk/dotnet] Enable deterministic builds
   [#6917](https://github.com/pulumi/pulumi/pull/6917)
 
-- [auto/*] - Bump minimum version to v3.1.0.
+- [auto/*] Bump minimum version to v3.1.0.
   [#6852](https://github.com/pulumi/pulumi/pull/6852)
 
 ## 3.1.0 (2021-04-22)
@@ -410,7 +459,7 @@ Unfortunately, the initial release did not include that change. We apologize for
 
 ### Bug Fixes
 
-- [automation/python] - Fix serialization bug in `StackSettings`
+- [automation/python] Fix serialization bug in `StackSettings`
   [#6776](https://github.com/pulumi/pulumi/pull/6776)
 
 ## 2.25.0 (2021-04-14)
@@ -489,7 +538,7 @@ Unfortunately, the initial release did not include that change. We apologize for
   var cancelTask = stack.CancelAsync();
   ```
 
-- [automation/python] - Expose structured logging for Stack.up/preview/refresh/destroy.
+- [automation/python] Expose structured logging for Stack.up/preview/refresh/destroy.
   [#6527](https://github.com/pulumi/pulumi/pull/6527)
 
   You can now pass in an `on_event` callback function as a keyword arg to `up`, `preview`, `refresh`
@@ -559,8 +608,8 @@ Unfortunately, the initial release did not include that change. We apologize for
   [#6572](https://github.com/pulumi/pulumi/pull/6572)
 
 - [cli] Support full fidelity YAML round-tripping
-  - Strip Byte-order Mark (BOM) from YAML configs during load. - [#6636](https://github.com/pulumi/pulumi/pull/6636)
-  - Swap out YAML parser library - [#6642](https://github.com/pulumi/pulumi/pull/6642)
+  - Strip Byte-order Mark (BOM) from YAML configs during load. [#6636](https://github.com/pulumi/pulumi/pull/6636)
+  - Swap out YAML parser library [#6642](https://github.com/pulumi/pulumi/pull/6642)
 
 - [sdk/python] Ensure all async tasks are awaited prior to exit.
   [#6606](https://github.com/pulumi/pulumi/pull/6606)
@@ -593,10 +642,10 @@ Unfortunately, the initial release did not include that change. We apologize for
   [#6551](https://github.com/pulumi/pulumi/pull/6551)
 
 - [automation/*] Implement minimum version checking and add:
-  - Go: `LocalWorkspace.PulumiVersion()` - [#6577](https://github.com/pulumi/pulumi/pull/6577)
-  - Nodejs: `LocalWorkspace.pulumiVersion` - [#6580](https://github.com/pulumi/pulumi/pull/6580)
-  - Python: `LocalWorkspace.pulumi_version` - [#6589](https://github.com/pulumi/pulumi/pull/6589)
-  - Dotnet: `LocalWorkspace.PulumiVersion` - [#6590](https://github.com/pulumi/pulumi/pull/6590)
+  - Go: `LocalWorkspace.PulumiVersion()` [#6577](https://github.com/pulumi/pulumi/pull/6577)
+  - Nodejs: `LocalWorkspace.pulumiVersion` [#6580](https://github.com/pulumi/pulumi/pull/6580)
+  - Python: `LocalWorkspace.pulumi_version` [#6589](https://github.com/pulumi/pulumi/pull/6589)
+  - Dotnet: `LocalWorkspace.PulumiVersion` [#6590](https://github.com/pulumi/pulumi/pull/6590)
 
 ### Bug Fixes
 
@@ -620,7 +669,7 @@ Unfortunately, the initial release did not include that change. We apologize for
 
 ### Breaking
 
-- [automation/go] - Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
+- [automation/go] Expose structured logging for Stack.Up/Preview/Refresh/Destroy.
   [#6436](https://github.com/pulumi/pulumi/pull/6436)
 
 This change is marked breaking because it changes the shape of the `PreviewResult` struct.
@@ -670,10 +719,10 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
   Please note that `pulumi watch` will not be supported on darwin/arm64 builds.
   [#6492](https://github.com/pulumi/pulumi/pull/6492)
 
-- [automation/nodejs] - Expose structured logging for Stack.up/preview/refresh/destroy.
+- [automation/nodejs] Expose structured logging for Stack.up/preview/refresh/destroy.
   [#6454](https://github.com/pulumi/pulumi/pull/6454)
 
-- [automation/nodejs] - Add `onOutput` event handler to `PreviewOptions`.
+- [automation/nodejs] Add `onOutput` event handler to `PreviewOptions`.
   [#6507](https://github.com/pulumi/pulumi/pull/6507)
 
 - [cli] Add locking support to the self-managed backends using the `PULUMI_SELF_MANAGED_STATE_LOCKING=1` environment variable.
@@ -702,14 +751,14 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 
 ### Bug Fixes
 
-- [automation/dotnet] - resolve issue with OnOutput delegate not being called properly during pulumi process execution.
+- [automation/dotnet] resolve issue with OnOutput delegate not being called properly during pulumi process execution.
   [#6435](https://github.com/pulumi/pulumi/pull/6435)
 
-- [automation/python,nodejs,dotnet] - BREAKING - Remove `summary` property from `PreviewResult`.
+- [automation/python,nodejs,dotnet] BREAKING Remove `summary` property from `PreviewResult`.
   The `summary` property on `PreviewResult` returns a result that is always incorrect and is being removed.
   [#6405](https://github.com/pulumi/pulumi/pull/6405)
 
-- [automation/python] - Fix Windows error caused by use of NamedTemporaryFile in automation api.
+- [automation/python] Fix Windows error caused by use of NamedTemporaryFile in automation api.
   [#6421](https://github.com/pulumi/pulumi/pull/6421)
 
 - [sdk/nodejs] Serialize default parameters correctly. [#6397](https://github.com/pulumi/pulumi/pull/6397)

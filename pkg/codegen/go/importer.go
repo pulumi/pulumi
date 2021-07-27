@@ -45,6 +45,10 @@ type GoPackageInfo struct {
 	// Generate container types (arrays, maps, pointer output types etc.) for each resource.
 	// These are typically used to support external references.
 	GenerateResourceContainerTypes bool `json:"generateResourceContainerTypes,omitempty"`
+
+	// The version of the Pulumi SDK used with this provider, e.g. 3.
+	// Used to generate doc links for pulumi builtin types. If omitted, the latest SDK version is used.
+	PulumiSDKVersion int `json:"pulumiSDKVersion,omitempty"`
 }
 
 // Importer implements schema.Language for Go.

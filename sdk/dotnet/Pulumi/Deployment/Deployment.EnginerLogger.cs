@@ -115,7 +115,7 @@ namespace Pulumi
                         Urn = urn,
                         StreamId = streamId ?? 0,
                         Ephemeral = ephemeral ?? false,
-                    });
+                    }).ConfigureAwait(false);
                 }
                 catch (Exception e)
                 {

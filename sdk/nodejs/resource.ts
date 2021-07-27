@@ -1035,17 +1035,31 @@ export class DependencyResource extends CustomResource {
  */
 export class DependencyProviderResource extends ProviderResource {
     constructor(ref: string) {
-        super("", "", {}, {}, true);
+        const [urn, id] = parseResourceReference(ref);
+        const urnParts = urn.split("::");
+        const qualifiedType = urnParts[2];
+        const type = qualifiedType.split("$").pop()!;
+        // type will be "pulumi:providers:<package>" and we want the last part.
+        const typeParts = type.split(":");
+        const pkg = typeParts.length > 2 ? typeParts[2] : "";
 
-        // Parse the URN and ID out of the provider reference.
-        const lastSep = ref.lastIndexOf("::");
-        if (lastSep === -1) {
-            throw new Error(`expected '::' in provider reference ${ref}`);
-        }
-        const urn = ref.slice(0, lastSep);
-        const id = ref.slice(lastSep+2);
+        super(pkg, "", {}, {}, true);
 
         (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
         (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
     }
+}
+
+/**
+ * parseResourceReference parses the URN and ID out of the provider reference.
+ * @internal
+ */
+export function parseResourceReference(ref: string): [string, string] {
+    const lastSep = ref.lastIndexOf("::");
+    if (lastSep === -1) {
+        throw new Error(`expected '::' in provider reference ${ref}`);
+    }
+    const urn = ref.slice(0, lastSep);
+    const id = ref.slice(lastSep+2);
+    return [urn, id];
 }

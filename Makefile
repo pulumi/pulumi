@@ -1,7 +1,8 @@
 PROJECT_NAME := Pulumi SDK
+PROJECT_ROOT := $(realpath .)
 SUB_PROJECTS := sdk/dotnet sdk/nodejs sdk/python sdk/go
-include build/common.mk
 
+include build/common.mk
 
 PROJECT         := github.com/pulumi/pulumi/pkg/v3/cmd/pulumi
 PROJECT_PKGS    := $(shell cd ./pkg && go list ./... | grep -v /vendor/)
@@ -66,6 +67,8 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component_error_apply/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_methods/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_methods/testcomponent-go && go build -o pulumi-resource-testcomponent
+	cd tests/integration/construct_component_provider/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
+	cd tests/integration/construct_component_provider/testcomponent-go && go build -o pulumi-resource-testcomponent
 
 test_all:: build test_build $(SUB_PROJECTS:%=%_install)
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}

@@ -42,9 +42,9 @@ namespace Pulumi
             await this.Engine.SetRootResourceAsync(new SetRootResourceRequest
             {
                 Urn = resUrn,
-            });
+            }).ConfigureAwait(false);
 
-            var getResponse = await this.Engine.GetRootResourceAsync(new GetRootResourceRequest());
+            var getResponse = await this.Engine.GetRootResourceAsync(new GetRootResourceRequest()).ConfigureAwait(false);
             return getResponse.Urn;
         }
     }

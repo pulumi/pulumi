@@ -6,6 +6,9 @@
   },
   "config": {},
   "types": {
+    "types::object": {
+      "type": "object"
+    },
     "typetests::plainCollections": {
       "description": "Tests for singly-nested plain collections",
       "properties": {
@@ -522,32 +525,36 @@
     "typetests:regressions:pulumi/pulumi/7454": {
       "description": "Regression test for pulumi/pulumi#7454",
       "properties": {
-        "nestedArray": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "string"
+        "inputUnion": {
+          "oneOf": [
+            {
+              "$ref": "#/types/types::object"
+            },
+            {
+              "type": "array",
+              "items": {
+                "$ref": "pulumi.json#/Json"
+              }
             }
-          },
+          ],
           "language": {
             "test": {
               "expected": {
                 "dotnet": {
-                  "input": "InputList<ImmutableArray<string>>",
-                  "plain": "ImmutableArray<ImmutableArray<string>>"
+                  "input": "InputUnion<Pulumi.Types.ObjectArgs, ImmutableArray<System.Text.Json.JsonElement>>?",
+                  "plain": "Union<Pulumi.Types.Object, ImmutableArray<System.Text.Json.JsonElement>>?"
                 },
                 "go": {
-                  "input": "pulumi.StringArrayArrayInput",
-                  "plain": "[][]string"
+                  "input": "pulumi.Input",
+                  "plain": "interface{}"
                 },
                 "nodejs": {
-                  "input": "pulumi.Input<pulumi.Input<pulumi.Input<string>[]>[]> | undefined",
-                  "plain": "string[][] | undefined"
+                  "input": "pulumi.Input<outputs.ObjectArgs | any[]> | undefined",
+                  "plain": "outputs.Object | any[] | undefined"
                 },
                 "python": {
-                  "input": "Optional[pulumi.Input[Sequence[pulumi.Input[Sequence[pulumi.Input[str]]]]]]",
-                  "plain": "Optional[Sequence[Sequence[str]]]"
+                  "input": "Optional[Any]",
+                  "plain": "Optional[Any]"
                 }
               }
             }

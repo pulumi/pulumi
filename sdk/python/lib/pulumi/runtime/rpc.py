@@ -331,7 +331,9 @@ async def serialize_property(value: 'Input[Any]',
 
 
 # pylint: disable=too-many-return-statements
-def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_properties(props_struct: struct_pb2.Struct,
+                           keep_unknowns: Optional[bool] = None,
+                           keep_internal: Optional[bool] = None) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
@@ -377,7 +379,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
         # not need to be passed back to the engine, and often will not match the
         # expected type we are deserializing into.
         # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if k.startswith("__") and k != "__provider":
+        if not keep_internal and k.startswith("__") and k != "__provider":
             continue
 
         value = deserialize_property(v, keep_unknowns)

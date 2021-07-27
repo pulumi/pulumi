@@ -132,7 +132,7 @@ type PersonArrayInput interface {
 type PersonArray []PersonInput
 
 func (PersonArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Person)(nil))
+	return reflect.TypeOf((*[]*Person)(nil)).Elem()
 }
 
 func (i PersonArray) ToPersonArrayOutput() PersonArrayOutput {
@@ -157,7 +157,7 @@ type PersonMapInput interface {
 type PersonMap map[string]PersonInput
 
 func (PersonMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Person)(nil))
+	return reflect.TypeOf((*map[string]*Person)(nil)).Elem()
 }
 
 func (i PersonMap) ToPersonMapOutput() PersonMapOutput {

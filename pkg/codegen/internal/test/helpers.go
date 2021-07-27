@@ -112,16 +112,20 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 }
 
 // ValidateFileEquality compares maps of files for equality.
-func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
+func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
+	ok := true
 	for name, file := range expected {
-		assert.Contains(t, actual, name)
-		assert.Equal(t, string(file), string(actual[name]), name)
-	}
-	for name := range actual {
-		if _, ok := expected[name]; !ok {
-			t.Logf("missing data for %s", name)
+		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
+			ok = false
 		}
 	}
+	for name := range actual {
+		if _, has := expected[name]; !has {
+			t.Logf("missing data for %s", name)
+			ok = false
+		}
+	}
+	return ok
 }
 
 // If PULUMI_ACCEPT is set, writes out actual output to the expected
