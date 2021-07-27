@@ -167,8 +167,6 @@ jobs:
         with:
           repo: t0yv0/goteststats
           tag: v0.0.7
-      - name: Verify goteststats
-        run: goteststats --help
       - name: Ensure
         run: |
           make ensure
