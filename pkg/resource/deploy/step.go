@@ -129,7 +129,8 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 	if providers.IsProviderType(s.new.Type) {
 		ref, err := providers.NewReference(s.new.URN, s.new.ID)
 		if err != nil {
-			return resource.StatusOK, nil, errors.Errorf("bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+			return resource.StatusOK, nil, errors.Errorf(
+				"bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
 		}
 		s.Deployment().SameProvider(ref)
 	}

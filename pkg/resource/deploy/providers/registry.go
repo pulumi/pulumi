@@ -320,7 +320,7 @@ func (r *Registry) Diff(urn resource.URN, id resource.ID, olds, news resource.Pr
 
 // Same executes as part of the "Same" step for a provider that has not changed. It exists solely to allow the registry
 // to point aliases for a provider to the proper object.
-func (r *Registry) Same(ref Reference) error {
+func (r *Registry) Same(ref Reference) {
 	r.m.RLock()
 	defer r.m.RUnlock()
 
@@ -332,8 +332,6 @@ func (r *Registry) Same(ref Reference) error {
 		aliasRef := mustNewReference(alias, ref.ID())
 		r.providers[ref] = r.providers[aliasRef]
 	}
-
-	return nil
 }
 
 // Create coonfigures the provider with the given URN using the indicated configuration, assigns it an ID, and
