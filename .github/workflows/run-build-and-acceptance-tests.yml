@@ -192,11 +192,6 @@ jobs:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
-      - name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        if: matrix.platform == 'ubuntu-latest'
-        with:
-          files: test-results/**/*.xml
       - name: Summarize Test Time by Package
         run: |
           mkdir -p test-results
