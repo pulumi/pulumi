@@ -46,6 +46,22 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 	}
 }
 
+// An extended version of the same test, showing how things happen via
+// a custom resource. This would admit fixes going in
+// `RegisterResourceOutputs` for example.
+func TestLoggingFromApplyCausesNoPanics2(t *testing.T) {
+	// Usually panics on iteration 100-200
+	for i := 0; i < 1000; i++ {
+		fmt.Printf("Iteration %d\n", i)
+		mocks := &testMonitor{}
+		err := RunErr(func(ctx *Context) error {
+			NewLoggingTestResource(ctx, "res", String("A"))
+			return nil
+		}, WithMocks("project", "stack", mocks))
+		assert.NoError(t, err)
+	}
+}
+
 type LoggingTestResource struct {
 	ResourceState
 	TestOutput StringOutput
