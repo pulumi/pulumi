@@ -100,7 +100,7 @@ func makeUntypedDeployment(name tokens.QName, phrase, state string) (*apitype.Un
 	}
 
 	resources := []*resource.State{
-		&resource.State{
+		{
 			URN:  resource.NewURN("a", "proj", "d:e:f", "a:b:c", name),
 			Type: "a:b:c",
 			Inputs: resource.PropertyMap{
@@ -141,8 +141,13 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	aStack, err := b.CreateStack(ctx, aStackRef, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, aStack)
-	defer b.RemoveStack(ctx, aStack, true)
-	deployment, err := makeUntypedDeployment("a", "abc123", "v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
+	defer func() {
+		err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
+		_, err := b.RemoveStack(ctx, aStack, true)
+		assert.NoError(t, err)
+	}()
+	deployment, err := makeUntypedDeployment("a", "abc123",
+		"v1:4iF78gb0nF0=:v1:Co6IbTWYs/UdrjgY:FSrAWOFZnj9ealCUDdJL7LrUKXX9BA==")
 	assert.NoError(t, err)
 	err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "abc123")
 	assert.NoError(t, err)
@@ -155,8 +160,13 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	bStack, err := b.CreateStack(ctx, bStackRef, nil)
 	assert.NoError(t, err)
 	assert.NotNil(t, bStack)
-	defer b.RemoveStack(ctx, bStack, true)
-	deployment, err = makeUntypedDeployment("b", "123abc", "v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
+	defer func() {
+		err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
+		_, err := b.RemoveStack(ctx, bStack, true)
+		assert.NoError(t, err)
+	}()
+	deployment, err = makeUntypedDeployment("b", "123abc",
+		"v1:C7H2a7/Ietk=:v1:yfAd1zOi6iY9DRIB:dumdsr+H89VpHIQWdB01XEFqYaYjAg==")
 	assert.NoError(t, err)
 	err = os.Setenv("PULUMI_CONFIG_PASSPHRASE", "123abc")
 	assert.NoError(t, err)
