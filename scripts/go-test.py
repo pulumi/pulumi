@@ -11,8 +11,20 @@ import sys
 import uuid
 
 
-def options(options_and_packages):
-    return [o for o in options_and_packages if '/' not in o]
+def options(options_and_packages, test_subset=None):
+
+    def rewrite(o):
+        if test_subset is None or o != '-tags=all':
+            return o
+
+        tags = TEST_SUBSETS[test_subset].tags
+
+        if len(tags) == 0:
+            return o
+
+        return '-tags="' + ' '.join(tags) + '"'
+
+    return [rewrite(o) for o in options_and_packages if '/' not in o]
 
 
 def packages(options_and_packages):
@@ -26,10 +38,10 @@ def filter_packages(packages, test_subset=None):
     if test_subset == 'etc':
         s = set([])
         for k in TEST_SUBSETS:
-            s = s | set(TEST_SUBSETS[k])
+            s = s | set(TEST_SUBSETS[k].go_packages)
         return [p for p in packages if p not in s]
 
-    s = set(TEST_SUBSETS[test_subset])
+    s = set(TEST_SUBSETS[test_subset].go_packages)
     return [p for p in packages if p in s]
 
 
@@ -44,7 +56,7 @@ if not packages:
     sys.exit(0)
 
 
-options_and_packages = options(options_and_packages) + packages
+options_and_packages = options(options_and_packages, test_subset=test_subset) + packages
 
 
 if shutil.which('gotestsum') is not None:
