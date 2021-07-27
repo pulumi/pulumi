@@ -15,13 +15,21 @@
 from typing import Optional, TypeVar, Awaitable, List, Any
 import asyncio
 import pytest
+import unittest
 
+from pulumi.resource import DependencyProviderResource
 from pulumi.runtime import settings, mocks
 from pulumi.runtime.proto import resource_pb2
 import pulumi
 
 
 T = TypeVar('T')
+
+
+class DependencyProviderResourceTests(unittest.TestCase):
+    def test_get_package(self):
+        res = DependencyProviderResource("urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0")
+        self.assertEqual("aws", res.package)
 
 
 @pulumi.runtime.test

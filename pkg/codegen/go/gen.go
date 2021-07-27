@@ -706,27 +706,6 @@ func (pkg *pkgContext) getInputUsage(name string) string {
 	}, "\n")
 }
 
-// genResourceContainerInput handles generating container (slice/map) wrappers around
-// resources to facilitate external references.
-func genResourceContainerInput(w io.Writer, name, receiverType, elementType string) {
-	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
-	fmt.Fprintf(w, "\treturn reflect.TypeOf((%s)(nil))\n", elementType)
-	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (i %s) To%sOutput() %sOutput {\n", receiverType, Title(name), name)
-	fmt.Fprintf(w, "\treturn i.To%sOutputWithContext(context.Background())\n", Title(name))
-	fmt.Fprintf(w, "}\n\n")
-
-	fmt.Fprintf(w, "func (i %s) To%sOutputWithContext(ctx context.Context) %sOutput {\n", receiverType, Title(name), name)
-	if strings.HasSuffix(name, "Ptr") {
-		base := name[:len(name)-3]
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput).To%sOutput()\n", base, Title(name))
-	} else {
-		fmt.Fprintf(w, "\treturn pulumi.ToOutputWithContext(ctx, i).(%sOutput)\n", name)
-	}
-	fmt.Fprintf(w, "}\n\n")
-}
-
 func genInputMethods(w io.Writer, name, receiverType, elementType string, ptrMethods, resourceType bool) {
 	fmt.Fprintf(w, "func (%s) ElementType() reflect.Type {\n", receiverType)
 	if resourceType {
@@ -1634,12 +1613,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			// Generate the resource array input.
 			pkg.genInputInterface(w, name+"Array")
 			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
-			genResourceContainerInput(w, name+"Array", name+"Array", "[]*"+name)
+			genInputMethods(w, name+"Array", name+"Array", "[]*"+name, false, false)
 
 			// Generate the resource map input.
 			pkg.genInputInterface(w, name+"Map")
 			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
-			genResourceContainerInput(w, name+"Map", name+"Map", "map[string]*"+name)
+			genInputMethods(w, name+"Map", name+"Map", "map[string]*"+name, false, false)
 		}
 	}
 

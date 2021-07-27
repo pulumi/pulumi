@@ -118,7 +118,7 @@ type StaticPageArrayInput interface {
 type StaticPageArray []StaticPageInput
 
 func (StaticPageArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*StaticPage)(nil))
+	return reflect.TypeOf((*[]*StaticPage)(nil)).Elem()
 }
 
 func (i StaticPageArray) ToStaticPageArrayOutput() StaticPageArrayOutput {
@@ -143,7 +143,7 @@ type StaticPageMapInput interface {
 type StaticPageMap map[string]StaticPageInput
 
 func (StaticPageMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*StaticPage)(nil))
+	return reflect.TypeOf((*map[string]*StaticPage)(nil)).Elem()
 }
 
 func (i StaticPageMap) ToStaticPageMapOutput() StaticPageMapOutput {

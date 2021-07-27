@@ -129,7 +129,7 @@ type PetArrayInput interface {
 type PetArray []PetInput
 
 func (PetArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Pet)(nil))
+	return reflect.TypeOf((*[]*Pet)(nil)).Elem()
 }
 
 func (i PetArray) ToPetArrayOutput() PetArrayOutput {
@@ -154,7 +154,7 @@ type PetMapInput interface {
 type PetMap map[string]PetInput
 
 func (PetMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Pet)(nil))
+	return reflect.TypeOf((*map[string]*Pet)(nil)).Elem()
 }
 
 func (i PetMap) ToPetMapOutput() PetMapOutput {
