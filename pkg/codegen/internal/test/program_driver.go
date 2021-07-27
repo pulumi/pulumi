@@ -15,6 +15,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 )
 
 type programTest struct {
@@ -161,7 +162,7 @@ func TestProgramCodegen(
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(NewHost(testdataPath)))
+			program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(utils.NewHost(testdataPath)))
 			if err != nil {
 				t.Fatalf("could not bind program: %v", err)
 			}

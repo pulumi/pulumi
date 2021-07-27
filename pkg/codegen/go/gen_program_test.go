@@ -11,6 +11,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model/format"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,7 +59,7 @@ func newTestGenerator(t *testing.T, testFile string) *generator {
 			t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 		}
 
-		program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(test.NewHost(testdataPath)))
+		program, diags, err := hcl2.BindProgram(parser.Files, hcl2.PluginHost(utils.NewHost(testdataPath)))
 		if err != nil {
 			t.Fatalf("could not bind program: %v", err)
 		}
