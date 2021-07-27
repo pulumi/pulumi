@@ -1035,9 +1035,16 @@ export class DependencyResource extends CustomResource {
  */
 export class DependencyProviderResource extends ProviderResource {
     constructor(ref: string) {
-        super("", "", {}, {}, true);
-
         const [urn, id] = parseResourceReference(ref);
+        const urnParts = urn.split("::");
+        const qualifiedType = urnParts[2];
+        const type = qualifiedType.split("$").pop()!;
+        // type will be "pulumi:providers:<package>" and we want the last part.
+        const typeParts = type.split(":");
+        const pkg = typeParts.length > 2 ? typeParts[2] : "";
+
+        super(pkg, "", {}, {}, true);
+
         (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
         (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
     }
