@@ -9,6 +9,9 @@
 - [sdk/{go,python,nodejs}] - Rehydrate provider resources in `Construct`.
   [#7624](https://github.com/pulumi/pulumi/pull/7624)
 
+- [cli] - Restore passing log options to providers when `--logflow` is specified
+  https://github.com/pulumi/pulumi/pull/7640
+
 - [sdk/nodejs] - Fix `pulumi up --logflow` causing Node multi-lang components to hang
   [#7644](https://github.com/pulumi/pulumi/pull/)
 
