@@ -22,7 +22,7 @@ def options(options_and_packages, test_subset=None):
         if len(tags) == 0:
             return o
 
-        return '-tags="' + ' '.join(tags) + '"'
+        return '-tags=' + ' '.join(tags)
 
     return [rewrite(o) for o in options_and_packages if '/' not in o]
 
