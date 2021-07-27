@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"os"
-	"path"
 	"path/filepath"
 	"runtime"
 	"testing"
@@ -131,7 +130,7 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	// Login to a temp dir filestate backend
 	tmpDir, err := ioutil.TempDir("", "filestatebackend")
 	assert.NoError(t, err)
-	b, err := New(cmdutil.Diag(), path.Join("file://", tmpDir))
+	b, err := New(cmdutil.Diag(), "file://"+filepath.ToSlash(tmpDir))
 	assert.NoError(t, err)
 	ctx := context.Background()
 
