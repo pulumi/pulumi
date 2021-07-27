@@ -3,6 +3,7 @@ NODE_MODULE_NAME := @pulumi/pulumi
 VERSION 		 := $(shell cd ../../ && pulumictl get version --language javascript)
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
+PROJECT_ROOT     := $(realpath ../..)
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 TESTPARALLELISM := 10
@@ -46,10 +47,10 @@ install_plugin:: build
 install:: install_package install_plugin
 
 istanbul_tests:: $(TEST_ALL_DEPS)
-	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/**/*.spec.js'
+	$(RUN_TESTSUITE) istanbul ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/**/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
-	./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+	$(RUN_TESTSUITE) istanbul-with-mocks ./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
 
 sxs_tests:: $(TEST_ALL_DEPS)
 	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd

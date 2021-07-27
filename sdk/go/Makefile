@@ -2,8 +2,8 @@ PROJECT_NAME     := Pulumi Go SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/go/pulumi-language-go
 VERSION          := $(shell cd ../../ && pulumictl get version)
 PROJECT_PKGS     := $(shell go list ./pulumi/... ./pulumi-language-go/... ./common/... ./auto/...| grep -v /vendor/ | grep -v templates)
-
-TESTPARALLELISM := 10
+TESTPARALLELISM  := 10
+PROJECT_ROOT     := $(realpath ../..)
 
 include ../../build/common.mk
 
@@ -25,7 +25,7 @@ install:: install_plugin
 test_all:: test_fast
 
 test_fast:: $(TEST_ALL_DEPS)
-	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}

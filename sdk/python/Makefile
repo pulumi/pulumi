@@ -2,6 +2,7 @@ PROJECT_NAME     := Pulumi Python SDK
 LANGHOST_PKG     := github.com/pulumi/pulumi/sdk/v3/python/cmd/pulumi-language-python
 VERSION          := $(shell cd ../../ && pulumictl get version)
 PYPI_VERSION 	 := $(shell cd ../../ && pulumictl get version --language python)
+PROJECT_ROOT     := $(realpath ../..)
 
 PYENV := ./env
 PYENVSRC := $(PYENV)/src
@@ -46,13 +47,13 @@ install_plugin:: build_plugin
 install:: install_package install_plugin
 
 test_fast:: $(TEST_ALL_DEPS)
-	go test -count=1 -cover -parallel ${TESTPARALLELISM} ${PROJECT_PKGS}
+	$(GO_TEST) ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
-	pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py
-	pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
+	$(RUN_TESTSUITE) python/lib/test pipenv run pytest lib/test --ignore lib/test/langhost/resource_thens/test_resource_thens.py
+	$(RUN_TESTSUITE) python/lib/test/langhost/resource_thens pipenv run python -m unittest lib/test/langhost/resource_thens/test_resource_thens.py
 	# Using python -m also adds lib/test_with_mocks to sys.path which avoids package resolution issues.
-	pushd lib/test_with_mocks ; pipenv run python -m pytest ; popd
+	pushd lib/test_with_mocks; $(RUN_TESTSUITE) python/lib/test_with_mocks pipenv run python -m pytest; popd
 
 test_all:: test_fast
 
@@ -71,7 +72,7 @@ brew::
 
 publish:: build_package
 	twine upload \
-    	-u pulumi -p "${PYPI_PASSWORD}" \
+	-u pulumi -p "${PYPI_PASSWORD}" \
         "env/src/dist"/*.whl \
         --skip-existing \
         --verbose
