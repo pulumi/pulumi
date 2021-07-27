@@ -23,11 +23,11 @@ def should_run():
         s = set([])
 
         for k in TEST_SUBSETS:
-            s = s | set(TEST_SUBSETS[k])
+            s = s | set(TEST_SUBSETS[k].test_suites)
 
         return testsuite_name not in s
 
-    s = set(TEST_SUBSETS[test_subset])
+    s = set(TEST_SUBSETS[test_subset].test_suites)
     return testsuite_name in s
 
 
