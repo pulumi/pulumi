@@ -132,7 +132,9 @@ func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error
 			return resource.StatusOK, nil, errors.Errorf(
 				"bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
 		}
-		s.Deployment().SameProvider(ref)
+		if s.Deployment() != nil {
+			s.Deployment().SameProvider(ref)
+		}
 	}
 
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
