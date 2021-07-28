@@ -15,6 +15,7 @@
 """
 Mocks for testing.
 """
+import functools
 import logging
 from abc import ABC, abstractmethod
 from typing import Dict, List, NamedTuple, Optional, Tuple, TYPE_CHECKING
@@ -31,9 +32,12 @@ if TYPE_CHECKING:
 
 
 def test(fn):
+
+    @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         from .. import Output  # pylint: disable=import-outside-toplevel
         _sync_await(run_pulumi_func(lambda: _sync_await(Output.from_input(fn(*args, **kwargs)).future())))
+
     return wrapper
 
 
