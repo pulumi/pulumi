@@ -3,6 +3,9 @@
 - [sdk/go] - Add stack output helpers for numeric types.
   [#7410](https://github.com/pulumi/pulumi/pull/7410)
 
+- [sdk/python] - Permit `Input[Resource]` values in `depends_on`.
+  [#7559](https://github.com/pulumi/pulumi/pull/7559)
+
 - [backend/filestate] - Allow pulumi stack ls to see all stacks regardless of passphrase.
   [#7660](https://github.com/pulumi/pulumi/pull/7660)
 

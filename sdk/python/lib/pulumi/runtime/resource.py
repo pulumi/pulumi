@@ -24,10 +24,13 @@ from .. import log
 from ..runtime.proto import provider_pb2, resource_pb2
 from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
+from ..output import Output
 from .. import _types
 
+
 if TYPE_CHECKING:
-    from .. import Resource, ResourceOptions, CustomResource, Inputs, Output, ProviderResource
+    from .. import Resource, CustomResource, Inputs, ProviderResource
+    from ..resource import ResourceOptions
 
 
 class ResourceResolverOperations(NamedTuple):
@@ -80,12 +83,11 @@ async def prepare_resource(res: 'Resource',
                            props: 'Inputs',
                            opts: Optional['ResourceOptions'],
                            typ: Optional[type] = None) -> ResourceResolverOperations:
-    from .. import Output  # pylint: disable=import-outside-toplevel
+
     # Before we can proceed, all our dependencies must be finished.
     explicit_urn_dependencies = []
     if opts is not None and opts.depends_on is not None:
-        dependent_urns = list(map(lambda r: r.urn.future(), opts.depends_on))
-        explicit_urn_dependencies = await asyncio.gather(*dependent_urns)
+        explicit_urn_dependencies = await _resolve_depends_on_urns(opts)
 
     # Serialize out all our props to their final values.  In doing so, we'll also collect all
     # the Resources pointed to by any Dependency objects we encounter, adding them to 'implicit_dependencies'.
@@ -140,7 +142,8 @@ async def prepare_resource(res: 'Resource',
         for dep in deps:
             urn = await dep.urn.future()
             urns.add(urn)
-            dependencies.add(urn)
+            if urn:
+                dependencies.add(urn)
         property_dependencies[key] = list(urns)
 
     # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
@@ -165,7 +168,6 @@ async def prepare_resource(res: 'Resource',
 
 
 def resource_output(res: 'Resource') -> Tuple[Callable[[Any, bool, bool, Optional[Exception]], None], 'Output']:
-    from .. import Output  # pylint: disable=import-outside-toplevel
 
     value_future: asyncio.Future[Any] = asyncio.Future()
     known_future: asyncio.Future[bool] = asyncio.Future()
@@ -657,3 +659,35 @@ def convert_providers(
         result[p.package] = p
 
     return result
+
+
+async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
+    """
+    Resolves the set of all dependent resources implied by
+    `depends_on`, either directly listed or implied in the Input
+    layer. Returns a deduplicated URN list.
+    """
+
+    if options.depends_on is None:
+        return []
+
+    outer = Output._from_input_shallow(options._depends_on_list())
+    all_deps = await outer.resources()
+    inner_list = await outer.future() or []
+
+    for i in inner_list:
+        inner = Output.from_input(i)
+        more_deps = await inner.resources()
+        all_deps = all_deps | more_deps
+        direct_dep = await inner.future()
+        if direct_dep is not None:
+            all_deps.add(direct_dep)
+
+    urns = set()
+
+    for d in all_deps:
+        urn = await d.urn.future()
+        if urn:
+            urns.add(urn)
+
+    return list(urns)

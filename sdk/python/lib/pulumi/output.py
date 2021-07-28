@@ -39,6 +39,8 @@ if TYPE_CHECKING:
     from .resource import Resource
 
 T = TypeVar('T')
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
 T_co = TypeVar('T_co', covariant=True)
 U = TypeVar('U')
 
@@ -298,6 +300,35 @@ class Output(Generic[T_co]):
         return Output(set(), value_fut, is_known_fut, is_secret_fut)
 
     @staticmethod
+    def _from_input_shallow(val: Input[T]) -> 'Output[T]':
+        """
+        Like `from_input`, but does not recur deeply. Instead, checks if `val` is an `Output` value
+        and returns it as is. Otherwise, promotes a known value or future to `Output`.
+
+        :param Input[T] val: An Input to be converted to an Output.
+        :return: An Output corresponding to `val`.
+        :rtype: Output[T]
+        """
+
+        if isinstance(val, Output):
+            return val
+
+        # If it's not an output, it must be known and not secret
+        is_known_fut: asyncio.Future[bool] = asyncio.Future()
+        is_secret_fut: asyncio.Future[bool] = asyncio.Future()
+        is_known_fut.set_result(True)
+        is_secret_fut.set_result(False)
+
+        if isawaitable(val):
+            val_fut = cast(asyncio.Future, val)
+            return Output(set(), asyncio.ensure_future(val_fut), is_known_fut, is_secret_fut)
+
+        # Is it a prompt value? Set up a new resolved future and use that as the value future.
+        value_fut: asyncio.Future[Any] = asyncio.Future()
+        value_fut.set_result(val)
+        return Output(set(), value_fut, is_known_fut, is_secret_fut)
+
+    @staticmethod
     def unsecret(val: 'Output[T]') -> 'Output[T]':
         """
         Takes an existing Output, deeply unwraps the nested values and returns a new Output without any secrets included
@@ -443,6 +474,93 @@ UNKNOWN is the singleton unknown value.
 
 def contains_unknowns(val: Any) -> bool:
     return rpc.contains_unknowns(val)
+
+
+def _is_prompt(value: Input[T]) -> bool:
+    """Checks if the value is prompty available."""
+
+    return not isawaitable(value) and not isinstance(value, Output)
+
+
+def _map_output(o: Output[T], transform: Callable[[T],U]) -> Output[U]:
+    """Transforms an output's result value with a pure function."""
+
+    async def fut() -> U:
+        value = await o.future()
+        return transform(value) if value is not None else cast(U, UNKNOWN)
+
+    return Output(resources=o.resources(),
+                  future=asyncio.ensure_future(fut()),
+                  is_known=o.is_known(),
+                  is_secret=o.is_secret())
+
+
+def _map2_output(o1: Output[T1], o2: Output[T2], transform: Callable[[T1,T2],U]) -> Output[U]:
+    """
+    Joins two outputs and transforms their result with a pure function.
+    Similar to `all` but does not deeply await.
+    """
+
+    async def fut() -> U:
+        v1 = await o1.future()
+        v2 = await o2.future()
+        return transform(v1, v2) if (v1 is not None) and (v2 is not None) else cast(U, UNKNOWN)
+
+    async def res() -> Set['Resource']:
+        r1 = await o1.resources()
+        r2 = await o2.resources()
+        return r1 | r2
+
+    return Output(resources=asyncio.ensure_future(res()),
+                  future=asyncio.ensure_future(fut()),
+                  is_known=o1.is_known() and o2.is_known(),
+                  is_secret=o2.is_secret() or o2.is_secret())
+
+
+def _map_input(i: Input[T], transform: Callable[[T],U]) -> Input[U]:
+    """Transforms an input's result value with a pure function."""
+
+    if _is_prompt(i):
+        return transform(cast(T, i))
+
+    if isawaitable(i):
+        inp = cast(Awaitable[T], i)
+
+        async def fut() -> U:
+            return transform(await inp)
+
+        return asyncio.ensure_future(fut())
+
+    return _map_output(cast(Output[T], i), transform)
+
+
+def _map2_input(i1: Input[T1], i2: Input[T2], transform: Callable[[T1,T2],U]) -> Input[U]:
+    """
+    Joins two inputs and transforms their result with a pure function.
+    """
+
+    if _is_prompt(i1):
+        v1 = cast(T1, i1)
+        return _map_input(i2, lambda v2: transform(v1, v2))
+
+    if _is_prompt(i2):
+        v2 = cast(T2, i2)
+        return _map_input(i1, lambda v1: transform(v1, v2))
+
+    if isawaitable(i1) and isawaitable(i2):
+        a1 = cast(Awaitable[T1], i1)
+        a2 = cast(Awaitable[T2], i2)
+
+        async def join() -> U:
+            v1 = await a1
+            v2 = await a2
+            return transform(v1, v2)
+
+        return asyncio.ensure_future(join())
+
+    return _map2_output(Output._from_input_shallow(i1),
+                        Output._from_input_shallow(i2),
+                        transform)
 
 
 async def _gather_from_dict(tasks: dict) -> dict:
