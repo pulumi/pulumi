@@ -15,7 +15,6 @@
 package pulumi
 
 import (
-	"fmt"
 	"testing"
 	"time"
 
@@ -30,10 +29,12 @@ import (
 // join group, but the logging is, which causes the logging statement
 // to appear as "dynamic" work that appeared unexpectedly after "all
 // work was done", and race with the program completion `Wait`.
+//
+// The test is was made to pass by using a custom-made `workGroup`.
 func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 	// Usually panics on iteration 100-200
 	for i := 0; i < 1000; i++ {
-		fmt.Printf("Iteration %d\n", i)
+		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			String("X").ToStringOutput().ApplyT(func(string) int {
@@ -46,13 +47,12 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 	}
 }
 
-// An extended version of the same test, showing how things happen via
-// a custom resource. This would admit fixes going in
-// `RegisterResourceOutputs` for example.
-func TestLoggingFromApplyCausesNoPanics2(t *testing.T) {
+// An extended version of `TestLoggingFromApplyCausesNoPanics`, more
+// realistically demonstrating the original usage pattern.
+func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
 	// Usually panics on iteration 100-200
 	for i := 0; i < 1000; i++ {
-		fmt.Printf("Iteration %d\n", i)
+		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			NewLoggingTestResource(ctx, "res", String("A"))
@@ -92,31 +92,20 @@ func NewLoggingTestResource(ctx *Context, name string, input StringInput, opts .
 	return resource, nil
 }
 
-// The following test reproduced a panic but is somewhat contrived. It
-// can happen if we queue new work (ApplyT) dynamically (from Apply)
-// against a single join group in the Context. If the concurrency
-// cards are dealt just right, the program is already executing
-// context.wg.Wait() and is about to complete, since wg count is 0,
-// when we increment the count via ApplyT. Go surfaces this as a
-// panic. Even if the program did not panic, there would be a race
-// condition there, since it is unclear whether the new dynamic work
-// should have been awaited or not.
-//
-// Do we care about this case? User programs need to engage goroutines
-// and out of band Pulumi work creation, more than just straight
-// ApplyT, to get this.
-//
-// func TestWaitingCausesNoPanics(t *testing.T) {
-// 	for i := 0; i < 10; i++ {
-// 		mocks := &testMonitor{}
-// 		err := RunErr(func(ctx *Context) error {
-// 			o, set, _ := ctx.NewOutput()
-// 			go func() {
-// 				set(1)
-// 				o.ApplyT(func(x interface{}) interface{} { return x })
-// 			}()
-// 			return nil
-// 		}, WithMocks("project", "stack", mocks))
-// 		assert.NoError(t, err)
-// 	}
-// }
+// A contrived test demonstrating queueing work dynamically (`ApplyT`
+// called from a separate goroutine). This used to cause a panic but
+// is now resolved by using `workGroup`.
+func TestWaitingCausesNoPanics(t *testing.T) {
+	for i := 0; i < 10; i++ {
+		mocks := &testMonitor{}
+		err := RunErr(func(ctx *Context) error {
+			o, set, _ := ctx.NewOutput()
+			go func() {
+				set(1)
+				o.ApplyT(func(x interface{}) interface{} { return x })
+			}()
+			return nil
+		}, WithMocks("project", "stack", mocks))
+		assert.NoError(t, err)
+	}
+}
