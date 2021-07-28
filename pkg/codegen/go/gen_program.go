@@ -419,8 +419,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 
 	resName := makeValidIdentifier(r.Name())
 	pkg, mod, typ, _ := r.DecomposeToken()
-	mod = strings.ToLower(strings.Replace(mod, "/", ".", -1))
-	if mod == "" {
+	if mod == "" || strings.HasPrefix(mod, "/") || strings.HasPrefix(mod, "index/") {
 		mod = pkg
 	}
 

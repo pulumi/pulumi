@@ -194,14 +194,18 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		name := fmt.Sprintf("%s.%s", module, fn)
 
-		g.Fprintf(w, "%s(ctx", name)
-		for _, a := range expr.Args {
-			g.Fgenf(w, ", %.v", a)
+		optionsBag := ""
+		var buf bytes.Buffer
+		if len(expr.Args) == 3 {
+			g.Fgenf(&buf, ", %.v", expr.Args[2])
+		} else {
+			g.Fgenf(&buf, ", nil")
 		}
-		for i := 0; i < 2-len(expr.Args); i++ {
-			g.Fprint(w, ", nil")
-		}
-		g.Fprint(w, ")")
+		optionsBag = buf.String()
+
+		g.Fgenf(w, "%s(ctx, ", name)
+		g.Fgenf(w, "%.v", expr.Args[1])
+		g.Fgenf(w, "%v)", optionsBag)
 	case "join":
 		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
