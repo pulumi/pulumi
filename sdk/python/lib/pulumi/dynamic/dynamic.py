@@ -242,7 +242,7 @@ class Resource(CustomResource):
     Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
     """
 
-    def __init_subclass__(cls, module: str = '', name: str ='Resource'):
+    def __init_subclass__(cls, module: str = '', name: str = 'Resource'):
         if module:
             module = f'/{module}'
         cls._resource_type_name = f'dynamic{module}:{name}'
