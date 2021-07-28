@@ -12,6 +12,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -579,4 +580,252 @@ func TestReplaceSpecificTargets(t *testing.T) {
 	}}
 
 	p.Run(t, old)
+}
+
+var componentBasedTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H",
+	"I", "J", "K", "L", "M", "N"}
+
+func generateParentedTestDependencyGraph(t *testing.T, p *TestPlan) (
+	// Parent-child graph
+	//      A               B
+	//    __|__         ____|____
+	//    D   I         E       F
+	//  __|__         __|__   __|__
+	//  G   H         J   K   L   M
+	//
+	// A has children D, I
+	// D has children G, H
+	// B has children E, F
+	// E has children J, K
+	// F has children L, M
+	//
+	// Dependency graph
+	//  G        H
+	//  |      __|__
+	//  I      K   N
+	//
+	// I depends on G
+	// K depends on H
+	// N depends on H
+
+	[]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
+	resTypeComponent := tokens.Type("pkgA:index:Component")
+	resTypeResource := tokens.Type("pkgA:index:Resource")
+
+	names := componentBasedTestDependencyGraphNames
+
+	urnA := p.NewURN(resTypeComponent, names[0], "")
+	urnB := p.NewURN(resTypeComponent, names[1], "")
+	urnC := p.NewURN(resTypeResource, names[2], "")
+	urnD := p.NewURN(resTypeComponent, names[3], urnA)
+	urnE := p.NewURN(resTypeComponent, names[4], urnB)
+	urnF := p.NewURN(resTypeComponent, names[5], urnB)
+	urnG := p.NewURN(resTypeResource, names[6], urnD)
+	urnH := p.NewURN(resTypeResource, names[7], urnD)
+	urnI := p.NewURN(resTypeResource, names[8], urnA)
+	urnJ := p.NewURN(resTypeResource, names[9], urnE)
+	urnK := p.NewURN(resTypeResource, names[10], urnE)
+	urnL := p.NewURN(resTypeResource, names[11], urnF)
+	urnM := p.NewURN(resTypeResource, names[12], urnF)
+	urnN := p.NewURN(resTypeResource, names[13], "")
+
+	urns := []resource.URN{urnA, urnB, urnC, urnD, urnE, urnF, urnG, urnH, urnI, urnJ, urnK, urnL, urnM, urnN}
+
+	newResource := func(urn, parent resource.URN, id resource.ID,
+		dependencies []resource.URN, propertyDeps propertyDependencies) *resource.State {
+		return newResource(urn, parent, id, "", dependencies, propertyDeps,
+			nil, urn.Type() != resTypeComponent)
+	}
+
+	old := &deploy.Snapshot{
+		Resources: []*resource.State{
+			newResource(urnA, "", "0", nil, nil),
+			newResource(urnB, "", "1", nil, nil),
+			newResource(urnC, "", "2", nil, nil),
+			newResource(urnD, urnA, "3", nil, nil),
+			newResource(urnE, urnB, "4", nil, nil),
+			newResource(urnF, urnB, "5", nil, nil),
+			newResource(urnG, urnD, "6", nil, nil),
+			newResource(urnH, urnD, "7", nil, nil),
+			newResource(urnI, urnA, "8", []resource.URN{urnG},
+				propertyDependencies{"A": []resource.URN{urnG}}),
+			newResource(urnJ, urnE, "9", nil, nil),
+			newResource(urnK, urnE, "10", []resource.URN{urnH},
+				propertyDependencies{"A": []resource.URN{urnH}}),
+			newResource(urnL, urnF, "11", nil, nil),
+			newResource(urnM, urnF, "12", nil, nil),
+			newResource(urnN, "", "13", []resource.URN{urnH},
+				propertyDependencies{"A": []resource.URN{urnH}}),
+		},
+	}
+
+	program := deploytest.NewLanguageRuntime(
+		func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+			register := func(urn, parent resource.URN) resource.ID {
+				_, id, _, err := monitor.RegisterResource(
+					urn.Type(),
+					string(urn.Name()),
+					urn.Type() != resTypeComponent,
+					deploytest.ResourceOptions{
+						Inputs: nil,
+						Parent: parent,
+					})
+				assert.NoError(t, err)
+				return id
+			}
+
+			register(urnA, "")
+			register(urnB, "")
+			register(urnC, "")
+			register(urnD, urnA)
+			register(urnE, urnB)
+			register(urnF, urnB)
+			register(urnG, urnD)
+			register(urnH, urnD)
+			register(urnI, urnA)
+			register(urnJ, urnE)
+			register(urnK, urnE)
+			register(urnL, urnF)
+			register(urnM, urnF)
+			register(urnN, "")
+
+			return nil
+		})
+
+	return urns, old, program
+}
+
+func TestDestroyTargetWithChildren(t *testing.T) {
+	// when deleting 'A' with targetDependents specified we expect A, D, G, H, I, K and N to be deleted.
+	destroySpecificTargetsWithChildren(
+		t, []string{"A"}, true, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {
+			names := componentBasedTestDependencyGraphNames
+			assert.Equal(t, map[resource.URN]bool{
+				pickURN(t, urns, names, "A"): true,
+				pickURN(t, urns, names, "D"): true,
+				pickURN(t, urns, names, "G"): true,
+				pickURN(t, urns, names, "H"): true,
+				pickURN(t, urns, names, "I"): true,
+				pickURN(t, urns, names, "K"): true,
+				pickURN(t, urns, names, "N"): true,
+			}, deleted)
+		})
+
+	// when deleting 'A' with targetDependents not specified, we expect an error.
+	destroySpecificTargetsWithChildren(
+		t, []string{"A"}, false, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {})
+
+	// when deleting 'B' we expect B, E, F, J, K, L, M to be deleted.
+	destroySpecificTargetsWithChildren(
+		t, []string{"B"}, false, /*targetDependents*/
+		func(urns []resource.URN, deleted map[resource.URN]bool) {
+			names := componentBasedTestDependencyGraphNames
+			assert.Equal(t, map[resource.URN]bool{
+				pickURN(t, urns, names, "B"): true,
+				pickURN(t, urns, names, "E"): true,
+				pickURN(t, urns, names, "F"): true,
+				pickURN(t, urns, names, "J"): true,
+				pickURN(t, urns, names, "K"): true,
+				pickURN(t, urns, names, "L"): true,
+				pickURN(t, urns, names, "M"): true,
+			}, deleted)
+		})
+}
+
+func destroySpecificTargetsWithChildren(
+	t *testing.T, targets []string, targetDependents bool,
+	validate func(urns []resource.URN, deleted map[resource.URN]bool)) {
+
+	p := &TestPlan{}
+
+	urns, old, program := generateParentedTestDependencyGraph(t, p)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				DiffConfigF: func(urn resource.URN, olds, news resource.PropertyMap,
+					ignoreChanges []string) (plugin.DiffResult, error) {
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{
+							ReplaceKeys:         []resource.PropertyKey{"A"},
+							DeleteBeforeReplace: true,
+						}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+				DiffF: func(urn resource.URN, id resource.ID,
+					olds, news resource.PropertyMap, ignoreChanges []string) (plugin.DiffResult, error) {
+
+					if !olds["A"].DeepEquals(news["A"]) {
+						return plugin.DiffResult{ReplaceKeys: []resource.PropertyKey{"A"}}, nil
+					}
+					return plugin.DiffResult{}, nil
+				},
+			}, nil
+		}),
+	}
+
+	p.Options.Host = deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p.Options.TargetDependents = targetDependents
+
+	destroyTargets := []resource.URN{}
+	for _, target := range targets {
+		destroyTargets = append(destroyTargets, pickURN(t, urns, componentBasedTestDependencyGraphNames, target))
+	}
+
+	p.Options.DestroyTargets = destroyTargets
+	t.Logf("Destroying targets: %v", destroyTargets)
+
+	// If we're not forcing the targets to be destroyed, then expect to get a failure here as
+	// we'll have downstream resources to delete that weren't specified explicitly.
+	p.Steps = []TestStep{{
+		Op:            Destroy,
+		ExpectFailure: !targetDependents,
+		Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+			evts []Event, res result.Result) result.Result {
+
+			assert.Nil(t, res)
+			assert.True(t, len(entries) > 0)
+
+			deleted := make(map[resource.URN]bool)
+			for _, entry := range entries {
+				assert.Equal(t, deploy.OpDelete, entry.Step.Op())
+				deleted[entry.Step.URN()] = true
+			}
+
+			for _, target := range p.Options.DestroyTargets {
+				assert.Contains(t, deleted, target)
+			}
+
+			validate(urns, deleted)
+			return res
+		},
+	}}
+
+	p.Run(t, old)
+}
+
+func newResource(urn, parent resource.URN, id resource.ID, provider string, dependencies []resource.URN,
+	propertyDeps propertyDependencies, outputs resource.PropertyMap, custom bool) *resource.State {
+
+	inputs := resource.PropertyMap{}
+	for k := range propertyDeps {
+		inputs[k] = resource.NewStringProperty("foo")
+	}
+
+	return &resource.State{
+		Type:                 urn.Type(),
+		URN:                  urn,
+		Custom:               custom,
+		Delete:               false,
+		ID:                   id,
+		Inputs:               inputs,
+		Outputs:              outputs,
+		Dependencies:         dependencies,
+		PropertyDependencies: propertyDeps,
+		Provider:             provider,
+		Parent:               parent,
+	}
 }

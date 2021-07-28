@@ -769,6 +769,23 @@ func (sg *stepGenerator) GenerateDeletes(targetsOpt map[resource.URN]bool) ([]St
 	return dels, nil
 }
 
+func (sg *stepGenerator) getTargetIncludingChildren(target resource.URN) map[resource.URN]bool {
+	allTargets := make(map[resource.URN]bool)
+	allTargets[target] = true
+
+	// The list of resources is a topological sort of the reverse-dependency graph, so any
+	// resource R will appear in a list before its dependents and its children. We can use this
+	// to our advantage here and find all of a resource's children via a linear scan of the list
+	// starting from R.
+	for _, res := range sg.deployment.prev.Resources {
+		if _, has := allTargets[res.Parent]; has {
+			allTargets[res.URN] = true
+		}
+	}
+
+	return allTargets
+}
+
 func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 	targetsOpt map[resource.URN]bool) (map[resource.URN]bool, result.Result) {
 
@@ -777,11 +794,21 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		return nil, nil
 	}
 
+	targetsIncludingChildren := make(map[resource.URN]bool)
+
+	// Include all the children of each target.
+	for target := range targetsOpt {
+		allTargets := sg.getTargetIncludingChildren(target)
+		for child := range allTargets {
+			targetsIncludingChildren[child] = true
+		}
+	}
+
 	logging.V(7).Infof("Planner was asked to only delete/update '%v'", targetsOpt)
 	resourcesToDelete := make(map[resource.URN]bool)
 
 	// Now actually use all the requested targets to figure out the exact set to delete.
-	for target := range targetsOpt {
+	for target := range targetsIncludingChildren {
 		current := sg.deployment.olds[target]
 		if current == nil {
 			// user specified a target that didn't exist.  they will have already gotten a warning
@@ -804,25 +831,6 @@ func (sg *stepGenerator) determineAllowedResourcesToDeleteFromTargets(
 		for _, dep := range deps {
 			logging.V(7).Infof("GenerateDeletes(...): Adding dependent: %v", dep.res.URN)
 			resourcesToDelete[dep.res.URN] = true
-		}
-	}
-
-	// Also see if any resources have a resource we're deleting as a parent. If so, we'll block
-	// the delete.  It's a little painful.  But can be worked around by explicitly deleting
-	// children before parents.  Note: in almost all cases, people will want to delete children,
-	// so this restriction should not be too onerous.
-	for _, res := range sg.deployment.prev.Resources {
-		if res.Parent != "" {
-			if _, has := resourcesToDelete[res.URN]; has {
-				// already deleting this sibling
-				continue
-			}
-
-			if _, has := resourcesToDelete[res.Parent]; has {
-				sg.deployment.Diag().Errorf(diag.GetCannotDeleteParentResourceWithoutAlsoDeletingChildError(res.Parent),
-					res.Parent, res.URN)
-				return nil, result.Bail()
-			}
 		}
 	}
 
@@ -858,9 +866,9 @@ func (sg *stepGenerator) GeneratePendingDeletes() []Step {
 	return dels
 }
 
-// scheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
-// steps, where each list can be executed in parallel but a previous list must be executed to completion before advacing
-// to the next list.
+// ScheduleDeletes takes a list of steps that will delete resources and "schedules" them by producing a list of list of
+// steps, where each list can be executed in parallel but a previous list must be executed to completion before
+// advancing to the next list.
 //
 // In lieu of tracking per-step dependencies and orienting the step executor around these dependencies, this function
 // provides a conservative approximation of what deletions can safely occur in parallel. The insight here is that the
@@ -1327,7 +1335,7 @@ func (sg *stepGenerator) calculateDependentReplacements(root *resource.State) ([
 			return false, nil, nil
 		}
 
-		// If the resource's provider is in the replace set, we mustreplace this resource.
+		// If the resource's provider is in the replace set, we must replace this resource.
 		if r.Provider != "" {
 			ref, err := providers.ParseReference(r.Provider)
 			if err != nil {

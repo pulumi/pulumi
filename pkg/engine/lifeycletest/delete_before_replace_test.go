@@ -18,13 +18,14 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
 
+type propertyDependencies map[resource.PropertyKey][]resource.URN
+
 var complexTestDependencyGraphNames = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"}
 
 func generateComplexTestDependencyGraph(
 	t *testing.T, p *TestPlan) ([]resource.URN, *deploy.Snapshot, plugin.LanguageRuntime) {
 
 	resType := tokens.Type("pkgA:m:typA")
-	type propertyDependencies map[resource.PropertyKey][]resource.URN
 
 	names := complexTestDependencyGraphNames
 
@@ -48,24 +49,7 @@ func generateComplexTestDependencyGraph(
 
 	newResource := func(urn resource.URN, id resource.ID, provider string, dependencies []resource.URN,
 		propertyDeps propertyDependencies, outputs resource.PropertyMap) *resource.State {
-
-		inputs := resource.PropertyMap{}
-		for k := range propertyDeps {
-			inputs[k] = resource.NewStringProperty("foo")
-		}
-
-		return &resource.State{
-			Type:                 urn.Type(),
-			URN:                  urn,
-			Custom:               true,
-			Delete:               false,
-			ID:                   id,
-			Inputs:               inputs,
-			Outputs:              outputs,
-			Dependencies:         dependencies,
-			Provider:             provider,
-			PropertyDependencies: propertyDeps,
-		}
+		return newResource(urn, "", id, provider, dependencies, propertyDeps, outputs, true)
 	}
 
 	old := &deploy.Snapshot{

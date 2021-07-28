@@ -53,7 +53,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -340,13 +339,15 @@ func (b *localBackend) ListStacks(
 	// organizations and tags aren't persisted in the local backend.
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
+		chk, err := b.getCheckpoint(stackName)
 		if err != nil {
 			return nil, err
 		}
-		localStack, ok := stack.(*localStack)
-		contract.Assertf(ok, "localBackend GetStack returned non-localStack")
-		results = append(results, newLocalStackSummary(localStack))
+		stackRef, err := b.ParseStackReference(string(stackName))
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, newLocalStackSummary(stackRef, chk))
 	}
 
 	return results, nil
@@ -854,11 +855,6 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, err := b.getStack(name)
-		if err != nil {
-			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
-			continue // failure reading the stack information.
-		}
 
 		stacks = append(stacks, name)
 	}

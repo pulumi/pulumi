@@ -89,21 +89,19 @@ func title(s string) string {
 }
 
 type modContext struct {
-	pkg                  *schema.Package
-	mod                  string
-	pyPkgName            string
-	types                []*schema.ObjectType
-	enums                []*schema.EnumType
-	resources            []*schema.Resource
-	functions            []*schema.Function
-	typeDetails          map[*schema.ObjectType]*typeDetails
-	children             []*modContext
-	parent               *modContext
-	snakeCaseToCamelCase map[string]string
-	camelCaseToSnakeCase map[string]string
-	tool                 string
-	extraSourceFiles     []string
-	isConfig             bool
+	pkg              *schema.Package
+	mod              string
+	pyPkgName        string
+	types            []*schema.ObjectType
+	enums            []*schema.EnumType
+	resources        []*schema.Resource
+	functions        []*schema.Function
+	typeDetails      map[*schema.ObjectType]*typeDetails
+	children         []*modContext
+	parent           *modContext
+	tool             string
+	extraSourceFiles []string
+	isConfig         bool
 
 	// Name overrides set in PackageInfo
 	modNameOverrides map[string]string // Optional overrides for Pulumi module names
@@ -1954,69 +1952,6 @@ func pep440VersionToSemver(v string) (semver.Version, error) {
 	return semver.ParseTolerant(v)
 }
 
-// recordProperty records the given property's name and member names. For each property name contained in the given
-// property, the name is converted to snake case and recorded in the snake case to camel case table.
-//
-// Once all resources have been emitted, the table is written out to a format usable for implementations of
-// translate_input_property and translate_output_property.
-func buildCaseMappingTables(pkg *schema.Package, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
-	// Add provider input properties to translation tables.
-	for _, p := range pkg.Provider.InputProperties {
-		recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-	}
-
-	for _, r := range pkg.Resources {
-		// Calculate casing tables. We do this up front because our docstring generator (which is run during
-		// genResource) requires them.
-		for _, prop := range r.Properties {
-			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-		}
-		for _, prop := range r.InputProperties {
-			recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-		}
-	}
-	for _, typ := range pkg.Types {
-		typ, ok := typ.(*schema.ObjectType)
-		if ok {
-			for _, prop := range typ.Properties {
-				recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-			}
-		}
-	}
-}
-
-func recordProperty(prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
-	mapCase := true
-	if python, ok := prop.Language["python"]; ok {
-		v, ok := python.(PropertyInfo)
-		mapCase = ok && v.MapCase
-	}
-	if mapCase {
-		snakeCaseName := PyNameLegacy(prop.Name)
-		if snakeCaseToCamelCase != nil {
-			if _, ok := snakeCaseToCamelCase[snakeCaseName]; !ok {
-				snakeCaseToCamelCase[snakeCaseName] = prop.Name
-			}
-		}
-		if camelCaseToSnakeCase != nil {
-			if _, ok := camelCaseToSnakeCase[prop.Name]; !ok {
-				camelCaseToSnakeCase[prop.Name] = snakeCaseName
-			}
-		}
-	}
-
-	if obj, ok := prop.Type.(*schema.ObjectType); ok {
-		if !seenTypes.Has(prop.Type) {
-			// Avoid infinite calls in case of recursive types.
-			seenTypes.Add(prop.Type)
-
-			for _, p := range obj.Properties {
-				recordProperty(p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-			}
-		}
-	}
-}
-
 // genInitDocstring emits the docstring for the __init__ method of the given resource type.
 //
 // Sphinx (the documentation generator that we use to generate Python docs) does not draw a
@@ -2494,11 +2429,6 @@ func getDefaultValue(dv *schema.DefaultValue, t schema.Type) (string, error) {
 }
 
 func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo, extraFiles map[string][]byte) (map[string]*modContext, error) {
-	// Build case mapping tables
-	snakeCaseToCamelCase, camelCaseToSnakeCase := map[string]string{}, map[string]string{}
-	seenTypes := codegen.Set{}
-	buildCaseMappingTables(pkg, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-
 	// determine whether to use the default Python package name
 	pyPkgName := info.PackageName
 	if pyPkgName == "" {
@@ -2513,14 +2443,12 @@ func generateModuleContextMap(tool string, pkg *schema.Package, info PackageInfo
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                  p,
-				pyPkgName:            pyPkgName,
-				mod:                  modName,
-				tool:                 tool,
-				snakeCaseToCamelCase: snakeCaseToCamelCase,
-				camelCaseToSnakeCase: camelCaseToSnakeCase,
-				modNameOverrides:     info.ModuleNameOverrides,
-				compatibility:        info.Compatibility,
+				pkg:              p,
+				pyPkgName:        pyPkgName,
+				mod:              modName,
+				tool:             tool,
+				modNameOverrides: info.ModuleNameOverrides,
+				compatibility:    info.Compatibility,
 			}
 
 			if modName != "" && p == pkg {

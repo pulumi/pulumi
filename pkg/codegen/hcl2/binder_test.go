@@ -9,10 +9,8 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 )
-
-var testdataPath = filepath.Join("..", "internal", "test", "testdata")
 
 func TestBindProgram(t *testing.T) {
 	files, err := ioutil.ReadDir(testdataPath)
@@ -41,7 +39,7 @@ func TestBindProgram(t *testing.T) {
 				t.Fatalf("failed to parse files: %v", parser.Diagnostics)
 			}
 
-			_, diags, err := BindProgram(parser.Files, PluginHost(test.NewHost(testdataPath)))
+			_, diags, err := BindProgram(parser.Files, PluginHost(utils.NewHost(testdataPath)))
 			assert.NoError(t, err)
 			if diags.HasErrors() {
 				t.Fatalf("failed to bind program: %v", diags)

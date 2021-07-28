@@ -234,11 +234,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
-		casingTable := g.casingTables[pkg]
 		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
 			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
-				g.lowerObjectKeys(expr.Args[1], casingTable)
-
 				indenter := func(f func()) { f() }
 				if len(obj.Items) > 1 {
 					indenter = g.Indented

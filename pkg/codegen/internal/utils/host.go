@@ -1,4 +1,4 @@
-package test
+package utils
 
 import (
 	"github.com/blang/semver"
