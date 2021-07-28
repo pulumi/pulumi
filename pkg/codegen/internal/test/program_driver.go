@@ -82,6 +82,10 @@ var programTests = []programTest{
 		ProgramFile: "secret",
 		Description: "Secret",
 	},
+	{
+		ProgramFile: "functions",
+		Description: "Functions",
+	},
 }
 
 type langConfig struct {
@@ -149,7 +153,7 @@ func TestProgramCodegen(
 
 			expectedFile := pclFile + "." + cfg.extension
 			expected, err := ioutil.ReadFile(expectedFile)
-			if err != nil {
+			if err != nil && os.Getenv("PULUMI_ACCEPT") == "" {
 				t.Fatalf("could not read %v: %v", expectedFile, err)
 			}
 
@@ -188,6 +192,7 @@ func TestProgramCodegen(
 			if os.Getenv("PULUMI_ACCEPT") != "" {
 				err := ioutil.WriteFile(expectedFile, files[cfg.outputFile], 0600)
 				require.NoError(t, err)
+				return
 			}
 
 			assert.Equal(t, string(expected), string(files[cfg.outputFile]))
