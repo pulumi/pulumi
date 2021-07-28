@@ -159,7 +159,7 @@ class MyMocks(pulumi.runtime.Mocks):
 class ImmediateExecutor(ThreadPoolExecutor):
     """This removes multithreading from current tests. Unfortunately in
     presence of multithreading the tests are flaky. The proper fix is
-    postponed in #ref.
+    postponed - see https://github.com/pulumi/pulumi/issues/7663
 
     """
 
