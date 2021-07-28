@@ -1,6 +1,37 @@
 CHANGELOG
 =========
 
+## 3.9.0 (2021-07-28)
+
+### Improvements
+
+- [sdk/go] - Add stack output helpers for numeric types.
+  [#7410](https://github.com/pulumi/pulumi/pull/7410)
+
+- [sdk/python] - Permit `Input[Resource]` values in `depends_on`.
+  [#7559](https://github.com/pulumi/pulumi/pull/7559)
+
+- [backend/filestate] - Allow pulumi stack ls to see all stacks regardless of passphrase.
+  [#7660](https://github.com/pulumi/pulumi/pull/7660)
+
+### Bug Fixes
+
+- [sdk/{go,python,nodejs}] - Rehydrate provider resources in `Construct`.
+  [#7624](https://github.com/pulumi/pulumi/pull/7624)
+
+- [engine] - Include children when targeting components.
+  [#7605](https://github.com/pulumi/pulumi/pull/7605)
+
+- [cli] - Restore passing log options to providers when `--logflow` is specified
+  https://github.com/pulumi/pulumi/pull/7640
+
+- [sdk/nodejs] - Fix `pulumi up --logflow` causing Node multi-lang components to hang
+  [#7644](https://github.com/pulumi/pulumi/pull/)
+
+- [sdk/{dotnet,python,nodejs}] - Set the package on DependencyProviderResource.
+  [#7630](https://github.com/pulumi/pulumi/pull/7630)
+
+
 ## 3.8.0 (2021-07-22)
 
 ### Improvements
@@ -31,7 +62,7 @@ CHANGELOG
 
 - [sdk/go] - Fix panic when marshaling `self` in a method.
   [#7604](https://github.com/pulumi/pulumi/pull/7604)
-  
+
 ## 3.7.1 (2021-07-19)
 
 ### Improvements
@@ -91,7 +122,7 @@ CHANGELOG
 
 ## 3.6.0 (2021-06-30)
 
-### Improvements 
+### Improvements
 
 - [cli] Added support for passing custom paths that need
   to be watched by the `pulumi watch` command.
@@ -484,7 +515,7 @@ Unfortunately, the initial release did not include that change. We apologize for
 ### Improvements
 
 - [cli] Add option to print absolute rather than relative dates in stack history
-  [#6742](https://github.com/pulumi/pulumi/pull/6742)  
+  [#6742](https://github.com/pulumi/pulumi/pull/6742)
 
   Example:
   ```bash
@@ -496,7 +527,7 @@ Unfortunately, the initial release did not include that change. We apologize for
 
 - [sdk/dotnet] Thread-safe concurrency-friendly global state
   [#6139](https://github.com/pulumi/pulumi/pull/6139)
-  
+
 - [tooling] Update pulumi python docker image to python 3.9
   [#6706](https://github.com/pulumi/pulumi/pull/6706)
 
@@ -528,7 +559,7 @@ Unfortunately, the initial release did not include that change. We apologize for
   var upResult = await stack.UpAsync();
   deployment = await workspace.ExportStackAsync(stackName);
   ```
-  
+
 - [automation/dotnet] Implement CancelAsync method on WorkspaceStack
   [#6729](https://github.com/pulumi/pulumi/pull/6729)
 
@@ -574,7 +605,7 @@ Unfortunately, the initial release did not include that change. We apologize for
 
 - [automation] Set default value for 'main' for inline programs to support relative paths, assets, and closure serialization.
   [#6743](https://github.com/pulumi/pulumi/pull/6743)
-  
+
 - [automation/dotnet] Environment variable value type is now nullable.
   [#6520](https://github.com/pulumi/pulumi/pull/6520)
 
@@ -771,8 +802,8 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 ### Improvements
 
 - [cli] Disable permalinks to the update details page when using self-managed backends (S3, Azure, GCS). Should the user
-  want to get permalinks when using a self backend, they can pass a flag:  
-      `pulumi up --suppress-permalink false`.  
+  want to get permalinks when using a self backend, they can pass a flag:
+      `pulumi up --suppress-permalink false`.
   Permalinks for these self-managed backends will be suppressed on `update`, `preview`, `destroy`, `import` and `refresh`
   operations.
   [#6251](https://github.com/pulumi/pulumi/pull/6251)
@@ -808,13 +839,13 @@ This change is marked breaking because it also renames `OnOutput` to `OnStandard
 
 ### Improvements
 
-- [cli] Added pagination options to `pulumi stack history` [#6292](https://github.com/pulumi/pulumi/pull/6292)  
-  This is used as follows:  
+- [cli] Added pagination options to `pulumi stack history` [#6292](https://github.com/pulumi/pulumi/pull/6292)
+  This is used as follows:
   `pulumi stack history --page-size=20 --page=1`
 
 - [automation/*] Added pagination options for stack history in Automation API SDKs to improve
-  performance of stack updates. [#6257](https://github.com/pulumi/pulumi/pull/6257)    
-  This is used similar to the following example in go:  
+  performance of stack updates. [#6257](https://github.com/pulumi/pulumi/pull/6257)
+  This is used similar to the following example in go:
 ```go
   func ExampleStack_History() {
 	ctx := context.Background()
