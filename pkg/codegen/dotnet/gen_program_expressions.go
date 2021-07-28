@@ -241,6 +241,7 @@ var functionNamespaces = map[string][]string{
 	"readDir":  {"System.IO", "System.Linq"},
 	"readFile": {"System.IO"},
 	"toJSON":   {"System.Text.Json", "System.Collections.Generic"},
+	"toBase64": {"System"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -316,7 +317,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
 	case "toBase64":
-		g.Fgen(w, "Convert.ToBase64String(%v)", expr.Args[0])
+		g.Fgenf(w, "Convert.ToBase64String(System.Text.UTF8.GetBytes(%v))", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
 		g.genDictionary(w, expr.Args[0])

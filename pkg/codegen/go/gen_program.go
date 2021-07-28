@@ -605,7 +605,7 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")
-		default:
+		case "join", "toBase64", "mimeType", "fileAsset":
 			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:
