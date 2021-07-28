@@ -4,6 +4,10 @@
 - [sdk/go] - Add stack output helpers for numeric types.
   [#7410](https://github.com/pulumi/pulumi/pull/7410)
 
+- [backend/filestate] - Allow pulumi stack ls to see all stacks regardless of passphrase.
+  [#7660](https://github.com/pulumi/pulumi/pull/7660)
+
+
 ### Bug Fixes
 
 - [sdk/{go,python,nodejs}] - Rehydrate provider resources in `Construct`.
