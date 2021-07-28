@@ -121,9 +121,22 @@ func (s *SameStep) Res() *resource.State    { return s.new }
 func (s *SameStep) Logical() bool           { return true }
 
 func (s *SameStep) Apply(preview bool) (resource.Status, StepCompleteFunc, error) {
-	// Retain the ID, and outputs:
+	// Retain the ID and outputs
 	s.new.ID = s.old.ID
 	s.new.Outputs = s.old.Outputs
+
+	// If the resource is a provider, ensure that it is present in the registry under the appropriate URNs.
+	if providers.IsProviderType(s.new.Type) {
+		ref, err := providers.NewReference(s.new.URN, s.new.ID)
+		if err != nil {
+			return resource.StatusOK, nil, errors.Errorf(
+				"bad provider reference '%v' for resource %v: %v", s.Provider(), s.URN(), err)
+		}
+		if s.Deployment() != nil {
+			s.Deployment().SameProvider(ref)
+		}
+	}
+
 	complete := func() { s.reg.Done(&RegisterResult{State: s.new}) }
 	return resource.StatusOK, complete, nil
 }

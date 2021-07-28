@@ -360,6 +360,10 @@ func (d *Deployment) Prev() *Snapshot                        { return d.prev }
 func (d *Deployment) Olds() map[resource.URN]*resource.State { return d.olds }
 func (d *Deployment) Source() Source                         { return d.source }
 
+func (d *Deployment) SameProvider(ref providers.Reference) {
+	d.providers.Same(ref)
+}
+
 func (d *Deployment) GetProvider(ref providers.Reference) (plugin.Provider, bool) {
 	return d.providers.GetProvider(ref)
 }

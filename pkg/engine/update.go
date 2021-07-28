@@ -179,6 +179,9 @@ func Update(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resour
 	}
 	defer emitter.Close()
 
+	logging.V(7).Infof("*** Starting Update(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Update(preview=%v) complete ***", dryRun)
+
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newUpdateSource,

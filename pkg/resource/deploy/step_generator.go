@@ -228,6 +228,9 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 					sg.deployment.Diag().Errorf(diag.GetDuplicateResourceAliasError(urn), urnOrAlias, urn, previousAliasURN)
 				}
 				sg.aliased[urnOrAlias] = urn
+
+				// register the alias with the provider registry
+				sg.deployment.providers.RegisterAlias(urn, urnOrAlias)
 			}
 			break
 		}
