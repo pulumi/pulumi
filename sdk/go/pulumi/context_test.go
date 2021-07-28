@@ -38,7 +38,8 @@ func TestLoggingFromApplyCausesNoPanics(t *testing.T) {
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
 			String("X").ToStringOutput().ApplyT(func(string) int {
-				ctx.Log.Debug("Zzz", &LogArgs{})
+				err := ctx.Log.Debug("Zzz", &LogArgs{})
+				assert.NoError(t, err)
 				return 0
 			})
 			return nil
@@ -55,7 +56,8 @@ func TestLoggingFromResourceApplyCausesNoPanics(t *testing.T) {
 		t.Logf("Iteration %d\n", i)
 		mocks := &testMonitor{}
 		err := RunErr(func(ctx *Context) error {
-			NewLoggingTestResource(ctx, "res", String("A"))
+			_, err := NewLoggingTestResource(t, ctx, "res", String("A"))
+			assert.NoError(t, err)
 			return nil
 		}, WithMocks("project", "stack", mocks))
 		assert.NoError(t, err)
@@ -67,7 +69,13 @@ type LoggingTestResource struct {
 	TestOutput StringOutput
 }
 
-func NewLoggingTestResource(ctx *Context, name string, input StringInput, opts ...ResourceOption) (*LoggingTestResource, error) {
+func NewLoggingTestResource(
+	t *testing.T,
+	ctx *Context,
+	name string,
+	input StringInput,
+	opts ...ResourceOption) (*LoggingTestResource, error) {
+
 	resource := &LoggingTestResource{}
 	err := ctx.RegisterComponentResource("test:go:NewLoggingTestResource", name, resource, opts...)
 	if err != nil {
@@ -76,7 +84,8 @@ func NewLoggingTestResource(ctx *Context, name string, input StringInput, opts .
 
 	resource.TestOutput = input.ToStringOutput().ApplyT(func(inputValue string) (string, error) {
 		time.Sleep(10)
-		ctx.Log.Debug("Zzz", &LogArgs{})
+		err := ctx.Log.Debug("Zzz", &LogArgs{})
+		assert.NoError(t, err)
 		return inputValue, nil
 	}).(StringOutput)
 
