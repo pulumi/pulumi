@@ -69,7 +69,7 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
         return None
 
     # Annotations not specifying the element type are assumed by mypy
-    # to signify Any element type. Follow suite here.
+    # to signify Any element type. Follow suit here.
     if typ in {list, List, Sequence, abc.Sequence}:
         return cast(type, Any)
 
