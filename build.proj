@@ -314,6 +314,7 @@
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_error_apply\testcomponent" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent-go" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent-go" />
 
