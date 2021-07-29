@@ -40,7 +40,7 @@ namespace Pulumi
         Task InvokeAsync(string token, InvokeArgs args, InvokeOptions? options = null);
 
         /// <summary>
-        /// Dynamically invokes the function '<paramref name="token"/>', which is offered by a
+        /// Dynamically calls the function '<paramref name="token"/>', which is offered by a
         /// provider plugin.
         /// <para/>
         /// The result of <see cref="Call{T}"/> will be a <see cref="Output{T}"/> resolved to the

@@ -8,20 +8,20 @@ namespace Pulumi
     public class CallOptions
     {
         /// <summary>
-        /// An optional parent to use for default options for this invoke (e.g. the default provider
+        /// An optional parent to use for default options for this call (e.g. the default provider
         /// to use).
         /// </summary>
         public Resource? Parent { get; set; }
 
         /// <summary>
-        /// An optional provider to use for this invocation. If no provider is supplied, the default
-        /// provider for the invoked function's package will be used.
+        /// An optional provider to use for this call. If no provider is supplied, the default
+        /// provider for the called function's package will be used.
         /// </summary>
         public ProviderResource? Provider { get; set; }
 
         /// <summary>
         /// An optional version, corresponding to the version of the provider plugin that should be
-        /// used when performing this invoke.
+        /// used when performing this call.
         /// </summary>
         public string? Version { get; set; }
     }
