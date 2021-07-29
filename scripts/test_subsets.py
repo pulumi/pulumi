@@ -1,8 +1,12 @@
 """Defines test subsets.
 
 When removing or introducing new test subsets, make sure the
-`test-subset` build matrix in `run-build-and-acceptance-tests.yml`
-matches. An implied subset `etc` will catch tests not matched by any
+`test-subset` build matrix in these files:
+
+- `.github/workflows/run-build-and-acceptance-tests.yml`
+- `.github/workflows/master.yml`
+
+An implied subset `etc` will catch tests not matched by any
 explicit subset listed here.
 
 A note on the format of TEST_SUBSETS. The keys are test configuration
