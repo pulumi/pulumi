@@ -58,6 +58,8 @@ type NodePackageInfo struct {
 	PluginName string `json:"pluginName,omitempty"`
 	// The version of the plugin, which might be different from the version of the package..
 	PluginVersion string `json:"pluginVersion,omitempty"`
+	// Determines whether to make single-return-value methods return an output object or the single value.
+	LiftSingleValueMethodReturns bool `json:"liftSingleValueMethodReturns,omitempty"`
 }
 
 // NodeObjectInfo contains NodeJS-specific information for an object.
