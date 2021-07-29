@@ -34,3 +34,5 @@ def test_get_list_element_type():
 
     assert rpc._get_list_element_type(typing.List[typing.List[int]]) == typing.List[int]
     assert rpc._get_list_element_type(typing.Sequence[typing.Sequence[int]]) == typing.Sequence[int]
+
+    assert rpc._get_list_element_type(typing.List[typing.List]) == typing.List
