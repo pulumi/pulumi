@@ -18,4 +18,4 @@ component = Component("component")
 
 result = component.get_message(r.id)
 
-result.apply(lambda v: panic("should not run (result)"))
+pulumi.export("result", result.apply(lambda v: panic("should not run (result)")))

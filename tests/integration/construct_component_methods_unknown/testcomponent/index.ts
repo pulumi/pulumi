@@ -9,9 +9,7 @@ class Component extends pulumi.ComponentResource {
     }
 
     getMessage(echo: pulumi.Input<string>): pulumi.Output<string> {
-        const message = pulumi.output(echo);
-        message.apply(v => { console.log("should not run (echo)"); process.exit(1); });
-        return message;
+        return pulumi.output(echo).apply(v => { console.log("should not run (echo)"); process.exit(1); });
     }
 }
 

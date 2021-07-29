@@ -6,6 +6,7 @@ import { Random } from "./random"
 const r = new Random("resource", { length: 10 });
 const component = new Component("component");
 
-const result = component.getMessage({ echo: r.id });
-
-result.apply(v => { console.log("should not run (result)"); process.exit(1); });
+export const result = component.getMessage({ echo: r.id }).apply(v => {
+    console.log("should not run (result)");
+    process.exit(1);
+});

@@ -23,9 +23,10 @@ func main() {
 		if err != nil {
 			return err
 		}
-		result.ApplyT(func(val ComponentGetMessageResult) string {
+
+		ctx.Export("result", result.ApplyT(func(val ComponentGetMessageResult) string {
 			panic("should not run (result)")
-		})
+		}))
 		return nil
 	})
 }

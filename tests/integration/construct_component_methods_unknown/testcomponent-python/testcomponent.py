@@ -31,10 +31,7 @@ class Component(pulumi.ComponentResource):
         super().__init__("testcomponent:index:Component", resource_name, {}, opts)
 
     def get_message(self, echo: pulumi.Input[str]) -> pulumi.Output[str]:
-        message = pulumi.Output.from_input(echo)
-        message.apply(lambda v: panic("should not run (echo)"))
-        return message
-
+        return pulumi.Output.from_input(echo).apply(lambda v: panic("should not run (echo)"))
 
 class Provider(provider.Provider):
     VERSION = "0.0.1"

@@ -45,11 +45,9 @@ type ComponentGetMessageResult struct {
 }
 
 func (c *Component) GetMessage(args *ComponentGetMessageArgs) (*ComponentGetMessageResult, error) {
-	message := args.Echo.ToStringOutput()
-
-	message.ApplyT(func(val string) string {
+	message := args.Echo.ToStringOutput().ApplyT(func(val string) string {
 		panic("should not run (echo)")
-	})
+	}).(pulumi.StringOutput)
 
 	return &ComponentGetMessageResult{
 		Message: message,
