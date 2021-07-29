@@ -747,6 +747,10 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 			componentDir: "testcomponent",
 		},
 		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
 			componentDir: "testcomponent-go",
 		},
 	}
