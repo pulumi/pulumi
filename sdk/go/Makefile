@@ -7,6 +7,10 @@ PROJECT_ROOT     := $(realpath ../..)
 
 include ../../build/common.mk
 
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = install
+
 gen::
 	go generate ./pulumi/...
 
@@ -20,7 +24,7 @@ install:: install_plugin
 
 test_all:: test_fast
 
-test_fast:: install
+test_fast:: $(TEST_ALL_DEPS)
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
 
 dist::

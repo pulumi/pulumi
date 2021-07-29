@@ -11,6 +11,10 @@ VERSION         := $(shell pulumictl get version)
 
 TESTPARALLELISM := 10
 
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = build $(SUB_PROJECTS:%=%_install)
+
 ensure::
 	$(call STEP_MESSAGE)
 	@echo "cd sdk && go mod download"; cd sdk && go mod download
@@ -53,7 +57,7 @@ lint::
 test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
 
-test_build:: $(SUB_PROJECTS:%=%_install)
+test_build:: $(TEST_ALL_DEPS)
 	cd tests/testprovider && go build -o pulumi-resource-testprovider
 	cd tests/integration/construct_component/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component/testcomponent-go && go build -o pulumi-resource-testcomponent
@@ -70,7 +74,7 @@ test_build:: $(SUB_PROJECTS:%=%_install)
 	cd tests/integration/construct_component_provider/testcomponent && yarn install && yarn link @pulumi/pulumi && yarn run tsc
 	cd tests/integration/construct_component_provider/testcomponent-go && go build -o pulumi-resource-testcomponent
 
-test_all:: build test_build $(SUB_PROJECTS:%=%_install)
+test_all:: test_build
 	cd pkg && $(GO_TEST) ${PROJECT_PKGS}
 	cd tests && $(GO_TEST) -p=1 ${TESTS_PKGS}
 

@@ -12,6 +12,10 @@ TESTPARALLELISM := 10
 
 include ../../build/common.mk
 
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = build
+
 ensure::
 	pipenv install --dev
 	mkdir -p $(PYENVSRC)
@@ -42,7 +46,7 @@ install_plugin:: build_plugin
 
 install:: install_package install_plugin
 
-test_fast:: build
+test_fast:: $(TEST_ALL_DEPS)
 	$(GO_TEST) ${PROJECT_PKGS}
 	pipenv run pip install ./env/src
 	# TODO the ignored test seems to fail in pytest but not unittest. Need to trackdown why
@@ -68,7 +72,7 @@ brew::
 
 publish:: build_package
 	twine upload \
-    	-u pulumi -p "${PYPI_PASSWORD}" \
+	-u pulumi -p "${PYPI_PASSWORD}" \
         "env/src/dist"/*.whl \
         --skip-existing \
         --verbose
