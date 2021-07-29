@@ -234,7 +234,8 @@ func resourceTypeName(r *hcl2.Resource) (string, string, string, hcl.Diagnostics
 		}
 	}
 
-	return makeValidIdentifier(pkg), strings.Replace(module, "/", ".", -1), title(member), diagnostics
+	module = strings.ToLower(strings.Replace(module, "/", ".", -1))
+	return makeValidIdentifier(pkg), module, title(member), diagnostics
 }
 
 // makeResourceName returns the expression that should be emitted for a resource's "name" parameter given its base name

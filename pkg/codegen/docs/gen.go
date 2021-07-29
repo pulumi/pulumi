@@ -48,13 +48,6 @@ var (
 	packagedTemplates  map[string][]byte
 	docHelpers         map[string]codegen.DocLanguageHelper
 
-	// The following property case maps are for rendering property
-	// names of nested properties in Python language with the correct
-	// casing.
-	snakeCaseToCamelCase map[string]string
-	camelCaseToSnakeCase map[string]string
-	seenCasingTypes      codegen.Set
-
 	// The language-specific info objects for a certain package (provider).
 	goPkgInfo     go_gen.GoPackageInfo
 	csharpPkgInfo dotnet.CSharpPackageInfo
@@ -72,7 +65,7 @@ var (
 		"alicloud":      "AliCloud",
 		"auth0":         "Auth0",
 		"aws":           "AWS",
-		"azure":         "Azure",
+		"azure":         "Azure Classic",
 		"azure-native":  "Azure Native",
 		"azuread":       "Azure AD",
 		"azuredevops":   "Azure DevOps",
@@ -146,9 +139,6 @@ func init() {
 		}
 	}
 
-	snakeCaseToCamelCase = map[string]string{}
-	camelCaseToSnakeCase = map[string]string{}
-	seenCasingTypes = codegen.Set{}
 	langModuleNameLookup = map[string]string{}
 }
 
@@ -1499,7 +1489,7 @@ func (mod *modContext) gen(fs fs) error {
 	}
 
 	addFile := func(name, contents string) {
-		p := path.Join(modName, name)
+		p := path.Join(modName, name, "_index.md")
 		files = append(files, p)
 		fs.add(p, []byte(contents))
 	}
@@ -1516,7 +1506,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(strings.ToLower(title)+".md", buffer.String())
+		addFile(strings.ToLower(title), buffer.String())
 	}
 
 	// Functions
@@ -1529,7 +1519,7 @@ func (mod *modContext) gen(fs fs) error {
 			return err
 		}
 
-		addFile(strings.ToLower(tokenToName(f.Token))+".md", buffer.String())
+		addFile(strings.ToLower(tokenToName(f.Token)), buffer.String())
 	}
 
 	// Generate the index files.
@@ -1734,17 +1724,6 @@ func getMod(pkg *schema.Package, token string, tokenPkg *schema.Package, modules
 	return mod
 }
 
-func generatePythonPropertyCaseMaps(mod *modContext, r *schema.Resource, seenTypes codegen.Set) {
-	pyLangHelper := getLanguageDocHelper("python").(*python.DocLanguageHelper)
-	for _, p := range r.Properties {
-		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-	}
-
-	for _, p := range r.InputProperties {
-		pyLangHelper.GenPropertyCaseMap(mod.pkg, mod.mod, mod.tool, p, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
-	}
-}
-
 func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[string]*modContext {
 	// Group resources, types, and functions into modules.
 	modules := map[string]*modContext{}
@@ -1792,8 +1771,6 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 		mod := getMod(pkg, r.Token, r.Package, modules, tool, true)
 		mod.resources = append(mod.resources, r)
 		visitObjects(r)
-
-		generatePythonPropertyCaseMaps(mod, r, seenCasingTypes)
 	}
 
 	scanK8SResource := func(r *schema.Resource) {

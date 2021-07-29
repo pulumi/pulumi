@@ -183,7 +183,11 @@ namespace Pulumi.Automation.Tests
             using var workspace = await LocalWorkspace.CreateAsync(new LocalWorkspaceOptions
             {
                 WorkDir = workingDir,
-                ProjectSettings = projectSettings
+                ProjectSettings = projectSettings,
+                EnvironmentVariables = new Dictionary<string, string?>()
+                {
+                    ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                }
             });
 
             var stackName = $"{RandomStackName()}";
@@ -1430,7 +1434,7 @@ namespace Pulumi.Automation.Tests
             }
         }
 
-        [Fact]
+        [Fact(Skip = "Flakey test - https://github.com/pulumi/pulumi/issues/7467")]
         public async Task WorkspaceStackSupportsCancel()
         {
             var workingDir = ResourcePath(Path.Combine("Data", "testproj"));
@@ -1531,7 +1535,11 @@ namespace Pulumi.Automation.Tests
             var stack = await LocalWorkspace.CreateStackAsync(
                 new InlineProgramArgs(projectName, stackName, program)
                 {
-                    WorkDir = workdir
+                    WorkDir = workdir,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             var settings = await stack.Workspace.GetProjectSettingsAsync();
@@ -1580,6 +1588,10 @@ namespace Pulumi.Automation.Tests
                 new InlineProgramArgs(projectName, stackName, program)
                 {
                     Logger = logger,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             // make sure workspace logger is used
@@ -1620,7 +1632,11 @@ namespace Pulumi.Automation.Tests
             using var stack = await LocalWorkspace.CreateOrSelectStackAsync(
                 new InlineProgramArgs(projectName, stackName, program)
                 {
-                    Logger = TestLogger
+                    Logger = TestLogger,
+                    EnvironmentVariables = new Dictionary<string, string?>()
+                    {
+                        ["PULUMI_CONFIG_PASSPHRASE"] = "test"
+                    }
                 });
 
             TestLogger.LogInformation("Previewing stack...");
@@ -1639,13 +1655,13 @@ namespace Pulumi.Automation.Tests
             var program = PulumiFn.Create(() =>
             {
                 var config = new Config();
-                var a = new ComponentResource("test:res:a", "a", null);
+                new ComponentResource("test:res:a", "a");
 
                 if (config.GetBoolean("ShouldFail") == true)
                     throw new FileNotFoundException("ShouldFail");
 
-                var b = new ComponentResource("test:res:b", "b", null);
-                var c = new ComponentResource("test:res:c", "c", null);
+                new ComponentResource("test:res:b", "b");
+                new ComponentResource("test:res:c", "c");
             });
             Assert.IsType<PulumiFnInline>(program);
 
@@ -1659,12 +1675,12 @@ namespace Pulumi.Automation.Tests
                 }
             });
 
-            var config = new Dictionary<string, ConfigValue>()
-            {
-                ["ShouldFail"] = new ConfigValue("false"),
-            };
             try
             {
+                var config = new Dictionary<string, ConfigValue>
+                {
+                    ["ShouldFail"] = new ConfigValue("false"),
+                };
                 await stack.SetAllConfigAsync(config);
 
                 // pulumi up

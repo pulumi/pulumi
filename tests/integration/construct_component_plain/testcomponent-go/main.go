@@ -162,6 +162,11 @@ func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
 	return errors.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
+func (p *testcomponentProvider) Call(ctx context.Context,
+	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	return nil, errors.Errorf("Unknown Call token '%s'", req.GetTok())
+}
+
 func (p *testcomponentProvider) Check(ctx context.Context,
 	req *pulumirpc.CheckRequest) (*pulumirpc.CheckResponse, error) {
 	return &pulumirpc.CheckResponse{Inputs: req.News, Failures: nil}, nil

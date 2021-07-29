@@ -185,6 +185,7 @@ var functionImports = map[string]string{
 	"fileArchive": "pulumi",
 	"fileAsset":   "pulumi",
 	"readDir":     "os",
+	"toBase64":    "base64",
 	"toJSON":      "json",
 }
 
@@ -225,6 +226,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
 
+		if len(expr.Args) == 1 {
+			g.Fprintf(w, "%s()", name)
+			return
+		}
+
 		optionsBag := ""
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
@@ -234,11 +240,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
-		casingTable := g.casingTables[pkg]
 		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
 			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
-				g.lowerObjectKeys(expr.Args[1], casingTable)
-
 				indenter := func(f func()) { f() }
 				if len(obj.Items) > 1 {
 					indenter = g.Indented
@@ -263,6 +266,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
+	case "join":
+		g.Fgenf(w, "%.16v.join(%v)", expr.Args[0], expr.Args[1])
 	case "length":
 		g.Fgenf(w, "len(%.v)", expr.Args[0])
 	case "lookup":
@@ -289,6 +294,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgenf(w, "base64.b64encode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	default:

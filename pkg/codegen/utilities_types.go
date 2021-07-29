@@ -47,6 +47,8 @@ func SimplifyInputUnion(t schema.Type) schema.Type {
 	for i, et := range union.ElementTypes {
 		if input, ok := et.(*schema.InputType); ok {
 			elements[i] = input.ElementType
+		} else {
+			elements[i] = et
 		}
 	}
 	return &schema.UnionType{

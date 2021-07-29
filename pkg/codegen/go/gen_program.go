@@ -6,6 +6,7 @@ import (
 	gofmt "go/format"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
@@ -100,7 +101,13 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	return files, g.diagnostics, nil
 }
 
+var packageContexts sync.Map
+
 func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
+	if v, ok := packageContexts.Load(pkg); ok {
+		return v.(map[string]*pkgContext)
+	}
+
 	if err := pkg.ImportLanguages(map[string]schema.Language{"go": Importer}); err != nil {
 		return nil
 	}
@@ -109,7 +116,9 @@ func getPackages(tool string, pkg *schema.Package) map[string]*pkgContext {
 	if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
 		goPkgInfo = goInfo
 	}
-	return generatePackageContextMap(tool, pkg, goPkgInfo)
+	v := generatePackageContextMap(tool, pkg, goPkgInfo)
+	packageContexts.Store(pkg, v)
+	return v
 }
 
 func (g *generator) collectScopeRoots(n hcl2.Node) {
@@ -596,6 +605,8 @@ func (g *generator) genLocalVariable(w io.Writer, v *hcl2.LocalVariable) {
 			g.Fgenf(w, "if err != nil {\n")
 			g.Fgenf(w, "return err\n")
 			g.Fgenf(w, "}\n")
+		case "join", "toBase64", "mimeType", "fileAsset":
+			g.Fgenf(w, "%s := %.3v;\n", name, expr)
 		}
 	default:
 		g.Fgenf(w, "%s := %.3v;\n", name, expr)

@@ -369,6 +369,11 @@ function options(): Options {
  * queue to drain.  If any RPCs come in afterwards, however, they will crash the process.
  */
 export function disconnect(): Promise<void> {
+    return waitForRPCs(/*disconnectFromServers*/ true);
+}
+
+/** @internal */
+export function waitForRPCs(disconnectFromServers = false): Promise<void> {
     let done: Promise<any> | undefined;
     const closeCallback: () => Promise<void> = () => {
         if (done !== rpcDone) {
@@ -376,7 +381,9 @@ export function disconnect(): Promise<void> {
             done = rpcDone;
             return debuggablePromise(done.then(closeCallback), "disconnect");
         }
-        disconnectSync();
+        if (disconnectFromServers) {
+            disconnectSync();
+        }
         return Promise.resolve();
     };
     return closeCallback();

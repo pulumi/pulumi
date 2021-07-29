@@ -1,4 +1,4 @@
-# Copyright 2016-2018, Pulumi Corporation.
+# Copyright 2016-2021, Pulumi Corporation.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,15 +21,15 @@ class TestVersions(LanghostTest):
             program=path.join(self.base_path(), "versions"),
             expected_resource_count=3)
 
-    def register_resource(self, ctx, dry_run, ty, name, _resource,
-                          _dependencies, _parent, _custom, _protect,
-                          _provider, _property_deps, _delete_before_replace, _ignore_changes, version):
+    def register_resource(self, _ctx, _dry_run, ty, name, _resource, _dependencies, _parent, _custom, protect,
+                          _provider, _property_deps, _delete_before_replace, _ignore_changes, _version, _import,
+                          _replace_on_changes):
         if name == "testres":
-            self.assertEqual(version, "0.19.1")
+            self.assertEqual(_version, "0.19.1")
         elif name == "testres2":
-            self.assertEqual(version, "0.19.2")
+            self.assertEqual(_version, "0.19.2")
         elif name == "testres3":
-            self.assertEqual(version, "")
+            self.assertEqual(_version, "")
         else:
             self.fail(f"unknown resource: {name}")
         return {

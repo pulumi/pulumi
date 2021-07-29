@@ -305,7 +305,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -398,7 +398,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 type resmon struct {
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
-	constructInfo             plugin.ConstructInfo               // information for construct calls.
+	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
 	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
 	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
 	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
@@ -598,6 +598,89 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
 }
 
+// Call dynamically executes a method in the provider associated with a component resource.
+func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	// Fetch the token and load up the resource provider if necessary.
+	tok := tokens.ModuleMember(req.GetTok())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	if err != nil {
+		return nil, err
+	}
+
+	label := fmt.Sprintf("ResourceMonitor.Call(%s)", tok)
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:         label,
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	argDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetArgDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, urn := range deps.Urns {
+			urns[i] = resource.URN(urn)
+		}
+		argDependencies[resource.PropertyKey(name)] = urns
+	}
+
+	info := plugin.CallInfo{
+		Project:        rm.constructInfo.Project,
+		Stack:          rm.constructInfo.Stack,
+		Config:         rm.constructInfo.Config,
+		DryRun:         rm.constructInfo.DryRun,
+		Parallel:       rm.constructInfo.Parallel,
+		MonitorAddress: rm.constructInfo.MonitorAddress,
+	}
+	options := plugin.CallOptions{
+		ArgDependencies: argDependencies,
+	}
+
+	// Do the all and then return the arguments.
+	logging.V(5).Infof(
+		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), info, options)
+	ret, err := prov.Call(tok, args, info, options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "call of %v returned an error", tok)
+	}
+	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+		Label:         label,
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
+	}
+
+	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
+	for name, deps := range ret.ReturnDependencies {
+		urns := make([]string, len(deps))
+		for i, urn := range deps {
+			urns[i] = string(urn)
+		}
+		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range ret.Failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+	return &pulumirpc.CallResponse{Return: mret, ReturnDependencies: returnDependencies, Failures: chkfails}, nil
+}
+
 func (rm *resmon) StreamInvoke(
 	req *pulumirpc.InvokeRequest, stream pulumirpc.ResourceMonitor_StreamInvokeServer) error {
 
@@ -760,6 +843,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	protect := req.GetProtect()
 	deleteBeforeReplaceValue := req.GetDeleteBeforeReplace()
 	ignoreChanges := req.GetIgnoreChanges()
+	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
 
@@ -884,9 +968,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v",
+			"providers=%v, replaceOnChanges=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs)
+		aliases, timeouts, providerRefs, replaceOnChanges)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -923,7 +1007,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts),
+				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges),
 			done: make(chan *RegisterResult),
 		}
 

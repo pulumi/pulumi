@@ -1,0 +1,16 @@
+{
+    "name": "@pulumi/foo",
+    "version": "${VERSION}",
+    "scripts": {
+        "build": "tsc"
+    },
+    "devDependencies": {
+        "typescript": "^4.3.5"
+    },
+    "peerDependencies": {
+        "@pulumi/pulumi": "latest"
+    },
+    "pulumi": {
+        "resource": true
+    }
+}

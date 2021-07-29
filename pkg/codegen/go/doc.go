@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+const pulumiSDKVersion = "v3"
+
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
 type DocLanguageHelper struct {
 	packages map[string]*pkgContext
@@ -37,13 +39,16 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForPulumiType returns the doc link for a Pulumi type.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
-	moduleVersion := ""
-	if pkg.Version != nil {
-		if pkg.Version.Major > 1 {
-			moduleVersion = fmt.Sprintf("v%d/", pkg.Version.Major)
+	version := pulumiSDKVersion
+	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		if info.PulumiSDKVersion == 1 {
+			return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#%s", typeName)
+		}
+		if info.PulumiSDKVersion != 0 {
+			version = fmt.Sprintf("v%d", info.PulumiSDKVersion)
 		}
 	}
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/pulumi?tab=doc#%s", moduleVersion, typeName)
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%s/go/pulumi?tab=doc#%s", version, typeName)
 }
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
@@ -87,9 +92,6 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
 		os.Exit(1)
-	}
-	if _, ok := t.(*schema.EnumType); ok {
-		return modPkg.inputType(t)
 	}
 	return modPkg.typeString(t)
 }

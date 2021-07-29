@@ -253,6 +253,31 @@ func ignoreOptional(t *schema.OptionalType, requireInitializers bool) bool {
 	return false
 }
 
+func simplifyInputUnion(union *schema.UnionType) *schema.UnionType {
+	elements := make([]schema.Type, len(union.ElementTypes))
+	for i, et := range union.ElementTypes {
+		if input, ok := et.(*schema.InputType); ok {
+			switch input.ElementType.(type) {
+			case *schema.ArrayType, *schema.MapType:
+				// Instead of just replacing Input<{Array,Map}<T>> with {Array,Map}<T>, replace it with
+				// {Array,Map}<Plain(T)>. This matches the behavior of typeString when presented with an
+				// Input<{Array,Map}<T>>.
+				elements[i] = codegen.PlainType(input.ElementType)
+			default:
+				elements[i] = input.ElementType
+			}
+		} else {
+			elements[i] = et
+		}
+	}
+	return &schema.UnionType{
+		ElementTypes:  elements,
+		DefaultType:   union.DefaultType,
+		Discriminator: union.Discriminator,
+		Mapping:       union.Mapping,
+	}
+}
+
 func (mod *modContext) unionTypeString(t *schema.UnionType, qualifier string, input, wrapInput, state, requireInitializers bool) string {
 	elementTypeSet := stringSet{}
 	var elementTypes []string
@@ -300,9 +325,9 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		elem := t.ElementType
 		switch e := t.ElementType.(type) {
 		case *schema.ArrayType:
-			inputType, elem = "InputList", codegen.UnwrapType(e.ElementType)
+			inputType, elem = "InputList", codegen.PlainType(e.ElementType)
 		case *schema.MapType:
-			inputType, elem = "InputMap", codegen.UnwrapType(e.ElementType)
+			inputType, elem = "InputMap", codegen.PlainType(e.ElementType)
 		default:
 			if e == schema.JSONType {
 				return "InputJson"
@@ -310,7 +335,7 @@ func (mod *modContext) typeString(t schema.Type, qualifier string, input, state,
 		}
 
 		if union, ok := elem.(*schema.UnionType); ok {
-			union = codegen.SimplifyInputUnion(union).(*schema.UnionType)
+			union = simplifyInputUnion(union)
 			if inputType == "Input" {
 				return mod.unionTypeString(union, qualifier, input, true, state, requireInitializers)
 			}
@@ -426,8 +451,16 @@ var docCommentEscaper = strings.NewReplacer(
 	`>`, "&gt;",
 )
 
-func printComment(w io.Writer, comment string, indent string) {
-	lines := strings.Split(docCommentEscaper.Replace(comment), "\n")
+func printComment(w io.Writer, comment, indent string) {
+	printCommentWithOptions(w, comment, indent, true /*escape*/)
+}
+
+func printCommentWithOptions(w io.Writer, comment, indent string, escape bool) {
+	if escape {
+		comment = docCommentEscaper.Replace(comment)
+	}
+
+	lines := strings.Split(comment, "\n")
 	for len(lines) > 0 && lines[len(lines)-1] == "" {
 		lines = lines[:len(lines)-1]
 	}
@@ -446,6 +479,7 @@ type plainType struct {
 	res                   *schema.Resource
 	name                  string
 	comment               string
+	unescapeComment       bool
 	baseClass             string
 	propertyTypeQualifier string
 	properties            []*schema.Property
@@ -578,7 +612,7 @@ func (pt *plainType) genInputType(w io.Writer, level int) error {
 	}
 
 	// Open the class.
-	printComment(w, pt.comment, indent)
+	printCommentWithOptions(w, pt.comment, indent, !pt.unescapeComment)
 	fmt.Fprintf(w, "%spublic %sclass %s : Pulumi.%s\n", indent, sealed, pt.name, pt.baseClass)
 	fmt.Fprintf(w, "%s{\n", indent)
 
@@ -615,6 +649,7 @@ func (pt *plainType) genOutputType(w io.Writer, level int) {
 	fmt.Fprintf(w, "\n")
 
 	// Open the class and attribute it appropriately.
+	printCommentWithOptions(w, pt.comment, indent, !pt.unescapeComment)
 	fmt.Fprintf(w, "%s[OutputType]\n", indent)
 	fmt.Fprintf(w, "%spublic sealed class %s\n", indent, pt.name)
 	fmt.Fprintf(w, "%s{\n", indent)
@@ -1012,6 +1047,58 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "        }\n")
 	}
 
+	// Generate methods.
+	genMethod := func(method *schema.Method) {
+		methodName := Title(method.Name)
+		fun := method.Function
+
+		fmt.Fprintf(w, "\n")
+
+		returnType, typeParameter := "void", ""
+		if fun.Outputs != nil {
+			typeParameter = fmt.Sprintf("<%s%sResult>", className, methodName)
+			returnType = fmt.Sprintf("Pulumi.Output%s", typeParameter)
+		}
+
+		var argsParamDef string
+		argsParamRef := "CallArgs.Empty"
+		if fun.Inputs != nil {
+			var hasArgs bool
+			allOptionalInputs := true
+			for _, arg := range fun.Inputs.InputShape.Properties {
+				if arg.Name == "__self__" {
+					continue
+				}
+				hasArgs = true
+				allOptionalInputs = allOptionalInputs && !arg.IsRequired()
+			}
+			if hasArgs {
+				var argsDefault, sigil string
+				if allOptionalInputs {
+					// If the number of required input properties was zero, we can make the args object optional.
+					argsDefault, sigil = " = null", "?"
+				}
+
+				argsParamDef = fmt.Sprintf("%s%sArgs%s args%s", className, methodName, sigil, argsDefault)
+				argsParamRef = fmt.Sprintf("args ?? new %s%sArgs()", className, methodName)
+			}
+		}
+
+		// Emit the doc comment, if any.
+		printComment(w, fun.Comment, "        ")
+
+		if fun.DeprecationMessage != "" {
+			fmt.Fprintf(w, "        [Obsolete(@\"%s\")]\n", strings.ReplaceAll(fun.DeprecationMessage, `"`, `""`))
+		}
+
+		fmt.Fprintf(w, "        public %s %s(%s)\n", returnType, methodName, argsParamDef)
+		fmt.Fprintf(w, "            => Pulumi.Deployment.Instance.Call%s(\"%s\", %s, this);\n",
+			typeParameter, fun.Token, argsParamRef)
+	}
+	for _, method := range r.Methods {
+		genMethod(method)
+	}
+
 	// Close the class.
 	fmt.Fprintf(w, "    }\n")
 
@@ -1052,6 +1139,70 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			state:                 true,
 		}
 		if err := state.genInputType(w, 1); err != nil {
+			return err
+		}
+	}
+
+	// Generate method types.
+	genMethodTypes := func(method *schema.Method) error {
+		methodName := Title(method.Name)
+		fun := method.Function
+
+		// Generate args type.
+		var args []*schema.Property
+		if fun.Inputs != nil {
+			// Filter out the __self__ argument from the inputs.
+			args = make([]*schema.Property, 0, len(fun.Inputs.InputShape.Properties)-1)
+			for _, arg := range fun.Inputs.InputShape.Properties {
+				if arg.Name == "__self__" {
+					continue
+				}
+				args = append(args, arg)
+			}
+		}
+		if len(args) > 0 {
+			comment, escape := fun.Inputs.Comment, true
+			if comment == "" {
+				comment, escape = fmt.Sprintf(
+					"The set of arguments for the <see cref=\"%s.%s\"/> method.", className, methodName), false
+			}
+			argsType := &plainType{
+				mod:                   mod,
+				comment:               comment,
+				unescapeComment:       !escape,
+				name:                  fmt.Sprintf("%s%sArgs", className, methodName),
+				baseClass:             "CallArgs",
+				propertyTypeQualifier: "Inputs",
+				properties:            args,
+				args:                  true,
+			}
+			if err := argsType.genInputType(w, 1); err != nil {
+				return err
+			}
+		}
+
+		// Generate result type.
+		if fun.Outputs != nil {
+			comment, escape := fun.Inputs.Comment, true
+			if comment == "" {
+				comment, escape = fmt.Sprintf(
+					"The results of the <see cref=\"%s.%s\"/> method.", className, methodName), false
+			}
+			resultType := &plainType{
+				mod:                   mod,
+				comment:               comment,
+				unescapeComment:       !escape,
+				name:                  fmt.Sprintf("%s%sResult", className, methodName),
+				propertyTypeQualifier: "Outputs",
+				properties:            fun.Outputs.Properties,
+			}
+			resultType.genOutputType(w, 1)
+		}
+
+		return nil
+	}
+	for _, method := range r.Methods {
+		if err := genMethodTypes(method); err != nil {
 			return err
 		}
 	}
@@ -1332,6 +1483,10 @@ var pulumiImports = []string{
 }
 
 func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set) {
+	mod.getTypeImportsForResource(t, recurse, imports, seen, nil)
+}
+
+func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, imports map[string]codegen.StringSet, seen codegen.Set, res *schema.Resource) {
 	if seen.Has(t) {
 		return
 	}
@@ -1359,6 +1514,11 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 		// If it's an external resource, we'll be using fully-qualified type names, so there's no need
 		// for an import.
 		if t.Resource != nil && t.Resource.Package != mod.pkg {
+			return
+		}
+
+		// Don't import itself.
+		if t.Resource == res {
 			return
 		}
 
@@ -1392,6 +1552,10 @@ func (mod *modContext) getTypeImports(t schema.Type, recurse bool, imports map[s
 }
 
 func (mod *modContext) getImports(member interface{}, imports map[string]codegen.StringSet) {
+	mod.getImportsForResource(member, imports, nil)
+}
+
+func (mod *modContext) getImportsForResource(member interface{}, imports map[string]codegen.StringSet, res *schema.Resource) {
 	seen := codegen.Set{}
 	switch member := member.(type) {
 	case *schema.ObjectType:
@@ -1404,10 +1568,22 @@ func (mod *modContext) getImports(member interface{}, imports map[string]codegen
 		return
 	case *schema.Resource:
 		for _, p := range member.Properties {
-			mod.getTypeImports(p.Type, false, imports, seen)
+			mod.getTypeImportsForResource(p.Type, false, imports, seen, res)
 		}
 		for _, p := range member.InputProperties {
-			mod.getTypeImports(p.Type, false, imports, seen)
+			mod.getTypeImportsForResource(p.Type, false, imports, seen, res)
+		}
+		for _, method := range member.Methods {
+			if method.Function.Inputs != nil {
+				for _, p := range method.Function.Inputs.Properties {
+					mod.getTypeImportsForResource(p.Type, false, imports, seen, res)
+				}
+			}
+			if method.Function.Outputs != nil {
+				for _, p := range method.Function.Outputs.Properties {
+					mod.getTypeImportsForResource(p.Type, false, imports, seen, res)
+				}
+			}
 		}
 		return
 	case *schema.Function:
@@ -1476,7 +1652,7 @@ func (mod *modContext) getConfigProperty(schemaType schema.Type) (string, string
 func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	w := &bytes.Buffer{}
 
-	mod.genHeader(w, []string{"System.Collections.Immutable"})
+	mod.genHeader(w, []string{"System", "System.Collections.Immutable"})
 	// Use the root namespace to avoid `Pulumi.Provider.Config.Config.VarName` usage.
 	fmt.Fprintf(w, "namespace %s\n", mod.namespaceName)
 	fmt.Fprintf(w, "{\n")
@@ -1485,8 +1661,32 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 	fmt.Fprintf(w, "    public static class Config\n")
 	fmt.Fprintf(w, "    {\n")
 
+	fmt.Fprintf(w, "        [System.Diagnostics.CodeAnalysis.SuppressMessage(\"Microsoft.Design\", \"IDE1006\", Justification = \n")
+	fmt.Fprintf(w, "        \"Double underscore prefix used to avoid conflicts with variable names.\")]\n")
+	fmt.Fprintf(w, "        private sealed class __Value<T>\n")
+	fmt.Fprintf(w, "        {\n")
+
+	fmt.Fprintf(w, "            private readonly Func<T> _getter;\n")
+	fmt.Fprintf(w, "            private T _value = default!;\n")
+	fmt.Fprintf(w, "            private bool _set;\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "            public __Value(Func<T> getter)\n")
+	fmt.Fprintf(w, "            {\n")
+	fmt.Fprintf(w, "                _getter = getter;\n")
+	fmt.Fprintf(w, "            }\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "            public T Get() => _set ? _value : _getter();\n")
+	fmt.Fprintf(w, "\n")
+	fmt.Fprintf(w, "            public void Set(T value)\n")
+	fmt.Fprintf(w, "            {\n")
+	fmt.Fprintf(w, "                _value = value;\n")
+	fmt.Fprintf(w, "                _set = true;\n")
+	fmt.Fprintf(w, "            }\n")
+	fmt.Fprintf(w, "        }\n")
+	fmt.Fprintf(w, "\n")
+
 	// Create a config bag for the variables to pull from.
-	fmt.Fprintf(w, "        private static readonly Pulumi.Config __config = new Pulumi.Config(\"%v\");", mod.pkg.Name)
+	fmt.Fprintf(w, "        private static readonly Pulumi.Config __config = new Pulumi.Config(\"%v\");\n", mod.pkg.Name)
 	fmt.Fprintf(w, "\n")
 
 	// Emit an entry for all config variables.
@@ -1504,8 +1704,13 @@ func (mod *modContext) genConfig(variables []*schema.Property) (string, error) {
 			initializer += " ?? " + dv
 		}
 
+		fmt.Fprintf(w, "        private static readonly __Value<%[1]s> _%[2]s = new __Value<%[1]s>(() => %[3]s);\n", propertyType, p.Name, initializer)
 		printComment(w, p.Comment, "        ")
-		fmt.Fprintf(w, "        public static %s %s { get; set; } = %s;\n", propertyType, propertyName, initializer)
+		fmt.Fprintf(w, "        public static %s %s\n", propertyType, propertyName)
+		fmt.Fprintf(w, "        {\n")
+		fmt.Fprintf(w, "            get => _%s.Get();\n", p.Name)
+		fmt.Fprintf(w, "            set => _%s.Set(value);\n", p.Name)
+		fmt.Fprintf(w, "        }\n")
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1638,7 +1843,7 @@ func (mod *modContext) gen(fs fs) error {
 	// Resources
 	for _, r := range mod.resources {
 		imports := map[string]codegen.StringSet{}
-		mod.getImports(r, imports)
+		mod.getImportsForResource(r, imports, r)
 
 		buffer := &bytes.Buffer{}
 		var additionalImports []string
@@ -1933,7 +2138,9 @@ func generateModuleContextMap(tool string, pkg *schema.Package) (map[string]*mod
 	// Find input and output types referenced by functions.
 	for _, f := range pkg.Functions {
 		mod := getModFromToken(f.Token, pkg)
-		mod.functions = append(mod.functions, f)
+		if !f.IsMethod {
+			mod.functions = append(mod.functions, f)
+		}
 		if f.Inputs != nil {
 			visitObjectTypes(f.Inputs.Properties, func(t *schema.ObjectType) {
 				details := getModFromToken(t.Token, t.Package).details(t)

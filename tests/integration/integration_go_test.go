@@ -474,10 +474,13 @@ func optsForConstructGo(t *testing.T, expectedResourceCount int, env ...string) 
 							assert.Empty(t, deps)
 						}
 					case "child-b":
-						assert.Equal(t, []resource.URN{urns["a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.ElementsMatch(t, []resource.URN{urns["child-a"], urns["a"]},
-							res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "a", "b", "c":
 						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
 						assert.Truef(t, ok, "secret output was not serialized as a secret")
@@ -578,6 +581,81 @@ func optsForConstructPlainGo(t *testing.T, expectedResourceCount int, env ...str
 // Test remote component inputs properly handle unknowns.
 func TestConstructUnknownGo(t *testing.T) {
 	testConstructUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructMethodsGo(t *testing.T) {
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: append(test.env, pathEnv),
+				Dir: filepath.Join("construct_component_methods", "go"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v3",
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructMethodsUnknownGo(t *testing.T) {
+	testConstructMethodsUnknown(t, "go", "github.com/pulumi/pulumi/sdk/v3")
+}
+
+func TestConstructProviderGo(t *testing.T) {
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env: append(test.env, pathEnv),
+				Dir: filepath.Join(testDir, "go"),
+				Dependencies: []string{
+					"github.com/pulumi/pulumi/sdk/v3",
+				},
+				Quick:      true,
+				NoParallel: true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
 }
 
 func TestGetResourceGo(t *testing.T) {

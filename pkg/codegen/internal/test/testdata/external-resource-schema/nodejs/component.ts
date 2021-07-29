@@ -4,8 +4,8 @@
 import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
-import * as aws from "@pulumi/aws";
-import * as kubernetes from "@pulumi/kubernetes";
+import * as pulumiAws from "@pulumi/aws";
+import * as pulumiKubernetes from "@pulumi/kubernetes";
 
 export class Component extends pulumi.CustomResource {
     /**
@@ -34,9 +34,9 @@ export class Component extends pulumi.CustomResource {
         return obj['__pulumiType'] === Component.__pulumiType;
     }
 
-    public /*out*/ readonly provider!: pulumi.Output<kubernetes.Provider | undefined>;
-    public /*out*/ readonly securityGroup!: pulumi.Output<aws.ec2.SecurityGroup>;
-    public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: kubernetes.storage.v1.StorageClass} | undefined>;
+    public /*out*/ readonly provider!: pulumi.Output<pulumiKubernetes.Provider | undefined>;
+    public /*out*/ readonly securityGroup!: pulumi.Output<pulumiAws.ec2.SecurityGroup>;
+    public /*out*/ readonly storageClasses!: pulumi.Output<{[key: string]: pulumiKubernetes.storage.v1.StorageClass} | undefined>;
 
     /**
      * Create a Component resource with the given unique name, arguments, and options.
@@ -83,10 +83,10 @@ export class Component extends pulumi.CustomResource {
  * The set of arguments for constructing a Component resource.
  */
 export interface ComponentArgs {
-    metadata?: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
-    metadataArray?: pulumi.Input<pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
-    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
-    requiredMetadata: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>;
-    requiredMetadataArray: pulumi.Input<pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
-    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<kubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
+    metadata?: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    metadataArray?: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
+    metadataMap?: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
+    requiredMetadata: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>;
+    requiredMetadataArray: pulumi.Input<pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>[]>;
+    requiredMetadataMap: pulumi.Input<{[key: string]: pulumi.Input<pulumiKubernetes.types.input.meta.v1.ObjectMetaArgs>}>;
 }

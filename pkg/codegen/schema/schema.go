@@ -15,6 +15,7 @@
 package schema
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -27,6 +28,8 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/pkg/errors"
+	"gopkg.in/yaml.v3"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -444,6 +447,8 @@ type Package struct {
 	resourceTypeTable map[string]*ResourceType
 	functionTable     map[string]*Function
 	typeTable         map[string]Type
+
+	importedLanguages map[string]struct{}
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -595,7 +600,18 @@ func importFunctionLanguages(function *Function, languages map[string]Language) 
 }
 
 func (pkg *Package) ImportLanguages(languages map[string]Language) error {
-	if len(languages) == 0 {
+	if pkg.importedLanguages == nil {
+		pkg.importedLanguages = map[string]struct{}{}
+	}
+
+	any := false
+	for lang := range languages {
+		if _, ok := pkg.importedLanguages[lang]; !ok {
+			any = true
+			break
+		}
+	}
+	if !any {
 		return nil
 	}
 
@@ -644,6 +660,10 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 		}
 	}
 
+	for lang := range languages {
+		pkg.importedLanguages[lang] = struct{}{}
+	}
+
 	return nil
 }
 
@@ -659,6 +679,10 @@ func (pkg *Package) TokenToModule(tok string) string {
 	case "providers":
 		return ""
 	default:
+		if pkg.moduleFormat == nil {
+			pkg.moduleFormat = defaultModuleFormat
+		}
+
 		matches := pkg.moduleFormat.FindStringSubmatch(components[1])
 		if len(matches) < 2 || strings.HasPrefix(matches[1], "index") {
 			return ""
@@ -697,11 +721,433 @@ func (pkg *Package) GetType(token string) (Type, bool) {
 	return t, ok
 }
 
+func (pkg *Package) MarshalSpec() (spec *PackageSpec, err error) {
+	version := ""
+	if pkg.Version != nil {
+		version = pkg.Version.String()
+	}
+
+	var metadata *MetadataSpec
+	if pkg.moduleFormat != nil {
+		metadata = &MetadataSpec{ModuleFormat: pkg.moduleFormat.String()}
+	}
+
+	spec = &PackageSpec{
+		Name:              pkg.Name,
+		Version:           version,
+		Description:       pkg.Description,
+		Keywords:          pkg.Keywords,
+		Homepage:          pkg.Homepage,
+		License:           pkg.License,
+		Attribution:       pkg.Attribution,
+		Repository:        pkg.Repository,
+		LogoURL:           pkg.LogoURL,
+		PluginDownloadURL: pkg.PluginDownloadURL,
+		Meta:              metadata,
+		Types:             map[string]ComplexTypeSpec{},
+		Resources:         map[string]ResourceSpec{},
+		Functions:         map[string]FunctionSpec{},
+	}
+
+	spec.Config.Required, spec.Config.Variables, err = pkg.marshalProperties(pkg.Config, true)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling package config: %w", err)
+	}
+
+	spec.Provider, err = pkg.marshalResource(pkg.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("marshaling provider: %w", err)
+	}
+
+	for _, t := range pkg.Types {
+		switch t := t.(type) {
+		case *ObjectType:
+			if t.IsInputShape() {
+				continue
+			}
+
+			// Use the input shape when marshaling in order to get the plain annotations right.
+			o, err := pkg.marshalObject(t.InputShape, false)
+			if err != nil {
+				return nil, fmt.Errorf("marshaling type '%v': %w", t.Token, err)
+			}
+			spec.Types[t.Token] = o
+		case *EnumType:
+			spec.Types[t.Token] = pkg.marshalEnum(t)
+		}
+	}
+
+	for _, res := range pkg.Resources {
+		r, err := pkg.marshalResource(res)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling resource '%v': %w", res.Token, err)
+		}
+		spec.Resources[res.Token] = r
+	}
+
+	for _, fn := range pkg.Functions {
+		f, err := pkg.marshalFunction(fn)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling function '%v': %w", fn.Token, err)
+		}
+		spec.Functions[fn.Token] = f
+	}
+
+	return spec, nil
+}
+
+func (pkg *Package) MarshalJSON() ([]byte, error) {
+	spec, err := pkg.MarshalSpec()
+	if err != nil {
+		return nil, err
+	}
+	return jsonMarshal(spec)
+}
+
+func (pkg *Package) MarshalYAML() ([]byte, error) {
+	spec, err := pkg.MarshalSpec()
+	if err != nil {
+		return nil, err
+	}
+
+	var b bytes.Buffer
+	enc := yaml.NewEncoder(&b)
+	enc.SetIndent(2)
+	if err := enc.Encode(spec); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
+}
+
+func (pkg *Package) marshalObjectData(
+	comment string, properties []*Property, language map[string]interface{}, plain bool) (ObjectTypeSpec, error) {
+
+	required, props, err := pkg.marshalProperties(properties, plain)
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
+	lang, err := marshalLanguage(language)
+	if err != nil {
+		return ObjectTypeSpec{}, err
+	}
+
+	return ObjectTypeSpec{
+		Description: comment,
+		Properties:  props,
+		Type:        "object",
+		Required:    required,
+		Language:    lang,
+	}, nil
+}
+
+func (pkg *Package) marshalObject(t *ObjectType, plain bool) (ComplexTypeSpec, error) {
+	data, err := pkg.marshalObjectData(t.Comment, t.Properties, t.Language, plain)
+	if err != nil {
+		return ComplexTypeSpec{}, err
+	}
+	return ComplexTypeSpec{ObjectTypeSpec: data}, nil
+}
+
+func (pkg *Package) marshalEnum(t *EnumType) ComplexTypeSpec {
+	values := make([]EnumValueSpec, len(t.Elements))
+	for i, el := range t.Elements {
+		values[i] = EnumValueSpec{
+			Name:               el.Name,
+			Description:        el.Comment,
+			Value:              el.Value,
+			DeprecationMessage: el.DeprecationMessage,
+		}
+	}
+
+	return ComplexTypeSpec{
+		ObjectTypeSpec: ObjectTypeSpec{Type: pkg.marshalType(t.ElementType, false).Type},
+		Enum:           values,
+	}
+}
+
+func (pkg *Package) marshalResource(r *Resource) (ResourceSpec, error) {
+	object, err := pkg.marshalObjectData(r.Comment, r.Properties, r.Language, true)
+	if err != nil {
+		return ResourceSpec{}, fmt.Errorf("marshaling properties: %w", err)
+	}
+
+	requiredInputs, inputs, err := pkg.marshalProperties(r.InputProperties, false)
+	if err != nil {
+		return ResourceSpec{}, fmt.Errorf("marshaling input properties: %w", err)
+	}
+
+	var stateInputs *ObjectTypeSpec
+	if r.StateInputs != nil {
+		o, err := pkg.marshalObject(r.StateInputs, false)
+		if err != nil {
+			return ResourceSpec{}, fmt.Errorf("marshaling state inputs: %w", err)
+		}
+		stateInputs = &o.ObjectTypeSpec
+	}
+
+	var aliases []AliasSpec
+	for _, a := range r.Aliases {
+		aliases = append(aliases, AliasSpec{
+			Name:    a.Name,
+			Project: a.Project,
+			Type:    a.Type,
+		})
+	}
+
+	var methods map[string]string
+	if len(r.Methods) != 0 {
+		methods = map[string]string{}
+		for _, m := range r.Methods {
+			methods[m.Name] = m.Function.Token
+		}
+	}
+
+	return ResourceSpec{
+		ObjectTypeSpec:     object,
+		InputProperties:    inputs,
+		RequiredInputs:     requiredInputs,
+		StateInputs:        stateInputs,
+		Aliases:            aliases,
+		DeprecationMessage: r.DeprecationMessage,
+		IsComponent:        r.IsComponent,
+		Methods:            methods,
+	}, nil
+}
+
+func (pkg *Package) marshalFunction(f *Function) (FunctionSpec, error) {
+	var inputs *ObjectTypeSpec
+	if f.Inputs != nil {
+		ins, err := pkg.marshalObject(f.Inputs, true)
+		if err != nil {
+			return FunctionSpec{}, fmt.Errorf("marshaling inputs: %w", err)
+		}
+		inputs = &ins.ObjectTypeSpec
+	}
+
+	var outputs *ObjectTypeSpec
+	if f.Outputs != nil {
+		outs, err := pkg.marshalObject(f.Outputs, true)
+		if err != nil {
+			return FunctionSpec{}, fmt.Errorf("marshaloutg outputs: %w", err)
+		}
+		outputs = &outs.ObjectTypeSpec
+	}
+
+	lang, err := marshalLanguage(f.Language)
+	if err != nil {
+		return FunctionSpec{}, err
+	}
+
+	return FunctionSpec{
+		Description: f.Comment,
+		Inputs:      inputs,
+		Outputs:     outputs,
+		Language:    lang,
+	}, nil
+}
+
+func (pkg *Package) marshalProperties(props []*Property, plain bool) (required []string, specs map[string]PropertySpec,
+	err error) {
+
+	if len(props) == 0 {
+		return
+	}
+
+	specs = make(map[string]PropertySpec, len(props))
+	for _, p := range props {
+		typ := p.Type
+		if t, optional := typ.(*OptionalType); optional {
+			typ = t.ElementType
+		} else {
+			required = append(required, p.Name)
+		}
+
+		var defaultValue interface{}
+		var defaultSpec *DefaultSpec
+		if p.DefaultValue != nil {
+			defaultValue = p.DefaultValue.Value
+			if len(p.DefaultValue.Environment) != 0 || len(p.DefaultValue.Language) != 0 {
+				lang, err := marshalLanguage(p.DefaultValue.Language)
+				if err != nil {
+					return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
+				}
+
+				defaultSpec = &DefaultSpec{
+					Environment: p.DefaultValue.Environment,
+					Language:    lang,
+				}
+			}
+		}
+
+		lang, err := marshalLanguage(p.Language)
+		if err != nil {
+			return nil, nil, fmt.Errorf("property '%v': %w", p.Name, err)
+		}
+
+		specs[p.Name] = PropertySpec{
+			TypeSpec:           pkg.marshalType(typ, plain),
+			Description:        p.Comment,
+			Const:              p.ConstValue,
+			Default:            defaultValue,
+			DefaultInfo:        defaultSpec,
+			DeprecationMessage: p.DeprecationMessage,
+			Language:           lang,
+			Secret:             p.Secret,
+		}
+	}
+	return required, specs, nil
+}
+
+// marshalType marshals the given type into a TypeSpec. If plain is true, then the type is being marshaled within a
+// plain type context (e.g. a resource output property or a function input/output object type), and therefore does not
+// require `Plain` annotations (hence the odd-looking `Plain: !plain` fields below).
+func (pkg *Package) marshalType(t Type, plain bool) TypeSpec {
+	switch t := t.(type) {
+	case *InputType:
+		el := pkg.marshalType(t.ElementType, plain)
+		el.Plain = false
+		return el
+	case *ArrayType:
+		el := pkg.marshalType(t.ElementType, plain)
+		return TypeSpec{
+			Type:  "array",
+			Items: &el,
+			Plain: !plain,
+		}
+	case *MapType:
+		el := pkg.marshalType(t.ElementType, plain)
+		return TypeSpec{
+			Type:                 "object",
+			AdditionalProperties: &el,
+			Plain:                !plain,
+		}
+	case *UnionType:
+		oneOf := make([]TypeSpec, len(t.ElementTypes))
+		for i, el := range t.ElementTypes {
+			oneOf[i] = pkg.marshalType(el, plain)
+		}
+
+		defaultType := ""
+		if t.DefaultType != nil {
+			defaultType = pkg.marshalType(t.DefaultType, plain).Type
+		}
+
+		var discriminator *DiscriminatorSpec
+		if t.Discriminator != "" {
+			discriminator = &DiscriminatorSpec{
+				PropertyName: t.Discriminator,
+				Mapping:      t.Mapping,
+			}
+		}
+
+		return TypeSpec{
+			Type:          defaultType,
+			OneOf:         oneOf,
+			Discriminator: discriminator,
+			Plain:         !plain,
+		}
+	case *ObjectType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+	case *EnumType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Package, "types", t.Token)}
+	case *ResourceType:
+		return TypeSpec{Ref: pkg.marshalTypeRef(t.Resource.Package, "resources", t.Token)}
+	case *TokenType:
+		var defaultType string
+		if t.UnderlyingType != nil {
+			defaultType = pkg.marshalType(t.UnderlyingType, plain).Type
+		}
+
+		return TypeSpec{
+			Type: defaultType,
+			Ref:  t.Token,
+		}
+	default:
+		switch t {
+		case BoolType:
+			return TypeSpec{Type: "boolean"}
+		case StringType:
+			return TypeSpec{Type: "string"}
+		case IntType:
+			return TypeSpec{Type: "integer"}
+		case NumberType:
+			return TypeSpec{Type: "number"}
+		case AnyType:
+			return TypeSpec{Ref: "pulumi.json#/Any"}
+		case ArchiveType:
+			return TypeSpec{Ref: "pulumi.json#/Archive"}
+		case AssetType:
+			return TypeSpec{Ref: "pulumi.json#/Asset"}
+		case JSONType:
+			return TypeSpec{Ref: "pulumi.json#/Json"}
+		default:
+			panic(fmt.Errorf("unexepcted type %v (%T)", t, t))
+		}
+	}
+}
+
+func (pkg *Package) marshalTypeRef(container *Package, section, token string) string {
+	token = url.PathEscape(token)
+
+	if container == pkg {
+		return fmt.Sprintf("#/%s/%s", section, token)
+	}
+
+	// TODO(schema): this isn't quite right--it doesn't handle schemas sourced from URLs--but it's good enough for now.
+	return fmt.Sprintf("/%s/%v/schema.json#/%s/%s", container.Name, container.Version, section, token)
+}
+
+func marshalLanguage(lang map[string]interface{}) (map[string]RawMessage, error) {
+	if len(lang) == 0 {
+		return nil, nil
+	}
+
+	result := map[string]RawMessage{}
+	for name, data := range lang {
+		bytes, err := jsonMarshal(data)
+		if err != nil {
+			return nil, fmt.Errorf("marshaling %v language data: %w", name, err)
+		}
+		result[name] = RawMessage(bytes)
+	}
+	return result, nil
+}
+
+type RawMessage []byte
+
+func (m RawMessage) MarshalJSON() ([]byte, error) {
+	return []byte(m), nil
+}
+
+func (m *RawMessage) UnmarshalJSON(bytes []byte) error {
+	*m = make([]byte, len(bytes))
+	copy(*m, bytes)
+	return nil
+}
+
+func (m RawMessage) MarshalYAML() ([]byte, error) {
+	return []byte(m), nil
+}
+
+func (m *RawMessage) UnmarshalYAML(node *yaml.Node) error {
+	var value interface{}
+	if err := node.Decode(&value); err != nil {
+		return err
+	}
+	bytes, err := jsonMarshal(value)
+	if err != nil {
+		return err
+	}
+	*m = bytes
+	return nil
+}
+
 // TypeSpec is the serializable form of a reference to a type.
 type TypeSpec struct {
 	// Type is the primitive or composite type, if any. May be "bool", "integer", "number", "string", "array", or
 	// "object".
-	Type string `json:"type,omitempty"`
+	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Ref is a reference to a type in this or another document. For example, the built-in Archive, Asset, and Any
 	// types are referenced as "pulumi.json#/Archive", "pulumi.json#/Asset", and "pulumi.json#/Any", respectively.
 	// A type from this document is referenced as "#/types/pulumi:type:token".
@@ -710,151 +1156,149 @@ type TypeSpec struct {
 	// A resource from this document is referenced as "#/resources/pulumi:type:token".
 	// A resource from another document is referenced as "path#/resources/pulumi:type:token", where path is of the form:
 	//   "/provider/vX.Y.Z/schema.json" or "pulumi.json" or "http[s]://example.com/provider/vX.Y.Z/schema.json"
-	Ref string `json:"$ref,omitempty"`
+	Ref string `json:"$ref,omitempty" yaml:"$ref,omitempty"`
 	// AdditionalProperties, if set, describes the element type of an "object" (i.e. a string -> value map).
-	AdditionalProperties *TypeSpec `json:"additionalProperties,omitempty"`
+	AdditionalProperties *TypeSpec `json:"additionalProperties,omitempty" yaml:"additionalProperties,omitempty"`
 	// Items, if set, describes the element type of an array.
-	Items *TypeSpec `json:"items,omitempty"`
+	Items *TypeSpec `json:"items,omitempty" yaml:"items,omitempty"`
 	// OneOf indicates that values of the type may be one of any of the listed types.
-	OneOf []TypeSpec `json:"oneOf,omitempty"`
+	OneOf []TypeSpec `json:"oneOf,omitempty" yaml:"oneOf,omitempty"`
 	// Discriminator informs the consumer of an alternative schema based on the value associated with it.
-	Discriminator *DiscriminatorSpec `json:"discriminator,omitempty"`
+	Discriminator *DiscriminatorSpec `json:"discriminator,omitempty" yaml:"discriminator,omitempty"`
 	// Plain indicates that when used as an input, this type does not accept eventual values.
-	Plain bool `json:"plain,omitempty"`
+	Plain bool `json:"plain,omitempty" yaml:"plain,omitempty"`
 }
 
 // DiscriminatorSpec informs the consumer of an alternative schema based on the value associated with it.
 type DiscriminatorSpec struct {
 	// PropertyName is the name of the property in the payload that will hold the discriminator value.
-	PropertyName string `json:"propertyName"`
+	PropertyName string `json:"propertyName" yaml:"propertyName"`
 	// Mapping is an optional object to hold mappings between payload values and schema names or references.
-	Mapping map[string]string `json:"mapping,omitempty"`
+	Mapping map[string]string `json:"mapping,omitempty" yaml:"mapping,omitempty"`
 }
 
 // DefaultSpec is the serializable form of extra information about the default value for a property.
 type DefaultSpec struct {
 	// Environment specifies a set of environment variables to probe for a default value.
-	Environment []string `json:"environment,omitempty"`
+	Environment []string `json:"environment,omitempty" yaml:"environment,omitempty"`
 	// Language specifies additional language-specific data about the default value.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
 // PropertySpec is the serializable form of an object or resource property.
 type PropertySpec struct {
-	TypeSpec
+	TypeSpec `yaml:",inline"`
 
 	// Description is the description of the property, if any.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Const is the constant value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
-	Const interface{} `json:"const,omitempty"`
+	Const interface{} `json:"const,omitempty" yaml:"const,omitempty"`
 	// Default is the default value for the property, if any. The type of the value must be assignable to the type of
 	// the property.
-	Default interface{} `json:"default,omitempty"`
+	Default interface{} `json:"default,omitempty" yaml:"default,omitempty"`
 	// DefaultInfo contains additional information about the property's default value, if any.
-	DefaultInfo *DefaultSpec `json:"defaultInfo,omitempty"`
+	DefaultInfo *DefaultSpec `json:"defaultInfo,omitempty" yaml:"defaultInfo,omitempty"`
 	// DeprecationMessage indicates whether or not the property is deprecated.
-	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the property.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 	// Secret specifies if the property is secret (default false).
-	Secret bool `json:"secret,omitempty"`
+	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
 }
 
 // ObjectTypeSpec is the serializable form of an object type.
 type ObjectTypeSpec struct {
 	// Description is the description of the type, if any.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Properties, if present, is a map from property name to PropertySpec that describes the type's properties.
-	Properties map[string]PropertySpec `json:"properties,omitempty"`
+	Properties map[string]PropertySpec `json:"properties,omitempty" yaml:"properties,omitempty"`
 	// Type must be "object" if this is an object type, or the underlying type for an enum.
-	Type string `json:"type,omitempty"`
+	Type string `json:"type,omitempty" yaml:"type,omitempty"`
 	// Required, if present, is a list of the names of an object type's required properties. These properties must be set
 	// for inputs and will always be set for outputs.
-	Required []string `json:"required,omitempty"`
+	Required []string `json:"required,omitempty" yaml:"required,omitempty"`
 	// Plain, was a list of the names of an object type's plain properties. This property is ignored: instead, property
 	// types should be marked as plain where necessary.
-	Plain []string `json:"plain,omitempty"`
+	Plain []string `json:"plain,omitempty" yaml:"plain,omitempty"`
 	// Language specifies additional language-specific data about the type.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
 // ComplexTypeSpec is the serializable form of an object or enum type.
 type ComplexTypeSpec struct {
-	ObjectTypeSpec
+	ObjectTypeSpec `yaml:",inline"`
 
 	// Enum, if present, is the list of possible values for an enum type.
-	Enum []*EnumValueSpec `json:"enum,omitempty"`
+	Enum []EnumValueSpec `json:"enum,omitempty" yaml:"enum,omitempty"`
 }
 
 // EnumValuesSpec is the serializable form of the values metadata associated with an enum type.
 type EnumValueSpec struct {
 	// Name, if present, overrides the name of the enum value that would usually be derived from the value.
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Description of the enum value.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Value is the enum value itself.
-	Value interface{} `json:"value"`
+	Value interface{} `json:"value" yaml:"value"`
 	// DeprecationMessage indicates whether or not the value is deprecated.
-	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 }
 
 // AliasSpec is the serializable form of an alias description.
 type AliasSpec struct {
 	// Name is the name portion of the alias, if any.
-	Name *string `json:"name,omitempty"`
+	Name *string `json:"name,omitempty" yaml:"name,omitempty"`
 	// Project is the project portion of the alias, if any.
-	Project *string `json:"project,omitempty"`
+	Project *string `json:"project,omitempty" yaml:"project,omitempty"`
 	// Type is the type portion of the alias, if any.
-	Type *string `json:"type,omitempty"`
+	Type *string `json:"type,omitempty" yaml:"type,omitempty"`
 }
 
 // ResourceSpec is the serializable form of a resource description.
 type ResourceSpec struct {
-	ObjectTypeSpec
+	ObjectTypeSpec `yaml:",inline"`
 
 	// InputProperties is a map from property name to PropertySpec that describes the resource's input properties.
-	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty"`
+	InputProperties map[string]PropertySpec `json:"inputProperties,omitempty" yaml:"inputProperties,omitempty"`
 	// RequiredInputs is a list of the names of the resource's required input properties.
-	RequiredInputs []string `json:"requiredInputs,omitempty"`
+	RequiredInputs []string `json:"requiredInputs,omitempty" yaml:"requiredInputs,omitempty"`
 	// PlainInputs was a list of the names of the resource's plain input properties. This property is ignored:
 	// instead, property types should be marked as plain where necessary.
-	PlainInputs []string `json:"plainInputs,omitempty"`
+	PlainInputs []string `json:"plainInputs,omitempty" yaml:"plainInputs,omitempty"`
 	// StateInputs is an optional ObjectTypeSpec that describes additional inputs that mau be necessary to get an
 	// existing resource. If this is unset, only an ID is necessary.
-	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty"`
+	StateInputs *ObjectTypeSpec `json:"stateInputs,omitempty" yaml:"stateInputs,omitempty"`
 	// Aliases is the list of aliases for the resource.
-	Aliases []AliasSpec `json:"aliases,omitempty"`
+	Aliases []AliasSpec `json:"aliases,omitempty" yaml:"aliases,omitempty"`
 	// DeprecationMessage indicates whether or not the resource is deprecated.
-	DeprecationMessage string `json:"deprecationMessage,omitempty"`
-	// Language specifies additional language-specific data about the resource.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// IsComponent indicates whether the resource is a ComponentResource.
-	IsComponent bool `json:"isComponent,omitempty"`
+	IsComponent bool `json:"isComponent,omitempty" yaml:"isComponent,omitempty"`
 	// Methods maps method names to functions in this schema.
-	Methods map[string]string `json:"methods,omitempty"`
+	Methods map[string]string `json:"methods,omitempty" yaml:"methods,omitempty"`
 }
 
 // FunctionSpec is the serializable form of a function description.
 type FunctionSpec struct {
 	// Description is the description of the function, if any.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Inputs is the bag of input values for the function, if any.
-	Inputs *ObjectTypeSpec `json:"inputs,omitempty"`
+	Inputs *ObjectTypeSpec `json:"inputs,omitempty" yaml:"inputs,omitempty"`
 	// Outputs is the bag of output values for the function, if any.
-	Outputs *ObjectTypeSpec `json:"outputs,omitempty"`
+	Outputs *ObjectTypeSpec `json:"outputs,omitempty" yaml:"outputs,omitempty"`
 	// DeprecationMessage indicates whether or not the function is deprecated.
-	DeprecationMessage string `json:"deprecationMessage,omitempty"`
+	DeprecationMessage string `json:"deprecationMessage,omitempty" yaml:"deprecationMessage,omitempty"`
 	// Language specifies additional language-specific data about the function.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
 
 // ConfigSpec is the serializable description of a package's configuration variables.
 type ConfigSpec struct {
 	// Variables is a map from variable name to PropertySpec that describes a package's configuration variables.
-	Variables map[string]PropertySpec `json:"variables,omitempty"`
+	Variables map[string]PropertySpec `json:"variables,omitempty" yaml:"variables,omitempty"`
 	// Required is a list of the names of the package's required configuration variables.
-	Required []string `json:"defaults,omitempty"`
+	Required []string `json:"defaults,omitempty" yaml:"defaults,omitempty"`
 }
 
 // MetadataSpec contains information for the importer about this package.
@@ -863,49 +1307,51 @@ type MetadataSpec struct {
 	// type token. Packages that use the module format "namespace1/namespace2/.../namespaceN" do not need to specify
 	// a format. The regex must define one capturing group that contains the module name, which must be formatted as
 	// "namespace1/namespace2/...namespaceN".
-	ModuleFormat string `json:"moduleFormat,omitempty"`
+	ModuleFormat string `json:"moduleFormat,omitempty" yaml:"moduleFormat,omitempty"`
 }
 
 // PackageSpec is the serializable description of a Pulumi package.
 type PackageSpec struct {
 	// Name is the unqualified name of the package (e.g. "aws", "azure", "gcp", "kubernetes", "random")
-	Name string `json:"name"`
+	Name string `json:"name" yaml:"name"`
 	// Version is the version of the package. The version must be valid semver.
-	Version string `json:"version,omitempty"`
+	Version string `json:"version,omitempty" yaml:"version,omitempty"`
 	// Description is the description of the package.
-	Description string `json:"description,omitempty"`
+	Description string `json:"description,omitempty" yaml:"description,omitempty"`
 	// Keywords is the list of keywords that are associated with the package, if any.
-	Keywords []string `json:"keywords,omitempty"`
+	Keywords []string `json:"keywords,omitempty" yaml:"keywords,omitempty"`
 	// Homepage is the package's homepage.
-	Homepage string `json:"homepage,omitempty"`
+	Homepage string `json:"homepage,omitempty" yaml:"homepage,omitempty"`
 	// License indicates which license is used for the package's contents.
-	License string `json:"license,omitempty"`
+	License string `json:"license,omitempty" yaml:"license,omitempty"`
 	// Attribution allows freeform text attribution of derived work, if needed.
-	Attribution string `json:"attribution,omitempty"`
+	Attribution string `json:"attribution,omitempty" yaml:"attribution,omitempty"`
 	// Repository is the URL at which the source for the package can be found.
-	Repository string `json:"repository,omitempty"`
+	Repository string `json:"repository,omitempty" yaml:"repository,omitempty"`
 	// LogoURL is the URL for the package's logo, if any.
-	LogoURL string `json:"logoUrl,omitempty"`
+	LogoURL string `json:"logoUrl,omitempty" yaml:"logoUrl,omitempty"`
 	// PluginDownloadURL is the URL to use to acquire the provider plugin binary, if any.
-	PluginDownloadURL string `json:"pluginDownloadURL,omitempty"`
+	PluginDownloadURL string `json:"pluginDownloadURL,omitempty" yaml:"pluginDownloadURL,omitempty"`
 
 	// Meta contains information for the importer about this package.
-	Meta *MetadataSpec `json:"meta,omitempty"`
+	Meta *MetadataSpec `json:"meta,omitempty" yaml:"meta,omitempty"`
 
 	// Config describes the set of configuration variables defined by this package.
-	Config ConfigSpec `json:"config"`
+	Config ConfigSpec `json:"config" yaml:"config"`
 	// Types is a map from type token to ComplexTypeSpec that describes the set of complex types (ie. object, enum)
 	// defined by this package.
-	Types map[string]ComplexTypeSpec `json:"types,omitempty"`
+	Types map[string]ComplexTypeSpec `json:"types,omitempty" yaml:"types,omitempty"`
 	// Provider describes the provider type for this package.
-	Provider ResourceSpec `json:"provider"`
+	Provider ResourceSpec `json:"provider" yaml:"provider"`
 	// Resources is a map from type token to ResourceSpec that describes the set of resources defined by this package.
-	Resources map[string]ResourceSpec `json:"resources,omitempty"`
+	Resources map[string]ResourceSpec `json:"resources,omitempty" yaml:"resources,omitempty"`
 	// Functions is a map from token to FunctionSpec that describes the set of functions defined by this package.
-	Functions map[string]FunctionSpec `json:"functions,omitempty"`
+	Functions map[string]FunctionSpec `json:"functions,omitempty" yaml:"functions,omitempty"`
 	// Language specifies additional language-specific data about the package.
-	Language map[string]json.RawMessage `json:"language,omitempty"`
+	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 }
+
+var defaultModuleFormat = regexp.MustCompile("(.*)")
 
 // importSpec converts a serializable PackageSpec into a Package. This function includes a loader parameter which
 // works as a singleton -- if it is nil, a new loader is instantiated, else the provided loader is used. This avoids
@@ -1006,7 +1452,7 @@ func importSpec(spec PackageSpec, languages map[string]Language, loader Loader) 
 
 	language := make(map[string]interface{})
 	for name, raw := range spec.Language {
-		language[name] = raw
+		language[name] = json.RawMessage(raw)
 	}
 
 	*pkg = Package{
@@ -1376,7 +1822,10 @@ func (t *types) bindType(spec TypeSpec, inputShape bool) (result Type, err error
 
 		return t.newArrayType(elementType), nil
 	case "object":
-		elementType := StringType
+		elementType, err := t.bindType(TypeSpec{Type: "string"}, inputShape)
+		if err != nil {
+			return nil, err
+		}
 		if spec.AdditionalProperties != nil {
 			et, err := t.bindType(*spec.AdditionalProperties, inputShape)
 			if err != nil {
@@ -1496,7 +1945,7 @@ func bindDefaultValue(value interface{}, spec *DefaultSpec, typ Type) (*DefaultV
 	if spec != nil {
 		language := make(map[string]interface{})
 		for name, raw := range spec.Language {
-			language[name] = raw
+			language[name] = json.RawMessage(raw)
 		}
 
 		dv.Environment, dv.Language = spec.Environment, language
@@ -1530,7 +1979,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 
 		language := make(map[string]interface{})
 		for name, raw := range spec.Language {
-			language[name] = raw
+			language[name] = json.RawMessage(raw)
 		}
 
 		p := &Property{
@@ -1580,7 +2029,7 @@ func (t *types) bindObjectTypeDetails(obj *ObjectType, token string, spec Object
 
 	language := make(map[string]interface{})
 	for name, raw := range spec.Language {
-		language[name] = raw
+		language[name] = json.RawMessage(raw)
 	}
 
 	obj.Package = t.pkg
@@ -1642,7 +2091,7 @@ func (t *types) bindEnumTypeDetails(enum *EnumType, token string, spec ComplexTy
 	return nil
 }
 
-func (t *types) bindEnumValues(values []*EnumValueSpec, typ Type) ([]*Enum, error) {
+func (t *types) bindEnumValues(values []EnumValueSpec, typ Type) ([]*Enum, error) {
 	var enums []*Enum
 
 	errorMessage := func(val interface{}, expectedType string) error {
@@ -1837,7 +2286,7 @@ func bindResource(token string, spec ResourceSpec, types *types,
 
 	language := make(map[string]interface{})
 	for name, raw := range spec.Language {
-		language[name] = raw
+		language[name] = json.RawMessage(raw)
 	}
 
 	return &Resource{
@@ -1945,7 +2394,7 @@ func bindFunction(token string, spec FunctionSpec, types *types) (*Function, err
 
 	language := make(map[string]interface{})
 	for name, raw := range spec.Language {
-		language[name] = raw
+		language[name] = json.RawMessage(raw)
 	}
 
 	return &Function{
@@ -1976,4 +2425,15 @@ func bindFunctions(specs map[string]FunctionSpec, types *types) ([]*Function, ma
 	})
 
 	return functions, functionTable, nil
+}
+
+func jsonMarshal(v interface{}) ([]byte, error) {
+	var b bytes.Buffer
+	enc := json.NewEncoder(&b)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	if err := enc.Encode(v); err != nil {
+		return nil, err
+	}
+	return b.Bytes(), nil
 }

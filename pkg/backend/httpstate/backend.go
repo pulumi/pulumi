@@ -80,7 +80,7 @@ func DefaultURL() string {
 func ValueOrDefaultURL(cloudURL string) string {
 	// If we have a cloud URL, just return it.
 	if cloudURL != "" {
-		return cloudURL
+		return strings.TrimSuffix(cloudURL, "/")
 	}
 
 	// Otherwise, respect the PULUMI_API override.
@@ -358,7 +358,7 @@ func WelcomeUser(opts display.Options) {
 
   %s Resources you create with Pulumi are given unique names (a randomly
   generated suffix) by default. To learn more about auto-naming or customizing resource
-  names see https://www.pulumi.com/docs/intro/concepts/programming-model/#autonaming.
+  names see https://www.pulumi.com/docs/intro/concepts/resources/#autonaming.
 
 
 `,

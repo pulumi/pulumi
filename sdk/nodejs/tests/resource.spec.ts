@@ -18,7 +18,7 @@ import * as assert from "assert";
 import { Output, concat, interpolate, output } from "../output";
 import * as runtime from "../runtime";
 import { asyncTest } from "./util";
-import { createUrn, ComponentResource, CustomResourceOptions } from "../resource";
+import { createUrn, ComponentResource, CustomResourceOptions, DependencyProviderResource } from "../resource";
 
 class MyResource extends ComponentResource {
     constructor(name: string, opts?: CustomResourceOptions) {
@@ -63,4 +63,13 @@ describe("createUrn", () => {
         const urn = await createUrn("n", "t", res.child).promise();
         assert.strictEqual(urn, "urn:pulumi:mystack::myproject::my:mod:MyParentResource$my:mod:MyResource$t::n");
     }));
+});
+
+describe("DependencyProviderResource", () => {
+    describe("getPackage", () => {
+        it("returns the expected package", () => {
+            const res = new DependencyProviderResource("urn:pulumi:stack::project::pulumi:providers:aws::default_4_13_0");
+            assert.strictEqual(res.getPackage(), "aws");
+        });
+    });
 });

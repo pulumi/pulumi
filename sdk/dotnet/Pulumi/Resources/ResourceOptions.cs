@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
 
@@ -91,6 +91,20 @@ namespace Pulumi
         /// The URN of a previously-registered resource of this type to read from the engine.
         /// </summary>
         public string? Urn { get; set; }
+
+        private List<string>? _replaceOnChanges;
+
+        /// <summary>
+        /// Changes to any of these property paths will force a replacement.  If this list
+        /// includes `"*"`, changes to any properties will force a replacement.  Initialization
+        /// errors from previous deployments will require replacement instead of update only if
+        /// `"*"` is passed.
+        /// </summary>
+        public List<string> ReplaceOnChanges
+        {
+            get => _replaceOnChanges ??= new List<string>();
+            set => _replaceOnChanges = value;
+        }
 
         internal abstract ResourceOptions Clone();
     }
