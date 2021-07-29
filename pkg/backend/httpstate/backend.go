@@ -462,12 +462,14 @@ func (b *cloudBackend) GetPolicyPack(ctx context.Context, policyPack string,
 		cl: client.NewClient(b.CloudURL(), apiToken, d)}, nil
 }
 
-func (b *cloudBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
-	return b.client.ListPolicyGroups(ctx, orgName)
+func (b *cloudBackend) ListPolicyGroups(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
+	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
+	return b.client.ListPolicyGroups(ctx, orgName, inContToken)
 }
 
-func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
-	return b.client.ListPolicyPacks(ctx, orgName)
+func (b *cloudBackend) ListPolicyPacks(ctx context.Context, orgName string, inContToken backend.ContinuationToken) (
+	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+	return b.client.ListPolicyPacks(ctx, orgName, inContToken)
 }
 
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
@@ -723,7 +725,8 @@ func (b *cloudBackend) CreateStack(
 }
 
 func (b *cloudBackend) ListStacks(
-	ctx context.Context, filter backend.ListStacksFilter) ([]backend.StackSummary, error) {
+	ctx context.Context, filter backend.ListStacksFilter, inContToken backend.ContinuationToken) (
+	[]backend.StackSummary, backend.ContinuationToken, error) {
 	// Sanitize the project name as needed, so when communicating with the Pulumi Service we
 	// always use the name the service expects. (So that a similar, but not technically valid
 	// name may be put in Pulumi.yaml without causing problems.)
@@ -740,9 +743,9 @@ func (b *cloudBackend) ListStacks(
 		TagValue:     filter.TagValue,
 	}
 
-	apiSummaries, err := b.client.ListStacks(ctx, clientFilter)
+	apiSummaries, outContToken, err := b.client.ListStacks(ctx, clientFilter, inContToken)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Convert []apitype.StackSummary into []backend.StackSummary.
@@ -755,7 +758,7 @@ func (b *cloudBackend) ListStacks(
 		backendSummaries = append(backendSummaries, backendSummary)
 	}
 
-	return backendSummaries, nil
+	return backendSummaries, outContToken, nil
 }
 
 func (b *cloudBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
