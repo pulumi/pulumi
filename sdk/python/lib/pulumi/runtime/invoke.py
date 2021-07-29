@@ -218,11 +218,13 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
             log.debug(f"Call successful: tok={tok}")
 
             value = None
+            is_known = True
             is_secret = False
             deps: Set['Resource'] = set()
             ret_obj = getattr(resp, "return")
             if ret_obj:
                 deserialized = rpc.deserialize_properties(ret_obj)
+                is_known = not rpc.contains_unknowns(deserialized)
 
                 # Keep track of whether we need to mark the resulting output a secret,
                 # and unwrap each individual value.
@@ -237,11 +239,12 @@ def call(tok: str, props: 'Inputs', res: Optional['Resource'] = None, typ: Optio
                 from ..resource import DependencyResource  # pylint: disable=import-outside-toplevel
                 deps = set(map(DependencyResource, deps_urns))
 
-                # If typ is not None, call translate_output_properties to instantiate any output types.
-                value = rpc.translate_output_properties(deserialized, lambda prop: prop, typ) if typ else deserialized
+                if is_known:
+                    # If typ is not None, call translate_output_properties to instantiate any output types.
+                    value = rpc.translate_output_properties(deserialized, lambda p: p, typ) if typ else deserialized
 
             resolve_value.set_result(value)
-            resolve_is_known.set_result(True)
+            resolve_is_known.set_result(is_known)
             resolve_is_secret.set_result(is_secret)
             resolve_deps.set_result(deps)
 
