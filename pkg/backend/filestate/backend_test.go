@@ -177,8 +177,9 @@ func TestListStacksWithMultiplePassphrases(t *testing.T) {
 	assert.NoError(t, err)
 
 	// Ensure that we can list the stacks we created even without a passphrase
-	stacks, err := b.ListStacks(ctx, backend.ListStacksFilter{})
+	stacks, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{}, nil /* inContToken */)
 	assert.NoError(t, err)
+	assert.Nil(t, outContToken)
 	assert.Len(t, stacks, 2)
 	for _, stack := range stacks {
 		assert.NotNil(t, stack.ResourceCount())

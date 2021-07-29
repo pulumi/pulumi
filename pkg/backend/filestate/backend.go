@@ -348,7 +348,7 @@ func (b *localBackend) ListStacks(
 		}
 		stackRef, err := b.ParseStackReference(string(stackName))
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		results = append(results, newLocalStackSummary(stackRef, chk))
 	}
