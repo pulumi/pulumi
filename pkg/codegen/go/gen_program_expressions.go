@@ -206,6 +206,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "%s(ctx, ", name)
 		g.Fgenf(w, "%.v", expr.Args[1])
 		g.Fgenf(w, "%v)", optionsBag)
+	case "join":
+		g.Fgenf(w, "strings.Join(%v, %v)", expr.Args[1], expr.Args[0])
 	case "length":
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "%.20v.Length", expr.Args[0])
@@ -227,6 +229,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "split":
 		g.genNYI(w, "call %v", expr.Name)
 		// g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgenf(w, "base64.StdEncoding.EncodeToString([]byte(%v))", expr.Args[0])
 	case "toJSON":
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
@@ -943,9 +947,11 @@ func (g *generator) functionName(tokenArg model.Expression) (string, string, str
 }
 
 var functionPackages = map[string][]string{
-	"toJSON":   {"encoding/json"},
-	"readDir":  {"io/ioutil"},
+	"join":     {"strings"},
 	"mimeType": {"mime", "path"},
+	"readDir":  {"io/ioutil"},
+	"toBase64": {"encoding/base64"},
+	"toJSON":   {"encoding/json"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
