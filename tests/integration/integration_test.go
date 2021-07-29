@@ -735,6 +735,46 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 	}
 }
 
+// Test methods properly handle unknowns.
+// nolint: unused,deadcode
+func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_unknown"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:                    append(test.env, pathEnv),
+				Dir:                    filepath.Join(testDir, lang),
+				Dependencies:           dependencies,
+				SkipRefresh:            true,
+				SkipPreview:            false,
+				SkipUpdate:             true,
+				SkipExportImport:       true,
+				SkipEmptyPreviewUpdate: true,
+				Quick:                  false,
+				NoParallel:             true,
+			})
+		})
+	}
+}
+
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {

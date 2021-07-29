@@ -58,7 +58,7 @@ type Context struct {
 	rpcsLock sync.Mutex // a lock protecting the RPC count and event.
 	rpcError error      // the first error (if any) encountered during an RPC.
 
-	join sync.WaitGroup // the waitgroup for non-RPC async work associated with this context
+	join workGroup // the waitgroup for non-RPC async work associated with this context
 
 	Log Log // the logging interface for the Pulumi log stream.
 }

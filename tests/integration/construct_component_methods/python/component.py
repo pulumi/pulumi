@@ -19,6 +19,8 @@ class Component(pulumi.ComponentResource):
     @pulumi.output_type
     class GetMessageResult:
         def __init__(self, message: str):
+            if message and not isinstance(message, str):
+                 raise TypeError("Expected argument 'message' to be a str")
             pulumi.set(self, "message", message)
 
         @property
