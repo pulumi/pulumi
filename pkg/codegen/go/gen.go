@@ -1576,12 +1576,12 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 			// Generate the resource array input.
 			pkg.genInputInterface(w, name+"Array")
 			fmt.Fprintf(w, "type %[1]sArray []%[1]sInput\n\n", name)
-			genInputMethods(w, name+"Array", name+"Array", "[]*"+name, false, false)
+			genInputImplementation(w, name+"Array", name+"Array", "[]*"+name, false, false)
 
 			// Generate the resource map input.
 			pkg.genInputInterface(w, name+"Map")
 			fmt.Fprintf(w, "type %[1]sMap map[string]%[1]sInput\n\n", name)
-			genInputMethods(w, name+"Map", name+"Map", "map[string]*"+name, false, false)
+			genInputImplementation(w, name+"Map", name+"Map", "map[string]*"+name, false, false)
 		}
 	}
 
