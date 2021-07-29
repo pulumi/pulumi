@@ -744,6 +744,9 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 		env          []string
 	}{
 		{
+			componentDir: "testcomponent",
+		},
+		{
 			componentDir: "testcomponent-go",
 		},
 	}
