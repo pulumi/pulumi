@@ -85,6 +85,9 @@ type modContext struct {
 	modToPkg                map[string]string // Module name -> package name
 	compatibility           string            // Toggle compatibility mode for a specified target.
 	disableUnionOutputTypes bool              // Disable unions in output types.
+
+	// Determine whether to lift single-value method return values
+	liftSingleValueMethodReturns bool
 }
 
 func (mod *modContext) String() string {
@@ -731,6 +734,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		methodName := camel(method.Name)
 		fun := method.Function
 
+		shouldLiftReturn := mod.liftSingleValueMethodReturns && fun.Outputs != nil && len(fun.Outputs.Properties) == 1
+
 		// Write the TypeDoc/JSDoc for the data source function.
 		fmt.Fprint(w, "\n")
 		printComment(w, codegen.FilterExamples(fun.Comment, "typescript"), fun.DeprecationMessage, "    ")
@@ -763,6 +768,8 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		var retty string
 		if fun.Outputs == nil {
 			retty = "void"
+		} else if shouldLiftReturn {
+			retty = fmt.Sprintf("pulumi.Output<%s>", mod.typeString(fun.Outputs.Properties[0].Type, false, nil))
 		} else {
 			retty = fmt.Sprintf("pulumi.Output<%s.%sResult>", name, title(method.Name))
 		}
@@ -780,7 +787,11 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		// Now simply call the runtime function with the arguments, returning the results.
 		var ret string
 		if fun.Outputs != nil {
-			ret = "return "
+			if shouldLiftReturn {
+				ret = fmt.Sprintf("const result: pulumi.Output<%s.%sResult> = ", name, title(method.Name))
+			} else {
+				ret = "return "
+			}
 		}
 		fmt.Fprintf(w, "        %spulumi.runtime.call(\"%s\", {\n", ret, fun.Token)
 		if fun.Inputs != nil {
@@ -794,6 +805,9 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 			}
 		}
 		fmt.Fprintf(w, "        }, this);\n")
+		if shouldLiftReturn {
+			fmt.Fprintf(w, "        return result.%s;\n", camel(fun.Outputs.Properties[0].Name))
+		}
 		fmt.Fprintf(w, "    }\n")
 	}
 	for _, method := range r.Methods {
@@ -1919,12 +1933,13 @@ func generateModuleContextMap(tool string, pkg *schema.Package, extraFiles map[s
 		mod, ok := modules[modName]
 		if !ok {
 			mod = &modContext{
-				pkg:                     pkg,
-				mod:                     modName,
-				tool:                    tool,
-				compatibility:           info.Compatibility,
-				modToPkg:                info.ModuleToPackage,
-				disableUnionOutputTypes: info.DisableUnionOutputTypes,
+				pkg:                          pkg,
+				mod:                          modName,
+				tool:                         tool,
+				compatibility:                info.Compatibility,
+				modToPkg:                     info.ModuleToPackage,
+				disableUnionOutputTypes:      info.DisableUnionOutputTypes,
+				liftSingleValueMethodReturns: info.LiftSingleValueMethodReturns,
 			}
 
 			if modName != "" {
