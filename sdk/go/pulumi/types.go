@@ -53,15 +53,15 @@ func RegisterOutputType(output Output) {
 	}
 }
 
-type waitGroups []*sync.WaitGroup
+type workGroups []*workGroup
 
-func (wgs waitGroups) add() {
+func (wgs workGroups) add() {
 	for _, g := range wgs {
 		g.Add(1)
 	}
 }
 
-func (wgs waitGroups) done() {
+func (wgs workGroups) done() {
 	for _, g := range wgs {
 		g.Done()
 	}
@@ -78,7 +78,7 @@ type OutputState struct {
 	mutex sync.Mutex
 	cond  *sync.Cond
 
-	join *sync.WaitGroup // the wait group associated with this output, if any.
+	join *workGroup // the wait group associated with this output, if any.
 
 	state uint32 // one of output{Pending,Resolved,Rejected}
 
@@ -238,7 +238,7 @@ func (o *OutputState) getState() *OutputState {
 	return o
 }
 
-func newOutputState(join *sync.WaitGroup, elementType reflect.Type, deps ...Resource) *OutputState {
+func newOutputState(join *workGroup, elementType reflect.Type, deps ...Resource) *OutputState {
 	if join != nil {
 		join.Add(1)
 	}
@@ -255,7 +255,7 @@ func newOutputState(join *sync.WaitGroup, elementType reflect.Type, deps ...Reso
 var outputStateType = reflect.TypeOf((*OutputState)(nil))
 var outputTypeToOutputState sync.Map // map[reflect.Type]int
 
-func newOutput(wg *sync.WaitGroup, typ reflect.Type, deps ...Resource) Output {
+func newOutput(wg *workGroup, typ reflect.Type, deps ...Resource) Output {
 	contract.Assert(typ.Implements(outputType))
 
 	// All values that implement Output must embed a field of type `*OutputState` by virtue of the unexported
@@ -283,7 +283,7 @@ func newOutput(wg *sync.WaitGroup, typ reflect.Type, deps ...Resource) Output {
 	return output.Interface().(Output)
 }
 
-func newAnyOutput(wg *sync.WaitGroup) (Output, func(interface{}), func(error)) {
+func newAnyOutput(wg *workGroup) (Output, func(interface{}), func(error)) {
 	out := newOutputState(wg, anyType)
 
 	resolve := func(v interface{}) {
@@ -507,18 +507,18 @@ func AllWithContext(ctx context.Context, inputs ...interface{}) ArrayOutput {
 	return ToOutputWithContext(ctx, inputs).(ArrayOutput)
 }
 
-func gatherDependencies(v interface{}) ([]Resource, waitGroups) {
+func gatherDependencies(v interface{}) ([]Resource, workGroups) {
 	if v == nil {
 		return nil, nil
 	}
 
 	depSet := make(map[Resource]struct{})
-	joinSet := make(map[*sync.WaitGroup]struct{})
+	joinSet := make(map[*workGroup]struct{})
 	gatherDependencySet(reflect.ValueOf(v), depSet, joinSet)
 
-	var joins waitGroups
+	var joins workGroups
 	if len(joinSet) > 0 {
-		joins = make([]*sync.WaitGroup, 0, len(joinSet))
+		joins = make([]*workGroup, 0, len(joinSet))
 		for j := range joinSet {
 			joins = append(joins, j)
 		}
@@ -537,7 +537,7 @@ func gatherDependencies(v interface{}) ([]Resource, waitGroups) {
 
 var resourceType = reflect.TypeOf((*Resource)(nil)).Elem()
 
-func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*sync.WaitGroup]struct{}) {
+func gatherDependencySet(v reflect.Value, deps map[Resource]struct{}, joins map[*workGroup]struct{}) {
 	for {
 		// Check for an Output that we can pull dependencies off of.
 		if v.Type().Implements(outputType) && v.CanInterface() {
@@ -796,7 +796,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	return known, secret, deps, err
 }
 
-func toOutputTWithContext(ctx context.Context, join *sync.WaitGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
+func toOutputTWithContext(ctx context.Context, join *workGroup, outputType reflect.Type, v interface{}, result reflect.Value, forceSecretVal *bool) Output {
 	deps, joins := gatherDependencies(v)
 
 	done := joins.done
@@ -807,7 +807,7 @@ func toOutputTWithContext(ctx context.Context, join *sync.WaitGroup, outputType 
 		case 1:
 			join, joins, done = joins[0], nil, func() {}
 		default:
-			join = &sync.WaitGroup{}
+			join = &workGroup{}
 			done = func() {
 				join.Wait()
 				joins.done()
@@ -849,7 +849,7 @@ func ToOutputWithContext(ctx context.Context, v interface{}) Output {
 	return toOutputWithContext(ctx, nil, v, nil)
 }
 
-func toOutputWithContext(ctx context.Context, join *sync.WaitGroup, v interface{}, forceSecretVal *bool) Output {
+func toOutputWithContext(ctx context.Context, join *workGroup, v interface{}, forceSecretVal *bool) Output {
 	resultType := reflect.TypeOf(v)
 	if input, ok := v.(Input); ok {
 		resultType = input.ElementType()
@@ -941,7 +941,7 @@ func AnyWithContext(ctx context.Context, v interface{}) AnyOutput {
 	return anyWithContext(ctx, nil, v)
 }
 
-func anyWithContext(ctx context.Context, join *sync.WaitGroup, v interface{}) AnyOutput {
+func anyWithContext(ctx context.Context, join *workGroup, v interface{}) AnyOutput {
 	var result interface{}
 	return toOutputTWithContext(ctx, join, anyOutputType, v, reflect.ValueOf(&result).Elem(), nil).(AnyOutput)
 }

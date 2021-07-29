@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
-	"sync"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -599,7 +598,7 @@ func TestDeps(t *testing.T) {
 }
 
 func testMixedWaitGroups(t *testing.T, combine func(o1, o2 Output) Output) {
-	var wg1, wg2 sync.WaitGroup
+	var wg1, wg2 workGroup
 
 	o1 := newOutput(&wg1, anyOutputType)
 	o2 := newOutput(&wg2, anyOutputType)
