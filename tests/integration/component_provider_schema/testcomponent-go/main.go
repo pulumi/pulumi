@@ -3,9 +3,8 @@
 package main
 
 import (
+	"fmt"
 	"os"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -27,7 +26,7 @@ func main() {
 		Schema:  []byte(schema),
 		Construct: func(ctx *pulumi.Context, typ, name string,
 			inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
-			return nil, errors.Errorf("unknown resource type %s", typ)
+			return nil, fmt.Errorf("unknown resource type %s", typ)
 		},
 	})
 	if err != nil {

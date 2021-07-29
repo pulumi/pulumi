@@ -3,10 +3,10 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -98,36 +98,36 @@ func main() {
 			options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
 
 			if typ != "testcomponent:index:Component" {
-				return nil, errors.Errorf("unknown resource type %s", typ)
+				return nil, fmt.Errorf("unknown resource type %s", typ)
 			}
 
 			args := &ComponentArgs{}
 			if err := inputs.CopyTo(args); err != nil {
-				return nil, errors.Wrap(err, "setting args")
+				return nil, fmt.Errorf("setting args: %w", err)
 			}
 
 			component, err := NewComponent(ctx, name, args, options)
 			if err != nil {
-				return nil, errors.Wrap(err, "creating component")
+				return nil, fmt.Errorf("creating component: %w", err)
 			}
 
 			return pulumiprovider.NewConstructResult(component)
 		},
 		Call: func(ctx *pulumi.Context, tok string, args pulumiprovider.CallArgs) (*pulumiprovider.CallResult, error) {
 			if tok != "testcomponent:index:Component/getMessage" {
-				return nil, errors.Errorf("unknown method %s", tok)
+				return nil, fmt.Errorf("unknown method %s", tok)
 			}
 
 			methodArgs := &ComponentGetMessageArgs{}
 			res, err := args.CopyTo(methodArgs)
 			if err != nil {
-				return nil, errors.Wrap(err, "setting args")
+				return nil, fmt.Errorf("setting args: %w", err)
 			}
 			component := res.(*Component)
 
 			result, err := component.GetMessage(methodArgs)
 			if err != nil {
-				return nil, errors.Wrap(err, "calling method")
+				return nil, fmt.Errorf("calling method: %w", err)
 			}
 
 			return pulumiprovider.NewCallResult(result)

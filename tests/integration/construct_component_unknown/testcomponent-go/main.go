@@ -4,10 +4,9 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
-
-	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/provider"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -128,7 +127,7 @@ func (p *testcomponentProvider) Create(ctx context.Context,
 	urn := resource.URN(req.GetUrn())
 	typ := urn.Type()
 	if typ != "testcomponent:index:Resource" {
-		return nil, errors.Errorf("Unknown resource type '%s'", typ)
+		return nil, fmt.Errorf("Unknown resource type '%s'", typ)
 	}
 
 	id := currentID
@@ -145,17 +144,17 @@ func (p *testcomponentProvider) Construct(ctx context.Context,
 		inputs pulumiprovider.ConstructInputs, options pulumi.ResourceOption) (*pulumiprovider.ConstructResult, error) {
 
 		if typ != "testcomponent:index:Component" {
-			return nil, errors.Errorf("unknown resource type %s", typ)
+			return nil, fmt.Errorf("unknown resource type %s", typ)
 		}
 
 		args := &ComponentArgs{}
 		if err := inputs.CopyTo(args); err != nil {
-			return nil, errors.Wrap(err, "setting args")
+			return nil, fmt.Errorf("setting args: %w", err)
 		}
 
 		component, err := NewComponent(ctx, name, args, options)
 		if err != nil {
-			return nil, errors.Wrap(err, "creating component")
+			return nil, fmt.Errorf("creating component: %w", err)
 		}
 
 		return pulumiprovider.NewConstructResult(component)
@@ -183,17 +182,17 @@ func (p *testcomponentProvider) Configure(ctx context.Context,
 
 func (p *testcomponentProvider) Invoke(ctx context.Context,
 	req *pulumirpc.InvokeRequest) (*pulumirpc.InvokeResponse, error) {
-	return nil, errors.Errorf("Unknown Invoke token '%s'", req.GetTok())
+	return nil, fmt.Errorf("Unknown Invoke token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) StreamInvoke(req *pulumirpc.InvokeRequest,
 	server pulumirpc.ResourceProvider_StreamInvokeServer) error {
-	return errors.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
+	return fmt.Errorf("Unknown StreamInvoke token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) Call(ctx context.Context,
 	req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
-	return nil, errors.Errorf("Unknown Call token '%s'", req.GetTok())
+	return nil, fmt.Errorf("Unknown Call token '%s'", req.GetTok())
 }
 
 func (p *testcomponentProvider) Check(ctx context.Context,
