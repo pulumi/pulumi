@@ -808,6 +808,57 @@ func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...stri
 	}
 }
 
+// Test methods that create resources.
+// nolint: unused,deadcode
+func testConstructMethodsResources(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_resources"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join(testDir, lang),
+				Dependencies: dependencies,
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.NotNil(t, stackInfo.Deployment)
+					assert.Equal(t, 6, len(stackInfo.Deployment.Resources))
+					var hasExpectedResource bool
+					var result string
+					for _, res := range stackInfo.Deployment.Resources {
+						if res.URN.Name().String() == "myrandom" {
+							hasExpectedResource = true
+							result = res.Outputs["result"].(string)
+							assert.Equal(t, float64(10), res.Inputs["length"])
+							assert.Equal(t, 10, len(result))
+						}
+					}
+					assert.True(t, hasExpectedResource)
+					assert.Equal(t, result, stackInfo.Outputs["result"])
+				},
+			})
+		})
+	}
+}
+
 func TestRotatePassphrase(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
