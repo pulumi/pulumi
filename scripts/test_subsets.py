@@ -5,6 +5,7 @@ When removing or introducing new test subsets, make sure the
 
 - `.github/workflows/run-build-and-acceptance-tests.yml`
 - `.github/workflows/master.yml`
+- `.github/workflows/release.yml`
 
 An implied subset `etc` will catch tests not matched by any
 explicit subset listed here.
