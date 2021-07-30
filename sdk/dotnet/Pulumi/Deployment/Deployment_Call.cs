@@ -34,15 +34,15 @@ namespace Pulumi
             try
             {
                 var (result, deps) = await CallRawAsync(token, args, self, options).ConfigureAwait(false);
-                if (!convertResult)
-                {
-                    completionSource.TrySetDefaultResult(isKnown: true);
-                }
-                else
+                if (convertResult)
                 {
                     var converted = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
                     var data = new OutputData<T>(deps, converted.Value, isKnown: true, converted.IsSecret);
                     completionSource.SetValue(data);
+                }
+                else
+                {
+                    completionSource.TrySetDefaultResult(isKnown: true);
                 }
             }
             catch (Exception ex)
