@@ -4,6 +4,7 @@ package examples
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -11,7 +12,6 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
-	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
@@ -358,7 +358,7 @@ func getNodeVersion() (semver.Version, error) {
 	nodeVersionCmd := exec.Command("node", "--version")
 	nodeVersionCmd.Stdout = &buf
 	if err := nodeVersionCmd.Run(); err != nil {
-		return semver.Version{}, errors.Wrap(err, "running node --version")
+		return semver.Version{}, fmt.Errorf("running node --version: %w", err)
 	}
 
 	return semver.ParseTolerant(buf.String())

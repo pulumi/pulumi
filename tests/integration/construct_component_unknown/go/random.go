@@ -6,9 +6,9 @@
 package main
 
 import (
+	"errors"
 	"reflect"
 
-	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
