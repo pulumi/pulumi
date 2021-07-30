@@ -608,9 +608,18 @@ func (mod *modContext) genInit(exports []string) string {
 
 		for _, submod := range children {
 			if !submod.isEmpty() {
-				fmt.Fprintf(w, "    import %s as %s\n",
+				unq := submod.unqualifiedImportName()
+
+				// The `__iam = iam` hack enables
+				// PyCharm and VSCode completion to do
+				// better.
+				//
+				// See https://github.com/pulumi/pulumi/issues/7367
+				fmt.Fprintf(w, "    import %s as __%s\n    %s = __%s\n",
 					submod.fullyQualifiedImportName(),
-					submod.unqualifiedImportName())
+					unq,
+					unq,
+					unq)
 			}
 		}
 
