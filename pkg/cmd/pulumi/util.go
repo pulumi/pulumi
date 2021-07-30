@@ -312,13 +312,27 @@ func chooseStack(
 
 	// List stacks as available options.
 	project := string(proj.Name)
-	summaries, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project})
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not query backend for stacks")
+
+	var (
+		allSummaries []backend.StackSummary
+		inContToken  backend.ContinuationToken
+	)
+	for {
+		summaries, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project}, inContToken)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not query backend for stacks")
+		}
+
+		allSummaries = append(allSummaries, summaries...)
+
+		if outContToken == nil {
+			break
+		}
+		inContToken = outContToken
 	}
 
 	var options []string
-	for _, summary := range summaries {
+	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)
 	}

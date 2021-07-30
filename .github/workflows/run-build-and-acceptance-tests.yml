@@ -111,7 +111,10 @@ jobs:
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
+
+        # See scripts/tests_subsets.py when editing
         test-subset: [ integration, auto-and-lifecycletest, native, etc ]
+
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:

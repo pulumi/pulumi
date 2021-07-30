@@ -10,7 +10,8 @@ from .provider import *
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import pulumi_example.nested as nested
+    import pulumi_example.nested as __nested
+    nested = __nested
 else:
     nested = _utilities.lazy_import('pulumi_example.nested')
 
