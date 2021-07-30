@@ -37,7 +37,7 @@ namespace Pulumi
                 if (convertResult)
                 {
                     var converted = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
-                    var data = new OutputData<T>(deps, converted.Value, isKnown: true, converted.IsSecret);
+                    var data = new OutputData<T>(deps, converted.Value, converted.IsKnown, converted.IsSecret);
                     completionSource.SetValue(data);
                 }
                 else
