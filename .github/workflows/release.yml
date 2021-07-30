@@ -298,8 +298,15 @@ jobs:
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
+
+        # See scripts/tests_subsets.py when editing
+        test-subset: [ integration, auto-and-lifecycletest, native, etc ]
+
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Set PULUMI_TEST_SUBSET env var
+        run: |
+          echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -357,7 +364,7 @@ jobs:
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
         run: |
-          make test_all
+          make TEST_ALL_DEPS= test_all
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
