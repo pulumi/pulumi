@@ -31,6 +31,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 )
 
 // LocalWorkspace is a default implementation of the Workspace interface.
@@ -335,8 +337,19 @@ func (l *LocalWorkspace) SelectStack(ctx context.Context, stackName string) erro
 }
 
 // RemoveStack deletes the stack and all associated configuration and history.
-func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string) error {
-	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, "stack", "rm", "--yes", stackName)
+func (l *LocalWorkspace) RemoveStack(ctx context.Context, stackName string, opts ...optremove.Option) error {
+	args := []string{"stack", "rm", "--yes", stackName}
+
+	optRemoveOpts := &optremove.Options{}
+	for _, o := range opts {
+		o.ApplyOption(optRemoveOpts)
+	}
+
+	if optRemoveOpts.Force {
+		args = append(args, "--force")
+	}
+
+	stdout, stderr, errCode, err := l.runPulumiCmdSync(ctx, args...)
 	if err != nil {
 		return newAutoError(errors.Wrap(err, "failed to remove stack"), stdout, stderr, errCode)
 	}

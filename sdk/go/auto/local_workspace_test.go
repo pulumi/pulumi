@@ -36,6 +36,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optdestroy"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optpreview"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optrefresh"
+	"github.com/pulumi/pulumi/sdk/v3/go/auto/optremove"
 	"github.com/pulumi/pulumi/sdk/v3/go/auto/optup"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/apitype"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -119,6 +120,86 @@ func TestWorkspaceSecretsProvider(t *testing.T) {
 
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestRemoveWithForce(t *testing.T) {
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"bar": ConfigValue{
+			Value: "abc",
+		},
+		"buzz": ConfigValue{
+			Value:  "secret",
+			Secret: true,
+		},
+	}
+
+	// initialize
+	pDir := filepath.Join(".", "test", "testproj")
+	s, err := NewStackLocalSource(ctx, stackName, pDir)
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	// Set environment variables scoped to the workspace.
+	envvars := map[string]string{
+		"foo":    "bar",
+		"barfoo": "foobar",
+	}
+	err = s.Workspace().SetEnvVars(envvars)
+	assert.Nil(t, err, "failed to set environment values")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after setting many")
+
+	s.Workspace().SetEnvVar("bar", "buzz")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment value after setting")
+
+	s.Workspace().UnsetEnvVar("bar")
+	envvars = s.Workspace().GetEnvVars()
+	assert.NotNil(t, envvars, "failed to get environment values after unsetting.")
+
+	// -- pulumi up --
+	res, err := s.Up(ctx)
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+
+	assert.Equal(t, 3, len(res.Outputs), "expected two plain outputs")
+	assert.Equal(t, "foo", res.Outputs["exp_static"].Value)
+	assert.False(t, res.Outputs["exp_static"].Secret)
+	assert.Equal(t, "abc", res.Outputs["exp_cfg"].Value)
+	assert.False(t, res.Outputs["exp_cfg"].Secret)
+	assert.Equal(t, "secret", res.Outputs["exp_secret"].Value)
+	assert.True(t, res.Outputs["exp_secret"].Secret)
+	assert.Equal(t, "update", res.Summary.Kind)
+	assert.Equal(t, "succeeded", res.Summary.Result)
+
+	const permalinkSearchStr = "https://app.pulumi.com"
+	var startRegex = regexp.MustCompile(permalinkSearchStr)
+	permalink, err := GetPermalink(res.StdOut)
+	assert.Nil(t, err, "failed to get permalink.")
+	assert.True(t, startRegex.MatchString(permalink))
+
+	if err = s.Workspace().RemoveStack(ctx, stackName, optremove.Force()); err != nil {
+		t.Errorf("remove stack with force failed")
+		t.FailNow()
+	}
+
+	// to make sure stack was removed
+	err = s.Workspace().SelectStack(ctx, s.Name())
+	assert.Error(t, err)
+	assert.True(t, strings.Contains(err.Error(), "no stack named"))
 }
 
 func TestNewStackLocalSource(t *testing.T) {
