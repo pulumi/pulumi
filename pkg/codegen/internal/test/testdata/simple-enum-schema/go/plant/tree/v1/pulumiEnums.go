@@ -101,7 +101,7 @@ func (o DiameterOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pulum
 type DiameterPtrOutput struct{ *pulumi.OutputState }
 
 func (DiameterPtrOutput) ElementType() reflect.Type {
-	return diameterPtrType
+	return reflect.TypeOf((**Diameter)(nil)).Elem()
 }
 
 func (o DiameterPtrOutput) ToDiameterPtrOutput() DiameterPtrOutput {
@@ -110,6 +110,16 @@ func (o DiameterPtrOutput) ToDiameterPtrOutput() DiameterPtrOutput {
 
 func (o DiameterPtrOutput) ToDiameterPtrOutputWithContext(ctx context.Context) DiameterPtrOutput {
 	return o
+}
+
+func (o DiameterPtrOutput) Elem() DiameterOutput {
+	return o.ApplyT(func(v *Diameter) Diameter {
+		if v != nil {
+			return *v
+		}
+		var ret Diameter
+		return ret
+	}).(DiameterOutput)
 }
 
 func (o DiameterPtrOutput) ToFloat64PtrOutput() pulumi.Float64PtrOutput {
@@ -124,16 +134,6 @@ func (o DiameterPtrOutput) ToFloat64PtrOutputWithContext(ctx context.Context) pu
 		v := float64(*e)
 		return &v
 	}).(pulumi.Float64PtrOutput)
-}
-
-func (o DiameterPtrOutput) Elem() DiameterOutput {
-	return o.ApplyT(func(v *Diameter) Diameter {
-		var ret Diameter
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(DiameterOutput)
 }
 
 // DiameterInput is an input type that accepts DiameterArgs and DiameterOutput values.
@@ -265,7 +265,7 @@ func (o FarmOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.Str
 type FarmPtrOutput struct{ *pulumi.OutputState }
 
 func (FarmPtrOutput) ElementType() reflect.Type {
-	return farmPtrType
+	return reflect.TypeOf((**Farm)(nil)).Elem()
 }
 
 func (o FarmPtrOutput) ToFarmPtrOutput() FarmPtrOutput {
@@ -274,6 +274,16 @@ func (o FarmPtrOutput) ToFarmPtrOutput() FarmPtrOutput {
 
 func (o FarmPtrOutput) ToFarmPtrOutputWithContext(ctx context.Context) FarmPtrOutput {
 	return o
+}
+
+func (o FarmPtrOutput) Elem() FarmOutput {
+	return o.ApplyT(func(v *Farm) Farm {
+		if v != nil {
+			return *v
+		}
+		var ret Farm
+		return ret
+	}).(FarmOutput)
 }
 
 func (o FarmPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -288,16 +298,6 @@ func (o FarmPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.
 		v := string(*e)
 		return &v
 	}).(pulumi.StringPtrOutput)
-}
-
-func (o FarmPtrOutput) Elem() FarmOutput {
-	return o.ApplyT(func(v *Farm) Farm {
-		var ret Farm
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(FarmOutput)
 }
 
 // FarmInput is an input type that accepts FarmArgs and FarmOutput values.
@@ -434,7 +434,7 @@ func (o RubberTreeVarietyOutput) ToStringPtrOutputWithContext(ctx context.Contex
 type RubberTreeVarietyPtrOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeVarietyPtrOutput) ElementType() reflect.Type {
-	return rubberTreeVarietyPtrType
+	return reflect.TypeOf((**RubberTreeVariety)(nil)).Elem()
 }
 
 func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutput() RubberTreeVarietyPtrOutput {
@@ -443,6 +443,16 @@ func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutput() RubberTreeVar
 
 func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
 	return o
+}
+
+func (o RubberTreeVarietyPtrOutput) Elem() RubberTreeVarietyOutput {
+	return o.ApplyT(func(v *RubberTreeVariety) RubberTreeVariety {
+		if v != nil {
+			return *v
+		}
+		var ret RubberTreeVariety
+		return ret
+	}).(RubberTreeVarietyOutput)
 }
 
 func (o RubberTreeVarietyPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -457,16 +467,6 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 		v := string(*e)
 		return &v
 	}).(pulumi.StringPtrOutput)
-}
-
-func (o RubberTreeVarietyPtrOutput) Elem() RubberTreeVarietyOutput {
-	return o.ApplyT(func(v *RubberTreeVariety) RubberTreeVariety {
-		var ret RubberTreeVariety
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(RubberTreeVarietyOutput)
 }
 
 // RubberTreeVarietyInput is an input type that accepts RubberTreeVarietyArgs and RubberTreeVarietyOutput values.
@@ -547,8 +547,8 @@ func (o RubberTreeVarietyArrayOutput) ToRubberTreeVarietyArrayOutputWithContext(
 }
 
 func (o RubberTreeVarietyArrayOutput) Index(i pulumi.IntInput) RubberTreeVarietyOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) RubberTreeVarietyOutput {
-		return vs[0].([]RubberTreeVariety)[vs[1].(int)].ToRubberTreeVarietyOutput()
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) RubberTreeVariety {
+		return vs[0].([]RubberTreeVariety)[vs[1].(int)]
 	}).(RubberTreeVarietyOutput)
 }
 
@@ -644,7 +644,7 @@ func (o TreeSizeOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi
 type TreeSizePtrOutput struct{ *pulumi.OutputState }
 
 func (TreeSizePtrOutput) ElementType() reflect.Type {
-	return treeSizePtrType
+	return reflect.TypeOf((**TreeSize)(nil)).Elem()
 }
 
 func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
@@ -653,6 +653,16 @@ func (o TreeSizePtrOutput) ToTreeSizePtrOutput() TreeSizePtrOutput {
 
 func (o TreeSizePtrOutput) ToTreeSizePtrOutputWithContext(ctx context.Context) TreeSizePtrOutput {
 	return o
+}
+
+func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
+	return o.ApplyT(func(v *TreeSize) TreeSize {
+		if v != nil {
+			return *v
+		}
+		var ret TreeSize
+		return ret
+	}).(TreeSizeOutput)
 }
 
 func (o TreeSizePtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -667,16 +677,6 @@ func (o TreeSizePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pul
 		v := string(*e)
 		return &v
 	}).(pulumi.StringPtrOutput)
-}
-
-func (o TreeSizePtrOutput) Elem() TreeSizeOutput {
-	return o.ApplyT(func(v *TreeSize) TreeSize {
-		var ret TreeSize
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(TreeSizeOutput)
 }
 
 // TreeSizeInput is an input type that accepts TreeSizeArgs and TreeSizeOutput values.
@@ -757,8 +757,8 @@ func (o TreeSizeMapOutput) ToTreeSizeMapOutputWithContext(ctx context.Context) T
 }
 
 func (o TreeSizeMapOutput) MapIndex(k pulumi.StringInput) TreeSizeOutput {
-	return pulumi.All(o, k).ApplyT(func(vs []interface{}) TreeSizeOutput {
-		return vs[0].(map[string]TreeSize)[vs[1].(string)].ToTreeSizeOutput()
+	return pulumi.All(o, k).ApplyT(func(vs []interface{}) TreeSize {
+		return vs[0].(map[string]TreeSize)[vs[1].(string)]
 	}).(TreeSizeOutput)
 }
 

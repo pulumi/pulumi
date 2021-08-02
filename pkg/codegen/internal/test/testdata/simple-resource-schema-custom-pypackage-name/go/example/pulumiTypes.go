@@ -343,7 +343,7 @@ func (i SomeOtherObjectArgsArrayArray) ToSomeOtherObjectArgsArrayArrayOutputWith
 type SomeOtherObjectArgsArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArgsArrayArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArgsArray)(nil)).Elem()
+	return reflect.TypeOf((*[]SomeOtherObjectArgsArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArgsArrayArrayOutput) ToSomeOtherObjectArgsArrayArrayOutput() SomeOtherObjectArgsArrayArrayOutput {
@@ -388,7 +388,7 @@ func (i SomeOtherObjectArgsArrayMap) ToSomeOtherObjectArgsArrayMapOutputWithCont
 type SomeOtherObjectArgsArrayMapOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArgsArrayMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArgsArray)(nil)).Elem()
+	return reflect.TypeOf((*map[string]SomeOtherObjectArgsArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArgsArrayMapOutput) ToSomeOtherObjectArgsArrayMapOutput() SomeOtherObjectArgsArrayMapOutput {
@@ -433,7 +433,7 @@ func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutputWithContext(
 type SomeOtherObjectArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArrayArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*[]SomeOtherObjectArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput {
@@ -478,7 +478,7 @@ func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutputWithContext(ctx 
 type SomeOtherObjectArrayMapOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArrayMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*map[string]SomeOtherObjectArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput {

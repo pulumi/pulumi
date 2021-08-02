@@ -65,9 +65,7 @@ func (i *OtherResource) ToOtherResourceOutputWithContext(ctx context.Context) Ot
 	return pulumi.ToOutputWithContext(ctx, i).(OtherResourceOutput)
 }
 
-type OtherResourceOutput struct {
-	*pulumi.OutputState
-}
+type OtherResourceOutput struct{ *pulumi.OutputState }
 
 func (OtherResourceOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*OtherResource)(nil))

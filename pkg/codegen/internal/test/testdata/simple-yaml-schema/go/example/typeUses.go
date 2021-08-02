@@ -95,9 +95,7 @@ func (i *TypeUses) ToTypeUsesOutputWithContext(ctx context.Context) TypeUsesOutp
 	return pulumi.ToOutputWithContext(ctx, i).(TypeUsesOutput)
 }
 
-type TypeUsesOutput struct {
-	*pulumi.OutputState
-}
+type TypeUsesOutput struct{ *pulumi.OutputState }
 
 func (TypeUsesOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*TypeUses)(nil))

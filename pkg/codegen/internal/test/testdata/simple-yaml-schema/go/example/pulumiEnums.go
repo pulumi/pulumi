@@ -106,7 +106,7 @@ func (o RubberTreeVarietyOutput) ToStringPtrOutputWithContext(ctx context.Contex
 type RubberTreeVarietyPtrOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeVarietyPtrOutput) ElementType() reflect.Type {
-	return rubberTreeVarietyPtrType
+	return reflect.TypeOf((**RubberTreeVariety)(nil)).Elem()
 }
 
 func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutput() RubberTreeVarietyPtrOutput {
@@ -115,6 +115,16 @@ func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutput() RubberTreeVar
 
 func (o RubberTreeVarietyPtrOutput) ToRubberTreeVarietyPtrOutputWithContext(ctx context.Context) RubberTreeVarietyPtrOutput {
 	return o
+}
+
+func (o RubberTreeVarietyPtrOutput) Elem() RubberTreeVarietyOutput {
+	return o.ApplyT(func(v *RubberTreeVariety) RubberTreeVariety {
+		if v != nil {
+			return *v
+		}
+		var ret RubberTreeVariety
+		return ret
+	}).(RubberTreeVarietyOutput)
 }
 
 func (o RubberTreeVarietyPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
@@ -129,16 +139,6 @@ func (o RubberTreeVarietyPtrOutput) ToStringPtrOutputWithContext(ctx context.Con
 		v := string(*e)
 		return &v
 	}).(pulumi.StringPtrOutput)
-}
-
-func (o RubberTreeVarietyPtrOutput) Elem() RubberTreeVarietyOutput {
-	return o.ApplyT(func(v *RubberTreeVariety) RubberTreeVariety {
-		var ret RubberTreeVariety
-		if v != nil {
-			ret = *v
-		}
-		return ret
-	}).(RubberTreeVarietyOutput)
 }
 
 // RubberTreeVarietyInput is an input type that accepts RubberTreeVarietyArgs and RubberTreeVarietyOutput values.

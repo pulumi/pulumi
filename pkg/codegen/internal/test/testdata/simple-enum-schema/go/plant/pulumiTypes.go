@@ -107,10 +107,11 @@ func (o ContainerOutput) ToContainerPtrOutput() ContainerPtrOutput {
 }
 
 func (o ContainerOutput) ToContainerPtrOutputWithContext(ctx context.Context) ContainerPtrOutput {
-	return o.ApplyT(func(v Container) *Container {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Container) *Container {
 		return &v
 	}).(ContainerPtrOutput)
 }
+
 func (o ContainerOutput) Brightness() ContainerBrightnessPtrOutput {
 	return o.ApplyT(func(v Container) *ContainerBrightness { return v.Brightness }).(ContainerBrightnessPtrOutput)
 }
@@ -142,7 +143,13 @@ func (o ContainerPtrOutput) ToContainerPtrOutputWithContext(ctx context.Context)
 }
 
 func (o ContainerPtrOutput) Elem() ContainerOutput {
-	return o.ApplyT(func(v *Container) Container { return *v }).(ContainerOutput)
+	return o.ApplyT(func(v *Container) Container {
+		if v != nil {
+			return *v
+		}
+		var ret Container
+		return ret
+	}).(ContainerOutput)
 }
 
 func (o ContainerPtrOutput) Brightness() ContainerBrightnessPtrOutput {

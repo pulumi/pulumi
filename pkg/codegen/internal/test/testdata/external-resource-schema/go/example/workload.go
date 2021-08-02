@@ -164,9 +164,7 @@ func (i WorkloadMap) ToWorkloadMapOutputWithContext(ctx context.Context) Workloa
 	return pulumi.ToOutputWithContext(ctx, i).(WorkloadMapOutput)
 }
 
-type WorkloadOutput struct {
-	*pulumi.OutputState
-}
+type WorkloadOutput struct{ *pulumi.OutputState }
 
 func (WorkloadOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Workload)(nil))
@@ -185,14 +183,12 @@ func (o WorkloadOutput) ToWorkloadPtrOutput() WorkloadPtrOutput {
 }
 
 func (o WorkloadOutput) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
-	return o.ApplyT(func(v Workload) *Workload {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Workload) *Workload {
 		return &v
 	}).(WorkloadPtrOutput)
 }
 
-type WorkloadPtrOutput struct {
-	*pulumi.OutputState
-}
+type WorkloadPtrOutput struct{ *pulumi.OutputState }
 
 func (WorkloadPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**Workload)(nil))
@@ -204,6 +200,16 @@ func (o WorkloadPtrOutput) ToWorkloadPtrOutput() WorkloadPtrOutput {
 
 func (o WorkloadPtrOutput) ToWorkloadPtrOutputWithContext(ctx context.Context) WorkloadPtrOutput {
 	return o
+}
+
+func (o WorkloadPtrOutput) Elem() WorkloadOutput {
+	return o.ApplyT(func(v *Workload) Workload {
+		if v != nil {
+			return *v
+		}
+		var ret Workload
+		return ret
+	}).(WorkloadOutput)
 }
 
 type WorkloadArrayOutput struct{ *pulumi.OutputState }

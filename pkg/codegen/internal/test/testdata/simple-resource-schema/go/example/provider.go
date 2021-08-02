@@ -59,9 +59,7 @@ func (i *Provider) ToProviderOutputWithContext(ctx context.Context) ProviderOutp
 	return pulumi.ToOutputWithContext(ctx, i).(ProviderOutput)
 }
 
-type ProviderOutput struct {
-	*pulumi.OutputState
-}
+type ProviderOutput struct{ *pulumi.OutputState }
 
 func (ProviderOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Provider)(nil))
