@@ -18,7 +18,7 @@ class MyStack : Stack
                 },
             },
         });
-        this.TargetBucket = bucket.Loggings.Apply(loggings => loggings[0].TargetBucket);
+        this.TargetBucket = bucket.Loggings.Apply(loggings => loggings?[0]?.TargetBucket);
     }
 
     [Output("targetBucket")]

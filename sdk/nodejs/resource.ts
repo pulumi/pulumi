@@ -181,6 +181,22 @@ export abstract class Resource {
     // tslint:disable-next-line:variable-name
     private readonly __providers: Record<string, ProviderResource>;
 
+    /**
+     * The specified provider or provider determined from the parent for custom resources.
+     * @internal
+     */
+    // Note: This is deliberately not named `__provider` as that conflicts with the property
+    // used by the `dynamic.Resource` class.
+    // tslint:disable-next-line:variable-name
+    readonly __prov?: ProviderResource;
+
+    /**
+     * The specified provider version.
+     * @internal
+     */
+    // tslint:disable-next-line:variable-name
+    readonly __version?: string;
+
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
     }
@@ -313,6 +329,8 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
+        this.__prov = custom ? opts.provider : undefined;
+        this.__version = opts.version;
 
         // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
         // default `name` and `type` to apply until we are inside the resource constructor.
@@ -491,6 +509,12 @@ export interface ResourceOptions {
      * Ignore changes to any of the specified properties.
      */
     ignoreChanges?: string[];
+    /**
+     * Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes to any
+     * properties will force a replacement.  Initialization errors from previous deployments will require replacement
+     * instead of update only if `"*"` is passed.
+     */
+    replaceOnChanges?: string[];
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
@@ -779,6 +803,10 @@ export class ComponentResource<TData = any> extends Resource {
     // tslint:disable-next-line:variable-name
     private __registered = false;
 
+    /** @internal */
+    // tslint:disable-next-line:variable-name
+    public readonly __remote: boolean;
+
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
      * multiple copies of the Pulumi SDK have been loaded into the same process.
@@ -809,9 +837,10 @@ export class ComponentResource<TData = any> extends Resource {
         // for a component resource.  The component is just used for organizational purposes and does
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ remote ? args : {}, opts, remote);
-        this.__registered = remote;
-        this.__data = remote ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        super(type, name, /*custom:*/ false, /*props:*/ remote || opts?.urn ? args : {}, opts, remote);
+        this.__remote = remote;
+        this.__registered = remote || !!opts?.urn;
+        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
     }
 
     /** @internal */
@@ -1006,17 +1035,31 @@ export class DependencyResource extends CustomResource {
  */
 export class DependencyProviderResource extends ProviderResource {
     constructor(ref: string) {
-        super("", "", {}, {}, true);
+        const [urn, id] = parseResourceReference(ref);
+        const urnParts = urn.split("::");
+        const qualifiedType = urnParts[2];
+        const type = qualifiedType.split("$").pop()!;
+        // type will be "pulumi:providers:<package>" and we want the last part.
+        const typeParts = type.split(":");
+        const pkg = typeParts.length > 2 ? typeParts[2] : "";
 
-        // Parse the URN and ID out of the provider reference.
-        const lastSep = ref.lastIndexOf("::");
-        if (lastSep === -1) {
-            throw new Error(`expected '::' in provider reference ${ref}`);
-        }
-        const urn = ref.slice(0, lastSep);
-        const id = ref.slice(lastSep+2);
+        super(pkg, "", {}, {}, true);
 
         (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
         (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
     }
+}
+
+/**
+ * parseResourceReference parses the URN and ID out of the provider reference.
+ * @internal
+ */
+export function parseResourceReference(ref: string): [string, string] {
+    const lastSep = ref.lastIndexOf("::");
+    if (lastSep === -1) {
+        throw new Error(`expected '::' in provider reference ${ref}`);
+    }
+    const urn = ref.slice(0, lastSep);
+    const id = ref.slice(lastSep+2);
+    return [urn, id];
 }

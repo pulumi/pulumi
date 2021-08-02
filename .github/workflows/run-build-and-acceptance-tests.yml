@@ -111,9 +111,16 @@ jobs:
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
+
+        # See scripts/tests_subsets.py when editing
+        test-subset: [ integration, auto-and-lifecycletest, native, etc ]
+
     if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Set PULUMI_TEST_SUBSET env var
+        run: |
+          echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -154,6 +161,15 @@ jobs:
         uses: jaxxstorm/action-install-gh-release@v1.2.0
         with:
           repo: pulumi/pulumictl
+      - name: Install gotestsum
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: gotestyourself/gotestsum
+      - name: Install goteststats
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: t0yv0/goteststats
+          tag: v0.0.7
       - name: Ensure
         run: |
           make ensure
@@ -172,11 +188,21 @@ jobs:
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
-        run: make test_all
+        run: make TEST_ALL_DEPS= test_all
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+      - name: Summarize Test Time by Package
+        run: |
+          mkdir -p test-results
+          touch test-results/empty.json # otherwise goteststats fails below when no files match
+          goteststats -statistic pkg-time test-results/*.json
+      - name: Summarize Test Times by Indivudal Test
+        run: |
+          goteststats -statistic test-time test-results/*.json | head -n 100
+
+
   windows-build:
     name: Windows Build + Test
     strategy:

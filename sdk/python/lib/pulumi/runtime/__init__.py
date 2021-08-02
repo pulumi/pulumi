@@ -22,6 +22,8 @@ from .config import (
     get_config,
     get_config_env,
     get_config_env_key,
+    get_config_secret_keys_env,
+    is_config_secret,
 )
 
 from .mocks import (
@@ -47,6 +49,7 @@ from .stack import (
 
 from .invoke import (
     invoke,
+    call,
 )
 
 from ._json import (

@@ -7,10 +7,38 @@
         "name": {
           "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
         },
+        "requiredName": {
+          "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+        },
+        "nameArray": {
+          "type": "array",
+          "items": {
+            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          }
+        },
+        "requiredNameArray": {
+          "type": "array",
+          "items": {
+            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          }
+        },
+        "nameMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          }
+        },
+        "requiredNameMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+          }
+        },
         "age": {
           "type": "integer"
         }
       },
+      "required": ["requiredName", "requiredNameArray", "requiredNameMap"],
       "type": "object"
     }
   },
@@ -57,8 +85,37 @@
       "inputProperties": {
         "metadata": {
           "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+        },
+        "requiredMetadata": {
+          "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+        },
+        "metadataArray": {
+          "type": "array",
+          "items": {
+            "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+          }
+        },
+        "requiredMetadataArray": {
+          "type": "array",
+          "items": {
+            "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+          }
+        },
+        "metadataMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+          }
+        },
+        "requiredMetadataMap": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "/kubernetes/v2.6.3/schema.json#/types/kubernetes:meta%2Fv1:ObjectMeta"
+          }
         }
-      }
+      },
+      "required": ["securityGroup"],
+      "requiredInputs": ["requiredMetadata", "requiredMetadataArray", "requiredMetadataMap"]
     }
   },
   "functions": {

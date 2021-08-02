@@ -25,6 +25,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+	"github.com/zclconf/go-cty/cty"
 )
 
 type packageSchema struct {
@@ -145,34 +146,42 @@ func (b *binder) loadReferencedPackageSchemas(n Node) error {
 
 // schemaTypeToType converts a schema.Type to a model Type.
 func (b *binder) schemaTypeToType(src schema.Type) (result model.Type) {
-	return b.schemaTypeToTypeImpl(src, map[schema.Type]model.Type{})
-}
-
-func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]model.Type) (result model.Type) {
-	defer func() {
-		b.typeSchemas[result] = src
-	}()
-
-	if already, ok := seen[src]; ok {
-		return already
-	}
-
 	switch src := src.(type) {
 	case *schema.ArrayType:
-		return model.NewListType(b.schemaTypeToTypeImpl(src.ElementType, seen))
+		return model.NewListType(b.schemaTypeToType(src.ElementType))
 	case *schema.MapType:
-		return model.NewMapType(b.schemaTypeToTypeImpl(src.ElementType, seen))
+		return model.NewMapType(b.schemaTypeToType(src.ElementType))
+	case *schema.EnumType:
+		// TODO(codegen): make this a union of constant types.
+		return b.schemaTypeToType(src.ElementType)
 	case *schema.ObjectType:
+		if t, ok := b.schemaTypes[src]; ok {
+			return t
+		}
+
 		properties := map[string]model.Type{}
 		objType := model.NewObjectType(properties, src)
-		seen[src] = objType
+		b.schemaTypes[src] = objType
 		for _, prop := range src.Properties {
-			t := b.schemaTypeToTypeImpl(prop.Type, seen)
-			if !prop.IsRequired {
-				t = model.NewOptionalType(t)
+			typ := prop.Type
+			if b.options.allowMissingProperties {
+				typ = &schema.OptionalType{ElementType: typ}
 			}
+
+			t := b.schemaTypeToType(typ)
 			if prop.ConstValue != nil {
-				t = model.NewConstType(t, prop.ConstValue)
+				var value cty.Value
+				switch v := prop.ConstValue.(type) {
+				case bool:
+					value = cty.BoolVal(v)
+				case float64:
+					value = cty.NumberFloatVal(v)
+				case string:
+					value = cty.StringVal(v)
+				default:
+					contract.Failf("unexpected constant type %T", v)
+				}
+				t = model.NewConstType(t, value)
 			}
 			properties[prop.Name] = t
 		}
@@ -186,14 +195,21 @@ func (b *binder) schemaTypeToTypeImpl(src schema.Type, seen map[schema.Type]mode
 		}
 
 		if src.UnderlyingType != nil {
-			underlyingType := b.schemaTypeToTypeImpl(src.UnderlyingType, seen)
+			underlyingType := b.schemaTypeToType(src.UnderlyingType)
 			return model.NewUnionType(t, underlyingType)
 		}
 		return t
+	case *schema.InputType:
+		elementType := b.schemaTypeToType(src.ElementType)
+		resolvedElementType := b.schemaTypeToType(codegen.ResolvedType(src.ElementType))
+		return model.NewUnionTypeAnnotated([]model.Type{elementType, model.NewOutputType(resolvedElementType)}, src)
+	case *schema.OptionalType:
+		elementType := b.schemaTypeToType(src.ElementType)
+		return model.NewOptionalType(elementType)
 	case *schema.UnionType:
 		types := make([]model.Type, len(src.ElementTypes))
 		for i, src := range src.ElementTypes {
-			types[i] = b.schemaTypeToTypeImpl(src, seen)
+			types[i] = b.schemaTypeToType(src)
 		}
 		if src.Discriminator != "" {
 			return model.NewUnionTypeAnnotated(types, src)
@@ -256,8 +272,11 @@ func GetSchemaForType(t model.Type) (schema.Type, bool) {
 		return GetSchemaForType(t.ElementType)
 	case *model.UnionType:
 		for _, a := range t.Annotations {
-			if t, ok := a.(*schema.UnionType); ok {
-				return t, true
+			switch a := a.(type) {
+			case *schema.UnionType:
+				return a, true
+			case *schema.InputType:
+				return a, true
 			}
 		}
 		schemas := codegen.Set{}

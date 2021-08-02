@@ -21,6 +21,7 @@ import (
 
 	"github.com/blang/semver"
 	pbempty "github.com/golang/protobuf/ptypes/empty"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
@@ -98,11 +99,15 @@ func (src *evalSource) Iterate(
 		return nil, result.FromError(errors.Wrap(err, "failed to decrypt config"))
 	}
 
+	// Keep track of any config keys that have secure values.
+	configSecretKeys := src.runinfo.Target.Config.SecureKeys()
+
 	// First, fire up a resource monitor that will watch for and record resource creation.
 	regChan := make(chan *registerResourceEvent)
 	regOutChan := make(chan *registerResourceOutputsEvent)
 	regReadChan := make(chan *readResourceEvent)
-	mon, err := newResourceMonitor(src, providers, regChan, regOutChan, regReadChan, opts, config, tracingSpan)
+	mon, err := newResourceMonitor(
+		src, providers, regChan, regOutChan, regReadChan, opts, config, configSecretKeys, tracingSpan)
 	if err != nil {
 		return nil, result.FromError(errors.Wrap(err, "failed to start resource monitor"))
 	}
@@ -119,7 +124,7 @@ func (src *evalSource) Iterate(
 
 	// Now invoke Run in a goroutine.  All subsequent resource creation events will come in over the gRPC channel,
 	// and we will pump them through the channel.  If the Run call ultimately fails, we need to propagate the error.
-	iter.forkRun(opts, config)
+	iter.forkRun(opts, config, configSecretKeys)
 
 	// Finally, return the fresh iterator that the caller can use to take things from here.
 	return iter, nil
@@ -183,7 +188,7 @@ func (iter *evalSourceIterator) Next() (SourceEvent, result.Result) {
 }
 
 // forkRun performs the evaluation from a distinct goroutine.  This function blocks until it's our turn to go.
-func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]string) {
+func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]string, configSecretKeys []config.Key) {
 	// Fire up the goroutine to make the RPC invocation against the language runtime.  As this executes, calls
 	// to queue things up in the resource channel will occur, and we will serve them concurrently.
 	go func() {
@@ -201,15 +206,16 @@ func (iter *evalSourceIterator) forkRun(opts Options, config map[config.Key]stri
 
 			// Now run the actual program.
 			progerr, bail, err := langhost.Run(plugin.RunInfo{
-				MonitorAddress: iter.mon.Address(),
-				Stack:          string(iter.src.runinfo.Target.Name),
-				Project:        string(iter.src.runinfo.Proj.Name),
-				Pwd:            iter.src.runinfo.Pwd,
-				Program:        iter.src.runinfo.Program,
-				Args:           iter.src.runinfo.Args,
-				Config:         config,
-				DryRun:         iter.src.dryRun,
-				Parallel:       opts.Parallel,
+				MonitorAddress:   iter.mon.Address(),
+				Stack:            string(iter.src.runinfo.Target.Name),
+				Project:          string(iter.src.runinfo.Proj.Name),
+				Pwd:              iter.src.runinfo.Pwd,
+				Program:          iter.src.runinfo.Program,
+				Args:             iter.src.runinfo.Args,
+				Config:           config,
+				ConfigSecretKeys: configSecretKeys,
+				DryRun:           iter.src.dryRun,
+				Parallel:         opts.Parallel,
 			})
 
 			// Check if we were asked to Bail.  This a special random constant used for that
@@ -299,7 +305,7 @@ func (d *defaultProviders) newRegisterDefaultProviderEvent(
 	event := &registerResourceEvent{
 		goal: resource.NewGoal(
 			providers.MakeProviderType(req.Package()),
-			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil),
+			req.Name(), true, inputs, "", false, nil, "", nil, nil, nil, nil, nil, nil, "", nil, nil),
 		done: done,
 	}
 	return event, done, nil
@@ -392,7 +398,7 @@ func (d *defaultProviders) getDefaultProviderRef(req providers.ProviderRequest) 
 type resmon struct {
 	providers                 ProviderSource                     // the provider source itself.
 	defaultProviders          *defaultProviders                  // the default provider manager.
-	constructInfo             plugin.ConstructInfo               // information for construct calls.
+	constructInfo             plugin.ConstructInfo               // information for construct and call calls.
 	regChan                   chan *registerResourceEvent        // the channel to send resource registrations to.
 	regOutChan                chan *registerResourceOutputsEvent // the channel to send resource output registrations to.
 	regReadChan               chan *readResourceEvent            // the channel to send resource reads to.
@@ -406,7 +412,7 @@ var _ SourceResourceMonitor = (*resmon)(nil)
 // newResourceMonitor creates a new resource monitor RPC server.
 func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *registerResourceEvent,
 	regOutChan chan *registerResourceOutputsEvent, regReadChan chan *readResourceEvent, opts Options,
-	config map[config.Key]string, tracingSpan opentracing.Span) (*resmon, error) {
+	config map[config.Key]string, configSecretKeys []config.Key, tracingSpan opentracing.Span) (*resmon, error) {
 
 	// Create our cancellation channel.
 	cancel := make(chan bool)
@@ -438,18 +444,19 @@ func newResourceMonitor(src *evalSource, provs ProviderSource, regChan chan *reg
 			pulumirpc.RegisterResourceMonitorServer(srv, resmon)
 			return nil
 		},
-	}, tracingSpan)
+	}, tracingSpan, otgrpc.SpanDecorator(decorateResourceSpans))
 	if err != nil {
 		return nil, err
 	}
 
 	resmon.constructInfo = plugin.ConstructInfo{
-		Project:        string(src.runinfo.Proj.Name),
-		Stack:          string(src.runinfo.Target.Name),
-		Config:         config,
-		DryRun:         src.dryRun,
-		Parallel:       opts.Parallel,
-		MonitorAddress: fmt.Sprintf("127.0.0.1:%d", port),
+		Project:          string(src.runinfo.Proj.Name),
+		Stack:            string(src.runinfo.Target.Name),
+		Config:           config,
+		ConfigSecretKeys: configSecretKeys,
+		DryRun:           src.dryRun,
+		Parallel:         opts.Parallel,
+		MonitorAddress:   fmt.Sprintf("127.0.0.1:%d", port),
 	}
 	resmon.done = done
 
@@ -589,6 +596,89 @@ func (rm *resmon) Invoke(ctx context.Context, req *pulumirpc.InvokeRequest) (*pu
 		})
 	}
 	return &pulumirpc.InvokeResponse{Return: mret, Failures: chkfails}, nil
+}
+
+// Call dynamically executes a method in the provider associated with a component resource.
+func (rm *resmon) Call(ctx context.Context, req *pulumirpc.CallRequest) (*pulumirpc.CallResponse, error) {
+	// Fetch the token and load up the resource provider if necessary.
+	tok := tokens.ModuleMember(req.GetTok())
+	providerReq, err := parseProviderRequest(tok.Package(), req.GetVersion())
+	if err != nil {
+		return nil, err
+	}
+	prov, err := getProviderFromSource(rm.providers, rm.defaultProviders, providerReq, req.GetProvider())
+	if err != nil {
+		return nil, err
+	}
+
+	label := fmt.Sprintf("ResourceMonitor.Call(%s)", tok)
+
+	args, err := plugin.UnmarshalProperties(
+		req.GetArgs(), plugin.MarshalOptions{
+			Label:         label,
+			KeepUnknowns:  true,
+			KeepSecrets:   true,
+			KeepResources: true,
+		})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to unmarshal %v args", tok)
+	}
+
+	argDependencies := map[resource.PropertyKey][]resource.URN{}
+	for name, deps := range req.GetArgDependencies() {
+		urns := make([]resource.URN, len(deps.Urns))
+		for i, urn := range deps.Urns {
+			urns[i] = resource.URN(urn)
+		}
+		argDependencies[resource.PropertyKey(name)] = urns
+	}
+
+	info := plugin.CallInfo{
+		Project:        rm.constructInfo.Project,
+		Stack:          rm.constructInfo.Stack,
+		Config:         rm.constructInfo.Config,
+		DryRun:         rm.constructInfo.DryRun,
+		Parallel:       rm.constructInfo.Parallel,
+		MonitorAddress: rm.constructInfo.MonitorAddress,
+	}
+	options := plugin.CallOptions{
+		ArgDependencies: argDependencies,
+	}
+
+	// Do the all and then return the arguments.
+	logging.V(5).Infof(
+		"ResourceMonitor.Call received: tok=%v #args=%v #info=%v #options=%v", tok, len(args), info, options)
+	ret, err := prov.Call(tok, args, info, options)
+	if err != nil {
+		return nil, errors.Wrapf(err, "call of %v returned an error", tok)
+	}
+	mret, err := plugin.MarshalProperties(ret.Return, plugin.MarshalOptions{
+		Label:         label,
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to marshal %v return", tok)
+	}
+
+	returnDependencies := map[string]*pulumirpc.CallResponse_ReturnDependencies{}
+	for name, deps := range ret.ReturnDependencies {
+		urns := make([]string, len(deps))
+		for i, urn := range deps {
+			urns[i] = string(urn)
+		}
+		returnDependencies[string(name)] = &pulumirpc.CallResponse_ReturnDependencies{Urns: urns}
+	}
+
+	var chkfails []*pulumirpc.CheckFailure
+	for _, failure := range ret.Failures {
+		chkfails = append(chkfails, &pulumirpc.CheckFailure{
+			Property: string(failure.Property),
+			Reason:   failure.Reason,
+		})
+	}
+	return &pulumirpc.CallResponse{Return: mret, ReturnDependencies: returnDependencies, Failures: chkfails}, nil
 }
 
 func (rm *resmon) StreamInvoke(
@@ -753,6 +843,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	protect := req.GetProtect()
 	deleteBeforeReplaceValue := req.GetDeleteBeforeReplace()
 	ignoreChanges := req.GetIgnoreChanges()
+	replaceOnChanges := req.GetReplaceOnChanges()
 	id := resource.ID(req.GetImportId())
 	customTimeouts := req.GetCustomTimeouts()
 
@@ -877,9 +968,9 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 	logging.V(5).Infof(
 		"ResourceMonitor.RegisterResource received: t=%v, name=%v, custom=%v, #props=%v, parent=%v, protect=%v, "+
 			"provider=%v, deps=%v, deleteBeforeReplace=%v, ignoreChanges=%v, aliases=%v, customTimeouts=%v, "+
-			"providers=%v",
+			"providers=%v, replaceOnChanges=%v",
 		t, name, custom, len(props), parent, protect, providerRef, dependencies, deleteBeforeReplace, ignoreChanges,
-		aliases, timeouts, providerRefs)
+		aliases, timeouts, providerRefs, replaceOnChanges)
 
 	// If this is a remote component, fetch its provider and issue the construct call. Otherwise, register the resource.
 	var result *RegisterResult
@@ -916,7 +1007,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		step := &registerResourceEvent{
 			goal: resource.NewGoal(t, name, custom, props, parent, protect, dependencies,
 				providerRef.String(), nil, propertyDependencies, deleteBeforeReplace, ignoreChanges,
-				additionalSecretOutputs, aliases, id, &timeouts),
+				additionalSecretOutputs, aliases, id, &timeouts, replaceOnChanges),
 			done: make(chan *RegisterResult),
 		}
 
@@ -1115,4 +1206,19 @@ func generateTimeoutInSeconds(timeout string) (float64, error) {
 	}
 
 	return duration.Seconds(), nil
+}
+
+func decorateResourceSpans(span opentracing.Span, method string, req, resp interface{}, grpcError error) {
+	if req == nil {
+		return
+	}
+
+	switch method {
+	case "/pulumirpc.ResourceMonitor/Invoke":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.InvokeRequest).Tok)
+	case "/pulumirpc.ResourceMonitor/ReadResource":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.ReadResourceRequest).Type)
+	case "/pulumirpc.ResourceMonitor/RegisterResource":
+		span.SetTag("pulumi-decorator", req.(*pulumirpc.RegisterResourceRequest).Type)
+	}
 }

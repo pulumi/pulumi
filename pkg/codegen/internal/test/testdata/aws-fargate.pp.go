@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 
+	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/ec2"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/ecs"
 	"github.com/pulumi/pulumi-aws/sdk/v2/go/aws/elasticloadbalancingv2"
@@ -86,7 +87,7 @@ func main() {
 			return err
 		}
 		webLoadBalancer, err := elasticloadbalancingv2.NewLoadBalancer(ctx, "webLoadBalancer", &elasticloadbalancingv2.LoadBalancerArgs{
-			Subnets: toPulumiStringArray(subnets.Ids),
+			Subnets: subnets.Ids,
 			SecurityGroups: pulumi.StringArray{
 				webSecurityGroup.ID(),
 			},
@@ -154,7 +155,7 @@ func main() {
 			TaskDefinition: appTask.Arn,
 			NetworkConfiguration: &ecs.ServiceNetworkConfigurationArgs{
 				AssignPublicIp: pulumi.Bool(true),
-				Subnets:        toPulumiStringArray(subnets.Ids),
+				Subnets:        subnets.Ids,
 				SecurityGroups: pulumi.StringArray{
 					webSecurityGroup.ID(),
 				},
@@ -175,11 +176,4 @@ func main() {
 		ctx.Export("url", webLoadBalancer.DnsName)
 		return nil
 	})
-}
-func toPulumiStringArray(arr []string) pulumi.StringArray {
-	var pulumiArr pulumi.StringArray
-	for _, v := range arr {
-		pulumiArr = append(pulumiArr, pulumi.String(v))
-	}
-	return pulumiArr
 }

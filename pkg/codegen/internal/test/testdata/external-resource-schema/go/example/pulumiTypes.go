@@ -12,8 +12,13 @@ import (
 )
 
 type Pet struct {
-	Age  *int              `pulumi:"age"`
-	Name *random.RandomPet `pulumi:"name"`
+	Age               *int                         `pulumi:"age"`
+	Name              *random.RandomPet            `pulumi:"name"`
+	NameArray         []*random.RandomPet          `pulumi:"nameArray"`
+	NameMap           map[string]*random.RandomPet `pulumi:"nameMap"`
+	RequiredName      *random.RandomPet            `pulumi:"requiredName"`
+	RequiredNameArray []*random.RandomPet          `pulumi:"requiredNameArray"`
+	RequiredNameMap   map[string]*random.RandomPet `pulumi:"requiredNameMap"`
 }
 
 // PetInput is an input type that accepts PetArgs and PetOutput values.
@@ -28,8 +33,13 @@ type PetInput interface {
 }
 
 type PetArgs struct {
-	Age  pulumi.IntPtrInput    `pulumi:"age"`
-	Name random.RandomPetInput `pulumi:"name"`
+	Age               pulumi.IntPtrInput         `pulumi:"age"`
+	Name              random.RandomPetInput      `pulumi:"name"`
+	NameArray         random.RandomPetArrayInput `pulumi:"nameArray"`
+	NameMap           random.RandomPetMapInput   `pulumi:"nameMap"`
+	RequiredName      random.RandomPetInput      `pulumi:"requiredName"`
+	RequiredNameArray random.RandomPetArrayInput `pulumi:"requiredNameArray"`
+	RequiredNameMap   random.RandomPetMapInput   `pulumi:"requiredNameMap"`
 }
 
 func (PetArgs) ElementType() reflect.Type {
@@ -116,6 +126,26 @@ func (o PetOutput) Name() random.RandomPetOutput {
 	return o.ApplyT(func(v Pet) *random.RandomPet { return v.Name }).(random.RandomPetOutput)
 }
 
+func (o PetOutput) NameArray() random.RandomPetArrayOutput {
+	return o.ApplyT(func(v Pet) []*random.RandomPet { return v.NameArray }).(random.RandomPetArrayOutput)
+}
+
+func (o PetOutput) NameMap() random.RandomPetMapOutput {
+	return o.ApplyT(func(v Pet) map[string]*random.RandomPet { return v.NameMap }).(random.RandomPetMapOutput)
+}
+
+func (o PetOutput) RequiredName() random.RandomPetOutput {
+	return o.ApplyT(func(v Pet) *random.RandomPet { return v.RequiredName }).(random.RandomPetOutput)
+}
+
+func (o PetOutput) RequiredNameArray() random.RandomPetArrayOutput {
+	return o.ApplyT(func(v Pet) []*random.RandomPet { return v.RequiredNameArray }).(random.RandomPetArrayOutput)
+}
+
+func (o PetOutput) RequiredNameMap() random.RandomPetMapOutput {
+	return o.ApplyT(func(v Pet) map[string]*random.RandomPet { return v.RequiredNameMap }).(random.RandomPetMapOutput)
+}
+
 type PetPtrOutput struct{ *pulumi.OutputState }
 
 func (PetPtrOutput) ElementType() reflect.Type {
@@ -150,6 +180,51 @@ func (o PetPtrOutput) Name() random.RandomPetOutput {
 		}
 		return v.Name
 	}).(random.RandomPetOutput)
+}
+
+func (o PetPtrOutput) NameArray() random.RandomPetArrayOutput {
+	return o.ApplyT(func(v *Pet) []*random.RandomPet {
+		if v == nil {
+			return nil
+		}
+		return v.NameArray
+	}).(random.RandomPetArrayOutput)
+}
+
+func (o PetPtrOutput) NameMap() random.RandomPetMapOutput {
+	return o.ApplyT(func(v *Pet) map[string]*random.RandomPet {
+		if v == nil {
+			return nil
+		}
+		return v.NameMap
+	}).(random.RandomPetMapOutput)
+}
+
+func (o PetPtrOutput) RequiredName() random.RandomPetOutput {
+	return o.ApplyT(func(v *Pet) *random.RandomPet {
+		if v == nil {
+			return nil
+		}
+		return v.RequiredName
+	}).(random.RandomPetOutput)
+}
+
+func (o PetPtrOutput) RequiredNameArray() random.RandomPetArrayOutput {
+	return o.ApplyT(func(v *Pet) []*random.RandomPet {
+		if v == nil {
+			return nil
+		}
+		return v.RequiredNameArray
+	}).(random.RandomPetArrayOutput)
+}
+
+func (o PetPtrOutput) RequiredNameMap() random.RandomPetMapOutput {
+	return o.ApplyT(func(v *Pet) map[string]*random.RandomPet {
+		if v == nil {
+			return nil
+		}
+		return v.RequiredNameMap
+	}).(random.RandomPetMapOutput)
 }
 
 func init() {

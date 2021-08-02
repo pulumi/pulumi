@@ -1,6 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation
 
-using System;
 using System.Text.Json;
 
 namespace Pulumi.Automation
@@ -16,7 +15,7 @@ namespace Pulumi.Automation
     /// </summary>
     public sealed class StackDeployment
     {
-        internal static StackDeployment FromJsonString(string jsonString)
+        public static StackDeployment FromJsonString(string jsonString)
         {
             var json = JsonSerializer.Deserialize<JsonElement>(jsonString);
             var version = json.GetProperty("version").GetInt32();

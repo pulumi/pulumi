@@ -1,4 +1,5 @@
 on:
+  workflow_dispatch: {}
   push:
     branches:
       [ "master", "feature/**", "feature-**" ]
@@ -114,6 +115,22 @@ jobs:
         with:
           version: latest
           args: -p 3 -f .goreleaser.prerelease.yml --rm-dist --skip-validate
+#  examples_smoke_test:
+#    name: Trigger Examples Smoke Test
+#    runs-on: ubuntu-latest
+#    needs: publish-sdks
+#    steps:
+#      - name: Checkout Repo
+#        uses: actions/checkout@v2
+#      - name: Install pulumictl
+#        uses: jaxxstorm/action-install-gh-release@v1.2.0
+#        with:
+#          repo: pulumi/pulumictl
+#      - name: Repository Dispatch
+#        run: |
+#          pulumictl dispatch -r pulumi/examples -c smoke-test-cli $(pulumictl get version --language generic -o)
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.PULUMI_BOT_TOKEN}}
   lint:
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
@@ -127,6 +144,60 @@ jobs:
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+  language-sdk-lint:
+    name: Lint Language SDKs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v1
+        with:
+          go-version: ${{ matrix.go-version }}
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Set up DotNet ${{ matrix.dotnet-version }}
+        uses: actions/setup-dotnet@v1
+        with:
+          dotnet-version: ${{ matrix.dotnet-version }}
+      - run: dotnet nuget add source ${{ runner.temp }}/opt/pulumi/nuget
+      - name: Set up Node ${{ matrix.node-version }}
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
+      - name: Install pipenv
+        uses: dschep/install-pipenv-action@v1
+      - name: Setup git
+        run: |
+          git config --global user.email "you@example.com"
+          git config --global user.name "Your Name"
+      - name: Update path
+        run: |
+          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+      - name: Checkout Repo
+        uses: actions/checkout@v2
+      - name: Fetch Tags
+        run: |
+          git fetch --quiet --prune --unshallow --tags
+      - name: Set Go Dep path
+        run: |
+          echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
+      - name: Install pulumictl
+        uses: jaxxstorm/action-install-gh-release@v1.2.0
+        with:
+          repo: pulumi/pulumictl
+      - name: Ensure
+        run: |
+          make ensure
+      - name: Lint Node
+        run: |
+          cd sdk/nodejs && make lint
+      - name: Lint Python
+        run: |
+          cd sdk/python && make lint
+      - name: Lint .NET
+        run: |
+          cd sdk/dotnet && make lint
   build-and-test:
     name: Build & Test
     strategy:
@@ -136,8 +207,15 @@ jobs:
         python-version: [ 3.9.x ]
         dotnet-version: [ 3.1.x ]
         node-version: [ 14.x ]
+
+        # See scripts/tests_subsets.py when editing
+        test-subset: [ integration, auto-and-lifecycletest, native, etc ]
+
     runs-on: ${{ matrix.platform }}
     steps:
+      - name: Set PULUMI_TEST_SUBSET env var
+        run: |
+          echo "PULUMI_TEST_SUBSET=${{ matrix.test-subset }}" >> $GITHUB_ENV
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v1
         with:
@@ -195,7 +273,7 @@ jobs:
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
         run: |
-          make test_all
+          make TEST_ALL_DEPS= test_all
         env:
           PULUMI_NODE_MODULES: ${{ runner.temp }}/opt/pulumi/node_modules
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
@@ -313,5 +391,3 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Run Container Tests
         run: make test_containers VERSION=v$(pulumictl get version --language generic -o)
-
-

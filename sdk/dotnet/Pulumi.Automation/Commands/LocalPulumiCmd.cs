@@ -9,7 +9,6 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
-
 using CliWrap;
 using Pulumi.Automation.Commands.Exceptions;
 using Pulumi.Automation.Events;
@@ -20,7 +19,7 @@ namespace Pulumi.Automation.Commands
     {
 
         public async Task<CommandResult> RunAsync(
-            IEnumerable<string> args,
+            IList<string> args,
             string workingDir,
             IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
@@ -35,19 +34,16 @@ namespace Pulumi.Automation.Commands
                 using var eventLogWatcher = new EventLogWatcher(eventLogFile.FilePath, onEngineEvent, cancellationToken);
                 try
                 {
-                    return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken);
+                    return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile, cancellationToken).ConfigureAwait(false);
                 } finally {
-                    await eventLogWatcher.Stop();
+                    await eventLogWatcher.Stop().ConfigureAwait(false);
                 }
             }
-            else
-            {
-                return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken);
-            }
+            return await RunAsyncInner(args, workingDir, additionalEnv, onStandardOutput, onStandardError, eventLogFile: null, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<CommandResult> RunAsyncInner(
-            IEnumerable<string> args,
+            IList<string> args,
             string workingDir,
             IDictionary<string, string?> additionalEnv,
             Action<string>? onStandardOutput = null,
@@ -88,10 +84,8 @@ namespace Pulumi.Automation.Commands
             {
                 throw CommandException.CreateFromResult(result);
             }
-            else
-            {
-                return result;
-            }
+
+            return result;
         }
 
         private static IReadOnlyDictionary<string, string?> PulumiEnvironment(IDictionary<string, string?> additionalEnv, bool debugCommands)
@@ -108,18 +102,18 @@ namespace Pulumi.Automation.Commands
             return env;
         }
 
-        private static IEnumerable<string> PulumiArgs(IEnumerable<string> args, EventLogFile? eventLogFile)
+        private static IList<string> PulumiArgs(IList<string> args, EventLogFile? eventLogFile)
         {
             // all commands should be run in non-interactive mode.
             // this causes commands to fail rather than prompting for input (and thus hanging indefinitely)
             if (!args.Contains("--non-interactive"))
             {
-                args = args.Concat(new[] { "--non-interactive" });
+                args = args.Concat(new[] { "--non-interactive" }).ToList();
             }
 
             if (eventLogFile != null)
             {
-                args = args.Concat(new[] { "--event-log", eventLogFile.FilePath });
+                args = args.Concat(new[] { "--event-log", eventLogFile.FilePath }).ToList();
             }
 
             return args;
@@ -132,15 +126,12 @@ namespace Pulumi.Automation.Commands
             {
                 return "event-log";
             }
-            else
-            {
-                return alphaNumWord.IsMatch(firstArgument) ? firstArgument : "event-log";
-            }
+            return alphaNumWord.IsMatch(firstArgument) ? firstArgument : "event-log";
         }
 
-        private class EventLogFile : IDisposable
+        private sealed class EventLogFile : IDisposable
         {
-            private bool _disposedValue;
+            public string FilePath { get; }
 
             public EventLogFile(string command)
             {
@@ -149,37 +140,21 @@ namespace Pulumi.Automation.Commands
                 this.FilePath = Path.Combine(logDir, "eventlog.txt");
             }
 
-            public string FilePath { get; }
-
-            protected virtual void Dispose(bool disposing)
-            {
-                if (!_disposedValue)
-                {
-                    if (disposing)
-                    {
-                        var dir = Path.GetDirectoryName(this.FilePath);
-                        try
-                        {
-                            Directory.Delete(dir, recursive: true);
-                        }
-                        catch (Exception e)
-                        {
-                            // allow graceful exit if for some reason
-                            // we're not able to delete the directory
-                            // will rely on OS to clean temp directory
-                            // in this case.
-                            Trace.TraceWarning("Ignoring exception during cleanup of {0} folder: {1}", dir, e);
-                        }
-                    }
-                    _disposedValue = true;
-                }
-            }
-
             public void Dispose()
             {
-                // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
-                Dispose(disposing: true);
-                GC.SuppressFinalize(this);
+                var dir = Path.GetDirectoryName(this.FilePath);
+                try
+                {
+                    Directory.Delete(dir, recursive: true);
+                }
+                catch (Exception e)
+                {
+                    // allow graceful exit if for some reason
+                    // we're not able to delete the directory
+                    // will rely on OS to clean temp directory
+                    // in this case.
+                    Trace.TraceWarning("Ignoring exception during cleanup of {0} folder: {1}", dir, e);
+                }
             }
         }
     }

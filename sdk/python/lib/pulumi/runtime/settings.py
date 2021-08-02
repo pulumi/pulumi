@@ -31,6 +31,10 @@ _MAX_RPC_MESSAGE_SIZE = 1024 * 1024 * 400
 _GRPC_CHANNEL_OPTIONS = [('grpc.max_receive_message_length', _MAX_RPC_MESSAGE_SIZE)]
 
 
+# excessive_debug_output enables, well, pretty excessive debug output pertaining to resources and properties.
+excessive_debug_output = False
+
+
 class Settings:
     monitor: Optional[Union[resource_pb2_grpc.ResourceMonitorStub, Any]]
     engine: Optional[Union[engine_pb2_grpc.EngineStub, Any]]

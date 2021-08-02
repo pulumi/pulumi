@@ -48,17 +48,14 @@ namespace Pulumi.Automation
         {
         }
 
-        internal static ProjectSettings Default(string name) {
-            var defaultSettings = new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.Dotnet));
-            defaultSettings.Main = Directory.GetCurrentDirectory();
-            return defaultSettings;
-        }
+        internal static ProjectSettings Default(string name) =>
+            new ProjectSettings(name, new ProjectRuntime(ProjectRuntimeName.Dotnet)) { Main = Directory.GetCurrentDirectory() };
 
         internal bool IsDefault
         {
             get
             {
-                return ProjectSettings.Comparer.Equals(this, ProjectSettings.Default(this.Name));
+                return Comparer.Equals(this, Default(this.Name));
             }
         }
 
@@ -73,7 +70,7 @@ namespace Pulumi.Automation
 
                 if (y == null)
                 {
-                    return x == null;
+                    return false;
                 }
 
                 if (ReferenceEquals(x, y))

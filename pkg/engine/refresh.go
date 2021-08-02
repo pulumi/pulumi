@@ -44,6 +44,9 @@ func Refresh(u UpdateInfo, ctx *Context, opts UpdateOptions, dryRun bool) (Resou
 	// Force opts.Refresh to true.
 	opts.Refresh = true
 
+	logging.V(7).Infof("*** Starting Refresh(preview=%v) ***", dryRun)
+	defer logging.V(7).Infof("*** Refresh(preview=%v) complete ***", dryRun)
+
 	return update(ctx, info, deploymentOptions{
 		UpdateOptions: opts,
 		SourceFunc:    newRefreshSource,

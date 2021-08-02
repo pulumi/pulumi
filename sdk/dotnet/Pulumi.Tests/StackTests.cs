@@ -38,7 +38,7 @@ namespace Pulumi.Tests
         private class NullOutputStack : Stack
         {
             [Output("foo")]
-            public Output<string>? Foo { get; }
+            public Output<string>? Foo { get; } = null;
         }
 
         [Fact]
@@ -46,7 +46,7 @@ namespace Pulumi.Tests
         {
             try
             {
-                var (stack, outputs) = await Run<NullOutputStack>();
+                await Run<NullOutputStack>();
             }
             catch (RunException ex)
             {
@@ -73,7 +73,7 @@ namespace Pulumi.Tests
         {
             try
             {
-                var (stack, outputs) = await Run<InvalidOutputTypeStack>();
+                await Run<InvalidOutputTypeStack>();
             }
             catch (RunException ex)
             {

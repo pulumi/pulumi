@@ -213,26 +213,21 @@ func NewPulumiCmd() *cobra.Command {
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
 
-	// We have a set of commands that are still experimental and that we add only when PULUMI_EXPERIMENTAL is set
+	// We have a set of commands that are still experimental and that are hidden unless PULUMI_EXPERIMENTAL is set
 	// to true.
-	if hasExperimentalCommands() {
-		//     - Query Commands:
-		cmd.AddCommand(newQueryCmd())
-	}
+	cmd.AddCommand(newQueryCmd())
 
-	// We have a set of options that are useful for developers of pulumi that we add when PULUMI_DEBUG_COMMANDS is
+	// We have a set of options that are useful for developers of pulumi that are hidden unless PULUMI_DEBUG_COMMANDS is
 	// set to true.
-	if hasDebugCommands() {
-		cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
-			"Include the tracing header with the given contents.")
-		//     - Diagnostic Commands:
-		cmd.AddCommand(newViewTraceCmd())
+	cmd.PersistentFlags().StringVar(&tracingHeaderFlag, "tracing-header", "",
+		"Include the tracing header with the given contents.")
 
-		// For legacy reasons, we make this command available also under PULUMI_DEBUG_COMMANDS, though
-		// PULUMI_EXPERIMENTAL should be preferred.
+	cmd.AddCommand(newViewTraceCmd())
+	cmd.AddCommand(newConvertTraceCmd())
 
-		//     - Query Commands:
-		cmd.AddCommand(newQueryCmd())
+	if !hasDebugCommands() {
+		err := cmd.PersistentFlags().MarkHidden("tracing-header")
+		contract.IgnoreError(err)
 	}
 
 	return cmd

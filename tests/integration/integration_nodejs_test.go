@@ -396,6 +396,127 @@ func TestConfigCaptureNodeJS(t *testing.T) {
 	})
 }
 
+// Tests that accessing config secrets using non-secret APIs results in warnings being logged.
+func TestConfigSecretsWarnNodeJS(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("config_secrets_warn", "nodejs"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+		Config: map[string]string{
+			"plainstr1":  "1",
+			"plainstr2":  "2",
+			"plainstr3":  "3",
+			"plainstr4":  "4",
+			"plainbool1": "true",
+			"plainbool2": "true",
+			"plainbool3": "true",
+			"plainbool4": "true",
+			"plainnum1":  "1",
+			"plainnum2":  "2",
+			"plainnum3":  "3",
+			"plainnum4":  "4",
+			"plainobj1":  "{}",
+			"plainobj2":  "{}",
+			"plainobj3":  "{}",
+			"plainobj4":  "{}",
+		},
+		Secrets: map[string]string{
+			"str1":  "1",
+			"str2":  "2",
+			"str3":  "3",
+			"str4":  "4",
+			"bool1": "true",
+			"bool2": "true",
+			"bool3": "true",
+			"bool4": "true",
+			"num1":  "1",
+			"num2":  "2",
+			"num3":  "3",
+			"num4":  "4",
+			"obj1":  "{}",
+			"obj2":  "{}",
+			"obj3":  "{}",
+			"obj4":  "{}",
+		},
+		OrderedConfig: []integration.ConfigValue{
+			{Key: "parent1.foo", Value: "plain1", Path: true},
+			{Key: "parent1.bar", Value: "secret1", Path: true, Secret: true},
+			{Key: "parent2.foo", Value: "plain2", Path: true},
+			{Key: "parent2.bar", Value: "secret2", Path: true, Secret: true},
+			{Key: "names1[0]", Value: "plain1", Path: true},
+			{Key: "names1[1]", Value: "secret1", Path: true, Secret: true},
+			{Key: "names2[0]", Value: "plain2", Path: true},
+			{Key: "names2[1]", Value: "secret2", Path: true, Secret: true},
+		},
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			assert.NotEmpty(t, stackInfo.Events)
+			//nolint:lll
+			expectedWarnings := []string{
+				"Configuration 'config_secrets_node:str1' value is a secret; use `getSecret` instead of `get`",
+				"Configuration 'config_secrets_node:str2' value is a secret; use `requireSecret` instead of `require`",
+				"Configuration 'config_secrets_node:bool1' value is a secret; use `getSecretBoolean` instead of `getBoolean`",
+				"Configuration 'config_secrets_node:bool2' value is a secret; use `requireSecretBoolean` instead of `requireBoolean`",
+				"Configuration 'config_secrets_node:num1' value is a secret; use `getSecretNumber` instead of `getNumber`",
+				"Configuration 'config_secrets_node:num2' value is a secret; use `requireSecretNumber` instead of `requireNumber`",
+				"Configuration 'config_secrets_node:obj1' value is a secret; use `getSecretObject` instead of `getObject`",
+				"Configuration 'config_secrets_node:obj2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+				"Configuration 'config_secrets_node:parent1' value is a secret; use `getSecretObject` instead of `getObject`",
+				"Configuration 'config_secrets_node:parent2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+				"Configuration 'config_secrets_node:names1' value is a secret; use `getSecretObject` instead of `getObject`",
+				"Configuration 'config_secrets_node:names2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+			}
+			for _, warning := range expectedWarnings {
+				var found bool
+				for _, event := range stackInfo.Events {
+					if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "warning" &&
+						strings.Contains(event.DiagnosticEvent.Message, warning) {
+						found = true
+						break
+					}
+				}
+				assert.True(t, found, "expected warning %q", warning)
+			}
+
+			// These keys should not be in any warning messages.
+			unexpectedWarnings := []string{
+				"plainstr1",
+				"plainstr2",
+				"plainstr3",
+				"plainstr4",
+				"plainbool1",
+				"plainbool2",
+				"plainbool3",
+				"plainbool4",
+				"plainnum1",
+				"plainnum2",
+				"plainnum3",
+				"plainnum4",
+				"plainobj1",
+				"plainobj2",
+				"plainobj3",
+				"plainobj4",
+				"str3",
+				"str4",
+				"bool3",
+				"bool4",
+				"num3",
+				"num4",
+				"obj3",
+				"obj4",
+			}
+			for _, warning := range unexpectedWarnings {
+				for _, event := range stackInfo.Events {
+					if event.DiagnosticEvent != nil {
+						assert.NotContains(t, event.DiagnosticEvent.Message, warning)
+					}
+				}
+			}
+		},
+	})
+}
+
 func TestInvalidVersionInPackageJson(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:          filepath.Join("invalid_package_json"),
@@ -754,7 +875,7 @@ func TestConstructNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -766,8 +887,13 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 		Env:          env,
 		Dir:          filepath.Join("construct_component", "nodejs"),
 		Dependencies: []string{"@pulumi/pulumi"},
-		Quick:        true,
-		NoParallel:   true,
+		Secrets: map[string]string{
+			"secret": "this super secret is encrypted",
+		},
+		Quick:      true,
+		NoParallel: true,
+		// verify that additional flags don't cause the component provider hang
+		UpdateCommandlineFlags: []string{"--logflow", "--logtostderr"},
 		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
 			assert.NotNil(t, stackInfo.Deployment)
 			if assert.Equal(t, expectedResourceCount, len(stackInfo.Deployment.Resources)) {
@@ -784,12 +910,22 @@ func optsForConstructNode(t *testing.T, expectedResourceCount int, env ...string
 
 					urns[string(res.URN.Name())] = res.URN
 					switch res.URN.Name() {
-					case "child-a", "child-b":
+					case "child-a":
 						for _, deps := range res.PropertyDependencies {
 							assert.Empty(t, deps)
 						}
+					case "child-b":
+						expected := []resource.URN{urns["a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
 					case "child-c":
-						assert.Equal(t, []resource.URN{urns["child-a"]}, res.PropertyDependencies["echo"])
+						expected := []resource.URN{urns["a"], urns["child-a"]}
+						assert.ElementsMatch(t, expected, res.Dependencies)
+						assert.ElementsMatch(t, expected, res.PropertyDependencies["echo"])
+					case "a", "b", "c":
+						secretPropValue, ok := res.Outputs["secret"].(map[string]interface{})
+						assert.Truef(t, ok, "secret output was not serialized as a secret")
+						assert.Equal(t, resource.SecretSig, secretPropValue[resource.SigKey].(string))
 					}
 				}
 			}
@@ -844,7 +980,7 @@ func TestConstructPlainNode(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.componentDir, func(t *testing.T) {
-			pathEnv := componentPathEnv(t, "construct_component_plain", test.componentDir)
+			pathEnv := pathEnv(t, filepath.Join("construct_component_plain", test.componentDir))
 			integration.ProgramTest(t,
 				optsForConstructPlainNode(t, test.expectedResourceCount, append(test.env, pathEnv)...))
 		})
@@ -865,6 +1001,83 @@ func optsForConstructPlainNode(t *testing.T, expectedResourceCount int, env ...s
 	}
 }
 
+// Test remote component inputs properly handle unknowns.
+func TestConstructUnknownNode(t *testing.T) {
+	testConstructUnknown(t, "nodejs", "@pulumi/pulumi")
+}
+
+// Test methods on remote components.
+func TestConstructMethodsNode(t *testing.T) {
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join("construct_component_methods", "nodejs"),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructMethodsUnknownNode(t *testing.T) {
+	testConstructMethodsUnknown(t, "nodejs", "@pulumi/pulumi")
+}
+
+func TestConstructProviderNode(t *testing.T) {
+	const testDir = "construct_component_provider"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join(testDir, "nodejs"),
+				Dependencies: []string{"@pulumi/pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "hello world", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
 func TestGetResourceNode(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir:                      filepath.Join("get_resource", "nodejs"),
@@ -874,5 +1087,41 @@ func TestGetResourceNode(t *testing.T) {
 			assert.NotNil(t, stack.Outputs)
 			assert.Equal(t, "foo", stack.Outputs["foo"])
 		},
+	})
+}
+
+func TestComponentProviderSchemaNode(t *testing.T) {
+	path := filepath.Join("component_provider_schema", "testcomponent", "pulumi-resource-testcomponent")
+	if runtime.GOOS == WindowsOS {
+		path += ".cmd"
+	}
+	testComponentProviderSchema(t, path)
+}
+
+// Test throwing an error within an apply in a remote component written in nodejs.
+// The provider should return the error and shutdown gracefully rather than hanging.
+func TestConstructNodeErrorApply(t *testing.T) {
+	dir := "construct_component_error_apply"
+	componentDir := "testcomponent"
+
+	stderr := &bytes.Buffer{}
+	expectedError := "intentional error from within an apply"
+
+	opts := &integration.ProgramTestOptions{
+		Env:           []string{pathEnv(t, filepath.Join(dir, componentDir))},
+		Dir:           filepath.Join(dir, "nodejs"),
+		Dependencies:  []string{"@pulumi/pulumi"},
+		Quick:         true,
+		NoParallel:    true,
+		Stderr:        stderr,
+		ExpectFailure: true,
+		ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+			output := stderr.String()
+			assert.Contains(t, output, expectedError)
+		},
+	}
+
+	t.Run(componentDir, func(t *testing.T) {
+		integration.ProgramTest(t, opts)
 	})
 }

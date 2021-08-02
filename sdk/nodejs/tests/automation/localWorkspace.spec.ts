@@ -26,7 +26,7 @@ import {
     Stack,
     validatePulumiVersion,
 } from "../../automation";
-import { Config } from "../../index";
+import { Config, output } from "../../index";
 import { asyncTest } from "../util";
 
 const versionRegex = /(\d+\.)(\d+\.)(\d+)(-.*)?/;
@@ -340,6 +340,168 @@ describe("LocalWorkspace", () => {
 
         await stack.workspace.removeStack(stackName);
     }));
+    // TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+    // Temporarily skipping test until we've re-enabled the warning.
+    it.skip(`has secret config warnings`, asyncTest(async () => {
+        const program = async () => {
+            const config = new Config();
+
+            config.get("plainstr1");
+            config.require("plainstr2");
+            config.getSecret("plainstr3");
+            config.requireSecret("plainstr4");
+
+            config.getBoolean("plainbool1");
+            config.requireBoolean("plainbool2");
+            config.getSecretBoolean("plainbool3");
+            config.requireSecretBoolean("plainbool4");
+
+            config.getNumber("plainnum1");
+            config.requireNumber("plainnum2");
+            config.getSecretNumber("plainnum3");
+            config.requireSecretNumber("plainnum4");
+
+            config.getObject("plainobj1");
+            config.requireObject("plainobj2");
+            config.getSecretObject("plainobj3");
+            config.requireSecretObject("plainobj4");
+
+            config.get("str1");
+            config.require("str2");
+            config.getSecret("str3");
+            config.requireSecret("str4");
+
+            config.getBoolean("bool1");
+            config.requireBoolean("bool2");
+            config.getSecretBoolean("bool3");
+            config.requireSecretBoolean("bool4");
+
+            config.getNumber("num1");
+            config.requireNumber("num2");
+            config.getSecretNumber("num3");
+            config.requireSecretNumber("num4");
+
+            config.getObject("obj1");
+            config.requireObject("obj2");
+            config.getSecretObject("obj3");
+            config.requireSecretObject("obj4");
+        };
+        const projectName = "inline_node";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        const stackConfig: ConfigMap = {
+            "plainstr1": { value: "1" },
+            "plainstr2": { value: "2" },
+            "plainstr3": { value: "3" },
+            "plainstr4": { value: "4" },
+            "plainbool1": { value: "true" },
+            "plainbool2": { value: "true" },
+            "plainbool3": { value: "true" },
+            "plainbool4": { value: "true" },
+            "plainnum1": { value: "1" },
+            "plainnum2": { value: "2" },
+            "plainnum3": { value: "3" },
+            "plainnum4": { value: "4" },
+            "plainobj1": { value: "{}" },
+            "plainobj2": { value: "{}" },
+            "plainobj3": { value: "{}" },
+            "plainobj4": { value: "{}" },
+            "str1": { value: "1", secret: true },
+            "str2": { value: "2", secret: true },
+            "str3": { value: "3", secret: true },
+            "str4": { value: "4", secret: true },
+            "bool1": { value: "true", secret: true },
+            "bool2": { value: "true", secret: true },
+            "bool3": { value: "true", secret: true },
+            "bool4": { value: "true", secret: true },
+            "num1": { value: "1", secret: true },
+            "num2": { value: "2", secret: true },
+            "num3": { value: "3", secret: true },
+            "num4": { value: "4", secret: true },
+            "obj1": { value: "{}", secret: true },
+            "obj2": { value: "{}", secret: true },
+            "obj3": { value: "{}", secret: true },
+            "obj4": { value: "{}", secret: true },
+        };
+        await stack.setAllConfig(stackConfig);
+
+        let events: string[] = [];
+        const findDiagnosticEvents = (event: EngineEvent) => {
+            if (event.diagnosticEvent?.severity === "warning") {
+                events.push(event.diagnosticEvent.message);
+            }
+        };
+
+        const expectedWarnings = [
+            "Configuration 'inline_node:str1' value is a secret; use `getSecret` instead of `get`",
+            "Configuration 'inline_node:str2' value is a secret; use `requireSecret` instead of `require`",
+            "Configuration 'inline_node:bool1' value is a secret; use `getSecretBoolean` instead of `getBoolean`",
+            "Configuration 'inline_node:bool2' value is a secret; use `requireSecretBoolean` instead of `requireBoolean`",
+            "Configuration 'inline_node:num1' value is a secret; use `getSecretNumber` instead of `getNumber`",
+            "Configuration 'inline_node:num2' value is a secret; use `requireSecretNumber` instead of `requireNumber`",
+            "Configuration 'inline_node:obj1' value is a secret; use `getSecretObject` instead of `getObject`",
+            "Configuration 'inline_node:obj2' value is a secret; use `requireSecretObject` instead of `requireObject`",
+        ];
+
+        // These keys should not be in any warning messages.
+        const unexpectedWarnings = [
+            "plainstr1",
+            "plainstr2",
+            "plainstr3",
+            "plainstr4",
+            "plainbool1",
+            "plainbool2",
+            "plainbool3",
+            "plainbool4",
+            "plainnum1",
+            "plainnum2",
+            "plainnum3",
+            "plainnum4",
+            "plainobj1",
+            "plainobj2",
+            "plainobj3",
+            "plainobj4",
+            "str3",
+            "str4",
+            "bool3",
+            "bool4",
+            "num3",
+            "num4",
+            "obj3",
+            "obj4",
+        ];
+
+        const validate = (warnings: string[]) => {
+            for (const expected of expectedWarnings) {
+                let found = false;
+                for (const warning of warnings) {
+                    if (warning.includes(expected)) {
+                        found = true;
+                        break;
+                    }
+                }
+                assert.strictEqual(found, true, `expected warning not found`);
+            }
+            for (const unexpected of unexpectedWarnings) {
+                for (const warning of warnings) {
+                    assert.strictEqual(warning.includes(unexpected), false,
+                        `Unexpected '${unexpected}' found in warning`);
+                }
+            }
+        };
+
+        // pulumi preview
+        await stack.preview({ onEvent: findDiagnosticEvents });
+        validate(events);
+
+        // pulumi up
+        events = [];
+        await stack.up({ onEvent: findDiagnosticEvents });
+        validate(events);
+
+        await stack.workspace.removeStack(stackName);
+    }));
     it(`imports and exports stacks`, asyncTest(async() => {
         const program = async () => {
             const config = new Config();
@@ -436,6 +598,38 @@ describe("LocalWorkspace", () => {
 
         // pulumi up
         await assert.rejects(stack.up());
+
+        // pulumi destroy
+        const destroyRes = await stack.destroy();
+        assert.strictEqual(destroyRes.summary.kind, "destroy");
+        assert.strictEqual(destroyRes.summary.result, "succeeded");
+
+        await stack.workspace.removeStack(stackName);
+    }));
+    it(`detects inline programs with side by side pulumi and throws an error`, asyncTest(async () => {
+
+        const program = async () => {
+            // clear pulumi/pulumi from require cache
+            delete require.cache[require.resolve("../../runtime")];
+            delete require.cache[require.resolve("../../runtime/config")];
+            delete require.cache[require.resolve("../../runtime/settings")];
+            // load up a fresh instance of pulumi
+            const p1 = require("../../runtime/settings");
+            // do some work that happens to observe runtime options with the new instance
+            p1.monitorSupportsSecrets();
+            return {
+                // export an output from originally pulumi causing settings to be observed again (boom).
+                test: output("original_pulumi"),
+            };
+        };
+        const projectName = "inline_node_sxs";
+        const stackName = fullyQualifiedStackName(getTestOrg(), projectName, `int_test${getTestSuffix()}`);
+        const stack = await LocalWorkspace.createStack({ stackName, projectName, program });
+
+        // pulumi up
+        await assert.rejects(stack.up(), (err: Error) => {
+           return err.stack!.indexOf("Detected multiple versions of '@pulumi/pulumi'") >= 0;
+        });
 
         // pulumi destroy
         const destroyRes = await stack.destroy();

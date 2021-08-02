@@ -41,6 +41,7 @@ class ConstructRequest:
     providers: Dict[str, str]
     aliases: List[str]
     dependencies: List[str]
+    configSecretKeys: List[str]
 
 
 class ConstructResponse:
@@ -48,13 +49,13 @@ class ConstructResponse:
     def __init__(self,
                  urn: Optional[str]=None,
                  state: Optional[Struct]=None,
-                 stateDependencies: Optional[Dict[str,PropertyDependencies]]=None) -> void:
+                 stateDependencies: Optional[Dict[str,PropertyDependencies]]=None) -> None:
         pass
 
     class PropertyDependencies:
         urns: List[str]
 
-        def __init__(self, urns: List[str]) -> void:
+        def __init__(self, urns: List[str]) -> None:
             pass
 
     urn: str
@@ -62,8 +63,38 @@ class ConstructResponse:
     stateDependencies: Dict[str,PropertyDependencies]
 
 
+class CallRequest:
+    class ArgumentDependencies:
+        urns: List[str]
+
+    tok: str
+    args: Struct
+    argDependencies: Dict[str,ArgumentDependencies]
+    provider: str
+    version: str
+    project: str
+    stack: str
+    config: Dict[str,str]
+    configSecretKeys: List[str]
+    dryRun: bool
+    parallel: int
+    monitorEndpoint: str
+
+
+class CallResponse:
+
+    def __init__(self, **kwargs) -> None:
+        pass
+
+    class ReturnDependencies:
+        urns: List[str]
+
+        def __init__(self, urns: List[str]) -> None:
+            pass
+
+
 class CheckResponse:
-    def __init__(self, inputs: Optional[Struct]=None, failures: List[CheckFailure]=[]) -> void:
+    def __init__(self, inputs: Optional[Struct]=None, failures: List[CheckFailure]=[]) -> None:
         pass
 
     inputs: Struct
@@ -71,6 +102,9 @@ class CheckResponse:
 
 
 class CheckFailure:
+    def __init__(self, property: str, reason: str) -> None:
+        pass
+
     property: str
     reason: str
 
@@ -80,8 +114,17 @@ class ConfigureResponse:
     def __init__(self,
                  acceptSecrets: bool=False,
                  supportsPreview: bool=False,
-                 acceptResources: bool=False) -> void: ...
+                 acceptResources: bool=False) -> None: ...
 
     acceptSecrets: bool
     supportsPreview: bool
     acceptResources: bool
+
+
+class GetSchemaRequest:
+    version: int
+
+
+class GetSchemaResponse:
+    def __init__(self, schema: str):
+        pass

@@ -18,14 +18,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"github.com/stretchr/testify/require"
 	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 
 	"github.com/blang/semver"
 	"github.com/stretchr/testify/assert"
@@ -1569,6 +1571,434 @@ func TestSaveStackSettings(t *testing.T) {
 	}
 	assert.Equal(t, "destroy", dRes.Summary.Kind)
 	assert.Equal(t, "succeeded", dRes.Summary.Result)
+}
+
+func TestConfigSecretWarnings(t *testing.T) {
+	// TODO[pulumi/pulumi#7127]: Re-enabled the warning.
+	t.Skip("Temporarily skipping test until we've re-enabled the warning - pulumi/pulumi#7127")
+	ctx := context.Background()
+	sName := fmt.Sprintf("int_test%d", rangeIn(10000000, 99999999))
+	stackName := FullyQualifiedStackName(pulumiOrg, pName, sName)
+	cfg := ConfigMap{
+		"plainstr1":    ConfigValue{Value: "1"},
+		"plainstr2":    ConfigValue{Value: "2"},
+		"plainstr3":    ConfigValue{Value: "3"},
+		"plainstr4":    ConfigValue{Value: "4"},
+		"plainstr5":    ConfigValue{Value: "5"},
+		"plainstr6":    ConfigValue{Value: "6"},
+		"plainstr7":    ConfigValue{Value: "7"},
+		"plainstr8":    ConfigValue{Value: "8"},
+		"plainstr9":    ConfigValue{Value: "9"},
+		"plainstr10":   ConfigValue{Value: "10"},
+		"plainstr11":   ConfigValue{Value: "11"},
+		"plainstr12":   ConfigValue{Value: "12"},
+		"plainbool1":   ConfigValue{Value: "true"},
+		"plainbool2":   ConfigValue{Value: "true"},
+		"plainbool3":   ConfigValue{Value: "true"},
+		"plainbool4":   ConfigValue{Value: "true"},
+		"plainbool5":   ConfigValue{Value: "true"},
+		"plainbool6":   ConfigValue{Value: "true"},
+		"plainbool7":   ConfigValue{Value: "true"},
+		"plainbool8":   ConfigValue{Value: "true"},
+		"plainbool9":   ConfigValue{Value: "true"},
+		"plainbool10":  ConfigValue{Value: "true"},
+		"plainbool11":  ConfigValue{Value: "true"},
+		"plainbool12":  ConfigValue{Value: "true"},
+		"plainint1":    ConfigValue{Value: "1"},
+		"plainint2":    ConfigValue{Value: "2"},
+		"plainint3":    ConfigValue{Value: "3"},
+		"plainint4":    ConfigValue{Value: "4"},
+		"plainint5":    ConfigValue{Value: "5"},
+		"plainint6":    ConfigValue{Value: "6"},
+		"plainint7":    ConfigValue{Value: "7"},
+		"plainint8":    ConfigValue{Value: "8"},
+		"plainint9":    ConfigValue{Value: "9"},
+		"plainint10":   ConfigValue{Value: "10"},
+		"plainint11":   ConfigValue{Value: "11"},
+		"plainint12":   ConfigValue{Value: "12"},
+		"plainfloat1":  ConfigValue{Value: "1.1"},
+		"plainfloat2":  ConfigValue{Value: "2.2"},
+		"plainfloat3":  ConfigValue{Value: "3.3"},
+		"plainfloat4":  ConfigValue{Value: "4.4"},
+		"plainfloat5":  ConfigValue{Value: "5.5"},
+		"plainfloat6":  ConfigValue{Value: "6.6"},
+		"plainfloat7":  ConfigValue{Value: "7.7"},
+		"plainfloat8":  ConfigValue{Value: "8.8"},
+		"plainfloat9":  ConfigValue{Value: "9.9"},
+		"plainfloat10": ConfigValue{Value: "10.1"},
+		"plainfloat11": ConfigValue{Value: "11.11"},
+		"plainfloat12": ConfigValue{Value: "12.12"},
+		"plainobj1":    ConfigValue{Value: "{}"},
+		"plainobj2":    ConfigValue{Value: "{}"},
+		"plainobj3":    ConfigValue{Value: "{}"},
+		"plainobj4":    ConfigValue{Value: "{}"},
+		"plainobj5":    ConfigValue{Value: "{}"},
+		"plainobj6":    ConfigValue{Value: "{}"},
+		"plainobj7":    ConfigValue{Value: "{}"},
+		"plainobj8":    ConfigValue{Value: "{}"},
+		"plainobj9":    ConfigValue{Value: "{}"},
+		"plainobj10":   ConfigValue{Value: "{}"},
+		"plainobj11":   ConfigValue{Value: "{}"},
+		"plainobj12":   ConfigValue{Value: "{}"},
+		"str1":         ConfigValue{Value: "1", Secret: true},
+		"str2":         ConfigValue{Value: "2", Secret: true},
+		"str3":         ConfigValue{Value: "3", Secret: true},
+		"str4":         ConfigValue{Value: "4", Secret: true},
+		"str5":         ConfigValue{Value: "5", Secret: true},
+		"str6":         ConfigValue{Value: "6", Secret: true},
+		"str7":         ConfigValue{Value: "7", Secret: true},
+		"str8":         ConfigValue{Value: "8", Secret: true},
+		"str9":         ConfigValue{Value: "9", Secret: true},
+		"str10":        ConfigValue{Value: "10", Secret: true},
+		"str11":        ConfigValue{Value: "11", Secret: true},
+		"str12":        ConfigValue{Value: "12", Secret: true},
+		"bool1":        ConfigValue{Value: "true", Secret: true},
+		"bool2":        ConfigValue{Value: "true", Secret: true},
+		"bool3":        ConfigValue{Value: "true", Secret: true},
+		"bool4":        ConfigValue{Value: "true", Secret: true},
+		"bool5":        ConfigValue{Value: "true", Secret: true},
+		"bool6":        ConfigValue{Value: "true", Secret: true},
+		"bool7":        ConfigValue{Value: "true", Secret: true},
+		"bool8":        ConfigValue{Value: "true", Secret: true},
+		"bool9":        ConfigValue{Value: "true", Secret: true},
+		"bool10":       ConfigValue{Value: "true", Secret: true},
+		"bool11":       ConfigValue{Value: "true", Secret: true},
+		"bool12":       ConfigValue{Value: "true", Secret: true},
+		"int1":         ConfigValue{Value: "1", Secret: true},
+		"int2":         ConfigValue{Value: "2", Secret: true},
+		"int3":         ConfigValue{Value: "3", Secret: true},
+		"int4":         ConfigValue{Value: "4", Secret: true},
+		"int5":         ConfigValue{Value: "5", Secret: true},
+		"int6":         ConfigValue{Value: "6", Secret: true},
+		"int7":         ConfigValue{Value: "7", Secret: true},
+		"int8":         ConfigValue{Value: "8", Secret: true},
+		"int9":         ConfigValue{Value: "9", Secret: true},
+		"int10":        ConfigValue{Value: "10", Secret: true},
+		"int11":        ConfigValue{Value: "11", Secret: true},
+		"int12":        ConfigValue{Value: "12", Secret: true},
+		"float1":       ConfigValue{Value: "1.1", Secret: true},
+		"float2":       ConfigValue{Value: "2.2", Secret: true},
+		"float3":       ConfigValue{Value: "3.3", Secret: true},
+		"float4":       ConfigValue{Value: "4.4", Secret: true},
+		"float5":       ConfigValue{Value: "5.5", Secret: true},
+		"float6":       ConfigValue{Value: "6.6", Secret: true},
+		"float7":       ConfigValue{Value: "7.7", Secret: true},
+		"float8":       ConfigValue{Value: "8.8", Secret: true},
+		"float9":       ConfigValue{Value: "9.9", Secret: true},
+		"float10":      ConfigValue{Value: "10.1", Secret: true},
+		"float11":      ConfigValue{Value: "11.11", Secret: true},
+		"float12":      ConfigValue{Value: "12.12", Secret: true},
+		"obj1":         ConfigValue{Value: "{}", Secret: true},
+		"obj2":         ConfigValue{Value: "{}", Secret: true},
+		"obj3":         ConfigValue{Value: "{}", Secret: true},
+		"obj4":         ConfigValue{Value: "{}", Secret: true},
+		"obj5":         ConfigValue{Value: "{}", Secret: true},
+		"obj6":         ConfigValue{Value: "{}", Secret: true},
+		"obj7":         ConfigValue{Value: "{}", Secret: true},
+		"obj8":         ConfigValue{Value: "{}", Secret: true},
+		"obj9":         ConfigValue{Value: "{}", Secret: true},
+		"obj10":        ConfigValue{Value: "{}", Secret: true},
+		"obj11":        ConfigValue{Value: "{}", Secret: true},
+		"obj12":        ConfigValue{Value: "{}", Secret: true},
+	}
+
+	// initialize
+	//nolint:errcheck
+	s, err := NewStackInlineSource(ctx, stackName, pName, func(ctx *pulumi.Context) error {
+		c := config.New(ctx, "")
+
+		config.Get(ctx, "plainstr1")
+		config.Require(ctx, "plainstr2")
+		config.Try(ctx, "plainstr3")
+		config.GetSecret(ctx, "plainstr4")
+		config.RequireSecret(ctx, "plainstr5")
+		config.TrySecret(ctx, "plainstr6")
+		c.Get("plainstr7")
+		c.Require("plainstr8")
+		c.Try("plainstr9")
+		c.GetSecret("plainstr10")
+		c.RequireSecret("plainstr11")
+		c.TrySecret("plainstr12")
+
+		config.GetBool(ctx, "plainbool1")
+		config.RequireBool(ctx, "plainbool2")
+		config.TryBool(ctx, "plainbool3")
+		config.GetSecretBool(ctx, "plainbool4")
+		config.RequireSecretBool(ctx, "plainbool5")
+		config.TrySecretBool(ctx, "plainbool6")
+		c.GetBool("plainbool7")
+		c.RequireBool("plainbool8")
+		c.TryBool("plainbool9")
+		c.GetSecretBool("plainbool10")
+		c.RequireSecretBool("plainbool11")
+		c.TrySecretBool("plainbool12")
+
+		config.GetInt(ctx, "plainint1")
+		config.RequireInt(ctx, "plainint2")
+		config.TryInt(ctx, "plainint3")
+		config.GetSecretInt(ctx, "plainint4")
+		config.RequireSecretInt(ctx, "plainint5")
+		config.TrySecretInt(ctx, "plainint6")
+		c.GetInt("plainint7")
+		c.RequireInt("plainint8")
+		c.TryInt("plainint9")
+		c.GetSecretInt("plainint10")
+		c.RequireSecretInt("plainint11")
+		c.TrySecretInt("plainint12")
+
+		config.GetFloat64(ctx, "plainfloat1")
+		config.RequireFloat64(ctx, "plainfloat2")
+		config.TryFloat64(ctx, "plainfloat3")
+		config.GetSecretFloat64(ctx, "plainfloat4")
+		config.RequireSecretFloat64(ctx, "plainfloat5")
+		config.TrySecretFloat64(ctx, "plainfloat6")
+		c.GetFloat64("plainfloat7")
+		c.RequireFloat64("plainfloat8")
+		c.TryFloat64("plainfloat9")
+		c.GetSecretFloat64("plainfloat10")
+		c.RequireSecretFloat64("plainfloat11")
+		c.TrySecretFloat64("plainfloat12")
+
+		var obj interface{}
+		config.GetObject(ctx, "plainobjj1", &obj)
+		config.RequireObject(ctx, "plainobj2", &obj)
+		config.TryObject(ctx, "plainobj3", &obj)
+		config.GetSecretObject(ctx, "plainobj4", &obj)
+		config.RequireSecretObject(ctx, "plainobj5", &obj)
+		config.TrySecretObject(ctx, "plainobj6", &obj)
+		c.GetObject("plainobjj7", &obj)
+		c.RequireObject("plainobj8", &obj)
+		c.TryObject("plainobj9", &obj)
+		c.GetSecretObject("plainobj10", &obj)
+		c.RequireSecretObject("plainobj11", &obj)
+		c.TrySecretObject("plainobj12", &obj)
+
+		config.Get(ctx, "str1")
+		config.Require(ctx, "str2")
+		config.Try(ctx, "str3")
+		config.GetSecret(ctx, "str4")
+		config.RequireSecret(ctx, "str5")
+		config.TrySecret(ctx, "str6")
+		c.Get("str7")
+		c.Require("str8")
+		c.Try("str9")
+		c.GetSecret("str10")
+		c.RequireSecret("str11")
+		c.TrySecret("str12")
+
+		config.GetBool(ctx, "bool1")
+		config.RequireBool(ctx, "bool2")
+		config.TryBool(ctx, "bool3")
+		config.GetSecretBool(ctx, "bool4")
+		config.RequireSecretBool(ctx, "bool5")
+		config.TrySecretBool(ctx, "bool6")
+		c.GetBool("bool7")
+		c.RequireBool("bool8")
+		c.TryBool("bool9")
+		c.GetSecretBool("bool10")
+		c.RequireSecretBool("bool11")
+		c.TrySecretBool("bool12")
+
+		config.GetInt(ctx, "int1")
+		config.RequireInt(ctx, "int2")
+		config.TryInt(ctx, "int3")
+		config.GetSecretInt(ctx, "int4")
+		config.RequireSecretInt(ctx, "int5")
+		config.TrySecretInt(ctx, "int6")
+		c.GetInt("int7")
+		c.RequireInt("int8")
+		c.TryInt("int9")
+		c.GetSecretInt("int10")
+		c.RequireSecretInt("int11")
+		c.TrySecretInt("int12")
+
+		config.GetFloat64(ctx, "float1")
+		config.RequireFloat64(ctx, "float2")
+		config.TryFloat64(ctx, "float3")
+		config.GetSecretFloat64(ctx, "float4")
+		config.RequireSecretFloat64(ctx, "float5")
+		config.TrySecretFloat64(ctx, "float6")
+		c.GetFloat64("float7")
+		c.RequireFloat64("float8")
+		c.TryFloat64("float9")
+		c.GetSecretFloat64("float10")
+		c.RequireSecretFloat64("float11")
+		c.TrySecretFloat64("float12")
+
+		config.GetObject(ctx, "obj1", &obj)
+		config.RequireObject(ctx, "obj2", &obj)
+		config.TryObject(ctx, "obj3", &obj)
+		config.GetSecretObject(ctx, "obj4", &obj)
+		config.RequireSecretObject(ctx, "obj5", &obj)
+		config.TrySecretObject(ctx, "obj6", &obj)
+		c.GetObject("obj7", &obj)
+		c.RequireObject("obj8", &obj)
+		c.TryObject("obj9", &obj)
+		c.GetSecretObject("obj10", &obj)
+		c.RequireSecretObject("obj11", &obj)
+		c.TrySecretObject("obj12", &obj)
+
+		return nil
+	})
+	if err != nil {
+		t.Errorf("failed to initialize stack, err: %v", err)
+		t.FailNow()
+	}
+
+	defer func() {
+		// -- pulumi stack rm --
+		err = s.Workspace().RemoveStack(ctx, s.Name())
+		assert.Nil(t, err, "failed to remove stack. Resources have leaked.")
+	}()
+
+	err = s.SetAllConfig(ctx, cfg)
+	if err != nil {
+		t.Errorf("failed to set config, err: %v", err)
+		t.FailNow()
+	}
+
+	validate := func(engineEvents []events.EngineEvent) {
+		expectedWarnings := []string{
+			"Configuration 'testproj:str1' value is a secret; use `GetSecret` instead of `Get`",
+			"Configuration 'testproj:str2' value is a secret; use `RequireSecret` instead of `Require`",
+			"Configuration 'testproj:str3' value is a secret; use `TrySecret` instead of `Try`",
+			"Configuration 'testproj:str7' value is a secret; use `GetSecret` instead of `Get`",
+			"Configuration 'testproj:str8' value is a secret; use `RequireSecret` instead of `Require`",
+			"Configuration 'testproj:str9' value is a secret; use `TrySecret` instead of `Try`",
+
+			"Configuration 'testproj:bool1' value is a secret; use `GetSecretBool` instead of `GetBool`",
+			"Configuration 'testproj:bool2' value is a secret; use `RequireSecretBool` instead of `RequireBool`",
+			"Configuration 'testproj:bool3' value is a secret; use `TrySecretBool` instead of `TryBool`",
+			"Configuration 'testproj:bool7' value is a secret; use `GetSecretBool` instead of `GetBool`",
+			"Configuration 'testproj:bool8' value is a secret; use `RequireSecretBool` instead of `RequireBool`",
+			"Configuration 'testproj:bool9' value is a secret; use `TrySecretBool` instead of `TryBool`",
+
+			"Configuration 'testproj:int1' value is a secret; use `GetSecretInt` instead of `GetInt`",
+			"Configuration 'testproj:int2' value is a secret; use `RequireSecretInt` instead of `RequireInt`",
+			"Configuration 'testproj:int3' value is a secret; use `TrySecretInt` instead of `TryInt`",
+			"Configuration 'testproj:int7' value is a secret; use `GetSecretInt` instead of `GetInt`",
+			"Configuration 'testproj:int8' value is a secret; use `RequireSecretInt` instead of `RequireInt`",
+			"Configuration 'testproj:int9' value is a secret; use `TrySecretInt` instead of `TryInt`",
+
+			"Configuration 'testproj:float1' value is a secret; use `GetSecretFloat64` instead of `GetFloat64`",
+			"Configuration 'testproj:float2' value is a secret; use `RequireSecretFloat64` instead of `RequireFloat64`",
+			"Configuration 'testproj:float3' value is a secret; use `TrySecretFloat64` instead of `TryFloat64`",
+			"Configuration 'testproj:float7' value is a secret; use `GetSecretFloat64` instead of `GetFloat64`",
+			"Configuration 'testproj:float8' value is a secret; use `RequireSecretFloat64` instead of `RequireFloat64`",
+			"Configuration 'testproj:float9' value is a secret; use `TrySecretFloat64` instead of `TryFloat64`",
+
+			"Configuration 'testproj:obj1' value is a secret; use `GetSecretObject` instead of `GetObject`",
+			"Configuration 'testproj:obj2' value is a secret; use `RequireSecretObject` instead of `RequireObject`",
+			"Configuration 'testproj:obj3' value is a secret; use `TrySecretObject` instead of `TryObject`",
+			"Configuration 'testproj:obj7' value is a secret; use `GetSecretObject` instead of `GetObject`",
+			"Configuration 'testproj:obj8' value is a secret; use `RequireSecretObject` instead of `RequireObject`",
+			"Configuration 'testproj:obj9' value is a secret; use `TrySecretObject` instead of `TryObject`",
+		}
+		for _, warning := range expectedWarnings {
+			var found bool
+			for _, event := range engineEvents {
+				if event.DiagnosticEvent != nil && event.DiagnosticEvent.Severity == "warning" &&
+					strings.Contains(event.DiagnosticEvent.Message, warning) {
+					found = true
+					break
+				}
+			}
+			assert.True(t, found, "expected warning %q", warning)
+		}
+
+		// These keys should not be in any warning messages.
+		unexpectedWarnings := []string{
+			"plainstr1",
+			"plainstr2",
+			"plainstr3",
+			"plainstr4",
+			"plainstr5",
+			"plainstr6",
+			"plainstr7",
+			"plainstr8",
+			"plainstr9",
+			"plainstr10",
+			"plainstr11",
+			"plainstr12",
+			"plainbool1",
+			"plainbool2",
+			"plainbool3",
+			"plainbool4",
+			"plainbool5",
+			"plainbool6",
+			"plainbool7",
+			"plainbool8",
+			"plainbool9",
+			"plainbool10",
+			"plainbool11",
+			"plainbool12",
+			"plainint1",
+			"plainint2",
+			"plainint3",
+			"plainint4",
+			"plainint5",
+			"plainint6",
+			"plainint7",
+			"plainint8",
+			"plainint9",
+			"plainint10",
+			"plainint11",
+			"plainint12",
+			"plainfloat1",
+			"plainfloat2",
+			"plainfloat3",
+			"plainfloat4",
+			"plainfloat5",
+			"plainfloat6",
+			"plainfloat7",
+			"plainfloat8",
+			"plainfloat9",
+			"plainfloat10",
+			"plainfloat11",
+			"plainfloat12",
+			"plainobj1",
+			"plainobj2",
+			"plainobj3",
+			"plainobj4",
+			"plainobj5",
+			"plainobj6",
+			"plainobj7",
+			"plainobj8",
+			"plainobj9",
+			"plainobj10",
+			"plainobj11",
+			"plainobj12",
+		}
+		for _, warning := range unexpectedWarnings {
+			for _, event := range engineEvents {
+				if event.DiagnosticEvent != nil {
+					assert.NotContains(t, event.DiagnosticEvent.Message, warning)
+				}
+			}
+		}
+	}
+
+	// -- pulumi up --
+	var upEvents []events.EngineEvent
+	upCh := make(chan events.EngineEvent)
+	go collectEvents(upCh, &upEvents)
+	_, err = s.Up(ctx, optup.EventStreams(upCh))
+	if err != nil {
+		t.Errorf("up failed, err: %v", err)
+		t.FailNow()
+	}
+	validate(upEvents)
+
+	// -- pulumi preview --
+	var previewEvents []events.EngineEvent
+	prevCh := make(chan events.EngineEvent)
+	go collectEvents(prevCh, &previewEvents)
+	_, err = s.Preview(ctx, optpreview.EventStreams(prevCh))
+	if err != nil {
+		t.Errorf("preview failed, err: %v", err)
+		t.FailNow()
+	}
+	validate(previewEvents)
 }
 
 func BenchmarkBulkSetConfigMixed(b *testing.B) {

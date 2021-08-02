@@ -1,7 +1,6 @@
 ﻿// Copyright 2016-2019, Pulumi Corporation
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading.Tasks;
@@ -65,7 +64,7 @@ namespace Pulumi
                 propertyToDependentResources.ToImmutable());
         }
 
-        private struct SerializationResult
+        private readonly struct SerializationResult
         {
             public readonly Struct Serialized;
             public readonly ImmutableDictionary<string, HashSet<Resource>> PropertyToDependentResources;

@@ -1,71 +1,73 @@
 package dotnet
 
 import (
-	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
+	test.TestSDKCodegen(t, "dotnet", GeneratePackage)
+}
+
+func TestGenerateType(t *testing.T) {
+	cases := []struct {
+		typ      schema.Type
+		expected string
 	}{
 		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				"Resource.cs",
-				"OtherResource.cs",
-				"ArgFunction.cs",
+			&schema.InputType{
+				ElementType: &schema.ArrayType{
+					ElementType: &schema.InputType{
+						ElementType: &schema.ArrayType{
+							ElementType: &schema.InputType{
+								ElementType: schema.NumberType,
+							},
+						},
+					},
+				},
 			},
+			"InputList<ImmutableArray<double>>",
 		},
 		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				"Tree/V1/RubberTree.cs",
-				"Tree/V1/Nursery.cs",
-				"Tree/V1/Enums.cs",
-				"Enums.cs",
-				"Inputs/ContainerArgs.cs",
-				"Outputs/Container.cs",
+			&schema.InputType{
+				ElementType: &schema.MapType{
+					ElementType: &schema.InputType{
+						ElementType: &schema.ArrayType{
+							ElementType: &schema.InputType{
+								ElementType: schema.NumberType,
+							},
+						},
+					},
+				},
 			},
-		},
-		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				"Inputs/PetArgs.cs",
-				"ArgFunction.cs",
-				"Cat.cs",
-				"Component.cs",
-				"Workload.cs",
-			},
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				"Inputs/FooArgs.cs",
-				"Component.cs",
-			},
+			"InputMap<ImmutableArray<double>>",
 		},
 	}
-	testDir := filepath.Join("..", "internal", "test", "testdata")
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), GeneratePackage)
-			assert.NoError(t, err)
 
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "dotnet", tt.expectedFiles)
-			assert.NoError(t, err)
-
-			test.ValidateFileEquality(t, files, expectedFiles)
+	mod := &modContext{mod: "main"}
+	for _, c := range cases {
+		t.Run(c.typ.String(), func(t *testing.T) {
+			typeString := mod.typeString(c.typ, "", true, false, false)
+			assert.Equal(t, c.expected, typeString)
 		})
 	}
+}
+
+func TestGenerateTypeNames(t *testing.T) {
+	test.TestTypeNameCodegen(t, "dotnet", func(pkg *schema.Package) test.TypeNameGeneratorFunc {
+		modules, _, err := generateModuleContextMap("test", pkg)
+		require.NoError(t, err)
+
+		root, ok := modules[""]
+		require.True(t, ok)
+
+		return func(t schema.Type) string {
+			return root.typeString(t, "", false, false, false)
+		}
+	})
 }

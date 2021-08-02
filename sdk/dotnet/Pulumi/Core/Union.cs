@@ -3,6 +3,8 @@
 using System;
 using OneOf;
 
+// ReSharper disable PossiblyImpureMethodCallOnReadonlyVariable
+
 namespace Pulumi
 {
     /// <summary>
@@ -26,7 +28,7 @@ namespace Pulumi
     /// or a <see cref="string"/> can be represented as <c>Output&lt;int, string&gt;</c>.  The <see
     /// cref="Input{T}"/> version of this is <see cref="InputUnion{T0, T1}"/>.
     /// </summary>
-    public struct Union<T0, T1> : IEquatable<Union<T0, T1>>, IUnion
+    public readonly struct Union<T0, T1> : IEquatable<Union<T0, T1>>, IUnion
     {
         private readonly OneOf<T0, T1> _data;
 

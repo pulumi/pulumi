@@ -38,13 +38,7 @@ type generator struct {
 	diagnostics hcl.Diagnostics
 
 	configCreated bool
-	casingTables  map[string]map[string]string
 	quotes        map[model.Expression]string
-}
-
-type objectTypeInfo struct {
-	isDictionary         bool
-	camelCaseToSnakeCase map[string]string
 }
 
 func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics, error) {
@@ -70,23 +64,15 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 
 func newGenerator(program *hcl2.Program) (*generator, error) {
 	// Import Python-specific schema info.
-	casingTables := map[string]map[string]string{}
 	for _, p := range program.Packages() {
 		if err := p.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
 			return nil, err
 		}
-
-		// Build the case mapping table.
-		camelCaseToSnakeCase := map[string]string{}
-		seenTypes := codegen.Set{}
-		buildCaseMappingTables(p, nil, camelCaseToSnakeCase, seenTypes)
-		casingTables[PyName(p.Name)] = camelCaseToSnakeCase
 	}
 
 	g := &generator{
-		program:      program,
-		casingTables: casingTables,
-		quotes:       map[model.Expression]string{},
+		program: program,
+		quotes:  map[model.Expression]string{},
 	}
 	g.Formatter = format.NewFormatter(g)
 
@@ -211,18 +197,11 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type)
 		return ""
 	}
 
+	schemaType = codegen.UnwrapType(schemaType)
+
 	objType, ok := schemaType.(*schema.ObjectType)
 	if !ok {
 		return ""
-	}
-
-	if objType.Language != nil {
-		pyTypeInfo, ok := objType.Language["python"].(objectTypeInfo)
-		if ok {
-			if pyTypeInfo.isDictionary {
-				return ""
-			}
-		}
 	}
 
 	token := objType.Token
@@ -346,10 +325,7 @@ func (g *generator) genResource(w io.Writer, r *hcl2.Resource) {
 	}
 	g.genTrivia(w, r.Definition.Tokens.GetOpenBrace())
 
-	casingTable := g.casingTables[pkg]
 	for _, input := range r.Inputs {
-		g.lowerObjectKeys(input.Value, casingTable)
-
 		destType, diagnostics := r.InputType.Traverse(hcl.TraverseAttr{Name: input.Name})
 		g.diagnostics = append(g.diagnostics, diagnostics...)
 		value, valueTemps := g.lowerExpression(input.Value, destType.(model.Type))

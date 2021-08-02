@@ -73,14 +73,14 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the Python-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,
 		mod:         moduleName,
 		typeDetails: typeDetails,
 	}
-	typeName := mod.typeString(t, input, false /*wrapInput*/, args, optional /*optional*/, false /*acceptMapping*/)
+	typeName := mod.typeString(t, input, false /*acceptMapping*/)
 
 	// Remove any package qualifiers from the type name.
 	if !input {
@@ -101,18 +101,6 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 // an existing resource.
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	return title(tokenToName(f.Token)) + "Result"
-}
-
-// GenPropertyCaseMap generates the case maps for a property.
-func (d DocLanguageHelper) GenPropertyCaseMap(pkg *schema.Package, modName, tool string, prop *schema.Property, snakeCaseToCamelCase, camelCaseToSnakeCase map[string]string, seenTypes codegen.Set) {
-	if _, imported := pkg.Language["python"]; !imported {
-		if err := pkg.ImportLanguages(map[string]schema.Language{"python": Importer}); err != nil {
-			fmt.Printf("error building case map for %q in module %q", prop.Name, modName)
-			return
-		}
-	}
-
-	recordProperty(prop, snakeCaseToCamelCase, camelCaseToSnakeCase, seenTypes)
 }
 
 // GetPropertyName returns the property name specific to Python.

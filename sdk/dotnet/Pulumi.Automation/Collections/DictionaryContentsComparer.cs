@@ -5,18 +5,18 @@ using System.Collections.Generic;
 namespace Pulumi.Automation.Collections
 {
     /// Compares two dictionaries for equality by content, as F# maps would.
-    internal sealed class DictionaryContentsComparer<K, V> : IEqualityComparer<IDictionary<K, V>> where K : notnull
+    internal sealed class DictionaryContentsComparer<TKey, TValue> : IEqualityComparer<IDictionary<TKey, TValue>> where TKey : notnull
     {
-        private readonly IEqualityComparer<K> _keyComparer;
-        private readonly IEqualityComparer<V> _valueComparer;
+        private readonly IEqualityComparer<TKey> _keyComparer;
+        private readonly IEqualityComparer<TValue> _valueComparer;
 
-        public DictionaryContentsComparer(IEqualityComparer<K> keyComparer, IEqualityComparer<V> valueComparer)
+        public DictionaryContentsComparer(IEqualityComparer<TKey> keyComparer, IEqualityComparer<TValue> valueComparer)
         {
             this._keyComparer = keyComparer;
             this._valueComparer = valueComparer;
         }
 
-        bool IEqualityComparer<IDictionary<K, V>>.Equals(IDictionary<K, V>? x, IDictionary<K, V>? y)
+        bool IEqualityComparer<IDictionary<TKey, TValue>>.Equals(IDictionary<TKey, TValue>? x, IDictionary<TKey, TValue>? y)
         {
             if (x == null)
             {
@@ -24,7 +24,7 @@ namespace Pulumi.Automation.Collections
             }
             if (y == null)
             {
-                return x == null;
+                return false;
             }
             if (ReferenceEquals(x, y))
             {
@@ -34,7 +34,7 @@ namespace Pulumi.Automation.Collections
             {
                 return false;
             }
-            var y2 = new Dictionary<K, V>(y, this._keyComparer);
+            var y2 = new Dictionary<TKey, TValue>(y, this._keyComparer);
             foreach (var pair in x)
             {
                 if (!y2.ContainsKey(pair.Key))
@@ -50,7 +50,7 @@ namespace Pulumi.Automation.Collections
             return true;
         }
 
-        int IEqualityComparer<IDictionary<K, V>>.GetHashCode(IDictionary<K, V> obj)
+        int IEqualityComparer<IDictionary<TKey, TValue>>.GetHashCode(IDictionary<TKey, TValue> obj)
         {
             return 0; // inefficient but correct
         }

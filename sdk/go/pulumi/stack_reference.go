@@ -1,6 +1,9 @@
 package pulumi
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 // StackReference manages a reference to a Pulumi stack.
 type StackReference struct {
@@ -37,6 +40,27 @@ func (s *StackReference) GetIDOutput(name StringInput) IDOutput {
 	return s.GetStringOutput(name).ApplyT(func(out string) ID {
 		return ID(out)
 	}).(IDOutput)
+}
+
+// GetFloat64Output returns a stack output keyed by the given name as an Float64Output
+func (s *StackReference) GetFloat64Output(name StringInput) Float64Output {
+	return s.GetOutput(name).ApplyT(func(out interface{}) (float64, error) {
+		if numf, ok := out.(float64); ok {
+			return numf, nil
+		}
+		return 0.0, fmt.Errorf("failed to convert %T to float64", out)
+	}).(Float64Output)
+}
+
+// GetIntOutput returns a stack output keyed by the given name as an IntOutput
+func (s *StackReference) GetIntOutput(name StringInput) IntOutput {
+	return s.GetOutput(name).ApplyT(func(out interface{}) (int, error) {
+		numf, ok := out.(float64)
+		if !ok {
+			return 0, fmt.Errorf("failed to convert %T to int", out)
+		}
+		return int(numf), nil
+	}).(IntOutput)
 }
 
 type stackReferenceArgs struct {

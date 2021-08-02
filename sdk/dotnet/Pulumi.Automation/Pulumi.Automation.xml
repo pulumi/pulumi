@@ -345,6 +345,9 @@
         <member name="P:Pulumi.Automation.LocalWorkspace.Program">
             <inheritdoc/>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspace.Logger">
+            <inheritdoc/>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspace.EnvironmentVariables">
             <inheritdoc/>
         </member>
@@ -632,6 +635,12 @@
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.LocalWorkspaceOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for inline programs. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.LocalWorkspaceOptions.Program"/> is also provided.
+            </summary>
+        </member>
         <member name="P:Pulumi.Automation.LocalWorkspaceOptions.EnvironmentVariables">
             <summary>
             Environment values scoped to the current workspace. These will be supplied to every
@@ -659,6 +668,12 @@
         <member name="T:Pulumi.Automation.PreviewOptions">
             <summary>
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.PreviewAsync(Pulumi.Automation.PreviewOptions,System.Threading.CancellationToken)"/> operation.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PreviewOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.PreviewOptions.Program"/> is also provided.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.ProjectBackend">
@@ -724,6 +739,12 @@
             A Pulumi program as an inline function (in process).
             </summary>
         </member>
+        <member name="M:Pulumi.Automation.PulumiFn.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <summary>
+            Invoke the appropriate run function on the <see cref="T:Pulumi.IRunner"/> instance. The exit code returned
+            from the appropriate run function should be forwarded here as well.
+            </summary>
+        </member>
         <member name="M:Pulumi.Automation.PulumiFn.Create(System.Func{System.Threading.CancellationToken,System.Threading.Tasks.Task{System.Collections.Generic.IDictionary{System.String,System.Object}}})">
             <summary>
             Creates an asynchronous inline (in process) pulumi program.
@@ -787,6 +808,15 @@
             </summary>
             <param name="serviceProvider">The service provider that will be used to resolve an instance of type <paramref name="stackType"/>.</param>
             <param name="stackType">The stack type, which must derive from <see cref="T:Pulumi.Stack"/>.</param>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnInline.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFnServiceProvider.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
+        </member>
+        <member name="M:Pulumi.Automation.PulumiFn`1.InvokeAsync(Pulumi.IRunner,System.Threading.CancellationToken)">
+            <inheritdoc/>
         </member>
         <member name="T:Pulumi.Automation.RefreshOptions">
             <summary>
@@ -862,6 +892,12 @@
             Options controlling the behavior of an <see cref="M:Pulumi.Automation.WorkspaceStack.UpAsync(Pulumi.Automation.UpOptions,System.Threading.CancellationToken)"/> operation.
             </summary>
         </member>
+        <member name="P:Pulumi.Automation.UpOptions.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.UpOptions.Program"/> is also provided.
+            </summary>
+        </member>
         <member name="T:Pulumi.Automation.Workspace">
             <summary>
             Workspace is the execution context containing a single Pulumi project, a program, and multiple stacks.
@@ -899,6 +935,12 @@
             The inline program <see cref="T:Pulumi.Automation.PulumiFn"/> to be used for Preview/Update operations if any.
             <para/>
             If none is specified, the stack will refer to <see cref="T:Pulumi.Automation.ProjectSettings"/> for this information.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.Workspace.Logger">
+            <summary>
+            A custom logger instance that will be used for the action. Note that it will only be used
+            if <see cref="P:Pulumi.Automation.Workspace.Program"/> is also provided.
             </summary>
         </member>
         <member name="P:Pulumi.Automation.Workspace.EnvironmentVariables">

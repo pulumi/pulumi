@@ -7,6 +7,7 @@ import (
 	"context"
 	"reflect"
 
+	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi-aws/sdk/v3/go/aws/ec2"
 	"github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes"
 	metav1 "github.com/pulumi/pulumi-kubernetes/sdk/v2/go/kubernetes/meta/v1"
@@ -26,9 +27,18 @@ type Component struct {
 func NewComponent(ctx *pulumi.Context,
 	name string, args *ComponentArgs, opts ...pulumi.ResourceOption) (*Component, error) {
 	if args == nil {
-		args = &ComponentArgs{}
+		return nil, errors.New("missing one or more required arguments")
 	}
 
+	if args.RequiredMetadata == nil {
+		return nil, errors.New("invalid value for required argument 'RequiredMetadata'")
+	}
+	if args.RequiredMetadataArray == nil {
+		return nil, errors.New("invalid value for required argument 'RequiredMetadataArray'")
+	}
+	if args.RequiredMetadataMap == nil {
+		return nil, errors.New("invalid value for required argument 'RequiredMetadataMap'")
+	}
 	var resource Component
 	err := ctx.RegisterResource("example::Component", name, args, &resource, opts...)
 	if err != nil {
@@ -51,15 +61,9 @@ func GetComponent(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Component resources.
 type componentState struct {
-	Provider       *kubernetes.Provider               `pulumi:"provider"`
-	SecurityGroup  *ec2.SecurityGroup                 `pulumi:"securityGroup"`
-	StorageClasses map[string]*storagev1.StorageClass `pulumi:"storageClasses"`
 }
 
 type ComponentState struct {
-	Provider       kubernetes.ProviderInput
-	SecurityGroup  ec2.SecurityGroupInput
-	StorageClasses storagev1.StorageClassMapInput
 }
 
 func (ComponentState) ElementType() reflect.Type {
@@ -67,12 +71,22 @@ func (ComponentState) ElementType() reflect.Type {
 }
 
 type componentArgs struct {
-	Metadata *metav1.ObjectMeta `pulumi:"metadata"`
+	Metadata              *metav1.ObjectMeta           `pulumi:"metadata"`
+	MetadataArray         []metav1.ObjectMeta          `pulumi:"metadataArray"`
+	MetadataMap           map[string]metav1.ObjectMeta `pulumi:"metadataMap"`
+	RequiredMetadata      metav1.ObjectMeta            `pulumi:"requiredMetadata"`
+	RequiredMetadataArray []metav1.ObjectMeta          `pulumi:"requiredMetadataArray"`
+	RequiredMetadataMap   map[string]metav1.ObjectMeta `pulumi:"requiredMetadataMap"`
 }
 
 // The set of arguments for constructing a Component resource.
 type ComponentArgs struct {
-	Metadata metav1.ObjectMetaPtrInput
+	Metadata              metav1.ObjectMetaPtrInput
+	MetadataArray         metav1.ObjectMetaArrayInput
+	MetadataMap           metav1.ObjectMetaMapInput
+	RequiredMetadata      metav1.ObjectMetaInput
+	RequiredMetadataArray metav1.ObjectMetaArrayInput
+	RequiredMetadataMap   metav1.ObjectMetaMapInput
 }
 
 func (ComponentArgs) ElementType() reflect.Type {
@@ -141,7 +155,7 @@ type ComponentArrayInput interface {
 type ComponentArray []ComponentInput
 
 func (ComponentArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Component)(nil))
+	return reflect.TypeOf((*[]*Component)(nil)).Elem()
 }
 
 func (i ComponentArray) ToComponentArrayOutput() ComponentArrayOutput {
@@ -166,7 +180,7 @@ type ComponentMapInput interface {
 type ComponentMap map[string]ComponentInput
 
 func (ComponentMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Component)(nil))
+	return reflect.TypeOf((*map[string]*Component)(nil)).Elem()
 }
 
 func (i ComponentMap) ToComponentMapOutput() ComponentMapOutput {

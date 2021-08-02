@@ -1,6 +1,8 @@
 package hcl2
 
 import (
+	"strings"
+
 	"github.com/hashicorp/hcl/v2"
 	"github.com/hashicorp/hcl/v2/hclsyntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -9,7 +11,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/zclconf/go-cty/cty"
 	"github.com/zclconf/go-cty/cty/convert"
-	"strings"
 )
 
 func sameSchemaTypes(xt, yt model.Type) bool {
@@ -157,6 +158,7 @@ func resolveDiscriminatedUnions(obj *model.ObjectConsExpression, modelType model
 	if !ok {
 		return nil
 	}
+	schType = codegen.UnwrapType(schType)
 	union, ok := schType.(*schema.UnionType)
 	if !ok || union.Discriminator == "" {
 		return nil
@@ -261,7 +263,7 @@ func extractStringValue(arg model.Expression) (string, bool) {
 		return "", false
 	}
 	lit, ok := template.Parts[0].(*model.LiteralValueExpression)
-	if !ok || lit.Type() != model.StringType {
+	if !ok || model.StringType.ConversionFrom(lit.Type()) == model.NoConversion {
 		return "", false
 	}
 	return lit.Value.AsString(), true

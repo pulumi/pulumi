@@ -4,9 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Reflection;
 using System.Threading.Tasks;
-using Serilog;
 using Pulumi.Testing;
 
 namespace Pulumi
@@ -14,7 +12,7 @@ namespace Pulumi
     public partial class Deployment
     {
         /// <summary>
-        /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
+        /// <see cref="RunAsync(Func{Task{IDictionary{string,object}}}, StackOptions)"/> for more details.
         /// </summary>
         /// <param name="action">Callback that creates stack resources.</param>
         public static Task<int> RunAsync(Action action)
@@ -31,7 +29,7 @@ namespace Pulumi
         /// <returns>A dictionary of stack outputs.</returns>
         public static Task<int> RunAsync(Func<IDictionary<string, object?>> func)
             => RunAsync(() => Task.FromResult(func()));
-        
+
         /// <summary>
         /// <see cref="RunAsync(Func{Task{IDictionary{string, object}}}, StackOptions)"/> for more details.
         /// </summary>
@@ -39,7 +37,7 @@ namespace Pulumi
         public static Task<int> RunAsync(Func<Task> func)
             => RunAsync(async () =>
             {
-                await func();
+                await func().ConfigureAwait(false);
                 return ImmutableDictionary<string, object?>.Empty;
             });
 
@@ -170,33 +168,48 @@ namespace Pulumi
 
         private static async Task<ImmutableArray<Resource>> TestAsync(IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
         {
+            var result = await TryTestAsync(mocks, runAsync, options);
+            if (result.Exception != null)
+            {
+                throw result.Exception;
+            }
+            return result.Resources;
+        }
+
+        /// <summary>
+        /// Like `TestAsync`, but instead of throwing the errors
+        /// detected in the engine, returns them in the result tuple.
+        /// This enables tests to observe partially constructed
+        /// `Resources` vector in presence of deliberate errors.
+        /// </summary>
+        internal static async Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync(
+            IMocks mocks, Func<IRunner, Task<int>> runAsync, TestOptions? options = null)
+        {
             var engine = new MockEngine();
             var monitor = new MockMonitor(mocks);
             await CreateRunnerAndRunAsync(() => new Deployment(engine, monitor, options), runAsync).ConfigureAwait(false);
-            return engine.Errors.Count switch
+            Exception? err = engine.Errors.Count switch
             {
-                1 => throw new RunException(engine.Errors.Single()),
-                int v when v > 1 => throw new AggregateException(engine.Errors.Select(e => new RunException(e))),
-                _ => monitor.Resources.ToImmutableArray()
+                1 => new RunException(engine.Errors.Single()),
+                var v when v > 1 => new AggregateException(engine.Errors.Select(e => new RunException(e))),
+                _ => null
             };
+            return (Resources: monitor.Resources.ToImmutableArray(), Exception: err);
         }
+
+        internal static Task<(ImmutableArray<Resource> Resources, Exception? Exception)> TryTestAsync<TStack>(
+            IMocks mocks, TestOptions? options = null)
+            where TStack : Stack, new()
+            => TryTestAsync(mocks, runner => runner.RunAsync<TStack>(), options);
 
         // this method *must* remain marked async
         // in order to protect the scope of the AsyncLocal Deployment.Instance we cannot elide the task (return it early)
         // if the task is returned early and not awaited, than it is possible for any code that runs before the eventual await
-        // to be executed synchronously and thus have multiple calls to one of the Run methods affecting eachothers Deployment.Instance
+        // to be executed synchronously and thus have multiple calls to one of the Run methods affecting each others Deployment.Instance
         internal static async Task<int> CreateRunnerAndRunAsync(
             Func<Deployment> deploymentFactory,
             Func<IRunner, Task<int>> runAsync)
         {
-            var enableVerboseLogging = Environment.GetEnvironmentVariable("PULUMI_DOTNET_LOG_VERBOSE");
-            if (enableVerboseLogging != null && enableVerboseLogging != "")
-            {
-                Serilog.Log.Logger = new Serilog.LoggerConfiguration().MinimumLevel.Debug().WriteTo.Console().CreateLogger();
-            }
-
-            Serilog.Log.Debug("Deployment.Run called.");
-            Serilog.Log.Debug("Creating new Deployment.");
             var deployment = deploymentFactory();
             Instance = new DeploymentInstance(deployment);
             return await runAsync(deployment._runner).ConfigureAwait(false);

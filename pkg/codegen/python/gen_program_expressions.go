@@ -185,6 +185,7 @@ var functionImports = map[string]string{
 	"fileArchive": "pulumi",
 	"fileAsset":   "pulumi",
 	"readDir":     "os",
+	"toBase64":    "base64",
 	"toJSON":      "json",
 }
 
@@ -225,6 +226,11 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 		name := fmt.Sprintf("%s%s.%s", pkg, module, PyName(fn))
 
+		if len(expr.Args) == 1 {
+			g.Fprintf(w, "%s()", name)
+			return
+		}
+
 		optionsBag := ""
 		if len(expr.Args) == 3 {
 			var buf bytes.Buffer
@@ -234,11 +240,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 
 		g.Fgenf(w, "%s(", name)
 
-		casingTable := g.casingTables[pkg]
 		if obj, ok := expr.Args[1].(*model.FunctionCallExpression); ok {
 			if obj, ok := obj.Args[0].(*model.ObjectConsExpression); ok {
-				g.lowerObjectKeys(expr.Args[1], casingTable)
-
 				indenter := func(f func()) { f() }
 				if len(obj.Items) > 1 {
 					indenter = g.Indented
@@ -263,6 +266,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		}
 
 		g.Fgenf(w, "%v)", optionsBag)
+	case "join":
+		g.Fgenf(w, "%.16v.join(%v)", expr.Args[0], expr.Args[1])
 	case "length":
 		g.Fgenf(w, "len(%.v)", expr.Args[0])
 	case "lookup":
@@ -289,6 +294,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.secret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.16v.split(%.v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgenf(w, "base64.b64encode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
 	default:
@@ -342,7 +349,12 @@ func (g *generator) genStringLiteral(w io.Writer, quotes, v string) {
 }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
-	switch expr.Type() {
+	typ := expr.Type()
+	if cns, ok := typ.(*model.ConstType); ok {
+		typ = cns.Type
+	}
+
+	switch typ {
 	case model.BoolType:
 		if expr.Value.True() {
 			g.Fgen(w, "True")
@@ -461,7 +473,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 
 	prefix, escapeBraces := "", false
 	for _, part := range expr.Parts {
-		if lit, ok := part.(*model.LiteralValueExpression); !ok || lit.Type() != model.StringType {
+		if lit, ok := part.(*model.LiteralValueExpression); !ok || !model.StringType.AssignableFrom(lit.Type()) {
 			prefix, escapeBraces = "f", true
 			break
 		}
@@ -472,7 +484,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 
 	g.Fprintf(b, "%s%s", prefix, quotes)
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.genEscapedString(b, lit.Value.AsString(), escapeNewlines, escapeBraces)
 		} else {
 			g.Fgenf(b, "{%.v}", expr)

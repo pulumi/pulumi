@@ -27,7 +27,7 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/model"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/pkg/v3/resource/stack"
@@ -133,6 +133,24 @@ func renderTupleCons(t *testing.T, x *model.TupleConsExpression) resource.Proper
 
 func renderFunctionCall(t *testing.T, x *model.FunctionCallExpression) resource.PropertyValue {
 	switch x.Name {
+	case "fileArchive":
+		if !assert.Len(t, x.Args, 1) {
+			return resource.NewNullProperty()
+		}
+		path, ok := renderExpr(t, x.Args[0]).V.(string)
+		if !assert.True(t, ok) {
+			return resource.NewNullProperty()
+		}
+		return resource.NewStringProperty(path)
+	case "fileAsset":
+		if !assert.Len(t, x.Args, 1) {
+			return resource.NewNullProperty()
+		}
+		path, ok := renderExpr(t, x.Args[0]).V.(string)
+		if !assert.True(t, ok) {
+			return resource.NewNullProperty()
+		}
+		return resource.NewStringProperty(path)
 	case "secret":
 		if !assert.Len(t, x.Args, 1) {
 			return resource.NewNullProperty()
@@ -211,7 +229,7 @@ func readTestCases(path string) (testCases, error) {
 }
 
 func TestGenerateHCL2Definition(t *testing.T) {
-	loader := schema.NewPluginLoader(test.NewHost(testdataPath))
+	loader := schema.NewPluginLoader(utils.NewHost(testdataPath))
 
 	cases, err := readTestCases("testdata/cases.json")
 	if !assert.NoError(t, err) {
@@ -291,32 +309,28 @@ func TestSimplerType(t *testing.T) {
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.BoolType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.BoolType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.IntType,
 				},
 			},
 		},
 		&schema.ObjectType{
 			Properties: []*schema.Property{
 				{
-					Name:       "foo",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "foo",
+					Type: schema.IntType,
 				},
 				{
-					Name:       "bar",
-					Type:       schema.IntType,
-					IsRequired: true,
+					Name: "bar",
+					Type: schema.IntType,
 				},
 			},
 		},

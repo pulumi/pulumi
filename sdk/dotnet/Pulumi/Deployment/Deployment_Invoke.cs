@@ -19,7 +19,7 @@ namespace Pulumi
         private async Task<T> InvokeAsync<T>(
             string token, InvokeArgs args, InvokeOptions? options, bool convertResult)
         {
-            var result = await InvokeRawAsync(token, args, options);
+            var result = await InvokeRawAsync(token, args, options).ConfigureAwait(false);
             
             if (!convertResult)
             {
@@ -36,6 +36,7 @@ namespace Pulumi
             Log.Debug(label);
 
             // Be resilient to misbehaving callers.
+            // ReSharper disable once ConstantNullCoalescingCondition
             args ??= InvokeArgs.Empty;
 
             // Wait for all values to be available, and then perform the RPC.
@@ -55,7 +56,7 @@ namespace Pulumi
                 Version = options?.Version ?? "",
                 Args = serialized,
                 AcceptResources = !_disableResourceReferences,
-            });
+            }).ConfigureAwait(false);
 
             if (result.Failures.Count > 0)
             {

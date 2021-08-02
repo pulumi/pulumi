@@ -16,13 +16,26 @@ func main() {
 				Name: pulumi.String("argocd-server"),
 			},
 			Spec: &appsv1.DeploymentSpecArgs{
+				Selector: &metav1.LabelSelectorArgs{
+					MatchLabels: pulumi.StringMap{
+						"app": pulumi.String("server"),
+					},
+				},
+				Replicas: pulumi.Int(1),
 				Template: &corev1.PodTemplateSpecArgs{
+					Metadata: &metav1.ObjectMetaArgs{
+						Labels: pulumi.StringMap{
+							"app": pulumi.String("server"),
+						},
+					},
 					Spec: &corev1.PodSpecArgs{
 						Containers: corev1.ContainerArray{
 							&corev1.ContainerArgs{
+								Name:  pulumi.String("nginx"),
+								Image: pulumi.String("nginx"),
 								ReadinessProbe: &corev1.ProbeArgs{
 									HttpGet: &corev1.HTTPGetActionArgs{
-										Port: pulumi.Int(8080),
+										Port: pulumi.Any(8080),
 									},
 								},
 							},

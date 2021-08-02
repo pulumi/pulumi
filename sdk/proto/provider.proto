@@ -40,6 +40,9 @@ service ResourceProvider {
     // of responses.
     rpc StreamInvoke(InvokeRequest) returns (stream InvokeResponse) {}
 
+    // Call dynamically executes a method in the provider associated with a component resource.
+    rpc Call(CallRequest) returns (CallResponse) {}
+
     // Check validates that the given property bag is valid for a resource of the given type and returns the inputs
     // that should be passed to successive calls to Diff, Create, or Update for this resource. As a rule, the provider
     // inputs returned by a call to Check should preserve the original representation of the properties as present in
@@ -110,6 +113,38 @@ message InvokeRequest {
 message InvokeResponse {
     google.protobuf.Struct return = 1;  // the returned values, if invoke was successful.
     repeated CheckFailure failures = 2; // the failures if any arguments didn't pass verification.
+}
+
+message CallRequest {
+    // ArgumentDependencies describes the resources that a particular argument depends on.
+    message ArgumentDependencies {
+        repeated string urns = 1; // A list of URNs this argument depends on.
+    }
+
+    string tok = 1;                                        // the function token to invoke.
+    google.protobuf.Struct args = 2;                       // the arguments for the function invocation.
+    map<string, ArgumentDependencies> argDependencies = 3; // a map from argument keys to the dependencies of the argument.
+    string provider = 4;                                   // an optional reference to the provider to use for this invoke.
+    string version = 5;                                    // the version of the provider to use when servicing this request.
+
+    string project = 6;             // the project name.
+    string stack = 7;               // the name of the stack being deployed into.
+    map<string, string> config = 8; // the configuration variables to apply before running.
+    repeated string configSecretKeys = 9; // the configuration keys that have secret values.
+    bool dryRun = 10;                // true if we're only doing a dryrun (preview).
+    int32 parallel = 11;            // the degree of parallelism for resource operations (<=1 for serial).
+    string monitorEndpoint = 12;    // the address for communicating back to the resource monitor.
+}
+
+message CallResponse {
+    // ReturnDependencies describes the resources that a particular return value depends on.
+    message ReturnDependencies {
+        repeated string urns = 1; // A list of URNs this return value depends on.
+    }
+
+    google.protobuf.Struct return = 1;                      // the returned values, if call was successful.
+    map<string, ReturnDependencies> returnDependencies = 2; // a map from return value keys to the dependencies of the return value.
+    repeated CheckFailure failures = 3;                     // the failures if any arguments didn't pass verification.
 }
 
 message CheckRequest {
@@ -269,6 +304,7 @@ message ConstructRequest {
     map<string, string> providers = 13;                       // the map of providers to use for this resource's children.
     repeated string aliases = 14;                             // a list of additional URNs that shoud be considered the same.
     repeated string dependencies = 15;                        // a list of URNs that this resource depends on, as observed by the language host.
+    repeated string configSecretKeys = 16; // the configuration keys that have secret values.
 }
 
 message ConstructResponse {
