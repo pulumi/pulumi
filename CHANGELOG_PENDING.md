@@ -1,5 +1,8 @@
 ### Improvements
 
+- [sdk/nodejs] Prevent Pulumi from overriding tsconfig.json options.
+  [#7068](https://github.com/pulumi/pulumi/pull/7068)
+
 ### Bug Fixes
 
 - [cli] - Properly parse Git remotes with periods or hyphens.
