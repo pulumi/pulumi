@@ -16,7 +16,7 @@
 
 import asyncio
 import copy
-from typing import Optional, List, Any, Mapping, Union, Set, Callable, Tuple, TYPE_CHECKING, cast
+from typing import Optional, List, Any, Mapping, Sequence, Union, Set, Callable, Tuple, TYPE_CHECKING, cast
 from . import _types
 from .metadata import get_project, get_stack
 from .runtime import known_types
@@ -297,7 +297,7 @@ class ResourceOptions:
     resource.
     """
 
-    depends_on: Optional['Input[Union[List[Input[Resource]], Resource]]']
+    depends_on: Optional['Input[Union[Sequence[Input[Resource]], Resource]]']
     """
     If provided, declares that the currently-constructing resource depends on the given resources.
     """
@@ -319,7 +319,7 @@ class ResourceOptions:
     the parent's provider bag (see also ResourceOptions.providers).
     """
 
-    providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]]
+    providers: Optional[Union[Mapping[str, 'ProviderResource'], Sequence['ProviderResource']]]
     """
     An optional set of providers to use for child resources. Keyed by package name (e.g. "aws"), or just
     provided as a list. In the latter case, the package name will be retrieved from the provider itself.
@@ -338,7 +338,7 @@ class ResourceOptions:
     current package and should rarely be used.
     """
 
-    aliases: Optional[List['Input[Union[str, Alias]]']]
+    aliases: Optional[Sequence['Input[Union[str, Alias]]']]
     """
     An optional list of aliases to treat this resource as matching.
     """
@@ -390,14 +390,14 @@ class ResourceOptions:
     # pylint: disable=redefined-builtin
     def __init__(self,
                  parent: Optional['Resource'] = None,
-                 depends_on: Optional['Input[Union[List[Input[Resource]], Resource]]'] = None,
+                 depends_on: Optional['Input[Union[Sequence[Input[Resource]], Resource]]'] = None,
                  protect: Optional[bool] = None,
                  provider: Optional['ProviderResource'] = None,
                  providers: Optional[Union[Mapping[str, 'ProviderResource'], List['ProviderResource']]] = None,
                  delete_before_replace: Optional[bool] = None,
                  ignore_changes: Optional[List[str]] = None,
                  version: Optional[str] = None,
-                 aliases: Optional[List['Input[Union[str, Alias]]']] = None,
+                 aliases: Optional[Sequence['Input[Union[str, Alias]]']] = None,
                  additional_secret_outputs: Optional[List[str]] = None,
                  id: Optional['Input[str]'] = None,
                  import_: Optional[str] = None,
@@ -481,7 +481,7 @@ class ResourceOptions:
         if self.depends_on is None:
             return []
 
-        return _map_input(self.depends_on, lambda x: x if isinstance(x, list) else [cast(Any, x)])
+        return _map_input(self.depends_on, lambda x: list(x) if isinstance(x, Sequence) else [cast(Any, x)])
 
     # pylint: disable=method-hidden
     @staticmethod
@@ -563,7 +563,7 @@ def _expand_providers(options: 'ResourceOptions'):
         options.providers = [options.provider]
 
     # Convert 'providers' map to list form.
-    if options.providers is not None and not isinstance(options.providers, list):
+    if options.providers is not None and isinstance(options.providers, Mapping):
         options.providers = list(options.providers.values())
 
     options.provider = None
@@ -571,7 +571,7 @@ def _expand_providers(options: 'ResourceOptions'):
 
 def _collapse_providers(opts: 'ResourceOptions'):
     # If we have only 0-1 providers, then merge that back down to the .provider field.
-    providers: Optional[Union[Mapping[str, ProviderResource], List[ProviderResource]]] = opts.providers
+    providers: Optional[Union[Mapping[str, ProviderResource], Sequence[ProviderResource]]] = opts.providers
     if providers is not None:
         provider_length = len(providers)
         if provider_length == 0:
@@ -737,7 +737,7 @@ class Resource:
             if opts.aliases is None:
                 opts.aliases = []
 
-            opts.aliases = opts.aliases.copy()
+            opts.aliases = list(opts.aliases)
             for parent_alias in opts.parent._aliases:
                 child_alias = inherited_child_alias(
                     name, opts.parent._name, parent_alias, t)
