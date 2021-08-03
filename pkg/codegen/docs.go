@@ -35,6 +35,10 @@ type DocLanguageHelper interface {
 	// GetResourceFunctionResultName returns the name of the result type when a static resource function is used to lookup
 	// an existing resource.
 	GetResourceFunctionResultName(modName string, f *schema.Function) string
+
+	GetMethodName(m *schema.Method) string
+	GetMethodResultName(r *schema.Resource, m *schema.Method) string
+
 	// GetModuleDocLink returns the display name and the link for a module (including root modules) in a given package.
 	GetModuleDocLink(pkg *schema.Package, modName string) (string, string)
 }

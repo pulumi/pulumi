@@ -103,6 +103,14 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 	return title(tokenToName(f.Token)) + "Result"
 }
 
+func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
+	return PyName(m.Name)
+}
+
+func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
+	return fmt.Sprintf("%s.%sResult", resourceName(r), title(d.GetMethodName(m)))
+}
+
 // GetPropertyName returns the property name specific to Python.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {
 	return PyName(p.Name), nil
