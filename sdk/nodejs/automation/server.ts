@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
+import { threadId } from "worker_threads";
 import { isGrpcError, ResourceError, RunError } from "../errors";
 import * as log from "../log";
 import * as runtime from "../runtime";
@@ -89,6 +90,12 @@ export class LanguageServer<T> implements grpc.UntypedServiceImplementation {
 
             try {
                 await runtime.runInPulumiStack(this.program);
+                // pump the event loop.
+                // sometimes programs that don't capture stack outputs can terminate
+                // before work actually ends up in the rpcKeepAlive queue.
+                // we're forcing an extra turn of the loop before awaiting outstanding async work
+                // to give programs of this category a chance to get work scheduled. 
+                await new Promise(f => setTimeout(f, 200));
                 await runtime.disconnect();
                 process.off("uncaughtException", uncaughtHandler);
                 process.off("unhandledRejection", uncaughtHandler);
