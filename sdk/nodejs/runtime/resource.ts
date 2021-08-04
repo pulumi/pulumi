@@ -420,6 +420,12 @@ export function registerResource(res: Resource, t: string, name: string, custom:
 async function prepareResource(label: string, res: Resource, custom: boolean, remote: boolean,
                                props: Inputs, opts: ResourceOptions): Promise<ResourceResolverOperation> {
 
+    // add an entry to the rpc queue while we prepare the request. 
+    // automation api inline programs that don't have stack exports can exit quickly. If we don't do this,
+    // sometimes they will exit right after `prepareResource` is called as a part of register resource, but before the
+    // .then() that adds to the queue via `runAsyncResourceOp`
+    const done: () => void = rpcKeepAlive();
+
     // Simply initialize the URN property and get prepared to resolve it later on.
     // Note: a resource urn will always get a value, and thus the output property
     // for it can always run .apply calls.
@@ -562,6 +568,9 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
             aliases.push(aliasVal);
         }
     }
+
+    // free the RPC queue
+    done();
 
     return {
         resolveURN: resolveURN,
