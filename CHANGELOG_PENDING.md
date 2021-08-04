@@ -15,3 +15,6 @@
 - [sdk/python] - Use `Sequence[T]` instead of `List[T]` for several `Resource`
   parameters.
   [#7698](https://github.com/pulumi/pulumi/pull/7698)
+
+- [auto/nodejs] - Fix a case where inline programs could exit with outstanding async work.
+  [#7704](https://github.com/pulumi/pulumi/pull/7704)
