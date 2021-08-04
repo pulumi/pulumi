@@ -13,7 +13,6 @@
 // limitations under the License.
 
 import * as grpc from "@grpc/grpc-js";
-import { threadId } from "worker_threads";
 import { isGrpcError, ResourceError, RunError } from "../errors";
 import * as log from "../log";
 import * as runtime from "../runtime";
