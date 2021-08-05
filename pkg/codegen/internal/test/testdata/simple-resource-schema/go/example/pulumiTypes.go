@@ -207,10 +207,11 @@ func (o ObjectOutput) ToObjectPtrOutput() ObjectPtrOutput {
 }
 
 func (o ObjectOutput) ToObjectPtrOutputWithContext(ctx context.Context) ObjectPtrOutput {
-	return o.ApplyT(func(v Object) *Object {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Object) *Object {
 		return &v
 	}).(ObjectPtrOutput)
 }
+
 func (o ObjectOutput) Bar() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v Object) *string { return v.Bar }).(pulumi.StringPtrOutput)
 }
@@ -248,7 +249,13 @@ func (o ObjectPtrOutput) ToObjectPtrOutputWithContext(ctx context.Context) Objec
 }
 
 func (o ObjectPtrOutput) Elem() ObjectOutput {
-	return o.ApplyT(func(v *Object) Object { return *v }).(ObjectOutput)
+	return o.ApplyT(func(v *Object) Object {
+		if v != nil {
+			return *v
+		}
+		var ret Object
+		return ret
+	}).(ObjectOutput)
 }
 
 func (o ObjectPtrOutput) Bar() pulumi.StringPtrOutput {
@@ -391,10 +398,11 @@ func (o ObjectWithNodeOptionalInputsOutput) ToObjectWithNodeOptionalInputsPtrOut
 }
 
 func (o ObjectWithNodeOptionalInputsOutput) ToObjectWithNodeOptionalInputsPtrOutputWithContext(ctx context.Context) ObjectWithNodeOptionalInputsPtrOutput {
-	return o.ApplyT(func(v ObjectWithNodeOptionalInputs) *ObjectWithNodeOptionalInputs {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ObjectWithNodeOptionalInputs) *ObjectWithNodeOptionalInputs {
 		return &v
 	}).(ObjectWithNodeOptionalInputsPtrOutput)
 }
+
 func (o ObjectWithNodeOptionalInputsOutput) Bar() pulumi.IntPtrOutput {
 	return o.ApplyT(func(v ObjectWithNodeOptionalInputs) *int { return v.Bar }).(pulumi.IntPtrOutput)
 }
@@ -418,7 +426,13 @@ func (o ObjectWithNodeOptionalInputsPtrOutput) ToObjectWithNodeOptionalInputsPtr
 }
 
 func (o ObjectWithNodeOptionalInputsPtrOutput) Elem() ObjectWithNodeOptionalInputsOutput {
-	return o.ApplyT(func(v *ObjectWithNodeOptionalInputs) ObjectWithNodeOptionalInputs { return *v }).(ObjectWithNodeOptionalInputsOutput)
+	return o.ApplyT(func(v *ObjectWithNodeOptionalInputs) ObjectWithNodeOptionalInputs {
+		if v != nil {
+			return *v
+		}
+		var ret ObjectWithNodeOptionalInputs
+		return ret
+	}).(ObjectWithNodeOptionalInputsOutput)
 }
 
 func (o ObjectWithNodeOptionalInputsPtrOutput) Bar() pulumi.IntPtrOutput {
@@ -604,10 +618,11 @@ func (o SomeOtherObjectOutput) ToSomeOtherObjectPtrOutput() SomeOtherObjectPtrOu
 }
 
 func (o SomeOtherObjectOutput) ToSomeOtherObjectPtrOutputWithContext(ctx context.Context) SomeOtherObjectPtrOutput {
-	return o.ApplyT(func(v SomeOtherObject) *SomeOtherObject {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v SomeOtherObject) *SomeOtherObject {
 		return &v
 	}).(SomeOtherObjectPtrOutput)
 }
+
 func (o SomeOtherObjectOutput) Baz() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v SomeOtherObject) *string { return v.Baz }).(pulumi.StringPtrOutput)
 }
@@ -627,7 +642,13 @@ func (o SomeOtherObjectPtrOutput) ToSomeOtherObjectPtrOutputWithContext(ctx cont
 }
 
 func (o SomeOtherObjectPtrOutput) Elem() SomeOtherObjectOutput {
-	return o.ApplyT(func(v *SomeOtherObject) SomeOtherObject { return *v }).(SomeOtherObjectOutput)
+	return o.ApplyT(func(v *SomeOtherObject) SomeOtherObject {
+		if v != nil {
+			return *v
+		}
+		var ret SomeOtherObject
+		return ret
+	}).(SomeOtherObjectOutput)
 }
 
 func (o SomeOtherObjectPtrOutput) Baz() pulumi.StringPtrOutput {
@@ -676,7 +697,7 @@ func (i SomeOtherObjectArgsArrayArray) ToSomeOtherObjectArgsArrayArrayOutputWith
 type SomeOtherObjectArgsArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArgsArrayArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArgsArray)(nil)).Elem()
+	return reflect.TypeOf((*[]SomeOtherObjectArgsArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArgsArrayArrayOutput) ToSomeOtherObjectArgsArrayArrayOutput() SomeOtherObjectArgsArrayArrayOutput {
@@ -721,7 +742,7 @@ func (i SomeOtherObjectArgsArrayMap) ToSomeOtherObjectArgsArrayMapOutputWithCont
 type SomeOtherObjectArgsArrayMapOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArgsArrayMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArgsArray)(nil)).Elem()
+	return reflect.TypeOf((*map[string]SomeOtherObjectArgsArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArgsArrayMapOutput) ToSomeOtherObjectArgsArrayMapOutput() SomeOtherObjectArgsArrayMapOutput {
@@ -766,7 +787,7 @@ func (i SomeOtherObjectArrayArray) ToSomeOtherObjectArrayArrayOutputWithContext(
 type SomeOtherObjectArrayArrayOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArrayArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*[]SomeOtherObjectArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArrayArrayOutput) ToSomeOtherObjectArrayArrayOutput() SomeOtherObjectArrayArrayOutput {
@@ -811,7 +832,7 @@ func (i SomeOtherObjectArrayMap) ToSomeOtherObjectArrayMapOutputWithContext(ctx 
 type SomeOtherObjectArrayMapOutput struct{ *pulumi.OutputState }
 
 func (SomeOtherObjectArrayMapOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*SomeOtherObjectArray)(nil)).Elem()
+	return reflect.TypeOf((*map[string]SomeOtherObjectArray)(nil)).Elem()
 }
 
 func (o SomeOtherObjectArrayMapOutput) ToSomeOtherObjectArrayMapOutput() SomeOtherObjectArrayMapOutput {

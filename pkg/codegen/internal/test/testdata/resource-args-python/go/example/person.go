@@ -168,9 +168,7 @@ func (i PersonMap) ToPersonMapOutputWithContext(ctx context.Context) PersonMapOu
 	return pulumi.ToOutputWithContext(ctx, i).(PersonMapOutput)
 }
 
-type PersonOutput struct {
-	*pulumi.OutputState
-}
+type PersonOutput struct{ *pulumi.OutputState }
 
 func (PersonOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Person)(nil))
@@ -189,14 +187,12 @@ func (o PersonOutput) ToPersonPtrOutput() PersonPtrOutput {
 }
 
 func (o PersonOutput) ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput {
-	return o.ApplyT(func(v Person) *Person {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Person) *Person {
 		return &v
 	}).(PersonPtrOutput)
 }
 
-type PersonPtrOutput struct {
-	*pulumi.OutputState
-}
+type PersonPtrOutput struct{ *pulumi.OutputState }
 
 func (PersonPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**Person)(nil))
@@ -208,6 +204,16 @@ func (o PersonPtrOutput) ToPersonPtrOutput() PersonPtrOutput {
 
 func (o PersonPtrOutput) ToPersonPtrOutputWithContext(ctx context.Context) PersonPtrOutput {
 	return o
+}
+
+func (o PersonPtrOutput) Elem() PersonOutput {
+	return o.ApplyT(func(v *Person) Person {
+		if v != nil {
+			return *v
+		}
+		var ret Person
+		return ret
+	}).(PersonOutput)
 }
 
 type PersonArrayOutput struct{ *pulumi.OutputState }

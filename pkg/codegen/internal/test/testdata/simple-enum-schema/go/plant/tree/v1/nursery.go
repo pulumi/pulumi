@@ -94,9 +94,7 @@ func (i *Nursery) ToNurseryOutputWithContext(ctx context.Context) NurseryOutput 
 	return pulumi.ToOutputWithContext(ctx, i).(NurseryOutput)
 }
 
-type NurseryOutput struct {
-	*pulumi.OutputState
-}
+type NurseryOutput struct{ *pulumi.OutputState }
 
 func (NurseryOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Nursery)(nil))

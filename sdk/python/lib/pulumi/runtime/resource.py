@@ -15,7 +15,7 @@ import asyncio
 import os
 import traceback
 
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast, Mapping
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast, Mapping, Sequence
 from google.protobuf import struct_pb2
 import grpc
 
@@ -644,14 +644,14 @@ class RegisterResponse:
 def convert_providers(
         provider: Optional['ProviderResource'],
         providers: Optional[Union[Mapping[str, 'ProviderResource'],
-                                  List['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
+                                  Sequence['ProviderResource']]]) -> Mapping[str, 'ProviderResource']:
     if provider is not None:
         return convert_providers(None, [provider])
 
     if providers is None:
         return {}
 
-    if not isinstance(providers, list):
+    if isinstance(providers, Mapping):
         return providers
 
     result = {}
