@@ -548,9 +548,6 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	}
 	g.genTemps(w, temps)
 	argType := g.argumentTypeName(expr, destType, isInput)
-	if strings.HasSuffix(argType, "Array") {
-		isInput = true
-	}
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
