@@ -599,12 +599,13 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			"Args", "Array", "Map", "Ptr", "Bool", "Int", "String", "Any",
 		}
 		hasSuffix := false
+		isInvokeArg := strings.Contains(typ, ".Lookup") || strings.Contains(typ, ".Get")
 		for _, s := range suffixes {
 			if strings.HasSuffix(typ, s) {
 				hasSuffix = true
 			}
 		}
-		if !hasSuffix {
+		if !hasSuffix && !isInvokeArg {
 			typ += "Args"
 		}
 		return typ
