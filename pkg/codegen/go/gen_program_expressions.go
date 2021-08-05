@@ -77,7 +77,12 @@ func (g *generator) genAnonymousFunctionExpression(
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
 		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
+		argName := g.argumentTypeName(nil, param.Type, isInput)
+		// if we're in an apply, parameters will be prompt
+		if strings.HasSuffix(argName, "Args") && inApply {
+			argName = strings.TrimSuffix(argName, "Args")
+		}
+		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, argName)
 		leadingSep = ", "
 	}
 
@@ -543,6 +548,9 @@ func (g *generator) genTupleConsExpression(w io.Writer, expr *model.TupleConsExp
 	}
 	g.genTemps(w, temps)
 	argType := g.argumentTypeName(expr, destType, isInput)
+	if strings.HasSuffix(argType, "Array") {
+		isInput = true
+	}
 	g.Fgenf(w, "%s{\n", argType)
 	switch len(expr.Expressions) {
 	case 0:
@@ -588,7 +596,21 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 
 	if schemaType, ok := hcl2.GetSchemaForType(destType); ok {
 		pkg := &pkgContext{pkg: &schema.Package{Name: "main"}}
-		return pkg.argsType(schemaType)
+		typ := pkg.argsType(schemaType)
+		// if this is a schema type, it should be appropriately suffixed
+		suffixes := []string{
+			"Args", "Array", "Map", "Ptr", "Bool", "Int", "String", "Any",
+		}
+		hasSuffix := false
+		for _, s := range suffixes {
+			if strings.HasSuffix(typ, s) {
+				hasSuffix = true
+			}
+		}
+		if !hasSuffix {
+			typ += "Args"
+		}
+		return typ
 	}
 
 	switch destType := destType.(type) {
@@ -677,6 +699,9 @@ func (g *generator) argumentTypeName(expr model.Expression, destType model.Type,
 			argTypeName := g.argumentTypeName(nil, elmType, isInput)
 			if strings.HasPrefix(argTypeName, "pulumi.") && argTypeName != "pulumi.Resource" {
 				return fmt.Sprintf("%sArray", argTypeName)
+			}
+			if isInput && strings.HasSuffix(argTypeName, "Args") {
+				return strings.TrimSuffix(argTypeName, "Args") + "Array"
 			}
 			return fmt.Sprintf("[]%s", argTypeName)
 		}
@@ -814,7 +839,9 @@ func (g *generator) genApply(w io.Writer, expr *model.FunctionCallExpression) {
 
 	if len(applyArgs) == 1 {
 		// If we only have a single output, just generate a normal `.Apply`
-		g.Fgenf(w, "%.v.ApplyT(%.v)%s", applyArgs[0], then, typeAssertion)
+		g.Fgenf(w, "%.v.ApplyT(", applyArgs[0])
+		g.genAnonymousFunctionExpression(w, then, nil /* preambleDecls */, true /* inApply */)
+		g.Fgenf(w, ")%s", typeAssertion)
 	} else {
 		g.Fgenf(w, "pulumi.All(%.v", applyArgs[0])
 		applyArgs = applyArgs[1:]
@@ -839,6 +866,8 @@ func (g *generator) rewriteThenForAllApply(
 	var typeConvDecls []string
 	for i, v := range then.Parameters {
 		typ := g.argumentTypeName(nil, v.VariableType, false)
+		// trim args suffix within apply
+		typ = strings.TrimSuffix(typ, "Args")
 		decl := fmt.Sprintf("%s := _args[%d].(%s)", v.Name, i, typ)
 		typeConvDecls = append(typeConvDecls, decl)
 	}

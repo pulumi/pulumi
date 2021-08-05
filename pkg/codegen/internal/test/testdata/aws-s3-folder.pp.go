@@ -46,8 +46,8 @@ func main() {
 		}
 		_, err = s3.NewBucketPolicy(ctx, "bucketPolicy", &s3.BucketPolicyArgs{
 			Bucket: siteBucket.ID(),
-			Policy: siteBucket.ID().ApplyT(func(id string) (pulumi.String, error) {
-				var _zero pulumi.String
+			Policy: siteBucket.ID().ApplyT(func(id string) (string, error) {
+				var _zero string
 				tmpJSON0, err := json.Marshal(map[string]interface{}{
 					"Version": "2012-10-17",
 					"Statement": []map[string]interface{}{

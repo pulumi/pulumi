@@ -317,6 +317,9 @@ func (pkg *pkgContext) argsTypeImpl(t schema.Type) (result string) {
 		return pkg.tokenToEnum(t.Token)
 	case *schema.ArrayType:
 		en := pkg.argsTypeImpl(t.ElementType)
+		if en == "pulumi.Any" {
+			return "pulumi.Array"
+		}
 		return strings.TrimSuffix(en, "Args") + "Array"
 	case *schema.MapType:
 		en := pkg.argsTypeImpl(t.ElementType)
@@ -516,7 +519,14 @@ func (pkg *pkgContext) resolveObjectType(t *schema.ObjectType) string {
 		pkgImportAliases: goInfo.PackageImportAliases,
 		modToPkg:         goInfo.ModuleToPackage,
 	}
-	return extPkgCtx.typeString(t)
+
+	typ := extPkgCtx.typeString(t)
+	// input objects should have Args suffix
+	if t.IsInputShape() && !strings.HasSuffix(typ, "Args") {
+		return typ + "Args"
+	}
+
+	return typ
 }
 
 func (pkg *pkgContext) outputType(t schema.Type) string {
