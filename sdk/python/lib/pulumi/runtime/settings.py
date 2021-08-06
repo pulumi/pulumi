@@ -22,6 +22,7 @@ from typing import Optional, Union, Any, TYPE_CHECKING
 import grpc
 from ..runtime.proto import engine_pb2_grpc, resource_pb2, resource_pb2_grpc
 from ..errors import RunError
+from .. import log
 
 if TYPE_CHECKING:
     from ..resource import Resource
@@ -251,9 +252,11 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Optional[Exception]:
 
 
 def handle_grpc_error(exn: grpc.RpcError):
+    log.debug(f"ENCOUNTERED GRPC ERROR! {exn.details()}")
     exc = grpc_error_to_exception(exn)
     if exc is not None:
         raise exc
+
 
 async def monitor_supports_secrets() -> bool:
     return await monitor_supports_feature("secrets")
