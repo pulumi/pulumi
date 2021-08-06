@@ -31,9 +31,11 @@ import (
 	"strings"
 	"unicode"
 
+	"github.com/hashicorp/hcl/v2"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
@@ -155,11 +157,11 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		}
 	}
 
-	if mod == "" {
-		mod = components[0]
-	}
 	if mod == pkg.mod {
 		return name
+	}
+	if mod == "" {
+		mod = components[0]
 	}
 
 	mod = strings.Replace(mod, "/", "", -1) + "." + name
@@ -405,7 +407,15 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 		typ := "map[string]"
 		return typ + pkg.typeStringImpl(t.ElementType, argsType)
 	case *schema.ObjectType:
-		return pkg.resolveObjectType(t)
+		typ := pkg.resolveObjectType(t)
+		// handle top-level/namespaceless args
+		if argsType && !strings.Contains(typ, ".") {
+			prefix := pkg.getImportPrefix(t.Token, t)
+			if prefix != "" {
+				return prefix + "." + typ
+			}
+		}
+		return typ
 	case *schema.ResourceType:
 		return "*" + pkg.resolveResourceType(t)
 	case *schema.TokenType:
@@ -446,6 +456,30 @@ func (pkg *pkgContext) typeStringImpl(t schema.Type, argsType bool) string {
 	}
 
 	panic(fmt.Errorf("unexpected type %T", t))
+}
+
+func (pkg *pkgContext) getImportPrefix(tok string, typ schema.Type) string {
+	var tokenRange hcl.Range
+	pkgName, module, _, _ := hcl2.DecomposeToken(tok, tokenRange)
+	// namespaceless invokes
+	if module == "" || strings.HasPrefix(module, "/") || strings.HasPrefix(module, "index/") {
+		module = pkgName
+	}
+	info, ok := pkg.pkg.Language["go"].(GoPackageInfo)
+	if !ok {
+		return module
+	}
+
+	if m, ok := info.ModuleToPackage[module]; ok {
+		module = m
+	}
+
+	imp := fmt.Sprintf("%s/%s", info.ImportBasePath, module)
+	if alias, ok := info.PackageImportAliases[imp]; ok {
+		imp = alias
+	}
+
+	return strings.Split(imp, "/")[0]
 }
 
 func (pkg *pkgContext) typeString(t schema.Type) string {
