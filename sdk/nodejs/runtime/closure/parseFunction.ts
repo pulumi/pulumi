@@ -812,9 +812,9 @@ function computeCapturedVariableNames(file: ts.SourceFile): CapturedVariables {
     }
 
     function visitVariableDeclaration(node: ts.VariableDeclaration): void {
-        // tslint:disable-next-line:max-line-length
+        // eslint-disable-next-line max-len
         const isLet = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Let) !== 0;
-        // tslint:disable-next-line:max-line-length
+        // eslint-disable-next-line max-len
         const isConst = node.parent !== undefined && ts.isVariableDeclarationList(node.parent) && (node.parent.flags & ts.NodeFlags.Const) !== 0;
         const isVar = !isLet && !isConst;
 

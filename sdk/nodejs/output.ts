@@ -16,7 +16,7 @@ import { Resource } from "./resource";
 import * as runtime from "./runtime";
 import * as utils from "./utils";
 
-/*tslint:disable:no-shadowed-variable*/
+/* eslint-disable no-shadow, @typescript-eslint/no-shadow */
 
 /**
  * Output helps encode the relationship between Resources in a Pulumi application. Specifically an
@@ -32,7 +32,7 @@ class OutputImpl<T> implements OutputInstance<T> {
      * This is internal instead of being truly private, to support mixins and our serialization model.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiOutput: boolean = true;
 
     /**
@@ -353,7 +353,7 @@ async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown:
     };
 }
 
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 async function applyHelperAsync<T, U>(
         allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
         func: (t: T) => Input<U>, runWithUnknowns: boolean) {
@@ -575,7 +575,7 @@ function createSimpleOutput(val: any) {
  * In this example, taking a dependency on d3 means a resource will depend on all the resources of
  * d1 and d2.
  */
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 export function all<T>(val: Record<string, Input<T>>): Output<Record<string, Unwrap<T>>>;
 export function all<T1, T2, T3, T4, T5, T6, T7, T8>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined, Input<T8> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>, Unwrap<T8>]>;
 export function all<T1, T2, T3, T4, T5, T6, T7>(values: [Input<T1> | undefined, Input<T2> | undefined, Input<T3> | undefined, Input<T4> | undefined, Input<T5> | undefined, Input<T6> | undefined, Input<T7> | undefined]): Output<[Unwrap<T1>, Unwrap<T2>, Unwrap<T3>, Unwrap<T4>, Unwrap<T5>, Unwrap<T6>, Unwrap<T7>]>;
@@ -666,7 +666,7 @@ class Unknown {
      * This is internal instead of being truly private, to support mixins and our serialization model.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiUnknown: boolean = true;
 
     /**
@@ -903,7 +903,7 @@ export interface OutputConstructor {
  * ```
  */
 export type Output<T> = OutputInstance<T> & Lifted<T>;
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 export const Output: OutputConstructor = <any>OutputImpl;
 
 /**

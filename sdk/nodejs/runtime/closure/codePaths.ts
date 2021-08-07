@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 
 import * as fs from "fs";
 import * as normalize from "normalize-package-data";

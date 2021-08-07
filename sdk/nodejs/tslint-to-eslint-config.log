@@ -1,0 +1,16 @@
+5 ESLint rules behave differently from their TSLint counterparts:
+  * no-console:
+    - Custom console methods, if they exist, will no longer be allowed.
+  * @typescript-eslint/no-unused-expressions:
+    - The TSLint optional config "allow-new" is the default ESLint behavior and will no longer be ignored.
+  * brace-style:
+    - ESLint's brace-style will check all tokens.
+  * eqeqeq:
+    - Option "smart" allows for comparing two literal values, evaluating the value of typeof and null comparisons.
+  * no-underscore-dangle:
+    - Leading and trailing underscores (_) on identifiers will now be ignored.
+
+2 rules are not known by tslint-to-eslint-config to have ESLint equivalents:
+  * tslint-to-eslint-config does not know the ESLint equivalent for TSLint's "file-header".
+  * tslint-to-eslint-config does not know the ESLint equivalent for TSLint's "whitespace".
+

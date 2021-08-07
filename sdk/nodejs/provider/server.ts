@@ -264,7 +264,7 @@ class Server implements grpc.UntypedServiceImplementation {
         // in its own context, possibly using Node's `createContext` API to avoid modifying global state:
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
         const res = this.constructCallQueue.then(() => this.constructImpl(call, callback));
-        // tslint:disable:no-empty
+        /* eslint-disable no-empty,no-empty-function,@typescript-eslint/no-empty-function */
         this.constructCallQueue = res.catch(() => {});
         return res;
     }
@@ -355,7 +355,7 @@ class Server implements grpc.UntypedServiceImplementation {
         // in its own context, possibly using Node's `createContext` API to avoid modifying global state:
         // https://nodejs.org/api/vm.html#vm_vm_createcontext_contextobject_options
         const res = this.constructCallQueue.then(() => this.callImpl(call, callback));
-        // tslint:disable:no-empty
+        /* eslint-disable no-empty, no-empty-function, @typescript-eslint/no-empty-function */
         this.constructCallQueue = res.catch(() => {});
         return res;
     }

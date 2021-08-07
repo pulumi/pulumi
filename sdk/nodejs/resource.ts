@@ -76,14 +76,14 @@ export abstract class Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiResource: boolean = true;
 
     /**
      * The optional parent of this resource.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __parentResource: Resource | undefined;
 
     /**
@@ -125,7 +125,7 @@ export abstract class Resource {
      *
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public __childResources: Set<Resource> | undefined;
 
     /**
@@ -138,7 +138,7 @@ export abstract class Resource {
      * When set to true, protect ensures this resource cannot be deleted.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private readonly __protect: boolean;
 
     /**
@@ -149,7 +149,7 @@ export abstract class Resource {
      * cases where they are passed "old" resources.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     __transformations?: ResourceTransformation[];
 
     /**
@@ -160,7 +160,7 @@ export abstract class Resource {
      * cases where they are passed "old" resources.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __aliases?: Input<URN>[];
 
     /**
@@ -171,14 +171,14 @@ export abstract class Resource {
      * cases where they are passed "old" resources.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private readonly __name?: string;
 
     /**
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private readonly __providers: Record<string, ProviderResource>;
 
     /**
@@ -187,14 +187,14 @@ export abstract class Resource {
      */
     // Note: This is deliberately not named `__provider` as that conflicts with the property
     // used by the `dynamic.Resource` class.
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __prov?: ProviderResource;
 
     /**
      * The specified provider version.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __version?: string;
 
     public static isInstance(obj: any): obj is Resource {
@@ -684,7 +684,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiCustomResource: boolean;
 
     /**
@@ -692,7 +692,7 @@ export abstract class CustomResource extends Resource {
      * classes that inherit from `CustomResource`.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiType: string;
 
     /**
@@ -745,7 +745,7 @@ export abstract class ProviderResource extends CustomResource {
     private readonly pkg: string;
 
     /** @internal */
-    // tslint:disable-next-line: variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public __registrationId?: string;
 
     public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
@@ -792,19 +792,19 @@ export class ComponentResource<TData = any> extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiComponentResource = true;
 
     /** @internal */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __data: Promise<TData>;
 
     /** @internal */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private __registered = false;
 
     /** @internal */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __remote: boolean;
 
     /**

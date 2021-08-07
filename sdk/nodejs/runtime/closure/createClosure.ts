@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 
 import * as upath from "upath";
 import { ResourceError } from "../../errors";
@@ -339,7 +339,7 @@ export async function createClosureInfoAsync(
         // see http://www.ecma-international.org/ecma-262/6.0/#sec-generatorfunction-objects and
         // http://www.ecma-international.org/ecma-262/6.0/figure-2.png
         async function addGeneratorEntriesAsync() {
-            // tslint:disable-next-line:no-empty
+            // eslint-disable-next-line no-empty,no-empty-function,@typescript-eslint/no-empty-function
             const emptyGenerator = function* (): any { };
 
             await addEntriesAsync(

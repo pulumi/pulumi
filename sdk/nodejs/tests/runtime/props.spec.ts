@@ -74,7 +74,7 @@ class TestMocks implements runtime.Mocks {
     }
 }
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestStrEnum = {
     Foo: "foo",
     Bar: "bar",
@@ -82,7 +82,7 @@ const TestStrEnum = {
 
 type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestIntEnum = {
     One: 1,
     Zero: 0,
@@ -90,7 +90,7 @@ const TestIntEnum = {
 
 type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestNumEnum = {
     One: 1.0,
     ZeroPointOne: 0.1,
@@ -98,7 +98,7 @@ const TestNumEnum = {
 
 type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestBoolEnum = {
     One: true,
     Zero: false,
