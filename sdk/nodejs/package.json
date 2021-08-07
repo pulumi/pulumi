@@ -41,8 +41,7 @@
         "eslint-plugin-header": "^3.1.1",
         "eslint-plugin-import": "^2.23.4",
         "istanbul": "^0.4.5",
-        "mocha": "^3.5.0",
-        "tslint": "^5.11.0"
+        "mocha": "^3.5.0"
     },
     "pulumi": {
         "comment": "Do not remove. Marks this as as a deployment-time-only package"
