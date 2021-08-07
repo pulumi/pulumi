@@ -101,7 +101,7 @@ export interface Entry {
     json?: any;
 
     // An RegExp. Will be serialized as 'new RegExp(re.source, re.flags)'
-    regexp?: { source: string, flags: string };
+    regexp?: { source: string; flags: string };
 
     // a closure we are dependent on.
     function?: FunctionInfo;
@@ -181,7 +181,7 @@ interface ContextFrame {
     functionLocation?: FunctionLocation;
     capturedFunctionName?: string;
     capturedVariableName?: string;
-    capturedModule?: { name: string, value: any };
+    capturedModule?: { name: string; value: any };
 }
 
 interface ClosurePropertyDescriptor {
@@ -195,7 +195,7 @@ interface ClosurePropertyDescriptor {
     value?: any;
     writable?: boolean;
     get?: () => any;
-    set?: (v: any)=> void;
+    set?: (v: any) => void;
 }
 
 /*

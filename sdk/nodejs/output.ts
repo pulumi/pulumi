@@ -601,7 +601,8 @@ export function all<T>(val: Input<T>[] | Record<string, Input<T>>): Output<any> 
 function getAwaitableValue(v: any): any {
     if (Output.isInstance(v)) {
         return v.promise(/* withUnknowns */ true);
-    } else {
+    }
+    else {
         return v;
     }
 }
@@ -903,7 +904,7 @@ export interface OutputConstructor {
  * ```
  */
 export type Output<T> = OutputInstance<T> & Lifted<T>;
-// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+// eslint-disable-next-line @typescript-eslint/naming-convention,@typescript-eslint/no-redeclare,no-underscore-dangle,id-blacklist,id-match
 export const Output: OutputConstructor = <any>OutputImpl;
 
 /**

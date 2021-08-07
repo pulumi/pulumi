@@ -26,7 +26,7 @@ pulumi.runtime.setMocks({
                 return {};
         }
     },
-    newResource: (args: MockResourceArgs): {id: string, state: any} => {
+    newResource: (args: MockResourceArgs): {id: string; state: any} => {
         switch (args.type) {
             case "aws:ec2/instance:Instance":
                 assert.strictEqual(args.custom, true);

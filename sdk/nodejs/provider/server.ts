@@ -513,7 +513,7 @@ async function deserializeInputs(inputsStruct: any, inputDependencies: any): Pro
 // rejected the resource, or an initialization error, where the API server has accepted the
 // resource, but it failed to initialize (e.g., the app code is continually crashing and the
 // resource has failed to become alive).
-function grpcResponseFromError(e: {id: string, properties: any, message: string, reasons?: string[]}) {
+function grpcResponseFromError(e: {id: string; properties: any; message: string; reasons?: string[]}) {
     // Create response object.
     const resp = new statusproto.Status();
     resp.setCode(grpc.status.UNKNOWN);

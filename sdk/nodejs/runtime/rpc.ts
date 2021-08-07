@@ -232,9 +232,9 @@ export function resolveProperties(
             // present during previews (i.e. isDryRun() will be true).
             resolve(value, /*isKnown*/ true, isSecret, deps[k]);
         }
-        catch (err) {
+        catch (resolveError) {
             throw new Error(
-                `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(err)}`);
+                `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(resolveError)}`);
         }
     }
 

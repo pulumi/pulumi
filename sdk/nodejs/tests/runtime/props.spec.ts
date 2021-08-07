@@ -56,7 +56,7 @@ class TestMocks implements runtime.Mocks {
         throw new Error(`unknown function ${args.token}`);
     }
 
-    newResource(args: runtime.MockResourceArgs): { id: string | undefined, state: Record<string, any> } {
+    newResource(args: runtime.MockResourceArgs): { id: string | undefined; state: Record<string, any> } {
         switch (args.type) {
             case "test:index:component":
                 return {id: undefined, state: {}};
@@ -80,6 +80,7 @@ const TestStrEnum = {
     Bar: "bar",
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
@@ -88,6 +89,7 @@ const TestIntEnum = {
     Zero: 0,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
@@ -96,6 +98,7 @@ const TestNumEnum = {
     ZeroPointOne: 0.1,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
 
 // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
@@ -104,6 +107,7 @@ const TestBoolEnum = {
     Zero: false,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
 
 interface TestInputs {

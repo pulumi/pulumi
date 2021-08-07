@@ -47,15 +47,15 @@ interface RunCase {
     };
     skipRootResourceEndpoints?: boolean;
     showRootResourceRegistration?: boolean;
-    invoke?: (ctx: any, tok: string, args: any, version: string, provider: string) => { failures: any, ret: any };
+    invoke?: (ctx: any, tok: string, args: any, version: string, provider: string) => { failures: any; ret: any };
     readResource?: (ctx: any, t: string, name: string, id: string, par: string, state: any, version: string) => {
-        urn: URN | undefined, props: any | undefined,
+        urn: URN | undefined; props: any | undefined;
     };
     registerResource?: (ctx: any, dryrun: boolean, t: string, name: string, res: any, dependencies?: string[],
                         custom?: boolean, protect?: boolean, parent?: string, provider?: string,
                         propertyDeps?: any, ignoreChanges?: string[], version?: string, importID?: string,
                         replaceOnChanges?: string[]) => {
-        urn: URN | undefined, id: ID | undefined, props: any | undefined,
+        urn: URN | undefined; id: ID | undefined; props: any | undefined;
     };
     registerResourceOutputs?: (ctx: any, dryrun: boolean, urn: URN,
                                t: string, name: string, res: any, outputs: any | undefined) => void;
@@ -1526,7 +1526,7 @@ async function createMockEngineAsync(
     return { server: server, addr: `0.0.0.0:${port}` };
 }
 
-function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess, addr: Promise<string> } {
+function serveLanguageHostProcess(engineAddr: string): { proc: childProcess.ChildProcess; addr: Promise<string> } {
     // A quick note about this:
     //
     // Normally, `pulumi-language-nodejs` launches `./node-modules/@pulumi/pulumi/cmd/run` which is responsible

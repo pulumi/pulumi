@@ -1,4 +1,4 @@
-// tslint:disable:file-header
+/* eslint-disable header/header */
 
 // See README.md for information on what to do if this test fails.
 
