@@ -161,11 +161,11 @@ class OutputImpl<T> implements OutputInstance<T> {
 
     /** @internal */
     public constructor(
-            resources: Set<Resource> | Resource[] | Resource,
-            promise: Promise<T>,
-            isKnown: Promise<boolean>,
-            isSecret: Promise<boolean>,
-            allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined) {
+        resources: Set<Resource> | Resource[] | Resource,
+        promise: Promise<T>,
+        isKnown: Promise<boolean>,
+        isSecret: Promise<boolean>,
+        allResources: Promise<Set<Resource> | Resource[] | Resource> | undefined) {
 
         // Always create a copy so that no one accidentally modifies our Resource list.
         const resourcesCopy = copyResources(resources);
@@ -180,7 +180,7 @@ class OutputImpl<T> implements OutputInstance<T> {
         isKnown = Promise.all([isKnown, promise]).then(([known, val]) => known && !containsUnknowns(val));
 
         const lifted = Promise.all([allResourcesCopy, promise, isKnown, isSecret])
-                              .then(([liftedResources, value, liftedIsKnown, liftedIsSecret]) => liftInnerOutput(liftedResources, value, liftedIsKnown, liftedIsSecret));
+            .then(([liftedResources, value, liftedIsKnown, liftedIsSecret]) => liftInnerOutput(liftedResources, value, liftedIsKnown, liftedIsSecret));
 
         this.resources = () => resourcesCopy;
         this.allResources = () => lifted.then(l => l.allResources);
@@ -299,7 +299,7 @@ To manipulate the value of this Output, use '.apply' instead.`);
         // we're inside the modern `output` code, so it's safe to call `.allResources!` here.
 
         const applied = Promise.all([this.allResources!(), this.promise(/*withUnknowns*/ true), this.isKnown, this.isSecret])
-                               .then(([allResources, value, isKnown, isSecret]) => applyHelperAsync<T, U>(allResources, value, isKnown, isSecret, func, !!runWithUnknowns));
+            .then(([allResources, value, isKnown, isSecret]) => applyHelperAsync<T, U>(allResources, value, isKnown, isSecret, func, !!runWithUnknowns));
 
         const result = new OutputImpl<U>(
             this.resources(),
@@ -320,8 +320,8 @@ export function getAllResources<T>(op: OutputInstance<T>): Promise<Set<Resource>
 
 function copyResources(resources: Set<Resource> | Resource[] | Resource) {
     const copy = Array.isArray(resources) ? new Set(resources) :
-                 resources instanceof Set ? new Set(resources) :
-                 new Set([resources]);
+        resources instanceof Set ? new Set(resources) :
+            new Set([resources]);
     return copy;
 }
 
@@ -355,8 +355,8 @@ async function liftInnerOutput(allResources: Set<Resource>, value: any, isKnown:
 
 /* eslint-disable max-len */
 async function applyHelperAsync<T, U>(
-        allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
-        func: (t: T) => Input<U>, runWithUnknowns: boolean) {
+    allResources: Set<Resource>, value: T, isKnown: boolean, isSecret: boolean,
+    func: (t: T) => Input<U>, runWithUnknowns: boolean) {
     if (runtime.isDryRun()) {
         // During previews only perform the apply if the engine was able to give us an actual value
         // for this Output.
@@ -541,7 +541,7 @@ export function secret<T>(val: Input<T | undefined>): Output<Unwrap<T | undefine
  * [unsecret] behaves the same as [output] except the returned output takes the existing output and unwraps the secret
  */
 export function unsecret<T>(val: Output<T>): Output<T> {
-   return new Output(
+    return new Output(
         val.resources(), val.promise(/*withUnknowns*/ true),
         val.isKnown, Promise.resolve(false), val.allResources!());
 }
@@ -608,7 +608,7 @@ function getAwaitableValue(v: any): any {
 }
 
 async function getPromisedObject<T>(
-        keysAndOutputs: { key: string; value: any }[]): Promise<Record<string, Unwrap<T>>> {
+    keysAndOutputs: { key: string; value: any }[]): Promise<Record<string, Unwrap<T>>> {
     const result: Record<string, Unwrap<T>> = {};
     for (const kvp of keysAndOutputs) {
         result[kvp.key] = await getAwaitableValue(kvp.value);
@@ -761,8 +761,8 @@ export type Unwrap<T> =
     // 2. Otherwise, if we have an output, do the same as a promise and just unwrap the inner type.
     // 3. Otherwise, we have a basic type.  Just unwrap that.
     T extends Promise<infer U1> ? UnwrapSimple<U1> :
-    T extends OutputInstance<infer U2> ? UnwrapSimple<U2> :
-    UnwrapSimple<T>;
+        T extends OutputInstance<infer U2> ? UnwrapSimple<U2> :
+            UnwrapSimple<T>;
 
 type primitive = Function | string | number | boolean | undefined | null;
 
@@ -779,10 +779,10 @@ export type UnwrapSimple<T> =
     //    types have been unwrapped.
     // 4. return 'never' at the end so that if we've missed something we'll discover it.
     T extends primitive ? T :
-    T extends Resource ? T :
-    T extends Array<infer U> ? UnwrappedArray<U> :
-    T extends object ? UnwrappedObject<T> :
-    never;
+        T extends Resource ? T :
+            T extends Array<infer U> ? UnwrappedArray<U> :
+                T extends object ? UnwrappedObject<T> :
+                    never;
 
 export interface UnwrappedArray<T> extends Array<Unwrap<T>> {}
 
@@ -854,11 +854,11 @@ export interface OutputConstructor {
     isInstance<T>(obj: any): obj is Output<T>;
 
     /** @internal */ new<T>(
-            resources: Set<Resource> | Resource[] | Resource,
-            promise: Promise<T>,
-            isKnown: Promise<boolean>,
-            isSecret: Promise<boolean>,
-            allResources: Promise<Set<Resource> | Resource[] | Resource>): Output<T>;
+        resources: Set<Resource> | Resource[] | Resource,
+        promise: Promise<T>,
+        isKnown: Promise<boolean>,
+        isSecret: Promise<boolean>,
+        allResources: Promise<Set<Resource> | Resource[] | Resource>): Output<T>;
 }
 
 /**
@@ -943,13 +943,13 @@ export const Output: OutputConstructor = <any>OutputImpl;
 export type Lifted<T> =
     // Specially handle 'string' since TS doesn't map the 'String.Length' property to it.
     T extends string ? LiftedObject<String, NonFunctionPropertyNames<String>> :
-    T extends Array<infer U> ? LiftedArray<U> :
-    T extends object ? LiftedObject<T, NonFunctionPropertyNames<T>> :
-    // fallback to lifting no properties.  Note that `Lifted` is used in
-    //    Output<T> = OutputInstance<T> & Lifted<T>
-    // so returning an empty object just means that we're adding nothing to Output<T>.
-    // This is needed for cases like `Output<any>`.
-    {};
+        T extends Array<infer U> ? LiftedArray<U> :
+            T extends object ? LiftedObject<T, NonFunctionPropertyNames<T>> :
+            // fallback to lifting no properties.  Note that `Lifted` is used in
+            //    Output<T> = OutputInstance<T> & Lifted<T>
+            // so returning an empty object just means that we're adding nothing to Output<T>.
+            // This is needed for cases like `Output<any>`.
+                {};
 
 // The set of property names in T that are *not* functions.
 type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? never : K }[keyof T];
@@ -958,7 +958,7 @@ type NonFunctionPropertyNames<T> = { [K in keyof T]: T[K] extends Function ? nev
 // If it's require before, keep it required afterwards.
 export type LiftedObject<T, K extends keyof T> = {
     [P in K]: T[P] extends OutputInstance<infer T1> ? Output<T1> :
-              T[P] extends Promise<infer T2> ? Output<T2> : Output<T[P]>
+        T[P] extends Promise<infer T2> ? Output<T2> : Output<T[P]>
 };
 
 export type LiftedArray<T> = {

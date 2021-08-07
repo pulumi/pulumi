@@ -209,7 +209,7 @@ function createInvokeRequest(tok: string, serialized: any, provider: string | un
 
 function getProvider(tok: string, opts: InvokeOptions) {
     return opts.provider ? opts.provider :
-           opts.parent ? opts.parent.getProvider(tok) : undefined;
+        opts.parent ? opts.parent.getProvider(tok) : undefined;
 }
 
 function deserializeResponse(tok: string, resp: any): any {
@@ -329,7 +329,7 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
 }
 
 function createOutput<T>(label: string):
-    [Output<T>, (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void] {
+[Output<T>, (v: T, isKnown: boolean, isSecret: boolean, deps?: Resource[], err?: Error | undefined) => void] {
     let resolveValue: (v: T) => void;
     let rejectValue: (err: Error) => void;
     let resolveIsKnown: (v: boolean) => void;

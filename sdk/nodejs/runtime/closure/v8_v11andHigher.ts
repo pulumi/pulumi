@@ -193,8 +193,8 @@ async function getRuntimeIdForFunctionAsync(func: Function): Promise<inspector.R
 }
 
 async function runtimeGetPropertiesAsync(
-        objectId: inspector.Runtime.RemoteObjectId,
-        ownProperties: boolean | undefined) {
+    objectId: inspector.Runtime.RemoteObjectId,
+    ownProperties: boolean | undefined) {
     const session = <GetPropertiesSession>await v8Hooks.getSessionAsync();
     const post = util.promisify(session.post);
 

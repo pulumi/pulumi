@@ -41,12 +41,12 @@ class TestErrorResource extends CustomResource {
 class TestResourceModule implements runtime.ResourceModule {
     construct(name: string, type: string, urn: string): Resource {
         switch (type) {
-            case "test:index:component":
-                return new TestComponentResource(name, {urn});
-            case "test:index:custom":
-                return new TestCustomResource(name, type, {urn});
-            default:
-                throw new Error(`unknown resource type ${type}`);
+        case "test:index:component":
+            return new TestComponentResource(name, {urn});
+        case "test:index:custom":
+            return new TestCustomResource(name, type, {urn});
+        default:
+            throw new Error(`unknown resource type ${type}`);
         }
     }
 }
@@ -58,18 +58,18 @@ class TestMocks implements runtime.Mocks {
 
     newResource(args: runtime.MockResourceArgs): { id: string | undefined; state: Record<string, any> } {
         switch (args.type) {
-            case "test:index:component":
-                return {id: undefined, state: {}};
-            case "test:index:custom":
-            case "test2:index:custom":
-                return {
-                    id: runtime.isDryRun() ? undefined : "test-id",
-                    state: {},
-                };
-            case "error":
-                throw new Error("this is an intentional error");
-            default:
-                throw new Error(`unknown resource type ${args.type}`);
+        case "test:index:component":
+            return {id: undefined, state: {}};
+        case "test:index:custom":
+        case "test2:index:custom":
+            return {
+                id: runtime.isDryRun() ? undefined : "test-id",
+                state: {},
+            };
+        case "error":
+            throw new Error("this is an intentional error");
+        default:
+            throw new Error(`unknown resource type ${args.type}`);
         }
     }
 }

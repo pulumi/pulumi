@@ -454,10 +454,10 @@ export interface Alias {
 
 // collapseAliasToUrn turns an Alias into a URN given a set of default data
 function collapseAliasToUrn(
-        alias: Input<Alias | string>,
-        defaultName: string,
-        defaultType: string,
-        defaultParent: Resource | undefined): Output<URN> {
+    alias: Input<Alias | string>,
+    defaultName: string,
+    defaultType: string,
+    defaultParent: Resource | undefined): Output<URN> {
 
     return output(alias).apply(a => {
         if (typeof a === "string") {

@@ -469,7 +469,7 @@ function configureRuntime(req: any, engineAddr: string) {
     // NOTE: these are globals! We should ensure that all settings are identical between calls, and eventually
     // refactor so we can avoid the global state.
     runtime.resetOptions(req.getProject(), req.getStack(), req.getParallel(), engineAddr,
-                                req.getMonitorendpoint(), req.getDryrun());
+        req.getMonitorendpoint(), req.getDryrun());
 
     const pulumiConfig: {[key: string]: string} = {};
     const rpcConfig = req.getConfigMap();

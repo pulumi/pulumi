@@ -628,7 +628,7 @@ describe("LocalWorkspace", () => {
 
         // pulumi up
         await assert.rejects(stack.up(), (err: Error) => {
-           return err.stack!.indexOf("Detected multiple versions of '@pulumi/pulumi'") >= 0;
+            return err.stack!.indexOf("Detected multiple versions of '@pulumi/pulumi'") >= 0;
         });
 
         // pulumi destroy
