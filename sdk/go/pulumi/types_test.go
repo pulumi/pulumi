@@ -1226,25 +1226,25 @@ func TestInputOutputWrappersForInterfaces(t *testing.T) {
 	var id = "x"
 	var ex Example = &example{id}
 
-	assert.Equal(t, id, getExampleId(ex))
+	assert.Equal(t, id, getExampleID(ex))
 
 	var exi ExampleInput = ex
-	assert.Equal(t, id, getExampleId(exi))
+	assert.Equal(t, id, getExampleID(exi))
 
 	var exOutput ExampleOutput = ToOutput(ex).(ExampleOutput)
-	assert.Equal(t, id, getExampleId(exOutput))
+	assert.Equal(t, id, getExampleID(exOutput))
 }
 
 type Example interface {
 	ExampleInput
-	Id() string
+	ID() string
 }
 
 var exampleType = reflect.TypeOf((*Example)(nil)).Elem()
 
 type example struct{ id string }
 
-func (e *example) Id() string {
+func (e *example) ID() string {
 	return e.id
 }
 
@@ -1254,12 +1254,12 @@ func (*example) ElementType() reflect.Type {
 	return exampleType
 }
 
-func (in *example) ToExampleOutput() ExampleOutput {
-	return ToOutput(in).(ExampleOutput)
+func (e *example) ToExampleOutput() ExampleOutput {
+	return ToOutput(e).(ExampleOutput)
 }
 
-func (in *example) ToExampleOutputWithContext(ctx context.Context) ExampleOutput {
-	return ToOutputWithContext(ctx, in).(ExampleOutput)
+func (e *example) ToExampleOutputWithContext(ctx context.Context) ExampleOutput {
+	return ToOutputWithContext(ctx, e).(ExampleOutput)
 }
 
 // ExampleInput is an input type that accepts Example and ExampleOutput values.
@@ -1286,10 +1286,10 @@ func (o ExampleOutput) ToExampleOutputWithContext(ctx context.Context) ExampleOu
 	return o
 }
 
-func getExampleId(input ExampleInput) string {
+func getExampleID(input ExampleInput) string {
 	c := make(chan string)
 	input.ToExampleOutput().ApplyT(func(x Example) int {
-		c <- x.Id()
+		c <- x.ID()
 		return 0
 	})
 	return <-c
