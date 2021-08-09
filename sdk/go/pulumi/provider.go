@@ -82,7 +82,7 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	for i, urn := range req.GetAliases() {
 		aliases[i] = Alias{URN: URN(urn)}
 	}
-	var dependencyURNs []URN = make([]URN, len(req.GetDependencies()))
+	dependencyURNs := make([]URN, len(req.GetDependencies()))
 	for i, urn := range req.GetDependencies() {
 		dependencyURNs[i] = URN(urn)
 	}
