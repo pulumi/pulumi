@@ -2,6 +2,11 @@
 
 - [automation] - Add force flag for RemoveStack in workspace
   [#7523](https://github.com/pulumi/pulumi/pull/7523)
+
+- [sdk/go] - Permit declaring explicit resource dependencies via
+  `ResourceInput` values.
+  [#7584](https://github.com/pulumi/pulumi/pull/7584)
+
 ### Bug Fixes
 
 - [cli] - Properly parse Git remotes with periods or hyphens.
