@@ -18,6 +18,7 @@ import (
 	"context"
 	"fmt"
 	"reflect"
+	"sort"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 )
@@ -332,52 +333,39 @@ func DependsOn(o []Resource) ResourceOption {
 	})
 }
 
-// This function is similar to `DependsOn` but accepts a
-// `ResourceInput` slice instead, allowing to pass `ResourceOutput`
-// values.
-func DependsOnInputs(o []ResourceInput) ResourceOption {
+// Declares explicit dependencies on other resources. Similar to
+// `DependsOn`, but also admits resource inputs and outputs:
+//
+//     var r Resource
+//     var ri ResourceInput
+//     var ro ResourceOutput
+//     allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
+//     DependsOnInputs(allDeps)
+func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
 		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) ([]URN, error) {
-			return resolveDependsOnURNs(ctx, o)
-		})
-	})
-}
+			out := o.ToResourceArrayOutput()
 
-// A fully dynamic version of `DependsOn` that accepts `AnyOutput`
-// carrying `[]Resource`, `[]ResourceOutput`, or `[]ResourceInput`
-// values, which are then considered as explicit dependencies.
-func DependsOnOutput(any AnyOutput) ResourceOption {
-	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) ([]URN, error) {
-			v, known, _ /* secret */, _ /* deps */, err := any.await(ctx)
+			value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
 			if err != nil || !known {
 				return nil, err
 			}
 
+			resources, ok := value.([]Resource)
+			if !ok {
+				return nil, fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+					reflect.TypeOf(value))
+			}
+
 			// For some reason, deps returned above are incorrect; instead:
-			toplevelDeps := any.dependencies()
+			toplevelDeps := out.dependencies()
 
-			inputs, err := autocastSliceToResourceInput(v)
+			deps, err := awaitURNs(ctx, append(resources, toplevelDeps...))
 			if err != nil {
 				return nil, err
 			}
 
-			deps, err := resolveDependsOnURNs(ctx, inputs)
-			if err != nil {
-				return nil, err
-			}
-
-			for _, r := range toplevelDeps {
-				extraDep, isKnown, _ /* secret */, err := r.URN().awaitURN(ctx)
-				if err != nil {
-					return nil, err
-				}
-				if isKnown {
-					deps = append(deps, extraDep)
-				}
-			}
-
-			return distinctURNs(deps), nil
+			return deps, nil
 		})
 	})
 }
@@ -498,71 +486,12 @@ func Version(o string) ResourceOrInvokeOption {
 	})
 }
 
-// Converts boxed `Resource`, `ResourceOutput`, or `ResourceInput` to `ResourceInput`.
-func autocastResourceToResourceInput(v interface{}) (ResourceInput, error) {
-	resource, isResource := v.(Resource)
-	if isResource {
-		return NewResourceInput(resource), nil
-	}
-	resourceInput, isResourceInput := v.(ResourceInput)
-	if isResourceInput {
-		return resourceInput, nil
-	}
-	return nil, fmt.Errorf("Expected a Resource, ResourceOutput or a ResourceInput, but got a value of type %v",
-		reflect.TypeOf(v))
-}
-
-// Converts boxed `[]Resource`, `[]ResourceOutput`, `[]ResourceInput` slices to `[]ResourceInput`.
-func autocastSliceToResourceInput(v interface{}) ([]ResourceInput, error) {
-	vType := reflect.TypeOf(v)
-	if vType.Kind() != reflect.Slice {
-		return nil, fmt.Errorf("Expected a slice, but received a value of type %v", vType)
-	}
-	var result []ResourceInput
-	boxedSlice := reflect.ValueOf(v)
-
-	for i := 0; i < boxedSlice.Len(); i++ {
-		value := boxedSlice.Index(i).Interface()
-		input, err := autocastResourceToResourceInput(value)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, input)
-	}
-
-	return result, nil
-}
-
-// Resolves the set of all dependent resources implied by `DependsOn`,
-// either directly listed or implied in the input layer. Returns a
-// deduplicated URN list.
-func resolveDependsOnURNs(ctx context.Context, resourceInputs []ResourceInput) ([]URN, error) {
-
-	resourceOutputToUrnOutput := func(ro ResourceOutput) URNOutput {
-		return ro.ApplyT(func(r interface{}) Output {
-			return r.(Resource).URN()
-		}).ApplyT(func(r interface{}) URN {
-			return r.(URN)
-		}).(URNOutput)
-	}
-
-	var urnOutputs []URNOutput
-
-	for _, inp := range resourceInputs {
-		out := inp.ToResourceOutput()
-
-		// direct dependency on the URN of the Resource the output returns
-		urnOutputs = append(urnOutputs, resourceOutputToUrnOutput(out))
-
-		// indirect dependencies in the output layer
-		for _, dep := range out.getState().dependencies() {
-			urnOutputs = append(urnOutputs, dep.URN())
-		}
-	}
-
+// Awaits all URNs of the given resources and returns their distinct list.
+func awaitURNs(ctx context.Context, resources []Resource) ([]URN, error) {
 	var urns []URN
-	for _, urnOut := range urnOutputs {
-		urn, isKnown, _, err := urnOut.awaitURN(ctx)
+
+	for _, res := range resources {
+		urn, isKnown, _, err := res.URN().awaitURN(ctx)
 		if err != nil {
 			return nil, err
 		}
@@ -574,7 +503,7 @@ func resolveDependsOnURNs(ctx context.Context, resourceInputs []ResourceInput) (
 	return distinctURNs(urns), nil
 }
 
-// Removes duplicates from the list of URNs. May lose the order.
+// Removes duplicates from the list of URNs and returns the unique list in a sorted order.
 func distinctURNs(urns []URN) []URN {
 	unique := make(map[URN]bool)
 	for _, urn := range urns {
@@ -584,5 +513,7 @@ func distinctURNs(urns []URN) []URN {
 	for urn := range unique {
 		out = append(out, urn)
 	}
+
+	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
 	return out
 }

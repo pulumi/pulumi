@@ -1037,11 +1037,96 @@ type ResourceInput interface {
 }
 
 func NewResourceInput(resource Resource) ResourceInput {
+	return NewResourceOutput(resource)
+}
+
+func NewResourceOutput(resource Resource) ResourceOutput {
 	return Int(0).ToIntOutput().ApplyT(func(int) Resource { return resource }).(ResourceOutput)
 }
 
 var _ ResourceInput = &ResourceOutput{}
 
+var resourceArrayType = reflect.TypeOf((*[]Resource)(nil)).Elem()
+
+// ResourceArrayInput is an input type that accepts ResourceArray and ResourceArrayOutput values.
+type ResourceArrayInput interface {
+	Input
+
+	ToResourceArrayOutput() ResourceArrayOutput
+	ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput
+}
+
+// ResourceArray is an input type for []ResourceInput values.
+type ResourceArray []ResourceInput
+
+// ElementType returns the element type of this Input ([]Resource).
+func (ResourceArray) ElementType() reflect.Type {
+	return resourceArrayType
+}
+
+func (in ResourceArray) ToResourceArrayOutput() ResourceArrayOutput {
+	return ToOutput(in).(ResourceArrayOutput)
+}
+
+func (in ResourceArray) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
+	return ToOutputWithContext(ctx, in).(ResourceArrayOutput)
+}
+
+// ResourceArrayOutput is an Output that returns []Resource values.
+type ResourceArrayOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output ([]Resource).
+func (ResourceArrayOutput) ElementType() reflect.Type {
+	return resourceArrayType
+}
+
+func (o ResourceArrayOutput) ToResourceArrayOutput() ResourceArrayOutput {
+	return o
+}
+
+func (o ResourceArrayOutput) ToResourceArrayOutputWithContext(ctx context.Context) ResourceArrayOutput {
+	return o
+}
+
+// Index looks up the i'th element of the array if it is in bounds or returns the zero value of the appropriate
+// type if the index is out of bounds.
+func (o ResourceArrayOutput) Index(i IntInput) ResourceOutput {
+	return All(o, i).ApplyT(func(vs []interface{}) Resource {
+		arr := vs[0].([]Resource)
+		idx := vs[1].(int)
+		var ret Resource
+		if idx >= 0 && idx < len(arr) {
+			ret = arr[idx]
+		}
+		return ret
+	}).(ResourceOutput)
+}
+
+func ToResourceArray(in []Resource) ResourceArray {
+	return NewResourceArray(in...)
+}
+
+func NewResourceArray(in ...Resource) ResourceArray {
+	a := make(ResourceArray, len(in))
+	for i, v := range in {
+		a[i] = NewResourceInput(v)
+	}
+	return a
+}
+
+func ToResourceArrayOutput(in []ResourceOutput) ResourceArrayOutput {
+	return NewResourceArrayOutput(in...)
+}
+
+func NewResourceArrayOutput(in ...ResourceOutput) ResourceArrayOutput {
+	a := make(ResourceArray, len(in))
+	for i, v := range in {
+		a[i] = v
+	}
+	return a.ToResourceArrayOutput()
+}
+
 func init() {
 	RegisterOutputType(ResourceOutput{})
+	RegisterOutputType(ResourceArrayOutput{})
 }

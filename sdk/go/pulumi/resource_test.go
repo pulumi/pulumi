@@ -152,7 +152,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 			allDeps = append(allDeps, deps...)
 
 		}
-		return allDeps
+		return distinctURNs(allDeps)
 	}
 
 	// two singleton options
@@ -169,7 +169,7 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 
 	// multivalue arrays
 	opts = merge(DependsOn([]Resource{d1, d2}), DependsOn([]Resource{d2, d3}))
-	assert.Equal(t, []URN{d1Urn, d2Urn, d2Urn, d3Urn}, resolveDependsOn(opts))
+	assert.Equal(t, []URN{d1Urn, d2Urn, d3Urn}, resolveDependsOn(opts))
 }
 
 func TestResourceOptionMergingProtect(t *testing.T) {
@@ -378,15 +378,23 @@ func TestDependsOnInputs(t *testing.T) {
 			output := outputDependingOnResource(dep1, true).
 				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
 
-			res := newTestRes(t, ctx, "res", DependsOnInputs([]ResourceInput{output}))
+			opts := DependsOnInputs(NewResourceArrayOutput(output))
+
+			res := newTestRes(t, ctx, "res", opts)
 			assertHasDeps(t, ctx, depTracker, res, dep1, dep2)
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
 		assert.NoError(t, err)
 	})
-	t.Run("unknown", func(t *testing.T) {
+
+	t.Run("dynamic", func(t *testing.T) {
 		err := RunErr(func(ctx *Context) error {
 			depTracker := trackDependencies(ctx)
+
+			checkDeps := func(name string, dependsOn ResourceArrayInput, expectedDeps ...Resource) {
+				res := newTestRes(t, ctx, name, DependsOnInputs(dependsOn))
+				assertHasDeps(t, ctx, depTracker, res, expectedDeps...)
+			}
 
 			dep1 := newTestRes(t, ctx, "dep1")
 			dep2 := newTestRes(t, ctx, "dep2")
@@ -395,51 +403,19 @@ func TestDependsOnInputs(t *testing.T) {
 			out := outputDependingOnResource(dep1, true).
 				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
 
-			out2 := outputDependingOnResource(dep3, false).
-				ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
+			checkDeps("r1", NewResourceArray(dep1, dep2), dep1, dep2)
+			checkDeps("r2", NewResourceArrayOutput(out), dep1, dep2)
+			checkDeps("r3", NewResourceArrayOutput(out, NewResourceOutput(dep3)), dep1, dep2, dep3)
 
-			res := newTestRes(t, ctx, "res", DependsOnInputs([]ResourceInput{out, out2}))
-			assertHasDeps(t, ctx, depTracker, res, dep1, dep2, dep3)
+			dep4 := newTestRes(t, ctx, "dep4")
+			out4 := outputDependingOnResource(dep4, true).
+				ApplyT(func(int) []Resource { return []Resource{dep1, dep2} }).(ResourceArrayInput)
+			checkDeps("r4", out4, dep1, dep2, dep4)
+
 			return nil
 		}, WithMocks("project", "stack", &testMonitor{}))
 		assert.NoError(t, err)
 	})
-}
-
-func TestDependsOnOutput(t *testing.T) {
-	err := RunErr(func(ctx *Context) error {
-		depTracker := trackDependencies(ctx)
-
-		anyOut := func(value interface{}) AnyOutput {
-			out, resolve, _ := ctx.NewOutput()
-			resolve(value)
-			return out.(AnyOutput)
-		}
-
-		checkDeps := func(name string, dependsOn AnyOutput, expectedDeps ...Resource) {
-			res := newTestRes(t, ctx, name, DependsOnOutput(dependsOn))
-			assertHasDeps(t, ctx, depTracker, res, expectedDeps...)
-		}
-
-		dep1 := newTestRes(t, ctx, "dep1")
-		dep2 := newTestRes(t, ctx, "dep2")
-		dep3 := newTestRes(t, ctx, "dep3")
-
-		out := outputDependingOnResource(dep1, true).
-			ApplyT(func(int) Resource { return dep2 }).(ResourceOutput)
-
-		checkDeps("r1", anyOut([]Resource{dep1, dep2}), dep1, dep2)
-		checkDeps("r2", anyOut([]ResourceInput{out}), dep1, dep2)
-		checkDeps("r3", anyOut([]interface{}{out, dep3}), dep1, dep2, dep3)
-
-		dep4 := newTestRes(t, ctx, "dep4")
-		out4 := outputDependingOnResource(dep4, true).
-			ApplyT(func(int) AnyOutput { return anyOut([]Resource{dep1, dep2}) }).(AnyOutput)
-		checkDeps("r4", out4, dep1, dep2, dep4)
-
-		return nil
-	}, WithMocks("project", "stack", &testMonitor{}))
-	assert.NoError(t, err)
 }
 
 func assertHasDeps(
