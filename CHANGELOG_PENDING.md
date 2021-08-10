@@ -1,7 +1,7 @@
 ### Improvements
 
 - [cli] - Fix the preview experience for unconfigured providers. Rather than returning the
-  inputs of a resource as its outputs, the engine will treat all outputs as unknown. Most
+  inputs of a resource managed by an unconfigured provider as its outputs, the engine will treat all outputs as unknown. Most
   programs will not be affected by these changes: in general, the only programs that will
   see differences are programs that:
 
