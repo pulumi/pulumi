@@ -725,7 +725,7 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 			}
 			return "", resource.PropertyMap{}, resource.StatusOK, nil
 		}
-		if !p.supportsPreview {
+		if !p.supportsPreview || p.disableProviderPreview {
 			return "", props, resource.StatusOK, nil
 		}
 	}
@@ -953,7 +953,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 			}
 			return resource.PropertyMap{}, resource.StatusOK, nil
 		}
-		if !p.supportsPreview {
+		if !p.supportsPreview || p.disableProviderPreview {
 			return news, resource.StatusOK, nil
 		}
 	}
