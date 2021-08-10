@@ -32,7 +32,7 @@ const grpcChannelOptions = { "grpc.max_receive_message_length": maxRPCMessageSiz
 /**
  * excessiveDebugOutput enables, well, pretty excessive debug output pertaining to resources and properties.
  */
-export let excessiveDebugOutput: boolean = false;
+export const excessiveDebugOutput: boolean = false;
 
 /**
  * Options is a bag of settings that controls the behavior of previews and deployments

@@ -28,7 +28,7 @@ export class RunError extends Error {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiRunError: boolean = true;
 
     /**
@@ -55,7 +55,7 @@ export class ResourceError extends Error {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention, no-underscore-dangle, id-blacklist, id-match
     public readonly __pulumResourceError: boolean = true;
 
     /**

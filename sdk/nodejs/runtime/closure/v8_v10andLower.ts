@@ -102,7 +102,7 @@ function getScript(func: Function): V8Script | undefined {
 const getSourcePosition: (func: Function) => V8SourcePosition =
     new Function("func", "return %FunctionGetScriptSourcePosition(func);") as any;
 
-function scriptPositionInfo(script: V8Script, pos: V8SourcePosition): {line: number, column: number} {
+function scriptPositionInfo(script: V8Script, pos: V8SourcePosition): {line: number; column: number} {
     if (isNodeAtLeastV10) {
         const scriptPositionInfoFunc =
             new Function("script", "pos", "return %ScriptPositionInfo(script, pos, false);") as any;

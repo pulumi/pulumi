@@ -450,7 +450,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
                         rejectIsKnown = reject;
                     }),
                     `resolveURNIsKnown(${label})`),
-            /*isSecret:*/ Promise.resolve(false),
+                /*isSecret:*/ Promise.resolve(false),
                 Promise.resolve(res));
 
             resolveURN = (v, err) => {
@@ -478,7 +478,7 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
                     resolveValue = resolve;
                     rejectValue = reject;
                 }),
-                    `resolveID(${label})`),
+                `resolveID(${label})`),
                 debuggablePromise(new Promise<boolean>((resolve, reject) => {
                     resolveIsKnown = resolve;
                     rejectIsKnown = reject;
@@ -630,7 +630,7 @@ async function getAllTransitivelyReferencedResourceURNs(resources: Set<Resource>
     // Then we filter to only include Custom and Remote resources.
     const transitivelyReachableCustomResources =
         [...transitivelyReachableResources]
-        .filter(r => CustomResource.isInstance(r) || (r as ComponentResource).__remote);
+            .filter(r => CustomResource.isInstance(r) || (r as ComponentResource).__remote);
     const promises = transitivelyReachableCustomResources.map(r => r.urn.promise());
     const urns = await Promise.all(promises);
     return new Set<string>(urns);
@@ -814,8 +814,8 @@ export function listResourceOutputs<U extends Resource>(
             }).then<any[]>(({ outputs }) => utils.values(outputs)),
         )
         .map<ResolvedResource<U>>(({ type: typ, outputs }) => {
-            return { ...outputs, __pulumiType: typ };
-        })
+        return { ...outputs, __pulumiType: typ };
+    })
         .filter(typeFilter);
 }
 

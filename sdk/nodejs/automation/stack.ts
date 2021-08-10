@@ -97,22 +97,22 @@ export class Stack {
         this.workspace = workspace;
 
         switch (mode) {
-            case "create":
-                this.ready = workspace.createStack(name);
-                return this;
-            case "select":
-                this.ready = workspace.selectStack(name);
-                return this;
-            case "createOrSelect":
-                this.ready = workspace.createStack(name).catch((err) => {
-                    if (err instanceof StackAlreadyExistsError) {
-                        return workspace.selectStack(name);
-                    }
-                    throw err;
-                });
-                return this;
-            default:
-                throw new Error(`unexpected Stack creation mode: ${mode}`);
+        case "create":
+            this.ready = workspace.createStack(name);
+            return this;
+        case "select":
+            this.ready = workspace.selectStack(name);
+            return this;
+        case "createOrSelect":
+            this.ready = workspace.createStack(name).catch((err) => {
+                if (err instanceof StackAlreadyExistsError) {
+                    return workspace.selectStack(name);
+                }
+                throw err;
+            });
+            return this;
+        default:
+            throw new Error(`unexpected Stack creation mode: ${mode}`);
         }
     }
     private async readLines(logPath: string, callback: (event: EngineEvent) => void): Promise<ReadlineResult> {
@@ -659,20 +659,20 @@ export type UpdateResult = "not-started" | "in-progress" | "succeeded" | "failed
  * The granular CRUD operation performed on a particular resource during an update.
  */
 export type OpType = "same"
-    | "create"
-    | "update"
-    | "delete"
-    | "replace"
-    | "create-replacement"
-    | "delete-replaced"
-    | "read"
-    | "read-replacement"
-    | "refresh"
-    | "discard"
-    | "discard-replaced"
-    | "remove-pending-replace"
-    | "import"
-    | "import-replacement";
+| "create"
+| "update"
+| "delete"
+| "replace"
+| "create-replacement"
+| "delete-replaced"
+| "read"
+| "read-replacement"
+| "refresh"
+| "discard"
+| "discard-replaced"
+| "remove-pending-replace"
+| "import"
+| "import-replacement";
 
 /**
  * A map of operation types and their corresponding counts.

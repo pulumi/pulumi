@@ -93,11 +93,11 @@ export interface Mocks {
 
      * @param args: MockResourceArgs
      */
-    newResource(args: MockResourceArgs): { id: string | undefined, state: Record<string, any> };
+    newResource(args: MockResourceArgs): { id: string | undefined; state: Record<string, any> };
 }
 
 export class MockMonitor {
-    readonly resources = new Map<string, { urn: string, id: string | undefined, state: any }>();
+    readonly resources = new Map<string, { urn: string; id: string | undefined; state: any }>();
 
     constructor(readonly mocks: Mocks) {
     }

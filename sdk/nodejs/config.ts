@@ -439,7 +439,7 @@ class ConfigTypeError extends RunError {
 class ConfigEnumError extends RunError {
     constructor(key: string, v: any, values: any[]) {
         super(`Configuration '${key}' value '${v}' is not a legal enum value (${JSON.stringify(values)})`);
-   }
+    }
 }
 
 /**
@@ -459,7 +459,7 @@ class ConfigRangeError extends RunError {
             range += " chars";
         }
         super(`Configuration '${key}' value '${v}' is outside of the legal range (${range}, inclusive)`);
-   }
+    }
 }
 
 /**
@@ -468,7 +468,7 @@ class ConfigRangeError extends RunError {
 class ConfigPatternError extends RunError {
     constructor(key: string, v: string, regexp: RegExp) {
         super(`Configuration '${key}' value '${v}' does not match the regular expression ${regexp.toString()}`);
-   }
+    }
 }
 
 /**
