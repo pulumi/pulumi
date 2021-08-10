@@ -21,3 +21,6 @@
 
 - [sdk/nodejs] - Use ESlint instead of TSlint
   [#7719](https://github.com/pulumi/pulumi/pull/7719)
+
+- [sdk/python] - Fix pulumi.property's default value handling.
+  [#7736](https://github.com/pulumi/pulumi/pull/7736)
