@@ -19,5 +19,5 @@
 - [auto/nodejs] - Fix a case where inline programs could exit with outstanding async work.
   [#7704](https://github.com/pulumi/pulumi/pull/7704)
 
-- [auto/nodejs] - Use ESlint instead of TSlint
+- [sdk/nodejs] - Use ESlint instead of TSlint
   [#7719](https://github.com/pulumi/pulumi/pull/7719)
