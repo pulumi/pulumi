@@ -35,7 +35,6 @@
         "@types/semver": "^5.5.0",
         "@types/split2": "^2.1.6",
         "@typescript-eslint/eslint-plugin": "^4.29.0",
-        "@typescript-eslint/eslint-plugin-tslint": "^4.29.0",
         "@typescript-eslint/parser": "^4.29.0",
         "eslint": "^7.32.0",
         "eslint-plugin-header": "^3.1.1",
