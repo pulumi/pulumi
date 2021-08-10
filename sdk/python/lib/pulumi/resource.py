@@ -641,6 +641,8 @@ class Resource:
     The name assigned to the resource at construction.
     """
 
+    _childResources: Set['Resource']
+
 # !!! IMPORTANT !!! If you add a new attribute to this type, make sure to verify that merge_options
 # works properly for it.
 
@@ -723,10 +725,15 @@ class Resource:
         opts = copy.copy(opts)
 
         self._providers = {}
+        self._childResources = set()
+
         # Check the parent type if one exists and fill in any default options.
         if opts.parent is not None:
             if not isinstance(opts.parent, Resource):
                 raise TypeError("Resource parent is not a valid Resource")
+
+            # Add this resource to its parent's set of child resources.
+            opts.parent._childResources.add(self)
 
             # Infer protection from parent, if one was provided.
             if opts.protect is None:
@@ -886,6 +893,8 @@ class ComponentResource(Resource):
     operations for provisioning.
     """
 
+    _remote: bool
+
     def __init__(self,
                  t: str,
                  name: str,
@@ -902,6 +911,7 @@ class ComponentResource(Resource):
         """
         Resource.__init__(self, t, name, False, props, opts, remote, False)
         self.__dict__["id"] = None
+        self._remote = remote
 
     def register_outputs(self, outputs):
         """
