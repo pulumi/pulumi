@@ -22,6 +22,10 @@ type sdkTest struct {
 
 var sdkTests = []sdkTest{
 	{
+		Directory:   "dash-named-schema",
+		Description: "Simple schema with a two part name (foo-bar)",
+	},
+	{
 		Directory:   "external-resource-schema",
 		Description: "External resource schema",
 	},
