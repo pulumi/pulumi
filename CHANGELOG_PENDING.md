@@ -2,6 +2,7 @@
 
 - [automation] - Add force flag for RemoveStack in workspace
   [#7523](https://github.com/pulumi/pulumi/pull/7523)
+
 ### Bug Fixes
 
 - [cli] - Properly parse Git remotes with periods or hyphens.
@@ -21,3 +22,6 @@
 
 - [sdk/nodejs] - Use ESlint instead of TSlint
   [#7719](https://github.com/pulumi/pulumi/pull/7719)
+
+- [sdk/python] - Fix program hangs when monitor becomes unavailable.
+  [#7734](https://github.com/pulumi/pulumi/pull/7734)
