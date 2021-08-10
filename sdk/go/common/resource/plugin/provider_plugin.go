@@ -936,7 +936,7 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
-	// is not fully known, hand back an empty property map. This will force the language SDK will to treat all properties
+	// is not fully known, hand back an empty property map. This will force the language SDK to treat all properties
 	// as unknown, which is conservatively correct.
 	//
 	// If the provider does not support previews, return the inputs as the state. Note that this can cause problems for
