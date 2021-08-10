@@ -1922,9 +1922,10 @@ func TestProviderPreviewUnknowns(t *testing.T) {
 			computed = "alpha"
 		}
 
-		provURN, provID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true, deploytest.ResourceOptions{
-			Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": computed}),
-		})
+		provURN, provID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true,
+			deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": computed}),
+			})
 		require.NoError(t, err)
 
 		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
