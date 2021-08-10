@@ -408,56 +408,53 @@ func TestStackRenameAfterCreateServiceBackend(t *testing.T) {
 }
 
 func TestLocalStateLocking(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
 
-	for j := 0; j < 50; j++ {
-		e := ptesting.NewEnvironment(t)
-		defer func() {
-			if !t.Failed() {
-				e.DeleteEnvironment()
+	integration.CreateBasicPulumiRepo(e)
+	e.ImportDirectory("integration/single_resource")
+	e.SetBackend(e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "foo")
+	e.RunCommand("yarn", "install")
+	e.RunCommand("yarn", "link", "@pulumi/pulumi")
+
+	// Enable self-managed backend locking
+	e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
+
+	// Run 10 concurrent updates
+	count := 10
+	stderrs := make(chan string, count)
+	for i := 0; i < count; i++ {
+		go func() {
+			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
 			}
 		}()
+	}
 
-		integration.CreateBasicPulumiRepo(e)
-		e.ImportDirectory("integration/single_resource")
-		e.SetBackend(e.LocalURL())
-		e.RunCommand("pulumi", "stack", "init", "foo")
-		e.RunCommand("yarn", "install")
-		e.RunCommand("yarn", "link", "@pulumi/pulumi")
+	// Ensure that only one of the concurrent updates succeeded, and that failures
+	// were due to locking (and not state file corruption)
+	numsuccess := 0
+	numerrors := 0
 
-		// Enable self-managed backend locking
-		e.SetEnvVars([]string{fmt.Sprintf("%s=1", filestate.PulumiFilestateLockingEnvVar)})
-
-		// Run 10 concurrent updates
-		count := 100
-		stderrs := make(chan string, count)
-		for i := 0; i < count; i++ {
-			go func() {
-				_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-				if err == nil {
-					stderrs <- "" // success marker
-				} else {
-					stderrs <- stderr
-				}
-			}()
-		}
-
-		// Ensure that only one of the concurrent updates succeeded, and that failures
-		// were due to locking (and not state file corruption)
-		numsuccess := 0
-		numerrors := 0
-
-		for i := 0; i < count; i++ {
-			stderr := <-stderrs
-			if stderr == "" {
-				assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
-				numsuccess++
-			} else {
-				phrase := "the stack is currently locked by 1 lock(s)"
-				if !strings.Contains(stderr, phrase) {
-					numerrors++
-					t.Logf("unexplaiend stderr::\n%s", stderr)
-					assert.Lessf(t, numerrors, 2, "More than one unexplained error has occurred")
-				}
+	for i := 0; i < count; i++ {
+		stderr := <-stderrs
+		if stderr == "" {
+			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
+			numsuccess++
+		} else {
+			phrase := "the stack is currently locked by 1 lock(s)"
+			if !strings.Contains(stderr, phrase) {
+				numerrors++
+				t.Logf("unexplaiend stderr::\n%s", stderr)
+				assert.Lessf(t, numerrors, 2, "More than one unexplained error has occurred")
 			}
 		}
 	}
