@@ -43,3 +43,7 @@
 
 - [sdk/python] - Fix program hangs when monitor becomes unavailable.
   [#7734](https://github.com/pulumi/pulumi/pull/7734)
+
+- [sdk/python] - Fix pulumi.property's default value handling.
+  [#7736](https://github.com/pulumi/pulumi/pull/7736)
+  
