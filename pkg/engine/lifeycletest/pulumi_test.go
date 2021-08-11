@@ -28,6 +28,7 @@ import (
 	pbempty "github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
@@ -1883,6 +1884,101 @@ func TestProviderPreviewGrpc(t *testing.T) {
 	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
 	assert.Nil(t, res)
 	assert.True(t, sawPreview)
+}
+
+func TestProviderPreviewUnknowns(t *testing.T) {
+	sawPreview := false
+	loaders := []*deploytest.ProviderLoader{
+		// NOTE: it is important that this test uses a gRPC-wraped provider. The code that handles previews for unconfigured
+		// providers is specific to the gRPC layer.
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, news resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						sawPreview = true
+					}
+
+					return "created-id", news, resource.StatusOK, nil
+				},
+				UpdateF: func(urn resource.URN, id resource.ID, olds, news resource.PropertyMap, timeout float64,
+					ignoreChanges []string, preview bool) (resource.PropertyMap, resource.Status, error) {
+
+					if preview {
+						sawPreview = true
+					}
+
+					return news, resource.StatusOK, nil
+				},
+			}, nil
+		}, deploytest.WithGrpc),
+	}
+
+	preview := true
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		computed := interface{}(resource.Computed{Element: resource.NewStringProperty("")})
+		if !preview {
+			computed = "alpha"
+		}
+
+		provURN, provID, _, err := monitor.RegisterResource("pulumi:providers:pkgA", "provA", true,
+			deploytest.ResourceOptions{
+				Inputs: resource.NewPropertyMapFromMap(map[string]interface{}{"foo": computed}),
+			})
+		require.NoError(t, err)
+
+		ins := resource.NewPropertyMapFromMap(map[string]interface{}{
+			"foo": "bar",
+			"baz": map[string]interface{}{
+				"a": 42,
+			},
+			"qux": []interface{}{
+				24,
+			},
+		})
+
+		_, _, state, err := monitor.RegisterResource("pkgA:m:typA", "resA", true, deploytest.ResourceOptions{
+			Inputs:   ins,
+			Provider: fmt.Sprintf("%v::%v", provURN, provID),
+		})
+		require.NoError(t, err)
+
+		if preview {
+			assert.True(t, state.DeepEquals(resource.PropertyMap{}))
+		} else {
+			assert.True(t, state.DeepEquals(ins))
+		}
+
+		return nil
+	})
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+	}
+
+	project := p.GetProject()
+
+	// Run a preview. The inputs should not be propagated to the outputs by the provider during the create because the
+	// provider has unknown inputs.
+	preview, sawPreview = true, false
+	_, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	require.Nil(t, res)
+	assert.False(t, sawPreview)
+
+	// Run an update.
+	preview, sawPreview = false, false
+	snap, res := TestOp(Update).Run(project, p.GetTarget(nil), p.Options, preview, p.BackendClient, nil)
+	require.Nil(t, res)
+	assert.False(t, sawPreview)
+
+	// Run another preview. The inputs should not be propagated to the outputs during the update because the provider
+	// has unknown inputs.
+	preview, sawPreview = true, false
+	_, res = TestOp(Update).Run(project, p.GetTarget(snap), p.Options, preview, p.BackendClient, nil)
+	require.Nil(t, res)
+	assert.False(t, sawPreview)
 }
 
 func TestSingleComponentDefaultProviderLifecycle(t *testing.T) {
