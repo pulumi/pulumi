@@ -12,7 +12,7 @@
   These kinds of programs are most common in scenarios that deploy managed Kubernetes
   clusters and Kubernetes apps within the same program, then flow values from those apps
   into other resources.
-   
+
   The legacy behavior can be re-enabled by setting the `PULUMI_LEGACY_PROVIDER_PREVIEW` to
   a truthy value (e.g. `1`, `true`, etc.).
 
@@ -41,9 +41,5 @@
 - [sdk/nodejs] - Use ESlint instead of TSlint
   [#7719](https://github.com/pulumi/pulumi/pull/7719)
 
-- [sdk/python] - Fix program hangs when monitor becomes unavailable.
-  [#7734](https://github.com/pulumi/pulumi/pull/7734)
-
 - [sdk/python] - Fix pulumi.property's default value handling.
   [#7736](https://github.com/pulumi/pulumi/pull/7736)
-  
