@@ -430,25 +430,34 @@ func TestLocalStateLocking(t *testing.T) {
 	stderrs := make(chan string, count)
 	for i := 0; i < count; i++ {
 		go func() {
-			_, stderr, _ := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
-			stderrs <- stderr
+			_, stderr, err := e.GetCommandResults("pulumi", "up", "--non-interactive", "--skip-preview", "--yes")
+			if err == nil {
+				stderrs <- "" // success marker
+			} else {
+				stderrs <- stderr
+			}
 		}()
 	}
 
 	// Ensure that only one of the concurrent updates succeeded, and that failures
 	// were due to locking (and not state file corruption)
 	numsuccess := 0
+	numerrors := 0
+
 	for i := 0; i < count; i++ {
 		stderr := <-stderrs
 		if stderr == "" {
 			assert.Equal(t, 0, numsuccess, "more than one concurrent update succeeded")
 			numsuccess++
 		} else {
-			assert.Contains(t, stderr, "the stack is currently locked by 1 lock(s)")
-			t.Log(stderr)
+			phrase := "the stack is currently locked by 1 lock(s)"
+			if !strings.Contains(stderr, phrase) {
+				numerrors++
+				t.Logf("unexplaiend stderr::\n%s", stderr)
+				assert.Lessf(t, numerrors, 2, "More than one unexplained error has occurred")
+			}
 		}
 	}
-
 }
 
 func getFileNames(infos []os.FileInfo) []string {
