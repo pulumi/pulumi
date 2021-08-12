@@ -225,7 +225,7 @@ def serialize_provider(provider: ResourceProvider) -> str:
     pty = type(provider)
     oldptymod = pty.__module__
     try:
-        # TODO[uqfoundation/dill#424]: Dill currently only serializes classes by value when they are in `__main__`. 
+        # TODO[uqfoundation/dill#424]: Dill currently only serializes classes by value when they are in `__main__`.
         # Since we need to ensure classes are serialized by value for dynamic provider serialization to work, we
         # for now will overwrite the `__module__` to be `__main__` on the provider class.  When uqfoundation/dill#424
         # is addressed, we may be able to accomplish the desired results in a less invasive way.
