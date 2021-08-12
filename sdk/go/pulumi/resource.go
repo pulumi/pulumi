@@ -18,7 +18,6 @@ import (
 	"context"
 	"fmt"
 	"reflect"
-	"sort"
 	"sync"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -258,7 +257,7 @@ type resourceOptions struct {
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
 	// DependsOn is an optional array of explicit dependencies on other resources.
-	DependsOn []func(ctx context.Context) ([]URN, error)
+	DependsOn []func(ctx context.Context) (urnSet, error)
 	// IgnoreChanges ignores changes to any of the specified properties.
 	IgnoreChanges []string
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -365,18 +364,8 @@ func DeleteBeforeReplace(o bool) ResourceOption {
 // DependsOn is an optional array of explicit dependencies on other resources.
 func DependsOn(o []Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) ([]URN, error) {
-			var urns []URN
-			for _, res := range o {
-				directUrn, isKnown, _, err := res.URN().awaitURN(ctx)
-				if err != nil {
-					return nil, err
-				}
-				if isKnown {
-					urns = append(urns, directUrn)
-				}
-			}
-			return distinctURNs(urns), nil
+		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
+			return expandDependencies(ctx, o)
 		})
 	})
 }
@@ -391,7 +380,7 @@ func DependsOn(o []Resource) ResourceOption {
 //     DependsOnInputs(allDeps)
 func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) ([]URN, error) {
+		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
 			out := o.ToResourceArrayOutput()
 
 			value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
@@ -408,12 +397,7 @@ func DependsOnInputs(o ResourceArrayInput) ResourceOption {
 			// For some reason, deps returned above are incorrect; instead:
 			toplevelDeps := out.dependencies()
 
-			deps, err := awaitURNs(ctx, append(resources, toplevelDeps...))
-			if err != nil {
-				return nil, err
-			}
-
-			return deps, nil
+			return expandDependencies(ctx, append(resources, toplevelDeps...))
 		})
 	})
 }
@@ -532,36 +516,4 @@ func Version(o string) ResourceOrInvokeOption {
 			io.Version = o
 		}
 	})
-}
-
-// Awaits all URNs of the given resources and returns their distinct list.
-func awaitURNs(ctx context.Context, resources []Resource) ([]URN, error) {
-	var urns []URN
-
-	for _, res := range resources {
-		urn, isKnown, _, err := res.URN().awaitURN(ctx)
-		if err != nil {
-			return nil, err
-		}
-		if isKnown {
-			urns = append(urns, urn)
-		}
-	}
-
-	return distinctURNs(urns), nil
-}
-
-// Removes duplicates from the list of URNs and returns the unique list in a sorted order.
-func distinctURNs(urns []URN) []URN {
-	unique := make(map[URN]bool)
-	for _, urn := range urns {
-		unique[urn] = true
-	}
-	var out []URN
-	for urn := range unique {
-		out = append(out, urn)
-	}
-
-	sort.Slice(out, func(i, j int) bool { return out[i] < out[j] })
-	return out
 }

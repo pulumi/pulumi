@@ -143,16 +143,15 @@ func TestResourceOptionMergingDependsOn(t *testing.T) {
 	d3, d3Urn := newRes("d3")
 
 	resolveDependsOn := func(opts *resourceOptions) []URN {
-		var allDeps []URN
+		allDeps := urnSet{}
 		for _, f := range opts.DependsOn {
 			deps, err := f(context.TODO())
 			if err != nil {
 				t.Fatal(err)
 			}
-			allDeps = append(allDeps, deps...)
-
+			allDeps.union(deps)
 		}
-		return distinctURNs(allDeps)
+		return allDeps.sortedValues()
 	}
 
 	// two singleton options
