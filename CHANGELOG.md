@@ -1,5 +1,15 @@
 CHANGELOG
 =========
+## 3.10.1 (2021-08-12)
+### Improvements
+
+- [sdk/go] - Depending on a component now depends on the transitive closure of its
+  child resources.
+  [#7732](https://github.com/pulumi/pulumi/pull/7732)
+
+- [sdk/python] - Depending on a component now depends on the transitive closure of its
+  child resources.
+  [#7732](https://github.com/pulumi/pulumi/pull/7732)
 
 ## 3.10.0 (2021-08-11)
 
