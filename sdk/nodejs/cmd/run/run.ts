@@ -203,7 +203,7 @@ export function run(argv: minimist.ParsedArgs,
         }
         else {
             log.error(
-`Running program '${program}' failed with an unhandled exception:
+                `Running program '${program}' failed with an unhandled exception:
 ${defaultMessage}`);
         }
 

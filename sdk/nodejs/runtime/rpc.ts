@@ -112,10 +112,10 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
  * be remoted over to registerResource.
  */
 async function serializeFilteredProperties(
-        label: string,
-        props: Inputs,
-        acceptKey: (k: string) => boolean,
-    ): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
+    label: string,
+    props: Inputs,
+    acceptKey: (k: string) => boolean,
+): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
 
     const propertyToDependentResources = new Map<string, Set<Resource>>();
 
@@ -232,9 +232,9 @@ export function resolveProperties(
             // present during previews (i.e. isDryRun() will be true).
             resolve(value, /*isKnown*/ true, isSecret, deps[k]);
         }
-        catch (err) {
+        catch (resolveError) {
             throw new Error(
-                `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(err)}`);
+                `Unable to set property '${k}' on resource '${name}' [${t}]; error: ${errorString(resolveError)}`);
         }
     }
 
@@ -499,83 +499,83 @@ export function deserializeProperty(prop: any): any {
         const sig: any = prop[specialSigKey];
         if (sig) {
             switch (sig) {
-                case specialAssetSig:
-                    if (prop["path"]) {
-                        return new asset.FileAsset(<string>prop["path"]);
-                    }
-                    else if (prop["text"]) {
-                        return new asset.StringAsset(<string>prop["text"]);
-                    }
-                    else if (prop["uri"]) {
-                        return new asset.RemoteAsset(<string>prop["uri"]);
-                    }
-                    else {
-                        throw new Error("Invalid asset encountered when unmarshaling resource property");
-                    }
-                case specialArchiveSig:
-                    if (prop["assets"]) {
-                        const assets: asset.AssetMap = {};
-                        for (const name of Object.keys(prop["assets"])) {
-                            const a = deserializeProperty(prop["assets"][name]);
-                            if (!(asset.Asset.isInstance(a)) && !(asset.Archive.isInstance(a))) {
-                                throw new Error(
-                                    "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects");
-                            }
-                            assets[name] = a;
+            case specialAssetSig:
+                if (prop["path"]) {
+                    return new asset.FileAsset(<string>prop["path"]);
+                }
+                else if (prop["text"]) {
+                    return new asset.StringAsset(<string>prop["text"]);
+                }
+                else if (prop["uri"]) {
+                    return new asset.RemoteAsset(<string>prop["uri"]);
+                }
+                else {
+                    throw new Error("Invalid asset encountered when unmarshaling resource property");
+                }
+            case specialArchiveSig:
+                if (prop["assets"]) {
+                    const assets: asset.AssetMap = {};
+                    for (const name of Object.keys(prop["assets"])) {
+                        const a = deserializeProperty(prop["assets"][name]);
+                        if (!(asset.Asset.isInstance(a)) && !(asset.Archive.isInstance(a))) {
+                            throw new Error(
+                                "Expected an AssetArchive's assets to be unmarshaled Asset or Archive objects");
                         }
-                        return new asset.AssetArchive(assets);
+                        assets[name] = a;
                     }
-                    else if (prop["path"]) {
-                        return new asset.FileArchive(<string>prop["path"]);
-                    }
-                    else if (prop["uri"]) {
-                        return new asset.RemoteArchive(<string>prop["uri"]);
-                    }
-                    else {
-                        throw new Error("Invalid archive encountered when unmarshaling resource property");
-                    }
-                case specialSecretSig:
-                    return {
-                        [specialSigKey]: specialSecretSig,
-                        value: deserializeProperty(prop["value"]),
-                    };
-                case specialResourceSig:
-                    // Deserialize the resource into a live Resource reference
-                    const urn = prop["urn"];
-                    const version = prop["packageVersion"];
+                    return new asset.AssetArchive(assets);
+                }
+                else if (prop["path"]) {
+                    return new asset.FileArchive(<string>prop["path"]);
+                }
+                else if (prop["uri"]) {
+                    return new asset.RemoteArchive(<string>prop["uri"]);
+                }
+                else {
+                    throw new Error("Invalid archive encountered when unmarshaling resource property");
+                }
+            case specialSecretSig:
+                return {
+                    [specialSigKey]: specialSecretSig,
+                    value: deserializeProperty(prop["value"]),
+                };
+            case specialResourceSig:
+                // Deserialize the resource into a live Resource reference
+                const urn = prop["urn"];
+                const version = prop["packageVersion"];
 
-                    const urnParts = urn.split("::");
-                    const qualifiedType = urnParts[2];
-                    const urnName = urnParts[3];
+                const urnParts = urn.split("::");
+                const qualifiedType = urnParts[2];
+                const urnName = urnParts[3];
 
-                    const type = qualifiedType.split("$").pop()!;
-                    const typeParts = type.split(":");
-                    const pkgName = typeParts[0];
-                    const modName = typeParts.length > 1 ? typeParts[1] : "";
-                    const typName = typeParts.length > 2 ? typeParts[2] : "";
-                    const isProvider = pkgName === "pulumi" && modName === "providers";
+                const type = qualifiedType.split("$").pop()!;
+                const typeParts = type.split(":");
+                const pkgName = typeParts[0];
+                const modName = typeParts.length > 1 ? typeParts[1] : "";
+                const typName = typeParts.length > 2 ? typeParts[2] : "";
+                const isProvider = pkgName === "pulumi" && modName === "providers";
 
-                    if (isProvider) {
-                        const resourcePackage = getResourcePackage(typName, version);
-                        if (resourcePackage) {
-                            return resourcePackage.constructProvider(urnName, type, urn);
-                        }
-                    } else {
-                        const resourceModule = getResourceModule(pkgName, modName, version);
-                        if (resourceModule) {
-                            return resourceModule.construct(urnName, type, urn);
-                        }
+                if (isProvider) {
+                    const resourcePackage = getResourcePackage(typName, version);
+                    if (resourcePackage) {
+                        return resourcePackage.constructProvider(urnName, type, urn);
                     }
-
-                    // If we've made it here, deserialize the reference as either a URN or an ID (if present).
-                    if (prop["id"]) {
-                        const id = prop["id"];
-                        return deserializeProperty(id === "" ? unknownValue : id);
+                } else {
+                    const resourceModule = getResourceModule(pkgName, modName, version);
+                    if (resourceModule) {
+                        return resourceModule.construct(urnName, type, urn);
                     }
-                    return urn;
+                }
 
-                default:
-                    throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
+                // If we've made it here, deserialize the reference as either a URN or an ID (if present).
+                if (prop["id"]) {
+                    const id = prop["id"];
+                    return deserializeProperty(id === "" ? unknownValue : id);
+                }
+                return urn;
+
+            default:
+                throw new Error(`Unrecognized signature '${sig}' when unmarshaling resource property`);
             }
         }
 

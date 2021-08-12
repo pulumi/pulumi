@@ -1,25 +1,15 @@
 ### Improvements
 
-- [automation] - Add force flag for RemoveStack in workspace
-  [#7523](https://github.com/pulumi/pulumi/pull/7523)
+- [sdk/go] - Depending on a component now depends on the transitive closure of its
+  child resources.
+  [#7732](https://github.com/pulumi/pulumi/pull/7732)
+
+- [sdk/python] - Depending on a component now depends on the transitive closure of its
+  child resources.
+  [#7732](https://github.com/pulumi/pulumi/pull/7732)
 
 - [sdk/go] - Permit declaring explicit resource dependencies via
   `ResourceInput` values.
   [#7584](https://github.com/pulumi/pulumi/pull/7584)
 
 ### Bug Fixes
-
-- [cli] - Properly parse Git remotes with periods or hyphens.
-  [#7386](https://github.com/pulumi/pulumi/pull/7386)
-
-- [codegen/python] - Recover good IDE completion experience over
-  module imports that was compromised when introducing the lazy import
-  optimization.
-  [#7487](https://github.com/pulumi/pulumi/pull/7487)
-
-- [sdk/python] - Use `Sequence[T]` instead of `List[T]` for several `Resource`
-  parameters.
-  [#7698](https://github.com/pulumi/pulumi/pull/7698)
-
-- [auto/nodejs] - Fix a case where inline programs could exit with outstanding async work.
-  [#7704](https://github.com/pulumi/pulumi/pull/7704)

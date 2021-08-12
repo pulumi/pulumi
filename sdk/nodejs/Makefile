@@ -18,7 +18,7 @@ include ../../build/common.mk
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
+	./node_modules/.bin/eslint -c .eslintrc.js --ext .ts .
 
 build_package::
 	./node_modules/.bin/tsc
