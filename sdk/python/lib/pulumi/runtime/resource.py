@@ -15,7 +15,7 @@ import asyncio
 import os
 import traceback
 
-from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast, Mapping, Sequence
+from typing import Optional, Any, Callable, List, NamedTuple, Dict, Set, Tuple, Union, TYPE_CHECKING, cast, Mapping, Sequence, Iterable
 from google.protobuf import struct_pb2
 import grpc
 
@@ -29,7 +29,7 @@ from .. import _types
 
 
 if TYPE_CHECKING:
-    from .. import Resource, CustomResource, Inputs, ProviderResource
+    from .. import Resource, ComponentResource, CustomResource, Inputs, ProviderResource
     from ..resource import ResourceOptions
 
 
@@ -85,7 +85,7 @@ async def prepare_resource(res: 'Resource',
                            typ: Optional[type] = None) -> ResourceResolverOperations:
 
     # Before we can proceed, all our dependencies must be finished.
-    explicit_urn_dependencies = []
+    explicit_urn_dependencies: Set[str] = set()
     if opts is not None and opts.depends_on is not None:
         explicit_urn_dependencies = await _resolve_depends_on_urns(opts)
 
@@ -135,15 +135,11 @@ async def prepare_resource(res: 'Resource',
             ref = f"{urn}::{id_}"
             provider_refs[name] = ref
 
-    dependencies = set(explicit_urn_dependencies)
+    dependencies: Set[str] = set(explicit_urn_dependencies)
     property_dependencies: Dict[str, List[Optional[str]]] = {}
     for key, deps in property_dependencies_resources.items():
-        urns = set()
-        for dep in deps:
-            urn = await dep.urn.future()
-            urns.add(urn)
-            if urn:
-                dependencies.add(urn)
+        urns = await _expand_dependencies(deps)
+        dependencies |= urns
         property_dependencies[key] = list(urns)
 
     # Wait for all aliases. Note that we use `res._aliases` instead of `opts.aliases` as the
@@ -660,8 +656,62 @@ def convert_providers(
 
     return result
 
+async def _add_dependency(deps: Set[str], res: 'Resource'):
+    """
+    _add_dependency adds a dependency on the given resource to the set of deps.
 
-async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
+    The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
+    or a remote component resource:
+
+    - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
+    - Local component resources act as aggregations of their descendents. Rather than adding the component resource
+      itself, each child resource is added as a dependency.
+    - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
+      with respect to dependencies: the construction of a remote component always waits on the construction of its
+      children.
+
+    In other words, if we had:
+
+                     Comp1
+                 |     |     |
+             Cust1   Comp2  Remote1
+                     |   |       |
+                 Cust2   Cust3  Comp3
+                 |                 |
+             Cust4                Cust5
+
+    Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
+    It will *not* include:
+    * Cust4 because it is a child of a custom resource
+    * Comp2 because it is a non-remote component resoruce
+    * Comp3 and Cust5 because Comp3 is a child of a remote component resource
+    """
+
+    from .. import ComponentResource # pylint: disable=import-outside-toplevel
+
+    if isinstance(res, ComponentResource):
+        for child in res._childResources:
+            await _add_dependency(deps, child)
+        if not res._remote:
+            return
+
+    urn = await res.urn.future()
+    if urn:
+        deps.add(urn)
+
+
+async def _expand_dependencies(deps: Iterable['Resource']) -> Set[str]:
+    """
+    _expand_dependencies expands the given iterable of Resources into a set of URNs.
+    """
+
+    urns: Set[str] = set()
+    for d in deps:
+        await _add_dependency(urns, d)
+    return urns
+
+
+async def _resolve_depends_on_urns(options: 'ResourceOptions') -> Set[str]:
     """
     Resolves the set of all dependent resources implied by
     `depends_on`, either directly listed or implied in the Input
@@ -669,7 +719,7 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
     """
 
     if options.depends_on is None:
-        return []
+        return set()
 
     outer = Output._from_input_shallow(options._depends_on_list())
     all_deps = await outer.resources()
@@ -683,11 +733,4 @@ async def _resolve_depends_on_urns(options: 'ResourceOptions') -> List[str]:
         if direct_dep is not None:
             all_deps.add(direct_dep)
 
-    urns = set()
-
-    for d in all_deps:
-        urn = await d.urn.future()
-        if urn:
-            urns.add(urn)
-
-    return list(urns)
+    return await _expand_dependencies(all_deps)
