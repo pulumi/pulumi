@@ -27,32 +27,32 @@ class PropertyDependenciesTest(LanghostTest):
                           _replace_on_changes):
         self.assertEqual(ty, "test:index:MyResource")
         if name == "resA":
-            self.assertListEqual(_dependencies, [])
-            self.assertDictEqual(_property_deps, {})
+            self.assertListEqual(_dependencies, [], msg=f"{name}._dependencies")
+            self.assertDictEqual(_property_deps, {}, msg=f"{name}._property_deps")
         elif name == "resB":
-            self.assertListEqual(_dependencies, [ "resA" ])
-            self.assertDictEqual(_property_deps, {})
+            self.assertListEqual(_dependencies, [ "resA" ], msg=f"{name}._dependencies")
+            self.assertDictEqual(_property_deps, {}, msg=f"{name}._property_deps")
         elif name == "resC":
-            self.assertListEqual(_dependencies, [ "resA", "resB" ])
+            self.assertListEqual(_dependencies, [ "resA", "resB" ], msg=f"{name}._dependencies")
             self.assertDictEqual(_property_deps, {
                 "propA": [ "resA" ],
                 "propB": [ "resB" ],
                 "propC": [],
-            })
+            }, msg=f"{name}._property_deps")
         elif name == "resD":
-            self.assertListEqual(_dependencies, [ "resA", "resB", "resC" ])
+            self.assertListEqual(_dependencies, [ "resA", "resB", "resC" ], msg=f"{name}._dependencies")
             self.assertDictEqual(_property_deps, {
                 "propA": [ "resA", "resB" ],
                 "propB": [ "resC" ],
                 "propC": [],
-            })
+            }, msg=f"{name}._property_deps")
         elif name == "resE":
-            self.assertListEqual(_dependencies, [ "resA", "resB", "resC", "resD" ])
+            self.assertListEqual(_dependencies, [ "resA", "resB", "resC", "resD" ], msg=f"{name}._dependencies")
             self.assertDictEqual(_property_deps, {
                 "propA": [ "resC" ],
                 "propB": [ "resA", "resB" ],
                 "propC": [],
-            })
+            }, msg=f"{name}._property_deps")
 
         return {
             "urn": name,
