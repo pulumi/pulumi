@@ -33,9 +33,8 @@ if TYPE_CHECKING:
 
 def test(fn):
     """
-    Decorates a test function that may return a Pulumi Input, to makes
-    sure that returned futures or outputs are awaited as part of the
-    test.
+    Decorates a test function to make sure that a returned Future
+    or Output is awaited as part of the test.
     """
 
     @functools.wraps(fn)
