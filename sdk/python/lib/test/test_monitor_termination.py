@@ -16,24 +16,32 @@ from typing import Any, Optional
 import asyncio
 import functools
 import grpc
+import logging
 import pytest
 
 import pulumi
 
 
-def must_throw(exception_type):
-    """Decorates a test definition to make sure it throws a specific exception."""
+# Suppress logs about faulted unobserved tasks. This is similar to
+# Python Pulumi user programs. See rationale in
+# `sdk/python/cmd/pulumi-language-python-exec`.
+#
+# This scope of this setting necessarily bleeds beyond this test; it
+# has to do so because the undesired logs appear after the entire
+# `pytest` program terminates, not after a particular module
+# terminates.
+logging.getLogger('asyncio').setLevel(logging.CRITICAL)
+
+
+def raises(exception_type):
+    """Decorates a test by wrapping its body in `pytest.raises`."""
 
     def decorator(fn):
 
         @functools.wraps(fn)
         def wrapper(*args, **kwargs):
-            try:
-                fn(*args, **kwargs)
-            except exception_type as e:
-                print(f'ignoring expected test exception: {e}')
-                return None
-            raise Exception(f'Did not throw the expected exception of type {exception_type}')
+            with pytest.raises(exception_type):
+                return fn(*args, **kwargs)
 
         return wrapper
 
@@ -41,18 +49,12 @@ def must_throw(exception_type):
 
 
 # Verify that when the monitor becomes unavailable (via
-# unavailable_mocks), programs fail with a RunError instead of
-# hanging.
-@must_throw(pulumi.RunError)
+# unavailable_mocks), programs fail with a `RunError` and do not hang.
+@raises(pulumi.RunError)
 @pytest.mark.timeout(2)
 @pulumi.runtime.test
 def test_resource_registration_does_not_hang_when_monitor_unavailable(unavailable_mocks):
-    my_custom = MyCustom('mycustom', {'inprop': 'hello'})
-
-    def check(outprop):
-        assert outprop == 'output: hello'
-
-    return my_custom.outprop.apply(check)
+    MyCustom('mycustom', {'inprop': 'hello'})
 
 
 class Unavailable(grpc.RpcError):
