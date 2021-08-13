@@ -70,14 +70,14 @@ func (mod *modContext) genMethod(r *schema.Resource, m *schema.Method) methodDoc
 			exclude := func(name string) bool {
 				return name == "__self__"
 			}
-			props := mod.getPropertiesWithIdPrefixAndExclude(f.Inputs.Properties, lang, true, false, false,
+			props := mod.getPropertiesWithIDPrefixAndExclude(f.Inputs.Properties, lang, true, false, false,
 				fmt.Sprintf("%s_arg_", m.Name), exclude)
 			if len(props) > 0 {
 				inputProps[lang] = props
 			}
 		}
 		if f.Outputs != nil {
-			outputProps[lang] = mod.getPropertiesWithIdPrefixAndExclude(f.Outputs.Properties, lang, false, false, false,
+			outputProps[lang] = mod.getPropertiesWithIDPrefixAndExclude(f.Outputs.Properties, lang, false, false, false,
 				fmt.Sprintf("%s_result_", m.Name), nil)
 		}
 	}

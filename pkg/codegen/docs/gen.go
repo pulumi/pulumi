@@ -888,10 +888,10 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 // the provided slice of properties in the schema.
 func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested, isProvider bool,
 ) []property {
-	return mod.getPropertiesWithIdPrefixAndExclude(properties, lang, input, nested, isProvider, "", nil)
+	return mod.getPropertiesWithIDPrefixAndExclude(properties, lang, input, nested, isProvider, "", nil)
 }
 
-func (mod *modContext) getPropertiesWithIdPrefixAndExclude(properties []*schema.Property, lang string, input, nested,
+func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.Property, lang string, input, nested,
 	isProvider bool, idPrefix string, exclude func(name string) bool) []property {
 	if len(properties) == 0 {
 		return nil
