@@ -587,7 +587,7 @@ func (ctx *Context) ReadResource(
 		}
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, res, false)
+		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, res, false)
 		if err != nil {
 			return
 		}
@@ -703,6 +703,9 @@ func (ctx *Context) registerResource(
 	}
 
 	_, custom := resource.(CustomResource)
+	if !custom && remote {
+		resource.markRemoteComponent()
+	}
 
 	if _, isProvider := resource.(ProviderResource); isProvider && !strings.HasPrefix(t, "pulumi:providers:") {
 		return errors.New("provider resource type must begin with \"pulumi:providers:\"")
@@ -767,7 +770,7 @@ func (ctx *Context) registerResource(
 		}()
 
 		// Prepare the inputs for an impending operation.
-		inputs, err = ctx.prepareResourceInputs(props, t, options, resState, remote)
+		inputs, err = ctx.prepareResourceInputs(resource, props, t, options, resState, remote)
 		if err != nil {
 			return
 		}
@@ -1150,12 +1153,12 @@ type resourceInputs struct {
 }
 
 // prepareResourceInputs prepares the inputs for a resource operation, shared between read and register.
-func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceOptions, resource *resourceState,
-	remote bool) (*resourceInputs, error) {
+func (ctx *Context) prepareResourceInputs(res Resource, props Input, t string, opts *resourceOptions,
+	state *resourceState, remote bool) (*resourceInputs, error) {
 
 	// Get the parent and dependency URNs from the options, in addition to the protection bit.  If there wasn't an
 	// explicit parent, and a root stack resource exists, we will automatically parent to that.
-	resOpts, err := ctx.getOpts(t, resource.provider, opts, remote)
+	resOpts, err := ctx.getOpts(res, t, state.provider, opts, remote)
 	if err != nil {
 		return nil, fmt.Errorf("resolving options: %w", err)
 	}
@@ -1180,15 +1183,11 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 	// Convert the property dependencies map for RPC and remove duplicates.
 	rpcPropertyDeps := make(map[string]*pulumirpc.RegisterResourceRequest_PropertyDependencies)
 	for k, deps := range propertyDeps {
-		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
-
-		urns := make([]string, 0, len(deps))
+		urns := make([]string, len(deps))
 		for i, d := range deps {
-			if i > 0 && urns[i-1] == string(d) {
-				continue
-			}
-			urns = append(urns, string(d))
+			urns[i] = string(d)
 		}
+		sort.Strings(urns)
 
 		rpcPropertyDeps[k] = &pulumirpc.RegisterResourceRequest_PropertyDependencies{
 			Urns: urns,
@@ -1197,18 +1196,18 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 
 	// Merge all dependencies with what we got earlier from property marshaling, and remove duplicates.
 	var deps []string
-	depMap := make(map[URN]bool)
+	depSet := urnSet{}
 	for _, dep := range append(resOpts.depURNs, rpcDeps...) {
-		if _, has := depMap[dep]; !has {
+		if !depSet.has(dep) {
 			deps = append(deps, string(dep))
-			depMap[dep] = true
+			depSet.add(dep)
 		}
 	}
 	sort.Strings(deps)
 
 	// Await alias URNs
-	aliases := make([]string, len(resource.aliases))
-	for i, alias := range resource.aliases {
+	aliases := make([]string, len(state.aliases))
+	for i, alias := range state.aliases {
 		urn, _, _, err := alias.awaitURN(context.Background())
 		if err != nil {
 			return nil, fmt.Errorf("error waiting for alias URN to resolve: %w", err)
@@ -1231,7 +1230,7 @@ func (ctx *Context) prepareResourceInputs(props Input, t string, opts *resourceO
 		ignoreChanges:           resOpts.ignoreChanges,
 		aliases:                 aliases,
 		additionalSecretOutputs: resOpts.additionalSecretOutputs,
-		version:                 resource.version,
+		version:                 state.version,
 	}, nil
 }
 
@@ -1260,7 +1259,7 @@ type resourceOpts struct {
 
 // getOpts returns a set of resource options from an array of them. This includes the parent URN, any dependency URNs,
 // a boolean indicating whether the resource is to be protected, and the URN and ID of the resource's provider, if any.
-func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceOptions, remote bool,
+func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, opts *resourceOptions, remote bool,
 ) (resourceOpts, error) {
 
 	var importID ID
@@ -1274,6 +1273,8 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 
 	var parentURN URN
 	if opts.Parent != nil {
+		opts.Parent.addChild(res)
+
 		urn, _, _, err := opts.Parent.URN().awaitURN(context.TODO())
 		if err != nil {
 			return resourceOpts{}, err
@@ -1283,14 +1284,13 @@ func (ctx *Context) getOpts(t string, provider ProviderResource, opts *resourceO
 
 	var depURNs []URN
 	if opts.DependsOn != nil {
-		depURNs = make([]URN, len(opts.DependsOn))
-		for i, r := range opts.DependsOn {
-			urn, _, _, err := r.URN().awaitURN(context.TODO())
-			if err != nil {
+		depSet := urnSet{}
+		for _, r := range opts.DependsOn {
+			if err := addDependency(context.TODO(), depSet, r); err != nil {
 				return resourceOpts{}, err
 			}
-			depURNs[i] = urn
 		}
+		depURNs = depSet.values()
 	}
 
 	var providerRef string

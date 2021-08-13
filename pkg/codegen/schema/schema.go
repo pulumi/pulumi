@@ -2002,7 +2002,9 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 		if !ok {
 			return nil, nil, errors.Errorf("unknown required property %q", name)
 		}
-		p.Type = p.Type.(*OptionalType).ElementType
+		if typ, ok := p.Type.(*OptionalType); ok {
+			p.Type = typ.ElementType
+		}
 	}
 
 	sort.Slice(result, func(i, j int) bool {

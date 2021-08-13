@@ -159,7 +159,7 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		return name
 	}
 	if mod == "" {
-		mod = components[0]
+		mod = goPackage(components[0])
 	}
 	mod = strings.Replace(mod, "/", "", -1) + "." + name
 	return strings.Replace(mod, "-provider", "", -1)

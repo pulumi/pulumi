@@ -209,7 +209,7 @@ export interface Provider {
      * @param options the options for the resource.
      */
     construct?: (name: string, type: string, inputs: Inputs, options: resource.ComponentResourceOptions)
-        => Promise<ConstructResult>;
+    => Promise<ConstructResult>;
 
     /**
      * Call calls the indicated method.

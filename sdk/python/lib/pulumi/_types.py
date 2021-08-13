@@ -978,7 +978,7 @@ def _property_init(python_name: str, prop: _Property, globals, is_dict: bool, ha
         # There's no default, just do an assignment.
         value = python_name
     else:
-        globals[default_name] = python_name
+        globals[default_name] = prop.default
         value = python_name
 
     # Now, actually generate the assignment.

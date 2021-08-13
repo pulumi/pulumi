@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable
+/* eslint-disable */
 
 // Make sure we are listening for v8 events as they're necessary to get things like file locations
 // for serialization errors.  We need to do this first, before we even get around to running tests.
