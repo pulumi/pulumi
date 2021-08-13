@@ -21,8 +21,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -36,8 +39,14 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
+	ext := filepath.Ext(schemaPath)
+
 	var pkgSpec schema.PackageSpec
-	err = json.Unmarshal(schemaBytes, &pkgSpec)
+	if ext == ".yaml" || ext == ".yml" {
+		err = yaml.Unmarshal(schemaBytes, &pkgSpec)
+	} else {
+		err = json.Unmarshal(schemaBytes, &pkgSpec)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -65,26 +74,97 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	return result, nil
 }
 
-// ValidateFileEquality compares maps of files for equality.
-func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
-	for name, file := range expected {
-		assert.Contains(t, actual, name)
-		assert.Equal(t, string(file), string(actual[name]), name)
+func loadDirectory(fs map[string][]byte, root, path string) error {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
 	}
-}
 
-// If PULUMI_ACCEPT is set, writes out actual output to th expected
-// file set, so we can continue enjoying golden tests without manually
-// modifying the expected output.
-func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte) {
-	if os.Getenv("PULUMI_ACCEPT") != "" {
-		for file, bytes := range actual {
-			err := ioutil.WriteFile(filepath.Join(dir, lang, file), bytes, 0600)
-			if err != nil {
-				t.Fatal(err)
+	for _, e := range entries {
+		entryPath := filepath.Join(path, e.Name())
+		if e.IsDir() {
+			if err = loadDirectory(fs, root, entryPath); err != nil {
+				return err
 			}
+		} else {
+			contents, err := os.ReadFile(entryPath)
+			if err != nil {
+				return err
+			}
+			name := filepath.ToSlash(entryPath[len(root)+1:])
+
+			fs[name] = contents
 		}
 	}
+
+	return nil
+}
+
+// LoadBaseline loads the contents of the given baseline directory.
+func LoadBaseline(dir, lang string) (map[string][]byte, error) {
+	dir = filepath.Join(dir, lang)
+
+	fs := map[string][]byte{}
+	if err := loadDirectory(fs, dir, dir); err != nil {
+		return nil, err
+	}
+	return fs, nil
+}
+
+// ValidateFileEquality compares maps of files for equality.
+func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
+	ok := true
+	for name, file := range expected {
+		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
+			ok = false
+		}
+	}
+	for name := range actual {
+		if _, has := expected[name]; !has {
+			t.Logf("missing data for %s", name)
+			ok = false
+		}
+	}
+	return ok
+}
+
+// If PULUMI_ACCEPT is set, writes out actual output to the expected
+// file set, so we can continue enjoying golden tests without manually
+// modifying the expected output.
+func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte) bool {
+	if os.Getenv("PULUMI_ACCEPT") == "" {
+		return false
+	}
+
+	baseline := filepath.Join(dir, lang)
+
+	// Remove the baseline directory's current contents.
+	entries, err := os.ReadDir(baseline)
+	switch {
+	case err == nil:
+		for _, e := range entries {
+			err = os.RemoveAll(filepath.Join(baseline, e.Name()))
+			require.NoError(t, err)
+		}
+	case os.IsNotExist(err):
+		// OK
+	default:
+		require.NoError(t, err)
+	}
+
+	for file, bytes := range actual {
+		relPath := filepath.FromSlash(file)
+		path := filepath.Join(dir, lang, relPath)
+
+		if err = os.MkdirAll(filepath.Dir(path), 0755); err != nil && !os.IsExist(err) {
+			require.NoError(t, err)
+		}
+
+		err = ioutil.WriteFile(path, bytes, 0600)
+		require.NoError(t, err)
+	}
+
+	return true
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated

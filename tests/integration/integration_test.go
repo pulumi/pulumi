@@ -734,3 +734,67 @@ func testConstructUnknown(t *testing.T, lang string, dependencies ...string) {
 		})
 	}
 }
+
+// Test methods properly handle unknowns.
+// nolint: unused,deadcode
+func testConstructMethodsUnknown(t *testing.T, lang string, dependencies ...string) {
+	const testDir = "construct_component_methods_unknown"
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t,
+				filepath.Join("..", "testprovider"),
+				filepath.Join(testDir, test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:                    append(test.env, pathEnv),
+				Dir:                    filepath.Join(testDir, lang),
+				Dependencies:           dependencies,
+				SkipRefresh:            true,
+				SkipPreview:            false,
+				SkipUpdate:             true,
+				SkipExportImport:       true,
+				SkipEmptyPreviewUpdate: true,
+				Quick:                  false,
+				NoParallel:             true,
+			})
+		})
+	}
+}
+
+func TestRotatePassphrase(t *testing.T) {
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+
+	e.ImportDirectory("rotate_passphrase")
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+
+	e.RunCommand("pulumi", "stack", "init", "dev")
+	e.RunCommand("pulumi", "up", "--skip-preview", "--yes")
+
+	e.RunCommand("pulumi", "config", "set", "--secret", "foo", "bar")
+
+	e.SetEnvVars([]string{"PULUMI_TEST_PASSPHRASE=true"})
+	e.Stdin = strings.NewReader("qwerty\nqwerty\n")
+	e.RunCommand("pulumi", "stack", "change-secrets-provider", "passphrase")
+
+	e.Stdin, e.Passphrase = nil, "qwerty"
+	e.RunCommand("pulumi", "config", "get", "foo")
+}

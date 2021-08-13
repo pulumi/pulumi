@@ -68,8 +68,8 @@ export function createCommandError(result: CommandResult): CommandError {
     const stderr = result.stderr;
     return (
         notFoundRegex.test(stderr) ? new StackNotFoundError(result) :
-        alreadyExistsRegex.test(stderr) ? new StackAlreadyExistsError(result) :
-        stderr.indexOf(conflictText) >= 0 ? new ConcurrentUpdateError(result) :
-        new CommandError(result)
+            alreadyExistsRegex.test(stderr) ? new StackAlreadyExistsError(result) :
+                stderr.indexOf(conflictText) >= 0 ? new ConcurrentUpdateError(result) :
+                    new CommandError(result)
     );
 }

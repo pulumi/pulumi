@@ -28,6 +28,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
+const pulumiSDKVersion = "v3"
+
 // DocLanguageHelper is the Go-specific implementation of the DocLanguageHelper.
 type DocLanguageHelper struct {
 	packages map[string]*pkgContext
@@ -37,13 +39,16 @@ var _ codegen.DocLanguageHelper = DocLanguageHelper{}
 
 // GetDocLinkForPulumiType returns the doc link for a Pulumi type.
 func (d DocLanguageHelper) GetDocLinkForPulumiType(pkg *schema.Package, typeName string) string {
-	moduleVersion := ""
-	if pkg.Version != nil {
-		if pkg.Version.Major > 1 {
-			moduleVersion = fmt.Sprintf("v%d/", pkg.Version.Major)
+	version := pulumiSDKVersion
+	if info, ok := pkg.Language["go"].(GoPackageInfo); ok {
+		if info.PulumiSDKVersion == 1 {
+			return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/go/pulumi?tab=doc#%s", typeName)
+		}
+		if info.PulumiSDKVersion != 0 {
+			version = fmt.Sprintf("v%d", info.PulumiSDKVersion)
 		}
 	}
-	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%sgo/pulumi?tab=doc#%s", moduleVersion, typeName)
+	return fmt.Sprintf("https://pkg.go.dev/github.com/pulumi/pulumi/sdk/%s/go/pulumi?tab=doc#%s", version, typeName)
 }
 
 // GetDocLinkForResourceType returns the godoc URL for a type belonging to a resource provider.
@@ -82,16 +87,13 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the Go-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
 	modPkg, ok := d.packages[moduleName]
 	if !ok {
 		glog.Errorf("cannot calculate type string for type %q. could not find a package for module %q", t.String(), moduleName)
 		os.Exit(1)
 	}
-	if _, ok := t.(*schema.EnumType); ok {
-		return modPkg.inputType(t, optional)
-	}
-	return modPkg.plainType(t, optional)
+	return modPkg.typeString(t)
 }
 
 // GeneratePackagesMap generates a map of Go packages for resources, functions and types.
@@ -131,6 +133,14 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	funcName := d.GetFunctionName(modName, f)
 	return funcName + "Result"
+}
+
+func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
+	return Title(m.Name)
+}
+
+func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
+	return fmt.Sprintf("%s%sResultOutput", resourceName(r), d.GetMethodName(m))
 }
 
 // GetModuleDocLink returns the display name and the link for a module.

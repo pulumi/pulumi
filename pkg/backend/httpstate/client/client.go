@@ -208,25 +208,27 @@ type ListStacksFilter struct {
 
 // ListStacks lists all stacks the current user has access to, optionally filtered by project.
 func (pc *Client) ListStacks(
-	ctx context.Context, filter ListStacksFilter) ([]apitype.StackSummary, error) {
+	ctx context.Context, filter ListStacksFilter, inContToken *string) ([]apitype.StackSummary, *string, error) {
 	queryFilter := struct {
-		Project      *string `url:"project,omitempty"`
-		Organization *string `url:"organization,omitempty"`
-		TagName      *string `url:"tagName,omitempty"`
-		TagValue     *string `url:"tagValue,omitempty"`
+		Project           *string `url:"project,omitempty"`
+		Organization      *string `url:"organization,omitempty"`
+		TagName           *string `url:"tagName,omitempty"`
+		TagValue          *string `url:"tagValue,omitempty"`
+		ContinuationToken *string `url:"continuationToken,omitempty"`
 	}{
-		Project:      filter.Project,
-		Organization: filter.Organization,
-		TagName:      filter.TagName,
-		TagValue:     filter.TagValue,
+		Project:           filter.Project,
+		Organization:      filter.Organization,
+		TagName:           filter.TagName,
+		TagValue:          filter.TagValue,
+		ContinuationToken: inContToken,
 	}
 
 	var resp apitype.ListStacksResponse
 	if err := pc.restCall(ctx, "GET", "/api/user/stacks", queryFilter, nil, &resp); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return resp.Stacks, nil
+	return resp.Stacks, resp.ContinuationToken, nil
 }
 
 var (
@@ -535,23 +537,27 @@ func (pc *Client) StartUpdate(ctx context.Context, update UpdateIdentifier,
 }
 
 // ListPolicyGroups lists all `PolicyGroups` the organization has in the Pulumi service.
-func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
+func (pc *Client) ListPolicyGroups(ctx context.Context, orgName string, inContToken *string) (
+	apitype.ListPolicyGroupsResponse, *string, error) {
+	// NOTE: The ListPolicyGroups API on the Pulumi Service is not currently paginated.
 	var resp apitype.ListPolicyGroupsResponse
 	err := pc.restCall(ctx, "GET", listPolicyGroupsPath(orgName), nil, nil, &resp)
 	if err != nil {
-		return resp, errors.Wrapf(err, "List Policy Groups failed")
+		return resp, nil, errors.Wrapf(err, "List Policy Groups failed")
 	}
-	return resp, nil
+	return resp, nil, nil
 }
 
 // ListPolicyPacks lists all `PolicyPack` the organization has in the Pulumi service.
-func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
+func (pc *Client) ListPolicyPacks(ctx context.Context, orgName string, inContToken *string) (
+	apitype.ListPolicyPacksResponse, *string, error) {
+	// NOTE: The ListPolicyPacks API on the Pulumi Service is not currently paginated.
 	var resp apitype.ListPolicyPacksResponse
 	err := pc.restCall(ctx, "GET", listPolicyPacksPath(orgName), nil, nil, &resp)
 	if err != nil {
-		return resp, errors.Wrapf(err, "List Policy Packs failed")
+		return resp, nil, errors.Wrapf(err, "List Policy Packs failed")
 	}
-	return resp, nil
+	return resp, nil, nil
 }
 
 // PublishPolicyPack publishes a `PolicyPack` to the Pulumi service. If it successfully publishes

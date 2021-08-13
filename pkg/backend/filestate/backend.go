@@ -53,7 +53,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/result"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -238,12 +237,14 @@ func (b *localBackend) GetPolicyPack(ctx context.Context, policyPack string,
 	return nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error) {
-	return apitype.ListPolicyGroupsResponse{}, fmt.Errorf("File state backend does not support resource policy")
+func (b *localBackend) ListPolicyGroups(ctx context.Context, orgName string, _ backend.ContinuationToken) (
+	apitype.ListPolicyGroupsResponse, backend.ContinuationToken, error) {
+	return apitype.ListPolicyGroupsResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
-func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error) {
-	return apitype.ListPolicyPacksResponse{}, fmt.Errorf("File state backend does not support resource policy")
+func (b *localBackend) ListPolicyPacks(ctx context.Context, orgName string, _ backend.ContinuationToken) (
+	apitype.ListPolicyPacksResponse, backend.ContinuationToken, error) {
+	return apitype.ListPolicyPacksResponse{}, nil, fmt.Errorf("File state backend does not support resource policy")
 }
 
 // SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
@@ -330,26 +331,29 @@ func (b *localBackend) GetStack(ctx context.Context, stackRef backend.StackRefer
 }
 
 func (b *localBackend) ListStacks(
-	ctx context.Context, _ backend.ListStacksFilter) ([]backend.StackSummary, error) {
+	ctx context.Context, _ backend.ListStacksFilter, _ backend.ContinuationToken) (
+	[]backend.StackSummary, backend.ContinuationToken, error) {
 	stacks, err := b.getLocalStacks()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	// Note that the provided stack filter is not honored, since fields like
 	// organizations and tags aren't persisted in the local backend.
 	var results []backend.StackSummary
 	for _, stackName := range stacks {
-		stack, err := b.GetStack(ctx, localBackendReference{name: stackName})
+		chk, err := b.getCheckpoint(stackName)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
-		localStack, ok := stack.(*localStack)
-		contract.Assertf(ok, "localBackend GetStack returned non-localStack")
-		results = append(results, newLocalStackSummary(localStack))
+		stackRef, err := b.ParseStackReference(string(stackName))
+		if err != nil {
+			return nil, nil, err
+		}
+		results = append(results, newLocalStackSummary(stackRef, chk))
 	}
 
-	return results, nil
+	return results, nil, nil
 }
 
 func (b *localBackend) RemoveStack(ctx context.Context, stack backend.Stack, force bool) (bool, error) {
@@ -854,11 +858,6 @@ func (b *localBackend) getLocalStacks() ([]tokens.QName, error) {
 
 		// Read in this stack's information.
 		name := tokens.QName(stackfn[:len(stackfn)-len(ext)])
-		_, _, err := b.getStack(name)
-		if err != nil {
-			logging.V(5).Infof("error reading stack: %v (%v) skipping", name, err)
-			continue // failure reading the stack information.
-		}
 
 		stacks = append(stacks, name)
 	}

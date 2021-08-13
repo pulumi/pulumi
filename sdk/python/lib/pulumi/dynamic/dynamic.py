@@ -222,10 +222,18 @@ def serialize_provider(provider: ResourceProvider) -> str:
     pickle.Pickler.save_dict = save_dict_sorted
 
     # Use dill to recursively pickle the provider and store base64 encoded form
+    pty = type(provider)
+    oldptymod = pty.__module__
     try:
+        # TODO[uqfoundation/dill#424]: Dill currently only serializes classes by value when they are in `__main__`.
+        # Since we need to ensure classes are serialized by value for dynamic provider serialization to work, we
+        # for now will overwrite the `__module__` to be `__main__` on the provider class.  When uqfoundation/dill#424
+        # is addressed, we may be able to accomplish the desired results in a less invasive way.
+        pty.__module__ = '__main__'
         byts = dill.dumps(provider, protocol=pickle.DEFAULT_PROTOCOL, recurse=True)
         return base64.b64encode(byts).decode('utf-8')
     finally:
+        pty.__module__ = oldptymod
         # Restore the original pickler
         pickle.Pickler = old_pickler
 

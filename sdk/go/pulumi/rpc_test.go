@@ -22,9 +22,11 @@ import (
 	"testing"
 
 	"github.com/blang/semver"
+	structpb "github.com/golang/protobuf/ptypes/struct"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 type simpleComponentResource struct {
@@ -414,7 +416,7 @@ func TestResourceState(t *testing.T) {
 	assert.Nil(t, err)
 
 	var theResource testResource
-	state := ctx.makeResourceState("", "", &theResource, nil, nil, nil)
+	state := ctx.makeResourceState("", "", &theResource, nil, nil, "", nil, nil)
 
 	resolved, _, _, _ := marshalInputs(&testResourceInputs{
 		Any:     String("foo"),
@@ -436,7 +438,7 @@ func TestResourceState(t *testing.T) {
 		resolved,
 		plugin.MarshalOptions{KeepUnknowns: true})
 	assert.NoError(t, err)
-	state.resolve(ctx, false, nil, nil, "foo", "bar", s, nil)
+	state.resolve(ctx, nil, nil, "foo", "bar", s, nil)
 
 	input := &testResourceInputs{
 		URN:     theResource.URN(),
@@ -799,4 +801,85 @@ func TestRegisterResourceModule(t *testing.T) {
 			})
 		})
 	}
+}
+
+func TestInvalidAsset(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	var d Asset
+	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.True(t, d.(*asset).invalid)
+
+	_, _, err = marshalInput(d, assetType, true)
+	assert.Error(t, err)
+}
+
+func TestInvalidArchive(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	var d Archive
+	_, err = unmarshalOutput(ctx, resource.NewStringProperty("foo"), reflect.ValueOf(&d).Elem())
+	require.NoError(t, err)
+	require.NotNil(t, d)
+	require.True(t, d.(*archive).invalid)
+
+	_, _, err = marshalInput(d, archiveType, true)
+	assert.Error(t, err)
+}
+
+func TestDependsOnComponent(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	registerResource := func(name string, res Resource, opts *resourceOptions) (Resource, []string) {
+		state := ctx.makeResourceState("", "", res, nil, nil, "", nil, nil)
+		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
+
+		if opts == nil {
+			opts = &resourceOptions{}
+		}
+
+		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false)
+		require.NoError(t, err)
+
+		return res, inputs.deps
+	}
+
+	newResource := func(name string, opts *resourceOptions) (Resource, []string) {
+		var res testResource
+		return registerResource(name, &res, opts)
+	}
+
+	newComponent := func(name string, opts *resourceOptions) (Resource, []string) {
+		var res simpleComponentResource
+		return registerResource(name, &res, opts)
+	}
+
+	resA, _ := newResource("resA", nil)
+	comp1, _ := newComponent("comp1", nil)
+	resB, _ := newResource("resB", &resourceOptions{Parent: comp1})
+	newResource("resC", &resourceOptions{Parent: resB})
+	comp2, _ := newComponent("comp2", &resourceOptions{Parent: comp1})
+
+	resD, deps := newResource("resD", &resourceOptions{DependsOn: []Resource{resA}, Parent: comp2})
+	assert.Equal(t, []string{"resA"}, deps)
+
+	_, deps = newResource("resE", &resourceOptions{DependsOn: []Resource{resD}, Parent: comp2})
+	assert.Equal(t, []string{"resD"}, deps)
+
+	_, deps = newResource("resF", &resourceOptions{DependsOn: []Resource{resA}})
+	assert.Equal(t, []string{"resA"}, deps)
+
+	resG, deps := newResource("resG", &resourceOptions{DependsOn: []Resource{comp1}})
+	assert.Equal(t, []string{"resB", "resD", "resE"}, deps)
+
+	_, deps = newResource("resH", &resourceOptions{DependsOn: []Resource{comp2}})
+	assert.Equal(t, []string{"resD", "resE"}, deps)
+
+	_, deps = newResource("resI", &resourceOptions{DependsOn: []Resource{resG}})
+	assert.Equal(t, []string{"resG"}, deps)
 }

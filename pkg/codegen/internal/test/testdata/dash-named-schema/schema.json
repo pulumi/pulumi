@@ -1,0 +1,46 @@
+{
+  "version": "0.0.1",
+  "name": "foo-bar",
+  "types": {
+    "foo-bar:index:TopLevel": {
+      "properties": {
+        "buzz": {
+          "type": "string"
+        }
+      },
+      "inputProperties": {
+        "buzz": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "foo-bar:submodule1:ModuleResource": {
+      "properties": {
+        "thing": {
+          "$ref": "#/types/foo-bar:index:TopLevel"
+        }
+      },
+      "inputProperties": {
+        "thing": {
+          "$ref": "#/types/foo-bar:index:TopLevel"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "language": {
+    "csharp": {
+      "namespaces": {
+        "foo-bar": "FooBar"
+      }
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/dash-named-schema/go/foo"
+    },
+    "nodejs": {},
+    "python": {}
+  }
+}

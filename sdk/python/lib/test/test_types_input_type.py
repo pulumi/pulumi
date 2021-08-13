@@ -68,6 +68,13 @@ class MyDeclaredPropertiesInputType:
         pulumi.set(self, "second_value", value)
 
 
+@pulumi.input_type
+class DefaultArgs:
+    a: pulumi.Input[str] = pulumi.property("a", default="foo")
+    b: pulumi.Input[str] = pulumi.property("b", default="bar")
+    c: Optional[pulumi.Input[str]] = pulumi.property("c", default=None)
+
+
 class InputTypeTests(unittest.TestCase):
     def test_decorator_raises(self):
         with self.assertRaises(AssertionError) as cm:
@@ -160,3 +167,9 @@ class InputTypeTests(unittest.TestCase):
                 "firstValue": "foo",
                 "secondValue": 1,
             }, _types.input_type_to_dict(t3))
+
+    def test_input_type_defaults(self):
+        d = DefaultArgs()
+        self.assertEqual("foo", d.a)
+        self.assertEqual("bar", d.b)
+        self.assertEqual(None, d.c)

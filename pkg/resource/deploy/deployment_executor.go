@@ -148,8 +148,8 @@ func (ex *deploymentExecutor) Execute(callerCtx context.Context, opts Options, p
 		}
 	}
 
-	// The set of -t targets provided on hte command line.  'nil' means 'update everything'.
-	// Non-nill means 'update only in this set'.  We don't error if the user specifies an target
+	// The set of -t targets provided on the command line.  'nil' means 'update everything'.
+	// Non-nil means 'update only in this set'.  We don't error if the user specifies a target
 	// during `update` that we don't know about because it might be the urn for a resource they
 	// want to create.
 	updateTargetsOpt := createTargetMap(opts.UpdateTargets)

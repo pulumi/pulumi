@@ -62,6 +62,9 @@ type Provider struct {
 	InvokeF func(tok tokens.ModuleMember,
 		inputs resource.PropertyMap) (resource.PropertyMap, []plugin.CheckFailure, error)
 
+	CallF func(monitor *ResourceMonitor, tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+		options plugin.CallOptions) (plugin.CallResult, error)
+
 	CancelF func() error
 }
 
@@ -197,4 +200,16 @@ func (prov *Provider) StreamInvoke(
 	onNext func(resource.PropertyMap) error) ([]plugin.CheckFailure, error) {
 
 	return nil, fmt.Errorf("not implemented")
+}
+
+func (prov *Provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info plugin.CallInfo,
+	options plugin.CallOptions) (plugin.CallResult, error) {
+	if prov.CallF == nil {
+		return plugin.CallResult{}, nil
+	}
+	monitor, err := dialMonitor(context.Background(), info.MonitorAddress)
+	if err != nil {
+		return plugin.CallResult{}, err
+	}
+	return prov.CallF(monitor, tok, args, info, options)
 }

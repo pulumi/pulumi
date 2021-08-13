@@ -67,7 +67,7 @@ func newUpCmd() *cobra.Command {
 	var showReads bool
 	var skipPreview bool
 	var suppressOutputs bool
-	var suppressPermaLink string
+	var suppressPermalink string
 	var yes bool
 	var secretsProvider string
 	var targets []string
@@ -373,7 +373,7 @@ func newUpCmd() *cobra.Command {
 
 			// we only suppress permalinks if the user passes true. the default is an empty string
 			// which we pass as 'false'
-			if suppressPermaLink == "true" {
+			if suppressPermalink == "true" {
 				opts.Display.SuppressPermaLink = true
 			} else {
 				opts.Display.SuppressPermaLink = false
@@ -386,7 +386,7 @@ func newUpCmd() *cobra.Command {
 
 			// by default, we are going to suppress the permalink when using self-managed backends
 			// this can be re-enabled by explicitly passing "false" to the `supppress-permalink` flag
-			if suppressPermaLink != "false" && filestateBackend {
+			if suppressPermalink != "false" && filestateBackend {
 				opts.Display.SuppressPermaLink = true
 			}
 
@@ -481,7 +481,7 @@ func newUpCmd() *cobra.Command {
 		&suppressOutputs, "suppress-outputs", false,
 		"Suppress display of stack outputs (in case they contain sensitive values)")
 	cmd.PersistentFlags().StringVar(
-		&suppressPermaLink, "suppress-permalink", "",
+		&suppressPermalink, "suppress-permalink", "",
 		"Suppress display of the state permalink")
 	cmd.Flag("suppress-permalink").NoOptDefVal = "false"
 	cmd.PersistentFlags().BoolVarP(

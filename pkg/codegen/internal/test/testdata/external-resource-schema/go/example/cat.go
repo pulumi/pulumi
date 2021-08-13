@@ -45,11 +45,9 @@ func GetCat(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering Cat resources.
 type catState struct {
-	Name *string `pulumi:"name"`
 }
 
 type CatState struct {
-	Name pulumi.StringPtrInput
 }
 
 func (CatState) ElementType() reflect.Type {
@@ -133,7 +131,7 @@ type CatArrayInput interface {
 type CatArray []CatInput
 
 func (CatArray) ElementType() reflect.Type {
-	return reflect.TypeOf(([]*Cat)(nil))
+	return reflect.TypeOf((*[]*Cat)(nil)).Elem()
 }
 
 func (i CatArray) ToCatArrayOutput() CatArrayOutput {
@@ -158,7 +156,7 @@ type CatMapInput interface {
 type CatMap map[string]CatInput
 
 func (CatMap) ElementType() reflect.Type {
-	return reflect.TypeOf((map[string]*Cat)(nil))
+	return reflect.TypeOf((*map[string]*Cat)(nil)).Elem()
 }
 
 func (i CatMap) ToCatMapOutput() CatMapOutput {
@@ -169,9 +167,7 @@ func (i CatMap) ToCatMapOutputWithContext(ctx context.Context) CatMapOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(CatMapOutput)
 }
 
-type CatOutput struct {
-	*pulumi.OutputState
-}
+type CatOutput struct{ *pulumi.OutputState }
 
 func (CatOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Cat)(nil))
@@ -190,14 +186,12 @@ func (o CatOutput) ToCatPtrOutput() CatPtrOutput {
 }
 
 func (o CatOutput) ToCatPtrOutputWithContext(ctx context.Context) CatPtrOutput {
-	return o.ApplyT(func(v Cat) *Cat {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Cat) *Cat {
 		return &v
 	}).(CatPtrOutput)
 }
 
-type CatPtrOutput struct {
-	*pulumi.OutputState
-}
+type CatPtrOutput struct{ *pulumi.OutputState }
 
 func (CatPtrOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((**Cat)(nil))
@@ -209,6 +203,16 @@ func (o CatPtrOutput) ToCatPtrOutput() CatPtrOutput {
 
 func (o CatPtrOutput) ToCatPtrOutputWithContext(ctx context.Context) CatPtrOutput {
 	return o
+}
+
+func (o CatPtrOutput) Elem() CatOutput {
+	return o.ApplyT(func(v *Cat) Cat {
+		if v != nil {
+			return *v
+		}
+		var ret Cat
+		return ret
+	}).(CatOutput)
 }
 
 type CatArrayOutput struct{ *pulumi.OutputState }

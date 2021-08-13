@@ -56,8 +56,8 @@ type componentArgs struct {
 type ComponentArgs struct {
 	A   bool
 	B   *bool
-	Bar *Foo
-	Baz []Foo
+	Bar *FooArgs
+	Baz []FooInput
 	C   int
 	D   *int
 	E   string
@@ -88,9 +88,7 @@ func (i *Component) ToComponentOutputWithContext(ctx context.Context) ComponentO
 	return pulumi.ToOutputWithContext(ctx, i).(ComponentOutput)
 }
 
-type ComponentOutput struct {
-	*pulumi.OutputState
-}
+type ComponentOutput struct{ *pulumi.OutputState }
 
 func (ComponentOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*Component)(nil))

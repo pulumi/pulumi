@@ -32,17 +32,18 @@ import (
 //
 
 type MockBackend struct {
-	NameF                   func() string
-	URLF                    func() string
-	GetPolicyPackF          func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
-	SupportsOrganizationsF  func() bool
-	ParseStackReferenceF    func(s string) (StackReference, error)
-	ValidateStackNameF      func(s string) error
-	DoesProjectExistF       func(context.Context, string) (bool, error)
-	GetStackF               func(context.Context, StackReference) (Stack, error)
-	CreateStackF            func(context.Context, StackReference, interface{}) (Stack, error)
-	RemoveStackF            func(context.Context, Stack, bool) (bool, error)
-	ListStacksF             func(context.Context, ListStacksFilter) ([]StackSummary, error)
+	NameF                  func() string
+	URLF                   func() string
+	GetPolicyPackF         func(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
+	SupportsOrganizationsF func() bool
+	ParseStackReferenceF   func(s string) (StackReference, error)
+	ValidateStackNameF     func(s string) error
+	DoesProjectExistF      func(context.Context, string) (bool, error)
+	GetStackF              func(context.Context, StackReference) (Stack, error)
+	CreateStackF           func(context.Context, StackReference, interface{}) (Stack, error)
+	RemoveStackF           func(context.Context, Stack, bool) (bool, error)
+	ListStacksF            func(context.Context, ListStacksFilter, ContinuationToken) (
+		[]StackSummary, ContinuationToken, error)
 	RenameStackF            func(context.Context, Stack, tokens.QName) (StackReference, error)
 	GetStackCrypterF        func(StackReference) (config.Crypter, error)
 	QueryF                  func(context.Context, QueryOperation) result.Result
@@ -87,11 +88,13 @@ func (be *MockBackend) URL() string {
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyGroups(context.Context, string) (apitype.ListPolicyGroupsResponse, error) {
+func (be *MockBackend) ListPolicyGroups(context.Context, string, ContinuationToken) (
+	apitype.ListPolicyGroupsResponse, ContinuationToken, error) {
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListPolicyPacks(context.Context, string) (apitype.ListPolicyPacksResponse, error) {
+func (be *MockBackend) ListPolicyPacks(context.Context, string, ContinuationToken) (
+	apitype.ListPolicyPacksResponse, ContinuationToken, error) {
 	panic("not implemented")
 }
 
@@ -153,9 +156,10 @@ func (be *MockBackend) RemoveStack(ctx context.Context, stack Stack, force bool)
 	panic("not implemented")
 }
 
-func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error) {
+func (be *MockBackend) ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+	[]StackSummary, ContinuationToken, error) {
 	if be.ListStacksF != nil {
-		return be.ListStacksF(ctx, filter)
+		return be.ListStacksF(ctx, filter, inContToken)
 	}
 	panic("not implemented")
 }

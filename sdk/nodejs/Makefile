@@ -3,17 +3,22 @@ NODE_MODULE_NAME := @pulumi/pulumi
 VERSION 		 := $(shell cd ../../ && pulumictl get version --language javascript)
 
 LANGUAGE_HOST    := github.com/pulumi/pulumi/sdk/v3/nodejs/cmd/pulumi-language-nodejs
+PROJECT_ROOT     := $(realpath ../..)
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
 TESTPARALLELISM := 10
 TEST_FAST_TIMEOUT := 2m
+
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = build
 
 include ../../build/common.mk
 
 export PATH:=$(shell yarn bin 2>/dev/null):$(PATH)
 
 lint::
-	./node_modules/.bin/tslint -c tslint.json -p tsconfig.json
+	./node_modules/.bin/eslint -c .eslintrc.js --ext .ts .
 
 build_package::
 	./node_modules/.bin/tsc
@@ -41,13 +46,13 @@ install_plugin:: build
 
 install:: install_package install_plugin
 
-istanbul_tests:: build
-	./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/**/*.spec.js'
+istanbul_tests:: $(TEST_ALL_DEPS)
+	$(RUN_TESTSUITE) istanbul ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/**/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
-	./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
+	$(RUN_TESTSUITE) istanbul-with-mocks ./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
 
-sxs_tests:: build
+sxs_tests:: $(TEST_ALL_DEPS)
 	pushd tests/sxs_ts_3.6 && yarn ; tsc ; popd
 	pushd tests/sxs_ts_latest && yarn ; tsc ; popd
 

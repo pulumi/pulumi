@@ -15,7 +15,6 @@
 package dotnet
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"math/big"
@@ -242,6 +241,7 @@ var functionNamespaces = map[string][]string{
 	"readDir":  {"System.IO", "System.Linq"},
 	"readFile": {"System.IO"},
 	"toJSON":   {"System.Text.Json", "System.Collections.Generic"},
+	"toBase64": {"System"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -289,14 +289,16 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case hcl2.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
-		optionsBag := ""
-		if len(expr.Args) == 3 {
-			var buf bytes.Buffer
-			g.Fgenf(&buf, ", %.v", expr.Args[2])
-			optionsBag = buf.String()
+		g.Fprintf(w, "%s.InvokeAsync(", name)
+		if len(expr.Args) >= 2 {
+			g.Fgenf(w, "%.v", expr.Args[1])
 		}
-
-		g.Fgenf(w, "%s.InvokeAsync(%.v%v)", name, expr.Args[1], optionsBag)
+		if len(expr.Args) == 3 {
+			g.Fgenf(w, ", %.v", expr.Args[2])
+		}
+		g.Fprint(w, ")")
+	case "join":
+		g.Fgenf(w, "string.Join(%v, %v)", expr.Args[0], expr.Args[1])
 	case "length":
 		g.Fgenf(w, "%.20v.Length", expr.Args[0])
 	case "lookup":
@@ -314,6 +316,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "Output.CreateSecret(%v)", expr.Args[0])
 	case "split":
 		g.Fgenf(w, "%.20v.Split(%v)", expr.Args[1], expr.Args[0])
+	case "toBase64":
+		g.Fgenf(w, "Convert.ToBase64String(System.Text.UTF8.GetBytes(%v))", expr.Args[0])
 	case "toJSON":
 		g.Fgen(w, "JsonSerializer.Serialize(")
 		g.genDictionary(w, expr.Args[0])
@@ -399,7 +403,12 @@ func (g *generator) genStringLiteral(w io.Writer, v string) {
 }
 
 func (g *generator) GenLiteralValueExpression(w io.Writer, expr *model.LiteralValueExpression) {
-	switch expr.Type() {
+	typ := expr.Type()
+	if cns, ok := typ.(*model.ConstType); ok {
+		typ = cns.Type
+	}
+
+	switch typ {
 	case model.BoolType:
 		g.Fgenf(w, "%v", expr.Value.True())
 	case model.NoneType:
@@ -520,7 +529,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	multiLine := false
 	expressions := false
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			if strings.Contains(lit.Value.AsString(), "\n") {
 				multiLine = true
 			}
@@ -537,7 +546,7 @@ func (g *generator) GenTemplateExpression(w io.Writer, expr *model.TemplateExpre
 	}
 	g.Fgen(w, "\"")
 	for _, expr := range expr.Parts {
-		if lit, ok := expr.(*model.LiteralValueExpression); ok && lit.Type() == model.StringType {
+		if lit, ok := expr.(*model.LiteralValueExpression); ok && model.StringType.AssignableFrom(lit.Type()) {
 			g.Fgen(w, g.escapeString(lit.Value.AsString(), multiLine, expressions))
 		} else {
 			g.Fgenf(w, "{%.v}", expr)

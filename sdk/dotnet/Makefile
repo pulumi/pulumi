@@ -2,12 +2,17 @@ PROJECT_NAME    := Pulumi .NET Core SDK
 LANGHOST_PKG    := github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet
 
 PROJECT_PKGS    := $(shell go list ./cmd...)
+PROJECT_ROOT    := $(realpath ../..)
 
 DOTNET_VERSION  := $(shell cd ../../ && pulumictl get version --language dotnet)
 
 TESTPARALLELISM := 10
 
 include ../../build/common.mk
+
+# Motivation: running `make TEST_ALL_DEPS= test_all` permits running
+# `test_all` without the dependencies.
+TEST_ALL_DEPS = install
 
 build::
 	# From the nuget docs:
@@ -21,12 +26,12 @@ build::
 	# following:
 	#
 	#     -alpha: Alpha release, typically used for work-in-progress and experimentation
-	#dotnet clean
+	dotnet clean
 	dotnet build dotnet.sln /p:Version=${DOTNET_VERSION}
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install_plugin::
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
+	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install:: build install_plugin
 	echo "Copying NuGet packages to ${PULUMI_NUGET}"
@@ -34,9 +39,9 @@ install:: build install_plugin
 	rm -f $(PULUMI_NUGET)/*.nupkg
 	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
-dotnet_test:: install
+dotnet_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	dotnet test /p:Version=${DOTNET_VERSION}
+	$(RUN_TESTSUITE) dotnet-test dotnet test /p:Version=${DOTNET_VERSION}
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}
@@ -55,4 +60,3 @@ publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
 	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
 		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
-

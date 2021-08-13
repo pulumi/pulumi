@@ -72,7 +72,7 @@ func (d DocLanguageHelper) GetDocLinkForFunctionInputOrOutputType(pkg *schema.Pa
 }
 
 // GetLanguageTypeString returns the DotNet-specific type given a Pulumi schema type.
-func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input, args, optional bool) string {
+func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName string, t schema.Type, input bool) string {
 	typeDetails := map[*schema.ObjectType]*typeDetails{}
 	mod := &modContext{
 		pkg:         pkg,
@@ -84,7 +84,7 @@ func (d DocLanguageHelper) GetLanguageTypeString(pkg *schema.Package, moduleName
 	if !input {
 		qualifier = "Outputs"
 	}
-	return mod.typeString(t, qualifier, input, false /*state*/, false /*wrapInput*/, args /*args*/, true /*requireInitializers*/, optional)
+	return mod.typeString(t, qualifier, input, false /*state*/, true /*requireInitializers*/)
 }
 
 func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) string {
@@ -96,6 +96,14 @@ func (d DocLanguageHelper) GetFunctionName(modName string, f *schema.Function) s
 func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *schema.Function) string {
 	funcName := d.GetFunctionName(modName, f)
 	return funcName + "Result"
+}
+
+func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
+	return Title(m.Name)
+}
+
+func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
+	return fmt.Sprintf("%s.%sResult", resourceName(r), d.GetMethodName(m))
 }
 
 // GetPropertyName uses the property's csharp-specific language info, if available, to generate

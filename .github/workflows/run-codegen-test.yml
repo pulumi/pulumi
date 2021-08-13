@@ -37,6 +37,7 @@ jobs:
     strategy:
       matrix:
         provider: ["aws", "gcp", "azure", "azuread", "random", "kubernetes", "azure-native"]
+      fail-fast: false
     steps:
       - name: Install Go
         uses: actions/setup-go@v1

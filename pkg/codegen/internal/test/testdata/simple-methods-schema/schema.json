@@ -1,0 +1,144 @@
+{
+    "version": "0.0.1",
+    "name": "example",
+    "types": {
+        "example:nested:Baz": {
+            "properties": {
+                "hello": {
+                    "type": "string"
+                },
+                "world": {
+                    "type": "string"
+                }
+            },
+            "type": "object"
+        }
+    },
+    "resources": {
+        "example::Foo": {
+            "isComponent": true,
+            "methods": {
+                "bar": "example::Foo/bar",
+                "baz": "example::Foo/baz",
+                "generateKubeconfig": "example::Foo/generateKubeconfig"
+            }
+        }
+    },
+    "functions": {
+        "example::Foo/bar": {
+            "description": "A description of bar.",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/example::Foo"
+                    },
+                    "boolValue": {
+                        "type": "boolean"
+                    },
+                    "boolValueRequired": {
+                        "type": "boolean"
+                    },
+                    "boolValuePlain": {
+                        "type": "boolean",
+                        "plain": true
+                    },
+                    "stringValue": {
+                        "type": "string"
+                    },
+                    "stringValueRequired": {
+                        "type": "string"
+                    },
+                    "stringValuePlain": {
+                        "type": "string",
+                        "plain": true
+                    },
+                    "name": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+                    },
+                    "nameRequired": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet"
+                    },
+                    "namePlain": {
+                        "$ref": "/random/v2.3.1/schema.json#/resources/random:index%2FrandomPet:RandomPet",
+                        "plain": true
+                    },
+                    "baz": {
+                        "$ref": "#/types/example:nested:Baz"
+                    },
+                    "bazRequired": {
+                        "$ref": "#/types/example:nested:Baz"
+                    },
+                    "bazPlain": {
+                        "$ref": "#/types/example:nested:Baz",
+                        "plain": true
+                    }
+                },
+                "required": [
+                    "__self__",
+                    "boolValueRequired",
+                    "stringValueRequired",
+                    "nameRequired",
+                    "bazRequired"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "someValue": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "someValue"
+                ]
+            }
+        },
+        "example::Foo/baz": {
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/example::Foo"
+                    }
+                },
+                "required": [
+                    "__self__"
+                ]
+            }
+        },
+        "example::Foo/generateKubeconfig": {
+            "description": "Do something with something else",
+            "inputs": {
+                "properties": {
+                    "__self__": {
+                        "$ref": "#/resources/example::Foo"
+                    },
+                    "boolValue": {
+                        "type": "boolean",
+                        "plain": true
+                    }
+                },
+                "required": [
+                    "__self__",
+                    "boolValue"
+                ]
+            },
+            "outputs": {
+                "properties": {
+                    "kubeconfig": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "kubeconfig"
+                ]
+            }
+        }
+    },
+    "language": {
+        "csharp": {},
+        "go": {
+            "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-methods-schema/go/example"
+        },
+        "nodejs": {},
+        "python": {}
+    }
+}

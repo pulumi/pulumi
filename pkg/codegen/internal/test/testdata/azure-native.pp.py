@@ -2,12 +2,12 @@ import pulumi
 import pulumi_azure_native as azure_native
 
 front_door = azure_native.network.FrontDoor("frontDoor", routing_rules=[azure_native.network.RoutingRuleArgs(
-    route_configuration={
-        "odata_type": "#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
-        "backend_pool": {
-            "id": "/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
-        },
-    },
+    route_configuration=azure_native.network.ForwardingConfigurationArgs(
+        odata_type="#Microsoft.Azure.FrontDoor.Models.FrontdoorForwardingConfiguration",
+        backend_pool=azure_native.network.SubResourceArgs(
+            id="/subscriptions/subid/resourceGroups/rg1/providers/Microsoft.Network/frontDoors/frontDoor1/backendPools/backendPool1",
+        ),
+    ),
 )])
 endpoint = azure_native.cdn.Endpoint("endpoint",
     delivery_policy=azure_native.cdn.EndpointPropertiesUpdateParametersDeliveryPolicyArgs(

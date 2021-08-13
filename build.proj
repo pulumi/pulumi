@@ -63,6 +63,8 @@
       <VersionPart>$(Version.Split("-")[0])</VersionPart>
       <VersionPrefix>$(VersionPart.Replace("v",""))</VersionPrefix>
     </PropertyGroup>
+    <Exec Command="dotnet clean"
+          WorkingDirectory="$(DotNetSdkDirectory)" />
     <Exec Command="dotnet build dotnet.sln /p:Version=$(Version)"
           WorkingDirectory="$(DotNetSdkDirectory)" />
     <Exec Command="go install -ldflags &quot;-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=$(Version)&quot; github.com/pulumi/pulumi/sdk/v3/dotnet/cmd/pulumi-language-dotnet"
@@ -284,6 +286,22 @@
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent" />
     <Exec Command="yarn link @pulumi/pulumi"
       WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_error_apply\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_error_apply\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
+    <Exec Command="yarn install"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
+    <Exec Command="yarn link @pulumi/pulumi"
+      WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
   </Target>
 
   <Target Name="TestBuild">
@@ -297,6 +315,13 @@
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\component_provider_schema\testcomponent-go" />
     <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent" />
     <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_unknown\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_error_apply\testcomponent" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_methods_unknown\testcomponent-go" />
+    <Exec Command="yarn run tsc" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent" />
+    <Exec Command="go build -o pulumi-resource-testcomponent.exe" WorkingDirectory="$(TestsDirectory)\integration\construct_component_provider\testcomponent-go" />
 
     <!-- Install pulumi SDK into the venv managed by pipenv. -->
     <Exec Command="pipenv run pip install -e ."

@@ -76,14 +76,14 @@ export abstract class Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiResource: boolean = true;
 
     /**
      * The optional parent of this resource.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __parentResource: Resource | undefined;
 
     /**
@@ -125,7 +125,7 @@ export abstract class Resource {
      *
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public __childResources: Set<Resource> | undefined;
 
     /**
@@ -138,7 +138,7 @@ export abstract class Resource {
      * When set to true, protect ensures this resource cannot be deleted.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private readonly __protect: boolean;
 
     /**
@@ -149,7 +149,7 @@ export abstract class Resource {
      * cases where they are passed "old" resources.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     __transformations?: ResourceTransformation[];
 
     /**
@@ -160,7 +160,7 @@ export abstract class Resource {
      * cases where they are passed "old" resources.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     readonly __aliases?: Input<URN>[];
 
     /**
@@ -171,15 +171,31 @@ export abstract class Resource {
      * cases where they are passed "old" resources.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private readonly __name?: string;
 
     /**
      * The set of providers to use for child resources. Keyed by package name (e.g. "aws").
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private readonly __providers: Record<string, ProviderResource>;
+
+    /**
+     * The specified provider or provider determined from the parent for custom resources.
+     * @internal
+     */
+    // Note: This is deliberately not named `__provider` as that conflicts with the property
+    // used by the `dynamic.Resource` class.
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    readonly __prov?: ProviderResource;
+
+    /**
+     * The specified provider version.
+     * @internal
+     */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    readonly __version?: string;
 
     public static isInstance(obj: any): obj is Resource {
         return utils.isInstance<Resource>(obj, "__pulumiResource");
@@ -313,6 +329,8 @@ export abstract class Resource {
         }
 
         this.__protect = !!opts.protect;
+        this.__prov = custom ? opts.provider : undefined;
+        this.__version = opts.version;
 
         // Collapse any `Alias`es down to URNs. We have to wait until this point to do so because we do not know the
         // default `name` and `type` to apply until we are inside the resource constructor.
@@ -436,10 +454,10 @@ export interface Alias {
 
 // collapseAliasToUrn turns an Alias into a URN given a set of default data
 function collapseAliasToUrn(
-        alias: Input<Alias | string>,
-        defaultName: string,
-        defaultType: string,
-        defaultParent: Resource | undefined): Output<URN> {
+    alias: Input<Alias | string>,
+    defaultName: string,
+    defaultType: string,
+    defaultParent: Resource | undefined): Output<URN> {
 
     return output(alias).apply(a => {
         if (typeof a === "string") {
@@ -491,6 +509,12 @@ export interface ResourceOptions {
      * Ignore changes to any of the specified properties.
      */
     ignoreChanges?: string[];
+    /**
+     * Changes to any of these property paths will force a replacement.  If this list includes `"*"`, changes to any
+     * properties will force a replacement.  Initialization errors from previous deployments will require replacement
+     * instead of update only if `"*"` is passed.
+     */
+    replaceOnChanges?: string[];
     /**
      * An optional version, corresponding to the version of the provider plugin that should be used when operating on
      * this resource. This version overrides the version information inferred from the current package and should
@@ -660,7 +684,7 @@ export abstract class CustomResource extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiCustomResource: boolean;
 
     /**
@@ -668,7 +692,7 @@ export abstract class CustomResource extends Resource {
      * classes that inherit from `CustomResource`.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiType: string;
 
     /**
@@ -721,7 +745,7 @@ export abstract class ProviderResource extends CustomResource {
     private readonly pkg: string;
 
     /** @internal */
-    // tslint:disable-next-line: variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public __registrationId?: string;
 
     public static async register(provider: ProviderResource | undefined): Promise<string | undefined> {
@@ -768,16 +792,20 @@ export class ComponentResource<TData = any> extends Resource {
      * A private field to help with RTTI that works in SxS scenarios.
      * @internal
      */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __pulumiComponentResource = true;
 
     /** @internal */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     public readonly __data: Promise<TData>;
 
     /** @internal */
-    // tslint:disable-next-line:variable-name
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
     private __registered = false;
+
+    /** @internal */
+    // eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
+    public readonly __remote: boolean;
 
     /**
      * Returns true if the given object is an instance of CustomResource.  This is designed to work even when
@@ -809,9 +837,10 @@ export class ComponentResource<TData = any> extends Resource {
         // for a component resource.  The component is just used for organizational purposes and does
         // not correspond to a real piece of cloud infrastructure.  As such, changes to it *itself*
         // do not have any effect on the cloud side of things at all.
-        super(type, name, /*custom:*/ false, /*props:*/ remote ? args : {}, opts, remote);
-        this.__registered = remote;
-        this.__data = remote ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
+        super(type, name, /*custom:*/ false, /*props:*/ remote || opts?.urn ? args : {}, opts, remote);
+        this.__remote = remote;
+        this.__registered = remote || !!opts?.urn;
+        this.__data = remote || opts?.urn ? Promise.resolve(<TData>{}) : this.initializeAndRegisterOutputs(args);
     }
 
     /** @internal */
@@ -1006,17 +1035,31 @@ export class DependencyResource extends CustomResource {
  */
 export class DependencyProviderResource extends ProviderResource {
     constructor(ref: string) {
-        super("", "", {}, {}, true);
+        const [urn, id] = parseResourceReference(ref);
+        const urnParts = urn.split("::");
+        const qualifiedType = urnParts[2];
+        const type = qualifiedType.split("$").pop()!;
+        // type will be "pulumi:providers:<package>" and we want the last part.
+        const typeParts = type.split(":");
+        const pkg = typeParts.length > 2 ? typeParts[2] : "";
 
-        // Parse the URN and ID out of the provider reference.
-        const lastSep = ref.lastIndexOf("::");
-        if (lastSep === -1) {
-            throw new Error(`expected '::' in provider reference ${ref}`);
-        }
-        const urn = ref.slice(0, lastSep);
-        const id = ref.slice(lastSep+2);
+        super(pkg, "", {}, {}, true);
 
         (<any>this).urn = new Output(<any>this, Promise.resolve(urn), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
         (<any>this).id = new Output(<any>this, Promise.resolve(id), Promise.resolve(true), Promise.resolve(false), Promise.resolve([]));
     }
+}
+
+/**
+ * parseResourceReference parses the URN and ID out of the provider reference.
+ * @internal
+ */
+export function parseResourceReference(ref: string): [string, string] {
+    const lastSep = ref.lastIndexOf("::");
+    if (lastSep === -1) {
+        throw new Error(`expected '::' in provider reference ${ref}`);
+    }
+    const urn = ref.slice(0, lastSep);
+    const id = ref.slice(lastSep+2);
+    return [urn, id];
 }

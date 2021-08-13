@@ -12,11 +12,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from pulumi.provider.provider import Provider, ConstructResult
+from pulumi.provider.provider import Provider, CallResult, CheckFailure, ConstructResult
 from pulumi.provider.server import main
 
 __all__ = [
     'Provider',
+    'CallResult',
+    'CheckFailure',
     'ConstructResult',
     'main'
 ]

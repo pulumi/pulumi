@@ -68,6 +68,11 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
     if typ is None:
         return None
 
+    # Annotations not specifying the element type are assumed by mypy
+    # to signify Any element type. Follow suit here.
+    if typ in {list, List, Sequence, abc.Sequence}:
+        return cast(type, Any)
+
     # If typ is a list, get the type for its values, to pass
     # along for each item.
     origin = _types.get_origin(typ)
@@ -331,7 +336,9 @@ async def serialize_property(value: 'Input[Any]',
 
 
 # pylint: disable=too-many-return-statements
-def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optional[bool] = None) -> Any:
+def deserialize_properties(props_struct: struct_pb2.Struct,
+                           keep_unknowns: Optional[bool] = None,
+                           keep_internal: Optional[bool] = None) -> Any:
     """
     Deserializes a protobuf `struct_pb2.Struct` into a Python dictionary containing normal
     Python types.
@@ -377,7 +384,7 @@ def deserialize_properties(props_struct: struct_pb2.Struct, keep_unknowns: Optio
         # not need to be passed back to the engine, and often will not match the
         # expected type we are deserializing into.
         # Keep "__provider" as it's the property name used by Python dynamic providers.
-        if k.startswith("__") and k != "__provider":
+        if not keep_internal and k.startswith("__") and k != "__provider":
             continue
 
         value = deserialize_property(v, keep_unknowns)
@@ -554,7 +561,8 @@ def transfer_properties(res: 'Resource', props: 'Inputs') -> Dict[str, Resolver]
 def translate_output_properties(output: Any,
                                 output_transformer: Callable[[str], str],
                                 typ: Optional[type] = None,
-                                transform_using_type_metadata: bool = False) -> Any:
+                                transform_using_type_metadata: bool = False,
+                                path: Optional['_Path'] = None) -> Any:
     """
     Recursively rewrite keys of objects returned by the engine to conform with a naming
     convention specified by `output_transformer`. If `transform_using_type_metadata` is
@@ -583,7 +591,10 @@ def translate_output_properties(output: Any,
     :param Optional[type] typ: The output's target type.
     :param bool transform_using_type_metadata: Set to True to use the metadata from `typ` to do name translation instead
                                                of using `output_transformer`.
+
+    :param Optional[Any] path: Used internally to track recursive descent and enhance error messages.
     """
+
 
     # If it's a secret, unwrap the value so the output is in alignment with the expected type, call
     # translate_output_properties with the unwrapped value, and then rewrap the result as a secret.
@@ -616,7 +627,11 @@ def translate_output_properties(output: Any,
                 get_type = types.get
 
                 translated_values = {
-                    k: translate_output_properties(v, output_transformer, get_type(k), transform_using_type_metadata)
+                    k: translate_output_properties(v,
+                                                   output_transformer,
+                                                   get_type(k),
+                                                   transform_using_type_metadata,
+                                                   path=_Path(k, parent=path))
                     for k, v in output.items()
                 }
                 return _types.output_type_from_dict(typ, translated_values)
@@ -632,19 +647,29 @@ def translate_output_properties(output: Any,
                     if transform_using_type_metadata:
                         translate = lambda k: k
             else:
-                raise AssertionError(f"Unexpected type; expected 'dict' got '{typ}'")
+                raise AssertionError((f"Unexpected type; expected a value of type `{typ}`"
+                                      f" but got a value of type `{dict}`{_Path.format(path)}:"
+                                      f" {output}"))
 
         return {
             translate(k):
-                translate_output_properties(v, output_transformer, get_type(k), transform_using_type_metadata)
+                translate_output_properties(v,
+                                            output_transformer,
+                                            get_type(k),
+                                            transform_using_type_metadata,
+                                            path=_Path(k, parent=path))
             for k, v in output.items()
         }
 
     if isinstance(output, list):
         element_type = _get_list_element_type(typ)
         return [
-            translate_output_properties(v, output_transformer, element_type, transform_using_type_metadata)
-            for v in output
+            translate_output_properties(v,
+                                        output_transformer,
+                                        element_type,
+                                        transform_using_type_metadata,
+                                        path=_Path(str(i), parent=path))
+            for i, v in enumerate(output)
         ]
 
     if typ and isinstance(output, (int, float, str)) and inspect.isclass(typ) and issubclass(typ, Enum):
@@ -654,6 +679,49 @@ def translate_output_properties(output: Any,
         return int(output)
 
     return output
+
+
+class _Path:
+    """Internal helper for `translate_output_properties` error reporting,
+    essentially an immutable linked list of prop names with an
+    additional context resource name slot.
+
+    """
+
+    prop: str
+    resource: Optional[str]
+    parent: Optional['_Path']
+
+    def __init__(self, prop: str, parent: Optional['_Path'] = None, resource: Optional[str] = None) -> None:
+        self.prop = prop
+        self.parent = parent
+        self.resource = resource
+
+    @staticmethod
+    def format(path: Optional['_Path']) -> str:
+        chain: List[str] = []
+        p: Optional[_Path] = path
+        resource: Optional[str] = None
+
+        while p is not None:
+            chain.append(p.prop)
+            resource = p.resource or resource
+            p = p.parent
+
+        chain.reverse()
+
+        coordinates = []
+
+        if resource is not None:
+            coordinates.append(f'resource `{resource}`')
+
+        if chain:
+            coordinates.append(f'property `{".".join(chain)}`')
+
+        if coordinates:
+            return f' at {", ".join(coordinates)}'
+
+        return ''
 
 
 def contains_unknowns(val: Any) -> bool:
@@ -695,12 +763,21 @@ def resolve_outputs(res: 'Resource',
     for key, value in deserialize_properties(outputs).items():
         # Outputs coming from the provider are NOT translated. Do so here.
         translated_key = translate(key)
+
         translated_value = translate_output_properties(value, translate_to_pass, types.get(key),
-                                                       transform_using_type_metadata)
+                                                       transform_using_type_metadata,
+                                                       path=_Path(translated_key,
+                                                                  resource=f'{res._name}'))
+
         if settings.excessive_debug_output:
             log.debug(f"incoming output property translated: {key} -> {translated_key}")
             log.debug(f"incoming output value translated: {value} -> {translated_value}")
+
         all_properties[translated_key] = translated_value
+
+    translated_deps = {}
+    for key, property_deps in deps.items():
+        translated_deps[translate(key)] = property_deps
 
     if not settings.is_dry_run() or settings.is_legacy_apply_enabled():
         for key, value in list(serialized_props.items()):
@@ -711,9 +788,11 @@ def resolve_outputs(res: 'Resource',
                 all_properties[translated_key] = translate_output_properties(deserialize_property(value),
                                                                              translate_to_pass,
                                                                              types.get(key),
-                                                                             transform_using_type_metadata)
+                                                                             transform_using_type_metadata,
+                                                                             path=_Path(translated_key,
+                                                                                        resource=f'{res._name}'))
 
-    resolve_properties(resolvers, all_properties, deps)
+    resolve_properties(resolvers, all_properties, translated_deps)
 
 
 def resolve_properties(resolvers: Dict[str, Resolver], all_properties: Dict[str, Any], deps: Mapping[str, Set['Resource']]):

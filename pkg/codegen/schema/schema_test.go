@@ -118,6 +118,7 @@ func TestEnums(t *testing.T) {
 					t.Error(err)
 				}
 				result := pkg.Types[0]
+				tt.expected.Package = pkg
 				assert.Equal(t, tt.expected, result)
 			}
 		})
@@ -140,7 +141,7 @@ func TestImportResourceRef(t *testing.T) {
 					if r.Token == "example::OtherResource" {
 						for _, p := range r.Properties {
 							if p.Name == "foo" {
-								assert.IsType(t, &ResourceType{}, p.Type)
+								assert.IsType(t, &ResourceType{}, plainType(p.Type))
 							}
 						}
 					}
@@ -158,8 +159,8 @@ func TestImportResourceRef(t *testing.T) {
 				assert.True(t, ok)
 				name, ok := pet.Property("name")
 				assert.True(t, ok)
-				assert.IsType(t, &ResourceType{}, name.Type)
-				resource := name.Type.(*ResourceType)
+				assert.IsType(t, &ResourceType{}, plainType(name.Type))
+				resource := plainType(name.Type).(*ResourceType)
 				assert.NotNil(t, resource.Resource)
 
 				for _, r := range pkg.Resources {
@@ -167,15 +168,15 @@ func TestImportResourceRef(t *testing.T) {
 					case "example::Cat":
 						for _, p := range r.Properties {
 							if p.Name == "name" {
-								assert.IsType(t, stringType, p.Type)
+								assert.IsType(t, stringType, plainType(p.Type))
 							}
 						}
 					case "example::Workload":
 						for _, p := range r.Properties {
 							if p.Name == "pod" {
-								assert.IsType(t, &ObjectType{}, p.Type)
+								assert.IsType(t, &ObjectType{}, plainType(p.Type))
 
-								obj := p.Type.(*ObjectType)
+								obj := plainType(p.Type).(*ObjectType)
 								assert.NotNil(t, obj.Properties)
 							}
 						}

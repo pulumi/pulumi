@@ -16,10 +16,10 @@ type RubberTree struct {
 	pulumi.CustomResourceState
 
 	Container plant.ContainerPtrOutput `pulumi:"container"`
-	Diameter  pulumi.Float64Output     `pulumi:"diameter"`
+	Diameter  DiameterOutput           `pulumi:"diameter"`
 	Farm      pulumi.StringPtrOutput   `pulumi:"farm"`
-	Size      pulumi.StringPtrOutput   `pulumi:"size"`
-	Type      pulumi.StringOutput      `pulumi:"type"`
+	Size      TreeSizePtrOutput        `pulumi:"size"`
+	Type      RubberTreeVarietyOutput  `pulumi:"type"`
 }
 
 // NewRubberTree registers a new resource with the given unique name, arguments, and options.
@@ -29,17 +29,16 @@ func NewRubberTree(ctx *pulumi.Context,
 		return nil, errors.New("missing one or more required arguments")
 	}
 
-	if args.Diameter == 0 {
+	if args.Diameter == nil {
 		args.Diameter = Diameter(6)
 	}
 	if args.Farm == nil {
 		args.Farm = pulumi.StringPtr("(unknown)")
 	}
 	if args.Size == nil {
-		e := TreeSize("medium")
-		args.Size = &e
+		args.Size = TreeSize("medium")
 	}
-	if args.Type == "" {
+	if args.Type == nil {
 		args.Type = RubberTreeVariety("Burgundy")
 	}
 	var resource RubberTree
@@ -64,19 +63,11 @@ func GetRubberTree(ctx *pulumi.Context,
 
 // Input properties used for looking up and filtering RubberTree resources.
 type rubberTreeState struct {
-	Container *plant.Container `pulumi:"container"`
-	Diameter  *float64         `pulumi:"diameter"`
-	Farm      *string          `pulumi:"farm"`
-	Size      *string          `pulumi:"size"`
-	Type      *string          `pulumi:"type"`
+	Farm *string `pulumi:"farm"`
 }
 
 type RubberTreeState struct {
-	Container plant.ContainerPtrInput
-	Diameter  *Diameter
-	Farm      pulumi.StringPtrInput
-	Size      *TreeSize
-	Type      *RubberTreeVariety
+	Farm pulumi.StringPtrInput
 }
 
 func (RubberTreeState) ElementType() reflect.Type {
@@ -84,20 +75,20 @@ func (RubberTreeState) ElementType() reflect.Type {
 }
 
 type rubberTreeArgs struct {
-	Container *plant.Container `pulumi:"container"`
-	Diameter  float64          `pulumi:"diameter"`
-	Farm      *string          `pulumi:"farm"`
-	Size      *string          `pulumi:"size"`
-	Type      string           `pulumi:"type"`
+	Container *plant.Container  `pulumi:"container"`
+	Diameter  Diameter          `pulumi:"diameter"`
+	Farm      *string           `pulumi:"farm"`
+	Size      *TreeSize         `pulumi:"size"`
+	Type      RubberTreeVariety `pulumi:"type"`
 }
 
 // The set of arguments for constructing a RubberTree resource.
 type RubberTreeArgs struct {
 	Container plant.ContainerPtrInput
-	Diameter  Diameter
+	Diameter  DiameterInput
 	Farm      pulumi.StringPtrInput
-	Size      *TreeSize
-	Type      RubberTreeVariety
+	Size      TreeSizePtrInput
+	Type      RubberTreeVarietyInput
 }
 
 func (RubberTreeArgs) ElementType() reflect.Type {
@@ -123,9 +114,7 @@ func (i *RubberTree) ToRubberTreeOutputWithContext(ctx context.Context) RubberTr
 	return pulumi.ToOutputWithContext(ctx, i).(RubberTreeOutput)
 }
 
-type RubberTreeOutput struct {
-	*pulumi.OutputState
-}
+type RubberTreeOutput struct{ *pulumi.OutputState }
 
 func (RubberTreeOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*RubberTree)(nil))

@@ -41,12 +41,12 @@ class TestErrorResource extends CustomResource {
 class TestResourceModule implements runtime.ResourceModule {
     construct(name: string, type: string, urn: string): Resource {
         switch (type) {
-            case "test:index:component":
-                return new TestComponentResource(name, {urn});
-            case "test:index:custom":
-                return new TestCustomResource(name, type, {urn});
-            default:
-                throw new Error(`unknown resource type ${type}`);
+        case "test:index:component":
+            return new TestComponentResource(name, {urn});
+        case "test:index:custom":
+            return new TestCustomResource(name, type, {urn});
+        default:
+            throw new Error(`unknown resource type ${type}`);
         }
     }
 }
@@ -56,54 +56,58 @@ class TestMocks implements runtime.Mocks {
         throw new Error(`unknown function ${args.token}`);
     }
 
-    newResource(args: runtime.MockResourceArgs): { id: string | undefined, state: Record<string, any> } {
+    newResource(args: runtime.MockResourceArgs): { id: string | undefined; state: Record<string, any> } {
         switch (args.type) {
-            case "test:index:component":
-                return {id: undefined, state: {}};
-            case "test:index:custom":
-            case "test2:index:custom":
-                return {
-                    id: runtime.isDryRun() ? undefined : "test-id",
-                    state: {},
-                };
-            case "error":
-                throw new Error("this is an intentional error");
-            default:
-                throw new Error(`unknown resource type ${args.type}`);
+        case "test:index:component":
+            return {id: undefined, state: {}};
+        case "test:index:custom":
+        case "test2:index:custom":
+            return {
+                id: runtime.isDryRun() ? undefined : "test-id",
+                state: {},
+            };
+        case "error":
+            throw new Error("this is an intentional error");
+        default:
+            throw new Error(`unknown resource type ${args.type}`);
         }
     }
 }
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestStrEnum = {
     Foo: "foo",
     Bar: "bar",
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestStrEnum = (typeof TestStrEnum)[keyof typeof TestStrEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestIntEnum = {
     One: 1,
     Zero: 0,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestIntEnum = (typeof TestIntEnum)[keyof typeof TestIntEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestNumEnum = {
     One: 1.0,
     ZeroPointOne: 0.1,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestNumEnum = (typeof TestNumEnum)[keyof typeof TestNumEnum];
 
-// tslint:disable-next-line:variable-name
+// eslint-disable-next-line @typescript-eslint/naming-convention,no-underscore-dangle,id-blacklist,id-match
 const TestBoolEnum = {
     One: true,
     Zero: false,
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare
 type TestBoolEnum = (typeof TestBoolEnum)[keyof typeof TestBoolEnum];
 
 interface TestInputs {

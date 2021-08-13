@@ -19,13 +19,9 @@
 package docs
 
 import (
-	"encoding/json"
-	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
 )
@@ -59,8 +55,8 @@ var (
 func initTestPackageSpec(t *testing.T) {
 	t.Helper()
 
-	pythonMapCase := map[string]json.RawMessage{
-		"python": json.RawMessage(`{"mapCase":false}`),
+	pythonMapCase := map[string]schema.RawMessage{
+		"python": schema.RawMessage(`{"mapCase":false}`),
 	}
 	testPackageSpec = schema.PackageSpec{
 		Name:        providerPackage,
@@ -266,86 +262,6 @@ $ pulumi import prov:module/resource:Resource test test
 	}
 }
 
-// TestResourceNestedPropertyPythonCasing tests that the properties
-// of a nested object have the expected casing.
-func TestResourceNestedPropertyPythonCasing(t *testing.T) {
-	initTestPackageSpec(t)
-
-	schemaPkg, err := schema.ImportSpec(testPackageSpec, nil)
-	assert.NoError(t, err, "importing spec")
-
-	modules := generateModulesFromSchemaPackage(unitTestTool, schemaPkg)
-	mod := modules["module"]
-	for _, r := range mod.resources {
-		nestedTypes := mod.genNestedTypes(r, true)
-		if len(nestedTypes) == 0 {
-			t.Error("did not find any nested types")
-			return
-		}
-
-		t.Run("InputPropertiesAreSnakeCased", func(t *testing.T) {
-			props := mod.getProperties(r.InputProperties, "python", true, true, false, false)
-			for _, p := range props {
-				assert.True(t, strings.Contains(p.Name, "_"), "input property name in python must use snake_case")
-			}
-		})
-
-		// Non-unique nested properties are ones that have names that occur as direct input properties
-		// of the resource or elsewhere in the package and are mapped as snake_case even if the property
-		// itself has a "Language" spec with the `MapCase` value of `false`.
-		t.Run("NonUniqueNestedProperties", func(t *testing.T) {
-			n := nestedTypes[0]
-			assert.Equal(t, "Resource<wbr>Options", n.Name, "got %v instead of Resource<wbr>Options", n.Name)
-
-			pyProps := n.Properties["python"]
-			nestedObject, ok := testPackageSpec.Types["prov:module/ResourceOptions:ResourceOptions"]
-			if !ok {
-				t.Error("sample schema package spec does not contain known object type")
-				return
-			}
-
-			for name := range nestedObject.Properties {
-				found := false
-				pyName := python.PyName(name)
-				for _, prop := range pyProps {
-					if prop.Name == pyName {
-						found = true
-						break
-					}
-				}
-
-				assert.True(t, found, "expected to find %q", pyName)
-			}
-		})
-
-		// Unique nested properties are those that only appear inside a nested object and should also be snake_cased.
-		t.Run("UniqueNestedProperties", func(t *testing.T) {
-			n := nestedTypes[1]
-			assert.Equal(t, "Resource<wbr>Options2", n.Name, "got %v instead of Resource<wbr>Options2", n.Name)
-
-			pyProps := n.Properties["python"]
-			nestedObject, ok := testPackageSpec.Types["prov:module/ResourceOptions2:ResourceOptions2"]
-			if !ok {
-				t.Error("sample schema package spec does not contain known object type")
-				return
-			}
-
-			for name := range nestedObject.Properties {
-				found := false
-				pyName := python.PyName(name)
-				for _, prop := range pyProps {
-					if prop.Name == pyName {
-						found = true
-						break
-					}
-				}
-
-				assert.True(t, found, "expected to find %q", name)
-			}
-		})
-	}
-}
-
 func getResourceFromModule(resource string, mod *modContext) *schema.Resource {
 	for _, r := range mod.resources {
 		if resourceName(r) != resource {
@@ -495,77 +411,5 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 func TestGeneratePackage(t *testing.T) {
-	tests := []struct {
-		name          string
-		schemaDir     string
-		expectedFiles []string
-	}{
-		{
-			"Simple schema with local resource properties",
-			"simple-resource-schema",
-			[]string{
-				"provider.md",
-				"otherresource.md",
-				"resource.md",
-				"argfunction.md",
-				"_index.md",
-			},
-		},
-		{
-			"Simple schema with enum types",
-			"simple-enum-schema",
-			[]string{
-				"provider.md",
-				"_index.md",
-				"tree/_index.md",
-				"tree/v1/nursery.md",
-				"tree/v1/rubbertree.md",
-				"tree/v1/_index.md",
-			},
-		},
-		{
-			"External resource schema",
-			"external-resource-schema",
-			[]string{
-				"workload.md",
-				"argfunction.md",
-				"_index.md",
-				"provider.md",
-				"cat.md",
-				"component.md",
-			},
-		},
-		{
-			"Simple schema with plain properties",
-			"simple-plain-schema",
-			[]string{
-				"_index.md",
-				"provider.md",
-				"component.md",
-			},
-		},
-		{
-			"Resource args with same named resource and type",
-			"resource-args-python",
-			[]string{
-				"person.md",
-				"pet.md",
-			},
-		},
-	}
-	testDir := filepath.Join("..", "internal", "test", "testdata")
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			files, err := test.GeneratePackageFilesFromSchema(
-				filepath.Join(testDir, tt.schemaDir, "schema.json"), generatePackage)
-			assert.NoError(t, err)
-
-			test.RewriteFilesWhenPulumiAccept(t, filepath.Join(testDir, tt.schemaDir), "docs", files)
-
-			expectedFiles, err := test.LoadFiles(filepath.Join(testDir, tt.schemaDir), "docs", tt.expectedFiles)
-			assert.NoError(t, err)
-
-			test.ValidateFileEquality(t, files, expectedFiles)
-		})
-	}
+	test.TestSDKCodegen(t, "docs", generatePackage)
 }

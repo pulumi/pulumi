@@ -47,7 +47,7 @@ type binder struct {
 	options bindOptions
 
 	referencedPackages map[string]*schema.Package
-	typeSchemas        map[model.Type]schema.Type
+	schemaTypes        map[schema.Type]model.Type
 
 	tokens syntax.TokenMap
 	nodes  []Node
@@ -92,6 +92,9 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		o(&options)
 	}
 
+	// TODO: remove this once the latest pulumi-terraform-bridge has been rolled out
+	options.skipResourceTypecheck = true
+
 	if options.loader == nil {
 		cwd, err := os.Getwd()
 		if err != nil {
@@ -114,7 +117,7 @@ func BindProgram(files []*syntax.File, opts ...BindOption) (*Program, hcl.Diagno
 		options:            options,
 		tokens:             syntax.NewTokenMapForFiles(files),
 		referencedPackages: map[string]*schema.Package{},
-		typeSchemas:        map[model.Type]schema.Type{},
+		schemaTypes:        map[schema.Type]model.Type{},
 		root:               model.NewRootScope(syntax.None),
 	}
 

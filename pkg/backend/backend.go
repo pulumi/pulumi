@@ -109,6 +109,12 @@ type ListStacksFilter struct {
 	TagValue     *string
 }
 
+// ContinuationToken is an opaque string used for paginated backend requests. If non-nil, means
+// there are more results to be returned and the continuation token should be passed into a
+// subsequent call to the backend method. A nil continuation token means all results have been
+// returned.
+type ContinuationToken *string
+
 // Backend is the contract between the Pulumi engine and pluggable backend implementations of the Pulumi Cloud Service.
 type Backend interface {
 	// Name returns a friendly name for this backend.
@@ -120,10 +126,12 @@ type Backend interface {
 	GetPolicyPack(ctx context.Context, policyPack string, d diag.Sink) (PolicyPack, error)
 
 	// ListPolicyGroups returns all Policy Groups for an organization in this backend or an error if it cannot be found.
-	ListPolicyGroups(ctx context.Context, orgName string) (apitype.ListPolicyGroupsResponse, error)
+	ListPolicyGroups(ctx context.Context, orgName string, inContToken ContinuationToken) (
+		apitype.ListPolicyGroupsResponse, ContinuationToken, error)
 
 	// ListPolicyPacks returns all Policy Packs for an organization in this backend, or an error if it cannot be found.
-	ListPolicyPacks(ctx context.Context, orgName string) (apitype.ListPolicyPacksResponse, error)
+	ListPolicyPacks(ctx context.Context, orgName string, inContToken ContinuationToken) (
+		apitype.ListPolicyPacksResponse, ContinuationToken, error)
 
 	// SupportsOrganizations tells whether a user can belong to multiple organizations in this backend.
 	SupportsOrganizations() bool
@@ -146,7 +154,8 @@ type Backend interface {
 	// first boolean return value will be set to true.
 	RemoveStack(ctx context.Context, stack Stack, force bool) (bool, error)
 	// ListStacks returns a list of stack summaries for all known stacks in the target backend.
-	ListStacks(ctx context.Context, filter ListStacksFilter) ([]StackSummary, error)
+	ListStacks(ctx context.Context, filter ListStacksFilter, inContToken ContinuationToken) (
+		[]StackSummary, ContinuationToken, error)
 
 	// RenameStack renames the given stack to a new name, and then returns an updated stack reference that
 	// can be used to refer to the newly renamed stack.

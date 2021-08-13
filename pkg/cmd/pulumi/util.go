@@ -312,13 +312,27 @@ func chooseStack(
 
 	// List stacks as available options.
 	project := string(proj.Name)
-	summaries, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project})
-	if err != nil {
-		return nil, errors.Wrapf(err, "could not query backend for stacks")
+
+	var (
+		allSummaries []backend.StackSummary
+		inContToken  backend.ContinuationToken
+	)
+	for {
+		summaries, outContToken, err := b.ListStacks(ctx, backend.ListStacksFilter{Project: &project}, inContToken)
+		if err != nil {
+			return nil, errors.Wrapf(err, "could not query backend for stacks")
+		}
+
+		allSummaries = append(allSummaries, summaries...)
+
+		if outContToken == nil {
+			break
+		}
+		inContToken = outContToken
 	}
 
 	var options []string
-	for _, summary := range summaries {
+	for _, summary := range allSummaries {
 		name := summary.Name().String()
 		options = append(options, name)
 	}
@@ -775,13 +789,24 @@ func (cancellationScopeSource) NewScope(events chan<- engine.Event, isPreview bo
 	return c
 }
 
+func makeJSONString(v interface{}) (string, error) {
+	var out bytes.Buffer
+	encoder := json.NewEncoder(&out)
+	encoder.SetEscapeHTML(false)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(v); err != nil {
+		return "", err
+	}
+	return out.String(), nil
+}
+
 // printJSON simply prints out some object, formatted as JSON, using standard indentation.
 func printJSON(v interface{}) error {
-	out, err := json.MarshalIndent(v, "", "  ")
+	jsonStr, err := makeJSONString(v)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(out))
+	fmt.Print(jsonStr)
 	return nil
 }
 

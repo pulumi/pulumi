@@ -1,3 +1,17 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package pulumi
 
 import (
@@ -279,4 +293,27 @@ func assertTransformations(t *testing.T, t1 []ResourceTransformation, t2 []Resou
 		p2 := reflect.ValueOf(t2[i]).Pointer()
 		assert.Equal(t, p1, p2)
 	}
+}
+
+func TestResourceOptionMergingReplaceOnChanges(t *testing.T) {
+	// ReplaceOnChanges arrays are always appended together
+	i1 := "a"
+	i2 := "b"
+	i3 := "c"
+
+	// two singleton options
+	opts := merge(ReplaceOnChanges([]string{i1}), ReplaceOnChanges([]string{i2}))
+	assert.Equal(t, []string{i1, i2}, opts.ReplaceOnChanges)
+
+	// nil i1
+	opts = merge(ReplaceOnChanges(nil), ReplaceOnChanges([]string{i2}))
+	assert.Equal(t, []string{i2}, opts.ReplaceOnChanges)
+
+	// nil i2
+	opts = merge(ReplaceOnChanges([]string{i1}), ReplaceOnChanges(nil))
+	assert.Equal(t, []string{i1}, opts.ReplaceOnChanges)
+
+	// multivalue arrays
+	opts = merge(ReplaceOnChanges([]string{i1, i2}), ReplaceOnChanges([]string{i2, i3}))
+	assert.Equal(t, []string{i1, i2, i2, i3}, opts.ReplaceOnChanges)
 }

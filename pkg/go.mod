@@ -12,7 +12,6 @@ require (
 	cloud.google.com/go/storage v1.15.0
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/blang/semver v3.5.1+incompatible
-	github.com/davecgh/go-spew v1.1.1
 	github.com/djherbis/times v1.2.0
 	github.com/docker/docker v1.4.2-0.20200319182547-c7ad2b866182
 	github.com/dustin/go-humanize v1.0.0
@@ -56,6 +55,7 @@ require (
 	google.golang.org/grpc v1.37.0
 	gopkg.in/AlecAivazis/survey.v1 v1.8.9-0.20200217094205-6773bdf39b7f
 	gopkg.in/src-d/go-git.v4 v4.13.1
+	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 	sourcegraph.com/sourcegraph/appdash v0.0.0-20190731080439-ebfcffb1b5c0
 	sourcegraph.com/sourcegraph/appdash-data v0.0.0-20151005221446-73f23eafcf67 // indirect
 )

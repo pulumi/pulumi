@@ -33,6 +33,7 @@ import (
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/logging"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/rpcutil/rpcerror"
@@ -67,6 +68,7 @@ type provider struct {
 	acceptResources        bool                             // true if this plugin accepts strongly-typed resource refs.
 	supportsPreview        bool                             // true if this plugin supports previews for Create and Update.
 	disableProviderPreview bool                             // true if previews for Create and Update are disabled.
+	legacyPreview          bool                             // enables legacy behavior for unconfigured provider previews.
 }
 
 // NewProvider attempts to bind to a given package's resource plugin and then creates a gRPC connection to it.  If the
@@ -99,6 +101,8 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 	}
 	contract.Assertf(plug != nil, "unexpected nil resource plugin for %s", pkg)
 
+	legacyPreview := cmdutil.IsTruthy(os.Getenv("PULUMI_LEGACY_PROVIDER_PREVIEW"))
+
 	return &provider{
 		ctx:                    ctx,
 		pkg:                    pkg,
@@ -106,6 +110,7 @@ func NewProvider(host Host, ctx *Context, pkg tokens.Package, version *semver.Ve
 		clientRaw:              pulumirpc.NewResourceProviderClient(plug.Conn),
 		cfgdone:                make(chan bool),
 		disableProviderPreview: disableProviderPreview,
+		legacyPreview:          legacyPreview,
 	}, nil
 }
 
@@ -703,12 +708,26 @@ func (p *provider) Create(urn resource.URN, props resource.PropertyMap, timeout 
 	}
 
 	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
-	// is not fully known, hand back the inputs as the state.
+	// is not fully known, hand back an empty property map. This will force the language SDK will to treat all properties
+	// as unknown, which is conservatively correct.
 	//
-	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
-	// but expect differently-shaped values.
-	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
-		return "", props, resource.StatusOK, nil
+	// If the provider does not support previews, return the inputs as the state. Note that this can cause problems for
+	// the language SDKs if there are input and state properties that share a name but expect differently-shaped values.
+	if preview {
+		// TODO: it would be great to swap the order of these if statements. This would prevent a behavioral change for
+		// providers that do not support provider previews, which will always return the inputs as state regardless of
+		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
+		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
+		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
+		if !p.cfgknown {
+			if p.legacyPreview {
+				return "", props, resource.StatusOK, nil
+			}
+			return "", resource.PropertyMap{}, resource.StatusOK, nil
+		}
+		if !p.supportsPreview || p.disableProviderPreview {
+			return "", props, resource.StatusOK, nil
+		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
@@ -917,12 +936,26 @@ func (p *provider) Update(urn resource.URN, id resource.ID,
 	}
 
 	// If this is a preview and the plugin does not support provider previews, or if the configuration for the provider
-	// is not fully known, hand back the inputs as the state.
+	// is not fully known, hand back an empty property map. This will force the language SDK to treat all properties
+	// as unknown, which is conservatively correct.
 	//
-	// Note that this can cause problems for the language SDKs if there are input and state properties that share a name
-	// but expect differently-shaped values.
-	if preview && (p.disableProviderPreview || !p.supportsPreview || !p.cfgknown) {
-		return news, resource.StatusOK, nil
+	// If the provider does not support previews, return the inputs as the state. Note that this can cause problems for
+	// the language SDKs if there are input and state properties that share a name but expect differently-shaped values.
+	if preview {
+		// TODO: it would be great to swap the order of these if statements. This would prevent a behavioral change for
+		// providers that do not support provider previews, which will always return the inputs as state regardless of
+		// whether or not the config is known. Unfortunately, we can't, since the `supportsPreview` bit depends on the
+		// result of `Configure`, which we won't call if the `cfgknown` is false. It may be worth fixing this catch-22
+		// by extending the provider gRPC interface with a `SupportsFeature` API similar to the language monitor.
+		if !p.cfgknown {
+			if p.legacyPreview {
+				return news, resource.StatusOK, nil
+			}
+			return resource.PropertyMap{}, resource.StatusOK, nil
+		}
+		if !p.supportsPreview || p.disableProviderPreview {
+			return news, resource.StatusOK, nil
+		}
 	}
 
 	// We should only be calling {Create,Update,Delete} if the provider is fully configured.
@@ -1102,11 +1135,16 @@ func (p *provider) Construct(info ConstructInfo, typ tokens.Type, name tokens.QN
 	for k, v := range info.Config {
 		config[k.String()] = v
 	}
+	configSecretKeys := []string{}
+	for _, k := range info.ConfigSecretKeys {
+		configSecretKeys = append(configSecretKeys, k.String())
+	}
 
 	resp, err := client.Construct(p.requestContext(), &pulumirpc.ConstructRequest{
 		Project:           info.Project,
 		Stack:             info.Stack,
 		Config:            config,
+		ConfigSecretKeys:  configSecretKeys,
 		DryRun:            info.DryRun,
 		Parallel:          int32(info.Parallel),
 		MonitorEndpoint:   info.MonitorAddress,
@@ -1290,6 +1328,98 @@ func (p *provider) StreamInvoke(
 			return nil, err
 		}
 	}
+}
+
+// Call dynamically executes a method in the provider associated with a component resource.
+func (p *provider) Call(tok tokens.ModuleMember, args resource.PropertyMap, info CallInfo,
+	options CallOptions) (CallResult, error) {
+	contract.Assert(tok != "")
+
+	label := fmt.Sprintf("%s.Call(%s)", p.label(), tok)
+	logging.V(7).Infof("%s executing (#args=%d)", label, len(args))
+
+	// Get the RPC client and ensure it's configured.
+	client, err := p.getClient()
+	if err != nil {
+		return CallResult{}, err
+	}
+
+	// If the provider is not fully configured, return an empty property map.
+	if !p.cfgknown {
+		return CallResult{}, nil
+	}
+
+	margs, err := MarshalProperties(args, MarshalOptions{
+		Label:         fmt.Sprintf("%s.args", label),
+		KeepUnknowns:  true,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return CallResult{}, err
+	}
+
+	// Marshal the arg dependencies.
+	argDependencies := map[string]*pulumirpc.CallRequest_ArgumentDependencies{}
+	for name, dependencies := range options.ArgDependencies {
+		urns := make([]string, len(dependencies))
+		for i, urn := range dependencies {
+			urns[i] = string(urn)
+		}
+		argDependencies[string(name)] = &pulumirpc.CallRequest_ArgumentDependencies{Urns: urns}
+	}
+
+	// Marshal the config.
+	config := map[string]string{}
+	for k, v := range info.Config {
+		config[k.String()] = v
+	}
+
+	resp, err := client.Call(p.requestContext(), &pulumirpc.CallRequest{
+		Tok:             string(tok),
+		Args:            margs,
+		ArgDependencies: argDependencies,
+		Project:         info.Project,
+		Stack:           info.Stack,
+		Config:          config,
+		DryRun:          info.DryRun,
+		Parallel:        int32(info.Parallel),
+		MonitorEndpoint: info.MonitorAddress,
+	})
+	if err != nil {
+		rpcError := rpcerror.Convert(err)
+		logging.V(7).Infof("%s failed: %v", label, rpcError.Message())
+		return CallResult{}, rpcError
+	}
+
+	// Unmarshal any return values.
+	ret, err := UnmarshalProperties(resp.GetReturn(), MarshalOptions{
+		Label:         fmt.Sprintf("%s.returns", label),
+		KeepUnknowns:  info.DryRun,
+		KeepSecrets:   true,
+		KeepResources: true,
+	})
+	if err != nil {
+		return CallResult{}, err
+	}
+
+	returnDependencies := map[resource.PropertyKey][]resource.URN{}
+	for k, rpcDeps := range resp.GetReturnDependencies() {
+		urns := make([]resource.URN, len(rpcDeps.Urns))
+		for i, d := range rpcDeps.Urns {
+			urns[i] = resource.URN(d)
+		}
+		returnDependencies[resource.PropertyKey(k)] = urns
+	}
+
+	// And now any properties that failed verification.
+	var failures []CheckFailure
+	for _, failure := range resp.GetFailures() {
+		failures = append(failures, CheckFailure{resource.PropertyKey(failure.Property), failure.Reason})
+	}
+
+	logging.V(7).Infof("%s success (#ret=%d,#failures=%d) success", label, len(ret), len(failures))
+	return CallResult{Return: ret, ReturnDependencies: returnDependencies, Failures: failures}, nil
 }
 
 // GetPluginInfo returns this plugin's information.

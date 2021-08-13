@@ -22,10 +22,11 @@ import (
 	"sync"
 
 	"github.com/blang/semver"
+	"golang.org/x/net/context"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
-	"golang.org/x/net/context"
 )
 
 func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.StructField, reflect.Value) {
@@ -62,14 +63,96 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 	}
 }
 
+type urnSet map[URN]struct{}
+
+func (s urnSet) add(v URN) {
+	s[v] = struct{}{}
+}
+
+func (s urnSet) has(v URN) bool {
+	_, ok := s[v]
+	return ok
+}
+
+func (s urnSet) union(other urnSet) {
+	for v := range other {
+		s.add(v)
+	}
+}
+
+func (s urnSet) values() []URN {
+	values := make([]URN, 0, len(s))
+	for v := range s {
+		values = append(values, v)
+	}
+	return values
+}
+
+// addDependency adds a dependency on the given resource to the set of deps.
+//
+// The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
+// or a remote component resource:
+//
+// - Custom resources are added directly to the set, as they are "real" nodes in the dependency graph.
+// - Local component resources act as aggregations of their descendents. Rather than adding the component resource
+//   itself, each child resource is added as a dependency.
+// - Remote component resources are added directly to the set, as they naturally act as aggregations of their children
+//   with respect to dependencies: the construction of a remote component always waits on the construction of its
+//   children.
+//
+// In other words, if we had:
+//
+//				  Comp1
+//			  /     |     \
+//		  Cust1   Comp2  Remote1
+//				  /   \       \
+//			  Cust2   Cust3  Comp3
+//			  /                 \
+//		  Cust4                Cust5
+//
+// Then the transitively reachable resources of Comp1 will be [Cust1, Cust2, Cust3, Remote1].
+// It will *not* include:
+// * Cust4 because it is a child of a custom resource
+// * Comp2 because it is a non-remote component resoruce
+// * Comp3 and Cust5 because Comp3 is a child of a remote component resource
+func addDependency(ctx context.Context, deps urnSet, res Resource) error {
+	if _, custom := res.(CustomResource); !custom {
+		for _, child := range res.getChildren() {
+			if err := addDependency(ctx, deps, child); err != nil {
+				return err
+			}
+		}
+		if !res.isRemoteComponent() {
+			return nil
+		}
+	}
+
+	urn, _, _, err := res.URN().awaitURN(ctx)
+	if err != nil {
+		return err
+	}
+	deps.add(urn)
+	return nil
+}
+
+// expandDependencies expands the given slice of Resources into a set of URNs.
+func expandDependencies(ctx context.Context, deps []Resource) (urnSet, error) {
+	urns := urnSet{}
+	for _, r := range deps {
+		if err := addDependency(ctx, urns, r); err != nil {
+			return nil, err
+		}
+	}
+	return urns, nil
+}
+
 // marshalInputs turns resource property inputs into a map suitable for marshaling.
 func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, error) {
-	var depURNs []URN
-	depset := map[URN]bool{}
+	deps := urnSet{}
 	pmap, pdeps := resource.PropertyMap{}, map[string][]URN{}
 
 	if props == nil {
-		return pmap, pdeps, depURNs, nil
+		return pmap, pdeps, nil, nil
 	}
 
 	marshalProperty := func(pname string, pv interface{}, pt reflect.Type) error {
@@ -80,24 +163,14 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		}
 
 		// Record all dependencies accumulated from reading this property.
-		var deps []URN
-		pdepset := map[URN]bool{}
-		for _, dep := range resourceDeps {
-			depURN, _, _, err := dep.URN().awaitURN(context.TODO())
-			if err != nil {
-				return err
-			}
-			if !pdepset[depURN] {
-				deps = append(deps, depURN)
-				pdepset[depURN] = true
-			}
-			if !depset[depURN] {
-				depURNs = append(depURNs, depURN)
-				depset[depURN] = true
-			}
+		allDeps, err := expandDependencies(context.TODO(), resourceDeps)
+		if err != nil {
+			return err
 		}
-		if len(deps) > 0 {
-			pdeps[pname] = deps
+		deps.union(allDeps)
+
+		if len(allDeps) > 0 {
+			pdeps[pname] = allDeps.values()
 		}
 
 		if !v.IsNull() || len(deps) > 0 {
@@ -109,7 +182,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 	pv := reflect.ValueOf(props)
 	if pv.Kind() == reflect.Ptr {
 		if pv.IsNil() {
-			return pmap, pdeps, depURNs, nil
+			return pmap, pdeps, nil, nil
 		}
 		pv = pv.Elem()
 	}
@@ -156,7 +229,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 		return nil, nil, nil, fmt.Errorf("cannot marshal Input that is not a struct or map, saw type %s", pt.String())
 	}
 
-	return pmap, pdeps, depURNs, nil
+	return pmap, pdeps, deps.values(), nil
 }
 
 // `gosec` thinks these are credentials, but they are not.
@@ -240,12 +313,19 @@ func marshalInputAndDetermineSecret(v interface{},
 		// Look for some well known types.
 		switch v := v.(type) {
 		case *asset:
+			if v.invalid {
+				return resource.PropertyValue{}, nil, false, fmt.Errorf("invalid asset")
+			}
 			return resource.NewAssetProperty(&resource.Asset{
 				Path: v.Path(),
 				Text: v.Text(),
 				URI:  v.URI(),
 			}), deps, secret, nil
 		case *archive:
+			if v.invalid {
+				return resource.PropertyValue{}, nil, false, fmt.Errorf("invalid archive")
+			}
+
 			var assets map[string]interface{}
 			if as := v.Assets(); as != nil {
 				assets = make(map[string]interface{})
@@ -285,9 +365,6 @@ func marshalInputAndDetermineSecret(v interface{},
 			return resource.MakeComponentResourceReference(resource.URN(urn), ""), deps, secret, nil
 		}
 
-		contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
-			"%v: cannot assign %v to %v", v, valueType, destType)
-
 		if destType.Kind() == reflect.Interface {
 			// This happens in the case of Any.
 			if valueType.Kind() == reflect.Interface {
@@ -297,6 +374,17 @@ func marshalInputAndDetermineSecret(v interface{},
 		}
 
 		rv := reflect.ValueOf(v)
+
+		switch rv.Type().Kind() {
+		case reflect.Array, reflect.Slice, reflect.Map:
+			// Not assignable in prompt form because of the difference in input and output shapes.
+			//
+			// TODO(7434): update these checks once fixed.
+		default:
+			contract.Assertf(valueType.AssignableTo(destType) || valueType.ConvertibleTo(destType),
+				"%v: cannot assign %v to %v", v, valueType, destType)
+		}
+
 		switch rv.Type().Kind() {
 		case reflect.Bool:
 			return resource.NewBoolProperty(rv.Bool()), deps, secret, nil
@@ -653,7 +741,28 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.Set(result)
 		return secret, nil
 	case reflect.Interface:
-		if !anyType.Implements(dest.Type()) {
+		// Tolerate invalid asset or archive values.
+		typ := dest.Type()
+		switch typ {
+		case assetType:
+			_, secret, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return false, err
+			}
+			asset := &asset{invalid: true}
+			dest.Set(reflect.ValueOf(asset))
+			return secret, nil
+		case archiveType:
+			_, secret, err := unmarshalPropertyValue(ctx, v)
+			if err != nil {
+				return false, err
+			}
+			archive := &archive{invalid: true}
+			dest.Set(reflect.ValueOf(archive))
+			return secret, nil
+		}
+
+		if !anyType.Implements(typ) {
 			return false, fmt.Errorf("cannot unmarshal into non-empty interface type %v", dest.Type())
 		}
 
@@ -665,12 +774,12 @@ func unmarshalOutput(ctx *Context, v resource.PropertyValue, dest reflect.Value)
 		dest.Set(reflect.ValueOf(result))
 		return secret, nil
 	case reflect.Struct:
+		typ := dest.Type()
 		if !v.IsObject() {
 			return false, fmt.Errorf("expected a %v, got a %s", dest.Type(), v.TypeString())
 		}
 
 		obj := v.ObjectValue()
-		typ := dest.Type()
 		secret := false
 		for i := 0; i < typ.NumField(); i++ {
 			fieldV := dest.Field(i)

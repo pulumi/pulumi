@@ -12,7 +12,8 @@ from . import outputs
 
 # Make subpackages available:
 if typing.TYPE_CHECKING:
-    import pulumi_plant.tree as tree
+    import pulumi_plant.tree as __tree
+    tree = __tree
 else:
     tree = _utilities.lazy_import('pulumi_plant.tree')
 

@@ -89,24 +89,29 @@ func (t *MapType) AssignableFrom(src Type) bool {
 // convertible to T. If any element type is unsafely convertible to T and no element type is safely convertible to T,
 // the conversion is unsafe. Otherwise, no conversion exists.
 func (t *MapType) ConversionFrom(src Type) ConversionKind {
-	return t.conversionFrom(src, false, nil)
+	kind, _ := t.conversionFrom(src, false, nil)
+	return kind
 }
 
-func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) ConversionKind {
-	return conversionFrom(t, src, unifying, seen, func() ConversionKind {
+func (t *MapType) conversionFrom(src Type, unifying bool, seen map[Type]struct{}) (ConversionKind, lazyDiagnostics) {
+	return conversionFrom(t, src, unifying, seen, func() (ConversionKind, lazyDiagnostics) {
 		switch src := src.(type) {
 		case *MapType:
 			return t.ElementType.conversionFrom(src.ElementType, unifying, seen)
 		case *ObjectType:
 			conversionKind := SafeConversion
+			var diags lazyDiagnostics
 			for _, src := range src.Properties {
-				if ck := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
+				if ck, _ := t.ElementType.conversionFrom(src, unifying, seen); ck < conversionKind {
 					conversionKind = ck
+					if conversionKind == NoConversion {
+						break
+					}
 				}
 			}
-			return conversionKind
+			return conversionKind, diags
 		}
-		return NoConversion
+		return NoConversion, func() hcl.Diagnostics { return hcl.Diagnostics{typeNotConvertible(t, src)} }
 	})
 }
 
@@ -138,7 +143,8 @@ func (t *MapType) unify(other Type) (Type, ConversionKind) {
 			return NewMapType(elementType), conversionKind
 		default:
 			// Prefer the map type.
-			return t, t.conversionFrom(other, true, nil)
+			kind, _ := t.conversionFrom(other, true, nil)
+			return t, kind
 		}
 	})
 }

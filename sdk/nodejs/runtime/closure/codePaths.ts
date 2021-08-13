@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// tslint:disable:max-line-length
+/* eslint-disable max-len */
 
 import * as fs from "fs";
 import * as normalize from "normalize-package-data";
@@ -162,9 +162,9 @@ function isSubsumedByHigherPath(normalizedPath: string, normalizedPathSet: Set<s
 // allFolders computes the set of package folders that are transitively required by the root
 // 'dependencies' node in the client's project.json file.
 function allFoldersForPackages(
-        includedPackages: Set<string>,
-        excludedPackages: Set<string>,
-        logResource: Resource | undefined): Promise<Set<string>> {
+    includedPackages: Set<string>,
+    excludedPackages: Set<string>,
+    logResource: Resource | undefined): Promise<Set<string>> {
     return new Promise((resolve, reject) => {
         readPackageTree(".", <any>undefined, (err: any, root: readPackageTree.Node) => {
             try {

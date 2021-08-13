@@ -171,6 +171,115 @@ func TestPropertyPath(t *testing.T) {
 	}
 }
 
+func TestPropertyPathContains(t *testing.T) {
+	cases := []struct {
+		p1       PropertyPath
+		p2       PropertyPath
+		expected bool
+	}{
+		{
+			PropertyPath{"root", "nested"},
+			PropertyPath{"root"},
+			false,
+		},
+		{
+			PropertyPath{"root"},
+			PropertyPath{"root", "nested"},
+			true,
+		},
+		{
+			PropertyPath{"root", 1},
+			PropertyPath{"root"},
+			false,
+		},
+		{
+			PropertyPath{"root"},
+			PropertyPath{"root", 1},
+			true,
+		},
+		{
+			PropertyPath{"root", "double", "nest1"},
+			PropertyPath{"root", "double", "nest2"},
+			false,
+		},
+		{
+			PropertyPath{"root", "nest1", "double"},
+			PropertyPath{"root", "nest2", "double"},
+			false,
+		},
+		{
+			PropertyPath{"root", "nest", "double"},
+			PropertyPath{"root", "nest", "double"},
+			true,
+		},
+		{
+			PropertyPath{"root", 1, "double"},
+			PropertyPath{"root", 1, "double"},
+			true,
+		},
+		{
+			PropertyPath{},
+			PropertyPath{},
+			true,
+		},
+		{
+			PropertyPath{"root"},
+			PropertyPath{},
+			false,
+		},
+		{
+			PropertyPath{},
+			PropertyPath{"root"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "bar", 1},
+			PropertyPath{"foo", "bar", 1, "baz"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "*", "baz"},
+			PropertyPath{"foo", "bar", "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"*", "bar", "baz"},
+			PropertyPath{"foo", "bar", "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"foo", "*", "baz"},
+			PropertyPath{"foo", 1, "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"foo", 1, "*", "bam"},
+			PropertyPath{"foo", 1, "baz", "bam"},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", "b"},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", 1},
+			true,
+		},
+		{
+			PropertyPath{"*"},
+			PropertyPath{"a", 1, "b"},
+			true,
+		},
+	}
+
+	for _, tcase := range cases {
+		res := tcase.p1.Contains(tcase.p2)
+		assert.Equal(t, tcase.expected, res)
+	}
+}
+
 func TestAddResizePropertyPath(t *testing.T) {
 	// Regression test for https://github.com/pulumi/pulumi/issues/5871:
 	// Ensure that adding a new element beyond the size of an array will resize it.

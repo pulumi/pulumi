@@ -37,6 +37,7 @@
 
         "provider/index.ts",
         "provider/provider.ts",
+        "provider/internals.ts",
         "provider/server.ts",
 
         "runtime/index.ts",
@@ -84,6 +85,7 @@
         "tests/options.spec.ts",
         "tests/output.spec.ts",
         "tests/resource.spec.ts",
+        "tests/provider.spec.ts",
         "tests/testmode.spec.ts",
         "tests/unwrap.spec.ts",
         "tests/util.ts",

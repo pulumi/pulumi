@@ -49,6 +49,7 @@ from .stack import (
 
 from .invoke import (
     invoke,
+    call,
 )
 
 from ._json import (

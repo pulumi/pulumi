@@ -37,13 +37,14 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 
 	// Configure the RunInfo.
 	runInfo := RunInfo{
-		Project:     req.GetProject(),
-		Stack:       req.GetStack(),
-		Config:      req.GetConfig(),
-		Parallel:    int(req.GetParallel()),
-		DryRun:      req.GetDryRun(),
-		MonitorAddr: req.GetMonitorEndpoint(),
-		engineConn:  engineConn,
+		Project:          req.GetProject(),
+		Stack:            req.GetStack(),
+		Config:           req.GetConfig(),
+		ConfigSecretKeys: req.GetConfigSecretKeys(),
+		Parallel:         int(req.GetParallel()),
+		DryRun:           req.GetDryRun(),
+		MonitorAddr:      req.GetMonitorEndpoint(),
+		engineConn:       engineConn,
 	}
 	pulumiCtx, err := NewContext(ctx, runInfo)
 	if err != nil {
@@ -87,14 +88,11 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}
 	providers := make(map[string]ProviderResource, len(req.GetProviders()))
 	for pkg, ref := range req.GetProviders() {
-		// Parse the URN and ID out of the provider reference.
-		lastSep := strings.LastIndex(ref, "::")
-		if lastSep == -1 {
-			return nil, errors.Errorf("expected '::' in provider reference %s", ref)
+		resource, err := createProviderResource(pulumiCtx, ref)
+		if err != nil {
+			return nil, err
 		}
-		urn := ref[0:lastSep]
-		id := ref[lastSep+2:]
-		providers[pkg] = pulumiCtx.newDependencyProviderResource(URN(urn), ID(id))
+		providers[pkg] = resource
 	}
 	var parent Resource
 	if req.GetParent() != "" {
@@ -163,6 +161,29 @@ func construct(ctx context.Context, req *pulumirpc.ConstructRequest, engineConn 
 	}, nil
 }
 
+// createProviderResource rehydrates the provider reference into a registered ProviderResource,
+// otherwise it returns an instance of DependencyProviderResource.
+func createProviderResource(ctx *Context, ref string) (ProviderResource, error) {
+	// Parse the URN and ID out of the provider reference.
+	lastSep := strings.LastIndex(ref, "::")
+	if lastSep == -1 {
+		return nil, errors.Errorf("expected '::' in provider reference %s", ref)
+	}
+	urn := ref[0:lastSep]
+	id := ref[lastSep+2:]
+
+	// Unmarshal the provider resource as a resource reference so we get back
+	// the intended provider type with its state, if it's been registered.
+	resource, err := unmarshalResourceReference(ctx, resource.ResourceReference{
+		URN: resource.URN(urn),
+		ID:  resource.NewStringProperty(id),
+	})
+	if err != nil {
+		return nil, err
+	}
+	return resource.(ProviderResource), nil
+}
+
 type constructInput struct {
 	value resource.PropertyValue
 	deps  []Resource
@@ -217,29 +238,71 @@ func constructInputsCopyTo(ctx *Context, inputs map[string]interface{}, args int
 				continue
 			}
 
-			if field.Type.Implements(outputType) || field.Type.Implements(inputType) {
+			handleField := func(typ reflect.Type, value resource.PropertyValue, deps []Resource) (reflect.Value, error) {
 				resultType := anyOutputType
-				if field.Type.Implements(outputType) {
-					resultType = field.Type
-				} else if field.Type.Implements(inputType) {
-					toOutputMethodName := "To" + strings.TrimSuffix(field.Type.Name(), "Input") + "Output"
-					if toOutputMethod, found := field.Type.MethodByName(toOutputMethodName); found {
+				if typ.Implements(outputType) {
+					resultType = typ
+				} else if typ.Implements(inputType) {
+					toOutputMethodName := "To" + strings.TrimSuffix(typ.Name(), "Input") + "Output"
+					if toOutputMethod, found := typ.MethodByName(toOutputMethodName); found {
 						mt := toOutputMethod.Type
 						if mt.NumIn() == 0 && mt.NumOut() == 1 && mt.Out(0).Implements(outputType) {
 							resultType = mt.Out(0)
 						}
 					}
 				}
-				output := ctx.newOutput(resultType, ci.deps...)
+				output := ctx.newOutput(resultType, deps...)
 				dest := reflect.New(output.ElementType()).Elem()
 				known := !ci.value.ContainsUnknowns()
-				secret, err := unmarshalOutput(ctx, ci.value, dest)
+				secret, err := unmarshalOutput(ctx, value, dest)
+				if err != nil {
+					return reflect.Value{}, err
+				}
+				output.getState().resolve(dest.Interface(), known, secret, nil)
+				return reflect.ValueOf(output), nil
+			}
+
+			isInputType := func(typ reflect.Type) bool {
+				return typ.Implements(outputType) || typ.Implements(inputType)
+			}
+
+			if isInputType(field.Type) {
+				val, err := handleField(field.Type, ci.value, ci.deps)
 				if err != nil {
 					return err
 				}
+				fieldV.Set(val)
+				continue
+			}
 
-				output.getState().resolve(dest.Interface(), known, secret, nil)
-				fieldV.Set(reflect.ValueOf(output))
+			if field.Type.Kind() == reflect.Slice && isInputType(field.Type.Elem()) {
+				elemType := field.Type.Elem()
+				length := len(ci.value.ArrayValue())
+				dest := reflect.MakeSlice(field.Type, length, length)
+				for i := 0; i < length; i++ {
+					val, err := handleField(elemType, ci.value.ArrayValue()[i], ci.deps)
+					if err != nil {
+						return err
+					}
+					dest.Index(i).Set(val)
+				}
+				fieldV.Set(dest)
+				continue
+			}
+
+			if field.Type.Kind() == reflect.Map && isInputType(field.Type.Elem()) {
+				elemType := field.Type.Elem()
+				length := len(ci.value.ObjectValue())
+				dest := reflect.MakeMapWithSize(field.Type, length)
+				for k, v := range ci.value.ObjectValue() {
+					key := reflect.ValueOf(string(k))
+					val, err := handleField(elemType, v, ci.deps)
+					if err != nil {
+						return err
+					}
+					dest.SetMapIndex(key, val)
+				}
+				fieldV.Set(dest)
 				continue
 			}
 
@@ -298,4 +361,176 @@ func newConstructResult(resource ComponentResource) (URNInput, Input, error) {
 	}
 
 	return resource.URN(), state, nil
+}
+
+type callFunc func(ctx *Context, tok string, args map[string]interface{}) (Input, error)
+
+// call adapts the gRPC CallRequest/CallResponse to/from the Pulumi Go SDK programming model.
+func call(ctx context.Context, req *pulumirpc.CallRequest, engineConn *grpc.ClientConn,
+	callF callFunc) (*pulumirpc.CallResponse, error) {
+
+	// Configure the RunInfo.
+	runInfo := RunInfo{
+		Project:     req.GetProject(),
+		Stack:       req.GetStack(),
+		Config:      req.GetConfig(),
+		Parallel:    int(req.GetParallel()),
+		DryRun:      req.GetDryRun(),
+		MonitorAddr: req.GetMonitorEndpoint(),
+		engineConn:  engineConn,
+	}
+	pulumiCtx, err := NewContext(ctx, runInfo)
+	if err != nil {
+		return nil, errors.Wrap(err, "constructing run context")
+	}
+
+	// Deserialize the inputs and apply appropriate dependencies.
+	argDependencies := req.GetArgDependencies()
+	deserializedArgs, err := plugin.UnmarshalProperties(
+		req.GetArgs(),
+		plugin.MarshalOptions{KeepSecrets: true, KeepResources: true, KeepUnknowns: req.GetDryRun()},
+	)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshaling inputs")
+	}
+	args := make(map[string]interface{}, len(deserializedArgs))
+	for key, value := range deserializedArgs {
+		k := string(key)
+		var deps []Resource
+		if inputDeps, ok := argDependencies[k]; ok {
+			deps = make([]Resource, len(inputDeps.GetUrns()))
+			for i, depURN := range inputDeps.GetUrns() {
+				deps[i] = pulumiCtx.newDependencyResource(URN(depURN))
+			}
+		}
+
+		args[k] = &constructInput{
+			value: value,
+			deps:  deps,
+		}
+	}
+
+	result, err := callF(pulumiCtx, req.GetTok(), args)
+	if err != nil {
+		return nil, err
+	}
+
+	// Wait for async work to finish.
+	if err = pulumiCtx.wait(); err != nil {
+		return nil, err
+	}
+
+	// Serialize all result properties, first by awaiting them, and then marshaling them to the requisite gRPC values.
+	resolvedProps, propertyDeps, _, err := marshalInputs(result)
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling properties")
+	}
+
+	// Marshal all properties for the RPC call.
+	keepUnknowns := req.GetDryRun()
+	rpcProps, err := plugin.MarshalProperties(
+		resolvedProps,
+		plugin.MarshalOptions{KeepSecrets: true, KeepUnknowns: keepUnknowns, KeepResources: pulumiCtx.keepResources})
+	if err != nil {
+		return nil, errors.Wrap(err, "marshaling properties")
+	}
+
+	// Convert the property dependencies map for RPC and remove duplicates.
+	rpcPropertyDeps := make(map[string]*pulumirpc.CallResponse_ReturnDependencies)
+	for k, deps := range propertyDeps {
+		sort.Slice(deps, func(i, j int) bool { return deps[i] < deps[j] })
+
+		urns := make([]string, 0, len(deps))
+		for i, d := range deps {
+			if i > 0 && urns[i-1] == string(d) {
+				continue
+			}
+			urns = append(urns, string(d))
+		}
+
+		rpcPropertyDeps[k] = &pulumirpc.CallResponse_ReturnDependencies{
+			Urns: urns,
+		}
+	}
+
+	return &pulumirpc.CallResponse{
+		Return:             rpcProps,
+		ReturnDependencies: rpcPropertyDeps,
+	}, nil
+}
+
+// callArgsCopyTo sets the args on the given args struct. If there is a `__self__` argument, it will be
+// returned, otherwise it will return nil.
+func callArgsCopyTo(ctx *Context, source map[string]interface{}, args interface{}) (Resource, error) {
+	// Use the same implementation as construct.
+	if err := constructInputsCopyTo(ctx, source, args); err != nil {
+		return nil, err
+	}
+
+	// Retrieve the `__self__` arg.
+	self, err := callArgsSelf(ctx, source)
+	if err != nil {
+		return nil, err
+	}
+
+	return self, nil
+}
+
+// callArgsSelf retrieves the `__self__` argument. If `__self__` is present the value is returned,
+// otherwise the returned value will be nil.
+func callArgsSelf(ctx *Context, source map[string]interface{}) (Resource, error) {
+	v, ok := source["__self__"]
+	if !ok {
+		return nil, nil
+	}
+
+	ci := v.(*constructInput)
+	if ci.value.ContainsUnknowns() {
+		return nil, errors.New("__self__ is unknown")
+	}
+
+	value, secret, err := unmarshalPropertyValue(ctx, ci.value)
+	if err != nil {
+		return nil, errors.Wrap(err, "unmarshaling __self__")
+	}
+	if secret {
+		return nil, errors.New("__self__ is a secret")
+	}
+
+	return value.(Resource), nil
+}
+
+// newCallResult converts a result struct into an input Map that can be marshalled.
+func newCallResult(result interface{}) (Input, error) {
+	if result == nil {
+		return nil, errors.New("result must not be nil")
+	}
+
+	resultV := reflect.ValueOf(result)
+	typ := resultV.Type()
+	if typ.Kind() != reflect.Ptr || typ.Elem().Kind() != reflect.Struct {
+		return nil, errors.New("result must be a pointer to a struct")
+	}
+	resultV, typ = resultV.Elem(), typ.Elem()
+
+	ret := make(Map)
+	for i := 0; i < typ.NumField(); i++ {
+		fieldV := resultV.Field(i)
+		if !fieldV.CanInterface() {
+			continue
+		}
+		field := typ.Field(i)
+		tag, has := field.Tag.Lookup("pulumi")
+		if !has {
+			continue
+		}
+		val := fieldV.Interface()
+		if v, ok := val.(Input); ok {
+			ret[tag] = v
+		} else {
+			ret[tag] = ToOutput(val)
+		}
+	}
+
+	return ret, nil
 }

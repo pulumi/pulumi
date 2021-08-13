@@ -51,7 +51,7 @@ export class Config {
             return undefined;
         }
         return v;
-     }
+    }
 
     /**
      * fullKey turns a simple configuration key into a fully resolved one, by prepending the bag's name.

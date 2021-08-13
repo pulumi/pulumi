@@ -230,6 +230,22 @@ func TestTryGetVCSInfoFromSSHRemote(t *testing.T) {
 			"git@gitlab.com:owner-name/group/sub-group/repo-name.git",
 			&VCSInfo{Owner: "owner-name", Repo: "group/sub-group/repo-name", Kind: GitLabHostName},
 		},
+		{
+			"git@github.foo.acme.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo.acme.com"},
+		},
+		{
+			"git@github.foo.acme.org:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo.acme.org"},
+		},
+		{
+			"git@github.foo-acme.com:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo-acme.com"},
+		},
+		{
+			"git@github.foo-acme.org:owner-name/repo-name.git",
+			&VCSInfo{Owner: "owner-name", Repo: "repo-name", Kind: "github.foo-acme.org"},
+		},
 
 		//HTTPS remotes
 		{
