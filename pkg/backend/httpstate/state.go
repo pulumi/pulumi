@@ -71,6 +71,9 @@ func newTokenSource(ctx context.Context, token string, backend *cloudBackend, up
 				// If we get an error from the backend, leave `err` set and surface it during
 				// the next request for a lease token.
 				if err != nil {
+					logging.V(3).Infof("error renewing lease: %v", err)
+					err = fmt.Errorf("renewing lease: %w", err)
+
 					ticker.Stop()
 				} else {
 					token = newToken
