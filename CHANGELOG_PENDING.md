@@ -1,5 +1,7 @@
 ### Improvements
 
+- [cli] Stop printing secret value on `pulumi config set` if it looks like a secret.
+  [#7327](https://github.com/pulumi/pulumi/pull/7327)
 
 ### Bug Fixes
 
