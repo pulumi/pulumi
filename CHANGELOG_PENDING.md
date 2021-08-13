@@ -3,6 +3,10 @@
 - [cli] Stop printing secret value on `pulumi config set` if it looks like a secret.
   [#7327](https://github.com/pulumi/pulumi/pull/7327)
 
+- [sdk/go] - Permit declaring explicit resource dependencies via
+  `ResourceInput` values.
+  [#7584](https://github.com/pulumi/pulumi/pull/7584)
+
 ### Bug Fixes
 
 - [sdk/python] - Fix program hangs when monitor becomes unavailable.
