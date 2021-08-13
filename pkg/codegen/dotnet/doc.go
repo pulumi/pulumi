@@ -98,6 +98,14 @@ func (d DocLanguageHelper) GetResourceFunctionResultName(modName string, f *sche
 	return funcName + "Result"
 }
 
+func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
+	return Title(m.Name)
+}
+
+func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
+	return fmt.Sprintf("%s.%sResult", resourceName(r), d.GetMethodName(m))
+}
+
 // GetPropertyName uses the property's csharp-specific language info, if available, to generate
 // the property name. Otherwise, returns the PascalCase as the default.
 func (d DocLanguageHelper) GetPropertyName(p *schema.Property) (string, error) {

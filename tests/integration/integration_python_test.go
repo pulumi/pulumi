@@ -407,6 +407,15 @@ func TestDynamicPython(t *testing.T) {
 	})
 }
 
+func TestDynamicPythonNonMain(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir: filepath.Join("dynamic", "python-non-main"),
+		Dependencies: []string{
+			filepath.Join("..", "..", "sdk", "python", "env", "src"),
+		},
+	})
+}
+
 func TestPartialValuesPython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
 		t.Skip("Temporarily skipping test on Windows - pulumi/pulumi#3811")

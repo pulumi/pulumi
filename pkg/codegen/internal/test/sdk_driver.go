@@ -79,7 +79,6 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "simple-methods-schema",
 		Description: "Simple schema with methods",
-		Skip:        codegen.NewStringSet("docs"),
 	},
 	{
 		Directory:   "simple-yaml-schema",

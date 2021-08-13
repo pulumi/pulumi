@@ -526,9 +526,9 @@ func newConfigSetCmd(stack *string) *cobra.Command {
 				// If we saved a plaintext configuration value, and --plaintext was not passed, warn the user.
 				if !plaintext && looksLikeSecret(key, value) {
 					return errors.Errorf(
-						"config value '%s' looks like a secret; "+
+						"config value for '%s' looks like a secret; "+
 							"rerun with --secret to encrypt it, or --plaintext if you meant to store in plaintext",
-						value)
+						key)
 				}
 			}
 
