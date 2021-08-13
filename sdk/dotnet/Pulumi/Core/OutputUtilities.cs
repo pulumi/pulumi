@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Immutable;
@@ -9,7 +9,7 @@ namespace Pulumi.Utilities
     /// <summary>
     /// Allows extracting some internal insights about an instance of
     /// <see cref="Output{T}"/>.
-    /// 
+    ///
     /// Danger: these utilities are intended for use in test and
     /// debugging scenarios. In normal Pulumi programs, please
     /// consider using `.Apply` instead to chain `Output{T}`
@@ -61,7 +61,7 @@ namespace Pulumi.Utilities
         /// </summary>
         /// <param name="output">The <see cref="Output{T}"/> to evaluate.</param>
         public static Task<T> GetValueAsync<T>(Output<T> output)
-            => output.GetValueAsync();
+            => output.GetValueAsync(whenUnknown: default!);
 
         /// <summary>
         /// Retrieve a set of resources that the given output depends on.

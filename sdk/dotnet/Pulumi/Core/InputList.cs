@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections;
@@ -147,7 +147,8 @@ namespace Pulumi
 
         public async IAsyncEnumerator<Input<T>> GetAsyncEnumerator(CancellationToken cancellationToken)
         {
-            var data = await _outputValue.GetValueAsync().ConfigureAwait(false);
+            var data = await _outputValue.GetValueAsync(whenUnknown: ImmutableArray<T>.Empty)
+                .ConfigureAwait(false);
             foreach (var value in data)
             {
                 yield return value;

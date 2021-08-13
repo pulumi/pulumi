@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation
+// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Generic;
@@ -148,10 +148,10 @@ namespace Pulumi
             }
         }
 
-        internal async Task<T> GetValueAsync()
+        internal async Task<T> GetValueAsync(T whenUnknown)
         {
             var data = await DataTask.ConfigureAwait(false);
-            return data.Value;
+            return data.IsKnown ? data.Value : whenUnknown;
         }
 
         async Task<ImmutableHashSet<Resource>> IOutput.GetResourcesAsync()
