@@ -15,6 +15,8 @@
 package pulumi
 
 import (
+	"context"
+	"fmt"
 	"reflect"
 	"sync"
 
@@ -255,7 +257,7 @@ type resourceOptions struct {
 	// DeleteBeforeReplace, when set to true, ensures that this resource is deleted prior to replacement.
 	DeleteBeforeReplace bool
 	// DependsOn is an optional array of explicit dependencies on other resources.
-	DependsOn []Resource
+	DependsOn []func(ctx context.Context) (urnSet, error)
 	// IgnoreChanges ignores changes to any of the specified properties.
 	IgnoreChanges []string
 	// Import, when provided with a resource ID, indicates that this resource's provider should import its state from
@@ -362,7 +364,41 @@ func DeleteBeforeReplace(o bool) ResourceOption {
 // DependsOn is an optional array of explicit dependencies on other resources.
 func DependsOn(o []Resource) ResourceOption {
 	return resourceOption(func(ro *resourceOptions) {
-		ro.DependsOn = append(ro.DependsOn, o...)
+		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
+			return expandDependencies(ctx, o)
+		})
+	})
+}
+
+// Declares explicit dependencies on other resources. Similar to
+// `DependsOn`, but also admits resource inputs and outputs:
+//
+//     var r Resource
+//     var ri ResourceInput
+//     var ro ResourceOutput
+//     allDeps := NewResourceArrayOutput(NewResourceOutput(r), ri.ToResourceOutput(), ro)
+//     DependsOnInputs(allDeps)
+func DependsOnInputs(o ResourceArrayInput) ResourceOption {
+	return resourceOption(func(ro *resourceOptions) {
+		ro.DependsOn = append(ro.DependsOn, func(ctx context.Context) (urnSet, error) {
+			out := o.ToResourceArrayOutput()
+
+			value, known, _ /* secret */, _ /* deps */, err := out.await(ctx)
+			if err != nil || !known {
+				return nil, err
+			}
+
+			resources, ok := value.([]Resource)
+			if !ok {
+				return nil, fmt.Errorf("ResourceArrayInput resolved to a value of unexpected type %v, expected []Resource",
+					reflect.TypeOf(value))
+			}
+
+			// For some reason, deps returned above are incorrect; instead:
+			toplevelDeps := out.dependencies()
+
+			return expandDependencies(ctx, append(resources, toplevelDeps...))
+		})
 	})
 }
 
