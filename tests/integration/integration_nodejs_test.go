@@ -1125,3 +1125,12 @@ func TestConstructNodeErrorApply(t *testing.T) {
 		integration.ProgramTest(t, opts)
 	})
 }
+
+// Test targeting `es2016` in `tsconfig.json` works.
+func TestCompilerOptionsNode(t *testing.T) {
+	integration.ProgramTest(t, &integration.ProgramTestOptions{
+		Dir:          filepath.Join("nodejs", "compiler_options"),
+		Dependencies: []string{"@pulumi/pulumi"},
+		Quick:        true,
+	})
+}
