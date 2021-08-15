@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import * as fs from "fs";
+import * as url from "url";
 import * as minimist from "minimist";
 import * as path from "path";
 import * as tsnode from "ts-node";
@@ -36,6 +37,25 @@ function reportModuleLoadFailure(program: string, error: Error): never {
     return process.exit(mod.nodeJSProcessExitedAfterLoggingUserActionableMessage);
 }
 
+function projectRootFromProgramPath(program: string): string {
+    const stat = fs.lstatSync(program);
+    if (stat.isDirectory()) {
+        return program;
+    } else {
+        return path.dirname(program);
+    }
+}
+
+function packageObjectFromProjectRoot(projectRoot: string): Record<string, any> {
+    try {
+        const packageJson = path.join(projectRoot, "package.json");
+        return require(packageJson);
+    } catch {
+        // This is all best-effort so if we can't load the package.json file, that's
+        // fine.
+        return {};
+    }
+}
 
 function throwOrPrintModuleLoadError(program: string, error: Error): void {
     // error is guaranteed to be a Node module load error. Node emits a very
@@ -70,23 +90,8 @@ function throwOrPrintModuleLoadError(program: string, error: Error): void {
     //
     // The first step of this is trying to slurp up a package.json for this program, if
     // one exists.
-    const stat = fs.lstatSync(program);
-    let projectRoot: string;
-    if (stat.isDirectory()) {
-        projectRoot = program;
-    } else {
-        projectRoot = path.dirname(program);
-    }
-
-    let packageObject: Record<string, any>;
-    try {
-        const packageJson = path.join(projectRoot, "package.json");
-        packageObject = require(packageJson);
-    } catch {
-        // This is all best-effort so if we can't load the package.json file, that's
-        // fine.
-        return;
-    }
+    const projectRoot = projectRootFromProgramPath(program);
+    const packageObject = packageObjectFromProjectRoot(projectRoot);
 
     console.error("Here's what we think went wrong:");
 
@@ -227,6 +232,16 @@ ${defaultMessage}`);
         // Now go ahead and execute the code. The process will remain alive until the message loop empties.
         log.debug(`Running program '${program}' in pwd '${process.cwd()}' w/ args: ${programArgs}`);
         try {
+            const packageObject = packageObjectFromProjectRoot(projectRootFromProgramPath(program));
+
+            // We use dynamic import instead of require for projects using native ES modules instead of commonjs
+            if (packageObject["type"] === "module") {
+                // Import the module and capture any module outputs it exported. Finally, await the value we get
+                // back.  That way, if it is async and throws an exception, we properly capture it here
+                // and handle it.
+                return await import(url.pathToFileURL(program).toString());
+            }
+
             // Execute the module and capture any module outputs it exported. If the exported value
             // was itself a Function, then just execute it.  This allows for exported top level
             // async functions that pulumi programs can live in.  Finally, await the value we get
