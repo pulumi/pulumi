@@ -236,10 +236,18 @@ ${defaultMessage}`);
 
             // We use dynamic import instead of require for projects using native ES modules instead of commonjs
             if (packageObject["type"] === "module") {
+                // Workaround for typescript transpiling dynamic import into `Promise.resolve().then(() => require`
+                // Follow this issue for progress on when we can remove this:
+                // https://github.com/microsoft/TypeScript/issues/43329
+                //
+                // Workaround inspired by es-module-shims:
+                // https://github.com/guybedford/es-module-shims/blob/main/src/common.js#L21
+                // eslint-disable-next-line no-eval
+                const dynamicImport = (0, eval)("u=>import(u)");
                 // Import the module and capture any module outputs it exported. Finally, await the value we get
                 // back.  That way, if it is async and throws an exception, we properly capture it here
                 // and handle it.
-                return await import(url.pathToFileURL(program).toString());
+                return await dynamicImport(url.pathToFileURL(program).toString());
             }
 
             // Execute the module and capture any module outputs it exported. If the exported value
