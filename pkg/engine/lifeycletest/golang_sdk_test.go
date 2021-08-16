@@ -848,6 +848,7 @@ func TestRemoteComponentGolang(t *testing.T) {
 					outs := resource.PropertyMap{}
 
 					err = monitor.RegisterResourceOutputs(urn, outs)
+					require.NoError(t, err)
 
 					return plugin.ConstructResult{
 						URN:     urn,
