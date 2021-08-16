@@ -2,6 +2,8 @@ module github.com/pulumi/pulumi/sdk/v3
 
 go 1.16
 
+retract v3.10.1 // This version introduced a critical bug in property marshaling.
+
 require (
 	github.com/Microsoft/go-winio v0.4.14
 	github.com/blang/semver v3.5.1+incompatible
