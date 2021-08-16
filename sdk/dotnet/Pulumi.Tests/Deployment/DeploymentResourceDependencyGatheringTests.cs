@@ -42,11 +42,11 @@ namespace Pulumi.Tests
         {
         }
 
-        [ResourceType("test:index:resource", null)]
+        [ResourceType("test:DeploymentResourceDependencyGatheringTests:resource", null)]
         private class MyCustomResource : CustomResource
         {
             public MyCustomResource(string name, MyArgs? args, CustomResourceOptions? options = null)
-                : base("test:index:resource", name, args ?? new MyArgs(), options)
+                : base("test:DeploymentResourceDependencyGatheringTests:resource", name, args ?? new MyArgs(), options)
             {
             }
         }
@@ -67,7 +67,7 @@ namespace Pulumi.Tests
 
             public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
             {
-                if (args.Type == "test:index:resource")
+                if (args.Type == "test:DeploymentResourceDependencyGatheringTests:resource")
                 {
                     return Task.FromResult<(string?, object)>((this.IsPreview ? null : "id",
                                                                new Dictionary<string, object>()));
