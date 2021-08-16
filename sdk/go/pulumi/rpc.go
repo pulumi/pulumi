@@ -148,7 +148,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			pdeps[pname] = allDeps.values()
 		}
 
-		if !v.IsNull() || len(deps) > 0 {
+		if !v.IsNull() || len(allDeps) > 0 {
 			pmap[resource.PropertyKey(pname)] = v
 		}
 		return nil
