@@ -40,12 +40,8 @@ namespace Pulumi
             // If no parent was provided, parent to the root resource.
             LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
             var parentUrn = options.Parent != null
-                ? await options.Parent.Urn.GetValueAsync(whenUnknown: "").ConfigureAwait(false)
-                : "";
-            if (parentUrn == "")
-            {
-                parentUrn = await GetRootResourceAsync(type).ConfigureAwait(false);
-            }
+                ? await options.Parent.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false)
+                : await GetRootResourceAsync(type).ConfigureAwait(false);
             LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
 
             string? providerRef = null;
