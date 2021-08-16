@@ -1286,9 +1286,11 @@ func (ctx *Context) getOpts(res Resource, t string, provider ProviderResource, o
 	if opts.DependsOn != nil {
 		depSet := urnSet{}
 		for _, r := range opts.DependsOn {
-			if err := addDependency(context.TODO(), depSet, r); err != nil {
+			dependsOn, err := r(ctx.ctx)
+			if err != nil {
 				return resourceOpts{}, err
 			}
+			depSet.union(dependsOn)
 		}
 		depURNs = depSet.values()
 	}

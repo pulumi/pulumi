@@ -42,9 +42,7 @@ class RPCManager:
     """
 
     def __init__(self):
-        self.rpcs = []
-        self.unhandled_exception = None
-        self.exception_traceback = None
+        self.clear()
 
     def do_rpc(self, name: str, rpc_function: Callable[..., Awaitable[Tuple[Any, Exception]]]) -> Callable[..., Awaitable[Tuple[Any, Exception]]]:
         """
@@ -78,6 +76,12 @@ class RPCManager:
             return result, exception
 
         return rpc_wrapper
+
+    def clear(self) -> None:
+        """Clears any tracked state. For use in testing to ensure test isolation."""
+        self.rpcs = []
+        self.exception_traceback = None
+        self.unhandled_exception = None
 
 
 RPC_MANAGER: RPCManager = RPCManager()

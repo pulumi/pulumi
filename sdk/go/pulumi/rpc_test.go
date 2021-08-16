@@ -835,13 +835,10 @@ func TestDependsOnComponent(t *testing.T) {
 	ctx, err := NewContext(context.Background(), RunInfo{})
 	assert.Nil(t, err)
 
-	registerResource := func(name string, res Resource, opts *resourceOptions) (Resource, []string) {
+	registerResource := func(name string, res Resource, options ...ResourceOption) (Resource, []string) {
+		opts := merge(options...)
 		state := ctx.makeResourceState("", "", res, nil, nil, "", nil, nil)
 		state.resolve(ctx, nil, nil, name, "", &structpb.Struct{}, nil)
-
-		if opts == nil {
-			opts = &resourceOptions{}
-		}
 
 		inputs, err := ctx.prepareResourceInputs(res, Map{}, "", opts, state, false)
 		require.NoError(t, err)
@@ -849,37 +846,37 @@ func TestDependsOnComponent(t *testing.T) {
 		return res, inputs.deps
 	}
 
-	newResource := func(name string, opts *resourceOptions) (Resource, []string) {
+	newResource := func(name string, options ...ResourceOption) (Resource, []string) {
 		var res testResource
-		return registerResource(name, &res, opts)
+		return registerResource(name, &res, options...)
 	}
 
-	newComponent := func(name string, opts *resourceOptions) (Resource, []string) {
+	newComponent := func(name string, options ...ResourceOption) (Resource, []string) {
 		var res simpleComponentResource
-		return registerResource(name, &res, opts)
+		return registerResource(name, &res, options...)
 	}
 
 	resA, _ := newResource("resA", nil)
 	comp1, _ := newComponent("comp1", nil)
-	resB, _ := newResource("resB", &resourceOptions{Parent: comp1})
-	newResource("resC", &resourceOptions{Parent: resB})
-	comp2, _ := newComponent("comp2", &resourceOptions{Parent: comp1})
+	resB, _ := newResource("resB", Parent(comp1))
+	newResource("resC", Parent(resB))
+	comp2, _ := newComponent("comp2", Parent(comp1))
 
-	resD, deps := newResource("resD", &resourceOptions{DependsOn: []Resource{resA}, Parent: comp2})
+	resD, deps := newResource("resD", DependsOn([]Resource{resA}), Parent(comp2))
 	assert.Equal(t, []string{"resA"}, deps)
 
-	_, deps = newResource("resE", &resourceOptions{DependsOn: []Resource{resD}, Parent: comp2})
+	_, deps = newResource("resE", DependsOn([]Resource{resD}), Parent(comp2))
 	assert.Equal(t, []string{"resD"}, deps)
 
-	_, deps = newResource("resF", &resourceOptions{DependsOn: []Resource{resA}})
+	_, deps = newResource("resF", DependsOn([]Resource{resA}))
 	assert.Equal(t, []string{"resA"}, deps)
 
-	resG, deps := newResource("resG", &resourceOptions{DependsOn: []Resource{comp1}})
+	resG, deps := newResource("resG", DependsOn([]Resource{comp1}))
 	assert.Equal(t, []string{"resB", "resD", "resE"}, deps)
 
-	_, deps = newResource("resH", &resourceOptions{DependsOn: []Resource{comp2}})
+	_, deps = newResource("resH", DependsOn([]Resource{comp2}))
 	assert.Equal(t, []string{"resD", "resE"}, deps)
 
-	_, deps = newResource("resI", &resourceOptions{DependsOn: []Resource{resG}})
+	_, deps = newResource("resI", DependsOn([]Resource{resG}))
 	assert.Equal(t, []string{"resG"}, deps)
 }

@@ -277,6 +277,9 @@ type resourceDocArgs struct {
 	// output properties.
 	NestedTypes []docNestedType
 
+	// A list of methods associated with the resource.
+	Methods []methodDocArgs
+
 	PackageDetails packageDetails
 }
 
@@ -885,12 +888,21 @@ func (mod *modContext) genNestedTypes(member interface{}, resourceType bool) []d
 // the provided slice of properties in the schema.
 func (mod *modContext) getProperties(properties []*schema.Property, lang string, input, nested, isProvider bool,
 ) []property {
+	return mod.getPropertiesWithIDPrefixAndExclude(properties, lang, input, nested, isProvider, "", nil)
+}
+
+func (mod *modContext) getPropertiesWithIDPrefixAndExclude(properties []*schema.Property, lang string, input, nested,
+	isProvider bool, idPrefix string, exclude func(name string) bool) []property {
 	if len(properties) == 0 {
 		return nil
 	}
 	docProperties := make([]property, 0, len(properties))
 	for _, prop := range properties {
 		if prop == nil {
+			continue
+		}
+
+		if exclude != nil && exclude(prop.Name) {
 			continue
 		}
 
@@ -910,7 +922,7 @@ func (mod *modContext) getProperties(properties []*schema.Property, lang string,
 		}
 		propLangName := name
 
-		propID := strings.ToLower(propLangName + propertyLangSeparator + lang)
+		propID := idPrefix + strings.ToLower(propLangName+propertyLangSeparator+lang)
 
 		propTypes := make([]propertyType, 0)
 		if typ, isUnion := codegen.UnwrapType(prop.Type).(*schema.UnionType); isUnion {
@@ -1394,6 +1406,8 @@ func (mod *modContext) genResource(r *schema.Resource) resourceDocArgs {
 		StateParam:       stateParam,
 		NestedTypes:      mod.genNestedTypes(r, true /*resourceType*/),
 
+		Methods: mod.genMethods(r),
+
 		PackageDetails: packageDetails,
 	}
 
@@ -1442,6 +1456,9 @@ func (mod *modContext) getTypes(member interface{}, types nestedTypeUsageInfo) {
 		}
 		for _, p := range t.InputProperties {
 			mod.getNestedTypes(p.Type, types, true)
+		}
+		for _, m := range t.Methods {
+			mod.getTypes(m.Function, types)
 		}
 	case *schema.Function:
 		if t.Inputs != nil {
@@ -1794,8 +1811,10 @@ func generateModulesFromSchemaPackage(tool string, pkg *schema.Package) map[stri
 	glog.V(3).Infoln("done scanning resources")
 
 	for _, f := range pkg.Functions {
-		mod := getMod(pkg, f.Token, f.Package, modules, tool, true)
-		mod.functions = append(mod.functions, f)
+		if !f.IsMethod {
+			mod := getMod(pkg, f.Token, f.Package, modules, tool, true)
+			mod.functions = append(mod.functions, f)
+		}
 	}
 
 	// Find nested types.

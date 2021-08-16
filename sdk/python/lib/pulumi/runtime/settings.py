@@ -233,7 +233,7 @@ async def monitor_supports_feature(feature: str) -> bool:
     return SETTINGS.feature_support[feature]
 
 
-def grpc_error_to_exception(exn: grpc.RpcError) -> Optional[Exception]:
+def grpc_error_to_exception(exn: grpc.RpcError) -> Exception:
     # gRPC-python gets creative with their exceptions. grpc.RpcError as a type is useless;
     # the usefulness come from the fact that it is polymorphically also a grpc.Call and thus has
     # the .code() member. Pylint doesn't know this because it's not known statically.
@@ -242,18 +242,17 @@ def grpc_error_to_exception(exn: grpc.RpcError) -> Optional[Exception]:
     # https://github.com/grpc/grpc/issues/10885#issuecomment-302581315
     # pylint: disable=no-member
     if exn.code() == grpc.StatusCode.UNAVAILABLE:
-        # If the monitor is unavailable, it is in the process of shutting down or has already
-        # shut down. Don't emit an error if this is the case.
-        return None
+        # If the monitor is unavailable, it is in the process of
+        # shutting down or has already shut down.
+        return RunError('Resource monitor has terminated, shutting down')
 
     details = exn.details()
     return Exception(details)
 
 
-def handle_grpc_error(exn: grpc.RpcError):
-    exc = grpc_error_to_exception(exn)
-    if exc is not None:
-        raise exc
+def handle_grpc_error(exn: grpc.RpcError) -> None:
+    raise grpc_error_to_exception(exn)
+
 
 async def monitor_supports_secrets() -> bool:
     return await monitor_supports_feature("secrets")
