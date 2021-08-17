@@ -11,9 +11,10 @@ import (
 )
 
 // The response from the ListKeys operation.
+// API Version: 2021-02-01.
 func ListStorageAccountKeys(ctx *pulumi.Context, args *ListStorageAccountKeysArgs, opts ...pulumi.InvokeOption) (*ListStorageAccountKeysResult, error) {
 	var rv ListStorageAccountKeysResult
-	err := ctx.Invoke("madeup-package:codegentest:listStorageAccountKeys", args, &rv, opts...)
+	err := ctx.Invoke("azure-native:codegentest:listStorageAccountKeys", args, &rv, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -33,17 +34,17 @@ type ListStorageAccountKeysArgs struct {
 // The response from the ListKeys operation.
 type ListStorageAccountKeysResult struct {
 	// Gets the list of storage account keys and their properties for the specified storage account.
-	Keys []map[string]string `pulumi:"keys"`
+	Keys []StorageAccountKeyResponse `pulumi:"keys"`
 }
 
 
-func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKeysOutputArgs, opts ...pulumi.InvokeOption) ListStorageAccountKeysResultOutput {
+func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKeysOutputArgs, opts ...pulumi.InvokeOption) ListStorageAccountKeysResultTypeOutput {
         return pulumi.ToOutputWithContext(context.Background(), args).
                 ApplyT(func(v interface{}) (ListStorageAccountKeysResult, error) {
              		args := v.(ListStorageAccountKeysArgs)
                         r, err := ListStorageAccountKeys(ctx, &args, opts...)
                         return *r, err
-                }).(ListStorageAccountKeysResultOutput)
+                }).(ListStorageAccountKeysResultTypeOutput)
 }
 
 type ListStorageAccountKeysOutputArgs struct {
@@ -60,27 +61,27 @@ func (ListStorageAccountKeysOutputArgs) ElementType() reflect.Type {
 }
 
 // The response from the ListKeys operation.
-type ListStorageAccountKeysResultOutput struct { *pulumi.OutputState }
+type ListStorageAccountKeysResultTypeOutput struct { *pulumi.OutputState }
 
-func (ListStorageAccountKeysResultOutput) ElementType() reflect.Type {
+func (ListStorageAccountKeysResultTypeOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*ListStorageAccountKeysResult)(nil)).Elem()
 }
 
-func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutput() ListStorageAccountKeysResultOutput {
+func (o ListStorageAccountKeysResultTypeOutput) ToListStorageAccountKeysResultTypeOutput() ListStorageAccountKeysResultTypeOutput {
 	return o
 }
 
-func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutputWithContext(ctx context.Context) ListStorageAccountKeysResultOutput {
+func (o ListStorageAccountKeysResultTypeOutput) ToListStorageAccountKeysResultTypeOutputWithContext(ctx context.Context) ListStorageAccountKeysResultTypeOutput {
 	return o
 }
 
 // Gets the list of storage account keys and their properties for the specified storage account.
-func (o ListStorageAccountKeysResultOutput) Keys() pulumi.StringMapArrayOutput {
-	return o.ApplyT(func (v ListStorageAccountKeysResult) []map[string]string { return v.Keys }).(pulumi.StringMapArrayOutput)
+func (o ListStorageAccountKeysResultTypeOutput) Keys() StorageAccountKeyResponseArrayOutput {
+	return o.ApplyT(func (v ListStorageAccountKeysResult) []StorageAccountKeyResponse { return v.Keys }).(StorageAccountKeyResponseArrayOutput)
 }
 
 
 func init() {
-        pulumi.RegisterOutputType(ListStorageAccountKeysResultOutput{})
+        pulumi.RegisterOutputType(ListStorageAccountKeysResultTypeOutput{})
 }
 
