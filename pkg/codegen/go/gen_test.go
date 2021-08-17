@@ -263,7 +263,7 @@ func TestGenerateOutputFuncs(t *testing.T) {
 		"funcWithDefaultValue",
 		"funcWithDictParam",
 		"funcWithListParam",
-		//"listStorageAccountKeys",
+		"listStorageAccountKeys",
 	}
 
 	gen := func(reader io.Reader, writer io.Writer) error {
