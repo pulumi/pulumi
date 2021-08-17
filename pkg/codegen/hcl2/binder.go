@@ -15,6 +15,7 @@
 package hcl2
 
 import (
+	"fmt"
 	"os"
 	"sort"
 
@@ -187,6 +188,9 @@ func (b *binder) declareNodes(file *syntax.File) (hcl.Diagnostics, error) {
 
 					typeExpr, diags := model.BindExpressionText(item.Labels[1], model.TypeScope, item.LabelRanges[1].Start)
 					diagnostics = append(diagnostics, diags...)
+					if typeExpr == nil {
+						return diagnostics, fmt.Errorf("cannot bind expression: %v", diagnostics.Error())
+					}
 					typ = typeExpr.Type()
 				default:
 					diagnostics = append(diagnostics, labelsErrorf(item, "config variables must have exactly one or two labels"))
