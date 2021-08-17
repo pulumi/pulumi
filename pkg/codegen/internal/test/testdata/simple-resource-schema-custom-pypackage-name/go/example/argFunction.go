@@ -4,6 +4,9 @@
 package example
 
 import (
+	"context"
+	"reflect"
+
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -22,4 +25,43 @@ type ArgFunctionArgs struct {
 
 type ArgFunctionResult struct {
 	Result *Resource `pulumi:"result"`
+}
+
+func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultTypeOutput {
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (ArgFunctionResult, error) {
+			args := v.(ArgFunctionArgs)
+			r, err := ArgFunction(ctx, &args, opts...)
+			return *r, err
+		}).(ArgFunctionResultTypeOutput)
+}
+
+type ArgFunctionOutputArgs struct {
+	Arg1 ResourceInput `pulumi:"arg1"`
+}
+
+func (ArgFunctionOutputArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ArgFunctionArgs)(nil)).Elem()
+}
+
+type ArgFunctionResultTypeOutput struct{ *pulumi.OutputState }
+
+func (ArgFunctionResultTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ArgFunctionResult)(nil)).Elem()
+}
+
+func (o ArgFunctionResultTypeOutput) ToArgFunctionResultTypeOutput() ArgFunctionResultTypeOutput {
+	return o
+}
+
+func (o ArgFunctionResultTypeOutput) ToArgFunctionResultTypeOutputWithContext(ctx context.Context) ArgFunctionResultTypeOutput {
+	return o
+}
+
+func (o ArgFunctionResultTypeOutput) Result() ResourceOutput {
+	return o.ApplyT(func(v ArgFunctionResult) *Resource { return v.Result }).(ResourceOutput)
+}
+
+func init() {
+	pulumi.RegisterOutputType(ArgFunctionResultTypeOutput{})
 }

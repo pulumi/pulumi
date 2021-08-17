@@ -32,12 +32,12 @@ type FuncWithDefaultValueResult struct {
 
 
 func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOutputArgs, opts ...pulumi.InvokeOption) FuncWithDefaultValueResultTypeOutput {
-        return pulumi.ToOutputWithContext(context.Background(), args).
-                ApplyT(func(v interface{}) (FuncWithDefaultValueResult, error) {
-             		args := v.(FuncWithDefaultValueArgs)
-                        r, err := FuncWithDefaultValue(ctx, &args, opts...)
-                        return *r, err
-                }).(FuncWithDefaultValueResultTypeOutput)
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (FuncWithDefaultValueResult, error) {
+			args := v.(FuncWithDefaultValueArgs)
+			r, err := FuncWithDefaultValue(ctx, &args, opts...)
+			return *r, err
+		}).(FuncWithDefaultValueResultTypeOutput)
 }
 
 type FuncWithDefaultValueOutputArgs struct {

@@ -32,12 +32,12 @@ type FuncWithDictParamResult struct {
 
 
 func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithDictParamResultTypeOutput {
-        return pulumi.ToOutputWithContext(context.Background(), args).
-                ApplyT(func(v interface{}) (FuncWithDictParamResult, error) {
-             		args := v.(FuncWithDictParamArgs)
-                        r, err := FuncWithDictParam(ctx, &args, opts...)
-                        return *r, err
-                }).(FuncWithDictParamResultTypeOutput)
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (FuncWithDictParamResult, error) {
+			args := v.(FuncWithDictParamArgs)
+			r, err := FuncWithDictParam(ctx, &args, opts...)
+			return *r, err
+		}).(FuncWithDictParamResultTypeOutput)
 }
 
 type FuncWithDictParamOutputArgs struct {

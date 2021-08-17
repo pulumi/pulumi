@@ -1777,12 +1777,12 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function)
 
 	code := `
 func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
-        return pulumi.ToOutputWithContext(context.Background(), args).
-                ApplyT(func(v interface{}) (${fn}Result, error) {
-             		args := v.(${fn}Args)
-                        r, err := ${fn}(ctx, &args, opts...)
-                        return *r, err
-                }).(${outputType})
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (${fn}Result, error) {
+			args := v.(${fn}Args)
+			r, err := ${fn}(ctx, &args, opts...)
+			return *r, err
+		}).(${outputType})
 }
 
 `
