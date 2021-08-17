@@ -419,17 +419,16 @@ func TestDynamicPythonNonMain(t *testing.T) {
 
 // Tests custom resource type name of dynamic provider in Python.
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
-	var randomVal string
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
 		Dir: filepath.Join("dynamic", "python-resource-type-name"),
 		Dependencies: []string{
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			urnOut = stack.Outputs["urn"].(string)
+			urnOut := stack.Outputs["urn"].(string)
 			urn := resource.URN(urnOut)
-			typ := urn.Type()
-			assert.Equal(t, typ, "pulumi-python:dynamic/custom-provider:CustomResource")
+			typ := urn.Type().String()
+			assert.Equal(t, "pulumi-python:dynamic/custom-provider:CustomResource", typ)
 		},
 	})
 }
