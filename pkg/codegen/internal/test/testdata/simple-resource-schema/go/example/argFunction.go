@@ -27,78 +27,41 @@ type ArgFunctionResult struct {
 	Result *Resource `pulumi:"result"`
 }
 
-func ArgFunctionApply(ctx *pulumi.Context, args ArgFunctionApplyInput, opts ...pulumi.InvokeOption) ArgFunctionResultOutput {
-	return args.ToArgFunctionApplyOutput().ApplyT(func(v ArgFunctionArgs) (ArgFunctionResult, error) {
-		r, err := ArgFunction(ctx, &v, opts...)
-		return *r, err
-
-	}).(ArgFunctionResultOutput)
+func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultTypeOutput {
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (ArgFunctionResult, error) {
+			args := v.(ArgFunctionArgs)
+			r, err := ArgFunction(ctx, &args, opts...)
+			return *r, err
+		}).(ArgFunctionResultTypeOutput)
 }
 
-// ArgFunctionApplyInput is an input type that accepts ArgFunctionApplyArgs and ArgFunctionApplyOutput values.
-// You can construct a concrete instance of `ArgFunctionApplyInput` via:
-//
-//          ArgFunctionApplyArgs{...}
-type ArgFunctionApplyInput interface {
-	pulumi.Input
-
-	ToArgFunctionApplyOutput() ArgFunctionApplyOutput
-	ToArgFunctionApplyOutputWithContext(context.Context) ArgFunctionApplyOutput
-}
-
-type ArgFunctionApplyArgs struct {
+type ArgFunctionOutputArgs struct {
 	Arg1 ResourceInput `pulumi:"arg1"`
 }
 
-func (ArgFunctionApplyArgs) ElementType() reflect.Type {
+func (ArgFunctionOutputArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*ArgFunctionArgs)(nil)).Elem()
 }
 
-func (i ArgFunctionApplyArgs) ToArgFunctionApplyOutput() ArgFunctionApplyOutput {
-	return i.ToArgFunctionApplyOutputWithContext(context.Background())
-}
+type ArgFunctionResultTypeOutput struct{ *pulumi.OutputState }
 
-func (i ArgFunctionApplyArgs) ToArgFunctionApplyOutputWithContext(ctx context.Context) ArgFunctionApplyOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(ArgFunctionApplyOutput)
-}
-
-type ArgFunctionApplyOutput struct{ *pulumi.OutputState }
-
-func (ArgFunctionApplyOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ArgFunctionArgs)(nil)).Elem()
-}
-
-func (o ArgFunctionApplyOutput) ToArgFunctionApplyOutput() ArgFunctionApplyOutput {
-	return o
-}
-
-func (o ArgFunctionApplyOutput) ToArgFunctionApplyOutputWithContext(ctx context.Context) ArgFunctionApplyOutput {
-	return o
-}
-
-func (o ArgFunctionApplyOutput) Arg1() ResourceOutput {
-	return o.ApplyT(func(v ArgFunctionArgs) *Resource { return v.Arg1 }).(ResourceOutput)
-}
-
-type ArgFunctionResultOutput struct{ *pulumi.OutputState }
-
-func (ArgFunctionResultOutput) ElementType() reflect.Type {
+func (ArgFunctionResultTypeOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*ArgFunctionResult)(nil)).Elem()
 }
 
-func (o ArgFunctionResultOutput) ToArgFunctionResultOutput() ArgFunctionResultOutput {
+func (o ArgFunctionResultTypeOutput) ToArgFunctionResultTypeOutput() ArgFunctionResultTypeOutput {
 	return o
 }
 
-func (o ArgFunctionResultOutput) ToArgFunctionResultOutputWithContext(ctx context.Context) ArgFunctionResultOutput {
+func (o ArgFunctionResultTypeOutput) ToArgFunctionResultTypeOutputWithContext(ctx context.Context) ArgFunctionResultTypeOutput {
 	return o
 }
 
-func (o ArgFunctionResultOutput) Result() ResourceOutput {
+func (o ArgFunctionResultTypeOutput) Result() ResourceOutput {
 	return o.ApplyT(func(v ArgFunctionResult) *Resource { return v.Result }).(ResourceOutput)
 }
 
 func init() {
-	pulumi.RegisterOutputType(ArgFunctionApplyOutput{})
-	pulumi.RegisterOutputType(ArgFunctionResultOutput{})
+	pulumi.RegisterOutputType(ArgFunctionResultTypeOutput{})
 }

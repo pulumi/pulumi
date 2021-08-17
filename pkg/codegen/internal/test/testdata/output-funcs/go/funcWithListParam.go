@@ -32,12 +32,12 @@ type FuncWithListParamResult struct {
 
 
 func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithListParamResultTypeOutput {
-        return pulumi.ToOutputWithContext(context.Background(), args).
-                ApplyT(func(v interface{}) (FuncWithListParamResult, error) {
-             		args := v.(FuncWithListParamArgs)
-                        r, err := FuncWithListParam(ctx, &args, opts...)
-                        return *r, err
-                }).(FuncWithListParamResultTypeOutput)
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (FuncWithListParamResult, error) {
+			args := v.(FuncWithListParamArgs)
+			r, err := FuncWithListParam(ctx, &args, opts...)
+			return *r, err
+		}).(FuncWithListParamResultTypeOutput)
 }
 
 type FuncWithListParamOutputArgs struct {

@@ -32,6 +32,7 @@ type GetIntegrationRuntimeObjectMetadatumArgs struct {
 	ResourceGroupName string `pulumi:"resourceGroupName"`
 }
 
+
 // A list of SSIS object metadata.
 type GetIntegrationRuntimeObjectMetadatumResult struct {
 	// The link to the next page of results, if any remaining results exist.
@@ -39,6 +40,7 @@ type GetIntegrationRuntimeObjectMetadatumResult struct {
 	// List of SSIS object metadata.
 	Value []interface{} `pulumi:"value"`
 }
+
 
 func GetIntegrationRuntimeObjectMetadatumOutput(ctx *pulumi.Context, args GetIntegrationRuntimeObjectMetadatumOutputArgs, opts ...pulumi.InvokeOption) GetIntegrationRuntimeObjectMetadatumResultTypeOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
@@ -65,7 +67,7 @@ func (GetIntegrationRuntimeObjectMetadatumOutputArgs) ElementType() reflect.Type
 }
 
 // A list of SSIS object metadata.
-type GetIntegrationRuntimeObjectMetadatumResultTypeOutput struct{ *pulumi.OutputState }
+type GetIntegrationRuntimeObjectMetadatumResultTypeOutput struct { *pulumi.OutputState }
 
 func (GetIntegrationRuntimeObjectMetadatumResultTypeOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*GetIntegrationRuntimeObjectMetadatumResult)(nil)).Elem()
@@ -81,14 +83,16 @@ func (o GetIntegrationRuntimeObjectMetadatumResultTypeOutput) ToGetIntegrationRu
 
 // The link to the next page of results, if any remaining results exist.
 func (o GetIntegrationRuntimeObjectMetadatumResultTypeOutput) NextLink() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v GetIntegrationRuntimeObjectMetadatumResult) *string { return v.NextLink }).(pulumi.StringPtrOutput)
+	return o.ApplyT(func (v GetIntegrationRuntimeObjectMetadatumResult) *string { return v.NextLink }).(pulumi.StringPtrOutput)
 }
 
 // List of SSIS object metadata.
 func (o GetIntegrationRuntimeObjectMetadatumResultTypeOutput) Value() pulumi.ArrayOutput {
-	return o.ApplyT(func(v GetIntegrationRuntimeObjectMetadatumResult) []interface{} { return v.Value }).(pulumi.ArrayOutput)
+	return o.ApplyT(func (v GetIntegrationRuntimeObjectMetadatumResult) []interface{} { return v.Value }).(pulumi.ArrayOutput)
 }
 
+
 func init() {
-	pulumi.RegisterOutputType(GetIntegrationRuntimeObjectMetadatumResultTypeOutput{})
+        pulumi.RegisterOutputType(GetIntegrationRuntimeObjectMetadatumResultTypeOutput{})
 }
+

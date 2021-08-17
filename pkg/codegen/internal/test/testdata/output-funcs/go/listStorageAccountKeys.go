@@ -39,12 +39,12 @@ type ListStorageAccountKeysResult struct {
 
 
 func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKeysOutputArgs, opts ...pulumi.InvokeOption) ListStorageAccountKeysResultTypeOutput {
-        return pulumi.ToOutputWithContext(context.Background(), args).
-                ApplyT(func(v interface{}) (ListStorageAccountKeysResult, error) {
-             		args := v.(ListStorageAccountKeysArgs)
-                        r, err := ListStorageAccountKeys(ctx, &args, opts...)
-                        return *r, err
-                }).(ListStorageAccountKeysResultTypeOutput)
+	return pulumi.ToOutputWithContext(context.Background(), args).
+		ApplyT(func(v interface{}) (ListStorageAccountKeysResult, error) {
+			args := v.(ListStorageAccountKeysArgs)
+			r, err := ListStorageAccountKeys(ctx, &args, opts...)
+			return *r, err
+		}).(ListStorageAccountKeysResultTypeOutput)
 }
 
 type ListStorageAccountKeysOutputArgs struct {
