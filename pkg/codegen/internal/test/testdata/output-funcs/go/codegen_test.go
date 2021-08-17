@@ -85,6 +85,34 @@ func (mocks) Call(args pulumi.MockCallArgs) (resource.PropertyMap, error) {
 		return resource.NewPropertyMapFromMap(outputs), nil
 	}
 
+	if args.Token == "azure-native:codegentest:getIntegrationRuntimeObjectMetadatum" {
+		targs := GetIntegrationRuntimeObjectMetadatumArgs{}
+		for k, v := range args.Args {
+			switch k {
+			case "factoryName":
+				targs.FactoryName = v.V.(string)
+			case "integrationRuntimeName":
+				targs.IntegrationRuntimeName = v.V.(string)
+			case "metadataPath":
+				metadataPath := v.V.(string)
+				targs.MetadataPath = &metadataPath
+			case "resourceGroupName":
+				targs.ResourceGroupName = v.V.(string)
+			}
+		}
+		nextLink := "my-next-link"
+		result := GetIntegrationRuntimeObjectMetadatumResult{
+			NextLink: &nextLink,
+			Value:    []interface{}{targs},
+		}
+		outputs := map[string]interface{}{
+			"nextLink": result.NextLink,
+			"value":    []interface{}{fmt.Sprintf("factoryName=%s", targs.FactoryName)},
+		}
+
+		return resource.NewPropertyMapFromMap(outputs), nil
+	}
+
 	panic(fmt.Errorf("Unknown token: %s", args.Token))
 }
 
@@ -171,6 +199,23 @@ func TestFuncWithDictParamOutput(t *testing.T) {
 		})
 		r := waitOut(t, output.R())
 		assert.Equal(t, "map[a:{map[one:{1} two:{2}]}]", r)
+		return nil
+	})
+}
+
+func TestGetIntegrationRuntimeObjectMetadatumOutput(t *testing.T) {
+	pulumiTest(t, func(ctx *pulumi.Context) error {
+		output := GetIntegrationRuntimeObjectMetadatumOutput(ctx, GetIntegrationRuntimeObjectMetadatumOutputArgs{
+			FactoryName:            pulumi.String("my-factory-name"),
+			IntegrationRuntimeName: pulumi.String("my-integration-runtime-name"),
+			MetadataPath:           pulumi.String("my-metadata-path"),
+			ResourceGroupName:      pulumi.String("my-resource-group-name"),
+		})
+		nextLink := waitOut(t, output.NextLink())
+		assert.Equal(t, "my-next-link", *(nextLink.(*string)))
+
+		value := waitOut(t, output.Value())
+		assert.Equal(t, []interface{}{"factoryName=my-factory-name"}, value)
 		return nil
 	})
 }
