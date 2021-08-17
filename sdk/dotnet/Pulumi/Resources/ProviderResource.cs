@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Threading.Tasks;
 using Pulumi.Serialization;
@@ -53,8 +53,8 @@ namespace Pulumi
 
             if (provider._registrationId == null)
             {
-                var providerUrn = await provider.Urn.GetValueAsync().ConfigureAwait(false);
-                var providerId = await provider.Id.GetValueAsync().ConfigureAwait(false);
+                var providerUrn = await provider.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
+                var providerId = await provider.Id.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
                 if (string.IsNullOrEmpty(providerId))
                 {
                     providerId = Constants.UnknownValue;

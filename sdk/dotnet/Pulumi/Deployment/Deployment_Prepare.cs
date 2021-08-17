@@ -40,7 +40,7 @@ namespace Pulumi
             // If no parent was provided, parent to the root resource.
             LogExcessive($"Getting parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
             var parentUrn = options.Parent != null
-                ? await options.Parent.Urn.GetValueAsync().ConfigureAwait(false)
+                ? await options.Parent.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false)
                 : await GetRootResourceAsync(type).ConfigureAwait(false);
             LogExcessive($"Got parent urn: t={type}, name={name}, custom={custom}, remote={remote}");
 
@@ -97,8 +97,8 @@ namespace Pulumi
             var uniqueAliases = new HashSet<string>();
             foreach (var alias in res._aliases)
             {
-                var aliasVal = await alias.ToOutput().GetValueAsync().ConfigureAwait(false);
-                if (uniqueAliases.Add(aliasVal))
+                var aliasVal = await alias.ToOutput().GetValueAsync(whenUnknown: "").ConfigureAwait(false);
+                if (aliasVal != "" && uniqueAliases.Add(aliasVal))
                 {
                     aliases.Add(aliasVal);
                 }
@@ -121,7 +121,7 @@ namespace Pulumi
         }
 
         private static Task<ImmutableArray<Resource>> GatherExplicitDependenciesAsync(InputList<Resource> resources)
-            => resources.ToOutput().GetValueAsync();
+            => resources.ToOutput().GetValueAsync(whenUnknown: ImmutableArray<Resource>.Empty);
 
         private static async Task<HashSet<string>> GetAllTransitivelyReferencedResourceUrnsAsync(
             HashSet<Resource> resources)
@@ -159,9 +159,9 @@ namespace Pulumi
                     default: return false; // Unreachable
                 }
             });
-            var tasks = transitivelyReachableCustomResources.Select(r => r.Urn.GetValueAsync());
+            var tasks = transitivelyReachableCustomResources.Select(r => r.Urn.GetValueAsync(whenUnknown: ""));
             var urns = await Task.WhenAll(tasks).ConfigureAwait(false);
-            return new HashSet<string>(urns);
+            return new HashSet<string>(urns.Where(urn => !string.IsNullOrEmpty(urn)));
         }
 
         /// <summary>

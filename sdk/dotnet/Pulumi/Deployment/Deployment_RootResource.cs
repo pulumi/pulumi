@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Threading.Tasks;
@@ -38,7 +38,7 @@ namespace Pulumi
 
         private async Task<string> SetRootResourceWorkerAsync(Stack stack)
         {
-            var resUrn = await stack.Urn.GetValueAsync().ConfigureAwait(false);
+            var resUrn = await stack.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
             await this.Engine.SetRootResourceAsync(new SetRootResourceRequest
             {
                 Urn = resUrn,
