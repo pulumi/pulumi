@@ -12,6 +12,9 @@
 
 ### Bug Fixes
 
+- [sdk/go] - Fix marshaling behavior for undefined properties.
+  [#7768](https://github.com/pulumi/pulumi/pull/7768)
+
 - [sdk/python] - Fix program hangs when monitor becomes unavailable.
   [#7734](https://github.com/pulumi/pulumi/pull/7734)
 
