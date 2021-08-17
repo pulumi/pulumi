@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 package workspace
 
 import (
+	"bytes"
 	// nolint: gosec
 	"crypto/sha1"
 	"encoding/hex"
@@ -25,6 +26,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/natefinch/atomic"
 	"github.com/pkg/errors"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
@@ -140,7 +142,7 @@ func (pw *projectWorkspace) Save() error {
 		return err
 	}
 
-	return ioutil.WriteFile(settingsFile, b, 0600)
+	return atomic.WriteFile(settingsFile, bytes.NewReader(b))
 }
 
 func (pw *projectWorkspace) readSettings() error {

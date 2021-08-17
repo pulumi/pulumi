@@ -1933,12 +1933,6 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 		}
 	}
 
-	// initial tidy to resolve dependencies
-	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
-	if err != nil {
-		return err
-	}
-
 	// link local dependencies
 	for _, pkg := range pt.opts.Dependencies {
 
@@ -1950,6 +1944,13 @@ func (pt *ProgramTester) prepareGoProject(projinfo *engine.Projinfo) error {
 			return err
 		}
 	}
+
+	// initial tidy to resolve dependencies
+	err = pt.runCommand("go-mod-tidy", []string{goBin, "mod", "tidy"}, cwd)
+	if err != nil {
+		return err
+	}
+
 	// resolve dependencies
 	err = pt.runCommand("go-mod-download", []string{goBin, "mod", "download"}, cwd)
 	if err != nil {
