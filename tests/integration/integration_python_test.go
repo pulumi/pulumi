@@ -426,9 +426,9 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 			filepath.Join("..", "..", "sdk", "python", "env", "src"),
 		},
 		ExtraRuntimeValidation: func(t *testing.T, stack integration.RuntimeValidationStackInfo) {
-			urn_s = stack.Outputs["urn"].(string)
-			urn := resource.URN(urn_s)
-	        typ := urn.Type()
+			urnOut = stack.Outputs["urn"].(string)
+			urn := resource.URN(urnOut)
+			typ := urn.Type()
 			assert.Equal(t, typ, "pulumi-python:dynamic/custom-provider:CustomResource")
 		},
 	})
