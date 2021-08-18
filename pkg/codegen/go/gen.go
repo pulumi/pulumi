@@ -1699,45 +1699,63 @@ func (pkg *pkgContext) addSuffixesToName(typ schema.Type, name string) []string 
 	return names
 }
 
-func (pkg *pkgContext) genNestedCollectionType(w io.Writer, typ schema.Type) []string {
+// collectNestedCollectionTypes builds a deduped mapping of element types -> associated collection types.
+// different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
+// in a second step, we avoid collision and redeclaration.
+func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]map[string]bool, typ schema.Type) {
 	var elementTypeName string
 	var names []string
 	switch t := typ.(type) {
 	case *schema.ArrayType:
 		// Builtins already cater to primitive arrays
 		if schema.IsPrimitiveType(t.ElementType) {
-			return nil
+			return
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
-		elementTypeName += "Array"
+		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Array"
 		names = pkg.addSuffixesToName(t, elementTypeName)
 	case *schema.MapType:
 		// Builtins already cater to primitive maps
 		if schema.IsPrimitiveType(t.ElementType) {
-			return nil
+			return
 		}
 		elementTypeName = pkg.nestedTypeToType(t.ElementType)
-		elementTypeName += "Map"
+		elementTypeName = strings.TrimSuffix(elementTypeName, "Args") + "Map"
 		names = pkg.addSuffixesToName(t, elementTypeName)
 	default:
-		contract.Failf("unexpected type %T in genNestedCollectionType", t)
+		contract.Failf("unexpected type %T in collectNestedCollectionTypes", t)
 	}
+	if _, ok := types[elementTypeName]; !ok {
+		types[elementTypeName] = map[string]bool{}
+	}
+	for _, n := range names {
+		types[elementTypeName][n] = true
+	}
+}
 
-	for _, name := range names {
-		if strings.HasSuffix(name, "Array") {
-			fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
-			genInputImplementation(w, name, name, elementTypeName, false, false)
+// genNestedCollectionTypes emits nested collection types given the deduped mapping of element types -> associated collection types.
+// different shapes of known types can resolve to the same element type. by collecting types in one step and emitting types
+// in a second step, we avoid collision and redeclaration.
+func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]map[string]bool) []string {
+	var names []string
+	for elementTypeName, v := range types {
+		for name, _ := range v {
+			names = append(names, name)
+			if strings.HasSuffix(name, "Array") {
+				fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
+				genInputImplementation(w, name, name, elementTypeName, false, false)
 
-			genArrayOutput(w, strings.TrimSuffix(name, "Array"), elementTypeName, false)
+				genArrayOutput(w, strings.TrimSuffix(name, "Array"), elementTypeName, false)
+			}
+
+			if strings.HasSuffix(name, "Map") {
+				fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
+				genInputImplementation(w, name, name, elementTypeName, false, false)
+
+				genMapOutput(w, strings.TrimSuffix(name, "Map"), elementTypeName, false)
+			}
+			pkg.genInputInterface(w, name)
 		}
-
-		if strings.HasSuffix(name, "Map") {
-			fmt.Fprintf(w, "type %s map[string]%sInput\n\n", name, elementTypeName)
-			genInputImplementation(w, name, name, elementTypeName, false, false)
-
-			genMapOutput(w, strings.TrimSuffix(name, "Map"), elementTypeName, false)
-		}
-		pkg.genInputInterface(w, name)
 	}
 
 	return names
@@ -1752,7 +1770,7 @@ func (pkg *pkgContext) nestedTypeToType(typ schema.Type) string {
 	case *schema.ObjectType:
 		return pkg.resolveObjectType(t)
 	}
-	return pkg.tokenToType(typ.String())
+	return strings.TrimSuffix(pkg.tokenToType(typ.String()), "Args")
 }
 
 func (pkg *pkgContext) tokenToEnum(tok string) string {
@@ -2596,13 +2614,15 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return sortedKnownTypes[i].String() < sortedKnownTypes[j].String()
 			})
 
-			var types []string
+			collectionTypes := map[string]map[string]bool{}
 			for _, t := range sortedKnownTypes {
 				switch typ := t.(type) {
 				case *schema.ArrayType, *schema.MapType:
-					types = pkg.genNestedCollectionType(buffer, typ)
+					pkg.collectNestedCollectionTypes(collectionTypes, typ)
 				}
 			}
+
+			types := pkg.genNestedCollectionTypes(buffer, collectionTypes)
 
 			pkg.genTypeRegistrations(buffer, pkg.types, types...)
 
