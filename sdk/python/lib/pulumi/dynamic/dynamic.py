@@ -15,7 +15,7 @@
 import asyncio
 import base64
 import pickle
-from typing import Any, Optional, List, TYPE_CHECKING, no_type_check, cast
+from typing import Any, ClassVar, Optional, List, TYPE_CHECKING, no_type_check, cast
 
 import dill
 from .. import CustomResource, ResourceOptions
@@ -242,6 +242,13 @@ class Resource(CustomResource):
     Resource represents a Pulumi Resource that incorporates an inline implementation of the Resource's CRUD operations.
     """
 
+    _resource_type_name: ClassVar[str]
+
+    def __init_subclass__(cls, module: str = '', name: str = 'Resource'):
+        if module:
+            module = f'/{module}'
+        cls._resource_type_name = f'dynamic{module}:{name}'
+
     def __init__(self,
                  provider: ResourceProvider,
                  name: str,
@@ -261,4 +268,4 @@ class Resource(CustomResource):
         props = cast(dict, props)
         props[PROVIDER_KEY] = serialize_provider(provider)
 
-        super().__init__("pulumi-python:dynamic:Resource", name, props, opts)
+        super().__init__(f"pulumi-python:{self._resource_type_name}", name, props, opts)
