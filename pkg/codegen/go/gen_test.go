@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -321,4 +322,25 @@ func TestGenerateOutputFuncs(t *testing.T) {
 			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
 		})
 	}
+
+	goDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs", "go")
+
+	t.Run("compileGeneratedCode", func(t *testing.T) {
+		t.Logf("cd %s && go mod tidy", goDir)
+		cmd := exec.Command("go", "mod", "tidy")
+		cmd.Dir = goDir
+		assert.NoError(t, cmd.Run())
+
+		t.Logf("cd %s && go build .", goDir)
+		cmd = exec.Command("go", "build", ".")
+		cmd.Dir = goDir
+		assert.NoError(t, cmd.Run())
+	})
+
+	t.Run("testGeneratedCode", func(t *testing.T) {
+		t.Logf("cd %s && go test .", goDir)
+		cmd := exec.Command("go", "test", ".")
+		cmd.Dir = goDir
+		assert.NoError(t, cmd.Run())
+	})
 }
