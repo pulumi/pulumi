@@ -1,9 +1,10 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 using System.Threading;
 
 namespace Pulumi
@@ -64,7 +65,7 @@ namespace Pulumi
 
         /// <summary>
         /// Merge two instances of <see cref="InputMap{V}"/>. Returns a new <see cref="InputMap{V}"/>
-        /// without modifying any of the arguments. 
+        /// without modifying any of the arguments.
         /// <para/>If both maps contain the same key, the value from the second map takes over.
         /// </summary>
         /// <param name="first">The first <see cref="InputMap{V}"/>. Has lower priority in case of
@@ -113,7 +114,8 @@ namespace Pulumi
 
         public async IAsyncEnumerator<Input<KeyValuePair<string, V>>> GetAsyncEnumerator(CancellationToken cancellationToken)
         {
-            var data = await _outputValue.GetValueAsync().ConfigureAwait(false);
+            var data = await _outputValue.GetValueAsync(whenUnknown: ImmutableDictionary<string, V>.Empty)
+                .ConfigureAwait(false);
             foreach (var value in data)
             {
                 yield return value;

@@ -1,6 +1,21 @@
+# Copyright 2016-2021, Pulumi Corporation.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 from typing import Optional
 
 import pulumi
+
 
 class MyComponent(pulumi.ComponentResource):
     outprop: pulumi.Output[str]
@@ -36,9 +51,6 @@ class Module(pulumi.runtime.ResourceModule):
             raise Exception(f"unknown resource type {typ}")
 
 
-pulumi.runtime.register_resource_module("aws", "ec2/instance", Module())
-
-
 class MyCustom(pulumi.CustomResource):
     instance: pulumi.Output
     def __init__(self, resource_name, props: Optional[dict] = None, opts = None):
@@ -49,20 +61,33 @@ def do_invoke():
     value = pulumi.runtime.invoke("test:index:MyFunction", props={"value": 41}).value
     return value["out_value"]
 
-mycomponent = MyComponent("mycomponent", inprop="hello")
-myinstance = Instance("instance",
-                      name="myvm",
-                      value=pulumi.Output.secret("secret_value"))
-mycustom = MyCustom("mycustom", {"instance": myinstance})
-invoke_result = do_invoke()
 
-# Pass myinstance several more times to ensure deserialization of the resource reference
-# works on other asyncio threads.
-for x in range(5):
-    MyCustom(f"mycustom{x}", {"instance": myinstance})
+def define_resources():
+    mycomponent = MyComponent("mycomponent", inprop="hello")
+    myinstance = Instance("instance",
+                          name="myvm",
+                          value=pulumi.Output.secret("secret_value"))
+    mycustom = MyCustom("mycustom", {"instance": myinstance})
+    invoke_result = do_invoke()
 
-dns_ref = pulumi.StackReference("dns")
+    # Pass myinstance several more times to ensure deserialization of the resource reference
+    # works on other asyncio threads.
+    for x in range(5):
+        MyCustom(f"mycustom{x}", {"instance": myinstance})
 
-pulumi.export("hello", "world")
-pulumi.export("outprop", mycomponent.outprop)
-pulumi.export("public_ip", myinstance.public_ip)
+    dns_ref = pulumi.StackReference("dns")
+
+    pulumi.export("hello", "world")
+    pulumi.export("outprop", mycomponent.outprop)
+    pulumi.export("public_ip", myinstance.public_ip)
+
+    return {
+        'mycomponent': mycomponent,
+        'myinstance': myinstance,
+        'mycustom': mycustom,
+        'dns_ref': dns_ref,
+        'invoke_result': invoke_result
+    }
+
+
+pulumi.runtime.register_resource_module("aws", "ec2/instance", Module())

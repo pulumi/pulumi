@@ -63,31 +63,6 @@ func mapStructTypes(from, to reflect.Type) func(reflect.Value, int) (reflect.Str
 	}
 }
 
-type urnSet map[URN]struct{}
-
-func (s urnSet) add(v URN) {
-	s[v] = struct{}{}
-}
-
-func (s urnSet) has(v URN) bool {
-	_, ok := s[v]
-	return ok
-}
-
-func (s urnSet) union(other urnSet) {
-	for v := range other {
-		s.add(v)
-	}
-}
-
-func (s urnSet) values() []URN {
-	values := make([]URN, 0, len(s))
-	for v := range s {
-		values = append(values, v)
-	}
-	return values
-}
-
 // addDependency adds a dependency on the given resource to the set of deps.
 //
 // The behavior of this method depends on whether or not the resource is a custom resource, a local component resource,
@@ -173,7 +148,7 @@ func marshalInputs(props Input) (resource.PropertyMap, map[string][]URN, []URN, 
 			pdeps[pname] = allDeps.values()
 		}
 
-		if !v.IsNull() || len(deps) > 0 {
+		if !v.IsNull() || len(allDeps) > 0 {
 			pmap[resource.PropertyKey(pname)] = v
 		}
 		return nil

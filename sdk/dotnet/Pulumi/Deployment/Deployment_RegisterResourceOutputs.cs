@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System.Collections.Generic;
 using System.Threading.Tasks;
@@ -25,8 +25,8 @@ namespace Pulumi
 
             // The registration could very well still be taking place, so we will need to wait for its URN.
             // Additionally, the output properties might have come from other resources, so we must await those too.
-            var urn = await resource.Urn.GetValueAsync().ConfigureAwait(false);
-            var props = await outputs.GetValueAsync().ConfigureAwait(false);
+            var urn = await resource.Urn.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
+            var props = await outputs.GetValueAsync(whenUnknown: default!).ConfigureAwait(false);
 
             var serialized = await SerializeAllPropertiesAsync(
                 opLabel, props, await MonitorSupportsResourceReferences().ConfigureAwait(false)).ConfigureAwait(false);

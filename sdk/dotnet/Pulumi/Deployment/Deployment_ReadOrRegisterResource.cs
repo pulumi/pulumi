@@ -1,4 +1,4 @@
-﻿// Copyright 2016-2019, Pulumi Corporation
+﻿// Copyright 2016-2021, Pulumi Corporation
 
 using System;
 using System.Collections.Immutable;
@@ -46,16 +46,16 @@ namespace Pulumi
                     "pulumi:pulumi:getResource",
                     new GetResourceInvokeArgs {Urn = options.Urn},
                     new InvokeOptions()).ConfigureAwait(false);
-                
+
                 var urn = result.Fields["urn"].StringValue;
                 var id = result.Fields["id"].StringValue;
                 var state = result.Fields["state"].StructValue;
                 return (urn, id, state, ImmutableDictionary<string, ImmutableHashSet<Resource>>.Empty);
             }
-            
+
             if (options.Id != null)
             {
-                var id = await options.Id.ToOutput().GetValueAsync().ConfigureAwait(false);
+                var id = await options.Id.ToOutput().GetValueAsync(whenUnknown: "").ConfigureAwait(false);
                 if (!string.IsNullOrEmpty(id))
                 {
                     if (!(resource is CustomResource))
@@ -74,7 +74,7 @@ namespace Pulumi
         }
 
         /// <summary>
-        /// Calls <see cref="ReadOrRegisterResourceAsync"/> then completes all the 
+        /// Calls <see cref="ReadOrRegisterResourceAsync"/> then completes all the
         /// <see cref="IOutputCompletionSource"/> sources on the <paramref name="resource"/> with
         /// the results of it.
         /// </summary>
