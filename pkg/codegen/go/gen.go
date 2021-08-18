@@ -1739,7 +1739,7 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]map[string]
 func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]map[string]bool) []string {
 	var names []string
 	for elementTypeName, v := range types {
-		for name, _ := range v {
+		for name := range v {
 			names = append(names, name)
 			if strings.HasSuffix(name, "Array") {
 				fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
