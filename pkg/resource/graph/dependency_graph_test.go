@@ -173,3 +173,34 @@ func TestDependenciesOf(t *testing.T) {
 	assert.False(t, dDepends[b])
 	assert.False(t, dDepends[c])
 }
+
+func TestDependenciesOfRemoteComponents(t *testing.T) {
+	aws := NewProviderResource("aws", "default", "0")
+	xyz := NewProviderResource("xyz", "default", "0")
+	first := NewResource("first", xyz)
+	firstNested := NewResource("firstNested", xyz)
+	firstNested.Parent = first.URN
+	sg := NewResource("sg", aws)
+	sg.Parent = firstNested.URN
+	second := NewResource("second", xyz)
+	rule := NewResource("rule", aws, first.URN)
+	rule.Parent = second.URN
+
+	dg := NewDependencyGraph([]*resource.State{
+		aws,
+		xyz,
+		first,
+		firstNested,
+		sg,
+		second,
+		rule,
+	})
+
+	ruleDepends := dg.DependenciesOf(rule)
+	assert.True(t, ruleDepends[first], "direct dependency")
+	assert.True(t, ruleDepends[firstNested], "child of dependency")
+	assert.True(t, ruleDepends[sg], "transitive child of dependency")
+	assert.True(t, ruleDepends[second], "parent")
+	assert.True(t, ruleDepends[aws], "provider")
+	assert.False(t, ruleDepends[xyz], "unrelated")
+}
