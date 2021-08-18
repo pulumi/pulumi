@@ -1,6 +1,28 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
@@ -53,6 +75,105 @@ func TestGenerateTypeNames(t *testing.T) {
 
 		return func(t schema.Type) string {
 			return root.typeString(t, false, false)
+		}
+	})
+}
+
+func TestGenerateOutputFuncsPython(t *testing.T) {
+	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
+
+	files, err := ioutil.ReadDir(testDir)
+	if err != nil {
+		require.NoError(t, err)
+		return
+	}
+
+	var examples []string
+	for _, f := range files {
+		name := f.Name()
+		if strings.HasSuffix(name, ".json") {
+			examples = append(examples, strings.TrimSuffix(name, ".json"))
+		}
+	}
+
+	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
+
+	gen := func(reader io.Reader, writer io.Writer) error {
+		var pkgSpec schema.PackageSpec
+
+		pkgSpec.Name = "py_tests"
+		err := json.NewDecoder(reader).Decode(&pkgSpec)
+		if err != nil {
+			return err
+		}
+		pkg, err := schema.ImportSpec(pkgSpec, nil)
+		if err != nil {
+			return err
+		}
+		fun := pkg.Functions[0]
+
+		mod := &modContext{}
+		funcCode, err := mod.genFunction(fun)
+		if err != nil {
+			return err
+		}
+
+		writer.Write([]byte(funcCode))
+		return nil
+	}
+
+	outputDir := filepath.Join(testDir, "py_tests")
+
+	// for every example, check that generated code did not change
+	for _, ex := range examples {
+		t.Run(ex, func(t *testing.T) {
+			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
+			expectedOutputFile := filepath.Join(outputDir, fmt.Sprintf("%s.py", ex))
+			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
+		})
+	}
+
+	// re-generate _utilities.py to assist runtime testing
+	err = ioutil.WriteFile(
+		filepath.Join(outputDir, "_utilities.py"),
+		genUtilitiesFile("gen_test.go"),
+		0600)
+
+	require.NoError(t, err)
+
+	// run unit tests against the generated code
+	t.Run("testGeneratedCode", func(t *testing.T) {
+
+		// TODO these commands might have trouble on Windows,
+		// due to Path issues and `.exe` suffix.
+
+		commands := []string{
+			// build a virtual environment
+			"python3 -m venv venv",
+
+			// install dependencies
+			"./venv/bin/python -m pip install -r requirements.txt",
+
+			// install Pulumi SDK from the current source tree, -e means no-copy, ref directly
+			"./venv/bin/python -m pip install -e ../../../../../../../sdk/python/env/src",
+
+			// install current package as it self-references
+			"./venv/bin/python -m pip install -e .",
+
+			// run tests
+			"./venv/bin/pytest .",
+		}
+
+		for _, command := range commands {
+			t.Logf("cd %s && %s", outputDir, command)
+			cmdParts := strings.Split(command, " ")
+			cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+			cmd.Dir = outputDir
+			err := cmd.Run()
+			require.NoError(t, err)
+			if err != nil {
+				return
+			}
 		}
 	})
 }
