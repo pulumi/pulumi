@@ -10,9 +10,9 @@ import (
 
 // DependencyGraph represents a dependency graph encoded within a resource snapshot.
 type DependencyGraph struct {
-	index      map[*resource.State]int            // A mapping of resource pointers to indexes within the snapshot
-	resources  []*resource.State                  // The list of resources, obtained from the snapshot
-	childrenOf map[resource.URN][]*resource.State // Pre-computed map of transitive children for each resource
+	index      map[*resource.State]int // A mapping of resource pointers to indexes within the snapshot
+	resources  []*resource.State       // The list of resources, obtained from the snapshot
+	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
 }
 
 // DependingOn returns a slice containing all resources that directly or indirectly
@@ -96,12 +96,16 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 		// Include all resources that are dependencies of the resource
 		if dependentUrns[candidate.URN] {
 			set[candidate] = true
-			// All transitive children of the dependency are also implicitly dependencies.  This is
-			// necessary because for remote components, the dependencies will not include the transitive
-			// set of children directly, but will include the parent component.  We must walk that
-			// component's children here to ensure they are treated as dependencies.
-			for _, transitiveCandidate := range dg.childrenOf[candidate.URN] {
-				set[transitiveCandidate] = true
+			// All transitive children of the dependency that are before this resource in the topological sort are
+			// also implicitly dependencies. This is necessary because for remote components, the dependencies will
+			// not include the transitive set of children directly, but will include the parent component. We must
+			// walk that component's children here to ensure they are treated as dependencies. Transitive children
+			// of the dependency that are after the resource in the topological sort are not included as this could
+			// lead to cycles in the dependency order.
+			for _, transitiveCandidateIndex := range dg.childrenOf[candidate.URN] {
+				if transitiveCandidateIndex < cursorIndex {
+					set[dg.resources[transitiveCandidateIndex]] = true
+				}
 			}
 		}
 		// Include the resource's parent, as the resource depends on it's parent existing.
@@ -118,7 +122,7 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 // parents appearing before children.
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 	index := make(map[*resource.State]int)
-	childrenOf := make(map[resource.URN][]*resource.State)
+	childrenOf := make(map[resource.URN][]int)
 
 	urnIndex := make(map[resource.URN]int)
 	for idx, res := range resources {
@@ -126,7 +130,7 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		urnIndex[res.URN] = idx
 		parent := res.Parent
 		for parent != "" {
-			childrenOf[parent] = append(childrenOf[parent], res)
+			childrenOf[parent] = append(childrenOf[parent], idx)
 			parent = resources[urnIndex[parent]].Parent
 		}
 	}
