@@ -1874,8 +1874,21 @@ func (pkg *pkgContext) collectNestedCollectionTypes(types map[string]map[string]
 // in a second step, we avoid collision and redeclaration.
 func (pkg *pkgContext) genNestedCollectionTypes(w io.Writer, types map[string]map[string]bool) []string {
 	var names []string
-	for elementTypeName, v := range types {
-		for name := range v {
+
+	// map iteration is unstable so sort items for deterministic codegen
+	sortedElems := []string{}
+	for k := range types {
+		sortedElems = append(sortedElems, k)
+	}
+	sort.Strings(sortedElems)
+
+	for _, elementTypeName := range sortedElems {
+		collectionTypes := []string{}
+		for k := range types[elementTypeName] {
+			collectionTypes = append(collectionTypes, k)
+		}
+		sort.Strings(collectionTypes)
+		for _, name := range collectionTypes {
 			names = append(names, name)
 			if strings.HasSuffix(name, "Array") {
 				fmt.Fprintf(w, "type %s []%sInput\n\n", name, elementTypeName)
