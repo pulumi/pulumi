@@ -637,13 +637,13 @@ namespace Pulumi.Automation
 
             if (options != null)
             {
-                if (options.Exact)
+                if (options.ExactVersion)
                     args.Add("--exact");
 
-                if (!string.IsNullOrWhiteSpace(options.Server))
+                if (!string.IsNullOrWhiteSpace(options.ServerUrl))
                 {
                     args.Add("--server");
-                    args.Add(options.Server);
+                    args.Add(options.ServerUrl);
                 }
             }
 

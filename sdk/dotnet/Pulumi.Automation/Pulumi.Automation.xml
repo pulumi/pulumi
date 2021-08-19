@@ -593,7 +593,7 @@
         <member name="M:Pulumi.Automation.LocalWorkspace.ImportStackAsync(System.String,Pulumi.Automation.StackDeployment,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
-        <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.LocalWorkspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
             <inheritdoc/>
         </member>
         <member name="M:Pulumi.Automation.LocalWorkspace.RemovePluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
@@ -663,6 +663,18 @@
             If provided when initializing <see cref="T:Pulumi.Automation.LocalWorkspace"/> stack settings
             file(s) will be written to when the workspace is initialized via
             <see cref="M:Pulumi.Automation.LocalWorkspace.SaveStackSettingsAsync(System.String,Pulumi.Automation.StackSettings,System.Threading.CancellationToken)"/>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PluginInstallOptions.ExactVersion">
+            <summary>
+            If <c>true</c>, force installation of an exact version match (usually >= is accepted).
+            <para/>
+            Defaults to <c>false</c>.
+            </summary>
+        </member>
+        <member name="P:Pulumi.Automation.PluginInstallOptions.ServerUrl">
+            <summary>
+            A URL to download plugins from.
             </summary>
         </member>
         <member name="T:Pulumi.Automation.PreviewOptions">
@@ -1123,13 +1135,14 @@
             stack's state (such as recovery from failed deployments).
             </summary>
         </member>
-        <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
+        <member name="M:Pulumi.Automation.Workspace.InstallPluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,Pulumi.Automation.PluginInstallOptions,System.Threading.CancellationToken)">
             <summary>
             Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
             </summary>
             <param name="name">The name of the plugin.</param>
             <param name="version">The version of the plugin e.g. "v1.0.0".</param>
             <param name="kind">The kind of plugin e.g. "resource".</param>
+            <param name="options">Any additional plugin installation options.</param>
             <param name="cancellationToken">A cancellation token.</param>
         </member>
         <member name="M:Pulumi.Automation.Workspace.RemovePluginAsync(System.String,System.String,Pulumi.Automation.PluginKind,System.Threading.CancellationToken)">
