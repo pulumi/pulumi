@@ -5,9 +5,6 @@
 
 ### Bug Fixes
 
-- [sdk/python] Allow Python dynamic provider resources to be constructed outside of `__main__`. 
-  [#7755](https://github.com/pulumi/pulumi/pull/7755)
-
 - [codegen/go] - Fix nested collection type generation.
   [#7779](https://github.com/pulumi/pulumi/pull/7779)
 
