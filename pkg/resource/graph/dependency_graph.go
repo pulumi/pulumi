@@ -96,15 +96,17 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 		// Include all resources that are dependencies of the resource
 		if dependentUrns[candidate.URN] {
 			set[candidate] = true
-			// All transitive children of the dependency that are before this resource in the topological sort are
-			// also implicitly dependencies. This is necessary because for remote components, the dependencies will
-			// not include the transitive set of children directly, but will include the parent component. We must
-			// walk that component's children here to ensure they are treated as dependencies. Transitive children
-			// of the dependency that are after the resource in the topological sort are not included as this could
-			// lead to cycles in the dependency order.
-			for _, transitiveCandidateIndex := range dg.childrenOf[candidate.URN] {
-				if transitiveCandidateIndex < cursorIndex {
-					set[dg.resources[transitiveCandidateIndex]] = true
+			// If the dependency is a component, all transitive children of the dependency that are before this
+			// resource in the topological sort are also implicitly dependencies. This is necessary because for remote
+			// components, the dependencies will not include the transitive set of children directly, but will include
+			// the parent component. We must walk that component's children here to ensure they are treated as
+			// dependencies. Transitive children of the dependency that are after the resource in the topological sort
+			// are not included as this could lead to cycles in the dependency order.
+			if !candidate.Custom {
+				for _, transitiveCandidateIndex := range dg.childrenOf[candidate.URN] {
+					if transitiveCandidateIndex < cursorIndex {
+						set[dg.resources[transitiveCandidateIndex]] = true
+					}
 				}
 			}
 		}
