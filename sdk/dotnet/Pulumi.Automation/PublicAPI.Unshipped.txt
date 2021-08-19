@@ -1,0 +1,8 @@
+Pulumi.Automation.PluginInstallOptions
+Pulumi.Automation.PluginInstallOptions.Exact.get -> bool
+Pulumi.Automation.PluginInstallOptions.Exact.set -> void
+Pulumi.Automation.PluginInstallOptions.PluginInstallOptions() -> void
+Pulumi.Automation.PluginInstallOptions.Server.get -> string
+Pulumi.Automation.PluginInstallOptions.Server.set -> void
+abstract Pulumi.Automation.Workspace.InstallPluginAsync(string name, string version, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, Pulumi.Automation.PluginInstallOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
+override Pulumi.Automation.LocalWorkspace.InstallPluginAsync(string name, string version, Pulumi.Automation.PluginKind kind = Pulumi.Automation.PluginKind.Resource, Pulumi.Automation.PluginInstallOptions options = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task
