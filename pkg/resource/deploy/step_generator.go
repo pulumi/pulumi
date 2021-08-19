@@ -66,6 +66,9 @@ type stepGenerator struct {
 
 	// a map from old names (aliased URNs) to the new URN that aliased to them.
 	aliased map[resource.URN]resource.URN
+
+	// a map from URNs to children. Used by expandDependencies.
+	children map[resource.URN][]*resource.State
 }
 
 func (sg *stepGenerator) isTargetedUpdate() bool {
@@ -84,10 +87,29 @@ func (sg *stepGenerator) Errored() bool {
 	return sg.sawError
 }
 
+func (sg *stepGenerator) generateURN(parent resource.URN, typ tokens.Type,
+	name tokens.QName) (resource.URN, bool) {
+
+	urn := sg.deployment.generateURN(parent, typ, name)
+
+	duplicate := sg.urns[urn]
+	if duplicate {
+		// TODO[pulumi/pulumi-framework#19]: improve this error message!
+		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
+	}
+	sg.urns[urn] = true
+
+	return urn, !duplicate
+}
+
 // GenerateReadSteps is responsible for producing one or more steps required to service
 // a ReadResourceEvent coming from the language host.
 func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, result.Result) {
-	urn := sg.deployment.generateURN(event.Parent(), event.Type(), event.Name())
+	urn, valid := sg.generateURN(event.Parent(), event.Type(), event.Name())
+	if !valid {
+		return nil, result.Bail()
+	}
+
 	newState := resource.NewState(event.Type(),
 		urn,
 		true,  /*custom*/
@@ -109,6 +131,10 @@ func (sg *stepGenerator) GenerateReadSteps(event ReadResourceEvent) ([]Step, res
 		"",  /* importID */
 	)
 	old, hasOld := sg.deployment.Olds()[urn]
+
+	if res := sg.addChild(event.Parent(), newState); res != nil {
+		return nil, res
+	}
 
 	// If the snapshot has an old resource for this URN and it's not external, we're going
 	// to have to delete the old resource and conceptually replace it with the resource we
@@ -202,13 +228,10 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 
 	goal := event.Goal()
 	// Generate a URN for this new resource, confirm we haven't seen it before in this deployment.
-	urn := sg.deployment.generateURN(goal.Parent, goal.Type, goal.Name)
-	if sg.urns[urn] {
+	urn, ok := sg.generateURN(goal.Parent, goal.Type, goal.Name)
+	if !ok {
 		invalid = true
-		// TODO[pulumi/pulumi-framework#19]: improve this error message!
-		sg.deployment.Diag().Errorf(diag.GetDuplicateResourceURNError(urn), urn)
 	}
-	sg.urns[urn] = true
 
 	// Check for an old resource so that we can figure out if this is a create, delete, etc., and/or
 	// to diff.  We look up first by URN and then by any provided aliases.  If it is found using an
@@ -247,11 +270,22 @@ func (sg *stepGenerator) generateSteps(event RegisterResourceEvent) ([]Step, res
 		inputs = processedInputs
 	}
 
+	// Expand dependencies on component resources into dependencies on their children.
+	dependencies, res := sg.expandDependencies(urn, goal.Dependencies)
+	if res != nil {
+		return nil, res
+	}
+	goal.Dependencies = dependencies
+
 	// Produce a new state object that we'll build up as operations are performed.  Ultimately, this is what will
 	// get serialized into the checkpoint file.
 	new := resource.NewState(goal.Type, urn, goal.Custom, false, "", inputs, nil, goal.Parent, goal.Protect, false,
 		goal.Dependencies, goal.InitErrors, goal.Provider, goal.PropertyDependencies, false,
 		goal.AdditionalSecretOutputs, goal.Aliases, &goal.CustomTimeouts, "")
+
+	if res := sg.addChild(goal.Parent, new); res != nil {
+		return nil, res
+	}
 
 	// Mark the URN/resource as having been seen. So we can run analyzers on all resources seen, as well as
 	// lookup providers for calculating replacement of resources that use the provider.
@@ -1300,6 +1334,66 @@ func applyReplaceOnChanges(diff plugin.DiffResult,
 	}, nil
 }
 
+func (sg *stepGenerator) addChild(parent resource.URN, child *resource.State) result.Result {
+	if parent != "" {
+		if _, ok := sg.urns[parent]; !ok {
+			return result.Errorf("resource %v refers to non-existent parent %v", child.URN, parent)
+		}
+
+		sg.children[parent] = append(sg.children[parent], child)
+	}
+	return nil
+}
+
+// addDependency adds a dependency on the given resource to the set of deps.
+//
+// The behavior of this method depends on whether or not the resource is a custom resource or a component resource:
+//
+// - Custom resources are added directly to the set.
+// - Component resources are added to the set, but also act as aggregations of their descendents, which are also
+//   added to the set.
+//
+// In other words, if we had a dependency on Comp1 in the following parent/child graph:
+//
+//               Comp1
+//          _______|__________
+//          |      |          |
+//       Cust1   Comp2      Comp3
+//              ___|___       |
+//              |     |       |
+//            Cust2  Cust3  Comp4
+//              |             |
+//            Cust4         Cust5
+//
+// Then the dependency set will be [Comp1, Cust1, Comp2, Comp3, Cust2, Cust3, Comp4, Cust5]. Notably, Cust4 is *not*
+// a member of the set because it is a child of a custom resource.
+func (sg *stepGenerator) addDependency(deps urnSet, res *resource.State) {
+	if !res.Custom {
+		for _, child := range sg.children[res.URN] {
+			sg.addDependency(deps, child)
+		}
+	}
+
+	deps.add(res.URN)
+}
+
+// expandDependencies expands the given slice of Resources into a set of URNs.
+func (sg *stepGenerator) expandDependencies(resURN resource.URN,
+	declaredDeps []resource.URN) ([]resource.URN, result.Result) {
+
+	expandedDeps := urnSet{}
+	for _, urn := range declaredDeps {
+		res, ok := sg.deployment.news.get(urn)
+		if ok {
+			sg.addDependency(expandedDeps, res)
+		} else if _, isRead := sg.reads[urn]; !isRead {
+			return nil, result.Errorf("resource %v has a dependency on unknown resource %v", resURN, urn)
+		}
+		expandedDeps.add(urn)
+	}
+	return expandedDeps.sortedValues(), nil
+}
+
 type dependentReplace struct {
 	res  *resource.State
 	keys []resource.PropertyKey
@@ -1496,5 +1590,6 @@ func newStepGenerator(
 		providers:            make(map[resource.URN]*resource.State),
 		dependentReplaceKeys: make(map[resource.URN][]resource.PropertyKey),
 		aliased:              make(map[resource.URN]resource.URN),
+		children:             make(map[resource.URN][]*resource.State),
 	}
 }

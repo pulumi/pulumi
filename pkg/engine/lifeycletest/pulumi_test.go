@@ -2452,3 +2452,418 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 	}
 	p.Run(t, nil)
 }
+
+// This tests a scenario involving two remote components with interdependencies that are only represented in the
+// user program.
+func TestComponentDeleteDependencies(t *testing.T) {
+
+	var (
+		firstURN  resource.URN
+		nestedURN resource.URN
+		sgURN     resource.URN
+		secondURN resource.URN
+		ruleURN   resource.URN
+
+		err error
+	)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+					switch typ {
+					case "pkgB:m:first":
+						firstURN, _, _, err = monitor.RegisterResource("pkgB:m:first", name, false)
+						require.NoError(t, err)
+
+						nestedURN, _, _, err = monitor.RegisterResource("nested", "nested", false,
+							deploytest.ResourceOptions{
+								Parent: firstURN,
+							})
+						require.NoError(t, err)
+
+						sgURN, _, _, err = monitor.RegisterResource("pkgA:m:sg", "sg", true, deploytest.ResourceOptions{
+							Parent: nestedURN,
+						})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(nestedURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(firstURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: firstURN}, nil
+					case "pkgB:m:second":
+						secondURN, _, _, err = monitor.RegisterResource("pkgB:m:second", name, false,
+							deploytest.ResourceOptions{
+								Dependencies: options.Dependencies,
+							})
+						require.NoError(t, err)
+
+						ruleURN, _, _, err = monitor.RegisterResource("pkgA:m:rule", "rule", true,
+							deploytest.ResourceOptions{
+								Parent:       secondURN,
+								Dependencies: options.PropertyDependencies["sgID"],
+							})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(secondURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: secondURN}, nil
+					default:
+						return plugin.ConstructResult{}, fmt.Errorf("unexpected type %v", typ)
+					}
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("pkgB:m:first", "first", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgB:m:second", "second", false, deploytest.ResourceOptions{
+			Remote: true,
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"sgID": {sgURN},
+			},
+			Dependencies: []resource.URN{firstURN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case firstURN:
+						firstIndex = i
+					case nestedURN:
+						nestedIndex = i
+					case sgURN:
+						sgIndex = i
+					case secondURN:
+						secondIndex = i
+					case ruleURN:
+						ruleIndex = i
+					}
+				}
+
+				assert.Less(t, ruleIndex, sgIndex)
+				assert.Less(t, ruleIndex, secondIndex)
+				assert.Less(t, secondIndex, firstIndex)
+				assert.Less(t, secondIndex, sgIndex)
+				assert.Less(t, sgIndex, nestedIndex)
+				assert.Less(t, nestedIndex, firstIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+// This tests the canonical delete dependency example (see the comment on stepGenerator.addDependency).
+func TestComponentDeleteDependencies2(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var (
+		comp1URN     resource.URN
+		cust1URN     resource.URN
+		comp2URN     resource.URN
+		comp3URN     resource.URN
+		cust2URN     resource.URN
+		cust3URN     resource.URN
+		comp4URN     resource.URN
+		cust4URN     resource.URN
+		cust5URN     resource.URN
+		dependentURN resource.URN
+	)
+
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		comp1URN, _, _, err = monitor.RegisterResource("comp1", "comp1", false)
+		require.NoError(t, err)
+
+		cust1URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust1", true, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		comp2URN, _, _, err = monitor.RegisterResource("comp2", "comp2", false, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		comp3URN, _, _, err = monitor.RegisterResource("comp3", "comp3", false, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		cust2URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust2", true, deploytest.ResourceOptions{
+			Parent: comp2URN,
+		})
+		require.NoError(t, err)
+
+		cust3URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust3", true, deploytest.ResourceOptions{
+			Parent: comp2URN,
+		})
+		require.NoError(t, err)
+
+		comp4URN, _, _, err = monitor.RegisterResource("comp4", "comp4", false, deploytest.ResourceOptions{
+			Parent: comp3URN,
+		})
+		require.NoError(t, err)
+
+		cust4URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust4", true, deploytest.ResourceOptions{
+			Parent: cust2URN,
+		})
+		require.NoError(t, err)
+
+		cust5URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust5", true, deploytest.ResourceOptions{
+			Parent: comp4URN,
+		})
+		require.NoError(t, err)
+
+		dependentURN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "dependent", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{comp1URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				var (
+					comp1Index     int = -1
+					cust1Index     int = -1
+					comp2Index     int = -1
+					comp3Index     int = -1
+					cust2Index     int = -1
+					cust3Index     int = -1
+					comp4Index     int = -1
+					cust4Index     int = -1
+					cust5Index     int = -1
+					dependentIndex int = -1
+				)
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case comp1URN:
+						comp1Index = i
+					case cust1URN:
+						cust1Index = i
+					case comp2URN:
+						comp2Index = i
+					case comp3URN:
+						comp3Index = i
+					case cust2URN:
+						cust2Index = i
+					case cust3URN:
+						cust3Index = i
+					case comp4URN:
+						comp4Index = i
+					case cust4URN:
+						cust4Index = i
+					case cust5URN:
+						cust5Index = i
+					case dependentURN:
+						dependentIndex = i
+					}
+				}
+
+				assert.Less(t, dependentIndex, cust5Index)
+				assert.Less(t, dependentIndex, cust3Index)
+				assert.Less(t, dependentIndex, cust1Index)
+
+				assert.Less(t, cust5Index, comp4Index)
+				assert.Less(t, cust4Index, cust2Index)
+				assert.Less(t, comp4Index, comp3Index)
+				assert.Less(t, cust3Index, comp2Index)
+				assert.Less(t, cust2Index, comp2Index)
+				assert.Less(t, comp3Index, comp1Index)
+				assert.Less(t, comp2Index, comp1Index)
+				assert.Less(t, cust1Index, comp1Index)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+// This test is a bit tricky.
+//
+// It takes advantage of the fact that children can be added to a component resource at any point (including after the
+// component has been marked as complete by a call to RegisterResourceOutputs) to construct a graph where a child A of
+// a component B depends on a resource C that in turn depends on the component B. If the dependencies for C are
+// incorrectly expanded (e.g. by expanding too late without filtering out impossible dependencies), they will include
+// A, which will cause a cycle in the delete graph (A depends on C and C depends on A via its dependency on B).
+//
+// This isn't as contrived as it seems. The AWSX APIs, for example, allow a user to create subnets that are parented to
+// a VPC component after the VPC's constructor has completed. With appropriate resource options, these subnets can end
+// up depending on a resource that in turn depends on the VPC.
+func TestAcyclicComponentDeleteDependencies(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var componentURN, childURN, consumerURN resource.URN
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		componentURN, _, _, err = monitor.RegisterResource("component", "component", false)
+		require.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(componentURN, resource.PropertyMap{})
+		require.NoError(t, err)
+
+		consumerURN, _, _, err = monitor.RegisterResource("pkgA:m:typA", "consumer", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{componentURN},
+		})
+		require.NoError(t, err)
+
+		childURN, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent:       componentURN,
+			Dependencies: []resource.URN{consumerURN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				componentIndex, childIndex, consumerIndex := -1, -1, -1
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case componentURN:
+						componentIndex = i
+					case childURN:
+						childIndex = i
+					case consumerURN:
+						consumerIndex = i
+					}
+				}
+
+				assert.Less(t, childIndex, consumerIndex)
+				assert.Less(t, consumerIndex, componentIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+func TestMissingParent(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err := monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent: resource.NewURN("some", "fake", "", "parent", "urn"),
+		})
+		assert.Error(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{{
+		Op:            Update,
+		SkipPreview:   true,
+		ExpectFailure: true,
+	}}
+	p.Run(t, nil)
+}
+
+func TestReadDependency(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		readURN, _, err := monitor.ReadResource("pkgA:m:typA", "read", "idA", "", nil, "", "")
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{readURN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 3),
+	}
+	p.Run(t, nil)
+}
