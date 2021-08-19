@@ -11,3 +11,6 @@
 - [sdk/dotnet] - Fix an exception when passing an unknown `Output` to
   the `DependsOn` resource option.
   [#7762](https://github.com/pulumi/pulumi/pull/7762)
+
+- [engine] Include transitive children in dependency list for deletes.
+  [#7788](https://github.com/pulumi/pulumi/pull/7788)
