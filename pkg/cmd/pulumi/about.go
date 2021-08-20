@@ -1,5 +1,4 @@
 // Copyright 2016-2018, Pulumi Corporation.
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -16,9 +15,10 @@ package main
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
+	"runtime"
 	"sort"
-	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/host"
@@ -29,6 +29,8 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/backend/state"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/version"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 )
@@ -41,33 +43,50 @@ func newAboutCmd() *cobra.Command {
 			Short: short,
 			Long: short + "\n" +
 				"\n" +
-				"TODO",
+				"Prints out information helpful for debugging the pulumi CLI." +
+				"\n" +
+				"This includes information about:\n" +
+				" - the CLI and how it was built\n" +
+				" - which OS pulumi was run from\n" +
+				" - the current project\n" +
+				" - the current stack\n" +
+				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
 				var err error
+				opts := display.Options{
+					Color: cmdutil.GetGlobalColorization(),
+				}
 
-				fmt.Printf("CLI Version:%v\n", version.Version)
+				// TODO Maybe include a message saying to include this info when
+				// starting an issue.
+
+				formatCLIAbout()
 				fmt.Print("\n")
 
 				if err = formatPluginAbout(); err != nil {
-					fmt.Printf("Failed to get plugin versions: %s\n")
+					err = errors.Wrap(err, "Failed to get information about the plugin.")
+					warn(err, &opts)
 				}
 				fmt.Print("\n")
 
 				if err = formatHostAbout(); err != nil {
-					fmt.Printf("Failed to get host version information: %s\n", err)
+					err = errors.Wrap(err, "Failed to get information about the host")
+					warn(err, &opts)
 				}
 				fmt.Print("\n")
 
 				var proj *workspace.Project
 				var pwd string
 				if proj, pwd, err = readProject(); err != nil {
-					fmt.Printf("%s\n", err)
+					err = errors.Wrap(err, "Failed to read project for diagnosis")
+					warn(err, &opts)
 				} else {
 					fmt.Printf("This is a %s project.\n\n", proj.Runtime.Name())
 
 					if err = formatProgramDependenciesAbout(proj.Runtime.Name(), pwd); err != nil {
-						fmt.Printf("Failed to get information about the puluimi program's plugins: %s", err)
+						err = errors.Wrap(err, "Failed to get diagnositc information about the puluimi program's plugins")
+						warn(err, &opts)
 					}
 					fmt.Print("\n")
 				}
@@ -75,20 +94,23 @@ func newAboutCmd() *cobra.Command {
 				var backend backend.Backend
 				backend, err = currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 				if err != nil {
-					fmt.Print("Could not access the backend: %s", err)
+					err = errors.Wrapf(err, "Could not access the backend to give diagnosis.")
+					warn(err, &opts)
 				} else {
 					if err = formatCurrentStackAbout(backend); err != nil {
-						fmt.Printf("Failed to get information about the host: %s\n", err)
+						err = errors.Wrap(err, "Failed to get diagnostic information about the current stack")
+						warn(err, &opts)
 					}
 					fmt.Print("\n")
 
 					if err = formatBackendAbout(backend); err != nil {
-						fmt.Printf("Failed to gather information on the current backend: %s\n", err)
+						errors.Wrap(err, "Failed to gather diagnostic information on the current backend")
+						warn(err, &opts)
 					}
 
 				}
 
-				return errors.New("I'm just testing this\n")
+				return nil
 			},
 			),
 		}
@@ -123,7 +145,7 @@ func formatPluginAbout() error {
 		})
 	}
 	cmdutil.PrintTable(cmdutil.Table{
-		Headers: []string{"PLUGIN", "VERSION"},
+		Headers: []string{"NAME", "VERSION"},
 		Rows:    rows,
 	})
 	return nil
@@ -187,17 +209,45 @@ func formatCurrentStackAbout(b backend.Backend) error {
 	if err != nil {
 		return err
 	}
-	var resources = snapshot.Resources
-	var pendingOps = snapshot.PendingOperations
+	var resources []*resource.State = snapshot.Resources
+	var pendingOps []resource.Operation = snapshot.PendingOperations
 
-	cmdutil.PrintTable(cmdutil.Table{
-		Headers: []string{"Backend", ""},
-		Rows: simpleTableRows([][]string{
-			[]string{"Name", name},
-			[]string{"Resources", strconv.Itoa(len(resources))},
-			[]string{"pending Operations", strconv.Itoa(len(pendingOps))},
-		}),
-	})
+	var rows = []cmdutil.TableRow{}
+	for _, r := range resources {
+		rows = append(rows,
+			cmdutil.TableRow{Columns: []string{r.Type.String(), string(r.URN)}},
+		)
+	}
+	fmt.Printf("Current Stack: %s\n\n", name)
+	if len(rows) == 0 {
+		fmt.Printf("Found no resources associated with %s\n", name)
+	} else {
+		fmt.Print("Resource List\n")
+		cmdutil.PrintTable(cmdutil.Table{
+			Headers: []string{"TYPE", "URN"},
+			Rows:    rows,
+		})
+		fmt.Print("\n")
+	}
+
+	rows = []cmdutil.TableRow{}
+	for _, p := range pendingOps {
+		rows = append(rows,
+			cmdutil.TableRow{
+				Columns: []string{string(p.Type), string(p.Resource.URN)},
+			},
+		)
+	}
+	if len(rows) == 0 {
+		fmt.Printf("Found no pending operations associated with %s\n", name)
+	} else {
+		fmt.Print("Pending Operations\n")
+		cmdutil.PrintTable(cmdutil.Table{
+			Headers: []string{"OPP TYPE", "URN"},
+			Rows:    rows,
+		})
+	}
+
 	return nil
 }
 
@@ -212,7 +262,6 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 }
 
 func formatProgramDependenciesAbout(language, root string) error {
-	fmt.Print("This should just point at requirements.txt\n")
 	var depInfo = ""
 	switch language {
 	case "nodejs":
@@ -222,8 +271,8 @@ func formatProgramDependenciesAbout(language, root string) error {
 	case "go":
 		depInfo = "go.mod"
 	case "dotnet":
-		// TODO figure out how dotnet does this
-		return errors.New("I don't know about .NET")
+		fmt.Printf("Please include the result of \"dotnet list package\"")
+		return nil
 	default:
 		return errors.New(fmt.Sprintf("Unknown Language: %s", language))
 	}
@@ -233,4 +282,23 @@ func formatProgramDependenciesAbout(language, root string) error {
 	fmt.Printf("Please include the contents of \"%s\" in your report.\n", path)
 
 	return nil
+}
+
+func formatCLIAbout() {
+
+	cmdutil.PrintTable(cmdutil.Table{
+		Headers: []string{"CLI", ""},
+		Rows: simpleTableRows([][]string{
+			[]string{"Version", version.Version},
+			[]string{"Go Version", runtime.Version()},
+			[]string{"Go Compiler", runtime.Compiler},
+		}),
+	})
+
+}
+
+func warn(err error, opts *display.Options) {
+	msg := fmt.Sprintf("%swarning:%s %s\n",
+		colors.SpecAttention, colors.Reset, err)
+	fmt.Fprintf(os.Stdout, opts.Color.Colorize(msg))
 }
