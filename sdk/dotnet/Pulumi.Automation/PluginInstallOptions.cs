@@ -7,7 +7,7 @@
         /// <para/>
         /// Defaults to <c>false</c>.
         /// </summary>
-        public bool ExactVersion { get; set; } = false;
+        public bool ExactVersion { get; set; }
 
         /// <summary>
         /// A URL to download plugins from.

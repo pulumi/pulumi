@@ -630,7 +630,7 @@ namespace Pulumi.Automation
             {
                 "plugin",
                 "install",
-                kind.ToString().ToLower(),
+                kind.ToString().ToLowerInvariant(),
                 name,
                 version
             };
