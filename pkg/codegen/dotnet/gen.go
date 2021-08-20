@@ -591,12 +591,6 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 var generatedTypes = codegen.Set{}
 
 func (pt *plainType) genInputType(w io.Writer, level int) error {
-	args := pt.args
-	wrapInput := args
-	return pt.genInputTypeWithFlags(w, level, wrapInput, args)
-}
-
-func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, wrapInput, args bool) error {
 	// The way the legacy codegen for kubernetes is structured, inputs for a resource args type and resource args
 	// subtype could become a single class because of the name + namespace clash. We use a set of generated types
 	// to prevent generating classes with equal full names in multiple files. The check should be removed if we
@@ -624,8 +618,8 @@ func (pt *plainType) genInputTypeWithFlags(w io.Writer, level int, wrapInput, ar
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Declare each input property.
-	for _, prop := range pt.properties {
-		pt.genInputProperty(w, prop, indent)
+	for _, p := range pt.properties {
+		pt.genInputProperty(w, p, indent)
 		fmt.Fprintf(w, "\n")
 	}
 
@@ -1406,9 +1400,7 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 		properties:            fun.Inputs.Properties,
 		args:                  true,
 	}
-	wrapInput := true
-	args := false
-	if err := applyArgs.genInputTypeWithFlags(w, 1, wrapInput, args); err != nil {
+	if err := applyArgs.genInputType(w, 1); err != nil {
 		return err
 	}
 	return nil
