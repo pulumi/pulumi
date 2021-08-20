@@ -27,13 +27,13 @@ type ArgFunctionResult struct {
 	Result *Resource `pulumi:"result"`
 }
 
-func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultTypeOutput {
+func ArgFunctionOutput(ctx *pulumi.Context, args ArgFunctionOutputArgs, opts ...pulumi.InvokeOption) ArgFunctionResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (ArgFunctionResult, error) {
 			args := v.(ArgFunctionArgs)
 			r, err := ArgFunction(ctx, &args, opts...)
 			return *r, err
-		}).(ArgFunctionResultTypeOutput)
+		}).(ArgFunctionResultOutput)
 }
 
 type ArgFunctionOutputArgs struct {
@@ -44,24 +44,24 @@ func (ArgFunctionOutputArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*ArgFunctionArgs)(nil)).Elem()
 }
 
-type ArgFunctionResultTypeOutput struct{ *pulumi.OutputState }
+type ArgFunctionResultOutput struct{ *pulumi.OutputState }
 
-func (ArgFunctionResultTypeOutput) ElementType() reflect.Type {
+func (ArgFunctionResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*ArgFunctionResult)(nil)).Elem()
 }
 
-func (o ArgFunctionResultTypeOutput) ToArgFunctionResultTypeOutput() ArgFunctionResultTypeOutput {
+func (o ArgFunctionResultOutput) ToArgFunctionResultOutput() ArgFunctionResultOutput {
 	return o
 }
 
-func (o ArgFunctionResultTypeOutput) ToArgFunctionResultTypeOutputWithContext(ctx context.Context) ArgFunctionResultTypeOutput {
+func (o ArgFunctionResultOutput) ToArgFunctionResultOutputWithContext(ctx context.Context) ArgFunctionResultOutput {
 	return o
 }
 
-func (o ArgFunctionResultTypeOutput) Result() ResourceOutput {
+func (o ArgFunctionResultOutput) Result() ResourceOutput {
 	return o.ApplyT(func(v ArgFunctionResult) *Resource { return v.Result }).(ResourceOutput)
 }
 
 func init() {
-	pulumi.RegisterOutputType(ArgFunctionResultTypeOutput{})
+	pulumi.RegisterOutputType(ArgFunctionResultOutput{})
 }
