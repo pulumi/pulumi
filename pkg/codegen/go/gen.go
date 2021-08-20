@@ -1132,9 +1132,10 @@ func (pkg *pkgContext) genInputArgsStruct(w io.Writer, typeName string, t *schem
 }
 
 type genOutputTypesArgs struct {
-	t               *schema.ObjectType
-	elementTypeName string
-	typeName        string
+	t *schema.ObjectType
+
+	// optional type name override
+	name string
 }
 
 func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
@@ -1143,20 +1144,15 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 
 	contract.Assert(!t.IsInputShape())
 
-	name := genArgs.typeName
+	name := genArgs.name
 	if name == "" {
 		name = pkg.tokenToType(t.Token)
-	}
-
-	elementTypeName := name
-	if genArgs.elementTypeName != "" {
-		elementTypeName = genArgs.elementTypeName
 	}
 
 	printComment(w, t.Comment, false)
 	genOutputType(w,
 		name,               /* baseName */
-		elementTypeName,    /* elementType */
+		name,               /* elementType */
 		details.ptrElement, /* ptrMethods */
 		false,              /* resourceType */
 	)
@@ -1172,7 +1168,7 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 		}
 		fmt.Fprintf(w, "func (o %sOutput) %s() %s {\n", name, propName, outputType)
 		fmt.Fprintf(w, "\treturn o.ApplyT(func (v %s) %s { return v.%s }).(%s)\n",
-			elementTypeName, applyType, Title(p.Name), outputType)
+			name, applyType, Title(p.Name), outputType)
 		fmt.Fprintf(w, "}\n\n")
 	}
 
@@ -1803,9 +1799,8 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 	})
 
 	pkg.genOutputTypes(w, genOutputTypesArgs{
-		t:               f.Outputs,
-		typeName:        originalResultTypeName,
-		elementTypeName: originalResultTypeName,
+		t:    f.Outputs,
+		name: originalResultTypeName,
 	})
 
 	// Assuming the file represented by `w` only has one function,
