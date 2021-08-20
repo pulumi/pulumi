@@ -61,7 +61,6 @@ func TestGoPackageName(t *testing.T) {
 	assert.Equal(t, "", goPackage(""))
 }
 
-// here
 func TestGeneratePackage(t *testing.T) {
 	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
 		return GeneratePackage(tool, pkg)
