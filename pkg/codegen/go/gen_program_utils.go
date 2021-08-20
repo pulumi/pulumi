@@ -54,3 +54,26 @@ func (p *promptToInputArrayHelper) getPromptItemType() string {
 func (p *promptToInputArrayHelper) getInputItemType() string {
 	return strings.TrimSuffix(p.destType, "Array")
 }
+
+// Provides code for a method which will be placed in the program preamble if deemed
+// necessary. Because many tasks in Go such as reading a file require extensive error
+// handling, it is much prettier to encapsulate that error handling boilerplate as its
+// own function in the preamble.
+func getHelperMethodIfNeeded(functionName string) (string, bool) {
+	var methodBody string
+
+	switch functionName {
+	case "readFile":
+		methodBody =
+			`func readFileOrPanic(path string) pulumi.StringPtrInput {
+				if fileData, err := ioutil.ReadFile(path); err == nil {
+					return pulumi.String(string(fileData[:]))
+				} else {
+					panic(err.Error())
+				}
+			}`
+	default:
+		methodBody = ""
+	}
+	return methodBody, methodBody != ""
+}

@@ -68,7 +68,8 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	// but still have access to types provided by __convert intrinsics after lowering.
 	pulumiImports := codegen.NewStringSet()
 	stdImports := codegen.NewStringSet()
-	g.collectImports(program, stdImports, pulumiImports)
+	preambleHelperMethods := codegen.NewStringSet()
+	g.collectImports(program, stdImports, pulumiImports, preambleHelperMethods)
 
 	var progPostamble bytes.Buffer
 	for _, n := range nodes {
@@ -86,7 +87,7 @@ func GenerateProgram(program *hcl2.Program) (map[string][]byte, hcl.Diagnostics,
 	// present in resource declarations or invokes alone. Expressions are lowered when the program is generated
 	// and this must happen first so we can access types via __convert intrinsics.
 	var index bytes.Buffer
-	g.genPreamble(&index, program, stdImports, pulumiImports)
+	g.genPreamble(&index, program, stdImports, pulumiImports, preambleHelperMethods)
 	index.Write(progPostamble.Bytes())
 
 	// Run Go formatter on the code before saving to disk
@@ -132,11 +133,11 @@ func (g *generator) collectScopeRoots(n hcl2.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, pulumiImports codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, pulumiImports, preambleHelperMethods codegen.StringSet) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
 
-	g.collectImports(program, stdImports, pulumiImports)
+	g.collectImports(program, stdImports, pulumiImports, preambleHelperMethods)
 	for _, imp := range stdImports.SortedValues() {
 		g.Fprintf(w, "\"%s\"\n", imp)
 	}
@@ -149,6 +150,12 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, 
 	}
 
 	g.Fprintf(w, ")\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "%s\n\n", preambleHelperMethodBody)
+	}
+
 	g.Fprintf(w, "func main() {\n")
 	g.Fprintf(w, "pulumi.Run(func(ctx *pulumi.Context) error {\n")
 }
@@ -199,7 +206,8 @@ func (g *generator) collectTypeImports(program *hcl2.Program, t schema.Type, imp
 func (g *generator) collectImports(
 	program *hcl2.Program,
 	stdImports,
-	pulumiImports codegen.StringSet) (codegen.StringSet, codegen.StringSet) {
+	pulumiImports,
+	preambleHelperMethods codegen.StringSet) (codegen.StringSet, codegen.StringSet, codegen.StringSet) {
 	// Accumulate import statements for the various providers
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
@@ -239,6 +247,11 @@ func (g *generator) collectImports(
 						g.collectTypeImports(program, schemaType, pulumiImports)
 					}
 				}
+
+				// Checking to see if this function call deserves its own dedicated helper method in the preamble
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+					preambleHelperMethods.Add(helperMethodBody)
+				}
 			}
 			return n, nil
 		})
@@ -260,7 +273,7 @@ func (g *generator) collectImports(
 		contract.Assert(len(diags) == 0)
 	}
 
-	return stdImports, pulumiImports
+	return stdImports, pulumiImports, preambleHelperMethods
 }
 
 func (g *generator) getVersionPath(program *hcl2.Program, pkg string) (string, error) {
