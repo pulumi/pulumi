@@ -97,6 +97,7 @@ def test_func_with_all_optional_inputs(my_mocks):
 @pulumi.runtime.test
 def test_func_with_default_value(my_mocks):
     # TODO defaults from schema not recognized
+    # https://github.com/pulumi/pulumi/issues/7815
     return assert_function_matches_table(
         funcWithDefaultValue.func_with_default_value_output,
         [
