@@ -527,7 +527,6 @@ func (pt *plainType) genInputProperty(w io.Writer, prop *schema.Property, indent
 	// complex types like lists and maps need a backing field. Secret properties also require a backing field.
 	if needsBackingField {
 		backingFieldName := "_" + prop.Name
-
 		requireInitializers := !pt.args || !isInputType(prop.Type)
 		backingFieldType := pt.mod.typeString(codegen.RequiredType(prop), pt.propertyTypeQualifier, true, pt.state, requireInitializers)
 
@@ -1314,7 +1313,6 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 			propertyTypeQualifier: "Outputs",
 			properties:            fun.Outputs.Properties,
 		}
-
 		res.genOutputType(w, 1)
 	}
 
