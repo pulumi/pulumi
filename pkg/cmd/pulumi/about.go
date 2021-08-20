@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -14,6 +14,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -91,6 +92,9 @@ func newAboutCmd() *cobra.Command {
 					fmt.Print("\n")
 				}
 
+				formatLogAbout()
+				fmt.Print("\n")
+
 				var backend backend.Backend
 				backend, err = currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 				if err != nil {
@@ -121,7 +125,8 @@ func newAboutCmd() *cobra.Command {
 func formatPluginAbout() error {
 	var plugins []workspace.PluginInfo
 	var err error
-	plugins, err = workspace.GetPluginsWithMetadata()
+	plugins, err = getProjectPlugins()
+
 	if err != nil {
 		return err
 	}
@@ -139,7 +144,12 @@ func formatPluginAbout() error {
 	rows := []cmdutil.TableRow{}
 	for _, plugin := range plugins {
 		name := plugin.Name
-		version := plugin.Version.String()
+		var version string
+		if plugin.Version != nil {
+			version = plugin.Version.String()
+		} else {
+			version = "unknown"
+		}
 		rows = append(rows, cmdutil.TableRow{
 			Columns: []string{name, version},
 		})
@@ -295,6 +305,18 @@ func formatCLIAbout() {
 		}),
 	})
 
+}
+
+func formatLogAbout() {
+	logDir := flag.Lookup("log_dir")
+	if logDir != nil && logDir.Value.String() != "" {
+		fmt.Printf("Pulumi locates it's logs in %s\n", logDir)
+	} else if runtime.GOOS != "windowns" {
+		fmt.Printf("Pulumi locates it's logs in $TEMPDIR by default\n")
+	} else {
+		// TODO: Find out
+		errors.New("I don't know where the logs are on windows")
+	}
 }
 
 func warn(err error, opts *display.Options) {
