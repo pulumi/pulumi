@@ -31,13 +31,13 @@ type FuncWithDictParamResult struct {
 }
 
 
-func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithDictParamResultTypeOutput {
+func FuncWithDictParamOutput(ctx *pulumi.Context, args FuncWithDictParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithDictParamResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (FuncWithDictParamResult, error) {
 			args := v.(FuncWithDictParamArgs)
 			r, err := FuncWithDictParam(ctx, &args, opts...)
 			return *r, err
-		}).(FuncWithDictParamResultTypeOutput)
+		}).(FuncWithDictParamResultOutput)
 }
 
 type FuncWithDictParamOutputArgs struct {
@@ -49,26 +49,26 @@ func (FuncWithDictParamOutputArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithDictParamArgs)(nil)).Elem()
 }
 
-type FuncWithDictParamResultTypeOutput struct { *pulumi.OutputState }
+type FuncWithDictParamResultOutput struct { *pulumi.OutputState }
 
-func (FuncWithDictParamResultTypeOutput) ElementType() reflect.Type {
+func (FuncWithDictParamResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithDictParamResult)(nil)).Elem()
 }
 
-func (o FuncWithDictParamResultTypeOutput) ToFuncWithDictParamResultTypeOutput() FuncWithDictParamResultTypeOutput {
+func (o FuncWithDictParamResultOutput) ToFuncWithDictParamResultOutput() FuncWithDictParamResultOutput {
 	return o
 }
 
-func (o FuncWithDictParamResultTypeOutput) ToFuncWithDictParamResultTypeOutputWithContext(ctx context.Context) FuncWithDictParamResultTypeOutput {
+func (o FuncWithDictParamResultOutput) ToFuncWithDictParamResultOutputWithContext(ctx context.Context) FuncWithDictParamResultOutput {
 	return o
 }
 
-func (o FuncWithDictParamResultTypeOutput) R() pulumi.StringOutput {
+func (o FuncWithDictParamResultOutput) R() pulumi.StringOutput {
 	return o.ApplyT(func (v FuncWithDictParamResult) string { return v.R }).(pulumi.StringOutput)
 }
 
 
 func init() {
-        pulumi.RegisterOutputType(FuncWithDictParamResultTypeOutput{})
+        pulumi.RegisterOutputType(FuncWithDictParamResultOutput{})
 }
 

@@ -31,13 +31,13 @@ type FuncWithDefaultValueResult struct {
 }
 
 
-func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOutputArgs, opts ...pulumi.InvokeOption) FuncWithDefaultValueResultTypeOutput {
+func FuncWithDefaultValueOutput(ctx *pulumi.Context, args FuncWithDefaultValueOutputArgs, opts ...pulumi.InvokeOption) FuncWithDefaultValueResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (FuncWithDefaultValueResult, error) {
 			args := v.(FuncWithDefaultValueArgs)
 			r, err := FuncWithDefaultValue(ctx, &args, opts...)
 			return *r, err
-		}).(FuncWithDefaultValueResultTypeOutput)
+		}).(FuncWithDefaultValueResultOutput)
 }
 
 type FuncWithDefaultValueOutputArgs struct {
@@ -49,26 +49,26 @@ func (FuncWithDefaultValueOutputArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithDefaultValueArgs)(nil)).Elem()
 }
 
-type FuncWithDefaultValueResultTypeOutput struct { *pulumi.OutputState }
+type FuncWithDefaultValueResultOutput struct { *pulumi.OutputState }
 
-func (FuncWithDefaultValueResultTypeOutput) ElementType() reflect.Type {
+func (FuncWithDefaultValueResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithDefaultValueResult)(nil)).Elem()
 }
 
-func (o FuncWithDefaultValueResultTypeOutput) ToFuncWithDefaultValueResultTypeOutput() FuncWithDefaultValueResultTypeOutput {
+func (o FuncWithDefaultValueResultOutput) ToFuncWithDefaultValueResultOutput() FuncWithDefaultValueResultOutput {
 	return o
 }
 
-func (o FuncWithDefaultValueResultTypeOutput) ToFuncWithDefaultValueResultTypeOutputWithContext(ctx context.Context) FuncWithDefaultValueResultTypeOutput {
+func (o FuncWithDefaultValueResultOutput) ToFuncWithDefaultValueResultOutputWithContext(ctx context.Context) FuncWithDefaultValueResultOutput {
 	return o
 }
 
-func (o FuncWithDefaultValueResultTypeOutput) R() pulumi.StringOutput {
+func (o FuncWithDefaultValueResultOutput) R() pulumi.StringOutput {
 	return o.ApplyT(func (v FuncWithDefaultValueResult) string { return v.R }).(pulumi.StringOutput)
 }
 
 
 func init() {
-        pulumi.RegisterOutputType(FuncWithDefaultValueResultTypeOutput{})
+        pulumi.RegisterOutputType(FuncWithDefaultValueResultOutput{})
 }
 

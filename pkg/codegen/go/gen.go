@@ -1134,6 +1134,7 @@ func (pkg *pkgContext) genInputArgsStruct(w io.Writer, typeName string, t *schem
 type genOutputTypesArgs struct {
 	t               *schema.ObjectType
 	elementTypeName string
+	typeName        string
 }
 
 func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
@@ -1142,7 +1143,10 @@ func (pkg *pkgContext) genOutputTypes(w io.Writer, genArgs genOutputTypesArgs) {
 
 	contract.Assert(!t.IsInputShape())
 
-	name := pkg.tokenToType(t.Token)
+	name := genArgs.typeName
+	if name == "" {
+		name = pkg.tokenToType(t.Token)
+	}
 
 	elementTypeName := name
 	if genArgs.elementTypeName != "" {
@@ -1772,8 +1776,8 @@ func (pkg *pkgContext) genFunctionOutputVersion(w io.Writer, f *schema.Function)
 
 	originalName := pkg.functionName(f)
 	name := originalName + "Output"
-
-	outputTypeName := pkg.tokenToType(f.Outputs.Token) + "Output"
+	originalResultTypeName := pkg.functionResultTypeName(f)
+	resultTypeName := originalResultTypeName + "Output"
 
 	code := `
 func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.InvokeOption) ${outputType} {
@@ -1787,7 +1791,7 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 
 `
 	code = strings.ReplaceAll(code, "${fn}", originalName)
-	code = strings.ReplaceAll(code, "${outputType}", outputTypeName)
+	code = strings.ReplaceAll(code, "${outputType}", resultTypeName)
 	fmt.Fprintf(w, code)
 
 	pkg.genInputArgsStruct(w, name+"Args", f.Inputs.InputShape)
@@ -1800,7 +1804,8 @@ func ${fn}Output(ctx *pulumi.Context, args ${fn}OutputArgs, opts ...pulumi.Invok
 
 	pkg.genOutputTypes(w, genOutputTypesArgs{
 		t:               f.Outputs,
-		elementTypeName: pkg.functionResultTypeName(f),
+		typeName:        originalResultTypeName,
+		elementTypeName: originalResultTypeName,
 	})
 
 	// Assuming the file represented by `w` only has one function,
@@ -1811,7 +1816,7 @@ func init() {
 }
 
 `
-	initCode = strings.ReplaceAll(initCode, "${outputType}", outputTypeName)
+	initCode = strings.ReplaceAll(initCode, "${outputType}", resultTypeName)
 	fmt.Fprintf(w, initCode)
 }
 

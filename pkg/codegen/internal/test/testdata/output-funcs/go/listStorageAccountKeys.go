@@ -38,13 +38,13 @@ type ListStorageAccountKeysResult struct {
 }
 
 
-func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKeysOutputArgs, opts ...pulumi.InvokeOption) ListStorageAccountKeysResultTypeOutput {
+func ListStorageAccountKeysOutput(ctx *pulumi.Context, args ListStorageAccountKeysOutputArgs, opts ...pulumi.InvokeOption) ListStorageAccountKeysResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (ListStorageAccountKeysResult, error) {
 			args := v.(ListStorageAccountKeysArgs)
 			r, err := ListStorageAccountKeys(ctx, &args, opts...)
 			return *r, err
-		}).(ListStorageAccountKeysResultTypeOutput)
+		}).(ListStorageAccountKeysResultOutput)
 }
 
 type ListStorageAccountKeysOutputArgs struct {
@@ -61,27 +61,27 @@ func (ListStorageAccountKeysOutputArgs) ElementType() reflect.Type {
 }
 
 // The response from the ListKeys operation.
-type ListStorageAccountKeysResultTypeOutput struct { *pulumi.OutputState }
+type ListStorageAccountKeysResultOutput struct { *pulumi.OutputState }
 
-func (ListStorageAccountKeysResultTypeOutput) ElementType() reflect.Type {
+func (ListStorageAccountKeysResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*ListStorageAccountKeysResult)(nil)).Elem()
 }
 
-func (o ListStorageAccountKeysResultTypeOutput) ToListStorageAccountKeysResultTypeOutput() ListStorageAccountKeysResultTypeOutput {
+func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutput() ListStorageAccountKeysResultOutput {
 	return o
 }
 
-func (o ListStorageAccountKeysResultTypeOutput) ToListStorageAccountKeysResultTypeOutputWithContext(ctx context.Context) ListStorageAccountKeysResultTypeOutput {
+func (o ListStorageAccountKeysResultOutput) ToListStorageAccountKeysResultOutputWithContext(ctx context.Context) ListStorageAccountKeysResultOutput {
 	return o
 }
 
 // Gets the list of storage account keys and their properties for the specified storage account.
-func (o ListStorageAccountKeysResultTypeOutput) Keys() StorageAccountKeyResponseArrayOutput {
+func (o ListStorageAccountKeysResultOutput) Keys() StorageAccountKeyResponseArrayOutput {
 	return o.ApplyT(func (v ListStorageAccountKeysResult) []StorageAccountKeyResponse { return v.Keys }).(StorageAccountKeyResponseArrayOutput)
 }
 
 
 func init() {
-        pulumi.RegisterOutputType(ListStorageAccountKeysResultTypeOutput{})
+        pulumi.RegisterOutputType(ListStorageAccountKeysResultOutput{})
 }
 

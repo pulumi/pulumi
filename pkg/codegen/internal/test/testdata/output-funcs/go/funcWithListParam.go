@@ -31,13 +31,13 @@ type FuncWithListParamResult struct {
 }
 
 
-func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithListParamResultTypeOutput {
+func FuncWithListParamOutput(ctx *pulumi.Context, args FuncWithListParamOutputArgs, opts ...pulumi.InvokeOption) FuncWithListParamResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (FuncWithListParamResult, error) {
 			args := v.(FuncWithListParamArgs)
 			r, err := FuncWithListParam(ctx, &args, opts...)
 			return *r, err
-		}).(FuncWithListParamResultTypeOutput)
+		}).(FuncWithListParamResultOutput)
 }
 
 type FuncWithListParamOutputArgs struct {
@@ -49,26 +49,26 @@ func (FuncWithListParamOutputArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithListParamArgs)(nil)).Elem()
 }
 
-type FuncWithListParamResultTypeOutput struct { *pulumi.OutputState }
+type FuncWithListParamResultOutput struct { *pulumi.OutputState }
 
-func (FuncWithListParamResultTypeOutput) ElementType() reflect.Type {
+func (FuncWithListParamResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithListParamResult)(nil)).Elem()
 }
 
-func (o FuncWithListParamResultTypeOutput) ToFuncWithListParamResultTypeOutput() FuncWithListParamResultTypeOutput {
+func (o FuncWithListParamResultOutput) ToFuncWithListParamResultOutput() FuncWithListParamResultOutput {
 	return o
 }
 
-func (o FuncWithListParamResultTypeOutput) ToFuncWithListParamResultTypeOutputWithContext(ctx context.Context) FuncWithListParamResultTypeOutput {
+func (o FuncWithListParamResultOutput) ToFuncWithListParamResultOutputWithContext(ctx context.Context) FuncWithListParamResultOutput {
 	return o
 }
 
-func (o FuncWithListParamResultTypeOutput) R() pulumi.StringOutput {
+func (o FuncWithListParamResultOutput) R() pulumi.StringOutput {
 	return o.ApplyT(func (v FuncWithListParamResult) string { return v.R }).(pulumi.StringOutput)
 }
 
 
 func init() {
-        pulumi.RegisterOutputType(FuncWithListParamResultTypeOutput{})
+        pulumi.RegisterOutputType(FuncWithListParamResultOutput{})
 }
 

@@ -31,13 +31,13 @@ type FuncWithAllOptionalInputsResult struct {
 }
 
 
-func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOptionalInputsOutputArgs, opts ...pulumi.InvokeOption) FuncWithAllOptionalInputsResultTypeOutput {
+func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOptionalInputsOutputArgs, opts ...pulumi.InvokeOption) FuncWithAllOptionalInputsResultOutput {
 	return pulumi.ToOutputWithContext(context.Background(), args).
 		ApplyT(func(v interface{}) (FuncWithAllOptionalInputsResult, error) {
 			args := v.(FuncWithAllOptionalInputsArgs)
 			r, err := FuncWithAllOptionalInputs(ctx, &args, opts...)
 			return *r, err
-		}).(FuncWithAllOptionalInputsResultTypeOutput)
+		}).(FuncWithAllOptionalInputsResultOutput)
 }
 
 type FuncWithAllOptionalInputsOutputArgs struct {
@@ -49,26 +49,26 @@ func (FuncWithAllOptionalInputsOutputArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithAllOptionalInputsArgs)(nil)).Elem()
 }
 
-type FuncWithAllOptionalInputsResultTypeOutput struct { *pulumi.OutputState }
+type FuncWithAllOptionalInputsResultOutput struct { *pulumi.OutputState }
 
-func (FuncWithAllOptionalInputsResultTypeOutput) ElementType() reflect.Type {
+func (FuncWithAllOptionalInputsResultOutput) ElementType() reflect.Type {
 	return reflect.TypeOf((*FuncWithAllOptionalInputsResult)(nil)).Elem()
 }
 
-func (o FuncWithAllOptionalInputsResultTypeOutput) ToFuncWithAllOptionalInputsResultTypeOutput() FuncWithAllOptionalInputsResultTypeOutput {
+func (o FuncWithAllOptionalInputsResultOutput) ToFuncWithAllOptionalInputsResultOutput() FuncWithAllOptionalInputsResultOutput {
 	return o
 }
 
-func (o FuncWithAllOptionalInputsResultTypeOutput) ToFuncWithAllOptionalInputsResultTypeOutputWithContext(ctx context.Context) FuncWithAllOptionalInputsResultTypeOutput {
+func (o FuncWithAllOptionalInputsResultOutput) ToFuncWithAllOptionalInputsResultOutputWithContext(ctx context.Context) FuncWithAllOptionalInputsResultOutput {
 	return o
 }
 
-func (o FuncWithAllOptionalInputsResultTypeOutput) R() pulumi.StringOutput {
+func (o FuncWithAllOptionalInputsResultOutput) R() pulumi.StringOutput {
 	return o.ApplyT(func (v FuncWithAllOptionalInputsResult) string { return v.R }).(pulumi.StringOutput)
 }
 
 
 func init() {
-        pulumi.RegisterOutputType(FuncWithAllOptionalInputsResultTypeOutput{})
+        pulumi.RegisterOutputType(FuncWithAllOptionalInputsResultOutput{})
 }
 
