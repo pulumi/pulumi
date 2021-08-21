@@ -17,9 +17,11 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"sort"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/shirou/gopsutil/host"
@@ -33,7 +35,9 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
 func newAboutCmd() *cobra.Command {
@@ -66,7 +70,7 @@ func newAboutCmd() *cobra.Command {
 				fmt.Print("\n")
 
 				if err = formatPluginAbout(); err != nil {
-					err = errors.Wrap(err, "Failed to get information about the plugin.")
+					err = errors.Wrap(err, "Failed to get information about the plugin")
 					warn(err, &opts)
 				}
 				fmt.Print("\n")
@@ -83,7 +87,10 @@ func newAboutCmd() *cobra.Command {
 					err = errors.Wrap(err, "Failed to read project for diagnosis")
 					warn(err, &opts)
 				} else {
-					fmt.Printf("This is a %s project.\n\n", proj.Runtime.Name())
+					if err = formatProjectRuntimeAbout(proj); err != nil {
+						err = errors.Wrap(err, "Failed to get diagnostic about the project runtime")
+					}
+					fmt.Print("\n")
 
 					if err = formatProgramDependenciesAbout(proj.Runtime.Name(), pwd); err != nil {
 						err = errors.Wrap(err, "Failed to get diagnositc information about the puluimi program's plugins")
@@ -111,9 +118,7 @@ func newAboutCmd() *cobra.Command {
 						errors.Wrap(err, "Failed to gather diagnostic information on the current backend")
 						warn(err, &opts)
 					}
-
 				}
-
 				return nil
 			},
 			),
@@ -125,7 +130,7 @@ func newAboutCmd() *cobra.Command {
 func formatPluginAbout() error {
 	var plugins []workspace.PluginInfo
 	var err error
-	plugins, err = getProjectPlugins()
+	plugins, err = getProjectPluginsSilently()
 
 	if err != nil {
 		return err
@@ -315,12 +320,88 @@ func formatLogAbout() {
 		fmt.Printf("Pulumi locates it's logs in $TEMPDIR by default\n")
 	} else {
 		// TODO: Find out
-		errors.New("I don't know where the logs are on windows")
+		errors.New("I don't know where the logs are on windows\n")
 	}
+}
+
+func formatProjectRuntimeAbout(proj *workspace.Project) error {
+	var ex, version string
+	var err error
+	language := proj.Runtime.Name()
+	switch language {
+	case "nodejs":
+		ex, err = executable.FindExecutable("node")
+		if err != nil {
+			return errors.Wrap(err, "Could not find node executable")
+		}
+		cmd := exec.Command(ex, "--version")
+		if out, err := cmd.Output(); err != nil {
+			return errors.Wrap(err, "Failed to get node version")
+		} else {
+			version = string(out)
+		}
+	case "python":
+		var cmd *exec.Cmd
+		// if CommandPath has an error, then so will Command. The error can
+		// therefore be ignored as redundant.
+		ex, _, _ = python.CommandPath()
+		cmd, err = python.Command("--version")
+		if err != nil {
+			return err
+		}
+		if out, err := cmd.Output(); err != nil {
+			return errors.Wrap(err, "Failed to get python version")
+		} else {
+			version = "v" + strings.TrimPrefix(string(out), "Python ")
+		}
+	case "go":
+		ex, err = executable.FindExecutable("go")
+		if err != nil {
+			return errors.Wrap(err, "Could not find python executable")
+		}
+		cmd := exec.Command(ex, "version")
+		if out, err := cmd.Output(); err != nil {
+			return errors.Wrap(err, "Failed to get go version")
+		} else {
+			version = "v" + strings.TrimPrefix(string(out), "go version go")
+		}
+	case "dotnet":
+		ex, err = executable.FindExecutable("dotnet")
+		if err != nil {
+			return errors.Wrap(err, "Could not find dotnet executable")
+		}
+		cmd := exec.Command(ex, "--version")
+		if out, err := cmd.Output(); err != nil {
+			return errors.Wrap(err, "Failed to get dotnet version")
+		} else {
+			version = "v" + string(out)
+		}
+	default:
+		return errors.New(fmt.Sprintf("Unknown Language: %s", language))
+	}
+
+	version = strings.TrimSpace(version)
+
+	fmt.Printf("This project is a %s project (%s %s)\n", proj.Runtime.Name(), ex, version)
+	return nil
 }
 
 func warn(err error, opts *display.Options) {
 	msg := fmt.Sprintf("%swarning:%s %s\n",
 		colors.SpecAttention, colors.Reset, err)
 	fmt.Fprintf(os.Stdout, opts.Color.Colorize(msg))
+}
+
+// This is necessary because dotnet invokes build during the call to
+// getProjectPlugins.
+func getProjectPluginsSilently() ([]workspace.PluginInfo, error) {
+	_, w, err := os.Pipe()
+	if err != nil {
+		return nil, err
+	}
+	stdout := os.Stdout
+	defer func() { os.Stdout = stdout }()
+	os.Stdout = w
+
+	return getProjectPlugins()
 }
