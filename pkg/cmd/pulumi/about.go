@@ -43,10 +43,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
-const (
-	windows = "windows"
-)
-
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
 	short := "Print information about the Pulumi enviroment."
@@ -123,19 +119,19 @@ func getSummaryAbout() summaryAbout {
 	var proj *workspace.Project
 	var pwd string
 	if proj, pwd, err = readProject(); err != nil {
-		err = errors.Wrap(err, "Failed to read project for diagnosis")
+		err = errors.Wrap(err, "Failed to read project")
 		result.Errors = append(result.Errors, err)
 	} else {
 		var runtime projectRuntimeAbout
 		if runtime, err = getProjectRuntimeAbout(proj); err != nil {
-			err = errors.Wrap(err, "Failed to get diagnostic about the project runtime")
+			err = errors.Wrap(err, "Failed to get information about the project runtime")
 			result.Errors = append(result.Errors, err)
 		} else {
 			result.Runtime = &runtime
 		}
 		var depMsg string
 		if depMsg, err = formatProgramDependenciesAbout(proj.Runtime.Name(), pwd); err != nil {
-			err = errors.Wrap(err, "Failed to get diagnositc information about the puluimi program's plugins")
+			err = errors.Wrap(err, "Failed to get information about the Puluimi program's plugins")
 			result.Errors = append(result.Errors, err)
 		} else {
 			result.dependencyMessage = depMsg
@@ -145,12 +141,12 @@ func getSummaryAbout() summaryAbout {
 	var backend backend.Backend
 	backend, err = currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
-		err = errors.Wrapf(err, "Could not access the backend to give diagnosis.")
+		err = errors.Wrapf(err, "Could not access the backend")
 		result.Errors = append(result.Errors, err)
 	} else {
 		var stack currentStackAbout
 		if stack, err = getCurrentStackAbout(backend); err != nil {
-			err = errors.Wrap(err, "Failed to get diagnostic information about the current stack")
+			err = errors.Wrap(err, "Failed to get information about the current stack")
 			result.Errors = append(result.Errors, err)
 		} else {
 			result.CurrentStack = &stack
@@ -449,11 +445,11 @@ func formatLogAbout() string {
 	logDir := flag.Lookup("log_dir")
 	if logDir != nil && logDir.Value.String() != "" {
 		return fmt.Sprintf("Pulumi locates its logs in %s", logDir)
-	} else if runtime.GOOS != windows {
+	} else if runtime.GOOS != "windows" {
 		return fmt.Sprintf("Pulumi locates its logs in $TEMPDIR by default")
 	} else {
 		// TODO: Find out
-		return string("I don't know where the logs are on windows")
+		return string("Pulumi locates its logs in UNKNOWN by default")
 	}
 }
 
