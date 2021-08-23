@@ -43,9 +43,15 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
 
+const (
+	langPython = "python"
+	langNodejs = "nodejs"
+	langDotnet = "dotnet"
+)
+
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
-	short := "Print information about the Pulumi enviroment."
+	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
 			Use:   "about",
@@ -65,9 +71,8 @@ func newAboutCmd() *cobra.Command {
 				summary := getSummaryAbout()
 				if jsonOut {
 					return printJSON(summary)
-				} else {
-					summary.Print()
 				}
+				summary.Print()
 				return nil
 			},
 			),
@@ -261,9 +266,9 @@ func (host hostAbout) String() string {
 	return cmdutil.Table{
 		Headers: []string{"Host", ""},
 		Rows: simpleTableRows([][]string{
-			[]string{"OS", host.Os},
-			[]string{"Version", host.Version},
-			[]string{"Arch", host.Arch},
+			{"OS", host.Os},
+			{"Version", host.Version},
+			{"Arch", host.Arch},
 		})}.String()
 }
 
@@ -291,9 +296,9 @@ func (b backendAbout) String() string {
 	return cmdutil.Table{
 		Headers: []string{"Backend", ""},
 		Rows: simpleTableRows([][]string{
-			[]string{"Name", b.Name},
-			[]string{"URL", b.URL},
-			[]string{"User", b.User},
+			{"Name", b.Name},
+			{"URL", b.URL},
+			{"User", b.User},
 		}),
 	}.String()
 }
@@ -358,7 +363,7 @@ func (current currentStackAbout) String() string {
 		rows := make([]cmdutil.TableRow, len(current.Resources))
 		for i, r := range current.Resources {
 			rows[i] = cmdutil.TableRow{
-				Columns: []string{string(r.Type), string(r.URN)},
+				Columns: []string{r.Type, r.URN},
 			}
 		}
 		resources = cmdutil.Table{
@@ -373,7 +378,7 @@ func (current currentStackAbout) String() string {
 		rows := make([]cmdutil.TableRow, len(current.PendingOps))
 		for i, r := range current.PendingOps {
 			rows[i] = cmdutil.TableRow{
-				Columns: []string{string(r.Type), string(r.URN)},
+				Columns: []string{r.Type, r.URN},
 			}
 		}
 		pending = cmdutil.Table{
@@ -397,15 +402,15 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 // This does not have an associated struct. It also does not make sense to
 // serialize.
 func formatProgramDependenciesAbout(language, root string) (string, error) {
-	var depInfo = ""
+	var depInfo string
 	switch language {
-	case "nodejs":
+	case langNodejs:
 		depInfo = "package.json"
-	case "python":
+	case langPython:
 		depInfo = "requirements.txt"
 	case "go":
 		depInfo = "go.mod"
-	case "dotnet":
+	case langDotnet:
 		return fmt.Sprintf("Please include the result of \"dotnet list package\""), nil
 	default:
 		return "", errors.New(fmt.Sprintf("Unknown Language: %s", language))
@@ -434,9 +439,9 @@ func (cli cliAbout) String() string {
 	return cmdutil.Table{
 		Headers: []string{"CLI", ""},
 		Rows: simpleTableRows([][]string{
-			[]string{"Version", cli.Version.String()},
-			[]string{"Go Version", cli.GoVersion},
-			[]string{"Go Compiler", cli.GoCompiler},
+			{"Version", cli.Version.String()},
+			{"Go Version", cli.GoVersion},
+			{"Go Compiler", cli.GoCompiler},
 		}),
 	}.String()
 }
@@ -445,9 +450,8 @@ func formatLogAbout() string {
 	logDir := flag.Lookup("log_dir")
 	if logDir != nil && logDir.Value.String() != "" {
 		return fmt.Sprintf("Pulumi locates its logs in %s", logDir)
-	} else {
-		return fmt.Sprintf("Pulumi locates its logs in %s by default", os.TempDir())
 	}
+	return fmt.Sprintf("Pulumi locates its logs in %s by default", os.TempDir())
 }
 
 type projectRuntimeAbout struct {
@@ -460,20 +464,20 @@ type projectRuntimeAbout struct {
 func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error) {
 	var ex, version string
 	var err error
+	var out []byte
 	language := proj.Runtime.Name()
 	switch language {
-	case "nodejs":
+	case langNodejs:
 		ex, err = executable.FindExecutable("node")
 		if err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find node executable")
 		}
 		cmd := exec.Command(ex, "--version")
-		if out, err := cmd.Output(); err != nil {
+		if out, err = cmd.Output(); err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get node version")
-		} else {
-			version = string(out)
 		}
-	case "python":
+		version = string(out)
+	case langPython:
 		var cmd *exec.Cmd
 		// if CommandPath has an error, then so will Command. The error can
 		// therefore be ignored as redundant.
@@ -482,33 +486,30 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 		if err != nil {
 			return projectRuntimeAbout{}, err
 		}
-		if out, err := cmd.Output(); err != nil {
+		if out, err = cmd.Output(); err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get python version")
-		} else {
-			version = "v" + strings.TrimPrefix(string(out), "Python ")
 		}
+		version = "v" + strings.TrimPrefix(string(out), "Python ")
 	case "go":
 		ex, err = executable.FindExecutable("go")
 		if err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find python executable")
 		}
 		cmd := exec.Command(ex, "version")
-		if out, err := cmd.Output(); err != nil {
+		if out, err = cmd.Output(); err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get go version")
-		} else {
-			version = "v" + strings.TrimPrefix(string(out), "go version go")
 		}
-	case "dotnet":
+		version = "v" + strings.TrimPrefix(string(out), "go version go")
+	case langDotnet:
 		ex, err = executable.FindExecutable("dotnet")
 		if err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find dotnet executable")
 		}
 		cmd := exec.Command(ex, "--version")
-		if out, err := cmd.Output(); err != nil {
+		if out, err = cmd.Output(); err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get dotnet version")
-		} else {
-			version = "v" + string(out)
 		}
+		version = "v" + string(out)
 	default:
 		return projectRuntimeAbout{}, errors.New(fmt.Sprintf("Unknown Language: %s", language))
 	}
