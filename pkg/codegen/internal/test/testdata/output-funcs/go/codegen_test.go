@@ -149,10 +149,9 @@ func TestListStorageAccountKeysOutput(t *testing.T) {
 	})
 }
 
-// TODO: it seems that default values are not supported by Go codegen
-// yet, hence we do not observe "B" populated to default at all here.
-// This could be good to fix:
-// https://github.com/pulumi/pulumi/issues/7811
+// TODO[pulumi/pulumi#7811]: it seems that default values are not
+// supported by Go codegen yet, hence we do not observe "B" populated
+// to default at all here.
 func TestFuncWithDefaultValueOutput(t *testing.T) {
 	pulumiTest(t, func(ctx *pulumi.Context) error {
 		output := FuncWithDefaultValueOutput(ctx, FuncWithDefaultValueOutputArgs{
