@@ -21,7 +21,7 @@ import json
 import os
 
 # default to an empty map for config.
-CONFIG: Dict[str, Any] = dict()
+CONFIG: Dict[str, Any] = {}
 
 # default to an empty set for config secret keys.
 _SECRET_KEYS: Set[str] = set()
@@ -56,7 +56,7 @@ def get_config_env() -> Dict[str, Any]:
     if 'PULUMI_CONFIG' in os.environ:
         env_config = os.environ['PULUMI_CONFIG']
         return json.loads(env_config)
-    return dict()
+    return {}
 
 
 def get_config_env_key(k: str) -> str:

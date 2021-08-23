@@ -879,7 +879,7 @@ class ResourcePackage(ABC):
         pass
 
 
-_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = dict()
+_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = {}
 
 
 def register_resource_package(pkg: str, package: ResourcePackage):
@@ -920,7 +920,7 @@ class ResourceModule(ABC):
         pass
 
 
-_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = dict()
+_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = {}
 
 
 def _module_key(pkg: str, mod: str) -> str:
