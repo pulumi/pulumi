@@ -117,7 +117,7 @@ class LocalWorkspace(Workspace):
                 break
         path = os.path.join(self.work_dir, f"Pulumi{found_ext}")
         writable_settings = {key: settings.__dict__[key] for key in settings.__dict__ if settings.__dict__[key] is not None}
-        with open(path, "w") as file:
+        with open(path, "w", encoding="utf-8") as file:
             if found_ext == ".json":
                 json.dump(writable_settings, file, indent=4)
             else:
@@ -129,7 +129,7 @@ class LocalWorkspace(Workspace):
             path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{ext}")
             if not os.path.exists(path):
                 continue
-            with open(path, "r") as file:
+            with open(path, "r", encoding="utf-8") as file:
                 settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
                 return StackSettings._deserialize(settings)
         raise FileNotFoundError(f"failed to find stack settings file in workdir: {self.work_dir}")
@@ -143,7 +143,7 @@ class LocalWorkspace(Workspace):
                 found_ext = ext
                 break
         path = os.path.join(self.work_dir, f"Pulumi.{stack_settings_name}{found_ext}")
-        with open(path, "w") as file:
+        with open(path, "w", encoding="utf-8") as file:
             if found_ext == ".json":
                 json.dump(settings._serialize(), file, indent=4)
             else:
@@ -490,7 +490,7 @@ def _load_project_settings(work_dir: str) -> ProjectSettings:
         project_path = os.path.join(work_dir, f"Pulumi{ext}")
         if not os.path.exists(project_path):
             continue
-        with open(project_path, "r") as file:
+        with open(project_path, "r", encoding="utf-8") as file:
             settings = json.load(file) if ext == ".json" else yaml.safe_load(file)
             return ProjectSettings(**settings)
     raise FileNotFoundError(f"failed to find project settings file in workdir: {work_dir}")

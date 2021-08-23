@@ -642,13 +642,13 @@ def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
     filepath = os.path.join(log_dir.name, "eventlog.txt")
 
     # Open and close the file to ensure it exists before we start polling for logs
-    with open(filepath, "w+"):
+    with open(filepath, "w+", encoding="utf-8"):
         pass
     return filepath, log_dir
 
 
 def _watch_logs(filename: str, callback: OnEvent):
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
         while True:
             line = f.readline()
 
