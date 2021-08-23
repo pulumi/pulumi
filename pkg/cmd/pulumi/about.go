@@ -322,10 +322,7 @@ func getCurrentStackAbout(b backend.Backend) (currentStackAbout, error) {
 		return currentStackAbout{}, err
 	}
 	if stack == nil {
-		return currentStackAbout{}, errors.New("stack is nil")
-	}
-	if stack.Ref() == nil {
-		return currentStackAbout{}, errors.New("Stack.Ref() is nil")
+		return currentStackAbout{}, errors.New("No current stack")
 	}
 	name := stack.Ref().String()
 	var snapshot *deploy.Snapshot
@@ -388,7 +385,7 @@ func (current currentStackAbout) String() string {
 			Rows:    rows,
 		}.String() + "\n"
 	}
-	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s\n", current.Name, resources, pending)
+	return fmt.Sprintf("Current Stack: %s\n\n%s\n%s", current.Name, resources, pending)
 }
 
 func simpleTableRows(arr [][]string) []cmdutil.TableRow {
@@ -451,19 +448,20 @@ func (cli cliAbout) String() string {
 func formatLogAbout() string {
 	logDir := flag.Lookup("log_dir")
 	if logDir != nil && logDir.Value.String() != "" {
-		return fmt.Sprintf("Pulumi locates its logs in %s\n", logDir)
+		return fmt.Sprintf("Pulumi locates its logs in %s", logDir)
 	} else if runtime.GOOS != windows {
-		return fmt.Sprintf("Pulumi locates its logs in $TEMPDIR by default\n")
+		return fmt.Sprintf("Pulumi locates its logs in $TEMPDIR by default")
 	} else {
 		// TODO: Find out
-		return string(errors.New("I don't know where the logs are on windows\n").Error())
+		return string("I don't know where the logs are on windows")
 	}
 }
 
 type projectRuntimeAbout struct {
 	Language   string `json:"language"`
 	Executable string `json:"executable"`
-	Version    string `json:"version"`
+	// We want Version to conform to the semvar format: v0.0.0
+	Version string `json:"version"`
 }
 
 func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error) {
@@ -530,7 +528,8 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 }
 
 func (runtime projectRuntimeAbout) String() string {
-	return fmt.Sprintf("This project is a %s project (%s %s)\n", runtime.Language, runtime.Executable, runtime.Version)
+	return fmt.Sprintf("This project is written in %s (%s %s)\n",
+		runtime.Language, runtime.Executable, runtime.Version)
 }
 
 // This is necessary because dotnet invokes build during the call to
