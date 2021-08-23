@@ -41,14 +41,6 @@ func readSchemaFile(file string) (pkgSpec PackageSpec) {
 	return pkgSpec
 }
 
-func TestRefPathRegex(t *testing.T) {
-	path := []byte("/azure-native/v1.22.0/schema.json")
-	assert.True(t, refPathRegex.Match(path), "Hyphens are allowed in paths.")
-	path = []byte("/aws/v4.0.0/schema.json")
-	assert.True(t, refPathRegex.Match(path), "Hyphens are not required though.")
-
-}
-
 func TestImportSpec(t *testing.T) {
 	// Read in, decode, and import the schema.
 	pkgSpec := readSchemaFile("kubernetes.json")
@@ -316,6 +308,17 @@ func Test_parseTypeSpecRef(t *testing.T) {
 				Version: toVersionPtr("2.6.3"),
 				Kind:    "provider",
 				Token:   "pulumi:providers:kubernetes",
+			},
+		},
+		{
+			name: "hyphenatedUrlPath",
+			ref:  "/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp",
+			want: typeSpecRef{
+				URL:     toURL("/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp"),
+				Package: "azure-native",
+				Version: toVersionPtr("1.22.0"),
+				Kind:    "resources",
+				Token:   "azure-native:web:WebApp",
 			},
 		},
 	}
