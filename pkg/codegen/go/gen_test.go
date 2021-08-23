@@ -1,6 +1,14 @@
 package gen
 
 import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os/exec"
+	"path/filepath"
+	"sort"
+	"strings"
 	"sync"
 	"testing"
 
@@ -248,5 +256,90 @@ func TestEnumUsage(t *testing.T) {
 			wg.Wait()
 			return nil
 		}, pulumi.WithMocks("project", "stack", mocks(1))))
+	})
+}
+
+func TestGenerateOutputFuncs(t *testing.T) {
+	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
+
+	files, err := ioutil.ReadDir(testDir)
+	if err != nil {
+		assert.NoError(t, err)
+		return
+	}
+
+	var examples []string
+	for _, f := range files {
+		name := f.Name()
+		if strings.HasSuffix(name, ".json") {
+			examples = append(examples, strings.TrimSuffix(name, ".json"))
+		}
+	}
+
+	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
+
+	gen := func(reader io.Reader, writer io.Writer) error {
+		var pkgSpec schema.PackageSpec
+		err := json.NewDecoder(reader).Decode(&pkgSpec)
+		if err != nil {
+			return err
+		}
+		pkg, err := schema.ImportSpec(pkgSpec, nil)
+		if err != nil {
+			return err
+		}
+
+		tool := "tool"
+		var goPkgInfo GoPackageInfo
+		if goInfo, ok := pkg.Language["go"].(GoPackageInfo); ok {
+			goPkgInfo = goInfo
+		}
+		pkgContexts := generatePackageContextMap(tool, pkg, goPkgInfo)
+
+		var pkgContext *pkgContext
+
+		for _, c := range pkgContexts {
+			if len(c.functionNames) == 1 {
+				pkgContext = c
+			}
+		}
+
+		if pkgContext == nil {
+			return fmt.Errorf("Cannot find a package with 1 function in generatePackageContextMap result")
+		}
+
+		fun := pkg.Functions[0]
+		_, err = writer.Write([]byte(pkgContext.genFunctionCodeFile(fun)))
+		return err
+
+	}
+
+	for _, ex := range examples {
+		t.Run(ex, func(t *testing.T) {
+			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
+			expectedOutputFile := filepath.Join(testDir, "go", fmt.Sprintf("%s.go", ex))
+			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
+		})
+	}
+
+	goDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs", "go")
+
+	t.Run("compileGeneratedCode", func(t *testing.T) {
+		t.Logf("cd %s && go mod tidy", goDir)
+		cmd := exec.Command("go", "mod", "tidy")
+		cmd.Dir = goDir
+		assert.NoError(t, cmd.Run())
+
+		t.Logf("cd %s && go build .", goDir)
+		cmd = exec.Command("go", "build", ".")
+		cmd.Dir = goDir
+		assert.NoError(t, cmd.Run())
+	})
+
+	t.Run("testGeneratedCode", func(t *testing.T) {
+		t.Logf("cd %s && go test .", goDir)
+		cmd := exec.Command("go", "test", ".")
+		cmd.Dir = goDir
+		assert.NoError(t, cmd.Run())
 	})
 }

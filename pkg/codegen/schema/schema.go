@@ -2439,3 +2439,29 @@ func jsonMarshal(v interface{}) ([]byte, error) {
 	}
 	return b.Bytes(), nil
 }
+
+// Determines if codegen should emit a ${fn}Output version that
+// automatically accepts Inputs and returns Outputs.
+func (fun *Function) NeedsOutputVersion() bool {
+
+	// Skip functions that return no value. Arguably we could
+	// support them and return `Task`, but there are no such
+	// functions in `pulumi-azure-native` or `pulumi-aws` so we
+	// omit to simplify.
+	if fun.Outputs == nil {
+		return false
+	}
+
+	// Skip functions that have no inputs. The user can simply
+	// lift the `Task` to `Output` manually.
+	if fun.Inputs == nil {
+		return false
+	}
+
+	// No properties is kind of like no inputs.
+	if len(fun.Inputs.Properties) == 0 {
+		return false
+	}
+
+	return true
+}
