@@ -445,11 +445,8 @@ func formatLogAbout() string {
 	logDir := flag.Lookup("log_dir")
 	if logDir != nil && logDir.Value.String() != "" {
 		return fmt.Sprintf("Pulumi locates its logs in %s", logDir)
-	} else if runtime.GOOS != "windows" {
-		return fmt.Sprintf("Pulumi locates its logs in $TEMPDIR by default")
 	} else {
-		// TODO: Find out
-		return string("Pulumi locates its logs in UNKNOWN by default")
+		return fmt.Sprintf("Pulumi locates its logs in %s by default", os.TempDir())
 	}
 }
 
