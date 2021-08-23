@@ -1228,6 +1228,16 @@ func (mod *modContext) genFunctionFileCode(f *schema.Function) (string, error) {
 	return buffer.String(), nil
 }
 
+func allOptionalInputs(fun *schema.Function) bool {
+	allOptional := true
+	if fun.Inputs != nil {
+		for _, prop := range fun.Inputs.Properties {
+			allOptional = allOptional && !prop.IsRequired()
+		}
+	}
+	return allOptional
+}
+
 func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 	className := tokenToFunctionName(fun.Token)
 
@@ -1239,22 +1249,16 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		typeParameter = fmt.Sprintf("<%sResult>", className)
 	}
 
-	var argsParamDef, outputArgsParamDef string
+	var argsParamDef string
 	argsParamRef := "InvokeArgs.Empty"
 	if fun.Inputs != nil {
-		allOptionalInputs := true
-		for _, prop := range fun.Inputs.Properties {
-			allOptionalInputs = allOptionalInputs && !prop.IsRequired()
-		}
-
 		var argsDefault, sigil string
-		if allOptionalInputs {
+		if allOptionalInputs(fun) {
 			// If the number of required input properties was zero, we can make the args object optional.
 			argsDefault, sigil = " = null", "?"
 		}
 
 		argsParamDef = fmt.Sprintf("%sArgs%s args%s, ", className, sigil, argsDefault)
-		outputArgsParamDef = fmt.Sprintf("%sOutputArgs%s args%s, ", className, sigil, argsDefault)
 		argsParamRef = fmt.Sprintf("args ?? new %sArgs()", className)
 	}
 
@@ -1323,10 +1327,13 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 
 // Generates `${fn}Output(..)` version lifted to work on
 // `Input`-warpped arguments and producing an `Output`-wrapped result.
-func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function, outputArgsParamDef string) error {
+func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Function) error {
 	if !fun.NeedsOutputVersion() {
 		return nil
 	}
+
+	var outputArgsParamDef string
+	outputArgsParamDef = fmt.Sprintf("%sOutputArgs%s args%s, ", className, sigil, argsDefault)
 
 	className := tokenToFunctionName(fun.Token)
 
