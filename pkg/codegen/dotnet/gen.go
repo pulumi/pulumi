@@ -1279,7 +1279,7 @@ func (mod *modContext) genFunction(w io.Writer, fun *schema.Function) error {
 		typeParameter, fun.Token, argsParamRef)
 
 	// Emit the Output method if needed.
-	err := mod.genFunctionOutputVersion(w, fun, outputArgsParamDef)
+	err := mod.genFunctionOutputVersion(w, fun)
 	if err != nil {
 		return err
 	}
@@ -1331,11 +1331,16 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 	if !fun.NeedsOutputVersion() {
 		return nil
 	}
+	className := tokenToFunctionName(fun.Token)
+
+	var argsDefault, sigil string
+	if allOptionalInputs(fun) {
+		// If the number of required input properties was zero, we can make the args object optional.
+		argsDefault, sigil = " = null", "?"
+	}
 
 	var outputArgsParamDef string
 	outputArgsParamDef = fmt.Sprintf("%sOutputArgs%s args%s, ", className, sigil, argsDefault)
-
-	className := tokenToFunctionName(fun.Token)
 
 	fmt.Fprintf(w, "\n")
 	fmt.Fprintf(w, "        public static Output<%sResult> Invoke(%sInvokeOptions? options = null)\n",
