@@ -118,8 +118,8 @@ func TestGenerateOutputFuncsPython(t *testing.T) {
 			return err
 		}
 
-		writer.Write([]byte(funcCode))
-		return nil
+		_, err = writer.Write([]byte(funcCode))
+		return err
 	}
 
 	outputDir := filepath.Join(testDir, "py_tests")
@@ -167,7 +167,7 @@ func TestGenerateOutputFuncsPython(t *testing.T) {
 		for _, command := range commands {
 			t.Logf("cd %s && %s", outputDir, command)
 			cmdParts := strings.Split(command, " ")
-			cmd := exec.Command(cmdParts[0], cmdParts[1:]...)
+			cmd := exec.Command(cmdParts[0], cmdParts[1:]...) // #nosec G204
 			cmd.Dir = outputDir
 			err := cmd.Run()
 			require.NoError(t, err)
