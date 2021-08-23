@@ -37,7 +37,7 @@ require (
 	github.com/pulumi/pulumi/sdk/v3 v3.3.1
 	github.com/rjeczalik/notify v0.9.2
 	github.com/sergi/go-diff v1.1.0
-	github.com/shirou/gopsutil v3.21.7+incompatible // indirect
+	github.com/shirou/gopsutil v3.21.7+incompatible
 	github.com/shurcooL/httpfs v0.0.0-20190707220628-8d4bc4ba7749 // indirect
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
