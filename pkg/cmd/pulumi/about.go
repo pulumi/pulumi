@@ -422,14 +422,19 @@ func formatProgramDependenciesAbout(language, root string) (string, error) {
 }
 
 type cliAbout struct {
-	Version    semver.Version `json:"version"`
-	GoVersion  string         `json:"goVersion"`
-	GoCompiler string         `json:"goCompiler"`
+	Version    *semver.Version `json:"version"`
+	GoVersion  string          `json:"goVersion"`
+	GoCompiler string          `json:"goCompiler"`
 }
 
 func getCLIAbout() cliAbout {
+	var ver semver.Version
+	// Version is not supplied in test builds.
+	if version.Version != "" {
+		ver = semver.MustParse(version.Version)
+	}
 	return cliAbout{
-		Version:    semver.MustParse(version.Version),
+		Version:    &ver,
 		GoVersion:  runtime.Version(),
 		GoCompiler: runtime.Compiler,
 	}
