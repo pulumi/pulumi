@@ -146,15 +146,18 @@ func TestDeterminePluginVersion(t *testing.T) {
 func TestDeterminePulumiPackages(t *testing.T) {
 	t.Run("empty", func(t *testing.T) {
 		cwd := t.TempDir()
-		runPythonCommand("", cwd, "-m", "venv", "venv")
+		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
 		packages, err := determinePulumiPackages("venv", cwd)
 		assert.NoError(t, err)
 		assert.Empty(t, packages)
 	})
 	t.Run("non-empty", func(t *testing.T) {
 		cwd := t.TempDir()
-		runPythonCommand("", cwd, "-m", "venv", "venv")
-		runPythonCommand("venv", cwd, "-m", "pip", "install", "pulumi-random")
+		_, err := runPythonCommand("", cwd, "-m", "venv", "venv")
+		assert.NoError(t, err)
+		_, err = runPythonCommand("venv", cwd, "-m", "pip", "install", "pulumi-random")
+		assert.NoError(t, err)
 		packages, err := determinePulumiPackages("venv", cwd)
 		assert.NoError(t, err)
 		assert.NotEmpty(t, packages)
