@@ -24,6 +24,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -332,9 +333,12 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 		return nil, err
 	}
 
-	// Parse the JSON output.
+	// Parse the JSON output; on some systems pip -v verbose mode
+	// follows JSON with non-JSON trailer, so we need to be
+	// careful when parsing and ignore the trailer.
 	var packages []pythonPackage
-	if err := json.Unmarshal(output, &packages); err != nil {
+	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
+	if err := jsonDecoder.Decode(&packages); err != nil {
 		return nil, errors.Wrapf(err, "parsing `python %s` output", strings.Join(args, " "))
 	}
 

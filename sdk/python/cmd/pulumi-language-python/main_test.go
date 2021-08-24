@@ -142,3 +142,25 @@ func TestDeterminePluginVersion(t *testing.T) {
 		})
 	}
 }
+
+func TestDeterminePulumiPackages(t *testing.T) {
+	t.Run("empty", func(t *testing.T) {
+		cwd := t.TempDir()
+		runPythonCommand("", cwd, "-m", "venv", "venv")
+		packages, err := determinePulumiPackages("venv", cwd)
+		assert.NoError(t, err)
+		assert.Empty(t, packages)
+	})
+	t.Run("non-empty", func(t *testing.T) {
+		cwd := t.TempDir()
+		runPythonCommand("", cwd, "-m", "venv", "venv")
+		runPythonCommand("venv", cwd, "-m", "pip", "install", "pulumi-random")
+		packages, err := determinePulumiPackages("venv", cwd)
+		assert.NoError(t, err)
+		assert.NotEmpty(t, packages)
+		assert.Equal(t, 1, len(packages))
+		random := packages[0]
+		assert.Equal(t, "pulumi-random", random.Name)
+		assert.NotEmpty(t, random.Location)
+	})
+}
