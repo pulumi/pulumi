@@ -40,7 +40,7 @@ func TestAboutCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
-		stacks, currentStack := integration.GetStacks(e)
+		_, currentStack := integration.GetStacks(e)
 		stdout, stderr := e.RunCommand("pulumi", "about", "--json")
 		assert.Empty(t, stderr, "We shouldn't print anything to stderr")
 		var res interface{}
