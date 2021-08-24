@@ -1,5 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation.
-// pts
+//
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -58,15 +58,8 @@ func TestBackend(t *testing.T) {
 	}
 	backend, err := getHostAbout()
 	assert.Nil(t, err, "We should be able to get stats here")
-	display := []byte(backend.String())
-	var match bool
-	match, err = regexp.Match(stats.Platform, display)
-	assert.Nil(t, err, "This should be a valid regex")
-	assert.True(t, match, "we should display the OS")
-	match, err = regexp.Match(stats.PlatformVersion, display)
-	assert.Nil(t, err, "This should be a valid regex")
-	assert.True(t, match, "we should display the OS Version")
-	match, err = regexp.Match(stats.KernelArch, display)
-	assert.Nil(t, err, "This should be a valid regex")
-	assert.True(t, match, "we should display the Arch")
+	display := backend.String()
+	assert.Contains(stats.Platform, display, "This should be a valid regex")
+	assert.Contains(stats.PlatformVersion, display, "This should be a valid regex")
+	assert.Contains(stats.KernelArch, display, "This should be a valid regex")
 }

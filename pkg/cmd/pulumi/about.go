@@ -16,11 +16,12 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"os"
 	"os/exec"
-	"path/filepath"
+	"path"
 	"runtime"
 	"sort"
 	"strings"
@@ -47,6 +48,7 @@ const (
 	langPython = "python"
 	langNodejs = "nodejs"
 	langDotnet = "dotnet"
+	langGo     = "go"
 )
 
 func newAboutCmd() *cobra.Command {
@@ -86,37 +88,42 @@ type summaryAbout struct {
 	// We use pointers here to allow the field to be nullable. When
 	// constructing, we either fill in a field or add an error. We still
 	// indicate that the field should be present when we serialize the struct.
-	Plugins           []pluginAbout        `json:"plugins"`
-	Host              *hostAbout           `json:"host"`
-	Backend           *backendAbout        `json:"backend"`
-	CurrentStack      *currentStackAbout   `json:"currentStack"`
-	CLI               *cliAbout            `json:"cliAbout"`
-	Runtime           *projectRuntimeAbout `json:"runtime"`
-	Errors            []error              `json:"errors"`
-	logMessage        string
-	dependencyMessage string
+	Plugins       []pluginAbout             `json:"plugins"`
+	Host          *hostAbout                `json:"host"`
+	Backend       *backendAbout             `json:"backend"`
+	CurrentStack  *currentStackAbout        `json:"currentStack"`
+	CLI           *cliAbout                 `json:"cliAbout"`
+	Runtime       *projectRuntimeAbout      `json:"runtime"`
+	Dependencies  []programDependencieAbout `json:"dependencies"`
+	ErrorMessages []string                  `json:"errors"`
+	Errors        []error                   `json:"-"`
+	LogMessage    string                    `json:"-"`
 }
 
 func getSummaryAbout() summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
-		CLI:        &cli,
-		Errors:     []error{},
-		logMessage: formatLogAbout(),
+		CLI:           &cli,
+		Errors:        []error{},
+		ErrorMessages: []string{},
+		LogMessage:    formatLogAbout(),
 	}
 	var plugins []pluginAbout
-	if plugins, err = getPluginsAbout(); err != nil {
-		err = errors.Wrap(err, "Failed to get information about the plugin")
+	addError := func(err error, message string) {
+		err = errors.Wrap(err, message)
+		result.ErrorMessages = append(result.ErrorMessages, err.Error())
 		result.Errors = append(result.Errors, err)
+	}
+	if plugins, err = getPluginsAbout(); err != nil {
+		addError(err, "Failed to get information about the plugin")
 	} else {
 		result.Plugins = plugins
 	}
 
 	var host hostAbout
 	if host, err = getHostAbout(); err != nil {
-		err = errors.Wrap(err, "Failed to get information about the host")
-		result.Errors = append(result.Errors, err)
+		addError(err, "Failed to get information about the host")
 	} else {
 		result.Host = &host
 	}
@@ -124,35 +131,29 @@ func getSummaryAbout() summaryAbout {
 	var proj *workspace.Project
 	var pwd string
 	if proj, pwd, err = readProject(); err != nil {
-		err = errors.Wrap(err, "Failed to read project")
-		result.Errors = append(result.Errors, err)
+		addError(err, "Failed to read project")
 	} else {
 		var runtime projectRuntimeAbout
 		if runtime, err = getProjectRuntimeAbout(proj); err != nil {
-			err = errors.Wrap(err, "Failed to get information about the project runtime")
-			result.Errors = append(result.Errors, err)
+			addError(err, "Failed to get information about the project runtime")
 		} else {
 			result.Runtime = &runtime
 		}
-		var depMsg string
-		if depMsg, err = formatProgramDependenciesAbout(proj.Runtime.Name(), pwd); err != nil {
-			err = errors.Wrap(err, "Failed to get information about the Puluimi program's plugins")
-			result.Errors = append(result.Errors, err)
+		if deps, err := getProgramDependenciesAbout(proj.Runtime.Name(), pwd); err != nil {
+			addError(err, "Failed to get information about the Puluimi program's plugins")
 		} else {
-			result.dependencyMessage = depMsg
+			result.Dependencies = deps
 		}
 	}
 
 	var backend backend.Backend
 	backend, err = currentBackend(display.Options{Color: cmdutil.GetGlobalColorization()})
 	if err != nil {
-		err = errors.Wrapf(err, "Could not access the backend")
-		result.Errors = append(result.Errors, err)
+		addError(err, "Could not access the backend")
 	} else {
 		var stack currentStackAbout
 		if stack, err = getCurrentStackAbout(backend); err != nil {
-			err = errors.Wrap(err, "Failed to get information about the current stack")
-			result.Errors = append(result.Errors, err)
+			addError(err, "Failed to get information about the current stack")
 		} else {
 			result.CurrentStack = &stack
 		}
@@ -180,10 +181,10 @@ func (summary *summaryAbout) Print() {
 	if summary.Backend != nil {
 		fmt.Println(summary.Backend)
 	}
-	if summary.dependencyMessage != "" {
-		fmt.Println(summary.dependencyMessage)
+	if summary.Dependencies != nil {
+		fmt.Println(formatProgramDependenciesAbout(summary.Dependencies))
 	}
-	fmt.Println(summary.logMessage)
+	fmt.Println(summary.LogMessage)
 	for _, err := range summary.Errors {
 		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
 	}
@@ -399,26 +400,230 @@ func simpleTableRows(arr [][]string) []cmdutil.TableRow {
 	return rows
 }
 
-// This does not have an associated struct. It also does not make sense to
-// serialize.
-func formatProgramDependenciesAbout(language, root string) (string, error) {
-	var depInfo string
-	switch language {
-	case langNodejs:
-		depInfo = "package.json"
-	case langPython:
-		depInfo = "requirements.txt"
-	case "go":
-		depInfo = "go.mod"
-	case langDotnet:
-		return fmt.Sprintf("Please include the result of \"dotnet list package\""), nil
-	default:
-		return "", errors.New(fmt.Sprintf("Unknown Language: %s", language))
+type programDependencieAbout struct {
+	Name    string `json:"name"`
+	Version string `json:"version"`
+}
+
+func getGoProgramDependencies() ([]programDependencieAbout, error) {
+	// go list -m ...
+	//
+	//Go has a --json flag, but it doesn't emit a single json object (which
+	//makes it invalid json).
+	ex, err := executable.FindExecutable("go")
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(ex, "list", "--json", "-m", "...")
+	var out []byte
+	if out, err = cmd.Output(); err != nil {
+		return nil, errors.Wrap(err, "Failed to get modules")
+	}
+	validJson := "[" + strings.ReplaceAll(string(out), "}\n{", "},\n{") + "]"
+	var parsed = []struct {
+		Path     string
+		Version  string
+		Time     string
+		Indirect bool
+		Dir      string
+		GoMod    string
+		Main     bool
+	}{}
+	if err = json.Unmarshal([]byte(validJson), &parsed); err != nil {
+		return nil, errors.Wrapf(err, "Failed to parse \"%s list --json -m ...\" output", ex)
 	}
 
-	path := filepath.Join(root, depInfo)
+	result := []programDependencieAbout{}
+	for _, d := range parsed {
+		if !d.Indirect && !d.Main {
+			datum := programDependencieAbout{
+				Name:    d.Path,
+				Version: d.Version,
+			}
+			result = append(result, datum)
+		}
+	}
+	return result, nil
+}
 
-	return fmt.Sprintf("Please include the contents of \"%s\" in your report.\n", path), nil
+func getPythonProgramDependencies(rootDir string) ([]programDependencieAbout, error) {
+	// ./venv/bin/python3.9 -m pip list --format=json
+	binDir := "bin"
+	if runtime.GOOS == "windows" {
+		binDir = "Scripts"
+	}
+	// venv makes the link to "python", so this works on windows and mac.
+	ex := path.Join(rootDir, "venv", binDir, "python")
+	cmd := exec.Command(ex, "-m", "pip", "list", "--format=json")
+	var out []byte
+	var err error
+	if out, err = cmd.Output(); err != nil {
+		return nil, errors.Wrap(err, "Failed to call python")
+	}
+	var result []programDependencieAbout
+	err = json.Unmarshal(out, &result)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to parse \"python -m pip list --format=json\" result")
+	}
+
+	return result, nil
+}
+
+func getDotNetProgramDependencies() ([]programDependencieAbout, error) {
+	// dotnet list package
+	var err error
+	var ex string
+	var out []byte
+	ex, err = executable.FindExecutable("dotnet")
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command(ex, "list", "package")
+	if out, err = cmd.Output(); err != nil {
+		return nil, errors.Wrapf(err, "Failed to call \"%s\"", ex)
+	}
+	lines := strings.Split(string(out), "\n")
+	var packages []programDependencieAbout
+
+	for _, p := range lines {
+		p := strings.TrimSpace(p)
+		if strings.HasPrefix(p, ">") {
+			p = strings.TrimPrefix(p, "> ")
+			segments := strings.Split(p, " ")
+			var nameRequiredVersion []string
+			for _, s := range segments {
+				if s != "" {
+					nameRequiredVersion = append(nameRequiredVersion, s)
+				}
+			}
+			if len(nameRequiredVersion) != 3 {
+				return nil, errors.Errorf("Failed to parse \"%s\"", p)
+			}
+			packages = append(packages, programDependencieAbout{
+				Name:    nameRequiredVersion[0],
+				Version: nameRequiredVersion[2],
+			})
+		}
+	}
+	return packages, nil
+}
+
+func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, error) {
+	// Either
+	// yarn list --json --depth=0
+	// if yarn.lock exists
+	// Otherwise
+	// npm ls --json --depth=0
+	var err error
+	yarnFile := path.Join(rootDir, "yarn.lock")
+	npmFile := path.Join(rootDir, "package.json")
+	var ex string
+	var out []byte
+	if _, err = os.Stat(yarnFile); err == nil {
+		ex, err = executable.FindExecutable("yarn")
+		if err != nil {
+			return nil, errors.Wrap(err, "Found yarn.lock but not yarn")
+		}
+		cmd := exec.Command(ex, "list", "--json", "--depth=0")
+		out, err = cmd.Output()
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to run \"%s list --json --depth=0\"", ex)
+		}
+		var output interface{}
+		json.Unmarshal(out, &output)
+		var data interface{}
+		if data = output.(map[string]interface{})["data"]; data == nil {
+			return nil, errors.New("Expected \"data\" in yarn json")
+		}
+		var trees interface{}
+		if trees = data.(map[string]interface{})["trees"]; trees == nil {
+			return nil, errors.New("Expected \"trees\" in yarn json")
+		}
+		var leafs []interface{}
+		if leafs = trees.([]interface{}); leafs == nil {
+			return nil, errors.New("Expected \"trees\" in yarn json")
+		}
+		result := make([]programDependencieAbout, len(leafs))
+		for i, v := range leafs {
+			// TODO: finish parsing
+			leaf := v.(map[string]interface{})
+			// Has the form name@version
+			nameVersion := leaf["name"].(string)
+			if nameVersion == "" {
+				return nil, errors.Errorf("Expected \"name\" in dependency %d", i)
+			}
+			split := strings.LastIndex(nameVersion, "@")
+			if split == -1 {
+				return nil, errors.Errorf("Failed to parse name and version from %s", nameVersion)
+			}
+			result[i].Name = nameVersion[:split]
+			result[i].Version = nameVersion[split+1:]
+		}
+		return result, nil
+	} else if _, err = os.Stat(npmFile); err == nil {
+		ex, err = executable.FindExecutable("npm")
+		if err != nil {
+			return nil, errors.Wrap(err, "Found package.lock but not npm")
+		}
+		cmd := exec.Command(ex, "ls", "--json", "--depth=0")
+		out, err = cmd.Output()
+		if err != nil {
+			return nil, errors.Wrapf(err, "Failed to run \"%s ls --json --depth=0\"", ex)
+		}
+		var output interface{}
+		json.Unmarshal(out, &output)
+		outputMap := output.(map[string]interface{})
+		if outputMap == nil {
+			return nil, errors.Errorf("Failed to parse \"%s ls --json --depth=0\" output", ex)
+		}
+		dependencies := outputMap["dependencies"].(map[string]interface{})
+		if dependencies == nil {
+			return nil, errors.Errorf("Failed to find \"dependencies\" in \"%s ls --json --depth=0\" output", ex)
+		}
+		result := make([]programDependencieAbout, len(dependencies))
+		var i int
+		for k, v := range dependencies {
+			value := v.(map[string]interface{})
+			if value == nil {
+				return nil, errors.Errorf("Failed to convert dependency %s to map", v)
+			}
+			result[i].Name = k
+			result[i].Version = value["version"].(string)
+			i++
+		}
+		return result, nil
+	} else if os.IsNotExist(err) {
+		return nil, errors.Errorf("Could not find either %s or %s", yarnFile, npmFile)
+	}
+	return nil, errors.Wrap(err, "Could not get node dependency data")
+}
+
+func getProgramDependenciesAbout(language, root string) ([]programDependencieAbout, error) {
+	switch language {
+	case langNodejs:
+		return getNodeProgramDependencies(root)
+	case langPython:
+		return getPythonProgramDependencies(root)
+	case langGo:
+		return getGoProgramDependencies()
+	case langDotnet:
+		return getDotNetProgramDependencies()
+	default:
+		return nil, errors.Errorf("Unknown Language: %s", language)
+	}
+}
+
+func formatProgramDependenciesAbout(deps []programDependencieAbout) string {
+	rows := make([]cmdutil.TableRow, len(deps))
+	for i, v := range deps {
+		rows[i] = cmdutil.TableRow{
+			Columns: []string{v.Name, v.Version},
+		}
+	}
+	return cmdutil.Table{
+		Headers: []string{"NAME", "VERSION"},
+		Rows:    rows,
+	}.String()
 }
 
 type cliAbout struct {
@@ -470,6 +675,8 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 	var ex, version string
 	var err error
 	var out []byte
+	// TODO[pulumi/pulumi#1334]: move to the language plugins so we don't have
+	// to hard code here.
 	language := proj.Runtime.Name()
 	switch language {
 	case langNodejs:
@@ -495,7 +702,7 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 			return projectRuntimeAbout{}, errors.Wrap(err, "Failed to get python version")
 		}
 		version = "v" + strings.TrimPrefix(string(out), "Python ")
-	case "go":
+	case langGo:
 		ex, err = executable.FindExecutable("go")
 		if err != nil {
 			return projectRuntimeAbout{}, errors.Wrap(err, "Could not find python executable")
@@ -516,7 +723,7 @@ func getProjectRuntimeAbout(proj *workspace.Project) (projectRuntimeAbout, error
 		}
 		version = "v" + string(out)
 	default:
-		return projectRuntimeAbout{}, errors.New(fmt.Sprintf("Unknown Language: %s", language))
+		return projectRuntimeAbout{}, errors.Errorf("Unknown Language: %s", language)
 	}
 	version = strings.TrimSpace(version)
 	return projectRuntimeAbout{
