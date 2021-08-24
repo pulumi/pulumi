@@ -236,6 +236,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		contract.Failf("unlowered toJSON function expression @ %v", expr.SyntaxNode().Range())
 	case "mimeType":
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
+	case "sha1":
+		g.Fgenf(w, "sha1(%v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
@@ -954,6 +956,7 @@ var functionPackages = map[string][]string{
 	"readFile": {"io/ioutil"},
 	"toBase64": {"encoding/base64"},
 	"toJSON":   {"encoding/json"},
+	"sha1":     {"fmt", "crypto/sha1"},
 }
 
 func (g *generator) genFunctionPackages(x *model.FunctionCallExpression) []string {
