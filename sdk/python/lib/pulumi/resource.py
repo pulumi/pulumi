@@ -24,6 +24,7 @@ from .runtime.resource import get_resource, register_resource, register_resource
     convert_providers
 from .runtime.settings import get_root_resource
 from .output import _is_prompt, _map_input, _map2_input, T, Output
+from . import urn as urn_util
 
 if TYPE_CHECKING:
     from .output import Input, Inputs
@@ -985,12 +986,11 @@ class DependencyProviderResource(ProviderResource):
 
     def __init__(self, ref: str) -> None:
         ref_urn, ref_id = _parse_resource_reference(ref)
-        urn_parts = ref_urn.split("::")
-        qualified_type = urn_parts[2]
-        typ = qualified_type.split("$")[-1]
-        typ_parts = typ.split(":")
-        # typ will be "pulumi:providers:<package>" and we want the last part.
-        pkg = typ_parts[2] if len(typ_parts) > 2 else ""
+        urn_parts = urn_util._parse_urn(ref_urn)
+
+        # `typ` will be `pulumi:providers:<package>` and we want the
+        # last part, which normally parses as `typ_name`.
+        pkg = urn_parts.typ_name
 
         super().__init__(pkg=pkg, name="", props={}, opts=None, dependency=True)
 

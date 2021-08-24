@@ -26,6 +26,7 @@ from .rpc_manager import RPC_MANAGER
 from .settings import handle_grpc_error
 from ..output import Output
 from .. import _types
+from .. import urn as urn_util
 
 
 if TYPE_CHECKING:
@@ -194,9 +195,8 @@ def get_resource(res: 'Resource',
     transform_using_type_metadata = typ is not None
 
     # Extract the resource type from the URN.
-    urn_parts = urn.split("::")
-    qualified_type = urn_parts[2]
-    ty = qualified_type.split("$")[-1]
+    urn_parts = urn_util._parse_urn(urn)
+    ty = urn_parts.typ
 
     # Initialize the URN property on the resource.
     (resolve_urn, res.__dict__["urn"]) = resource_output(res)
