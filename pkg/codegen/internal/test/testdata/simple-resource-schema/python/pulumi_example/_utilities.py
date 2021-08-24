@@ -8,6 +8,7 @@ import os
 import sys
 import importlib.util
 import pkg_resources
+import typing
 
 import pulumi
 import pulumi.runtime
@@ -209,3 +210,17 @@ def register(resource_modules, resource_packages):
             mod_info['pkg'],
             mod_info['mod'],
             Module(mod_info))
+
+
+_F = typing.TypeVar('_F', bound=typing.Callable[..., typing.Any])
+
+
+def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
+    """Decorator internally used on {fn}_output lifted function versions
+    to implement them automatically from the un-lifted function."""
+
+    fn: typing.Any = lambda _: lambda opts=None, **kw: \
+        pulumi.Output.all(**kw).apply(
+            lambda d: func(opts=opts, **(d or {})))
+
+    return fn
