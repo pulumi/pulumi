@@ -42,6 +42,10 @@ def func_with_all_optional_inputs(a: Optional[str] = None,
                                   opts: Optional[pulumi.InvokeOptions] = None) -> AwaitableFuncWithAllOptionalInputsResult:
     """
     Check codegen of functions with all optional inputs.
+
+
+    :param str a: Property A
+    :param str b: Property B
     """
     __args__ = dict()
     __args__['a'] = a
