@@ -382,6 +382,21 @@ func TestRuntimeErrorPython(t *testing.T) {
 		t.FailNow()
 	}
 
+	pySDK, err := filepath.Abs(filepath.Join("..", "..", "..", "sdk", "python", "env", "src"))
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
+
+	// install Pulumi Python SDK from the current source tree, -e means no-copy, ref directly
+	pyCmd := python.VirtualEnvCommand(filepath.Join(pDir, "venv"), "python", "-m", "pip", "install", "-e", pySDK)
+	pyCmd.Dir = pDir
+	err = pyCmd.Run()
+	if err != nil {
+		t.Errorf("failed to link venv against in-source pulumi: %v", err)
+		t.FailNow()
+	}
+
 	s, err := NewStackLocalSource(ctx, stackName, pDir)
 	if err != nil {
 		t.Errorf("failed to initialize stack, err: %v", err)
