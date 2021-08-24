@@ -29,6 +29,7 @@ import six
 from . import known_types, settings
 from .. import log
 from .. import _types
+from .. import urn as urn_util
 
 if TYPE_CHECKING:
     from ..output import Inputs, Input, Output
@@ -399,15 +400,12 @@ def deserialize_resource(ref_struct: struct_pb2.Struct, keep_unknowns: Optional[
     urn = ref_struct["urn"]
     version = ref_struct["packageVersion"] if "packageVersion" in ref_struct else ""
 
-    urn_parts = urn.split("::")
-    urn_name = urn_parts[3]
-    qualified_type = urn_parts[2]
-    typ = qualified_type.split("$")[-1]
-
-    typ_parts = typ.split(":")
-    pkg_name = typ_parts[0]
-    mod_name = typ_parts[1] if len(typ_parts) > 1 else ""
-    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
+    urn_parts = urn_util._parse_urn(urn)
+    urn_name = urn_parts.urn_name
+    typ = urn_parts.typ
+    pkg_name = urn_parts.pkg_name
+    mod_name = urn_parts.mod_name
+    typ_name = urn_parts.typ_name
 
     is_provider = pkg_name == "pulumi" and mod_name == "providers"
     if is_provider:
@@ -881,7 +879,7 @@ class ResourcePackage(ABC):
         pass
 
 
-_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = dict()
+_RESOURCE_PACKAGES: Dict[str, List[ResourcePackage]] = {}
 
 
 def register_resource_package(pkg: str, package: ResourcePackage):
@@ -922,7 +920,7 @@ class ResourceModule(ABC):
         pass
 
 
-_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = dict()
+_RESOURCE_MODULES: Dict[str, List[ResourceModule]] = {}
 
 
 def _module_key(pkg: str, mod: str) -> str:

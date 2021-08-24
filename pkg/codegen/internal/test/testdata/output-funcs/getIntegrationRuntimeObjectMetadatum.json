@@ -1,0 +1,348 @@
+{
+  "functions": {
+    "azure-native:codegentest:getIntegrationRuntimeObjectMetadatum": {
+      "description": "A list of SSIS object metadata.\nAPI Version: 2018-06-01.",
+      "inputs": {
+        "properties": {
+          "factoryName": {
+            "type": "string",
+            "description": "The factory name."
+          },
+          "integrationRuntimeName": {
+            "type": "string",
+            "description": "The integration runtime name."
+          },
+          "metadataPath": {
+            "type": "string",
+            "description": "Metadata path."
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "The resource group name."
+          }
+        },
+        "type": "object",
+        "required": [
+          "factoryName",
+          "integrationRuntimeName",
+          "resourceGroupName"
+        ]
+      },
+      "outputs": {
+        "description": "A list of SSIS object metadata.",
+        "properties": {
+          "nextLink": {
+            "type": "string",
+            "description": "The link to the next page of results, if any remaining results exist."
+          },
+          "value": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                {
+                  "type": "object",
+                  "$ref": "#/types/azure-native:codegentest:SsisEnvironmentResponse"
+                },
+                {
+                  "type": "object",
+                  "$ref": "#/types/azure-native:codegentest:SsisFolderResponse"
+                },
+                {
+                  "type": "object",
+                  "$ref": "#/types/azure-native:codegentest:SsisPackageResponse"
+                },
+                {
+                  "type": "object",
+                  "$ref": "#/types/azure-native:codegentest:SsisProjectResponse"
+                }
+              ],
+              "discriminator": {
+                "propertyName": "type",
+                "mapping": {
+                  "Environment": "#/types/azure-native:codegentest:SsisEnvironmentResponse",
+                  "Folder": "#/types/azure-native:codegentest:SsisFolderResponse",
+                  "Package": "#/types/azure-native:codegentest:SsisPackageResponse",
+                  "Project": "#/types/azure-native:codegentest:SsisProjectResponse"
+                }
+              }
+            },
+            "description": "List of SSIS object metadata."
+          }
+        },
+        "type": "object"
+      }
+    }
+  },
+  "types": {
+    "azure-native:codegentest:SsisEnvironmentResponse": {
+      "description": "Ssis environment.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Folder id which contains environment."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Environment'.",
+          "const": "Environment"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/azure-native:codegentest:SsisVariableResponse"
+          },
+          "description": "Variable in environment"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "azure-native:codegentest:SsisFolderResponse": {
+      "description": "Ssis folder.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Folder'.",
+          "const": "Folder"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "azure-native:codegentest:SsisPackageResponse": {
+      "description": "Ssis Package.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Folder id which contains package."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/azure-native:codegentest:SsisParameterResponse"
+          },
+          "description": "Parameters in package"
+        },
+        "projectId": {
+          "type": "number",
+          "description": "Project id which contains package."
+        },
+        "projectVersion": {
+          "type": "number",
+          "description": "Project version which contains package."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Package'.",
+          "const": "Package"
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "azure-native:codegentest:SsisProjectResponse": {
+      "description": "Ssis project.",
+      "properties": {
+        "description": {
+          "type": "string",
+          "description": "Metadata description."
+        },
+        "environmentRefs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/azure-native:codegentest:SsisEnvironmentReferenceResponse"
+          },
+          "description": "Environment reference in project"
+        },
+        "folderId": {
+          "type": "number",
+          "description": "Folder id which contains project."
+        },
+        "id": {
+          "type": "number",
+          "description": "Metadata id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Metadata name."
+        },
+        "parameters": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "$ref": "#/types/azure-native:codegentest:SsisParameterResponse"
+          },
+          "description": "Parameters in project"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of SSIS object metadata.\nExpected value is 'Project'.",
+          "const": "Project"
+        },
+        "version": {
+          "type": "number",
+          "description": "Project version."
+        }
+      },
+      "type": "object",
+      "required": [
+        "type"
+      ]
+    },
+    "azure-native:codegentest:SsisEnvironmentReferenceResponse": {
+      "description": "Ssis environment reference.",
+      "properties": {
+        "environmentFolderName": {
+          "type": "string",
+          "description": "Environment folder name."
+        },
+        "environmentName": {
+          "type": "string",
+          "description": "Environment name."
+        },
+        "id": {
+          "type": "number",
+          "description": "Environment reference id."
+        },
+        "referenceType": {
+          "type": "string",
+          "description": "Reference type"
+        }
+      },
+      "type": "object"
+    },
+    "azure-native:codegentest:SsisParameterResponse": {
+      "description": "Ssis parameter.",
+      "properties": {
+        "dataType": {
+          "type": "string",
+          "description": "Parameter type."
+        },
+        "defaultValue": {
+          "type": "string",
+          "description": "Default value of parameter."
+        },
+        "description": {
+          "type": "string",
+          "description": "Parameter description."
+        },
+        "designDefaultValue": {
+          "type": "string",
+          "description": "Design default value of parameter."
+        },
+        "id": {
+          "type": "number",
+          "description": "Parameter id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Parameter name."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Whether parameter is required."
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Whether parameter is sensitive."
+        },
+        "sensitiveDefaultValue": {
+          "type": "string",
+          "description": "Default sensitive value of parameter."
+        },
+        "valueSet": {
+          "type": "boolean",
+          "description": "Parameter value set."
+        },
+        "valueType": {
+          "type": "string",
+          "description": "Parameter value type."
+        },
+        "variable": {
+          "type": "string",
+          "description": "Parameter reference variable."
+        }
+      },
+      "type": "object"
+    },
+    "azure-native:codegentest:SsisVariableResponse": {
+      "description": "Ssis variable.",
+      "properties": {
+        "dataType": {
+          "type": "string",
+          "description": "Variable type."
+        },
+        "description": {
+          "type": "string",
+          "description": "Variable description."
+        },
+        "id": {
+          "type": "number",
+          "description": "Variable id."
+        },
+        "name": {
+          "type": "string",
+          "description": "Variable name."
+        },
+        "sensitive": {
+          "type": "boolean",
+          "description": "Whether variable is sensitive."
+        },
+        "sensitiveValue": {
+          "type": "string",
+          "description": "Variable sensitive value."
+        },
+        "value": {
+          "type": "string",
+          "description": "Variable value."
+        }
+      },
+      "type": "object"
+    }
+  }
+}

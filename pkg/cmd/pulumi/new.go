@@ -652,7 +652,7 @@ func dotnetInstallDependenciesAndBuild(proj *workspace.Project, root string) err
 	return nil
 }
 
-// goInstallDependencies will install dependencies for the project by running `go mod download`
+// goInstallDependencies will install dependencies for the project by running `go mod tidy`.
 func goInstallDependencies() error {
 	fmt.Println("Installing dependencies...")
 	fmt.Println()
@@ -666,12 +666,12 @@ func goInstallDependencies() error {
 		return err
 	}
 
-	cmd := exec.Command(gobin, "mod", "download")
+	cmd := exec.Command(gobin, "mod", "tidy")
 	cmd.Env = os.Environ()
 	cmd.Stdout, cmd.Stderr = os.Stdout, os.Stderr
 
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "`go mod download` failed to install dependencies; rerun manually to try again, "+
+		return errors.Wrapf(err, "`go mod tidy` failed to install dependencies; rerun manually to try again, "+
 			"then run 'pulumi up' to perform an initial deployment")
 	}
 

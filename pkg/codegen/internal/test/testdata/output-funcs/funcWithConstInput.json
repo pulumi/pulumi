@@ -1,0 +1,16 @@
+{
+    "functions": {
+        "madeup-package:codegentest:funcWithConstInput": {
+            "description": "Codegen demo with const inputs",
+            "inputs": {
+                "type": "object",
+                "properties": {
+                    "plainInput": {
+                        "type": "string",
+                        "const": "fixed"
+                    }
+                }
+            }
+        }
+    }
+}
