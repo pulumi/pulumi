@@ -1604,25 +1604,8 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 	}
 
 	mod.genFunDef(w, name, retTypeName, args, false /* wrapInput */)
-
-	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
-	docs := &bytes.Buffer{}
-	if fun.Comment != "" {
-		fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
-	} else {
-		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
-	}
-	if len(args) > 0 {
-		fmt.Fprintln(docs, "")
-		for _, arg := range args {
-			mod.genPropDocstring(docs, PyName(arg.Name), arg, true /*acceptMapping*/)
-		}
-	}
-	printComment(w, docs.String(), "    ")
-
-	if fun.DeprecationMessage != "" {
-		fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage)
-	}
+	mod.genFunDocstring(w, fun)
+	mod.genFunDeprecationMessage(w, fun)
 
 	// Copy the function arguments into a dictionary.
 	fmt.Fprintf(w, "    __args__ = dict()\n")
@@ -1664,6 +1647,36 @@ func (mod *modContext) genFunction(fun *schema.Function) (string, error) {
 
 	mod.genFunctionOutputVersion(w, fun)
 	return w.String(), nil
+}
+
+func (mod *modContext) genFunDocstring(w io.Writer, fun *schema.Function) {
+	var args []*schema.Property
+	if fun.Inputs != nil {
+		args = fun.Inputs.Properties
+	}
+
+	// If this func has documentation, write it at the top of the docstring, otherwise use a generic comment.
+	docs := &bytes.Buffer{}
+	if fun.Comment != "" {
+		fmt.Fprintln(docs, codegen.FilterExamples(fun.Comment, "python"))
+	} else {
+		fmt.Fprintln(docs, "Use this data source to access information about an existing resource.")
+	}
+	if len(args) > 0 {
+		fmt.Fprintln(docs, "")
+		for _, arg := range args {
+			mod.genPropDocstring(docs, PyName(arg.Name), arg, true /*acceptMapping*/)
+		}
+	}
+	printComment(w, docs.String(), "    ")
+}
+
+func (mod *modContext) genFunDeprecationMessage(w io.Writer, fun *schema.Function) {
+	if fun.DeprecationMessage == "" {
+		return
+	}
+	name := PyName(tokenToName(fun.Token))
+	fmt.Fprintf(w, "    pulumi.log.warn(\"\"\"%s is deprecated: %s\"\"\")\n", name, fun.DeprecationMessage)
 }
 
 // Generates the function signature line `def fn(...):` without the body.
@@ -1728,6 +1741,8 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 
 	fmt.Fprintf(w, "\n\n@_utilities.lift_output_func(%s)\n", originalName)
 	mod.genFunDef(w, outputSuffixedName, retTypeName, args, true /*wrapInput*/)
+	mod.genFunDocstring(w, fun)
+	mod.genFunDeprecationMessage(w, fun)
 	fmt.Fprintf(w, "    ...\n")
 }
 

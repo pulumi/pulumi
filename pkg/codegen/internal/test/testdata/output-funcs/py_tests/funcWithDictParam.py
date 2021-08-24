@@ -60,4 +60,7 @@ def func_with_dict_param(a: Optional[Mapping[str, str]] = None,
 def func_with_dict_param_output(a: Optional[pulumi.Input[Optional[Mapping[str, str]]]] = None,
                                 b: Optional[pulumi.Input[Optional[str]]] = None,
                                 opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithDictParamResult]:
+    """
+    Check codegen of functions with a Dict<str,str> parameter.
+    """
     ...

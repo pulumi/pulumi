@@ -64,4 +64,11 @@ def func_with_all_optional_inputs(a: Optional[str] = None,
 def func_with_all_optional_inputs_output(a: Optional[pulumi.Input[Optional[str]]] = None,
                                          b: Optional[pulumi.Input[Optional[str]]] = None,
                                          opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[FuncWithAllOptionalInputsResult]:
+    """
+    Check codegen of functions with all optional inputs.
+
+
+    :param str a: Property A
+    :param str b: Property B
+    """
     ...

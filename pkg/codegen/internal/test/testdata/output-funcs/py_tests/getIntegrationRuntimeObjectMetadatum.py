@@ -93,4 +93,14 @@ def get_integration_runtime_object_metadatum_output(factory_name: Optional[pulum
                                                     metadata_path: Optional[pulumi.Input[Optional[str]]] = None,
                                                     resource_group_name: Optional[pulumi.Input[str]] = None,
                                                     opts: Optional[pulumi.InvokeOptions] = None) -> pulumi.Output[GetIntegrationRuntimeObjectMetadatumResult]:
+    """
+    A list of SSIS object metadata.
+    API Version: 2018-06-01.
+
+
+    :param str factory_name: The factory name.
+    :param str integration_runtime_name: The integration runtime name.
+    :param str metadata_path: Metadata path.
+    :param str resource_group_name: The resource group name.
+    """
     ...
