@@ -16,7 +16,6 @@
 package main
 
 import (
-	"regexp"
 	"runtime"
 	"strings"
 	"testing"
@@ -59,7 +58,7 @@ func TestBackend(t *testing.T) {
 	backend, err := getHostAbout()
 	assert.Nil(t, err, "We should be able to get stats here")
 	display := backend.String()
-	assert.Contains(stats.Platform, display, "This should be a valid regex")
-	assert.Contains(stats.PlatformVersion, display, "This should be a valid regex")
-	assert.Contains(stats.KernelArch, display, "This should be a valid regex")
+	assert.Contains(t, display, stats.Platform)
+	assert.Contains(t, display, stats.PlatformVersion)
+	assert.Contains(t, display, stats.KernelArch)
 }
