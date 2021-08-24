@@ -217,7 +217,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.genNYI(w, "call %v", expr.Name)
 		// g.genRange(w, expr, false)
 	case "readFile":
-		// Assuming the existance of the following helper method located earlier in the preamble
+		// Assuming the existence of the following helper method located earlier in the preamble
 		g.Fgenf(w, "readFileOrPanic(%v)", expr.Args[0])
 	case "readDir":
 		contract.Failf("unlowered readDir function expression @ %v", expr.SyntaxNode().Range())
