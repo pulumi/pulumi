@@ -337,15 +337,10 @@ def _create_provider_resource(ref: str) -> ProviderResource:
     otherwise return an instance of DependencyProviderResource.
     """
     urn, _ = _parse_resource_reference(ref)
-    urn_parts = urn.split("::")
-    urn_name = urn_parts[3]
-    qualified_type = urn_parts[2]
-    typ = qualified_type.split("$")[-1]
-    typ_parts = typ.split(":")
-    typ_name = typ_parts[2] if len(typ_parts) > 2 else ""
-
-    resource_package = rpc.get_resource_package(typ_name, version="")
+    urn_parts = pulumi.urn._parse_urn(urn)
+    resource_package = rpc.get_resource_package(urn_parts.typ_name, version="")
     if resource_package is not None:
-        return cast(ProviderResource, resource_package.construct_provider(urn_name, typ, urn))
+        return cast(ProviderResource, resource_package.construct_provider(
+            urn_parts.urn_name, urn_parts.typ, urn))
 
     return DependencyProviderResource(ref)

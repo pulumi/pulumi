@@ -32,6 +32,7 @@ from ._server import LanguageServer
 from ._workspace import Workspace, PulumiFn, Deployment
 from ..runtime.settings import _GRPC_CHANNEL_OPTIONS
 from ..runtime.proto import language_pb2_grpc
+from ._representable import _Representable
 
 _DATETIME_FORMAT = '%Y-%m-%dT%H:%M:%S.%fZ'
 
@@ -84,16 +85,10 @@ class UpdateSummary:
                f"resource_changes={self.resource_changes!r}, config={self.config!r}, Deployment={self.Deployment!r})"
 
 
-class BaseResult:
+class BaseResult(_Representable):
     def __init__(self, stdout: str, stderr: str):
         self.stdout = stdout
         self.stderr = stderr
-
-    def __repr__(self):
-        inputs = self.__dict__
-        fields = [f"{key}={inputs[key]!r}" for key in inputs]  # pylint: disable=consider-using-dict-items
-        fields = ", ".join(fields)
-        return f"{self.__class__.__name__}({fields})"
 
 
 class PreviewResult(BaseResult):
@@ -647,13 +642,13 @@ def _create_log_file(command: str) -> Tuple[str, tempfile.TemporaryDirectory]:
     filepath = os.path.join(log_dir.name, "eventlog.txt")
 
     # Open and close the file to ensure it exists before we start polling for logs
-    with open(filepath, "w+"):
+    with open(filepath, "w+", encoding="utf-8"):
         pass
     return filepath, log_dir
 
 
 def _watch_logs(filename: str, callback: OnEvent):
-    with open(filename) as f:
+    with open(filename, encoding="utf-8") as f:
         while True:
             line = f.readline()
 

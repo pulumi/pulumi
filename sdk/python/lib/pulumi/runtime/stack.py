@@ -127,7 +127,7 @@ class Stack(ComponentResource):
         super().__init__('pulumi:pulumi:Stack', name, None, None)
 
         # Invoke the function while this stack is active and then register its outputs.
-        self.outputs = dict()
+        self.outputs = {}
         set_root_resource(self)
         try:
             func()
