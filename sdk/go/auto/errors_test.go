@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
+	"github.com/pulumi/pulumi/sdk/v3/python"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -369,13 +370,15 @@ func TestRuntimeErrorPython(t *testing.T) {
 	stackName := FullyQualifiedStackName(pulumiOrg, runtimeErrProj, sName)
 
 	// initialize
-	pDir := filepath.Join(".", "test", "errors", "runtime_error", "python")
-
-	cmd := exec.Command("python3", "-m", "venv", "venv")
-	cmd.Dir = pDir
-	err := cmd.Run()
+	pDir, err := filepath.Abs(filepath.Join(".", "test", "errors", "runtime_error", "python"))
 	if err != nil {
-		t.Errorf("failed to install project dependencies")
+		t.Error(err)
+		t.FailNow()
+	}
+
+	err = python.InstallDependencies(pDir, "venv", true /*showOutput*/)
+	if err != nil {
+		t.Errorf("failed to create a venv and install project dependencies: %v", err)
 		t.FailNow()
 	}
 
@@ -394,6 +397,7 @@ func TestRuntimeErrorPython(t *testing.T) {
 	_, err = s.Up(ctx)
 	assert.NotNil(t, err)
 	assert.True(t, IsRuntimeError(err), "%+v", err)
+	assert.Contains(t, fmt.Sprintf("%v", err), "IndexError: list index out of range")
 
 	// -- pulumi destroy --
 
