@@ -187,6 +187,7 @@ var functionImports = map[string]string{
 	"readDir":     "os",
 	"toBase64":    "base64",
 	"toJSON":      "json",
+	"sha1":        "hashlib",
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
@@ -298,6 +299,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "base64.b64encode(%.16v.encode()).decode()", expr.Args[0])
 	case "toJSON":
 		g.Fgenf(w, "json.dumps(%.v)", expr.Args[0])
+	case "sha1":
+		g.Fgenf(w, "hashlib.sha1(%v.encode()).hexdigest()", expr.Args[0])
 	default:
 		var rng hcl.Range
 		if expr.Syntax != nil {
