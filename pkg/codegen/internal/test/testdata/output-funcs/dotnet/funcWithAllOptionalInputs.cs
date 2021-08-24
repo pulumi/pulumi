@@ -19,7 +19,6 @@ namespace Pulumi.MadeupPackage.Codegentest
 
         public static Output<FuncWithAllOptionalInputsResult> Invoke(FuncWithAllOptionalInputsOutputArgs? args = null, InvokeOptions? options = null)
         {
-            args = args ?? new FuncWithAllOptionalInputsOutputArgs();
             return Pulumi.Output.All(
                 args.A.Box(),
                 args.B.Box()
@@ -46,13 +45,13 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithAllOptionalInputsOutputArgs
+    public sealed class FuncWithAllOptionalInputsOutputArgs : Pulumi.
     {
         [Input("a")]
-        public Input<string>? A { get; set; }
+        public string? A { get; set; }
 
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public string? B { get; set; }
 
         public FuncWithAllOptionalInputsOutputArgs()
         {

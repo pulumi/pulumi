@@ -46,13 +46,13 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithDefaultValueOutputArgs
+    public sealed class FuncWithDefaultValueOutputArgs : Pulumi.
     {
         [Input("a", required: true)]
-        public Input<string> A { get; set; } = null!;
+        public string A { get; set; } = null!;
 
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public string? B { get; set; }
 
         public FuncWithDefaultValueOutputArgs()
         {

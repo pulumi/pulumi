@@ -7,15 +7,16 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.MadeupPackage.Codegentest
+namespace Pulumi.Azure-native.Codegentest
 {
     public static class ListStorageAccountKeys
     {
         /// <summary>
         /// The response from the ListKeys operation.
+        /// API Version: 2021-02-01.
         /// </summary>
         public static Task<ListStorageAccountKeysResult> InvokeAsync(ListStorageAccountKeysArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("madeup-package:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("azure-native:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
 
         public static Output<ListStorageAccountKeysResult> Invoke(ListStorageAccountKeysOutputArgs args, InvokeOptions? options = null)
         {
@@ -59,25 +60,25 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class ListStorageAccountKeysOutputArgs
+    public sealed class ListStorageAccountKeysOutputArgs : Pulumi.
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.
         /// </summary>
         [Input("accountName", required: true)]
-        public Input<string> AccountName { get; set; } = null!;
+        public string AccountName { get; set; } = null!;
 
         /// <summary>
         /// Specifies type of the key to be listed. Possible value is kerb.
         /// </summary>
         [Input("expand")]
-        public Input<string>? Expand { get; set; }
+        public string? Expand { get; set; }
 
         /// <summary>
         /// The name of the resource group within the user's subscription. The name is case insensitive.
         /// </summary>
         [Input("resourceGroupName", required: true)]
-        public Input<string> ResourceGroupName { get; set; } = null!;
+        public string ResourceGroupName { get; set; } = null!;
 
         public ListStorageAccountKeysOutputArgs()
         {
@@ -91,10 +92,10 @@ namespace Pulumi.MadeupPackage.Codegentest
         /// <summary>
         /// Gets the list of storage account keys and their properties for the specified storage account.
         /// </summary>
-        public readonly ImmutableArray<ImmutableDictionary<string, string>> Keys;
+        public readonly ImmutableArray<Pulumi.Azure-native.Codegentest.Outputs.StorageAccountKeyResponse> Keys;
 
         [OutputConstructor]
-        private ListStorageAccountKeysResult(ImmutableArray<ImmutableDictionary<string, string>> keys)
+        private ListStorageAccountKeysResult(ImmutableArray<Pulumi.Azure-native.Codegentest.Outputs.StorageAccountKeyResponse> keys)
         {
             Keys = keys;
         }

@@ -1,10 +1,27 @@
+// Copyright 2016-2020, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dotnet
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
@@ -76,16 +93,24 @@ func TestGenerateTypeNames(t *testing.T) {
 	})
 }
 
-func TestGenerateOutputFuncs(t *testing.T) {
+func TestGenerateOutputFuncsDotnet(t *testing.T) {
 	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
 
-	examples := []string{
-		"listStorageAccountKeys",
-		"funcWithDefaultValue",
-		"funcWithAllOptionalInputs",
-		"funcWithListParam",
-		"funcWithDictParam",
+	files, err := ioutil.ReadDir(testDir)
+	if err != nil {
+		assert.NoError(t, err)
+		return
 	}
+
+	var examples []string
+	for _, f := range files {
+		name := f.Name()
+		if strings.HasSuffix(name, ".json") {
+			examples = append(examples, strings.TrimSuffix(name, ".json"))
+		}
+	}
+
+	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
 
 	loadPackage := func(reader io.Reader) (*schema.Package, error) {
 		var pkgSpec schema.PackageSpec

@@ -19,9 +19,8 @@ namespace Pulumi.MadeupPackage.Codegentest
 
         public static Output<FuncWithListParamResult> Invoke(FuncWithListParamOutputArgs? args = null, InvokeOptions? options = null)
         {
-            args = args ?? new FuncWithListParamOutputArgs();
             return Pulumi.Output.All(
-                args.A.ToList().Box(),
+                args.A.Box(),
                 args.B.Box()
             ).Apply(a => {
                     var args = new FuncWithListParamArgs();
@@ -51,18 +50,18 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithListParamOutputArgs
+    public sealed class FuncWithListParamOutputArgs : Pulumi.
     {
         [Input("a")]
-        private InputList<string>? _a;
-        public InputList<string> A
+        private List<string>? _a;
+        public List<string> A
         {
-            get => _a ?? (_a = new InputList<string>());
+            get => _a ?? (_a = new List<string>());
             set => _a = value;
         }
 
         [Input("b")]
-        public Input<string>? B { get; set; }
+        public string? B { get; set; }
 
         public FuncWithListParamOutputArgs()
         {
