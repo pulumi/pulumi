@@ -2740,11 +2740,12 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 }
 
 const utilitiesFile = `
+import importlib.util
+import inspect
 import json
 import os
-import sys
-import importlib.util
 import pkg_resources
+import sys
 import typing
 
 import pulumi
@@ -2956,9 +2957,17 @@ def lift_output_func(func: typing.Any) -> typing.Callable[[_F], _F]:
     """Decorator internally used on {fn}_output lifted function versions
     to implement them automatically from the un-lifted function."""
 
-    fn: typing.Any = lambda _: lambda opts=None, **kw: \
-        pulumi.Output.all(**kw).apply(
-            lambda d: func(opts=opts, **(d or {})))
+    func_sig = inspect.signature(func)
 
-    return fn
+    def lifted_func(*args, opts=None, **kwargs):
+        bound_args = func_sig.bind(*args, **kwargs)
+
+        return pulumi.Output.from_input({
+            'args': bound_args.args,
+            'kwargs': bound_args.kwargs
+        }).apply(lambda resolved_args: func(*resolved_args['args'],
+                                            opts=opts,
+                                            **resolved_args['kwargs']))
+
+    return (lambda _: lifted_func)
 `

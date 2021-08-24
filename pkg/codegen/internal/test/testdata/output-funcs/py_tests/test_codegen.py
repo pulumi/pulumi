@@ -77,9 +77,20 @@ def assert_function_matches_table(fn, table):
 
         return f
 
+    def unpack_entry(entry):
+        if len(entry) == 3:
+            (kw, expected, transform) = entry
+            args = []
+        else:
+            (args, kw, expected, transform) = entry
+
+        return (args, kw, expected, transform)
+
     return pulumi.Output.all([
-        fn(**kw).apply(check(expected, transform))
-        for (kw, expected, transform) in table
+        fn(*args, **kw).apply(check(expected, transform))
+        for (args, kw, expected, transform) in (
+                unpack_entry(entry) for entry in table
+        )
     ])
 
 
@@ -91,6 +102,9 @@ def test_func_with_all_optional_inputs(my_mocks):
             ({}, 'a=None b=None', r),
             ({'a': out('my-a')}, 'a=my-a b=None', r),
             ({'a': out('my-a'), 'b': out('my-b')}, 'a=my-a b=my-b', r),
+            # check positional arguments
+            ([out('my-a')], {}, 'a=my-a b=None', r),
+            ([out('my-a'), out('my-b')], {}, 'a=my-a b=my-b', r),
         ])
 
 
