@@ -17,39 +17,20 @@ namespace Pulumi
         Output<T> IDeployment.Call<T>(string token, CallArgs args, Resource? self, CallOptions? options)
             => Call<T>(token, args, self, options, convertResult: true);
 
-        private Output<T> Call<T>(
+        private Output<T> Call<T>(string token, CallArgs args, Resource? self, CallOptions? options, bool convertResult)
+            => new Output<T>(CallAsync<T>(token, args, self, options, convertResult));
+
+        private async Task<OutputData<T>> CallAsync<T>(
             string token, CallArgs args, Resource? self, CallOptions? options, bool convertResult)
         {
-            var completionSource = new OutputCompletionSource<T>(null);
-            _runner.RegisterTask(
-                $"Call: token={token}",
-                CallAsync(token, args, self, options, completionSource, convertResult));
-            return completionSource.Output;
-        }
+            var (result, deps) = await CallRawAsync(token, args, self, options).ConfigureAwait(false);
+            if (convertResult)
+            {
+                var converted = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
+                return new OutputData<T>(deps, converted.Value, converted.IsKnown, converted.IsSecret);
+            }
 
-        private async Task CallAsync<T>(
-            string token, CallArgs args, Resource? self, CallOptions? options,
-            OutputCompletionSource<T> completionSource, bool convertResult)
-        {
-            try
-            {
-                var (result, deps) = await CallRawAsync(token, args, self, options).ConfigureAwait(false);
-                if (convertResult)
-                {
-                    var converted = Converter.ConvertValue<T>($"{token} result", new Value { StructValue = result });
-                    var data = new OutputData<T>(deps, converted.Value, converted.IsKnown, converted.IsSecret);
-                    completionSource.SetValue(data);
-                }
-                else
-                {
-                    completionSource.TrySetDefaultResult(isKnown: true);
-                }
-            }
-            catch (Exception ex)
-            {
-                completionSource.TrySetException(ex);
-                throw;
-            }
+            return new OutputData<T>(ImmutableHashSet<Resource>.Empty, default!, isKnown: true, isSecret: false);
         }
 
         private async Task<(Struct Return, ImmutableHashSet<Resource> Dependencies)> CallRawAsync(
