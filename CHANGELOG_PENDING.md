@@ -10,6 +10,10 @@
   easier to compose functions/datasources with Pulumi resources.
   [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
+- [sdk/python] - Speed up `pulumi up` on Python projects by optimizing
+  `pip` invocations
+  [#7819](https://github.com/pulumi/pulumi/pull/7819)
+
 - [sdk/dotnet] - Support for calling methods.
   [#7582](https://github.com/pulumi/pulumi/pull/7582)
 
