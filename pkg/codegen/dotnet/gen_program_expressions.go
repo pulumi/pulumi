@@ -325,7 +325,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, ")")
 	case "sha1":
 		// Assuming the existence of the following helper method located earlier in the preamble
-		g.Fgenf(w, "sha1(%v)", expr.Args[0])
+		g.Fgenf(w, "ComputeSHA1(%v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
