@@ -38,11 +38,10 @@ build_plugin::
 build:: build_package build_plugin
 
 install_package:: build
-	cp dist/pulumi-resource-pulumi-nodejs "$(PULUMI_BIN)"
-	cp dist/pulumi-analyzer-policy "$(PULUMI_BIN)"
+	cp dist/pulumi-resource-pulumi-nodejs "$(GOBIN)"
+	cp dist/pulumi-analyzer-policy "$(GOBIN)"
 
 install_plugin:: build
-	GOBIN=$(PULUMI_BIN) go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
 
 install:: install_package install_plugin
 
@@ -64,14 +63,14 @@ test_all:: sxs_tests istanbul_tests
 
 dist:: build
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
+	cp dist/pulumi-resource-pulumi-nodejs $(GOBIN)
+	cp dist/pulumi-analyzer-policy $(GOBIN)
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGUAGE_HOST}
-	cp dist/pulumi-resource-pulumi-nodejs "$$(go env GOPATH)"/bin/
-	cp dist/pulumi-analyzer-policy "$$(go env GOPATH)"/bin/
+	cp dist/pulumi-resource-pulumi-nodejs $(GOBIN)
+	cp dist/pulumi-analyzer-policy $(GOBIN)
 
 publish:: build_package
 	bash -c ../../scripts/publish_npm.sh

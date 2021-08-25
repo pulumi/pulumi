@@ -95,6 +95,14 @@ SHELL       := /bin/bash
 
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
 
+ifeq ($(GOPATH),)
+	GOPATH := $$(go env GOPATH)
+endif
+ifeq ($(GOBIN),)
+	GOBIN := $(GOPATH)/bin/
+endif
+
+# TODO remove this
 # Our install targets place items item into $PULUMI_ROOT, if it's
 # unset, default to /opt/pulumi.
 ifeq ($(PULUMI_ROOT),)
@@ -106,13 +114,12 @@ endif
 PYTHON ?= python3
 PIP ?= pip3
 
-PULUMI_BIN          := $(PULUMI_ROOT)/bin
 PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
 RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
-GO_TEST_FAST = PATH="$(PULUMI_BIN):$(PATH)" python3 ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
-GO_TEST = PATH="$(PULUMI_BIN):$(PATH)" python3 $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM}
+GO_TEST_FAST = PATH="$(GOBIN):$(PATH)" python3 ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
+GO_TEST = PATH="$(GOBIN):$(PATH)" python3 $(PROJECT_ROOT)/scripts/go-test.py -count=1 -cover -timeout 1h -tags=all -parallel ${TESTPARALLELISM}
 GOPROXY = 'https://proxy.golang.org'
 
 .PHONY: default all ensure only_build only_test build lint install test_all core
@@ -168,7 +175,7 @@ test_fast::
 
 install::
 	$(call STEP_MESSAGE)
-	@mkdir -p $(PULUMI_BIN)
+	@mkdir -p $(GOBIN)
 	@mkdir -p $(PULUMI_NODE_MODULES)
 	@mkdir -p $(PULUMI_NUGET)
 

@@ -36,13 +36,11 @@ lint::
 	pipenv run pylint ./lib/pulumi --rcfile=.pylintrc
 
 install_package:: build_package
-	cp ./cmd/pulumi-language-python-exec "$(PULUMI_BIN)"
-	cp ./dist/pulumi-resource-pulumi-python "$(PULUMI_BIN)"
-	cp ./dist/pulumi-analyzer-policy-python "$(PULUMI_BIN)"
+	cp ./cmd/pulumi-language-python-exec "$(GOBIN)"
+	cp ./dist/pulumi-resource-pulumi-python "$(GOBIN)"
+	cp ./dist/pulumi-analyzer-policy-python "$(GOBIN)"
 
 install_plugin:: build_plugin
-	GOBIN=$(PULUMI_BIN) go install \
-		  -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
 
 install:: install_package install_plugin
 
@@ -59,16 +57,16 @@ test_all:: test_fast
 
 dist::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${VERSION}" ${LANGHOST_PKG}
-	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
+	cp ./cmd/pulumi-language-python-exec $(GOBIN)
+	cp ./dist/pulumi-resource-pulumi-python $(GOBIN)
+	cp ./dist/pulumi-analyzer-policy-python $(GOBIN)
 
 brew:: BREW_VERSION := $(shell ../../scripts/get-version HEAD)
 brew::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${BREW_VERSION}" ${LANGHOST_PKG}
-	cp ./cmd/pulumi-language-python-exec "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-resource-pulumi-python "$$(go env GOPATH)"/bin/
-	cp ./dist/pulumi-analyzer-policy-python "$$(go env GOPATH)"/bin/
+	cp ./cmd/pulumi-language-python-exec $(GOBIN)
+	cp ./dist/pulumi-resource-pulumi-python $(GOBIN)
+	cp ./dist/pulumi-analyzer-policy-python $(GOBIN)
 
 publish:: build_package
 	twine upload \
