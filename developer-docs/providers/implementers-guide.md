@@ -338,7 +338,7 @@ last refereshed state.
 The diagram below summarizes the custom resource lifecycle. Detailed descriptions of each
 resource operation follow.
 
-![Custom Resource Lifeycle Diagram](./resource_lifecycle.svg)
+![Custom Resource Lifeycle Diagram](./resource-lifecycle.svg)
 
 ### Lifecycle Methods
 
