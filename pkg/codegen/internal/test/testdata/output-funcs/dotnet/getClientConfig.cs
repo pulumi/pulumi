@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Azure.Codegentest
+namespace Pulumi.MadeupPackage.Codegentest
 {
     public static class GetClientConfig
     {

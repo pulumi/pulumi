@@ -1,4 +1,4 @@
-namespace Pulumi.Azure.Codegentest.Outputs
+namespace Pulumi.MadeupPackage.Codegentest.Outputs
 {
     public sealed class StorageAccountKeyResponse
     {

@@ -15,8 +15,6 @@ using Moq;
 using Pulumi;
 using Pulumi.Testing;
 
-using Pulumi.Azure.Codegentest;
-
 namespace Pulumi.MadeupPackage.Codegentest
 {
     [TestFixture]

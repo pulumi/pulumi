@@ -136,7 +136,7 @@ func TestGenerateOutputFuncsDotnet(t *testing.T) {
 		mod := &modContext{
 			pkg: pkg,
 			namespaces: map[string]string{
-				"azure-native":   "Azure",
+				"azure-native":   "MadeupPackage",
 				"madeup-package": "MadeupPackage",
 			},
 		}

@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Azure.Codegentest
+namespace Pulumi.MadeupPackage.Codegentest
 {
     public static class ListStorageAccountKeys
     {
@@ -92,10 +92,10 @@ namespace Pulumi.Azure.Codegentest
         /// <summary>
         /// Gets the list of storage account keys and their properties for the specified storage account.
         /// </summary>
-        public readonly ImmutableArray<Pulumi.Azure.Codegentest.Outputs.StorageAccountKeyResponse> Keys;
+        public readonly ImmutableArray<Pulumi.MadeupPackage.Codegentest.Outputs.StorageAccountKeyResponse> Keys;
 
         [OutputConstructor]
-        private ListStorageAccountKeysResult(ImmutableArray<Pulumi.Azure.Codegentest.Outputs.StorageAccountKeyResponse> keys)
+        private ListStorageAccountKeysResult(ImmutableArray<Pulumi.MadeupPackage.Codegentest.Outputs.StorageAccountKeyResponse> keys)
         {
             Keys = keys;
         }
