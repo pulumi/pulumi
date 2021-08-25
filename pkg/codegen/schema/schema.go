@@ -332,6 +332,8 @@ type Property struct {
 	Language map[string]interface{}
 	// Secret is true if the property is secret (default false).
 	Secret bool
+	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
+	ReplaceOnChanges bool
 }
 
 // IsRequired returns true if this property is required (i.e. its type is not Optional).
@@ -1205,6 +1207,8 @@ type PropertySpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 	// Secret specifies if the property is secret (default false).
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
+	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
+	ReplaceOnChanges bool `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 }
 
 // ObjectTypeSpec is the serializable form of an object type.
@@ -1991,6 +1995,7 @@ func (t *types) bindProperties(properties map[string]PropertySpec,
 			DeprecationMessage: spec.DeprecationMessage,
 			Language:           language,
 			Secret:             spec.Secret,
+			ReplaceOnChanges:   spec.ReplaceOnChanges,
 		}
 
 		propertyMap[name], result = p, append(result, p)
