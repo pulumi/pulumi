@@ -14,26 +14,71 @@ using Moq;
 
 using Pulumi;
 using Pulumi.Testing;
+using static Pulumi.MadeupPackage.Codegentest.TestHelpers;
 
 namespace Pulumi.MadeupPackage.Codegentest
 {
     [TestFixture]
     public class UnitTests
     {
+
         [Test]
-        public async Task ListStorageAccountKeysApplyWorks()
+        public async Task FuncWithAllOptionalInputsOutputWorks()
         {
-            var r = await Run<ListStorageAccountKeysMocks,
-                ListStorageAccountKeysTestStack,
-                ListStorageAccountKeysResult>();
+            Func<string,Func<FuncWithAllOptionalInputsOutputArgs>,Task> check = (
+                (expected, args) => Assert
+                .Output(() => FuncWithAllOptionalInputs.Invoke(args()).Apply(x => x.R))
+                .ResolvesTo(expected)
+            );
 
-            r.Keys.Length.Should().Be(1);
+            await check("a=null b=null", () => null!);
 
-            r.Keys[0].CreationTime.Should().Be("my-creation-time");
-            r.Keys[0].KeyName.Should().Be("my-key-name");
-            r.Keys[0].Permissions.Should().Be("my-resource-group-name");
-            r.Keys[0].Value.Should().Be("my-value");
+            await check("a=null b=null", () => new FuncWithAllOptionalInputsOutputArgs());
+
+            await check("a=my-a b=null", () => new FuncWithAllOptionalInputsOutputArgs
+            {
+                A = Out("my-a"),
+            });
+
+            await check("a=null b=my-b", () => new FuncWithAllOptionalInputsOutputArgs
+            {
+                B = Out("my-b"),
+            });
+
+            await check("a=my-a b=my-b", () => new FuncWithAllOptionalInputsOutputArgs
+            {
+                A = Out("my-a"),
+                B = Out("my-b"),
+            });
         }
+
+        // public class FuncWithAllOptionalInputsOutputStack : Stack
+        // {
+        //     public FuncWithAllOptionalInputsOutputStack
+        //     {
+
+        //     }
+        // }
+
+
+
+
+
+
+        // [Test]
+        // public async Task ListStorageAccountKeysApplyWorks()
+        // {
+        //     var r = await Run<ListStorageAccountKeysMocks,
+        //         ListStorageAccountKeysTestStack,
+        //         ListStorageAccountKeysResult>();
+
+        //     r.Keys.Length.Should().Be(1);
+
+        //     r.Keys[0].CreationTime.Should().Be("my-creation-time");
+        //     r.Keys[0].KeyName.Should().Be("my-key-name");
+        //     r.Keys[0].Permissions.Should().Be("my-resource-group-name");
+        //     r.Keys[0].Value.Should().Be("my-value");
+        // }
 
         /*
         [Test]
