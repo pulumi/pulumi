@@ -10,6 +10,9 @@
   easier to compose functions/datasources with Pulumi resources.
   [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
+- [sdk/dotnet] - Support for calling methods.
+  [#7582](https://github.com/pulumi/pulumi/pull/7582)
+
 ### Bug Fixes
 
 - [cli] - Avoid `missing go.sum entry for module` for new Go projects.
