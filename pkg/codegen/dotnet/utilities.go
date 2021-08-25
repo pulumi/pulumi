@@ -129,10 +129,10 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 	switch functionName {
 	case "sha1":
 		methodBody =
-			`private static string sha1(string input) {
+			`private static string ComputeSHA1(string input) {
 		return BitConverter.ToString(
-			new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(%v))
-		).Replace("-","").ToLower());
+			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(%v))
+		).Replace("-","").ToLowerInvariant());
 	}`
 	default:
 		methodBody = ""
