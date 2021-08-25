@@ -2,9 +2,6 @@ package tests
 
 import (
 	"encoding/json"
-	"io/ioutil"
-	"os"
-	"path"
 	"runtime"
 	"testing"
 
