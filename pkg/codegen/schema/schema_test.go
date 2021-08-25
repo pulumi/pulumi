@@ -310,6 +310,17 @@ func Test_parseTypeSpecRef(t *testing.T) {
 				Token:   "pulumi:providers:kubernetes",
 			},
 		},
+		{
+			name: "hyphenatedUrlPath",
+			ref:  "/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp",
+			want: typeSpecRef{
+				URL:     toURL("/azure-native/v1.22.0/schema.json#/resources/azure-native:web:WebApp"),
+				Package: "azure-native",
+				Version: toVersionPtr("1.22.0"),
+				Kind:    "resources",
+				Token:   "azure-native:web:WebApp",
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

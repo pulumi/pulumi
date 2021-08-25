@@ -624,8 +624,31 @@ namespace Pulumi.Automation
         }
 
         /// <inheritdoc/>
-        public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
-            => this.RunCommandAsync(new[] { "plugin", "install", kind.ToString().ToLower(), name, version }, cancellationToken);
+        public override Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, PluginInstallOptions? options = null, CancellationToken cancellationToken = default)
+        {
+            var args = new List<string>
+            {
+                "plugin",
+                "install",
+                kind.ToString().ToLowerInvariant(),
+                name,
+                version
+            };
+
+            if (options != null)
+            {
+                if (options.ExactVersion)
+                    args.Add("--exact");
+
+                if (!string.IsNullOrWhiteSpace(options.ServerUrl))
+                {
+                    args.Add("--server");
+                    args.Add(options.ServerUrl);
+                }
+            }
+
+            return this.RunCommandAsync(args, cancellationToken);
+        }
 
         /// <inheritdoc/>
         public override Task RemovePluginAsync(string? name = null, string? versionRange = null, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default)
