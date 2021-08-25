@@ -42,10 +42,12 @@ func TestProjectRuntime(t *testing.T) {
 	assert.Nil(t, err, "This should not fail")
 	version := strings.TrimSpace("v" + strings.TrimPrefix(string(out), "Python "))
 
-	runtime, err := getProjectRuntimeAbout(&workspace.Project{
+	var runtime projectRuntimeAbout
+	runtime, err = getProjectRuntimeAbout(&workspace.Project{
 		Name:    "TestProject",
 		Runtime: workspace.NewProjectRuntimeInfo("python", make(map[string]interface{})),
 	})
+	assert.Nil(t, err)
 	assert.Equal(t, runtime.Language, "python")
 	assert.Equal(t, runtime.Version, version)
 }

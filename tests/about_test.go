@@ -22,6 +22,8 @@ func TestAboutCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		_, currentStack := integration.GetStacks(e)
 		stdout, stderr := e.RunCommand("pulumi", "about")
 		assert.Empty(t, stderr, "We shouldn't print anything to stderr")
@@ -40,6 +42,8 @@ func TestAboutCommands(t *testing.T) {
 
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
+		e.RunCommand("yarn", "install")
+		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		_, currentStack := integration.GetStacks(e)
 		stdout, stderr := e.RunCommand("pulumi", "about", "--json")
 		assert.Empty(t, stderr, "We shouldn't print anything to stderr")

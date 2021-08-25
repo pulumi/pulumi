@@ -49,6 +49,7 @@ const (
 	langNodejs = "nodejs"
 	langDotnet = "dotnet"
 	langGo     = "go"
+	windows    = "windows"
 )
 
 func newAboutCmd() *cobra.Command {
@@ -419,7 +420,7 @@ func getGoProgramDependencies() ([]programDependencieAbout, error) {
 	if out, err = cmd.Output(); err != nil {
 		return nil, errors.Wrap(err, "Failed to get modules")
 	}
-	validJson := "[" + strings.ReplaceAll(string(out), "}\n{", "},\n{") + "]"
+	validJSON := "[" + strings.ReplaceAll(string(out), "}\n{", "},\n{") + "]"
 	var parsed = []struct {
 		Path     string
 		Version  string
@@ -429,7 +430,7 @@ func getGoProgramDependencies() ([]programDependencieAbout, error) {
 		GoMod    string
 		Main     bool
 	}{}
-	if err = json.Unmarshal([]byte(validJson), &parsed); err != nil {
+	if err = json.Unmarshal([]byte(validJSON), &parsed); err != nil {
 		return nil, errors.Wrapf(err, "Failed to parse \"%s list --json -m ...\" output", ex)
 	}
 
@@ -449,7 +450,7 @@ func getGoProgramDependencies() ([]programDependencieAbout, error) {
 func getPythonProgramDependencies(rootDir string) ([]programDependencieAbout, error) {
 	// ./venv/bin/python3.9 -m pip list --format=json
 	binDir := "bin"
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == windows {
 		binDir = "Scripts"
 	}
 	// venv makes the link to "python", so this works on windows and mac.
@@ -530,7 +531,9 @@ func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, erro
 			return nil, errors.Wrapf(err, "Failed to run \"%s list --json --depth=0\"", ex)
 		}
 		var output interface{}
-		json.Unmarshal(out, &output)
+		if err = json.Unmarshal(out, &output); err != nil {
+			return nil, errors.Wrapf(err, "Failed to parse\"%s list --json --depth=0\"", ex)
+		}
 		var data interface{}
 		if data = output.(map[string]interface{})["data"]; data == nil {
 			return nil, errors.New("Expected \"data\" in yarn json")
@@ -571,7 +574,9 @@ func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, erro
 			return nil, errors.Wrapf(err, "Failed to run \"%s ls --json --depth=0\"", ex)
 		}
 		var output interface{}
-		json.Unmarshal(out, &output)
+		if err = json.Unmarshal(out, &output); err != nil {
+			return nil, errors.Wrapf(err, "Failed to parse \"%s list --json --depth=0\"", ex)
+		}
 		outputMap := output.(map[string]interface{})
 		if outputMap == nil {
 			return nil, errors.Errorf("Failed to parse \"%s ls --json --depth=0\" output", ex)
