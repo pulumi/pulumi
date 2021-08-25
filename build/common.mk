@@ -10,13 +10,12 @@
 #
 #  - build: builds a project but does not install it. In the case of
 #           go code, this usually means running go install (which
-#           would place them in `GOBIN`, but not `PULUMI_ROOT`
+#           would place them in `GOBIN`. This is equivalent to
+#           installing it.
 #
-#  - install: copies the bits we plan to ship into a layout in
-#             `PULUMI_ROOT` that looks like what a customer would get
-#             when they download and install Pulumi. For JavaScript
-#             projects, installing also runs yarn link to register
-#             this package, so that other projects can depend on it.
+#  - install: Calls build. For JavaScript projects, installing also
+#             runs yarn link to register this package, so that other
+#             projects can depend on it.
 #
 #  - lint: runs relevent linters for the project
 #
@@ -69,10 +68,6 @@
 #                 build explicitly on the command line from time to
 #                 time.
 #
-# - NODE_MODULE_NAME: If set, an install target will be auto-generated
-#                     that installs the module to
-#                     $(PULUMI_ROOT)/node_modules/$(NODE_MODULE_NAME)
-#
 # This Makefile also provides some convience methods:
 #
 # STEP_MESSAGE is a macro that can be invoked with `$(call
@@ -95,6 +90,8 @@ SHELL       := /bin/bash
 
 STEP_MESSAGE = @echo -e "\033[0;32m$(shell echo '$@' | tr a-z A-Z | tr '_' ' '):\033[0m"
 
+TMP_DIR := $(shell go run ${PROJECT_ROOT}/build/tmp_dir.go)/pulumi-build
+
 ifeq ($(GOPATH),)
 	GOPATH := $$(go env GOPATH)
 endif
@@ -102,19 +99,15 @@ ifeq ($(GOBIN),)
 	GOBIN := $(GOPATH)/bin/
 endif
 
-# TODO remove this
-# Our install targets place items item into $PULUMI_ROOT, if it's
-# unset, default to /opt/pulumi.
-ifeq ($(PULUMI_ROOT),)
-	PULUMI_ROOT:=/opt/pulumi
-endif
 
 # Use Python 3 explicitly vs expecting that `python` will resolve to a python 3
 # runtime.
 PYTHON ?= python3
 PIP ?= pip3
 
-PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
+ifeq (($PULUMI_NUGET),)
+	PULUMI_NUGET        := $(TMP_DIR)/nuget
+endif
 
 RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
 GO_TEST_FAST = PATH="$(GOBIN):$(PATH)" python3 ${PROJECT_ROOT}/scripts/go-test.py -short -count=1 -cover -tags=all -timeout 1h -parallel ${TESTPARALLELISM}
