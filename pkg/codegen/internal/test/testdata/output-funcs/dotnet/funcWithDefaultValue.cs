@@ -46,7 +46,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithDefaultValueOutputArgs : Pulumi.
+    public sealed class FuncWithDefaultValueOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a", required: true)]
         public string A { get; set; } = null!;

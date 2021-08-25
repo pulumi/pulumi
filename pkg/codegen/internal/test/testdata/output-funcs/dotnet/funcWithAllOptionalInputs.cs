@@ -45,7 +45,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithAllOptionalInputsOutputArgs : Pulumi.
+    public sealed class FuncWithAllOptionalInputsOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a")]
         public string? A { get; set; }

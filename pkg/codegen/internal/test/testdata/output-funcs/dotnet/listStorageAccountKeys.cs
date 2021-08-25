@@ -16,7 +16,7 @@ namespace Pulumi.Azure.Codegentest
         /// API Version: 2021-02-01.
         /// </summary>
         public static Task<ListStorageAccountKeysResult> InvokeAsync(ListStorageAccountKeysArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("azure:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("azure-native:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
 
         public static Output<ListStorageAccountKeysResult> Invoke(ListStorageAccountKeysOutputArgs args, InvokeOptions? options = null)
         {
@@ -60,7 +60,7 @@ namespace Pulumi.Azure.Codegentest
         }
     }
 
-    public sealed class ListStorageAccountKeysOutputArgs : Pulumi.
+    public sealed class ListStorageAccountKeysOutputArgs : Pulumi.InvokeArgs
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.

@@ -1406,6 +1406,7 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 	applyArgs := &plainType{
 		mod:                   mod,
 		name:                  className + "OutputArgs",
+		baseClass:             "InvokeArgs",
 		propertyTypeQualifier: "Inputs",
 		properties:            fun.Inputs.Properties,
 		args:                  true,

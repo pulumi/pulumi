@@ -15,7 +15,6 @@
 package dotnet
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -114,22 +113,13 @@ func TestGenerateOutputFuncsDotnet(t *testing.T) {
 
 	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
 
-	loadPackage := func(rawReader io.Reader) (*schema.Package, error) {
-
-		rawBytes, err := ioutil.ReadAll(rawReader)
-		if err != nil {
-			return nil, err
-		}
-
-		fixedBytes := []byte(strings.ReplaceAll(string(rawBytes), "azure-native", "azure"))
-		reader := bytes.NewReader(fixedBytes)
-
+	loadPackage := func(reader io.Reader) (*schema.Package, error) {
 		var pkgSpec schema.PackageSpec
 		err = json.NewDecoder(reader).Decode(&pkgSpec)
 		if err != nil {
 			return nil, err
 		}
-		//spew.Dump(pkgSpec)
+
 		pkg, err := schema.ImportSpec(pkgSpec, nil)
 		if err != nil {
 			return nil, err
@@ -146,6 +136,7 @@ func TestGenerateOutputFuncsDotnet(t *testing.T) {
 		mod := &modContext{
 			pkg: pkg,
 			namespaces: map[string]string{
+				"azure-native":   "Azure",
 				"madeup-package": "MadeupPackage",
 			},
 		}

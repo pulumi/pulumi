@@ -50,7 +50,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithDictParamOutputArgs : Pulumi.
+    public sealed class FuncWithDictParamOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a")]
         private Dictionary<string, string>? _a;

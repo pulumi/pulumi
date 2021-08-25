@@ -15,7 +15,7 @@ namespace Pulumi.Azure.Codegentest
         /// Use this function to access the current configuration of the native Azure provider.
         /// </summary>
         public static Task<GetClientConfigResult> InvokeAsync(InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<GetClientConfigResult>("azure:codegentest:getClientConfig", InvokeArgs.Empty, options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<GetClientConfigResult>("azure-native:codegentest:getClientConfig", InvokeArgs.Empty, options.WithVersion());
     }
 
 

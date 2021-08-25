@@ -50,7 +50,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithListParamOutputArgs : Pulumi.
+    public sealed class FuncWithListParamOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a")]
         private List<string>? _a;
