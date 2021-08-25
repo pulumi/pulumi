@@ -332,6 +332,8 @@ func getCurrentStackAbout(b backend.Backend) (currentStackAbout, error) {
 	snapshot, err = stack.Snapshot(context)
 	if err != nil {
 		return currentStackAbout{}, err
+	} else if snapshot == nil {
+		return currentStackAbout{}, errors.New("No current snapshot")
 	}
 	var resources []*resource.State = snapshot.Resources
 	var pendingOps []resource.Operation = snapshot.PendingOperations
