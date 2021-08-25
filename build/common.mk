@@ -114,7 +114,6 @@ endif
 PYTHON ?= python3
 PIP ?= pip3
 
-PULUMI_NODE_MODULES := $(PULUMI_ROOT)/node_modules
 PULUMI_NUGET        := $(PULUMI_ROOT)/nuget
 
 RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
@@ -176,7 +175,6 @@ test_fast::
 install::
 	$(call STEP_MESSAGE)
 	@mkdir -p $(GOBIN)
-	@mkdir -p $(PULUMI_NODE_MODULES)
 	@mkdir -p $(PULUMI_NUGET)
 
 dist::
@@ -190,12 +188,7 @@ test_all::
 
 ifneq ($(NODE_MODULE_NAME),)
 install::
-	[ ! -e "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" ] || rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	mkdir -p "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp -r bin/. "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	cp yarn.lock "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)"
-	rm -rf "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)/node_modules"
-	cd "$(PULUMI_NODE_MODULES)/$(NODE_MODULE_NAME)" && \
+	cd bin && \
 	yarn install --prefer-offline --production && \
 	(yarn unlink > /dev/null 2>&1 || true) && \
 	yarn link
