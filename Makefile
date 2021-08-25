@@ -50,9 +50,9 @@ brew::
 	cd pkg && go install -ldflags "-X github.com/pulumi/pulumi/pkg/v3/version.Version=${BREW_VERSION}" ${PROJECT}
 
 lint::
-	for DIR in "pkg" "sdk" "tests" ; do \
-		pushd $$DIR ; golangci-lint run -c ../.golangci.yml --timeout 5m ; popd ; \
-	done
+	@[ "$(shell cd pkg && golangci-lint run -c ../.golangci.yml --timeout 5m 1>&2; echo $$?)" -eq 0 ] && \
+	[ "$(shell cd sdk && golangci-lint run -c ../.golangci.yml --timeout 5m 1>&2; echo $$?)" -eq 0 ] && \
+	[ "$(shell cd tests && golangci-lint run -c ../.golangci.yml --timeout 5m 1>&2; echo $$?)" -eq 0 ]
 
 test_fast:: build
 	cd pkg && $(GO_TEST_FAST) ${PROJECT_PKGS}
