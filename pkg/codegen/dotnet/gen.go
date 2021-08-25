@@ -1347,6 +1347,10 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		className, outputArgsParamDef)
 	fmt.Fprintf(w, "        {\n")
 
+	if allOptionalInputs(fun) {
+		fmt.Fprintf(w, "            args = args ?? new %sOutputArgs();\n", className)
+	}
+
 	var args []string
 	for _, p := range fun.Inputs.Properties {
 		var extraConverter string

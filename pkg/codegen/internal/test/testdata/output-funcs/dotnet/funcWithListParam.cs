@@ -19,6 +19,7 @@ namespace Pulumi.MadeupPackage.Codegentest
 
         public static Output<FuncWithListParamResult> Invoke(FuncWithListParamOutputArgs? args = null, InvokeOptions? options = null)
         {
+            args = args ?? new FuncWithListParamOutputArgs();
             return Pulumi.Output.All(
                 args.A.Box(),
                 args.B.Box()
