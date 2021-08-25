@@ -242,6 +242,7 @@ var functionNamespaces = map[string][]string{
 	"readFile": {"System.IO"},
 	"toJSON":   {"System.Text.Json", "System.Collections.Generic"},
 	"toBase64": {"System"},
+	"sha1":     {"System.Security.Cryptography", "System.Text"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -322,6 +323,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgen(w, "JsonSerializer.Serialize(")
 		g.genDictionary(w, expr.Args[0])
 		g.Fgen(w, ")")
+	case "sha1":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "sha1(%v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}

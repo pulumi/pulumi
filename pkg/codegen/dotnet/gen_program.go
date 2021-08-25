@@ -143,6 +143,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 	// to sort them later on.
 	systemUsings := codegen.NewStringSet()
 	pulumiUsings := codegen.NewStringSet()
+	preambleHelperMethods := codegen.NewStringSet()
 	for _, n := range program.Nodes {
 		if r, isResource := n.(*hcl2.Resource); isResource {
 			pkg, _, _, _ := r.DecomposeToken()
@@ -162,6 +163,11 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 					} else {
 						pulumiUsings.Add(i)
 					}
+				}
+
+				// Checking to see if this function call deserves its own dedicated helper method in the preamble
+				if helperMethodBody, ok := getHelperMethodIfNeeded(call.Name); ok {
+					preambleHelperMethods.Add(helperMethodBody)
 				}
 			}
 			if _, ok := n.(*model.SplatExpression); ok {
@@ -188,7 +194,13 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 
 	// Emit Stack class signature
 	g.Fprint(w, "class MyStack : Stack\n")
-	g.Fprint(w, "{\n")
+	g.Fprint(w, "{\n\n")
+
+	// If we collected any helper methods that should be added, write them just before the main func
+	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
+		g.Fprintf(w, "\t%s\n\n", preambleHelperMethodBody)
+	}
+
 	g.Fprint(w, "    public MyStack()\n")
 	g.Fprint(w, "    {\n")
 }

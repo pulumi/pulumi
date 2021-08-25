@@ -15,10 +15,11 @@
 package dotnet
 
 import (
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"regexp"
 	"strings"
 	"unicode"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
 
 	"github.com/pkg/errors"
 )
@@ -117,4 +118,24 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 	}
 
 	return safeName, nil
+}
+
+// Provides code for a method which will be placed in the program preamble if deemed
+// necessary. Because many Terraform functions are complex, it is much prettier to
+// encapsulate them as their own function in the preamble.
+func getHelperMethodIfNeeded(functionName string) (string, bool) {
+	var methodBody string
+
+	switch functionName {
+	case "sha1":
+		methodBody =
+			`private static string sha1(string input) {
+		return BitConverter.ToString(
+			new SHA1Managed().ComputeHash(Encoding.UTF8.GetBytes(%v))
+		).Replace("-","").ToLower());
+	}`
+	default:
+		methodBody = ""
+	}
+	return methodBody, methodBody != ""
 }
