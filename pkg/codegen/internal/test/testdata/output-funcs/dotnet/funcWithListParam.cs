@@ -53,15 +53,15 @@ namespace Pulumi.MadeupPackage.Codegentest
     public sealed class FuncWithListParamOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a")]
-        private List<string>? _a;
-        public List<string> A
+        private InputList<string>? _a;
+        public InputList<string> A
         {
-            get => _a ?? (_a = new List<string>());
+            get => _a ?? (_a = new InputList<string>());
             set => _a = value;
         }
 
         [Input("b")]
-        public string? B { get; set; }
+        public Input<string>? B { get; set; }
 
         public FuncWithListParamOutputArgs()
         {

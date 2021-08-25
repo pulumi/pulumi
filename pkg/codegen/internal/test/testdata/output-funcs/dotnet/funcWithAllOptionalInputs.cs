@@ -48,10 +48,10 @@ namespace Pulumi.MadeupPackage.Codegentest
     public sealed class FuncWithAllOptionalInputsOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a")]
-        public string? A { get; set; }
+        public Input<string>? A { get; set; }
 
         [Input("b")]
-        public string? B { get; set; }
+        public Input<string>? B { get; set; }
 
         public FuncWithAllOptionalInputsOutputArgs()
         {

@@ -49,10 +49,10 @@ namespace Pulumi.MadeupPackage.Codegentest
     public sealed class FuncWithDefaultValueOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a", required: true)]
-        public string A { get; set; } = null!;
+        public Input<string> A { get; set; } = null!;
 
         [Input("b")]
-        public string? B { get; set; }
+        public Input<string>? B { get; set; }
 
         public FuncWithDefaultValueOutputArgs()
         {

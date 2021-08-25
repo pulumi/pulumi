@@ -1408,9 +1408,10 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 		name:                  className + "OutputArgs",
 		baseClass:             "InvokeArgs",
 		propertyTypeQualifier: "Inputs",
-		properties:            fun.Inputs.Properties,
+		properties:            fun.Inputs.InputShape.Properties,
 		args:                  true,
 	}
+
 	if err := applyArgs.genInputType(w, 1); err != nil {
 		return err
 	}

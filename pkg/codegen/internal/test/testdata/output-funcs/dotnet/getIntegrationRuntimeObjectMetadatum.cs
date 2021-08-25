@@ -74,25 +74,25 @@ namespace Pulumi.MadeupPackage.Codegentest
         /// The factory name.
         /// </summary>
         [Input("factoryName", required: true)]
-        public string FactoryName { get; set; } = null!;
+        public Input<string> FactoryName { get; set; } = null!;
 
         /// <summary>
         /// The integration runtime name.
         /// </summary>
         [Input("integrationRuntimeName", required: true)]
-        public string IntegrationRuntimeName { get; set; } = null!;
+        public Input<string> IntegrationRuntimeName { get; set; } = null!;
 
         /// <summary>
         /// Metadata path.
         /// </summary>
         [Input("metadataPath")]
-        public string? MetadataPath { get; set; }
+        public Input<string>? MetadataPath { get; set; }
 
         /// <summary>
         /// The resource group name.
         /// </summary>
         [Input("resourceGroupName", required: true)]
-        public string ResourceGroupName { get; set; } = null!;
+        public Input<string> ResourceGroupName { get; set; } = null!;
 
         public GetIntegrationRuntimeObjectMetadatumOutputArgs()
         {

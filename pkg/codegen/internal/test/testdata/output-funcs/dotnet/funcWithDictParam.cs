@@ -53,15 +53,15 @@ namespace Pulumi.MadeupPackage.Codegentest
     public sealed class FuncWithDictParamOutputArgs : Pulumi.InvokeArgs
     {
         [Input("a")]
-        private Dictionary<string, string>? _a;
-        public Dictionary<string, string> A
+        private InputMap<string>? _a;
+        public InputMap<string> A
         {
-            get => _a ?? (_a = new Dictionary<string, string>());
+            get => _a ?? (_a = new InputMap<string>());
             set => _a = value;
         }
 
         [Input("b")]
-        public string? B { get; set; }
+        public Input<string>? B { get; set; }
 
         public FuncWithDictParamOutputArgs()
         {
