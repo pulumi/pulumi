@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Azure-native.Codegentest
+namespace Pulumi.Azure.Codegentest
 {
     public static class ListStorageAccountKeys
     {
@@ -16,7 +16,7 @@ namespace Pulumi.Azure-native.Codegentest
         /// API Version: 2021-02-01.
         /// </summary>
         public static Task<ListStorageAccountKeysResult> InvokeAsync(ListStorageAccountKeysArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("azure-native:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<ListStorageAccountKeysResult>("azure:codegentest:listStorageAccountKeys", args ?? new ListStorageAccountKeysArgs(), options.WithVersion());
 
         public static Output<ListStorageAccountKeysResult> Invoke(ListStorageAccountKeysOutputArgs args, InvokeOptions? options = null)
         {
@@ -92,10 +92,10 @@ namespace Pulumi.Azure-native.Codegentest
         /// <summary>
         /// Gets the list of storage account keys and their properties for the specified storage account.
         /// </summary>
-        public readonly ImmutableArray<Pulumi.Azure-native.Codegentest.Outputs.StorageAccountKeyResponse> Keys;
+        public readonly ImmutableArray<Pulumi.Azure.Codegentest.Outputs.StorageAccountKeyResponse> Keys;
 
         [OutputConstructor]
-        private ListStorageAccountKeysResult(ImmutableArray<Pulumi.Azure-native.Codegentest.Outputs.StorageAccountKeyResponse> keys)
+        private ListStorageAccountKeysResult(ImmutableArray<Pulumi.Azure.Codegentest.Outputs.StorageAccountKeyResponse> keys)
         {
             Keys = keys;
         }

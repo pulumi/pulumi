@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 using System.Threading.Tasks;
 using Pulumi.Serialization;
 
-namespace Pulumi.Azure-native.Codegentest
+namespace Pulumi.Azure.Codegentest
 {
     public static class GetIntegrationRuntimeObjectMetadatum
     {
@@ -16,7 +16,7 @@ namespace Pulumi.Azure-native.Codegentest
         /// API Version: 2018-06-01.
         /// </summary>
         public static Task<GetIntegrationRuntimeObjectMetadatumResult> InvokeAsync(GetIntegrationRuntimeObjectMetadatumArgs args, InvokeOptions? options = null)
-            => Pulumi.Deployment.Instance.InvokeAsync<GetIntegrationRuntimeObjectMetadatumResult>("azure-native:codegentest:getIntegrationRuntimeObjectMetadatum", args ?? new GetIntegrationRuntimeObjectMetadatumArgs(), options.WithVersion());
+            => Pulumi.Deployment.Instance.InvokeAsync<GetIntegrationRuntimeObjectMetadatumResult>("azure:codegentest:getIntegrationRuntimeObjectMetadatum", args ?? new GetIntegrationRuntimeObjectMetadatumArgs(), options.WithVersion());
 
         public static Output<GetIntegrationRuntimeObjectMetadatumResult> Invoke(GetIntegrationRuntimeObjectMetadatumOutputArgs args, InvokeOptions? options = null)
         {

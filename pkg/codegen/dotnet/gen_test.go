@@ -1,4 +1,4 @@
-// Copyright 2016-2020, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -15,10 +15,12 @@
 package dotnet
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -112,12 +114,22 @@ func TestGenerateOutputFuncsDotnet(t *testing.T) {
 
 	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
 
-	loadPackage := func(reader io.Reader) (*schema.Package, error) {
-		var pkgSpec schema.PackageSpec
-		err := json.NewDecoder(reader).Decode(&pkgSpec)
+	loadPackage := func(rawReader io.Reader) (*schema.Package, error) {
+
+		rawBytes, err := ioutil.ReadAll(rawReader)
 		if err != nil {
 			return nil, err
 		}
+
+		fixedBytes := []byte(strings.ReplaceAll(string(rawBytes), "azure-native", "azure"))
+		reader := bytes.NewReader(fixedBytes)
+
+		var pkgSpec schema.PackageSpec
+		err = json.NewDecoder(reader).Decode(&pkgSpec)
+		if err != nil {
+			return nil, err
+		}
+		//spew.Dump(pkgSpec)
 		pkg, err := schema.ImportSpec(pkgSpec, nil)
 		if err != nil {
 			return nil, err
@@ -162,14 +174,23 @@ func TestGenerateOutputFuncsDotnet(t *testing.T) {
 		return err
 	}
 
+	dotnetDir := filepath.Join(testDir, "dotnet")
+
 	for _, ex := range examples {
 		t.Run(ex, func(t *testing.T) {
 			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
-			expectedOutputFile := filepath.Join(testDir, "dotnet", fmt.Sprintf("%s.cs", ex))
+			expectedOutputFile := filepath.Join(dotnetDir, fmt.Sprintf("%s.cs", ex))
 			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
 
 			utilsFile := filepath.Join(testDir, "dotnet", "Utilities.cs")
 			test.ValidateFileTransformer(t, inputFile, utilsFile, genUtilities)
 		})
 	}
+
+	t.Run("compileGeneratedCode", func(t *testing.T) {
+		t.Logf("cd %s && dotnet build", dotnetDir)
+		cmd := exec.Command("dotnet", "build")
+		cmd.Dir = dotnetDir
+		assert.NoError(t, cmd.Run())
+	})
 }
