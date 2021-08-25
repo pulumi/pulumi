@@ -272,6 +272,7 @@ var functionImports = map[string]string{
 	"fileAsset":          "@pulumi/pulumi",
 	"readFile":           "fs",
 	"readDir":            "fs",
+	"sha1":               "crypto",
 }
 
 func (g *generator) getFunctionImports(x *model.FunctionCallExpression) string {
@@ -358,7 +359,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "toJSON":
 		g.Fgenf(w, "JSON.stringify(%v)", expr.Args[0])
 	case "sha1":
-		g.Fgenf(w, "require('crypto').createHash('sha1').update(%v).digest('hex')", expr.Args[0])
+		g.Fgenf(w, "crypto.createHash('sha1').update(%v).digest('hex')", expr.Args[0])
 
 	default:
 		var rng hcl.Range
