@@ -15,8 +15,6 @@ func TestAboutCommands(t *testing.T) {
 
 	// pulumi about --json
 
-	// Note: Order matters. We rely on there being no current stack to garentee
-	// warnings will be generated.
 	t.Run("jsonAbout", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -29,8 +27,7 @@ func TestAboutCommands(t *testing.T) {
 		e.RunCommand("yarn", "install")
 		e.RunCommand("yarn", "link", "@pulumi/pulumi")
 		_, currentStack := integration.GetStacks(e)
-		stdout, stderr := e.RunCommand("pulumi", "about", "--json")
-		assert.Contains(t, stderr, "warning")
+		stdout, _ := e.RunCommand("pulumi", "about", "--json")
 		var res interface{}
 		assert.Nil(t, json.Unmarshal([]byte(stdout), &res), "Should be valid json")
 		assert.Contains(t, stdout, runtime.Version())
