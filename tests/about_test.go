@@ -48,12 +48,3 @@ func TestAboutCommands(t *testing.T) {
 		assert.Contains(t, stdout, runtime.Compiler)
 	})
 }
-
-func createIndexTs(e *ptesting.Environment) {
-	contents := ""
-	filePath := "index.ts"
-	filePath = path.Join(e.CWD, filePath)
-	err := ioutil.WriteFile(filePath, []byte(contents), os.ModePerm)
-	assert.NoError(e, err, "writing %s file", filePath)
-
-}
