@@ -2,7 +2,6 @@ package tests
 
 import (
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path"
@@ -15,10 +14,8 @@ import (
 )
 
 func TestAboutCommands(t *testing.T) {
-	stackName := "pulumi-about"
 
 	// pulumi about --json
-
 	t.Run("jsonAbout", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
@@ -46,17 +43,9 @@ func TestAboutCommands(t *testing.T) {
 		}()
 		integration.CreateBasicPulumiRepo(e)
 		e.SetBackend(e.LocalURL())
-		createIndexTs(e)
-		e.RunCommand("pulumi", "stack", "init", stackName)
-		e.RunCommand("yarn", "install")
-		e.RunCommand("pulumi", "up", "--non-interactive", "--yes", "--skip-preview")
-		_, currentStack := integration.GetStacks(e)
 		stdout, _ := e.RunCommand("pulumi", "about")
-		// We used to assert that stderr was empty. This didn't work because we got:
-		// failed to load language plugin nodejs.
 		assert.Contains(t, stdout, runtime.Version())
 		assert.Contains(t, stdout, runtime.Compiler)
-		assert.Contains(t, stdout, fmt.Sprintf("Current Stack: %s", *currentStack))
 	})
 }
 
