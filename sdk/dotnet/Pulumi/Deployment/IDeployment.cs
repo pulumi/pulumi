@@ -41,7 +41,8 @@ namespace Pulumi
 
         /// <summary>
         /// Dynamically calls the function '<paramref name="token"/>', which is offered by a
-        /// provider plugin.
+        /// provider plugin. <see cref="Call{T}"/> returns immediately while the operation takes
+        /// place asynchronously in the background, similar to Resource constructors.
         /// <para/>
         /// The result of <see cref="Call{T}"/> will be a <see cref="Output{T}"/> resolved to the
         /// result value of the provider plugin.
