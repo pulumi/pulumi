@@ -3,16 +3,47 @@
 package graph
 
 import (
+	"sort"
+
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+type node struct {
+	index         int
+	resource      *resource.State
+	outgoingEdges []*node
+	incomingEdges []*node
+}
+
 // DependencyGraph represents a dependency graph encoded within a resource snapshot.
 type DependencyGraph struct {
-	index      map[*resource.State]int // A mapping of resource pointers to indexes within the snapshot
-	resources  []*resource.State       // The list of resources, obtained from the snapshot
-	childrenOf map[resource.URN][]int  // Pre-computed map of transitive children for each resource
+	nodes map[resource.URN]*node // A mapping of resource states to nodes.
+}
+
+func (dg *DependencyGraph) hasPath(source, sink *node) bool {
+	for _, edge := range source.outgoingEdges {
+		if edge == sink || dg.hasPath(edge, sink) {
+			return true
+		}
+	}
+	return false
+}
+
+func (dg *DependencyGraph) dependingOn(set ResourceSet, list *[]*resource.State, res *resource.State,
+	ignore map[resource.URN]bool) {
+
+	resourceNode := dg.nodes[res.URN]
+	contract.Assert(resourceNode != nil)
+
+	for _, dependent := range resourceNode.incomingEdges {
+		if !ignore[dependent.resource.URN] && !set[dependent.resource] {
+			set[dependent.resource] = true
+			*list = append(*list, dependent.resource)
+			dg.dependingOn(set, list, dependent.resource, ignore)
+		}
+	}
 }
 
 // DependingOn returns a slice containing all resources that directly or indirectly
@@ -21,56 +52,15 @@ type DependencyGraph struct {
 //
 // The time complexity of DependingOn is linear with respect to the number of resources.
 func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.URN]bool) []*resource.State {
-	// This implementation relies on the detail that snapshots are stored in a valid
-	// topological order.
-	var dependents []*resource.State
-	dependentSet := make(map[resource.URN]bool)
+	var list []*resource.State
+	dg.dependingOn(ResourceSet{}, &list, res, ignore)
 
-	cursorIndex, ok := dg.index[res]
-	contract.Assert(ok)
-	dependentSet[res.URN] = true
+	sort.Slice(list, func(i, j int) bool {
+		resI, resJ := list[i], list[j]
+		return dg.nodes[resI.URN].index < dg.nodes[resJ.URN].index
+	})
 
-	isDependent := func(candidate *resource.State) bool {
-		if ignore[candidate.URN] {
-			return false
-		}
-		if candidate.Provider != "" {
-			ref, err := providers.ParseReference(candidate.Provider)
-			contract.Assert(err == nil)
-			if dependentSet[ref.URN()] {
-				return true
-			}
-		}
-		for _, dependency := range candidate.Dependencies {
-			if dependentSet[dependency] {
-				return true
-			}
-		}
-		return false
-	}
-
-	// The dependency graph encoded directly within the snapshot is the reverse of
-	// the graph that we actually want to operate upon. Edges in the snapshot graph
-	// originate in a resource and go to that resource's dependencies.
-	//
-	// The `DependingOn` is simpler when operating on the reverse of the snapshot graph,
-	// where edges originate in a resource and go to resources that depend on that resource.
-	// In this graph, `DependingOn` for a resource is the set of resources that are reachable from the
-	// given resource.
-	//
-	// To accomplish this without building up an entire graph data structure, we'll do a linear
-	// scan of the resource list starting at the requested resource and ending at the end of
-	// the list. All resources that depend directly or indirectly on `res` are prepended
-	// onto `dependents`.
-	for i := cursorIndex + 1; i < len(dg.resources); i++ {
-		candidate := dg.resources[i]
-		if isDependent(candidate) {
-			dependents = append(dependents, candidate)
-			dependentSet[candidate.URN] = true
-		}
-	}
-
-	return dependents
+	return list
 }
 
 // DependenciesOf returns a ResourceSet of resources upon which the given resource depends. The resource's parent is
@@ -78,44 +68,12 @@ func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	set := make(ResourceSet)
 
-	dependentUrns := make(map[resource.URN]bool)
-	for _, dep := range res.Dependencies {
-		dependentUrns[dep] = true
-	}
+	resourceNode := dg.nodes[res.URN]
+	contract.Assert(resourceNode != nil)
 
-	if res.Provider != "" {
-		ref, err := providers.ParseReference(res.Provider)
-		contract.Assert(err == nil)
-		dependentUrns[ref.URN()] = true
+	for _, dependency := range resourceNode.outgoingEdges {
+		set[dependency.resource] = true
 	}
-
-	cursorIndex, ok := dg.index[res]
-	contract.Assert(ok)
-	for i := cursorIndex - 1; i >= 0; i-- {
-		candidate := dg.resources[i]
-		// Include all resources that are dependencies of the resource
-		if dependentUrns[candidate.URN] {
-			set[candidate] = true
-			// If the dependency is a component, all transitive children of the dependency that are before this
-			// resource in the topological sort are also implicitly dependencies. This is necessary because for remote
-			// components, the dependencies will not include the transitive set of children directly, but will include
-			// the parent component. We must walk that component's children here to ensure they are treated as
-			// dependencies. Transitive children of the dependency that are after the resource in the topological sort
-			// are not included as this could lead to cycles in the dependency order.
-			if !candidate.Custom {
-				for _, transitiveCandidateIndex := range dg.childrenOf[candidate.URN] {
-					if transitiveCandidateIndex < cursorIndex {
-						set[dg.resources[transitiveCandidateIndex]] = true
-					}
-				}
-			}
-		}
-		// Include the resource's parent, as the resource depends on it's parent existing.
-		if candidate.URN == res.Parent {
-			set[candidate] = true
-		}
-	}
-
 	return set
 }
 
@@ -123,19 +81,74 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 // The resources should be in topological order with respect to their dependencies, including
 // parents appearing before children.
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
-	index := make(map[*resource.State]int)
-	childrenOf := make(map[resource.URN][]int)
+	nodes := map[resource.URN]*node{}
 
-	urnIndex := make(map[resource.URN]int)
-	for idx, res := range resources {
-		index[res] = idx
-		urnIndex[res.URN] = idx
-		parent := res.Parent
-		for parent != "" {
-			childrenOf[parent] = append(childrenOf[parent], idx)
-			parent = resources[urnIndex[parent]].Parent
+	addEdge := func(source, sink *node) {
+		source.outgoingEdges = append(source.outgoingEdges, sink)
+		sink.incomingEdges = append(sink.incomingEdges, source)
+	}
+
+	addEdgeToURN := func(source *node, sinkURN resource.URN) {
+		sinkNode := nodes[sinkURN]
+		contract.Assert(sinkNode != nil)
+
+		addEdge(source, sinkNode)
+	}
+
+	// Populate the nodes and add direct dependency edges. Parent edges are added after component expansion to avoid
+	// false dependencies.
+	for i, res := range resources {
+		resourceNode := &node{
+			index:         i,
+			resource:      res,
+			outgoingEdges: make([]*node, 0, len(res.Dependencies)),
+		}
+		nodes[res.URN] = resourceNode
+
+		for _, dependencyURN := range res.Dependencies {
+			addEdgeToURN(resourceNode, dependencyURN)
+		}
+
+		if res.Provider != "" {
+			ref, err := providers.ParseReference(res.Provider)
+			contract.Assert(err == nil)
+
+			addEdgeToURN(resourceNode, ref.URN())
 		}
 	}
 
-	return &DependencyGraph{index, resources, childrenOf}
+	dg := &DependencyGraph{nodes: nodes}
+
+	// Expand dependencies on components into dependencies on the component's descendents. Only add edges that would not
+	// create cycles in the dependency graph.
+	for _, res := range resources {
+		descendentNode := nodes[res.URN]
+		contract.Assert(descendentNode != nil)
+
+		parent := res.Parent
+		for parent != "" && parent.Type() != resource.RootStackType {
+			parentNode := nodes[parent]
+			contract.Assert(parentNode != nil)
+
+			for _, dependentNode := range parentNode.incomingEdges {
+				if dependentNode != descendentNode && !dg.hasPath(descendentNode, dependentNode) {
+					addEdge(dependentNode, descendentNode)
+				}
+			}
+
+			parent = parentNode.resource.Parent
+		}
+	}
+
+	// Add edges from each resource to its parent, if any. This is done after dependency expansion to avoid false
+	// dependencies due to these edges.
+	for _, res := range resources {
+		resourceNode := nodes[res.URN]
+		contract.Assert(resourceNode != nil)
+		if res.Parent != "" {
+			addEdgeToURN(resourceNode, res.Parent)
+		}
+	}
+
+	return dg
 }

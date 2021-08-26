@@ -35,6 +35,7 @@ import (
 	. "github.com/pulumi/pulumi/pkg/v3/engine"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy"
 	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/deploytest"
+	"github.com/pulumi/pulumi/pkg/v3/resource/deploy/providers"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag/colors"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
@@ -2451,4 +2452,1048 @@ func TestSingleComponentMethodResourceDefaultProviderLifecycle(t *testing.T) {
 		Steps:   MakeBasicLifecycleSteps(t, 4),
 	}
 	p.Run(t, nil)
+}
+
+// This tests a scenario involving two remote components with interdependencies that are only represented in the
+// user program.
+func TestComponentDeleteDependencies(t *testing.T) {
+
+	var (
+		firstURN  resource.URN
+		nestedURN resource.URN
+		sgURN     resource.URN
+		secondURN resource.URN
+		ruleURN   resource.URN
+
+		err error
+	)
+
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+		deploytest.NewProviderLoader("pkgB", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				ConstructF: func(monitor *deploytest.ResourceMonitor, typ, name string, parent resource.URN,
+					inputs resource.PropertyMap, options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+					switch typ {
+					case "pkgB:m:first":
+						firstURN, _, _, err = monitor.RegisterResource("pkgB:m:first", name, false)
+						require.NoError(t, err)
+
+						nestedURN, _, _, err = monitor.RegisterResource("nested", "nested", false,
+							deploytest.ResourceOptions{
+								Parent: firstURN,
+							})
+						require.NoError(t, err)
+
+						sgURN, _, _, err = monitor.RegisterResource("pkgA:m:sg", "sg", true, deploytest.ResourceOptions{
+							Parent: nestedURN,
+						})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(nestedURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(firstURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: firstURN}, nil
+					case "pkgB:m:second":
+						secondURN, _, _, err = monitor.RegisterResource("pkgB:m:second", name, false,
+							deploytest.ResourceOptions{
+								Dependencies: options.Dependencies,
+							})
+						require.NoError(t, err)
+
+						ruleURN, _, _, err = monitor.RegisterResource("pkgA:m:rule", "rule", true,
+							deploytest.ResourceOptions{
+								Parent:       secondURN,
+								Dependencies: options.PropertyDependencies["sgID"],
+							})
+						require.NoError(t, err)
+
+						err = monitor.RegisterResourceOutputs(secondURN, resource.PropertyMap{})
+						require.NoError(t, err)
+
+						return plugin.ConstructResult{URN: secondURN}, nil
+					default:
+						return plugin.ConstructResult{}, fmt.Errorf("unexpected type %v", typ)
+					}
+				},
+			}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		_, _, _, err = monitor.RegisterResource("pkgB:m:first", "first", false, deploytest.ResourceOptions{
+			Remote: true,
+		})
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgB:m:second", "second", false, deploytest.ResourceOptions{
+			Remote: true,
+			PropertyDeps: map[resource.PropertyKey][]resource.URN{
+				"sgID": {sgURN},
+			},
+			Dependencies: []resource.URN{firstURN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				firstIndex, nestedIndex, sgIndex, secondIndex, ruleIndex := -1, -1, -1, -1, -1
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case firstURN:
+						firstIndex = i
+					case nestedURN:
+						nestedIndex = i
+					case sgURN:
+						sgIndex = i
+					case secondURN:
+						secondIndex = i
+					case ruleURN:
+						ruleIndex = i
+					}
+				}
+
+				assert.Less(t, ruleIndex, sgIndex)
+				assert.Less(t, ruleIndex, secondIndex)
+				assert.Less(t, secondIndex, firstIndex)
+				assert.Less(t, secondIndex, sgIndex)
+				assert.Less(t, sgIndex, nestedIndex)
+				assert.Less(t, nestedIndex, firstIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+// This tests the canonical delete dependency example:
+//
+//           Comp1
+//      _______|__________
+//      |      |          |
+//   Cust1   Comp2      Comp3
+//          ___|___       |
+//          |     |       |
+//        Cust2  Cust3  Comp4
+//          |             |
+//        Cust4         Cust5
+//
+func TestComponentDeleteDependencies2(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var (
+		comp1URN     resource.URN
+		cust1URN     resource.URN
+		comp2URN     resource.URN
+		comp3URN     resource.URN
+		cust2URN     resource.URN
+		cust3URN     resource.URN
+		comp4URN     resource.URN
+		cust4URN     resource.URN
+		cust5URN     resource.URN
+		dependentURN resource.URN
+	)
+
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		comp1URN, _, _, err = monitor.RegisterResource("comp1", "comp1", false)
+		require.NoError(t, err)
+
+		cust1URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust1", true, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		comp2URN, _, _, err = monitor.RegisterResource("comp2", "comp2", false, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		comp3URN, _, _, err = monitor.RegisterResource("comp3", "comp3", false, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		cust2URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust2", true, deploytest.ResourceOptions{
+			Parent: comp2URN,
+		})
+		require.NoError(t, err)
+
+		cust3URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust3", true, deploytest.ResourceOptions{
+			Parent: comp2URN,
+		})
+		require.NoError(t, err)
+
+		comp4URN, _, _, err = monitor.RegisterResource("comp4", "comp4", false, deploytest.ResourceOptions{
+			Parent: comp3URN,
+		})
+		require.NoError(t, err)
+
+		cust4URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust4", true, deploytest.ResourceOptions{
+			Parent: cust2URN,
+		})
+		require.NoError(t, err)
+
+		cust5URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust5", true, deploytest.ResourceOptions{
+			Parent: comp4URN,
+		})
+		require.NoError(t, err)
+
+		dependentURN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "dependent", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{comp1URN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				var (
+					comp1Index     int = -1
+					cust1Index     int = -1
+					comp2Index     int = -1
+					comp3Index     int = -1
+					cust2Index     int = -1
+					cust3Index     int = -1
+					comp4Index     int = -1
+					cust4Index     int = -1
+					cust5Index     int = -1
+					dependentIndex int = -1
+				)
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case comp1URN:
+						comp1Index = i
+					case cust1URN:
+						cust1Index = i
+					case comp2URN:
+						comp2Index = i
+					case comp3URN:
+						comp3Index = i
+					case cust2URN:
+						cust2Index = i
+					case cust3URN:
+						cust3Index = i
+					case comp4URN:
+						comp4Index = i
+					case cust4URN:
+						cust4Index = i
+					case cust5URN:
+						cust5Index = i
+					case dependentURN:
+						dependentIndex = i
+					}
+				}
+
+				assert.Less(t, dependentIndex, cust5Index)
+				assert.Less(t, dependentIndex, cust3Index)
+				assert.Less(t, dependentIndex, cust1Index)
+
+				assert.Less(t, cust5Index, comp4Index)
+				assert.Less(t, cust4Index, cust2Index)
+				assert.Less(t, comp4Index, comp3Index)
+				assert.Less(t, cust3Index, comp2Index)
+				assert.Less(t, cust2Index, comp2Index)
+				assert.Less(t, comp3Index, comp1Index)
+				assert.Less(t, comp2Index, comp1Index)
+				assert.Less(t, cust1Index, comp1Index)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+// This test is a bit tricky.
+//
+// It takes advantage of the fact that children can be added to a component resource at any point (including after the
+// component has been marked as complete by a call to RegisterResourceOutputs) to construct a graph where a child A of
+// a component B depends on a resource C that in turn depends on the component B. If the dependencies for C are
+// incorrectly expanded (e.g. by expanding too late without filtering out impossible dependencies), they will include
+// A, which will cause a cycle in the delete graph (A depends on C and C depends on A via its dependency on B).
+//
+// This test *also* models the fact that the registration of a component's children happens asynchronously in the
+// language SDKs, and can therefore race with the registration of a component's dependents.
+//
+// This isn't as contrived as it seems. The AWSX APIs, for example, allow a user to create subnets that are parented to
+// a VPC component after the VPC's constructor has completed. With appropriate resource options, these subnets can end
+// up depending on a resource that in turn depends on the VPC.
+func TestAcyclicComponentDeleteDependencies(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var componentURN, childURN, child2URN, consumerURN resource.URN
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		componentURN, _, _, err = monitor.RegisterResource("component", "component", false)
+		require.NoError(t, err)
+
+		consumerURN, _, _, err = monitor.RegisterResource("pkgA:m:typA", "consumer", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{componentURN},
+		})
+		require.NoError(t, err)
+
+		child2URN, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child2", true, deploytest.ResourceOptions{
+			Parent: componentURN,
+		})
+		require.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(componentURN, resource.PropertyMap{})
+		require.NoError(t, err)
+
+		childURN, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Parent:       componentURN,
+			Dependencies: []resource.URN{consumerURN},
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				componentIndex, childIndex, child2Index, consumerIndex := -1, -1, -1, -1
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case componentURN:
+						componentIndex = i
+					case childURN:
+						childIndex = i
+					case child2URN:
+						child2Index = i
+					case consumerURN:
+						consumerIndex = i
+					}
+				}
+
+				assert.Less(t, childIndex, consumerIndex)
+				assert.Less(t, consumerIndex, child2Index)
+				assert.Less(t, child2Index, componentIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+func TestReadDependency(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		readURN, _, err := monitor.ReadResource("pkgA:m:typA", "read", "idA", "", nil, "", "")
+		require.NoError(t, err)
+
+		_, _, _, err = monitor.RegisterResource("pkgA:m:typA", "child", true, deploytest.ResourceOptions{
+			Dependencies: []resource.URN{readURN},
+		})
+		assert.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{
+		Options: UpdateOptions{Host: host},
+		Steps:   MakeBasicLifecycleSteps(t, 3),
+	}
+	p.Run(t, nil)
+}
+
+func TestEKSExample(t *testing.T) {
+	var (
+		stackURN            resource.URN
+		clusterComponentURN resource.URN
+		vpcURN              resource.URN
+		subnet1URN          resource.URN
+		subnet2URN          resource.URN
+		eksRoleURN          resource.URN
+		secGroupURN         resource.URN
+		egressRuleURN       resource.URN
+		clusterURN          resource.URN
+		k8sURN              resource.URN
+		helmComponentURN    resource.URN
+		namespaceURN        resource.URN
+		serviceURN          resource.URN
+		deploymentURN       resource.URN
+		sinkURN             resource.URN
+	)
+
+	var k8sID resource.ID
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("aws", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("kubernetes", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor,
+				typ, name string, parent resource.URN, inputs resource.PropertyMap,
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				require.Equal(t, "kubernetes:helm:Chart", typ)
+
+				provider := options.Providers["kubernetes"]
+
+				var err error
+				urn, _, _, err := monitor.RegisterResource("kubernetes:helm:Chart", name, false,
+					deploytest.ResourceOptions{
+						Parent: parent,
+					})
+				require.NoError(t, err)
+
+				namespaceURN, _, _, err = monitor.RegisterResource("kubernetes:core/v1:Namespace", name, true,
+					deploytest.ResourceOptions{
+						Parent:   urn,
+						Provider: provider,
+					})
+				require.NoError(t, err)
+
+				serviceURN, _, _, err = monitor.RegisterResource("kubernetes:core/v1:Service", name, true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Provider:     provider,
+						Dependencies: []resource.URN{namespaceURN},
+					})
+				require.NoError(t, err)
+
+				deploymentURN, _, _, err = monitor.RegisterResource("kubernetes:apps/v1:Deployment", name, true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Provider:     provider,
+						Dependencies: []resource.URN{namespaceURN},
+					})
+				require.NoError(t, err)
+
+				err = monitor.RegisterResourceOutputs(urn, nil)
+				require.NoError(t, err)
+
+				return plugin.ConstructResult{URN: urn}, nil
+			}
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+				ConstructF: construct,
+			}, nil
+		}),
+		deploytest.NewProviderLoader("eks", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor,
+				typ, name string, parent resource.URN, inputs resource.PropertyMap,
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				require.Equal(t, "eks:index:Cluster", typ)
+
+				var err error
+				urn, _, _, err := monitor.RegisterResource("eks:index:Cluster", name, false,
+					deploytest.ResourceOptions{
+						Parent: parent,
+					})
+				require.NoError(t, err)
+
+				vpcURN, _, _, err = monitor.RegisterResource("aws:ec2:VPC", name+"-vpc", true,
+					deploytest.ResourceOptions{
+						Parent: urn,
+					})
+				require.NoError(t, err)
+
+				subnet1URN, _, _, err = monitor.RegisterResource("aws:ec2:Subnet", name+"-subnet-1", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{vpcURN},
+					})
+				require.NoError(t, err)
+
+				subnet2URN, _, _, err = monitor.RegisterResource("aws:ec2:Subnet", name+"-subnet-2", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{vpcURN},
+					})
+				require.NoError(t, err)
+
+				eksRoleURN, _, _, err = monitor.RegisterResource("aws:iam:Role", name+"-eksRole", true,
+					deploytest.ResourceOptions{
+						Parent: urn,
+					})
+				require.NoError(t, err)
+
+				secGroupURN, _, _, err = monitor.RegisterResource("aws:ec2:SecurityGroup", name+"-secGroup", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{vpcURN},
+					})
+				require.NoError(t, err)
+
+				egressRuleURN, _, _, err = monitor.RegisterResource("aws:ec2:SecurityGroupRule", name+"-egress", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{secGroupURN},
+					})
+				require.NoError(t, err)
+
+				clusterURN, _, _, err = monitor.RegisterResource("aws:eks:Cluster", name+"-cluster", true,
+					deploytest.ResourceOptions{
+						Parent: urn,
+						Dependencies: []resource.URN{
+							eksRoleURN,
+							secGroupURN,
+							subnet1URN,
+							subnet2URN,
+						},
+					})
+				require.NoError(t, err)
+
+				k8sURN, k8sID, _, err = monitor.RegisterResource("pulumi:providers:kubernetes", name, true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{clusterURN},
+					})
+				require.NoError(t, err)
+
+				err = monitor.RegisterResourceOutputs(urn, nil)
+				require.NoError(t, err)
+
+				return plugin.ConstructResult{URN: urn}, nil
+			}
+
+			return &deploytest.Provider{ConstructF: construct}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		var err error
+		stackURN, _, _, err = monitor.RegisterResource(resource.RootStackType, "stack", false)
+		require.NoError(t, err)
+
+		clusterComponentURN, _, _, err = monitor.RegisterResource("eks:index:Cluster", "cluster", false,
+			deploytest.ResourceOptions{
+				Remote: true,
+				Parent: stackURN,
+			})
+		require.NoError(t, err)
+
+		helmComponentURN, _, _, err = monitor.RegisterResource("kubernetes:helm:Chart", "chart", false,
+			deploytest.ResourceOptions{
+				Remote: true,
+				Parent: stackURN,
+				Providers: map[string]string{
+					"kubernetes": string(k8sURN) + "::" + string(k8sID),
+				},
+			})
+		require.NoError(t, err)
+
+		sinkURN, _, _, err = monitor.RegisterResource("aws:elasticloadbalancingv2:LoadBalancer", "lb", true,
+			deploytest.ResourceOptions{
+				Parent:       stackURN,
+				Dependencies: []resource.URN{helmComponentURN},
+			})
+		require.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(stackURN, nil)
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				var (
+					stackIndex            int = -1
+					awsIndex              int = -1
+					clusterComponentIndex int = -1
+					vpcIndex              int = -1
+					subnet1Index          int = -1
+					subnet2Index          int = -1
+					eksRoleIndex          int = -1
+					secGroupIndex         int = -1
+					egressRuleIndex       int = -1
+					clusterIndex          int = -1
+					k8sIndex              int = -1
+					helmComponentIndex    int = -1
+					namespaceIndex        int = -1
+					serviceIndex          int = -1
+					deploymentIndex       int = -1
+					sinkIndex             int = -1
+				)
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case stackURN:
+						stackIndex = i
+					case clusterComponentURN:
+						clusterComponentIndex = i
+					case vpcURN:
+						vpcIndex = i
+					case subnet1URN:
+						subnet1Index = i
+					case subnet2URN:
+						subnet2Index = i
+					case eksRoleURN:
+						eksRoleIndex = i
+					case secGroupURN:
+						secGroupIndex = i
+					case egressRuleURN:
+						egressRuleIndex = i
+					case clusterURN:
+						clusterIndex = i
+					case k8sURN:
+						k8sIndex = i
+					case helmComponentURN:
+						helmComponentIndex = i
+					case namespaceURN:
+						namespaceIndex = i
+					case serviceURN:
+						serviceIndex = i
+					case deploymentURN:
+						deploymentIndex = i
+					case sinkURN:
+						sinkIndex = i
+					default:
+						if providers.IsProviderType(urn.Type()) && providers.GetProviderPackage(urn.Type()) == "aws" {
+							awsIndex = i
+						}
+					}
+				}
+
+				assert.NotEqual(t, -1, stackIndex)
+				assert.NotEqual(t, -1, awsIndex)
+				assert.NotEqual(t, -1, clusterComponentIndex)
+				assert.NotEqual(t, -1, vpcIndex)
+				assert.NotEqual(t, -1, subnet1Index)
+				assert.NotEqual(t, -1, subnet2Index)
+				assert.NotEqual(t, -1, eksRoleIndex)
+				assert.NotEqual(t, -1, secGroupIndex)
+				assert.NotEqual(t, -1, egressRuleIndex)
+				assert.NotEqual(t, -1, clusterIndex)
+				assert.NotEqual(t, -1, k8sIndex)
+				assert.NotEqual(t, -1, helmComponentIndex)
+				assert.NotEqual(t, -1, namespaceIndex)
+				assert.NotEqual(t, -1, serviceIndex)
+				assert.NotEqual(t, -1, deploymentIndex)
+				assert.NotEqual(t, -1, sinkIndex)
+
+				assert.Less(t, sinkIndex, deploymentIndex)
+				assert.Less(t, sinkIndex, serviceIndex)
+
+				assert.Less(t, deploymentIndex, namespaceIndex)
+				assert.Less(t, serviceIndex, namespaceIndex)
+				assert.Less(t, namespaceIndex, k8sIndex)
+				assert.Less(t, namespaceIndex, helmComponentIndex)
+				assert.Less(t, helmComponentIndex, stackIndex)
+
+				assert.Less(t, k8sIndex, clusterIndex)
+				assert.Less(t, clusterIndex, eksRoleIndex)
+				assert.Less(t, clusterIndex, secGroupIndex)
+				assert.Less(t, clusterIndex, subnet1Index)
+				assert.Less(t, clusterIndex, subnet2Index)
+				assert.Less(t, egressRuleIndex, clusterComponentIndex)
+				assert.Less(t, secGroupIndex, vpcIndex)
+				assert.Less(t, eksRoleIndex, clusterComponentIndex)
+				assert.Less(t, subnet1Index, vpcIndex)
+				assert.Less(t, subnet2Index, vpcIndex)
+				assert.Less(t, vpcIndex, awsIndex)
+				assert.Less(t, vpcIndex, clusterComponentIndex)
+				assert.Less(t, clusterComponentIndex, stackIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+func TestEKSExample2(t *testing.T) {
+	var (
+		stackURN            resource.URN
+		clusterComponentURN resource.URN
+		vpcURN              resource.URN
+		subnet1URN          resource.URN
+		subnet2URN          resource.URN
+		eksRoleURN          resource.URN
+		secGroupURN         resource.URN
+		egressRuleURN       resource.URN
+		clusterURN          resource.URN
+		k8sURN              resource.URN
+		helmComponentURN    resource.URN
+		namespaceURN        resource.URN
+		serviceURN          resource.URN
+		deploymentURN       resource.URN
+		sinkURN             resource.URN
+	)
+
+	var k8sID resource.ID
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("aws", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("kubernetes", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{
+				CreateF: func(urn resource.URN, inputs resource.PropertyMap, timeout float64,
+					preview bool) (resource.ID, resource.PropertyMap, resource.Status, error) {
+					return "id", inputs, resource.StatusOK, nil
+				},
+				ReadF: func(urn resource.URN, id resource.ID,
+					inputs, state resource.PropertyMap) (plugin.ReadResult, resource.Status, error) {
+					return plugin.ReadResult{Inputs: inputs, Outputs: state}, resource.StatusOK, nil
+				},
+			}, nil
+		}),
+		deploytest.NewProviderLoader("eks", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			construct := func(monitor *deploytest.ResourceMonitor,
+				typ, name string, parent resource.URN, inputs resource.PropertyMap,
+				options plugin.ConstructOptions) (plugin.ConstructResult, error) {
+
+				require.Equal(t, "eks:index:Cluster", typ)
+
+				var err error
+				urn, _, _, err := monitor.RegisterResource("eks:index:Cluster", name, false,
+					deploytest.ResourceOptions{
+						Parent: parent,
+					})
+				require.NoError(t, err)
+
+				vpcURN, _, _, err = monitor.RegisterResource("aws:ec2:VPC", name+"-vpc", true,
+					deploytest.ResourceOptions{
+						Parent: urn,
+					})
+				require.NoError(t, err)
+
+				subnet1URN, _, _, err = monitor.RegisterResource("aws:ec2:Subnet", name+"-subnet-1", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{vpcURN},
+					})
+				require.NoError(t, err)
+
+				subnet2URN, _, _, err = monitor.RegisterResource("aws:ec2:Subnet", name+"-subnet-2", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{vpcURN},
+					})
+				require.NoError(t, err)
+
+				eksRoleURN, _, _, err = monitor.RegisterResource("aws:iam:Role", name+"-eksRole", true,
+					deploytest.ResourceOptions{
+						Parent: urn,
+					})
+				require.NoError(t, err)
+
+				secGroupURN, _, _, err = monitor.RegisterResource("aws:ec2:SecurityGroup", name+"-secGroup", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{vpcURN},
+					})
+				require.NoError(t, err)
+
+				egressRuleURN, _, _, err = monitor.RegisterResource("aws:ec2:SecurityGroupRule", name+"-egress", true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{secGroupURN},
+					})
+				require.NoError(t, err)
+
+				clusterURN, _, _, err = monitor.RegisterResource("aws:eks:Cluster", name+"-cluster", true,
+					deploytest.ResourceOptions{
+						Parent: urn,
+						Dependencies: []resource.URN{
+							eksRoleURN,
+							secGroupURN,
+							subnet1URN,
+							subnet2URN,
+						},
+					})
+				require.NoError(t, err)
+
+				k8sURN, k8sID, _, err = monitor.RegisterResource("pulumi:providers:kubernetes", name, true,
+					deploytest.ResourceOptions{
+						Parent:       urn,
+						Dependencies: []resource.URN{clusterURN},
+					})
+				require.NoError(t, err)
+
+				err = monitor.RegisterResourceOutputs(urn, nil)
+				require.NoError(t, err)
+
+				return plugin.ConstructResult{URN: urn}, nil
+			}
+
+			return &deploytest.Provider{ConstructF: construct}, nil
+		}),
+	}
+
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		var err error
+		stackURN, _, _, err = monitor.RegisterResource(resource.RootStackType, "stack", false)
+		require.NoError(t, err)
+
+		clusterComponentURN, _, _, err = monitor.RegisterResource("eks:index:Cluster", "cluster", false,
+			deploytest.ResourceOptions{
+				Remote: true,
+				Parent: stackURN,
+			})
+		require.NoError(t, err)
+
+		k8sProvider := string(k8sURN) + "::" + string(k8sID)
+
+		helmComponentURN, _, _, err = monitor.RegisterResource("kubernetes:helm:Chart", "chart", false,
+			deploytest.ResourceOptions{
+				Parent: stackURN,
+			})
+		require.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(helmComponentURN, nil)
+		require.NoError(t, err)
+
+		sinkURN, _, _, err = monitor.RegisterResource("aws:elasticloadbalancingv2:LoadBalancer", "lb", true,
+			deploytest.ResourceOptions{
+				Parent:       stackURN,
+				Dependencies: []resource.URN{helmComponentURN},
+			})
+		require.NoError(t, err)
+
+		// Model the Helm chart's resources being created inside of an apply.
+		namespaceURN, _, _, err = monitor.RegisterResource("kubernetes:core/v1:Namespace", "chart", true,
+			deploytest.ResourceOptions{
+				Parent:   helmComponentURN,
+				Provider: k8sProvider,
+			})
+		require.NoError(t, err)
+
+		serviceURN, _, _, err = monitor.RegisterResource("kubernetes:core/v1:Service", "chart", true,
+			deploytest.ResourceOptions{
+				Parent:       helmComponentURN,
+				Provider:     k8sProvider,
+				Dependencies: []resource.URN{namespaceURN},
+			})
+		require.NoError(t, err)
+
+		deploymentURN, _, _, err = monitor.RegisterResource("kubernetes:apps/v1:Deployment", "chart", true,
+			deploytest.ResourceOptions{
+				Parent:       helmComponentURN,
+				Provider:     k8sProvider,
+				Dependencies: []resource.URN{namespaceURN},
+			})
+		require.NoError(t, err)
+
+		err = monitor.RegisterResourceOutputs(stackURN, nil)
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				var (
+					stackIndex            int = -1
+					awsIndex              int = -1
+					clusterComponentIndex int = -1
+					vpcIndex              int = -1
+					subnet1Index          int = -1
+					subnet2Index          int = -1
+					eksRoleIndex          int = -1
+					secGroupIndex         int = -1
+					egressRuleIndex       int = -1
+					clusterIndex          int = -1
+					k8sIndex              int = -1
+					helmComponentIndex    int = -1
+					namespaceIndex        int = -1
+					serviceIndex          int = -1
+					deploymentIndex       int = -1
+					sinkIndex             int = -1
+				)
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case stackURN:
+						stackIndex = i
+					case clusterComponentURN:
+						clusterComponentIndex = i
+					case vpcURN:
+						vpcIndex = i
+					case subnet1URN:
+						subnet1Index = i
+					case subnet2URN:
+						subnet2Index = i
+					case eksRoleURN:
+						eksRoleIndex = i
+					case secGroupURN:
+						secGroupIndex = i
+					case egressRuleURN:
+						egressRuleIndex = i
+					case clusterURN:
+						clusterIndex = i
+					case k8sURN:
+						k8sIndex = i
+					case helmComponentURN:
+						helmComponentIndex = i
+					case namespaceURN:
+						namespaceIndex = i
+					case serviceURN:
+						serviceIndex = i
+					case deploymentURN:
+						deploymentIndex = i
+					case sinkURN:
+						sinkIndex = i
+					default:
+						if providers.IsProviderType(urn.Type()) && providers.GetProviderPackage(urn.Type()) == "aws" {
+							awsIndex = i
+						}
+					}
+				}
+
+				assert.NotEqual(t, -1, stackIndex)
+				assert.NotEqual(t, -1, awsIndex)
+				assert.NotEqual(t, -1, clusterComponentIndex)
+				assert.NotEqual(t, -1, vpcIndex)
+				assert.NotEqual(t, -1, subnet1Index)
+				assert.NotEqual(t, -1, subnet2Index)
+				assert.NotEqual(t, -1, eksRoleIndex)
+				assert.NotEqual(t, -1, secGroupIndex)
+				assert.NotEqual(t, -1, egressRuleIndex)
+				assert.NotEqual(t, -1, clusterIndex)
+				assert.NotEqual(t, -1, k8sIndex)
+				assert.NotEqual(t, -1, helmComponentIndex)
+				assert.NotEqual(t, -1, namespaceIndex)
+				assert.NotEqual(t, -1, serviceIndex)
+				assert.NotEqual(t, -1, deploymentIndex)
+				assert.NotEqual(t, -1, sinkIndex)
+
+				assert.Less(t, sinkIndex, deploymentIndex)
+				assert.Less(t, sinkIndex, serviceIndex)
+
+				assert.Less(t, deploymentIndex, namespaceIndex)
+				assert.Less(t, serviceIndex, namespaceIndex)
+				assert.Less(t, namespaceIndex, k8sIndex)
+				assert.Less(t, namespaceIndex, helmComponentIndex)
+				assert.Less(t, helmComponentIndex, stackIndex)
+
+				assert.Less(t, k8sIndex, clusterIndex)
+				assert.Less(t, clusterIndex, eksRoleIndex)
+				assert.Less(t, clusterIndex, secGroupIndex)
+				assert.Less(t, clusterIndex, subnet1Index)
+				assert.Less(t, clusterIndex, subnet2Index)
+				assert.Less(t, egressRuleIndex, clusterComponentIndex)
+				assert.Less(t, secGroupIndex, vpcIndex)
+				assert.Less(t, eksRoleIndex, clusterComponentIndex)
+				assert.Less(t, subnet1Index, vpcIndex)
+				assert.Less(t, subnet2Index, vpcIndex)
+				assert.Less(t, vpcIndex, awsIndex)
+				assert.Less(t, vpcIndex, clusterComponentIndex)
+				assert.Less(t, clusterComponentIndex, stackIndex)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+
 }
