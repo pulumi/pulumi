@@ -41,6 +41,21 @@ namespace Pulumi.MadeupPackage.Codegentest
                 return Task.FromResult((Object)result);
             }
 
+            if (args.Token == "madeup-package:codegentest:funcWithListParam")
+            {
+                string aString = "null";
+                if (args.Args.ContainsKey("a"))
+                {
+                    var a = (ImmutableArray<object>)args.Args["a"];
+                    aString = string.Join(", ", a.OrderBy(k => k).Select(e => $"{e}"));
+                }
+                var b = args.Args.GetValueOrDefault("b", "null");
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                dictBuilder.Add("r", $"a=[{aString}] b={b}");
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
             throw new Exception($"CallAsync not implemented for {args.Token}..");
         }
 

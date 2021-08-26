@@ -93,9 +93,7 @@ namespace Pulumi.MadeupPackage.Codegentest
             map.Add("K1", Out("my-k1"));
             map.Add("K2", Out("my-k2"));
 
-            // Looks like the current implementation does not
-            // distinguish null and empty (a=[] instead of a=null),
-            // but this is benign.
+            // Omitted value defaults to empty dict and not null.
             await check("a=[] b=null", () => new FuncWithDictParamOutputArgs());
 
             await check("a=[K1: my-k1, K2: my-k2] b=null", () => new FuncWithDictParamOutputArgs()
@@ -109,6 +107,36 @@ namespace Pulumi.MadeupPackage.Codegentest
                 B = Out("my-b"),
             });
         }
+
+        [Test]
+        public async Task FuncWithListParamOutputWorks()
+        {
+            Func<string,Func<FuncWithListParamOutputArgs>,Task> check = (
+                (expected, args) => Assert
+                .Output(() => FuncWithListParam.Invoke(args()).Apply(x => x.R))
+                .ResolvesTo(expected)
+            );
+
+            var lst = new InputList<string>();
+            lst.Add("e1");
+            lst.Add("e2");
+            lst.Add("e3");
+
+            // Similarly to dicts, omitted value defaults to empty list and not null.
+            await check("a=[] b=null", () => new FuncWithListParamOutputArgs());
+
+            await check("a=[e1, e2, e3] b=null", () => new FuncWithListParamOutputArgs()
+            {
+                A = lst,
+            });
+
+            await check("a=[e1, e2, e3] b=my-b", () => new FuncWithListParamOutputArgs()
+            {
+                A = lst,
+                B = Out("my-b"),
+            });
+        }
+
 
         // [Test]
         // public async Task ListStorageAccountKeysApplyWorks()
