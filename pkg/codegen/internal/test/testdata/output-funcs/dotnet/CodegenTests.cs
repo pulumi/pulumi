@@ -80,31 +80,35 @@ namespace Pulumi.MadeupPackage.Codegentest
             });
         }
 
+        [Test]
+        public async Task FuncWithDictParamOutputWorks()
+        {
+            Func<string,Func<FuncWithDictParamOutputArgs>,Task> check = (
+                (expected, args) => Assert
+                .Output(() => FuncWithDictParam.Invoke(args()).Apply(x => x.R))
+                .ResolvesTo(expected)
+            );
 
-// @pulumi.runtime.test
-// def test_func_with_default_value(my_mocks):
-//     # TODO[pulumi/pulumi/7815]: Defaults from schema not recognized.
-//     return assert_function_matches_table(
-//         funcWithDefaultValue.func_with_default_value_output,
-//         [
-//             ({}, 'a=None b=None', r),
-//             ({'a': out('my-a')}, 'a=my-a b=None', r),
-//             ({'a': out('my-a'), 'b': out('my-b')}, 'a=my-a b=my-b', r),
-//         ])
+            var map = new InputMap<string>();
+            map.Add("K1", Out("my-k1"));
+            map.Add("K2", Out("my-k2"));
 
+            // Looks like the current implementation does not
+            // distinguish null and empty (a=[] instead of a=null),
+            // but this is benign.
+            await check("a=[] b=null", () => new FuncWithDictParamOutputArgs());
 
-        // public class FuncWithAllOptionalInputsOutputStack : Stack
-        // {
-        //     public FuncWithAllOptionalInputsOutputStack
-        //     {
+            await check("a=[K1: my-k1, K2: my-k2] b=null", () => new FuncWithDictParamOutputArgs()
+            {
+                A = map,
+            });
 
-        //     }
-        // }
-
-
-
-
-
+            await check("a=[K1: my-k1, K2: my-k2] b=my-b", () => new FuncWithDictParamOutputArgs()
+            {
+                A = map,
+                B = Out("my-b"),
+            });
+        }
 
         // [Test]
         // public async Task ListStorageAccountKeysApplyWorks()

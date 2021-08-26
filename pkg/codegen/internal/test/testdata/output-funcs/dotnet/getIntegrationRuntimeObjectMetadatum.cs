@@ -68,7 +68,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class GetIntegrationRuntimeObjectMetadatumOutputArgs : Pulumi.InvokeArgs
+    public sealed class GetIntegrationRuntimeObjectMetadatumOutputArgs
     {
         /// <summary>
         /// The factory name.

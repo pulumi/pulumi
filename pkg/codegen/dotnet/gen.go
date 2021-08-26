@@ -613,7 +613,13 @@ func (pt *plainType) genInputType(w io.Writer, level int) error {
 
 	// Open the class.
 	printCommentWithOptions(w, pt.comment, indent, !pt.unescapeComment)
-	fmt.Fprintf(w, "%spublic %sclass %s : Pulumi.%s\n", indent, sealed, pt.name, pt.baseClass)
+
+	var suffix string
+	if pt.baseClass != "" {
+		suffix = fmt.Sprintf(" : Pulumi.%s", pt.baseClass)
+	}
+
+	fmt.Fprintf(w, "%spublic %sclass %s%s\n", indent, sealed, pt.name, suffix)
 	fmt.Fprintf(w, "%s{\n", indent)
 
 	// Declare each input property.
@@ -1353,8 +1359,16 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 
 	var args []string
 	for _, p := range fun.Inputs.Properties {
+
 		var extraConverter string
-		switch p.Type.(type) {
+		switch pType := p.Type.(type) {
+		case *schema.OptionalType:
+			switch pType.ElementType.(type) {
+			case *schema.ArrayType:
+				extraConverter = ".ToList()"
+			case *schema.MapType:
+				extraConverter = ".ToDict()"
+			}
 		case *schema.ArrayType:
 			extraConverter = ".ToList()"
 		case *schema.MapType:
@@ -1410,7 +1424,6 @@ func (mod *modContext) genFunctionOutputVersionTypes(w io.Writer, fun *schema.Fu
 	applyArgs := &plainType{
 		mod:                   mod,
 		name:                  className + "OutputArgs",
-		baseClass:             "InvokeArgs",
 		propertyTypeQualifier: "Inputs",
 		properties:            fun.Inputs.InputShape.Properties,
 		args:                  true,

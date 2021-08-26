@@ -60,7 +60,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class ListStorageAccountKeysOutputArgs : Pulumi.InvokeArgs
+    public sealed class ListStorageAccountKeysOutputArgs
     {
         /// <summary>
         /// The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.

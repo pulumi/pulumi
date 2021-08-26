@@ -21,7 +21,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             args = args ?? new FuncWithDictParamOutputArgs();
             return Pulumi.Output.All(
-                args.A.Box(),
+                args.A.ToDict().Box(),
                 args.B.Box()
             ).Apply(a => {
                     var args = new FuncWithDictParamArgs();
@@ -51,7 +51,7 @@ namespace Pulumi.MadeupPackage.Codegentest
         }
     }
 
-    public sealed class FuncWithDictParamOutputArgs : Pulumi.InvokeArgs
+    public sealed class FuncWithDictParamOutputArgs
     {
         [Input("a")]
         private InputMap<string>? _a;
