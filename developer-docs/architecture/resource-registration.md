@@ -22,7 +22,7 @@ The resource monitor provides serves the `ResourceMonitor` gRPC interface, and p
 and the rest of the engine. There is a single resource monitor per deployment. As the engine's feature set has grown,
 the resource monitor has taken on responsibilities beyond its original use as a simple marshaling/unmarshaling layer.
 It is now responsible for handling default providers (providers for resource registrations that do not reference a
-provider instance) and for dispatching `RegisterResourceRequest`s for multi-language components into appropraite
+provider instance) and for dispatching `RegisterResourceRequest`s for multi-language components into appropriate
 `Construct` calls.
 
 When the resource monitor receives a resource registration, it does the following:
@@ -64,7 +64,7 @@ RegisterResourceRequest{
 
 Becuase this request does not contain a value for the `provider` field, it will use the default provider for the
 `aws` package at version 4.16.0. The resource monitor ensures that only a single default provider instance exists
-for each particular package verison, and only creates default provider instances if they are needed. Default provider
+for each particular package version, and only creates default provider instances if they are needed. Default provider
 instances are registered by synthesizing an appropriate `RegisterResourceEvent` with input properties sourced from the
 stack's configuration values for the provider's package. In the example above, the AWS default provider would be
 configured using any stack configuration values whose keys begin with `aws:` (e.g. `aws:region`).
@@ -89,7 +89,7 @@ RegisterResourceRequest{
 	parent: "urn:pulumi:dev::project::pulumi:pulumi:Stack::project",
 	custom: true,
 	object: {},
-	provider: "urn:pulumi:dev::vpc-2::pulumi:providers:aws::default_4_16_0::308b79ee-8249-40fb-a203-de190cb8faa8",
+	provider: "urn:pulumi:dev::vpc-2::pulumi:providers:aws::us-west-2::308b79ee-8249-40fb-a203-de190cb8faa8",
 	version: "4.16.0",
 }
 ```
