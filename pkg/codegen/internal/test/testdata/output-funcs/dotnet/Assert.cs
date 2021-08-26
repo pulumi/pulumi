@@ -13,11 +13,6 @@ namespace Pulumi.MadeupPackage.Codegentest
         {
             return new OutputAssert<T>(builder);
         }
-
-        // public static void OutputResolvesTo<T1,T2>(T1 expected, Func<Output<T1>> outputBuilder, Func<T1,T2> converter)
-        // {
-        //     throw new Exception("OutputResolvesTo not implemented");
-        // }
     }
 
     public class OutputAssert<T>
