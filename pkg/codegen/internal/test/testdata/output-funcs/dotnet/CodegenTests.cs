@@ -25,13 +25,13 @@ namespace Pulumi.MadeupPackage.Codegentest
         [Test]
         public async Task FuncWithAllOptionalInputsOutputWorks()
         {
-            Func<string,Func<FuncWithAllOptionalInputsOutputArgs>,Task> check = (
+            Func<string,Func<FuncWithAllOptionalInputsOutputArgs?>,Task> check = (
                 (expected, args) => Assert
                 .Output(() => FuncWithAllOptionalInputs.Invoke(args()).Apply(x => x.R))
                 .ResolvesTo(expected)
             );
 
-            await check("a=null b=null", () => null!);
+            await check("a=null b=null", () => null);
 
             await check("a=null b=null", () => new FuncWithAllOptionalInputsOutputArgs());
 
@@ -51,6 +51,47 @@ namespace Pulumi.MadeupPackage.Codegentest
                 B = Out("my-b"),
             });
         }
+
+        [Test]
+        public async Task FuncWithDefaultValueOutputWorks()
+        {
+            Func<string,Func<FuncWithDefaultValueOutputArgs>,Task> check = (
+                (expected, args) => Assert
+                .Output(() => FuncWithDefaultValue.Invoke(args()).Apply(x => x.R))
+                .ResolvesTo(expected)
+            );
+
+            // Since A is required, not passing it is an exception.
+            // Perhaps this should be rejected by the typechecker
+            // instead? Why is A optional statically?
+            Func<Task> act = () => check("", () => new FuncWithDefaultValueOutputArgs());
+            await act.Should().ThrowAsync<Exception>();
+
+            // Check that default values from the schema work.
+            await check("a=my-a b=b-default", () => new FuncWithDefaultValueOutputArgs()
+            {
+                A = Out("my-a")
+            });
+
+            await check("a=my-a b=my-b", () => new FuncWithDefaultValueOutputArgs()
+            {
+                A = Out("my-a"),
+                B = Out("my-b")
+            });
+        }
+
+
+// @pulumi.runtime.test
+// def test_func_with_default_value(my_mocks):
+//     # TODO[pulumi/pulumi/7815]: Defaults from schema not recognized.
+//     return assert_function_matches_table(
+//         funcWithDefaultValue.func_with_default_value_output,
+//         [
+//             ({}, 'a=None b=None', r),
+//             ({'a': out('my-a')}, 'a=my-a b=None', r),
+//             ({'a': out('my-a'), 'b': out('my-b')}, 'a=my-a b=my-b', r),
+//         ])
+
 
         // public class FuncWithAllOptionalInputsOutputStack : Stack
         // {

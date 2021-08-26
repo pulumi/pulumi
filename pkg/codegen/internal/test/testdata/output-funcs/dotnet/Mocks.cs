@@ -13,11 +13,10 @@ namespace Pulumi.MadeupPackage.Codegentest
         public Task<object> CallAsync(MockCallArgs args)
         {
 
-            if (args.Token == "madeup-package:codegentest:funcWithAllOptionalInputs")
+            if (args.Token == "madeup-package:codegentest:funcWithAllOptionalInputs"
+            || args.Token == "madeup-package:codegentest:funcWithDefaultValue")
             {
-                // Create serialized `FuncWithAllOptionalInputsResult`.
                 var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
-                // var argsRepr = ShowMockCallArgs(args);
                 var a = args.Args.GetValueOrDefault("a", "null");
                 var b = args.Args.GetValueOrDefault("b", "null");
                 dictBuilder.Add("r", $"a={a} b={b}");
@@ -26,12 +25,6 @@ namespace Pulumi.MadeupPackage.Codegentest
             }
 
             throw new Exception($"CallAsync not implemented for {args.Token}..");
-            // // Create serialized `FuncWithAllOptionalInputsResult`.
-            // var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
-            // var argsRepr = ShowMockCallArgs(args);
-            // dictBuilder.Add("r", (Object)argsRepr);
-            // var result = dictBuilder.ToImmutableDictionary();
-            // return Task.FromResult((Object)result);
         }
 
         public Task<(string? id, object state)> NewResourceAsync(MockResourceArgs args)
