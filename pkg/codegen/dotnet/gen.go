@@ -1389,15 +1389,6 @@ func (mod *modContext) genFunctionOutputVersion(w io.Writer, fun *schema.Functio
 		unpackStatements = append(unpackStatements, stmt)
 	}
 
-	// allOptionalInputs := true
-	// for _, prop := range fun.Inputs.Properties {
-	// 	allOptionalInputs = allOptionalInputs && !prop.IsRequired
-	// }
-
-	// if allOptionalInputs {
-	// 	fmt.Fprintf(w, "%sargs = args ?? new %sOutputArgs();\n", indent2, className)
-	// }
-
 	fmt.Fprintf(w, "%sreturn Pulumi.Output.All(\n", indent2)
 	fmt.Fprintf(w, "%s%s\n", indent3, strings.Join(args, ",\n"+indent3))
 
