@@ -68,6 +68,22 @@ namespace Pulumi.MadeupPackage.Codegentest
                 return Task.FromResult((Object)result);
             }
 
+            if (args.Token == "azure-native:codegentest:listStorageAccountKeys")
+            {
+                var argsString = string.Join(", ", args.Args.Keys.OrderBy(k => k).Select(k => $"{k}: {args.Args[k]}"));
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                var arrayBuilder = ImmutableArray.CreateBuilder<object>();
+                var elemBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                elemBuilder.Add("creationTime", "my-creation-time");
+                elemBuilder.Add("keyName", "my-key-name");
+                elemBuilder.Add("permissions", "my-permissions");
+                elemBuilder.Add("value", "[" + argsString + "]");
+                arrayBuilder.Add(elemBuilder.ToImmutableDictionary());
+                dictBuilder.Add("keys", arrayBuilder.ToImmutableArray());
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
             throw new Exception($"CallAsync not implemented for {args.Token}..");
         }
 
