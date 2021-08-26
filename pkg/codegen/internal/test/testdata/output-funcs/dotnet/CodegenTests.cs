@@ -137,6 +137,33 @@ namespace Pulumi.MadeupPackage.Codegentest
             });
         }
 
+        [Test]
+        public async Task GetIntegrationRuntimeObjectMetadatumOuputWorks()
+        {
+            Func<string,Func<GetIntegrationRuntimeObjectMetadatumOutputArgs>,Task> check = (
+                (expected, args) => Assert
+                .Output(() => GetIntegrationRuntimeObjectMetadatum.Invoke(args()).Apply(x => {
+                    var nextLink = x.NextLink ?? "null";
+                    var valueRepr = "null";
+                    if (x.Value != null)
+                    {
+                        valueRepr = string.Join(", ", x.Value.Select(e => $"{e}"));
+                    }
+                    return $"nextLink={nextLink} value=[{valueRepr}]";
+                 }))
+                .ResolvesTo(expected)
+            );
+
+            await check("nextLink=my-next-link value=[factoryName: my-fn, integrationRuntimeName: my-irn, " +
+                        "metadataPath: my-mp, resourceGroupName: my-rgn]",
+                        () => new GetIntegrationRuntimeObjectMetadatumOutputArgs()
+                        {
+                            FactoryName = Out("my-fn"),
+                            IntegrationRuntimeName = Out("my-irn"),
+                            MetadataPath = Out("my-mp"),
+                            ResourceGroupName = Out("my-rgn")
+                        });
+        }
 
         // [Test]
         // public async Task ListStorageAccountKeysApplyWorks()

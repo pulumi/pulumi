@@ -56,6 +56,18 @@ namespace Pulumi.MadeupPackage.Codegentest
                 return Task.FromResult((Object)result);
             }
 
+            if (args.Token == "azure-native:codegentest:getIntegrationRuntimeObjectMetadatum")
+            {
+                var argsString = string.Join(", ", args.Args.Keys.OrderBy(k => k).Select(k => $"{k}: {args.Args[k]}"));
+                var dictBuilder = ImmutableDictionary.CreateBuilder<string,Object>();
+                var arrayBuilder = ImmutableArray.CreateBuilder<object>();
+                arrayBuilder.Add(argsString);
+                dictBuilder.Add("value", arrayBuilder.ToImmutableArray());
+                dictBuilder.Add("nextLink", "my-next-link");
+                var result = dictBuilder.ToImmutableDictionary();
+                return Task.FromResult((Object)result);
+            }
+
             throw new Exception($"CallAsync not implemented for {args.Token}..");
         }
 
