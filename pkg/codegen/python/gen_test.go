@@ -19,7 +19,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os/exec"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -27,6 +26,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/python"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -122,7 +123,11 @@ func TestGenerateOutputFuncsPython(t *testing.T) {
 		return err
 	}
 
-	outputDir := filepath.Join(testDir, "py_tests")
+	outputDir, err := filepath.Abs(filepath.Join(testDir, "py_tests"))
+	if err != nil {
+		t.Error(err)
+		t.FailNow()
+	}
 
 	// for every example, check that generated code did not change
 	for _, ex := range examples {
@@ -143,37 +148,48 @@ func TestGenerateOutputFuncsPython(t *testing.T) {
 
 	// run unit tests against the generated code
 	t.Run("testGeneratedCode", func(t *testing.T) {
+		venvDir := filepath.Join(outputDir, "venv")
 
-		// TODO these commands might have trouble on Windows,
-		// due to Path issues and `.exe` suffix.
-
-		commands := []string{
-			// build a virtual environment
-			"python3 -m venv venv",
-
-			// install dependencies
-			"./venv/bin/python -m pip install -r requirements.txt",
-
-			// install Pulumi SDK from the current source tree, -e means no-copy, ref directly
-			"./venv/bin/python -m pip install -e ../../../../../../../sdk/python/env/src",
-
-			// install current package as it self-references
-			"./venv/bin/python -m pip install -e .",
-
-			// run tests
-			"./venv/bin/pytest .",
+		t.Logf("cd %s && python3 -m venv venv", outputDir)
+		t.Logf("cd %s && ./venv/bin/python -m pip install -r requirements.txt", outputDir)
+		err := python.InstallDependencies(outputDir, venvDir, false /*showOutput*/)
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
 		}
 
-		for _, command := range commands {
-			t.Logf("cd %s && %s", outputDir, command)
-			cmdParts := strings.Split(command, " ")
-			cmd := exec.Command(cmdParts[0], cmdParts[1:]...) // #nosec G204
-			cmd.Dir = outputDir
-			err := cmd.Run()
-			require.NoError(t, err)
-			if err != nil {
-				return
-			}
+		sdkDir, err := filepath.Abs(filepath.Join("..", "..", "..",
+			"sdk", "python", "env", "src"))
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
+
+		t.Logf("cd %s && ./venv/bin/python -m pip install -e %s", outputDir, sdkDir)
+		cmd := python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", sdkDir)
+		cmd.Dir = outputDir
+		err = cmd.Run()
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
+
+		t.Logf("cd %s && ./venv/bin/python -m pip install -e .", outputDir)
+		cmd = python.VirtualEnvCommand(venvDir, "python", "-m", "pip", "install", "-e", ".")
+		cmd.Dir = outputDir
+		err = cmd.Run()
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
+		}
+
+		t.Logf("cd %s && ./venv/bin/pytest", outputDir)
+		cmd = python.VirtualEnvCommand(venvDir, "pytest", ".")
+		cmd.Dir = outputDir
+		err = cmd.Run()
+		if err != nil {
+			t.Error(err)
+			t.FailNow()
 		}
 	})
 }
