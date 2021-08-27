@@ -102,7 +102,7 @@ contents).
 
 #### Resource References
 
-A `ResourceReference` represents a reference to a [Pulumi resource](#Resources). Although
+A `ResourceReference` represents a reference to a [Pulumi resource](#resources). Although
 all that is necessary to uniquely identify a resource is its URN, a `ResourceReference`
 also carries the resource's ID (if it is a [custom resource](#custom-resources)) and the
 version of the provider that manages the resource. If the contents of the referenced
