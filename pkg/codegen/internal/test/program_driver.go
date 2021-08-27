@@ -52,7 +52,6 @@ var programTests = []programTest{
 	{
 		ProgramFile: "azure-native",
 		Description: "Azure Native",
-		Skip:        codegen.NewStringSet("go"),
 	},
 	{
 		ProgramFile: "azure-sa",
