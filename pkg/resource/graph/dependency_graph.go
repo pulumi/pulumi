@@ -10,11 +10,44 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
+type edgeKind int
+
+const (
+	edgeKindDeclared edgeKind = iota
+	edgeKindParent
+	edgeKindProvider
+	edgeKindComponent
+)
+
+func (k edgeKind) String() string {
+	switch k {
+	case edgeKindDeclared:
+		return "declared"
+	case edgeKindParent:
+		return "parent"
+	case edgeKindProvider:
+		return "provider"
+	case edgeKindComponent:
+		return "component"
+	default:
+		return "<unknown>"
+	}
+}
+
+type edge struct {
+	kind   edgeKind
+	target *node
+}
+
 type node struct {
 	index         int
 	resource      *resource.State
-	outgoingEdges []*node
-	incomingEdges []*node
+	outgoingEdges []edge
+	incomingEdges []edge
+}
+
+func isValidParentURN(urn resource.URN) bool {
+	return urn != "" && urn.Type() != resource.RootStackType
 }
 
 // DependencyGraph represents a dependency graph encoded within a resource snapshot.
@@ -24,7 +57,7 @@ type DependencyGraph struct {
 
 func (dg *DependencyGraph) hasPath(source, sink *node) bool {
 	for _, edge := range source.outgoingEdges {
-		if edge == sink || dg.hasPath(edge, sink) {
+		if edge.target == sink || dg.hasPath(edge.target, sink) {
 			return true
 		}
 	}
@@ -37,11 +70,12 @@ func (dg *DependencyGraph) dependingOn(set ResourceSet, list *[]*resource.State,
 	resourceNode := dg.nodes[res.URN]
 	contract.Assert(resourceNode != nil)
 
-	for _, dependent := range resourceNode.incomingEdges {
-		if !ignore[dependent.resource.URN] && !set[dependent.resource] {
-			set[dependent.resource] = true
-			*list = append(*list, dependent.resource)
-			dg.dependingOn(set, list, dependent.resource, ignore)
+	for _, dependentEdge := range resourceNode.incomingEdges {
+		dependent := dependentEdge.target.resource
+		if !ignore[dependent.URN] && !set[dependent] {
+			set[dependent] = true
+			*list = append(*list, dependent)
+			dg.dependingOn(set, list, dependent, ignore)
 		}
 	}
 }
@@ -76,8 +110,8 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	resourceNode := dg.nodes[res.URN]
 	contract.Assert(resourceNode != nil)
 
-	for _, dependency := range resourceNode.outgoingEdges {
-		set[dependency.resource] = true
+	for _, dependencyEdge := range resourceNode.outgoingEdges {
+		set[dependencyEdge.target.resource] = true
 	}
 	return set
 }
@@ -89,16 +123,16 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 	nodes := map[resource.URN]*node{}
 
-	addEdge := func(source, sink *node) {
-		source.outgoingEdges = append(source.outgoingEdges, sink)
-		sink.incomingEdges = append(sink.incomingEdges, source)
+	addEdge := func(source, sink *node, kind edgeKind) {
+		source.outgoingEdges = append(source.outgoingEdges, edge{kind: kind, target: sink})
+		sink.incomingEdges = append(sink.incomingEdges, edge{kind: kind, target: source})
 	}
 
-	addEdgeToURN := func(source *node, sinkURN resource.URN) {
+	addEdgeToURN := func(source *node, sinkURN resource.URN, kind edgeKind) {
 		sinkNode := nodes[sinkURN]
 		contract.Assert(sinkNode != nil)
 
-		addEdge(source, sinkNode)
+		addEdge(source, sinkNode, kind)
 	}
 
 	// Populate the nodes and add direct dependency edges. Parent edges are added after component expansion to avoid
@@ -107,19 +141,23 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		resourceNode := &node{
 			index:         i,
 			resource:      res,
-			outgoingEdges: make([]*node, 0, len(res.Dependencies)),
+			outgoingEdges: make([]edge, 0, len(res.Dependencies)),
 		}
 		nodes[res.URN] = resourceNode
 
 		for _, dependencyURN := range res.Dependencies {
-			addEdgeToURN(resourceNode, dependencyURN)
+			addEdgeToURN(resourceNode, dependencyURN, edgeKindDeclared)
+		}
+
+		if res.Parent != "" {
+			addEdgeToURN(resourceNode, res.Parent, edgeKindParent)
 		}
 
 		if res.Provider != "" {
 			ref, err := providers.ParseReference(res.Provider)
 			contract.Assert(err == nil)
 
-			addEdgeToURN(resourceNode, ref.URN())
+			addEdgeToURN(resourceNode, ref.URN(), edgeKindProvider)
 		}
 	}
 
@@ -127,12 +165,15 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 
 	// Expand dependencies on components into dependencies on the component's descendents. Only add edges that would not
 	// create cycles in the dependency graph.
+	//
+	// This expansion works by looping over all of the resources in the graph and adding edges between each resource
+	// and the resources that depend on its ancestors.
 	for _, res := range resources {
 		descendentNode := nodes[res.URN]
 		contract.Assert(descendentNode != nil)
 
 		parent := res.Parent
-		for parent != "" && parent.Type() != resource.RootStackType {
+		for isValidParentURN(parent) {
 			parentNode := nodes[parent]
 			contract.Assert(parentNode != nil)
 
@@ -140,23 +181,18 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 				break
 			}
 
-			for _, dependentNode := range parentNode.incomingEdges {
+			for _, dependentEdge := range parentNode.incomingEdges {
+				if dependentEdge.kind == edgeKindParent {
+					continue
+				}
+
+				dependentNode := dependentEdge.target
 				if dependentNode != descendentNode && !dg.hasPath(descendentNode, dependentNode) {
-					addEdge(dependentNode, descendentNode)
+					addEdge(dependentNode, descendentNode, edgeKindComponent)
 				}
 			}
 
 			parent = parentNode.resource.Parent
-		}
-	}
-
-	// Add edges from each resource to its parent, if any. This is done after dependency expansion to avoid false
-	// dependencies due to these edges.
-	for _, res := range resources {
-		resourceNode := nodes[res.URN]
-		contract.Assert(resourceNode != nil)
-		if res.Parent != "" {
-			addEdgeToURN(resourceNode, res.Parent)
 		}
 	}
 
