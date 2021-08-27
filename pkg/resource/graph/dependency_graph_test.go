@@ -332,6 +332,7 @@ func TestCanonicalExample(t *testing.T) {
 	cust4 := NewChildResource("cust4", prov, cust2.URN)
 	cust5 := NewChildResource("cust5", prov, comp4.URN)
 	sink := NewResource("sink", prov, comp1.URN)
+	sink2 := NewResource("sink2", prov, cust2.URN)
 
 	dg := NewDependencyGraph([]*resource.State{
 		prov,
@@ -345,22 +346,23 @@ func TestCanonicalExample(t *testing.T) {
 		cust4,
 		cust5,
 		sink,
+		sink2,
 	})
 
 	provDependencies := dg.DependenciesOf(prov)
 	assert.Empty(t, provDependencies)
 	provDependents := dg.DependingOn(prov, nil)
-	assert.Equal(t, []*resource.State{cust1, cust2, cust3, cust4, cust5, sink}, provDependents)
+	assert.Equal(t, []*resource.State{cust1, cust2, cust3, cust4, cust5, sink, sink2}, provDependents)
 
 	comp1Dependencies := dg.DependenciesOf(comp1)
 	assert.Empty(t, comp1Dependencies)
 	comp1Dependents := dg.DependingOn(comp1, nil)
-	assert.Equal(t, []*resource.State{cust1, comp2, comp3, cust2, cust3, comp4, cust4, cust5, sink}, comp1Dependents)
+	assert.Equal(t, []*resource.State{cust1, comp2, comp3, cust2, cust3, comp4, cust4, cust5, sink, sink2}, comp1Dependents)
 
 	comp2Dependencies := dg.DependenciesOf(comp2)
 	assert.Equal(t, ResourceSet{comp1: true}, comp2Dependencies)
 	comp2Dependents := dg.DependingOn(comp2, nil)
-	assert.Equal(t, []*resource.State{cust2, cust3, cust4, sink}, comp2Dependents)
+	assert.Equal(t, []*resource.State{cust2, cust3, cust4, sink, sink2}, comp2Dependents)
 
 	comp3Dependencies := dg.DependenciesOf(comp3)
 	assert.Equal(t, ResourceSet{comp1: true}, comp3Dependencies)
@@ -380,7 +382,7 @@ func TestCanonicalExample(t *testing.T) {
 	cust2Dependencies := dg.DependenciesOf(cust2)
 	assert.Equal(t, ResourceSet{prov: true, comp2: true}, cust2Dependencies)
 	cust2Dependents := dg.DependingOn(cust2, nil)
-	assert.Equal(t, []*resource.State{cust4, sink}, cust2Dependents)
+	assert.Equal(t, []*resource.State{cust4, sink, sink2}, cust2Dependents)
 
 	cust3Dependencies := dg.DependenciesOf(cust3)
 	assert.Equal(t, ResourceSet{prov: true, comp2: true}, cust3Dependencies)
@@ -390,7 +392,7 @@ func TestCanonicalExample(t *testing.T) {
 	cust4Dependencies := dg.DependenciesOf(cust4)
 	assert.Equal(t, ResourceSet{prov: true, cust2: true}, cust4Dependencies)
 	cust4Dependents := dg.DependingOn(cust4, nil)
-	assert.Equal(t, []*resource.State{sink}, cust4Dependents)
+	assert.Empty(t, cust4Dependents)
 
 	cust5Dependencies := dg.DependenciesOf(cust5)
 	assert.Equal(t, ResourceSet{prov: true, comp4: true}, cust5Dependencies)
@@ -407,11 +409,15 @@ func TestCanonicalExample(t *testing.T) {
 		cust2: true,
 		cust3: true,
 		comp4: true,
-		cust4: true,
 		cust5: true,
 	}, sinkDependencies)
 	sinkDependents := dg.DependingOn(sink, nil)
 	assert.Empty(t, sinkDependents)
+
+	sink2Dependencies := dg.DependenciesOf(sink2)
+	assert.Equal(t, ResourceSet{prov: true, cust2: true}, sink2Dependencies)
+	sink2Dependents := dg.DependingOn(sink2, nil)
+	assert.Empty(t, sink2Dependents)
 }
 
 func TestEKSExample(t *testing.T) {

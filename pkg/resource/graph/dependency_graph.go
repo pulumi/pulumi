@@ -63,8 +63,13 @@ func (dg *DependencyGraph) DependingOn(res *resource.State, ignore map[resource.
 	return list
 }
 
-// DependenciesOf returns a ResourceSet of resources upon which the given resource depends. The resource's parent is
-// included in the returned set.
+// DependenciesOf returns a ResourceSet of resources upon which the given resource depends.
+//
+// This set only includes the immediate dependencies for a resource--not the transitiec dependencies. This includes:
+//
+// - Resources listed in resource.Dependencies, including the descendents of any component resources listed therein
+// - The parent and provider for the resource, if any
+//
 func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 	set := make(ResourceSet)
 
@@ -78,7 +83,8 @@ func (dg *DependencyGraph) DependenciesOf(res *resource.State) ResourceSet {
 }
 
 // NewDependencyGraph creates a new DependencyGraph from a list of resources.
-// The resources should be in topological order with respect to their dependencies, including
+//
+// The resources must be in topological order with respect to their declared dependencies, including
 // parents appearing before children.
 func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 	nodes := map[resource.URN]*node{}
@@ -129,6 +135,10 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 		for parent != "" && parent.Type() != resource.RootStackType {
 			parentNode := nodes[parent]
 			contract.Assert(parentNode != nil)
+
+			if parentNode.resource.Custom {
+				break
+			}
 
 			for _, dependentNode := range parentNode.incomingEdges {
 				if dependentNode != descendentNode && !dg.hasPath(descendentNode, dependentNode) {
