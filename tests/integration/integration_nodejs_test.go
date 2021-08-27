@@ -1152,6 +1152,7 @@ func TestAboutNodeJS(t *testing.T) {
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
 	stdout, _ := e.RunCommand("pulumi", "about")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 	// Assert we parsed the dependencies
