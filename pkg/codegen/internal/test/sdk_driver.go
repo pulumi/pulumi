@@ -2,12 +2,10 @@ package test
 
 import (
 	"os"
-	"os/exec"
 	"path/filepath"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,17 +46,6 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
-		Then: map[string]ThenFunc{
-			"go": func(t *testing.T, testDir string) {
-				cmd := exec.Command("go", "test", "./...")
-				cmd.Dir = filepath.Join(testDir, "go-program")
-
-				out, err := cmd.CombinedOutput()
-				if !assert.NoError(t, err) {
-					t.Logf("output: %v", string(out))
-				}
-			},
-		},
 	},
 	{
 		Directory:   "simple-enum-schema",
