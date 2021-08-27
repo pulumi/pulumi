@@ -260,7 +260,18 @@ namespace Pulumi.Automation
         /// <param name="version">The version of the plugin e.g. "v1.0.0".</param>
         /// <param name="kind">The kind of plugin e.g. "resource".</param>
         /// <param name="cancellationToken">A cancellation token.</param>
-        public abstract Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, CancellationToken cancellationToken = default);
+        public Task InstallPluginAsync(string name, string version, PluginKind kind, CancellationToken cancellationToken)
+            => this.InstallPluginAsync(name, version, kind: kind, options: null, cancellationToken: cancellationToken);
+
+        /// <summary>
+        /// Installs a plugin in the Workspace, for example to use cloud providers like AWS or GCP.
+        /// </summary>
+        /// <param name="name">The name of the plugin.</param>
+        /// <param name="version">The version of the plugin e.g. "v1.0.0".</param>
+        /// <param name="kind">The kind of plugin e.g. "resource".</param>
+        /// <param name="options">Any additional plugin installation options.</param>
+        /// <param name="cancellationToken">A cancellation token.</param>
+        public abstract Task InstallPluginAsync(string name, string version, PluginKind kind = PluginKind.Resource, PluginInstallOptions? options = null, CancellationToken cancellationToken = default);
 
         /// <summary>
         /// Removes a plugin from the Workspace matching the specified name and version.

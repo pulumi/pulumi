@@ -1,0 +1,75 @@
+{
+  "functions": {
+    "azure-native:codegentest:listStorageAccountKeys": {
+      "description": "The response from the ListKeys operation.\nAPI Version: 2021-02-01.",
+      "inputs": {
+        "properties": {
+          "accountName": {
+            "type": "string",
+            "description": "The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only."
+          },
+          "expand": {
+            "type": "string",
+            "description": "Specifies type of the key to be listed. Possible value is kerb."
+          },
+          "resourceGroupName": {
+            "type": "string",
+            "description": "The name of the resource group within the user's subscription. The name is case insensitive."
+          }
+        },
+        "type": "object",
+        "required": [
+          "accountName",
+          "resourceGroupName"
+        ]
+      },
+      "outputs": {
+        "description": "The response from the ListKeys operation.",
+        "properties": {
+          "keys": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "$ref": "#/types/azure-native:codegentest:StorageAccountKeyResponse"
+            },
+            "description": "Gets the list of storage account keys and their properties for the specified storage account."
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys"
+        ]
+      }
+    }
+  },
+  "types": {
+    "azure-native:codegentest:StorageAccountKeyResponse": {
+      "description": "An access key for the storage account.",
+      "properties": {
+        "creationTime": {
+          "type": "string",
+          "description": "Creation time of the key, in round trip date format."
+        },
+        "keyName": {
+          "type": "string",
+          "description": "Name of the key."
+        },
+        "permissions": {
+          "type": "string",
+          "description": "Permissions for the key -- read-only or full permissions."
+        },
+        "value": {
+          "type": "string",
+          "description": "Base 64-encoded value of the key."
+        }
+      },
+      "type": "object",
+      "required": [
+        "creationTime",
+        "keyName",
+        "permissions",
+        "value"
+      ]
+    }
+  }
+}

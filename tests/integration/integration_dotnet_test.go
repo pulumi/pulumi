@@ -491,6 +491,44 @@ func TestConstructUnknownDotnet(t *testing.T) {
 	testConstructUnknown(t, "dotnet", "Pulumi")
 }
 
+// Test methods on remote components.
+func TestConstructMethodsDotnet(t *testing.T) {
+	tests := []struct {
+		componentDir string
+		env          []string
+	}{
+		{
+			componentDir: "testcomponent",
+		},
+		{
+			componentDir: "testcomponent-python",
+			env:          []string{pulumiRuntimeVirtualEnv(t, filepath.Join("..", ".."))},
+		},
+		{
+			componentDir: "testcomponent-go",
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.componentDir, func(t *testing.T) {
+			pathEnv := pathEnv(t, filepath.Join("construct_component_methods", test.componentDir))
+			integration.ProgramTest(t, &integration.ProgramTestOptions{
+				Env:          append(test.env, pathEnv),
+				Dir:          filepath.Join("construct_component_methods", "dotnet"),
+				Dependencies: []string{"Pulumi"},
+				Quick:        true,
+				NoParallel:   true, // avoid contention for Dir
+				ExtraRuntimeValidation: func(t *testing.T, stackInfo integration.RuntimeValidationStackInfo) {
+					assert.Equal(t, "Hello World, Alice!", stackInfo.Outputs["message"])
+				},
+			})
+		})
+	}
+}
+
+func TestConstructMethodsUnknownDotnet(t *testing.T) {
+	testConstructMethodsUnknown(t, "dotnet", "Pulumi")
+}
+
 func TestConstructProviderDotnet(t *testing.T) {
 	const testDir = "construct_component_provider"
 	tests := []struct {
