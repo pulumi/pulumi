@@ -1,0 +1,49 @@
+{
+  "version": "0.0.1",
+  "name": "example",
+  "types": {
+    "example::Object": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "example::ObjectInput": {
+      "properties": {
+        "bar": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "resources": {
+    "example::Resource": {
+      "properties": {
+        "bar": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    },
+    "example::ResourceInput": {
+      "properties": {
+        "bar": {
+          "type": "string",
+          "secret": true
+        }
+      }
+    }
+  },
+  "functions": {},
+  "language": {
+    "csharp": {},
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/input-collision/go/example"
+    },
+    "nodejs": {},
+    "python": {}
+  }
+}

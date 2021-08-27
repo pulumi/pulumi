@@ -10,101 +10,101 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type PetType struct {
+type Pet struct {
 	Name *string `pulumi:"name"`
 }
 
-// PetTypeInput is an input type that accepts PetTypeArgs and PetTypeOutput values.
-// You can construct a concrete instance of `PetTypeInput` via:
+// PetInput is an input type that accepts PetArgs and PetOutput values.
+// You can construct a concrete instance of `PetInput` via:
 //
-//          PetTypeArgs{...}
-type PetTypeInput interface {
+//          PetArgs{...}
+type PetInput interface {
 	pulumi.Input
 
-	ToPetTypeOutput() PetTypeOutput
-	ToPetTypeOutputWithContext(context.Context) PetTypeOutput
+	ToPetOutput() PetOutput
+	ToPetOutputWithContext(context.Context) PetOutput
 }
 
-type PetTypeArgs struct {
+type PetArgs struct {
 	Name pulumi.StringPtrInput `pulumi:"name"`
 }
 
-func (PetTypeArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*PetType)(nil)).Elem()
+func (PetArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*Pet)(nil)).Elem()
 }
 
-func (i PetTypeArgs) ToPetTypeOutput() PetTypeOutput {
-	return i.ToPetTypeOutputWithContext(context.Background())
+func (i PetArgs) ToPetOutput() PetOutput {
+	return i.ToPetOutputWithContext(context.Background())
 }
 
-func (i PetTypeArgs) ToPetTypeOutputWithContext(ctx context.Context) PetTypeOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PetTypeOutput)
+func (i PetArgs) ToPetOutputWithContext(ctx context.Context) PetOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(PetOutput)
 }
 
-// PetTypeArrayInput is an input type that accepts PetTypeArray and PetTypeArrayOutput values.
-// You can construct a concrete instance of `PetTypeArrayInput` via:
+// PetArrayInput is an input type that accepts PetArray and PetArrayOutput values.
+// You can construct a concrete instance of `PetArrayInput` via:
 //
-//          PetTypeArray{ PetTypeArgs{...} }
-type PetTypeArrayInput interface {
+//          PetArray{ PetArgs{...} }
+type PetArrayInput interface {
 	pulumi.Input
 
-	ToPetTypeArrayOutput() PetTypeArrayOutput
-	ToPetTypeArrayOutputWithContext(context.Context) PetTypeArrayOutput
+	ToPetArrayOutput() PetArrayOutput
+	ToPetArrayOutputWithContext(context.Context) PetArrayOutput
 }
 
-type PetTypeArray []PetTypeInput
+type PetArray []PetInput
 
-func (PetTypeArray) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]PetType)(nil)).Elem()
+func (PetArray) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Pet)(nil)).Elem()
 }
 
-func (i PetTypeArray) ToPetTypeArrayOutput() PetTypeArrayOutput {
-	return i.ToPetTypeArrayOutputWithContext(context.Background())
+func (i PetArray) ToPetArrayOutput() PetArrayOutput {
+	return i.ToPetArrayOutputWithContext(context.Background())
 }
 
-func (i PetTypeArray) ToPetTypeArrayOutputWithContext(ctx context.Context) PetTypeArrayOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(PetTypeArrayOutput)
+func (i PetArray) ToPetArrayOutputWithContext(ctx context.Context) PetArrayOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(PetArrayOutput)
 }
 
-type PetTypeOutput struct{ *pulumi.OutputState }
+type PetOutput struct{ *pulumi.OutputState }
 
-func (PetTypeOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*PetType)(nil)).Elem()
+func (PetOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Pet)(nil)).Elem()
 }
 
-func (o PetTypeOutput) ToPetTypeOutput() PetTypeOutput {
+func (o PetOutput) ToPetOutput() PetOutput {
 	return o
 }
 
-func (o PetTypeOutput) ToPetTypeOutputWithContext(ctx context.Context) PetTypeOutput {
+func (o PetOutput) ToPetOutputWithContext(ctx context.Context) PetOutput {
 	return o
 }
 
-func (o PetTypeOutput) Name() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v PetType) *string { return v.Name }).(pulumi.StringPtrOutput)
+func (o PetOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v Pet) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
 
-type PetTypeArrayOutput struct{ *pulumi.OutputState }
+type PetArrayOutput struct{ *pulumi.OutputState }
 
-func (PetTypeArrayOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*[]PetType)(nil)).Elem()
+func (PetArrayOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*[]Pet)(nil)).Elem()
 }
 
-func (o PetTypeArrayOutput) ToPetTypeArrayOutput() PetTypeArrayOutput {
+func (o PetArrayOutput) ToPetArrayOutput() PetArrayOutput {
 	return o
 }
 
-func (o PetTypeArrayOutput) ToPetTypeArrayOutputWithContext(ctx context.Context) PetTypeArrayOutput {
+func (o PetArrayOutput) ToPetArrayOutputWithContext(ctx context.Context) PetArrayOutput {
 	return o
 }
 
-func (o PetTypeArrayOutput) Index(i pulumi.IntInput) PetTypeOutput {
-	return pulumi.All(o, i).ApplyT(func(vs []interface{}) PetType {
-		return vs[0].([]PetType)[vs[1].(int)]
-	}).(PetTypeOutput)
+func (o PetArrayOutput) Index(i pulumi.IntInput) PetOutput {
+	return pulumi.All(o, i).ApplyT(func(vs []interface{}) Pet {
+		return vs[0].([]Pet)[vs[1].(int)]
+	}).(PetOutput)
 }
 
 func init() {
-	pulumi.RegisterOutputType(PetTypeOutput{})
-	pulumi.RegisterOutputType(PetTypeArrayOutput{})
+	pulumi.RegisterOutputType(PetOutput{})
+	pulumi.RegisterOutputType(PetArrayOutput{})
 }
