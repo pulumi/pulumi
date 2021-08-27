@@ -1,5 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation.
-// pts
+//
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -16,12 +16,14 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
-	"path"
+	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
@@ -40,6 +42,7 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/goversion"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/workspace"
 	"github.com/pulumi/pulumi/sdk/v3/python"
 )
@@ -49,11 +52,11 @@ const (
 	langNodejs = "nodejs"
 	langDotnet = "dotnet"
 	langGo     = "go"
-	windows    = "windows"
 )
 
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
+	var transitiveDependencies bool
 	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
@@ -71,7 +74,7 @@ func newAboutCmd() *cobra.Command {
 				" - the current backend\n",
 			Args: cmdutil.MaximumNArgs(0),
 			Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
-				summary := getSummaryAbout()
+				summary := getSummaryAbout(transitiveDependencies)
 				if jsonOut {
 					return printJSON(summary)
 				}
@@ -82,6 +85,9 @@ func newAboutCmd() *cobra.Command {
 		}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
+	cmd.PersistentFlags().BoolVarP(
+		&transitiveDependencies, "transitive", "t", false, "Include transitive dependencies")
+
 	return cmd
 }
 
@@ -101,7 +107,7 @@ type summaryAbout struct {
 	LogMessage    string                    `json:"-"`
 }
 
-func getSummaryAbout() summaryAbout {
+func getSummaryAbout(transitiveDependencies bool) summaryAbout {
 	var err error
 	cli := getCLIAbout()
 	result := summaryAbout{
@@ -140,7 +146,7 @@ func getSummaryAbout() summaryAbout {
 		} else {
 			result.Runtime = &runtime
 		}
-		if deps, err := getProgramDependenciesAbout(proj.Runtime.Name(), pwd); err != nil {
+		if deps, err := getProgramDependenciesAbout(proj, pwd, transitiveDependencies); err != nil {
 			addError(err, "Failed to get information about the Puluimi program's plugins")
 		} else {
 			result.Dependencies = deps
@@ -408,7 +414,17 @@ type programDependencieAbout struct {
 	Version string `json:"version"`
 }
 
-func getGoProgramDependencies() ([]programDependencieAbout, error) {
+type goModule struct {
+	Path     string
+	Version  string
+	Time     string
+	Indirect bool
+	Dir      string
+	GoMod    string
+	Main     bool
+}
+
+func getGoProgramDependencies(transitive bool) ([]programDependencieAbout, error) {
 	// go list -m ...
 	//
 	//Go has a --json flag, but it doesn't emit a single json object (which
@@ -417,28 +433,33 @@ func getGoProgramDependencies() ([]programDependencieAbout, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(ex, "list", "--json", "-m", "...")
+	if err := goversion.CheckMinimumGoVersion(ex); err != nil {
+		return nil, err
+	}
+	cmdArgs := []string{"list", "--json", "-m", "..."}
+	cmd := exec.Command(ex, cmdArgs...)
 	var out []byte
 	if out, err = cmd.Output(); err != nil {
 		return nil, errors.Wrap(err, "Failed to get modules")
 	}
-	validJSON := "[" + strings.ReplaceAll(string(out), "}\n{", "},\n{") + "]"
-	var parsed = []struct {
-		Path     string
-		Version  string
-		Time     string
-		Indirect bool
-		Dir      string
-		GoMod    string
-		Main     bool
-	}{}
-	if err = json.Unmarshal([]byte(validJSON), &parsed); err != nil {
-		return nil, errors.Wrapf(err, "Failed to parse \"%s list --json -m ...\" output", ex)
+
+	dec := json.NewDecoder(bytes.NewReader(out))
+	parsed := []goModule{}
+	for {
+		var m goModule
+		if err := dec.Decode(&m); err != nil {
+			if err == io.EOF {
+				break
+			}
+			return nil, errors.Wrapf(err, "Failed to parse \"%s %s\" output", ex, strings.Join(cmdArgs, " "))
+		}
+		parsed = append(parsed, m)
+
 	}
 
 	result := []programDependencieAbout{}
 	for _, d := range parsed {
-		if !d.Indirect && !d.Main {
+		if (!d.Indirect || transitive) && !d.Main {
 			datum := programDependencieAbout{
 				Name:    d.Path,
 				Version: d.Version,
@@ -449,43 +470,93 @@ func getGoProgramDependencies() ([]programDependencieAbout, error) {
 	return result, nil
 }
 
-func getPythonProgramDependencies(rootDir string) ([]programDependencieAbout, error) {
-	// ./venv/bin/python3.9 -m pip list --format=json
-	binDir := "bin"
-	if runtime.GOOS == windows {
-		binDir = "Scripts"
+// Calls a python command as pulumi would. This means we need to accommodate for
+// a virtual environment if it exists.
+func callPythonCommand(proj *workspace.Project, root string, args ...string) (string, error) {
+	if proj == nil {
+		return "", errors.New("Project must not be nil")
 	}
-	// venv makes the link to "python", so this works on windows and mac.
-	ex := path.Join(rootDir, "venv", binDir, "python")
-	cmd := exec.Command(ex, "-m", "pip", "list", "--format=json")
-	var out []byte
-	var err error
-	if out, err = cmd.Output(); err != nil {
-		return nil, errors.Wrap(err, "Failed to call python")
+	options := proj.Runtime.Options()
+	if options == nil {
+		return callPythonCommandNoEnviroment(args...)
+	}
+	virtualEnv, exists := options["virtualenv"]
+	if !exists {
+		return callPythonCommandNoEnviroment(args...)
+	}
+	virtualEnvPath := virtualEnv.(string)
+	// We now know that a virtual environment exists.
+	if virtualEnv != "" && !filepath.IsAbs(virtualEnvPath) {
+		virtualEnvPath = filepath.Join(root, virtualEnvPath)
+	}
+	cmd := python.VirtualEnvCommand(virtualEnvPath, "python", args...)
+	result, err := cmd.Output()
+	if err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+// Call a python command in a runtime agnostic way. Call python from the path.
+// Do not use a virtual environment.
+func callPythonCommandNoEnviroment(args ...string) (string, error) {
+	cmd, err := python.Command(args...)
+	if err != nil {
+		return "", err
+	}
+
+	var result []byte
+	if result, err = cmd.Output(); err != nil {
+		return "", err
+	}
+	return string(result), nil
+}
+
+func getPythonProgramDependencies(proj *workspace.Project, rootDir string,
+	transative bool) ([]programDependencieAbout, error) {
+	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
+	if !transative {
+		cmdArgs = append(cmdArgs, "--not-required")
+
+	}
+	out, err := callPythonCommand(proj, rootDir, cmdArgs...)
+	if err != nil {
+		return nil, err
 	}
 	var result []programDependencieAbout
-	err = json.Unmarshal(out, &result)
+	err = json.Unmarshal([]byte(out), &result)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to parse \"python -m pip list --format=json\" result")
+		return nil, errors.Wrapf(err, "Failed to parse \"python %s\" result", strings.Join(cmdArgs, " "))
 	}
 
 	return result, nil
 }
 
-func getDotNetProgramDependencies() ([]programDependencieAbout, error) {
+func getDotNetProgramDependencies(proj *workspace.Project, transative bool) ([]programDependencieAbout, error) {
 	// dotnet list package
+
 	var err error
+	options := proj.Runtime.Options()
+	if options != nil {
+		if _, exists := options["binary"]; exists {
+			return nil, errors.New("Could not get dependencies because pulumi specifies a binary")
+		}
+	}
 	var ex string
 	var out []byte
 	ex, err = executable.FindExecutable("dotnet")
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(ex, "list", "package")
+	cmdArgs := []string{"list", "package"}
+	if transative {
+		cmdArgs = append(cmdArgs, "--include-transitive")
+	}
+	cmd := exec.Command(ex, cmdArgs...)
 	if out, err = cmd.Output(); err != nil {
 		return nil, errors.Wrapf(err, "Failed to call \"%s\"", ex)
 	}
-	lines := strings.Split(string(out), "\n")
+	lines := strings.Split(strings.ReplaceAll(string(out), "\r\n", "\n"), "\n")
 	var packages []programDependencieAbout
 
 	for _, p := range lines {
@@ -499,27 +570,34 @@ func getDotNetProgramDependencies() ([]programDependencieAbout, error) {
 					nameRequiredVersion = append(nameRequiredVersion, s)
 				}
 			}
-			if len(nameRequiredVersion) != 3 {
+			var version int
+			if len(nameRequiredVersion) == 3 {
+				// Top level package => name required version
+				version = 2
+			} else if len(nameRequiredVersion) == 2 {
+				// Transitive package => name version
+				version = 1
+			} else {
 				return nil, errors.Errorf("Failed to parse \"%s\"", p)
 			}
 			packages = append(packages, programDependencieAbout{
 				Name:    nameRequiredVersion[0],
-				Version: nameRequiredVersion[2],
+				Version: nameRequiredVersion[version],
 			})
 		}
 	}
 	return packages, nil
 }
 
-func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, error) {
+func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDependencieAbout, error) {
 	// Either
-	// yarn list --json --depth=0
+	// yarn list --json [--depth=0]
 	// if yarn.lock exists
 	// Otherwise
-	// npm ls --json --depth=0
+	// npm ls --json [--depth=0]
 	var err error
-	yarnFile := path.Join(rootDir, "yarn.lock")
-	npmFile := path.Join(rootDir, "package.json")
+	yarnFile := filepath.Join(rootDir, "yarn.lock")
+	npmFile := filepath.Join(rootDir, "package.json")
 	var ex string
 	var out []byte
 	if _, err = os.Stat(yarnFile); err == nil {
@@ -527,14 +605,19 @@ func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, erro
 		if err != nil {
 			return nil, errors.Wrap(err, "Found yarn.lock but not yarn")
 		}
-		cmd := exec.Command(ex, "list", "--json", "--depth=0")
+		cmdArgs := []string{"list", "--json"}
+		if !transitive {
+			cmdArgs = append(cmdArgs, "--depth=0")
+
+		}
+		cmd := exec.Command(ex, cmdArgs...)
 		out, err = cmd.Output()
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to run \"%s list --json --depth=0\"", ex)
+			return nil, errors.Wrapf(err, "Failed to run \"%s %s\"", ex, strings.Join(cmdArgs, " "))
 		}
 		var output interface{}
 		if err = json.Unmarshal(out, &output); err != nil {
-			return nil, errors.Wrapf(err, "Failed to parse\"%s list --json --depth=0\"", ex)
+			return nil, errors.Wrapf(err, "Failed to parse\"%s %s\"", ex, strings.Join(cmdArgs, " "))
 		}
 		var data interface{}
 		if data = output.(map[string]interface{})["data"]; data == nil {
@@ -550,7 +633,6 @@ func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, erro
 		}
 		result := make([]programDependencieAbout, len(leafs))
 		for i, v := range leafs {
-			// TODO: finish parsing
 			leaf := v.(map[string]interface{})
 			// Has the form name@version
 			nameVersion := leaf["name"].(string)
@@ -570,22 +652,27 @@ func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, erro
 		if err != nil {
 			return nil, errors.Wrap(err, "Found package.lock but not npm")
 		}
-		cmd := exec.Command(ex, "ls", "--json", "--depth=0")
+		cmdArgs := []string{"ls", "--json"}
+		if !transitive {
+			cmdArgs = append(cmdArgs, "--depth=0")
+		}
+		cmd := exec.Command(ex, cmdArgs...)
 		out, err = cmd.Output()
 		if err != nil {
-			return nil, errors.Wrapf(err, "Failed to run \"%s ls --json --depth=0\"", ex)
+			return nil, errors.Wrapf(err, "Failed to run \"%s %s\"", ex, strings.Join(cmdArgs, " "))
 		}
 		var output interface{}
 		if err = json.Unmarshal(out, &output); err != nil {
-			return nil, errors.Wrapf(err, "Failed to parse \"%s list --json --depth=0\"", ex)
+			return nil, errors.Wrapf(err, "Failed to parse \"%s %s\"", ex, strings.Join(cmdArgs, " "))
 		}
 		outputMap := output.(map[string]interface{})
 		if outputMap == nil {
-			return nil, errors.Errorf("Failed to parse \"%s ls --json --depth=0\" output", ex)
+			return nil, errors.Errorf("Failed to parse \"%s %s\" output", ex, strings.Join(cmdArgs, " "))
 		}
 		dependencies := outputMap["dependencies"].(map[string]interface{})
 		if dependencies == nil {
-			return nil, errors.Errorf("Failed to find \"dependencies\" in \"%s ls --json --depth=0\" output", ex)
+			return nil, errors.Errorf("Failed to find \"dependencies\" in \"%s %s\" output",
+				ex, strings.Join(cmdArgs, " "))
 		}
 		result := make([]programDependencieAbout, len(dependencies))
 		var i int
@@ -605,16 +692,18 @@ func getNodeProgramDependencies(rootDir string) ([]programDependencieAbout, erro
 	return nil, errors.Wrap(err, "Could not get node dependency data")
 }
 
-func getProgramDependenciesAbout(language, root string) ([]programDependencieAbout, error) {
+func getProgramDependenciesAbout(proj *workspace.Project, root string,
+	transitive bool) ([]programDependencieAbout, error) {
+	language := proj.Runtime.Name()
 	switch language {
 	case langNodejs:
-		return getNodeProgramDependencies(root)
+		return getNodeProgramDependencies(root, transitive)
 	case langPython:
-		return getPythonProgramDependencies(root)
+		return getPythonProgramDependencies(proj, root, transitive)
 	case langGo:
-		return getGoProgramDependencies()
+		return getGoProgramDependencies(transitive)
 	case langDotnet:
-		return getDotNetProgramDependencies()
+		return getDotNetProgramDependencies(proj, transitive)
 	default:
 		return nil, errors.Errorf("Unknown Language: %s", language)
 	}

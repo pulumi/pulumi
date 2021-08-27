@@ -39,7 +39,7 @@ func TestProjectRuntime(t *testing.T) {
 		t.Skip("Python needs to be in path for this func Test")
 	}
 	out, err = cmd.Output()
-	assert.Nil(t, err, "This should not fail")
+	assert.NoError(t, err, "This should not fail")
 	version := strings.TrimSpace("v" + strings.TrimPrefix(string(out), "Python "))
 
 	var runtime projectRuntimeAbout
@@ -47,7 +47,7 @@ func TestProjectRuntime(t *testing.T) {
 		Name:    "TestProject",
 		Runtime: workspace.NewProjectRuntimeInfo("python", make(map[string]interface{})),
 	})
-	assert.Nil(t, err)
+	assert.NoError(t, err)
 	assert.Equal(t, runtime.Language, "python")
 	assert.Equal(t, runtime.Version, version)
 }
@@ -58,7 +58,7 @@ func TestBackend(t *testing.T) {
 		t.Skipf("Underlying stats call failed: %s", err)
 	}
 	backend, err := getHostAbout()
-	assert.Nil(t, err, "We should be able to get stats here")
+	assert.NoError(t, err, "We should be able to get stats here")
 	display := backend.String()
 	assert.Contains(t, display, stats.Platform)
 	assert.Contains(t, display, stats.PlatformVersion)
