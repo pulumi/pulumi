@@ -21,6 +21,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -589,28 +590,25 @@ func getDotNetProgramDependencies(proj *workspace.Project, transative bool) ([]p
 	return packages, nil
 }
 
-// TODO need to handle children. --depth=0 does not do what is expected.
-// This solution will look like the python solution built into pip.
 func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDependencieAbout, error) {
-	// Either
-	// yarn list --json [--depth=0]
-	// if yarn.lock exists
-	// Otherwise
-	// npm ls --json [--depth=0]
+	// Neither "yarn list" or "npm ls" can describe what packages are required
+	// (direct dependencies). Only what packages they have installed (transitive
+	// dependencies). This means that to accuratly report only direct
+	// dependencies, we need to also parse "package.json" and intersect it with
+	// reported dependencies.
 	var err error
 	yarnFile := filepath.Join(rootDir, "yarn.lock")
-	npmFile := filepath.Join(rootDir, "package.json")
+	npmFile := filepath.Join(rootDir, "package-lock.json")
+	packageFile := filepath.Join(rootDir, "package.json")
+	var result []programDependencieAbout
 	var ex string
 	var out []byte
 	if _, err = os.Stat(yarnFile); err == nil {
 		ex, err = executable.FindExecutable("yarn")
 		if err != nil {
-			return nil, errors.Wrap(err, "Found yarn.lock but not yarn")
+			return nil, errors.Wrapf(err, "Found %s but not yarn", yarnFile)
 		}
 		cmdArgs := []string{"list", "--json"}
-		if transitive {
-			cmdArgs = append(cmdArgs, "--depth=0")
-		}
 		cmd := exec.Command(ex, cmdArgs...)
 		out, err = cmd.Output()
 		if err != nil {
@@ -629,34 +627,57 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 			return nil, errors.New("Expected \"trees\" in yarn json")
 		}
 		var leafs []interface{}
-		if leafs = trees.([]interface{}); leafs == nil {
-			return nil, errors.New("Expected \"trees\" in yarn json")
+		var ok bool
+		if leafs, ok = trees.([]interface{}); !ok {
+			return nil, errors.New("yarn list (trees) has an unexpected form")
 		}
-		result := make([]programDependencieAbout, len(leafs))
-		for i, v := range leafs {
-			leaf := v.(map[string]interface{})
-			// Has the form name@version
-			nameVersion := leaf["name"].(string)
+		result = make([]programDependencieAbout, len(leafs))
+		// Has the form name@version
+		splitName := func(index int, nameVersion string) (string, string, error) {
 			if nameVersion == "" {
-				return nil, errors.Errorf("Expected \"name\" in dependency %d", i)
+				return "", "", errors.Errorf("Expected \"name\" in dependency %d", index)
 			}
 			split := strings.LastIndex(nameVersion, "@")
 			if split == -1 {
-				return nil, errors.Errorf("Failed to parse name and version from %s", nameVersion)
+				return "", "", errors.Errorf("Failed to parse name and version from %s", nameVersion)
 			}
-			result[i].Name = nameVersion[:split]
-			result[i].Version = nameVersion[split+1:]
+			return nameVersion[:split], nameVersion[split+1:], nil
 		}
-		return result, nil
+		for i, v := range leafs {
+			vMap, ok := v.(map[string]interface{})
+			if !ok {
+				return nil, errors.New("package had an unexpected form")
+			}
+			nameVersion := vMap["name"]
+
+			name, version, err := splitName(i, nameVersion.(string))
+			if err != nil {
+				return nil, err
+			}
+			result[i] = programDependencieAbout{
+				Name:    name,
+				Version: version,
+			}
+			children := vMap["children"]
+			for _, c := range children.([]interface{}) {
+				name := c.(map[string]interface{})["name"].(string)
+				name, version, err := splitName(i, name)
+				if err != nil {
+					return nil, err
+				}
+				result = append(result, programDependencieAbout{
+					Name:    name,
+					Version: version,
+				})
+			}
+
+		}
 	} else if _, err = os.Stat(npmFile); err == nil {
 		ex, err = executable.FindExecutable("npm")
 		if err != nil {
-			return nil, errors.Wrap(err, "Found package.lock but not npm")
+			return nil, errors.Wrapf(err, "Found %s but not npm", npmFile)
 		}
-		cmdArgs := []string{"ls", "--json"}
-		if !transitive {
-			cmdArgs = append(cmdArgs, "--depth=0")
-		}
+		cmdArgs := []string{"ls", "--json", "--depth=0"}
 		cmd := exec.Command(ex, cmdArgs...)
 		out, err = cmd.Output()
 		if err != nil {
@@ -675,7 +696,7 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 			return nil, errors.Errorf("Failed to find \"dependencies\" in \"%s %s\" output",
 				ex, strings.Join(cmdArgs, " "))
 		}
-		result := make([]programDependencieAbout, len(dependencies))
+		result = make([]programDependencieAbout, len(dependencies))
 		var i int
 		for k, v := range dependencies {
 			value := v.(map[string]interface{})
@@ -686,11 +707,57 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 			result[i].Version = value["version"].(string)
 			i++
 		}
-		return result, nil
 	} else if os.IsNotExist(err) {
 		return nil, errors.Errorf("Could not find either %s or %s", yarnFile, npmFile)
+	} else {
+		return nil, errors.Wrap(err, "Could not get node dependency data")
 	}
-	return nil, errors.Wrap(err, "Could not get node dependency data")
+	if !transitive {
+		var packageJSON interface{}
+		file, err := ioutil.ReadFile(packageFile)
+		if os.IsNotExist(err) {
+			return nil, errors.Errorf("Could not find %s. "+
+				"Please report this and run \"pulumi about --transitive\" to get a list of used packages",
+				packageFile)
+		} else if err != nil {
+			return nil, errors.Wrapf(err, "Could not read %s", packageFile)
+		}
+		err = json.Unmarshal(file, &packageJSON)
+		if err != nil {
+			return nil, errors.Wrapf(err, "Could not parse %s", packageFile)
+		}
+		dependenciesInterface, exists := packageJSON.(map[string]interface{})["dependencies"]
+		dependencies := map[string]interface{}{}
+		if exists {
+			var ok bool
+			dependencies, ok = dependenciesInterface.(map[string]interface{})
+			if !ok {
+				return nil, errors.New("package.json (dependencies) had an unexpected form")
+			}
+		}
+		devDependenciesInterface, exists := packageJSON.(map[string]interface{})["devDependencies"]
+		if exists {
+			for k, v := range devDependenciesInterface.(map[string]interface{}) {
+				dependencies[k] = v
+			}
+		}
+		allResults := result
+		// There should be 1 (& only 1) instantiated dependency for each
+		// dependency in package.json. We do this because we want to get the
+		// actual version (not the range) that exists in lock files.
+		result = make([]programDependencieAbout, len(dependencies))
+		i := 0
+		for _, v := range allResults {
+			if _, exists := dependencies[v.Name]; exists {
+				result[i] = v
+				// Some direct dependenceis are also transitive dependencies. We
+				// only want to grap them once.
+				delete(dependencies, v.Name)
+				i++
+			}
+		}
+	}
+	return result, nil
 }
 
 func getProgramDependenciesAbout(proj *workspace.Project, root string,
