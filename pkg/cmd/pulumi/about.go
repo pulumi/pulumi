@@ -589,6 +589,8 @@ func getDotNetProgramDependencies(proj *workspace.Project, transative bool) ([]p
 	return packages, nil
 }
 
+// TODO need to handle children. --depth=0 does not do what is expected.
+// This solution will look like the python solution built into pip.
 func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDependencieAbout, error) {
 	// Either
 	// yarn list --json [--depth=0]
@@ -606,9 +608,8 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 			return nil, errors.Wrap(err, "Found yarn.lock but not yarn")
 		}
 		cmdArgs := []string{"list", "--json"}
-		if !transitive {
+		if transitive {
 			cmdArgs = append(cmdArgs, "--depth=0")
-
 		}
 		cmd := exec.Command(ex, cmdArgs...)
 		out, err = cmd.Output()
