@@ -737,3 +737,25 @@ func TestTracePropagationGo(t *testing.T) {
 		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
 	}
 }
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutGo(t *testing.T) {
+	dir := filepath.Join("about", "go")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stdout, _ := e.RunCommand("pulumi", "about")
+	e.RunCommand("pulumi", "stack", "rm", "--yes")
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
+	assert.NotContains(t, stdout, "warning")
+}

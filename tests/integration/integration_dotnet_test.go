@@ -570,3 +570,25 @@ func TestGetResourceDotnet(t *testing.T) {
 		AllowEmptyPreviewChanges: true,
 	})
 }
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutGo(t *testing.T) {
+	dir := filepath.Join("about", "dotnet")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironment()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	stdout, _ := e.RunCommand("pulumi", "about")
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "System.Xml.XDocument")
+	// This one doesn't have a current stack. Assert that we caught it.
+	assert.Contains(t, stdout, "No current stack")
+}

@@ -28,7 +28,7 @@ import (
 func TestAboutCommands(t *testing.T) {
 
 	// pulumi about --json
-	t.Run("jsonAbout", func(t *testing.T) {
+	t.Run("json", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
@@ -46,7 +46,7 @@ func TestAboutCommands(t *testing.T) {
 	})
 
 	// pulumi about
-	t.Run("plainAbout", func(t *testing.T) {
+	t.Run("plain", func(t *testing.T) {
 		e := ptesting.NewEnvironment(t)
 		defer func() {
 			if !t.Failed() {
