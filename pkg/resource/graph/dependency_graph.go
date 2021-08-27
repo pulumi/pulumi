@@ -167,7 +167,7 @@ func NewDependencyGraph(resources []*resource.State) *DependencyGraph {
 	// create cycles in the dependency graph.
 	//
 	// This expansion works by looping over all of the resources in the graph and adding edges between each resource
-	// and the resources that depend on its ancestors.
+	// and the resources that have a declared dependency on its ancestors.
 	for _, res := range resources {
 		descendentNode := nodes[res.URN]
 		contract.Assert(descendentNode != nil)

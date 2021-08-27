@@ -357,7 +357,8 @@ func TestCanonicalExample(t *testing.T) {
 	comp1Dependencies := dg.DependenciesOf(comp1)
 	assert.Empty(t, comp1Dependencies)
 	comp1Dependents := dg.DependingOn(comp1, nil)
-	assert.Equal(t, []*resource.State{cust1, comp2, comp3, cust2, cust3, comp4, cust4, cust5, sink, sink2}, comp1Dependents)
+	assert.Equal(t, []*resource.State{cust1, comp2, comp3, cust2, cust3, comp4, cust4, cust5, sink, sink2},
+		comp1Dependents)
 
 	comp2Dependencies := dg.DependenciesOf(comp2)
 	assert.Equal(t, ResourceSet{comp1: true}, comp2Dependencies)
