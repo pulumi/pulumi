@@ -11,6 +11,7 @@ import (
 	"pgregory.net/rapid"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/stretchr/testify/assert"
 )
 
 // Assume a simplified model of resource.State since dependency_graph
@@ -123,12 +124,9 @@ func transitivelyDependsOn(a, b *resource.State, universe []*resource.State) boo
 	if directlyDependsOn(a, b) {
 		return true
 	}
-	if isParent(a, b) {
+	if isDescendant(a, b, universe) {
 		return true
 	}
-	// if isDescendant(a, b, universe) {
-	// 	return true
-	// }
 	for _, x := range universe {
 		if directlyDependsOn(a, x) {
 			if transitivelyDependsOn(x, b, universe) {
@@ -140,6 +138,51 @@ func transitivelyDependsOn(a, b *resource.State, universe []*resource.State) boo
 		}
 	}
 	return false
+}
+
+// Slightly degenerate case illustrating a cycle (self-reference) in DependingOn.
+func TestDependingOnExcludesSelf(t *testing.T) {
+	a1 := res("a1", "")
+	a2 := res("a2", "a1")
+	a3 := res("a3", "a2", "a1")
+	a4 := res("a4", "a3")
+	dg := NewDependencyGraph([]*resource.State{a1, a2, a3, a4})
+	assert.NotContains(t, dg.DependingOn(a4, nil), a4)
+}
+
+func TestRapidDependingOn(t *testing.T) {
+	rss := resourceStateSliceGenerator()
+	rapid.Check(t, func(t *rapid.T) {
+		ress := rss.Draw(t, "rss").([]*resource.State)
+
+		t.Logf("Checking resource-set: %s", showStates(ress))
+
+		dg := NewDependencyGraph(ress)
+
+		for _, res := range ress {
+			dependingOn := dg.DependingOn(res, nil)
+			dependingOnSet := ResourceSet{}
+
+			for _, d := range dependingOn {
+				dependingOnSet[d] = true
+			}
+
+			for d := range dependingOnSet {
+				if !transitivelyDependsOn(d, res, ress) {
+					t.Errorf("dg.DependingOn(%s) includes %s, but !transitivelyDependsOn(%s, %s)",
+						res.URN, d.URN, d.URN, res.URN)
+				}
+			}
+
+			for _, d := range ress {
+				if transitivelyDependsOn(d, res, ress) && !dependingOnSet[d] {
+					t.Errorf("dg.DependingOn(%s) omits %s, but transitivelyDependsOn(%s, %s)",
+						res.URN, d.URN, d.URN, res.URN)
+				}
+			}
+		}
+	})
+
 }
 
 func TestRapidDependenciesOf(t *testing.T) {
@@ -170,4 +213,25 @@ func TestRapidDependenciesOf(t *testing.T) {
 			}
 		}
 	})
+}
+
+func res(urnSuffix string, parentUrnSuffix string, depsUrnSuffixes ...string) *resource.State {
+	toUrn := func(x string) resource.URN {
+		return resource.URN(fmt.Sprintf("urn:pulumi:a::b::c:d:e::%s", x))
+	}
+
+	urn := toUrn(urnSuffix)
+	var parent resource.URN
+	if parentUrnSuffix != "" {
+		parent = toUrn(parentUrnSuffix)
+	}
+
+	var deps []resource.URN
+	for _, d := range depsUrnSuffixes {
+		if d != "" {
+			deps = append(deps, toUrn(d))
+		}
+	}
+
+	return &resource.State{URN: urn, Parent: parent, Dependencies: deps}
 }
