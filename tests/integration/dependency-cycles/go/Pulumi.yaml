@@ -1,0 +1,3 @@
+name: emptygo
+description: An empty Go Pulumi program.
+runtime: go
