@@ -9,7 +9,7 @@ html: Makefile graphics
 pdf: Makefile graphics
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
-.PHONY: graphics Makefile
+.PHONY: graphics clean Makefile
 
 SVG_FILES = \
 	providers/resource-lifecycle.svg \
@@ -26,3 +26,6 @@ SVG_FILES = \
 	plantuml -tsvg $<
 
 graphics: Makefile $(SVG_FILES)
+
+clean:
+	rm -rf $(BUILDDIR)/*
