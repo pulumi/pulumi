@@ -16,6 +16,9 @@
 
 - [sdk/dotnet] - Support for calling methods.
   [#7582](https://github.com/pulumi/pulumi/pull/7582)
+  
+- [build] - make lint returns an accurate status code 
+  [#7844](https://github.com/pulumi/pulumi/pull/7844)
 
 ### Bug Fixes
 
