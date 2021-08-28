@@ -1154,9 +1154,8 @@ func TestAboutNodeJS(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
-	stdout, stderr := e.RunCommand("pulumi", "about")
+	stdout, _ := e.RunCommand("pulumi", "about")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "@types/node")
-	assert.Empty(t, stderr, "There should be no warnings")
 }
