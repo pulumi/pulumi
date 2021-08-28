@@ -1140,5 +1140,4 @@ func TestAboutPython(t *testing.T) {
 	stdout, _ := e.RunCommand("pulumi", "about", "--json")
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "pulumi-kubernetes")
-	assert.NotContains(t, stdout, "warning")
 }

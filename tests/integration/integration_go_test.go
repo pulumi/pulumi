@@ -756,9 +756,9 @@ func TestAboutGo(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-stack")
 	e.RunCommand("pulumi", "stack", "select", "about-stack")
-	stdout, _ := e.RunCommand("pulumi", "about", "-t")
+	stdout, stderr := e.RunCommand("pulumi", "about", "-t")
 
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
-	assert.Empty(t, stdout, "There should be no warnings")
+	assert.Empty(t, stderr, "There should be no warnings")
 }
