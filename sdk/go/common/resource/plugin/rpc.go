@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ type MarshalOptions struct {
 	RejectAssets       bool   // true if we should return errors on Asset and Archive values.
 	KeepResources      bool   // true if we are keeping resoures (otherwise we return raw urn).
 	SkipInternalKeys   bool   // true to skip internal property keys (keys that start with "__") in the resulting map.
+	KeepOutputValues   bool   // true if we are keeping output values.
 }
 
 const (
@@ -70,7 +71,7 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	for _, key := range props.StableKeys() {
 		v := props[key]
 		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
-		if v.IsOutput() {
+		if v.IsOutput() && !opts.KeepOutputValues {
 			logging.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
 		} else if opts.SkipNulls && v.IsNull() {
 			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)
@@ -148,12 +149,35 @@ func MarshalPropertyValue(v resource.PropertyValue, opts MarshalOptions) (*struc
 		}
 		return nil, nil // return nil and the caller will ignore it.
 	} else if v.IsOutput() {
-		// Note that at the moment we don't differentiate between computed and output properties on the wire.  As
-		// a result, they will show up as computed on the other end.  This distinction isn't currently interesting.
-		if opts.KeepUnknowns {
-			return marshalUnknownProperty(v.OutputValue().Element, opts), nil
+		if !opts.KeepOutputValues {
+			if !v.OutputValue().Known {
+				// Unknown outputs are marshaled the same as Computed.
+				computed := resource.MakeComputed(v.OutputValue().Element)
+				return MarshalPropertyValue(computed, opts)
+			} else if v.OutputValue().Secret {
+				secret := resource.MakeSecret(v.OutputValue().Element)
+				return MarshalPropertyValue(secret, opts)
+			}
+			return MarshalPropertyValue(v.OutputValue().Element, opts)
 		}
-		return nil, nil // return nil and the caller will ignore it.
+		obj := resource.PropertyMap{
+			resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
+		}
+		if v.OutputValue().Known {
+			obj["value"] = v.OutputValue().Element
+		}
+		if v.OutputValue().Secret {
+			obj["secret"] = resource.NewBoolProperty(v.OutputValue().Secret)
+		}
+		if len(v.OutputValue().Dependencies) > 0 {
+			deps := make([]resource.PropertyValue, len(v.OutputValue().Dependencies))
+			for i, dep := range v.OutputValue().Dependencies {
+				deps[i] = resource.NewStringProperty(string(dep))
+			}
+			obj["dependencies"] = resource.NewArrayProperty(deps)
+		}
+		output := resource.NewObjectProperty(obj)
+		return MarshalPropertyValue(output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
 			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
@@ -362,12 +386,7 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 			if !ok {
 				return nil, errors.New("malformed RPC secret: missing value")
 			}
-			if !opts.KeepSecrets {
-				logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
-				return &value, nil
-			}
-			s := resource.MakeSecret(value)
-			return &s, nil
+			return unmarshalSecretPropertyValue(value, opts), nil
 		case resource.ResourceReferenceSig:
 			urn, ok := obj["urn"]
 			if !ok {
@@ -421,6 +440,50 @@ func UnmarshalPropertyValue(v *structpb.Value, opts MarshalOptions) (*resource.P
 				ref = resource.MakeComponentResourceReference(resource.URN(urn.StringValue()), packageVersion)
 			}
 			return &ref, nil
+		case resource.OutputValueSig:
+			value, known := obj["value"]
+
+			var secret bool
+			if secretProp, ok := obj["secret"]; ok {
+				if !secretProp.IsBool() {
+					return nil, errors.New("malformed output value: secret not a bool")
+				}
+				secret = secretProp.BoolValue()
+			}
+
+			if !opts.KeepOutputValues {
+				if !known {
+					v := structpb.Value{
+						Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+					}
+					return UnmarshalPropertyValue(&v, opts)
+				} else if secret {
+					return unmarshalSecretPropertyValue(value, opts), nil
+				}
+				return &value, nil
+			}
+
+			var dependencies []resource.URN
+			if dependenciesProp, ok := obj["dependencies"]; ok {
+				if !dependenciesProp.IsArray() {
+					return nil, errors.New("malformed output value: dependencies not an array")
+				}
+				dependencies = make([]resource.URN, len(dependenciesProp.ArrayValue()))
+				for i, dep := range dependenciesProp.ArrayValue() {
+					if !dep.IsString() {
+						return nil, errors.New("malformed output value: element in dependencies not a string")
+					}
+					dependencies[i] = resource.URN(dep.StringValue())
+				}
+			}
+
+			output := resource.NewOutputProperty(resource.Output{
+				Element:      value,
+				Known:        known,
+				Secret:       secret,
+				Dependencies: dependencies,
+			})
+			return &output, nil
 		default:
 			return nil, errors.Errorf("unrecognized signature '%v' in property map", sig)
 		}
@@ -455,6 +518,15 @@ func unmarshalUnknownPropertyValue(s string, opts MarshalOptions) (resource.Prop
 		return resource.NewComputedProperty(comp), true
 	}
 	return resource.PropertyValue{}, false
+}
+
+func unmarshalSecretPropertyValue(v resource.PropertyValue, opts MarshalOptions) *resource.PropertyValue {
+	if !opts.KeepSecrets {
+		logging.V(5).Infof("unmarshalling secret as raw value, as opts.KeepSecrets is false")
+		return &v
+	}
+	s := resource.MakeSecret(v)
+	return &s
 }
 
 // MarshalNull marshals a nil to its protobuf form.
