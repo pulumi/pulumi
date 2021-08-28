@@ -791,19 +791,25 @@ func formatProgramDependenciesAbout(deps []programDependencieAbout) string {
 }
 
 type cliAbout struct {
-	Version    *semver.Version `json:"version"`
-	GoVersion  string          `json:"goVersion"`
-	GoCompiler string          `json:"goCompiler"`
+	Version    string `json:"version"`
+	GoVersion  string `json:"goVersion"`
+	GoCompiler string `json:"goCompiler"`
 }
 
 func getCLIAbout() cliAbout {
 	var ver semver.Version
+	var err error
+	var cliVersion string
 	// Version is not supplied in test builds.
-	if version.Version != "" {
-		ver = semver.MustParse(version.Version)
+	ver, err = semver.ParseTolerant(version.Version)
+	if err == nil {
+		// To get semver formatting when possible
+		cliVersion = ver.String()
+	} else {
+		cliVersion = version.Version
 	}
 	return cliAbout{
-		Version:    &ver,
+		Version:    cliVersion,
 		GoVersion:  runtime.Version(),
 		GoCompiler: runtime.Compiler,
 	}
@@ -813,7 +819,7 @@ func (cli cliAbout) String() string {
 	return cmdutil.Table{
 		Headers: []string{"CLI", ""},
 		Rows: simpleTableRows([][]string{
-			{"Version", cli.Version.String()},
+			{"Version", cli.Version},
 			{"Go Version", cli.GoVersion},
 			{"Go Compiler", cli.GoCompiler},
 		}),
