@@ -324,9 +324,9 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := typs.parseTypeSpecRef(tt.ref)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("parseTypeSpecRef() error = %v, wantErr %v", err, tt.wantErr)
+			got, diags := typs.parseTypeSpecRef("", tt.ref)
+			if diags.HasErrors() != tt.wantErr {
+				t.Errorf("parseTypeSpecRef() diags = %v, wantErr %v", diags, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
