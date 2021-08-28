@@ -587,9 +587,7 @@ func TestAboutDotnet(t *testing.T) {
 	e.ImportDirectory(dir)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
-	stdout, _ := e.RunCommand("pulumi", "about")
-	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "System.Xml.XDocument")
+	_, stderr := e.RunCommand("pulumi", "about")
 	// This one doesn't have a current stack. Assert that we caught it.
-	assert.Contains(t, stdout, "No current stack")
+	assert.Contains(t, stderr, "No current stack")
 }

@@ -754,10 +754,11 @@ func TestAboutGo(t *testing.T) {
 	e.ImportDirectory(dir)
 
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-stack")
 	e.RunCommand("pulumi", "stack", "select", "about-stack")
 	stdout, _ := e.RunCommand("pulumi", "about", "-t")
-	e.RunCommand("pulumi", "stack", "rm", "--yes")
+
 	// Assert we parsed the dependencies
 	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
-	assert.NotContains(t, stdout, "warning")
+	assert.Empty(t, stdout, "There should be no warnings")
 }
