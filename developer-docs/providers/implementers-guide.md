@@ -110,7 +110,7 @@ resource must be inspected, the reference must be resolved by invoking the `getR
 function of the engine's builtin provider. Note that this is only possible if there is a 
 connection to the engine's resource monitor, e.g. within the scope of a call to `Construct`.
 This implies that resource references may not be resolved within calls to other 
-provider methods. Therefore, configuration vales, custom resources and provider functions
+provider methods. Therefore, configuration values, custom resources and provider functions
 should not rely on the ability to resolve resource references, and should instead treat
 resource references  as either their ID (if present) or URN. If the ID is present and
 empty, it should be treated as an [`Unknown`](#unknowns).
@@ -126,7 +126,7 @@ that cannot be determined until the resource is actually created or updated.
 
 A `Secret` represents a value whose contents are sensitive. Values of this type are 
 merely wrappers around the sensitive value. A provider should take care not to leak a
-secret value. and should wrap any resource output values that are always sensitive in a
+secret value, and should wrap any resource output values that are always sensitive in a
 `Secret`. [Functions](#functions) must not accept or return secret values.
 
 #### Property Paths
@@ -411,7 +411,7 @@ clients:
                 top-level output properties that are guaranteed not to change.
 - `changedKeys`: the list of top-level input property names that changed.
 
-If a provider is unble to compute a diff because its configuration contained
+If a provider is unable to compute a diff because its configuration contained
 [`Unknown`s](#unknowns), it can return an error that indicates as such. The client should
 conservatively assume that the resource must be updated and warn the user.
 
