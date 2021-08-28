@@ -238,11 +238,12 @@ func (g *generator) genRange(w io.Writer, call *model.FunctionCallExpression, en
 }
 
 var functionNamespaces = map[string][]string{
-	"readDir":  {"System.IO", "System.Linq"},
-	"readFile": {"System.IO"},
-	"toJSON":   {"System.Text.Json", "System.Collections.Generic"},
-	"toBase64": {"System"},
-	"sha1":     {"System.Security.Cryptography", "System.Text"},
+	"readDir":    {"System.IO", "System.Linq"},
+	"readFile":   {"System.IO"},
+	"filebase64": {"System", "System.IO"},
+	"toJSON":     {"System.Text.Json", "System.Collections.Generic"},
+	"toBase64":   {"System"},
+	"sha1":       {"System.Security.Cryptography", "System.Text"},
 }
 
 func (g *generator) genFunctionUsings(x *model.FunctionCallExpression) []string {
@@ -287,6 +288,9 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new FileAsset(%.v)", expr.Args[0])
+	case "filebase64":
+		// Assuming the existence of the following helper method located earlier in the preamble
+		g.Fgenf(w, "ReadFileBase64(%v)", expr.Args[0])
 	case hcl2.Invoke:
 		_, name := g.functionName(expr.Args[0])
 
