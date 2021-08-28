@@ -188,7 +188,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.NewFileAsset(%.v)", expr.Args[0])
 	case "filebase64":
 		// Assuming the existence of the following helper method
-		g.Fgenf(w, "filebase64OrPanic(%.v)", expr.Args[0])
+		g.Fgenf(w, "filebase64OrPanic(%v)", expr.Args[0])
 	case hcl2.Invoke:
 		pkg, module, fn, diags := g.functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
