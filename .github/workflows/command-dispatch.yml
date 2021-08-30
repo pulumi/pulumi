@@ -17,6 +17,48 @@ jobs:
           permission: write
           issue-type: pull-request
           repository: pulumi/pulumi
+  command-dispatch-for-testing-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Build
+        uses: peter-evans/slash-command-dispatch@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          reaction-token: ${{ secrets.GITHUB_TOKEN }}
+          commands: run-windows-tests
+          permission: write
+          issue-type: pull-request
+          repository: pulumi/pulumi
+          static-args: only-windows
+  command-dispatch-for-testing-unix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Build
+        uses: peter-evans/slash-command-dispatch@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          reaction-token: ${{ secrets.GITHUB_TOKEN }}
+          commands: run-unix-tests
+          permission: write
+          issue-type: pull-request
+          repository: pulumi/pulumi
+          static-args: only-unix
+  command-dispatch-for-testing-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Run Build
+        uses: peter-evans/slash-command-dispatch@v2
+        with:
+          token: ${{ secrets.PULUMI_BOT_TOKEN }}
+          reaction-token: ${{ secrets.GITHUB_TOKEN }}
+          commands: run-lint
+          permission: write
+          issue-type: pull-request
+          repository: pulumi/pulumi
+          static-args: only-lint
   command-dispatch-for-docs-generation:
     runs-on: ubuntu-latest
     steps:
