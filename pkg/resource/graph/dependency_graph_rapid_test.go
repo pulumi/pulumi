@@ -30,22 +30,8 @@ func isParent(child, parent *resource.State) bool {
 }
 
 // Closure over `isParent`. Needs a closed universe.
-func isDescendant(descendant, ancestor *resource.State, universe []*resource.State) bool {
-	if descendant.Parent == "" {
-		return false
-	}
-
-	if isParent(descendant, ancestor) {
-		return true
-	}
-
-	for _, x := range universe {
-		if isParent(descendant, x) && isDescendant(x, ancestor, universe) {
-			return true
-		}
-	}
-
-	return false
+func isDescendant(universe []*resource.State) R {
+	return transitively(universe)(isParent)
 }
 
 func hasProvider(res, provider *resource.State) bool {
@@ -61,103 +47,74 @@ func directlyDependsOn(a, b *resource.State) bool {
 	return false
 }
 
-// This relation models the notion that if A directly depends on
-// B, then it also `dependsOnDescendant` for any descendant of B.
-func dependsOnDescendant(a, descendant *resource.State, universe []*resource.State) bool {
-	for _, b := range universe {
-		if directlyDependsOn(a, b) && isDescendant(descendant, b, universe) {
-			return true
+// If `directlyDependsOn(A, B)`, then also `dependsOnDescendant(A, D)`
+// for any `isDescendant(D, B)`, `A != D`.
+func dependsOnDescendant(universe []*resource.State) func(a, d *resource.State) bool {
+	isDesc := isDescendant(universe)
+	return func(a, d *resource.State) bool {
+		if a.URN == d.URN {
+			return false
 		}
-	}
-	return false
-}
-
-// Our primary notion of dependency.
-func dependsPrimary(a, b *resource.State, universe []*resource.State) bool {
-
-	return directlyDependsOn(a, b) ||
-		isParent(a, b) ||
-		hasProvider(a, b) ||
-		dependsOnDescendant(a, b, universe)
-}
-
-func dependsOn(a, b *resource.State, universe []*resource.State) bool {
-	if a == b {
-		return false
-	}
-
-	if directlyDependsOn(a, b) ||
-		isParent(a, b) ||
-		hasProvider(a, b) {
-		return true
-	}
-
-	aDependsOnB := dependsPrimary(a, b, universe)
-	bDependsOnA := dependsPrimary(a, b, universe)
-
-	if aDependsOnB && bDependsOnA {
-		return false
-	}
-
-	return aDependsOnB
-}
-
-// Transitive closure over `dependsOn`.
-func transitivelyDependsOn(a, b *resource.State, universe []*resource.State) bool {
-	if dependsOn(a, b, universe) {
-		return true
-	}
-	for _, x := range universe {
-		if dependsOn(a, x, universe) && transitivelyDependsOn(x, b, universe) {
-			return true
-		}
-	}
-	return false
-}
-
-// Test that `DependenciesOf` is computing the `dependsOn` relation.
-func TestRapidDependenciesOf(t *testing.T) {
-	rss := resourceStateSliceGenerator()
-	rapid.Check(t, func(t *rapid.T) {
-		universe := rss.Draw(t, "universe").([]*resource.State)
-		t.Logf("Checking universe: %s", showStates(universe))
-		dg := NewDependencyGraph(universe)
-
-		for _, res := range universe {
-			resDeps := dg.DependenciesOf(res)
-
-			for d := range resDeps {
-				if !dependsOn(res, d, universe) {
-					t.Errorf("dg.DependenciesOf(%s) includes %s, but !dependsOn(%s, %s)",
-						res.URN, d.URN, res.URN, d.URN)
-				}
+		for _, b := range universe {
+			if directlyDependsOn(a, b) && isDesc(d, b) {
+				return true
 			}
+		}
+		return false
+	}
+}
 
-			for _, d := range universe {
-				if dependsOn(res, d, universe) && !resDeps[d] {
-					t.Errorf("dg.DependenciesOf(%s) omits %s, but dependsOn(%s, %s)",
-						res.URN, d.URN, res.URN, d.URN)
+// Verify a `DependneciesOf` model in terms of the relations above.
+func TestRapidDependenciesOf(t *testing.T) {
+	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+		dg := NewDependencyGraph(universe)
+		reachable1 := union(isParent, hasProvider, directlyDependsOn, dependsOnDescendant(universe))
+		reachable := transitively(universe)(reachable1)
+		dependenciesOf := func(a, b *resource.State) bool { return dg.DependenciesOf(a)[b] }
+		transitiveDependenciesOf := transitively(universe)(dependenciesOf)
+		depOnDescendant := dependsOnDescendant(universe)
+		for _, a := range universe {
+			aD := dg.DependenciesOf(a)
+			for _, b := range universe {
+				if isParent(a, b) {
+					assert.Truef(t, aD[b], "DependenciesOf(%v) is missing a parent %v", a.URN, b.URN)
+				}
+				if hasProvider(a, b) {
+					assert.Truef(t, aD[b], "DependenciesOf(%v) is missing a provider %v", a.URN, b.URN)
+				}
+				if directlyDependsOn(a, b) {
+					assert.Truef(t, aD[b], "DependenciesOf(%v) is missing a direct dependecy %v", a.URN, b.URN)
+				}
+				if depOnDescendant(a, b) && !aD[b] {
+					// Allow ignoring results in
+					// `DependenciesOf` that would
+					// have caused a loop.
+					loop := reachable(b, a) && transitiveDependenciesOf(b, a)
+					if !loop {
+						assert.Truef(t, aD[b],
+							"DependenciesOf(%v) is missing a descendant dependency on %v",
+							a.URN, b.URN)
+					}
+				}
+				if aD[b] {
+					assert.True(t, reachable1(a, b), "DependenciesOf(%v) includes an unreachable %v",
+						a.URN, b.URN)
 				}
 			}
 		}
 	})
 }
 
+// Additionally verify no immediate loops in `DependenciesOf`, no `B
+// in DependenciesOf(A) && A in DependenciesOf(B)`.
 func TestRapidDependenciesOfAntisymmetric(t *testing.T) {
-	rss := resourceStateSliceGenerator()
-	rapid.Check(t, func(t *rapid.T) {
-		universe := rss.Draw(t, "universe").([]*resource.State)
-		t.Logf("Checking universe: %s", showStates(universe))
+	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
 		dg := NewDependencyGraph(universe)
-
 		for _, a := range universe {
 			aD := dg.DependenciesOf(a)
 			for _, b := range universe {
 				bD := dg.DependenciesOf(b)
-				if aD[b] && bD[a] {
-					assert.FailNowf(t, "FAIL",
-						"DependenciesOf symmetric over (%v, %v)", a.URN, b.URN)
-				}
+				assert.Falsef(t, aD[b] && bD[a], "DependenciesOf symmetric over (%v, %v)", a.URN, b.URN)
 			}
 		}
 	})
@@ -185,44 +142,72 @@ func TestDependingOnExcludesSelf(t *testing.T) {
 	assert.NotContains(t, dg.DependingOn(a4, nil), a4)
 }
 
-// // Test that `DependingOn` is
-// func TestRapidDependingOn(t *testing.T) {
-// 	rss := resourceStateSliceGenerator()
-// 	rapid.Check(t, func(t *rapid.T) {
-// 		ress := rss.Draw(t, "rss").([]*resource.State)
+// Test that `DependingOn` is the inverse transitive closure of `DependsOn`.
+func TestRapidDependingOn(t *testing.T) {
 
-// 		t.Logf("Checking resource-set: %s", showStates(ress))
+	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+		dg := NewDependencyGraph(universe)
+		dependenciesOf := func(a, b *resource.State) bool { return dg.DependenciesOf(a)[b] }
+		transitiveDependenciesOf := transitively(universe)(dependenciesOf)
+		dependingOn := func(a, b *resource.State) bool {
+			for _, x := range dg.DependingOn(a, nil) {
+				if b.URN == x.URN {
+					return true
+				}
+			}
+			return false
+		}
+		for _, a := range universe {
+			for _, b := range universe {
+				if dependingOn(a, b) {
+					assert.Truef(t, transitiveDependenciesOf(b, a),
+						"dependingOn(%v, %v) but not transitiveDependenciesOf(%v, %v)",
+						a.URN, b.URN, b.URN, a.URN)
+				}
+				if transitiveDependenciesOf(b, a) {
+					assert.True(t, dependingOn(a, b),
+						"transitiveDependenciesOf(%v, %v) but not dependingOn(%v, %v)",
+						b.URN, a.URN, a.URN, b.URN)
+				}
+			}
+		}
+	})
+}
 
-// 		dg := NewDependencyGraph(ress)
+// Test that `DependingOn` results are ordered according to the dep graph.
+func TestRapidDependingOnOrdered(t *testing.T) {
+	graphCheck(t, func(t *rapid.T, universe []*resource.State) {
+		dg := NewDependencyGraph(universe)
+		dependenciesOf := func(a, b *resource.State) bool { return dg.DependenciesOf(a)[b] }
+		transitiveDependenciesOf := transitively(universe)(dependenciesOf)
+		for _, a := range universe {
+			for _, b := range universe {
+				if transitiveDependenciesOf(a, b) {
+					t.Logf("transitiveDependenciesOf(%v, %v)", a.URN, b.URN)
+				}
+			}
+		}
+		for _, a := range universe {
+			depOnA := dg.DependingOn(a, nil)
+			t.Logf("Inspecting DependingOn(%v) = %v", a.URN, showStates(depOnA))
+			for d1i, d1 := range depOnA {
+				for d2i, d2 := range depOnA {
+					if transitiveDependenciesOf(d1, d2) {
+						assert.Truef(t, d2i < d1i, "%v should appear before %v",
+							d2.URN, d1.URN)
+						if !(d2i < d1i) {
+							t.FailNow()
+						}
+					}
+				}
+			}
+		}
+	})
+}
 
-// 		for _, res := range ress {
-// 			dependingOn := dg.DependingOn(res, nil)
-// 			dependingOnSet := ResourceSet{}
+// Helper code below -------------------------------------------------------------------------------
 
-// 			for _, d := range dependingOn {
-// 				dependingOnSet[d] = true
-// 			}
-
-// 			for d := range dependingOnSet {
-// 				if !transitivelyDependsOn(d, res, ress) {
-// 					t.Errorf("dg.DependingOn(%s) includes %s, but !transitivelyDependsOn(%s, %s)",
-// 						res.URN, d.URN, d.URN, res.URN)
-// 				}
-// 			}
-
-// 			for _, d := range ress {
-// 				if transitivelyDependsOn(d, res, ress) && !dependingOnSet[d] {
-// 					t.Errorf("dg.DependingOn(%s) omits %s, but transitivelyDependsOn(%s, %s)",
-// 						res.URN, d.URN, d.URN, res.URN)
-// 				}
-// 			}
-// 		}
-// 	})
-
-// }
-
-// helper code below
-
+// Helper for constructing a resource State for a test.
 func res(urnSuffix string, parentUrnSuffix string, depsUrnSuffixes ...string) *resource.State {
 	toUrn := func(x string) resource.URN {
 		return resource.URN(fmt.Sprintf("urn:pulumi:a::b::c:d:e::%s", x))
@@ -242,6 +227,78 @@ func res(urnSuffix string, parentUrnSuffix string, depsUrnSuffixes ...string) *r
 	}
 
 	return &resource.State{URN: urn, Parent: parent, Dependencies: deps}
+}
+
+// Shorthand for relations over `*resource.State`
+type R = func(a, b *resource.State) bool
+
+// Union of one or more relations.
+func union(rs ...R) R {
+	return func(a, b *resource.State) bool {
+		for _, r := range rs {
+			if r(a, b) {
+				return true
+			}
+		}
+		return false
+	}
+}
+
+// Memoizes a relation as a table.
+func memo(universe []*resource.State) func(R) R {
+	return func(rel R) R {
+		mrel := make(map[*resource.State]map[*resource.State]bool)
+		for _, a := range universe {
+			mrel[a] = make(map[*resource.State]bool)
+			for _, b := range universe {
+				if rel(a, b) {
+					mrel[a][b] = true
+				}
+			}
+		}
+		return func(a, b *resource.State) bool {
+			return mrel[a][b]
+		}
+	}
+}
+
+// Memoized transitive closure of a relation.
+func transitively(universe []*resource.State) func(R) R {
+	return func(rel R) R {
+		trel := make(map[*resource.State]map[*resource.State]bool)
+		for _, a := range universe {
+			trel[a] = make(map[*resource.State]bool)
+			for _, b := range universe {
+				if rel(a, b) {
+					trel[a][b] = true
+				}
+			}
+		}
+
+		extend := func() bool {
+			more := false
+			for _, a := range universe {
+				for _, b := range universe {
+					if !trel[a][b] {
+						for _, x := range universe {
+							if trel[x][b] && rel(a, x) {
+								trel[a][b] = true
+								more = true
+							}
+						}
+					}
+				}
+			}
+			return more
+		}
+
+		for extend() {
+		}
+
+		return func(a, b *resource.State) bool {
+			return trel[a][b]
+		}
+	}
 }
 
 // Generates values of type `[]ResourceState`.
@@ -304,4 +361,13 @@ func showStates(sts []*resource.State) string {
 	}
 	fmt.Fprintf(buf, "]")
 	return buf.String()
+}
+
+func graphCheck(t *testing.T, check func(*rapid.T, []*resource.State)) {
+	rss := resourceStateSliceGenerator()
+	rapid.Check(t, func(t *rapid.T) {
+		universe := rss.Draw(t, "universe").([]*resource.State)
+		t.Logf("Checking universe: %s", showStates(universe))
+		check(t, universe)
+	})
 }
