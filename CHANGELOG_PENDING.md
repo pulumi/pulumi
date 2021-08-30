@@ -11,3 +11,5 @@
   resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
 ### Bug Fixes
+
+- Fix Node `fs.rmdir` DeprecationWarning
