@@ -28,7 +28,6 @@ import (
 
 	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
-	"github.com/pkg/errors"
 	"gopkg.in/yaml.v3"
 
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
@@ -465,7 +464,7 @@ type Package struct {
 	functionTable     map[string]*Function
 	typeTable         map[string]Type
 
-	importedLanguages map[string]struct{}
+	boundLanguages map[string]struct{}
 }
 
 // Language provides hooks for importing language-specific metadata in a package.
@@ -484,6 +483,22 @@ type Language interface {
 	ImportPackageSpec(pkg *Package, bytes json.RawMessage) (interface{}, error)
 }
 
+// LanguageBinder provides hooks for binding language-specific metadata in a package.
+type LanguageBinder interface {
+	// BindDefaultSpec decodes language-specific metadata associated with a DefaultValue.
+	BindDefaultSpec(def *DefaultValue, bytes json.RawMessage) (interface{}, hcl.Diagnostics, error)
+	// BindPropertySpec decodes language-specific metadata associated with a Property.
+	BindPropertySpec(property *Property, bytes json.RawMessage) (interface{}, hcl.Diagnostics, error)
+	// BindObjectTypeSpec decodes language-specific metadata associated with a ObjectType.
+	BindObjectTypeSpec(object *ObjectType, bytes json.RawMessage) (interface{}, hcl.Diagnostics, error)
+	// BindResourceSpec decodes language-specific metadata associated with a Resource.
+	BindResourceSpec(resource *Resource, bytes json.RawMessage) (interface{}, hcl.Diagnostics, error)
+	// BindFunctionSpec decodes language-specific metadata associated with a Function.
+	BindFunctionSpec(function *Function, bytes json.RawMessage) (interface{}, hcl.Diagnostics, error)
+	// BindPackageSpec decodes language-specific metadata associated with a Package.
+	BindPackageSpec(pkg *Package, bytes json.RawMessage) (interface{}, hcl.Diagnostics, error)
+}
+
 func sortedLanguageNames(metadata map[string]interface{}) []string {
 	names := make([]string, 0, len(metadata))
 	for lang := range metadata {
@@ -493,26 +508,78 @@ func sortedLanguageNames(metadata map[string]interface{}) []string {
 	return names
 }
 
-func importDefaultLanguages(def *DefaultValue, languages map[string]Language) error {
+type languageBinder struct {
+	importer Language
+}
+
+func (b languageBinder) BindDefaultSpec(def *DefaultValue,
+	bytes json.RawMessage) (interface{}, hcl.Diagnostics, error) {
+
+	v, err := b.importer.ImportDefaultSpec(def, bytes)
+	return v, nil, err
+}
+
+func (b languageBinder) BindPropertySpec(property *Property,
+	bytes json.RawMessage) (interface{}, hcl.Diagnostics, error) {
+
+	v, err := b.importer.ImportPropertySpec(property, bytes)
+	return v, nil, err
+}
+
+func (b languageBinder) BindObjectTypeSpec(object *ObjectType,
+	bytes json.RawMessage) (interface{}, hcl.Diagnostics, error) {
+
+	v, err := b.importer.ImportObjectTypeSpec(object, bytes)
+	return v, nil, err
+}
+
+func (b languageBinder) BindResourceSpec(resource *Resource,
+	bytes json.RawMessage) (interface{}, hcl.Diagnostics, error) {
+
+	v, err := b.importer.ImportResourceSpec(resource, bytes)
+	return v, nil, err
+}
+
+func (b languageBinder) BindFunctionSpec(function *Function,
+	bytes json.RawMessage) (interface{}, hcl.Diagnostics, error) {
+
+	v, err := b.importer.ImportFunctionSpec(function, bytes)
+	return v, nil, err
+}
+
+func (b languageBinder) BindPackageSpec(pkg *Package,
+	bytes json.RawMessage) (interface{}, hcl.Diagnostics, error) {
+
+	v, err := b.importer.ImportPackageSpec(pkg, bytes)
+	return v, nil, err
+}
+
+func bindDefaultLanguages(def *DefaultValue, languages map[string]LanguageBinder) (hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
 	for _, name := range sortedLanguageNames(def.Language) {
 		val := def.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportDefaultSpec(def, raw)
+				val, valDiags, err := lang.BindDefaultSpec(def, raw)
+				diags = diags.Extend(valDiags)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return diags, fmt.Errorf("binding %v metadata: %w", name, err)
 				}
 				def.Language[name] = val
 			}
 		}
 	}
-	return nil
+	return diags, nil
 }
 
-func importPropertyLanguages(property *Property, languages map[string]Language) error {
+func bindPropertyLanguages(property *Property, languages map[string]LanguageBinder) (hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+
 	if property.DefaultValue != nil {
-		if err := importDefaultLanguages(property.DefaultValue, languages); err != nil {
-			return errors.Wrapf(err, "importing default value")
+		defaultDiags, err := bindDefaultLanguages(property.DefaultValue, languages)
+		diags = diags.Extend(defaultDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding default value: %w", err)
 		}
 	}
 
@@ -520,21 +587,26 @@ func importPropertyLanguages(property *Property, languages map[string]Language) 
 		val := property.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportPropertySpec(property, raw)
+				val, valDiags, err := lang.BindPropertySpec(property, raw)
+				diags = diags.Extend(valDiags)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return diags, fmt.Errorf("binding %v metadata: %w", name, err)
 				}
 				property.Language[name] = val
 			}
 		}
 	}
-	return nil
+	return diags, nil
 }
 
-func importObjectTypeLanguages(object *ObjectType, languages map[string]Language) error {
+func bindObjectTypeLanguages(object *ObjectType, languages map[string]LanguageBinder) (hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+
 	for _, property := range object.Properties {
-		if err := importPropertyLanguages(property, languages); err != nil {
-			return errors.Wrapf(err, "importing property %v", property.Name)
+		propDiags, err := bindPropertyLanguages(property, languages)
+		diags = diags.Extend(propDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding property %v: %w", property.Name, err)
 		}
 	}
 
@@ -542,34 +614,43 @@ func importObjectTypeLanguages(object *ObjectType, languages map[string]Language
 		val := object.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportObjectTypeSpec(object, raw)
+				val, valDiags, err := lang.BindObjectTypeSpec(object, raw)
+				diags = diags.Extend(valDiags)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return diags, fmt.Errorf("binding %v metadata: %w", name, err)
 				}
 				object.Language[name] = val
 			}
 		}
 	}
-	return nil
+	return diags, nil
 }
 
-func importResourceLanguages(resource *Resource, languages map[string]Language) error {
+func bindResourceLanguages(resource *Resource, languages map[string]LanguageBinder) (hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+
 	for _, property := range resource.InputProperties {
-		if err := importPropertyLanguages(property, languages); err != nil {
-			return errors.Wrapf(err, "importing input property %v", property.Name)
+		propDiags, err := bindPropertyLanguages(property, languages)
+		diags = diags.Extend(propDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding input property %v: %w", property.Name, err)
 		}
 	}
 
 	for _, property := range resource.Properties {
-		if err := importPropertyLanguages(property, languages); err != nil {
-			return errors.Wrapf(err, "importing property %v", property.Name)
+		propDiags, err := bindPropertyLanguages(property, languages)
+		diags = diags.Extend(propDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding property %v: %w", property.Name, err)
 		}
 	}
 
 	if resource.StateInputs != nil {
 		for _, property := range resource.StateInputs.Properties {
-			if err := importPropertyLanguages(property, languages); err != nil {
-				return errors.Wrapf(err, "importing state input property %v", property.Name)
+			propDiags, err := bindPropertyLanguages(property, languages)
+			diags = diags.Extend(propDiags)
+			if err != nil {
+				return diags, fmt.Errorf("binding state input property %v: %w", property.Name, err)
 			}
 		}
 	}
@@ -578,26 +659,33 @@ func importResourceLanguages(resource *Resource, languages map[string]Language) 
 		val := resource.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportResourceSpec(resource, raw)
+				val, valDiags, err := lang.BindResourceSpec(resource, raw)
+				diags = diags.Extend(valDiags)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return diags, fmt.Errorf("binding %v metadata: %w", name, err)
 				}
 				resource.Language[name] = val
 			}
 		}
 	}
-	return nil
+	return diags, nil
 }
 
-func importFunctionLanguages(function *Function, languages map[string]Language) error {
+func bindFunctionLanguages(function *Function, languages map[string]LanguageBinder) (hcl.Diagnostics, error) {
+	var diags hcl.Diagnostics
+
 	if function.Inputs != nil {
-		if err := importObjectTypeLanguages(function.Inputs, languages); err != nil {
-			return errors.Wrapf(err, "importing inputs")
+		objDiags, err := bindObjectTypeLanguages(function.Inputs, languages)
+		diags = diags.Extend(objDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding inputs: %w", err)
 		}
 	}
 	if function.Outputs != nil {
-		if err := importObjectTypeLanguages(function.Outputs, languages); err != nil {
-			return errors.Wrapf(err, "importing outputs")
+		objDiags, err := bindObjectTypeLanguages(function.Outputs, languages)
+		diags = diags.Extend(objDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding outputs: %w", err)
 		}
 	}
 
@@ -605,72 +693,104 @@ func importFunctionLanguages(function *Function, languages map[string]Language) 
 		val := function.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
 			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportFunctionSpec(function, raw)
+				val, valDiags, err := lang.BindFunctionSpec(function, raw)
+				diags = diags.Extend(valDiags)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return diags, fmt.Errorf("binding %v metadata: %w", name, err)
 				}
 				function.Language[name] = val
 			}
 		}
 	}
-	return nil
+	return diags, nil
 }
 
 func (pkg *Package) ImportLanguages(languages map[string]Language) error {
-	if pkg.importedLanguages == nil {
-		pkg.importedLanguages = map[string]struct{}{}
+	diags, err := pkg.BindLanguages(languages)
+	if err != nil {
+		return err
+	}
+	if diags.HasErrors() {
+		return diags
+	}
+	return nil
+}
+
+func (pkg *Package) BindLanguages(languages map[string]Language) (hcl.Diagnostics, error) {
+	if pkg.boundLanguages == nil {
+		pkg.boundLanguages = map[string]struct{}{}
 	}
 
+	binders := map[string]LanguageBinder{}
+
 	any := false
-	for lang := range languages {
-		if _, ok := pkg.importedLanguages[lang]; !ok {
+	for lang, importer := range languages {
+		if _, ok := pkg.boundLanguages[lang]; !ok {
+			binder, ok := importer.(LanguageBinder)
+			if !ok {
+				binder = languageBinder{importer}
+			}
+			binders[lang] = binder
+
 			any = true
-			break
 		}
 	}
 	if !any {
-		return nil
+		return nil, nil
 	}
+
+	var diags hcl.Diagnostics
 
 	for _, t := range pkg.Types {
 		if object, ok := t.(*ObjectType); ok {
-			if err := importObjectTypeLanguages(object, languages); err != nil {
-				return errors.Wrapf(err, "importing object type %v", object.Token)
+			objDiags, err := bindObjectTypeLanguages(object, binders)
+			diags = diags.Extend(objDiags)
+			if err != nil {
+				return diags, fmt.Errorf("binding object type %v: %w", object.Token, err)
 			}
 		}
 	}
 
 	for _, config := range pkg.Config {
-		if err := importPropertyLanguages(config, languages); err != nil {
-			return errors.Wrapf(err, "importing configuration property %v", config.Name)
+		propDiags, err := bindPropertyLanguages(config, binders)
+		diags = diags.Extend(propDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding configuration property %v: %w", config.Name, err)
 		}
 	}
 
 	if pkg.Provider != nil {
-		if err := importResourceLanguages(pkg.Provider, languages); err != nil {
-			return errors.Wrapf(err, "importing provider")
+		resDiags, err := bindResourceLanguages(pkg.Provider, binders)
+		diags = diags.Extend(resDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding provider: %w", err)
 		}
 	}
 
 	for _, resource := range pkg.Resources {
-		if err := importResourceLanguages(resource, languages); err != nil {
-			return errors.Wrapf(err, "importing resource %v", resource.Token)
+		resDiags, err := bindResourceLanguages(resource, binders)
+		diags = diags.Extend(resDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding resource %v: %w", resource.Token, err)
 		}
 	}
 
 	for _, function := range pkg.Functions {
-		if err := importFunctionLanguages(function, languages); err != nil {
-			return errors.Wrapf(err, "importing function %v", function.Token)
+		fnDiags, err := bindFunctionLanguages(function, binders)
+		diags = diags.Extend(fnDiags)
+		if err != nil {
+			return diags, fmt.Errorf("binding function %v: %w", function.Token, err)
 		}
 	}
 
 	for _, name := range sortedLanguageNames(pkg.Language) {
 		val := pkg.Language[name]
 		if raw, ok := val.(json.RawMessage); ok {
-			if lang, ok := languages[name]; ok {
-				val, err := lang.ImportPackageSpec(pkg, raw)
+			if lang, ok := binders[name]; ok {
+				val, valDiags, err := lang.BindPackageSpec(pkg, raw)
+				diags = diags.Extend(valDiags)
 				if err != nil {
-					return errors.Wrapf(err, "importing %v metadata", name)
+					return diags, fmt.Errorf("binding %v metadata: %w", name, err)
 				}
 				pkg.Language[name] = val
 			}
@@ -678,10 +798,10 @@ func (pkg *Package) ImportLanguages(languages map[string]Language) error {
 	}
 
 	for lang := range languages {
-		pkg.importedLanguages[lang] = struct{}{}
+		pkg.boundLanguages[lang] = struct{}{}
 	}
 
-	return nil
+	return diags, nil
 }
 
 func (pkg *Package) TokenToModule(tok string) string {

@@ -25,6 +25,10 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
+	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	nodejsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	pythongen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
@@ -67,7 +71,12 @@ func newSchemaCheckCommand() *cobra.Command {
 				return fmt.Errorf("failed to unmarshal schema: %w", err)
 			}
 
-			_, diags, err := schema.BindSpec(pkgSpec, nil)
+			_, diags, err := schema.BindSpec(pkgSpec, map[string]schema.Language{
+				"dotnet": dotnetgen.Importer,
+				"go":     gogen.Importer,
+				"nodejs": nodejsgen.Importer,
+				"python": pythongen.Importer,
+			})
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
