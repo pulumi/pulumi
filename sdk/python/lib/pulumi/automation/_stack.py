@@ -269,6 +269,7 @@ class Stack:
                 target: Optional[List[str]] = None,
                 expect_no_changes: Optional[bool] = None,
                 diff: Optional[bool] = None,
+                json_output: Optional[bool] = None,
                 target_dependents: Optional[bool] = None,
                 replace: Optional[List[str]] = None,
                 on_output: Optional[OnOutput] = None,
@@ -284,6 +285,7 @@ class Stack:
         :param target: Specify an exclusive list of resource URNs to update.
         :param expect_no_changes: Return an error if any changes occur during this update.
         :param diff: Display operation as a rich diff showing the overall change.
+        :param json_output: Serialize the preview diffs, operations, and overall output as JSON.
         :param target_dependents: Allows updating of dependent targets discovered but not specified in the Target list.
         :param replace: Specify resources to replace.
         :param on_output: A function to process the stdout stream.
@@ -594,6 +596,7 @@ def _parse_extra_args(**kwargs) -> List[str]:
     message = kwargs.get("message")
     expect_no_changes = kwargs.get("expect_no_changes")
     diff = kwargs.get("diff")
+    json_output = kwargs.get("json_output")
     replace = kwargs.get("replace")
     target = kwargs.get("target")
     target_dependents = kwargs.get("target_dependents")
@@ -605,6 +608,8 @@ def _parse_extra_args(**kwargs) -> List[str]:
         extra_args.append("--expect-no-changes")
     if diff:
         extra_args.append("--diff")
+    if json_output:
+        extra_args.append("--json")
     if replace:
         for r in replace:
             extra_args.extend(["--replace", r])
