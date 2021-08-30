@@ -51,6 +51,16 @@ func outputGen() *rapid.Generator {
 	})
 }
 
+func normOutput(pv *resource.PropertyValue) {
+	if pv.IsOutput() {
+		out := pv.OutputValue()
+		if len(out.Dependencies) == 0 && out.Dependencies != nil {
+			out.Dependencies = nil
+		}
+		pv.V = out
+	}
+}
+
 func TestOutputValueTurnaround(t *testing.T) {
 	rapid.Check(t, func(t *rapid.T) {
 		out := outputGen().Draw(t, "output").(resource.Output)
@@ -68,6 +78,9 @@ func TestOutputValueTurnaround(t *testing.T) {
 			t.FailNow()
 		}
 		assert.NotNil(t, v2)
+
+		normOutput(&v)
+		normOutput(v2)
 		assert.Equal(t, v, *v2)
 	})
 }
