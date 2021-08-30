@@ -32,7 +32,9 @@ jobs:
 
             [1]: ${{ steps.vars.outputs.run-url }}
   go-lint:
-    if: ! contains(github.event.client_payload.slash_command.args.unamed, "only-windows") &&  ! contains(github.event.client_payload.slash_command.args.unamed, "only-unix") 
+    if: |
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-windows") &&
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-unix") 
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
     strategy:
@@ -49,7 +51,9 @@ jobs:
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
 
   sdk-lint:
-    if: ! contains(github.event.client_payload.slash_command.args.unamed, "only-windows") &&  ! contains(github.event.client_payload.slash_command.args.unamed, "only-unix") 
+    if: |
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-windows") &&
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-unix") 
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
@@ -118,7 +122,11 @@ jobs:
         # See scripts/tests_subsets.py when editing
         test-subset: [ integration, auto-and-lifecycletest, native, etc ]
 
-    if: (github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) && ! contains(github.event.client_payload.slash_command.args.unamed, "only-windows") && ! contains(github.event.client_payload.slash_command.args.unamed, "only-lint")
+    if: |
+      (github.event_name == 'repository_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository) &&
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-windows") &&
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-lint")
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set PULUMI_TEST_SUBSET env var
@@ -214,7 +222,11 @@ jobs:
         node-version: [14.x]
         python-version: [3.9.x]
         dotnet: [3.1.x]
-    if: (github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) && ! contains(github.event.client_payload.slash_command.args.unamed, "only-unix") &&  ! contains(github.event.client_payload.slash_command.args.unamed, "only-lint") 
+    if: |
+      (github.event_name == 'repository_dispatch' ||
+      github.event.pull_request.head.repo.full_name == github.repository) &&
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-unix") &&
+      ! contains(github.event.client_payload.slash_command.args.unamed, "only-lint") 
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
