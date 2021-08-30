@@ -1017,6 +1017,18 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "                },\n")
 	}
 
+	replaceOnChangesProps := r.ReplaceOnChanges()
+	if len(replaceOnChangesProps) > 0 {
+		fmt.Fprint(w, "                ReplaceOnChanges =\n")
+		fmt.Fprintf(w, "                {\n")
+		for _, n := range schema.PropertyListJoinToString(replaceOnChangesProps, ".",
+			func(s string) string { return s }) {
+			fmt.Fprintf(w, "                    ")
+			fmt.Fprintf(w, "%q,\n", n)
+		}
+		fmt.Fprintf(w, "                },\n")
+	}
+
 	fmt.Fprintf(w, "            };\n")
 	fmt.Fprintf(w, "            var merged = %s.Merge(defaultOptions, options);\n", optionsType)
 	fmt.Fprintf(w, "            // Override the ID if one was specified for consistency with other language SDKs.\n")

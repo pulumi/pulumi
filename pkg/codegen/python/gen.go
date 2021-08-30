@@ -1266,6 +1266,13 @@ func (mod *modContext) genResource(res *schema.Resource) (string, error) {
 		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, secret_opts)\n")
 	}
 
+	replaceOnChangesProps := res.ReplaceOnChanges()
+	if len(replaceOnChangesProps) > 0 {
+		replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps, ".", PyName)
+		fmt.Fprintf(w, `        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["%s"])`, strings.Join(replaceOnChangesStrings, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)\n")
+	}
+
 	// Finally, chain to the base constructor, which will actually register the resource.
 	tok := res.Token
 	if res.IsProvider {

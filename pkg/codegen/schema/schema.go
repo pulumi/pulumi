@@ -380,6 +380,57 @@ type Resource struct {
 	Methods []*Method
 }
 
+// The set of resource paths where ReplaceOnChanges is true.
+//
+// For example, if you have the following resource struct:
+//
+// Resource A {
+// Properties: {
+// 	 Resource B {
+// 	   Object D: {
+// 	     ReplaceOnChanges: true
+// 	     }
+// 	   Object F: {}
+//     }
+// 	 Object C {
+// 	   ReplaceOnChanges: true
+// 	   }
+//   }
+// }
+//
+// A.ReplaceOnChanges() == [[B, D], [C]]
+func (r *Resource) ReplaceOnChanges() (replaceOnChanges [][]*Property) {
+	for _, p := range r.Properties {
+		if child, ok := p.Type.(*ResourceType); ok {
+			childReplaceOnChanges := child.Resource.ReplaceOnChanges()
+			for i, childP := range childReplaceOnChanges {
+				childReplaceOnChanges[i] = append([]*Property{p}, childP...)
+			}
+			replaceOnChanges = append(replaceOnChanges, childReplaceOnChanges...)
+		}
+		if p.ReplaceOnChanges {
+			replaceOnChanges = append(replaceOnChanges, []*Property{p})
+		}
+	}
+	return replaceOnChanges
+}
+
+// Joins the output of `ReplaceOnChanges` into property path names.
+//
+// For example, given an input [[B, D], [C]] where each property has a name
+// equivalent to it's variable, this function should yield: ["B.D", "C"]
+func PropertyListJoinToString(propertyList [][]*Property, join string, nameConverter func(string) string) []string {
+	out := make([]string, len(propertyList))
+	for i, p := range propertyList {
+		names := make([]string, len(p))
+		for j, n := range p {
+			names[j] = nameConverter(n.Name)
+		}
+		out[i] = strings.Join(names, join)
+	}
+	return out
+}
+
 type Method struct {
 	// Name is the name of the method.
 	Name string

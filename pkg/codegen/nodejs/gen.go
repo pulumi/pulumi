@@ -704,6 +704,14 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, secretOpts);\n")
 	}
 
+	replaceOnChanges := r.ReplaceOnChanges()
+	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChanges, ".",
+		func(x string) string { return x })
+	if len(replaceOnChanges) > 0 {
+		fmt.Fprintf(w, `        const replaceOnChanges = { replaceOnChanges: ["%s"] };`, strings.Join(replaceOnChangesStrings, `", "`))
+		fmt.Fprintf(w, "\n        opts = pulumi.mergeOptions(opts, replaceOnChanges);\n")
+	}
+
 	// If it's a ComponentResource, set the remote option.
 	if r.IsComponent {
 		fmt.Fprintf(w, "        super(%s.__pulumiType, name, inputs, opts, true /*remote*/);\n", name)
