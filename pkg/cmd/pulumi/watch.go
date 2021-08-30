@@ -122,6 +122,7 @@ func newWatchCmd() *cobra.Command {
 				UseLegacyDiff:             useLegacyDiff(),
 				DisableProviderPreview:    disableProviderPreview(),
 				DisableResourceReferences: disableResourceReferences(),
+				DisableOutputValues:       disableOutputValues(),
 			}
 
 			res := s.Watch(commandContext(), backend.UpdateOperation{

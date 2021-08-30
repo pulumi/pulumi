@@ -132,6 +132,7 @@ func newUpCmd() *cobra.Command {
 			UseLegacyDiff:             useLegacyDiff(),
 			DisableProviderPreview:    disableProviderPreview(),
 			DisableResourceReferences: disableResourceReferences(),
+			DisableOutputValues:       disableOutputValues(),
 			UpdateTargets:             targetURNs,
 			TargetDependents:          targetDependents,
 		}
