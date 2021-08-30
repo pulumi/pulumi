@@ -3495,5 +3495,271 @@ func TestEKSExample2(t *testing.T) {
 		},
 	}
 	p.Run(t, nil)
+}
 
+// This test exercises a complicated case in which a resource has a proper dependency on its own parent. While these
+// dependencies are legal, it is critical that component dependency expansion remains acyclic in these cases. In
+// this test, the family tree is:
+//
+//                comp1
+//       ___________|___________
+//       |          |          |
+//     comp2      cust1      cust2
+//       |
+//     cust3
+//
+// And the declared dependency graph is:
+//
+//     cust2
+//       |
+//       v
+//     comp2
+//       |
+//       v
+//     comp1
+//
+// The expanded dependency graph should be (minus provider deps):
+//
+//        cust2--+--+
+//          |    |  |
+//          V    |  |
+//        cust3  |  |
+//          |    |  |
+//          V    |  |
+//     +--comp2<-+  |
+//     |    |       |
+//     |    v       |
+//     |  cust1<----+
+//     |    |
+//     |    v
+//     +->comp1
+//
+//
+// A valid topological sort of the _reverse dependency graph_ obeys the following relatinos:
+//
+// - cust2 < cust3, cust2 < comp2, cust2 < cust1
+// - cust3 < comp2
+// - comp2 < cust1, comp2 < comp1
+// - cust1 < comp1
+//
+// Delete ordering must agree with these relations.
+func TestDependsOnParentComponent(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var (
+		comp1URN resource.URN
+		comp2URN resource.URN
+		cust1URN resource.URN
+		cust2URN resource.URN
+		cust3URN resource.URN
+	)
+
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		comp1URN, _, _, err = monitor.RegisterResource("comp1", "comp1", false)
+		require.NoError(t, err)
+
+		comp2URN, _, _, err = monitor.RegisterResource("comp2", "comp2", false, deploytest.ResourceOptions{
+			Parent:       comp1URN,
+			Dependencies: []resource.URN{comp1URN},
+		})
+		require.NoError(t, err)
+
+		cust1URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust1", true, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		cust2URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust2", true, deploytest.ResourceOptions{
+			Parent:       comp1URN,
+			Dependencies: []resource.URN{comp2URN},
+		})
+		require.NoError(t, err)
+
+		cust3URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust3", true, deploytest.ResourceOptions{
+			Parent: comp2URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				var (
+					comp1Index int = -1
+					comp2Index int = -1
+					cust1Index int = -1
+					cust2Index int = -1
+					cust3Index int = -1
+				)
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case comp1URN:
+						comp1Index = i
+					case comp2URN:
+						comp2Index = i
+					case cust1URN:
+						cust1Index = i
+					case cust2URN:
+						cust2Index = i
+					case cust3URN:
+						cust3Index = i
+					}
+				}
+
+				assert.Less(t, cust2Index, cust3Index)
+				assert.Less(t, cust2Index, cust1Index)
+				assert.Less(t, cust2Index, comp2Index)
+
+				assert.Less(t, cust3Index, comp2Index)
+
+				assert.Less(t, comp2Index, cust1Index)
+				assert.Less(t, comp2Index, comp1Index)
+
+				assert.Less(t, cust1Index, comp1Index)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
+}
+
+// This test is a variant of the above, but with another component added to the parent chain between comp2 and comp1.
+func TestDependsOnAncestorComponent(t *testing.T) {
+	loaders := []*deploytest.ProviderLoader{
+		deploytest.NewProviderLoader("pkgA", semver.MustParse("1.0.0"), func() (plugin.Provider, error) {
+			return &deploytest.Provider{}, nil
+		}),
+	}
+
+	var (
+		comp1URN resource.URN
+		comp2URN resource.URN
+		comp3URN resource.URN
+		cust1URN resource.URN
+		cust2URN resource.URN
+		cust3URN resource.URN
+	)
+
+	var err error
+	program := deploytest.NewLanguageRuntime(func(_ plugin.RunInfo, monitor *deploytest.ResourceMonitor) error {
+		comp1URN, _, _, err = monitor.RegisterResource("comp1", "comp1", false)
+		require.NoError(t, err)
+
+		comp2URN, _, _, err = monitor.RegisterResource("comp2", "comp2", false, deploytest.ResourceOptions{
+			Parent: comp1URN,
+		})
+		require.NoError(t, err)
+
+		comp3URN, _, _, err = monitor.RegisterResource("comp3", "comp3", false, deploytest.ResourceOptions{
+			Parent:       comp2URN,
+			Dependencies: []resource.URN{comp1URN},
+		})
+		require.NoError(t, err)
+
+		cust1URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust1", true, deploytest.ResourceOptions{
+			Parent: comp2URN,
+		})
+		require.NoError(t, err)
+
+		cust2URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust2", true, deploytest.ResourceOptions{
+			Parent:       comp2URN,
+			Dependencies: []resource.URN{comp3URN},
+		})
+		require.NoError(t, err)
+
+		cust3URN, _, _, err = monitor.RegisterResource("pkgA:m:resA", "cust3", true, deploytest.ResourceOptions{
+			Parent: comp3URN,
+		})
+		require.NoError(t, err)
+
+		return nil
+	})
+
+	host := deploytest.NewPluginHost(nil, nil, program, loaders...)
+	p := &TestPlan{Options: UpdateOptions{Host: host}}
+
+	p.Steps = []TestStep{
+		{
+			Op:          Update,
+			SkipPreview: true,
+		},
+		{
+			Op:          Destroy,
+			SkipPreview: true,
+			Validate: func(project workspace.Project, target deploy.Target, entries JournalEntries,
+				evts []Event, res result.Result) result.Result {
+				assert.Nil(t, res)
+
+				var (
+					comp1Index int = -1
+					comp2Index int = -1
+					comp3Index int = -1
+					cust1Index int = -1
+					cust2Index int = -1
+					cust3Index int = -1
+				)
+
+				for i, entry := range entries {
+					switch urn := entry.Step.URN(); urn {
+					case comp1URN:
+						comp1Index = i
+					case comp2URN:
+						comp2Index = i
+					case comp3URN:
+						comp3Index = i
+					case cust1URN:
+						cust1Index = i
+					case cust2URN:
+						cust2Index = i
+					case cust3URN:
+						cust3Index = i
+					}
+				}
+
+				assert.Less(t, cust2Index, cust3Index)
+				assert.Less(t, cust2Index, cust1Index)
+				assert.Less(t, cust2Index, comp3Index)
+				assert.Less(t, cust2Index, comp2Index)
+				assert.Less(t, cust2Index, comp1Index)
+
+				assert.Less(t, cust3Index, cust1Index)
+				assert.Less(t, cust3Index, comp3Index)
+				assert.Less(t, cust3Index, comp2Index)
+				assert.Less(t, cust3Index, comp1Index)
+
+				assert.Less(t, comp3Index, cust1Index)
+				assert.Less(t, comp3Index, comp2Index)
+				assert.Less(t, comp3Index, comp1Index)
+
+				assert.Less(t, cust1Index, comp2Index)
+				assert.Less(t, cust1Index, comp1Index)
+
+				assert.Less(t, comp2Index, comp1Index)
+
+				return res
+			},
+		},
+	}
+	p.Run(t, nil)
 }

@@ -332,6 +332,7 @@ func TestCanonicalExample(t *testing.T) {
 	cust4 := NewChildResource("cust4", prov, cust2.URN)
 	cust5 := NewChildResource("cust5", prov, comp4.URN)
 	sink := NewResource("sink", prov, comp1.URN)
+	sink2 := NewResource("sink2", prov, cust2.URN)
 
 	dg := NewDependencyGraph([]*resource.State{
 		prov,
@@ -345,22 +346,24 @@ func TestCanonicalExample(t *testing.T) {
 		cust4,
 		cust5,
 		sink,
+		sink2,
 	})
 
 	provDependencies := dg.DependenciesOf(prov)
 	assert.Empty(t, provDependencies)
 	provDependents := dg.DependingOn(prov, nil)
-	assert.Equal(t, []*resource.State{cust1, cust2, cust3, cust4, cust5, sink}, provDependents)
+	assert.Equal(t, []*resource.State{cust1, cust2, cust3, cust4, cust5, sink, sink2}, provDependents)
 
 	comp1Dependencies := dg.DependenciesOf(comp1)
 	assert.Empty(t, comp1Dependencies)
 	comp1Dependents := dg.DependingOn(comp1, nil)
-	assert.Equal(t, []*resource.State{cust1, comp2, comp3, cust2, cust3, comp4, cust4, cust5, sink}, comp1Dependents)
+	assert.Equal(t, []*resource.State{cust1, comp2, comp3, cust2, cust3, comp4, cust4, cust5, sink, sink2},
+		comp1Dependents)
 
 	comp2Dependencies := dg.DependenciesOf(comp2)
 	assert.Equal(t, ResourceSet{comp1: true}, comp2Dependencies)
 	comp2Dependents := dg.DependingOn(comp2, nil)
-	assert.Equal(t, []*resource.State{cust2, cust3, cust4, sink}, comp2Dependents)
+	assert.Equal(t, []*resource.State{cust2, cust3, cust4, sink, sink2}, comp2Dependents)
 
 	comp3Dependencies := dg.DependenciesOf(comp3)
 	assert.Equal(t, ResourceSet{comp1: true}, comp3Dependencies)
@@ -380,7 +383,7 @@ func TestCanonicalExample(t *testing.T) {
 	cust2Dependencies := dg.DependenciesOf(cust2)
 	assert.Equal(t, ResourceSet{prov: true, comp2: true}, cust2Dependencies)
 	cust2Dependents := dg.DependingOn(cust2, nil)
-	assert.Equal(t, []*resource.State{cust4, sink}, cust2Dependents)
+	assert.Equal(t, []*resource.State{cust4, sink, sink2}, cust2Dependents)
 
 	cust3Dependencies := dg.DependenciesOf(cust3)
 	assert.Equal(t, ResourceSet{prov: true, comp2: true}, cust3Dependencies)
@@ -390,7 +393,7 @@ func TestCanonicalExample(t *testing.T) {
 	cust4Dependencies := dg.DependenciesOf(cust4)
 	assert.Equal(t, ResourceSet{prov: true, cust2: true}, cust4Dependencies)
 	cust4Dependents := dg.DependingOn(cust4, nil)
-	assert.Equal(t, []*resource.State{sink}, cust4Dependents)
+	assert.Empty(t, cust4Dependents)
 
 	cust5Dependencies := dg.DependenciesOf(cust5)
 	assert.Equal(t, ResourceSet{prov: true, comp4: true}, cust5Dependencies)
@@ -407,11 +410,15 @@ func TestCanonicalExample(t *testing.T) {
 		cust2: true,
 		cust3: true,
 		comp4: true,
-		cust4: true,
 		cust5: true,
 	}, sinkDependencies)
 	sinkDependents := dg.DependingOn(sink, nil)
 	assert.Empty(t, sinkDependents)
+
+	sink2Dependencies := dg.DependenciesOf(sink2)
+	assert.Equal(t, ResourceSet{prov: true, cust2: true}, sink2Dependencies)
+	sink2Dependents := dg.DependingOn(sink2, nil)
+	assert.Empty(t, sink2Dependents)
 }
 
 func TestEKSExample(t *testing.T) {
@@ -663,10 +670,185 @@ func TestEKSExample(t *testing.T) {
 	}
 
 	for _, c := range cases {
-		dependencies := dg.DependenciesOf(c.resource)
-		assert.Equal(t, c.dependencies, dependencies)
+		t.Run(string(c.resource.URN.Name()), func(t *testing.T) {
+			dependencies := dg.DependenciesOf(c.resource)
+			assert.Equal(t, c.dependencies, dependencies)
 
-		dependents := dg.DependingOn(c.resource, nil)
-		assert.Equal(t, c.dependents, dependents)
+			dependents := dg.DependingOn(c.resource, nil)
+			assert.Equal(t, c.dependents, dependents)
+		})
+	}
+}
+
+// This test exercises a complicated case in which a resource has a proper dependency on its own parent. While these
+// dependencies are legal, it is critical that component dependency expansion remains acyclic in these cases. In
+// this test, the family tree is:
+//
+//                comp1
+//       ___________|___________
+//       |          |          |
+//     comp2      cust1      cust2
+//       |
+//     cust3
+//
+// And the declared dependency graph is:
+//
+//     cust2
+//       |
+//       v
+//     comp2
+//       |
+//       v
+//     comp1
+//
+// The expanded dependency graph should be (minus provider deps):
+//
+//        cust2--+--+
+//          |    |  |
+//          V    |  |
+//        cust3  |  |
+//          |    |  |
+//          V    |  |
+//     +--comp2<-+  |
+//     |    |       |
+//     |    v       |
+//     |  cust1<----+
+//     |    |
+//     |    v
+//     +->comp1
+//
+func TestDependsOnParentComponent(t *testing.T) {
+	prov := NewProvider("pkg", "default", "0")
+	comp1 := NewComponent("comp1")
+	comp2 := NewChildComponent("comp2", comp1.URN, comp1.URN)
+	cust1 := NewChildResource("cust1", prov, comp1.URN)
+	cust2 := NewChildResource("cust2", prov, comp1.URN, comp2.URN)
+	cust3 := NewChildResource("cust3", prov, comp2.URN)
+
+	dg := NewDependencyGraph([]*resource.State{
+		prov,
+		comp1,
+		comp2,
+		cust1,
+		cust2,
+		cust3,
+	})
+
+	cases := []struct {
+		resource     *resource.State
+		dependencies ResourceSet
+		dependents   []*resource.State
+	}{
+		{
+			resource:     prov,
+			dependencies: ResourceSet{},
+			dependents:   []*resource.State{comp2, cust1, cust2, cust3},
+		},
+		{
+			resource:     comp1,
+			dependencies: ResourceSet{},
+			dependents:   []*resource.State{comp2, cust1, cust2, cust3},
+		},
+		{
+			resource:     comp2,
+			dependencies: ResourceSet{comp1: true, cust1: true},
+			dependents:   []*resource.State{cust2, cust3},
+		},
+		{
+			resource:     cust1,
+			dependencies: ResourceSet{prov: true, comp1: true},
+			dependents:   []*resource.State{comp2, cust2, cust3},
+		},
+		{
+			resource:     cust2,
+			dependencies: ResourceSet{prov: true, comp1: true, comp2: true, cust3: true},
+		},
+		{
+			resource:     cust3,
+			dependencies: ResourceSet{prov: true, comp2: true},
+			dependents:   []*resource.State{cust2},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(string(c.resource.URN.Name()), func(t *testing.T) {
+			dependencies := dg.DependenciesOf(c.resource)
+			assert.Equal(t, c.dependencies, dependencies)
+
+			dependents := dg.DependingOn(c.resource, nil)
+			assert.Equal(t, c.dependents, dependents)
+		})
+	}
+}
+
+// This test is a variant of the above, but with another component added to the parent chain between comp2 and comp1.
+func TestDependsOnAncestorComponent(t *testing.T) {
+	prov := NewProvider("pkg", "default", "0")
+	comp1 := NewComponent("comp1")
+	comp2 := NewChildComponent("comp2", comp1.URN)
+	comp3 := NewChildComponent("comp3", comp2.URN, comp1.URN)
+	cust1 := NewChildResource("cust1", prov, comp2.URN)
+	cust2 := NewChildResource("cust2", prov, comp2.URN, comp3.URN)
+	cust3 := NewChildResource("cust3", prov, comp3.URN)
+
+	dg := NewDependencyGraph([]*resource.State{
+		prov,
+		comp1,
+		comp2,
+		comp3,
+		cust1,
+		cust2,
+		cust3,
+	})
+
+	cases := []struct {
+		resource     *resource.State
+		dependencies ResourceSet
+		dependents   []*resource.State
+	}{
+		{
+			resource:     prov,
+			dependencies: ResourceSet{},
+			dependents:   []*resource.State{comp3, cust1, cust2, cust3},
+		},
+		{
+			resource:     comp1,
+			dependencies: ResourceSet{},
+			dependents:   []*resource.State{comp2, comp3, cust1, cust2, cust3},
+		},
+		{
+			resource:     comp2,
+			dependencies: ResourceSet{comp1: true},
+			dependents:   []*resource.State{comp3, cust1, cust2, cust3},
+		},
+		{
+			resource:     comp3,
+			dependencies: ResourceSet{comp1: true, comp2: true, cust1: true},
+			dependents:   []*resource.State{cust2, cust3},
+		},
+		{
+			resource:     cust1,
+			dependencies: ResourceSet{prov: true, comp2: true},
+			dependents:   []*resource.State{comp3, cust2, cust3},
+		},
+		{
+			resource:     cust2,
+			dependencies: ResourceSet{prov: true, comp2: true, comp3: true, cust3: true},
+		},
+		{
+			resource:     cust3,
+			dependencies: ResourceSet{prov: true, comp3: true},
+			dependents:   []*resource.State{cust2},
+		},
+	}
+
+	for _, c := range cases {
+		t.Run(string(c.resource.URN.Name()), func(t *testing.T) {
+			dependencies := dg.DependenciesOf(c.resource)
+			assert.Equal(t, c.dependencies, dependencies)
+
+			dependents := dg.DependingOn(c.resource, nil)
+			assert.Equal(t, c.dependents, dependents)
+		})
 	}
 }
