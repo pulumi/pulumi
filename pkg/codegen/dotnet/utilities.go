@@ -131,7 +131,7 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 		methodBody =
 			`private static string ComputeSHA1(string input) {
 		return BitConverter.ToString(
-			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(%v))
+			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
 		).Replace("-","").ToLowerInvariant());
 	}`
 	default:

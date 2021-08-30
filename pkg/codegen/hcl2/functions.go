@@ -226,7 +226,7 @@ var pulumiBuiltins = map[string]*model.Function{
 		})),
 	"sha1": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{{
-			Name: "input string",
+			Name: "input",
 			Type: model.StringType,
 		}},
 		ReturnType: model.StringType,
