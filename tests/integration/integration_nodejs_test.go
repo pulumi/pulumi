@@ -1154,8 +1154,9 @@ func TestAboutNodeJS(t *testing.T) {
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
 	e.RunCommand("pulumi", "stack", "init", "about-nodejs")
 	e.RunCommand("pulumi", "stack", "select", "about-nodejs")
-	stdout, _ := e.RunCommand("pulumi", "about")
+	stdout, stderr := e.RunCommand("pulumi", "about")
 	e.RunCommand("pulumi", "stack", "rm", "--yes")
 	// Assert we parsed the dependencies
-	assert.Contains(t, stdout, "@types/node")
+	assert.Containsf(t, stdout, "@types/node",
+		"Did not contain expected output. stderr: \n%q", stderr)
 }
