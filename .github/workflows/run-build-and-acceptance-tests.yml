@@ -225,7 +225,7 @@ jobs:
       (github.event_name == 'repository_dispatch' ||
       github.event.pull_request.head.repo.full_name == github.repository) &&
       ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-unix') &&
-      ! contains(github.event.client_payload.slash_command.args.unamed.all, only-lint')
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-lint')
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
