@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,8 @@ import * as log from "../log";
 import { getAllResources, Input, Inputs, isUnknown, Output, unknown } from "../output";
 import { ComponentResource, CustomResource, ProviderResource, Resource, URN } from "../resource";
 import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
-import { excessiveDebugOutput, isDryRun, monitorSupportsResourceReferences, monitorSupportsSecrets } from "./settings";
+import { excessiveDebugOutput, isDryRun, monitorSupportsOutputValues, monitorSupportsResourceReferences,
+    monitorSupportsSecrets } from "./settings";
 
 import * as semver from "semver";
 
@@ -107,6 +108,17 @@ export function transferProperties(onto: Resource, label: string, props: Inputs)
 }
 
 /**
+ * Controls the serialization of RPC structures.
+ */
+export interface SerializationOptions {
+    /**
+     * true if we are keeping output values.
+     * If the monitor does not support output values, they will not be kept, even when this is set to true.
+     */
+    keepOutputValues?: boolean;
+}
+
+/**
  * serializeFilteredProperties walks the props object passed in, awaiting all interior promises for
  * properties with keys that match the provided filter, creating a reasonable POJO object that can
  * be remoted over to registerResource.
@@ -115,6 +127,7 @@ async function serializeFilteredProperties(
     label: string,
     props: Inputs,
     acceptKey: (k: string) => boolean,
+    opts?: SerializationOptions,
 ): Promise<[Record<string, any>, Map<string, Set<Resource>>]> {
 
     const propertyToDependentResources = new Map<string, Set<Resource>>();
@@ -124,7 +137,7 @@ async function serializeFilteredProperties(
         if (acceptKey(k)) {
             // We treat properties with undefined values as if they do not exist.
             const dependentResources = new Set<Resource>();
-            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources);
+            const v = await serializeProperty(`${label}.${k}`, props[k], dependentResources, opts);
             if (v !== undefined) {
                 result[k] = v;
                 propertyToDependentResources.set(k, dependentResources);
@@ -139,22 +152,22 @@ async function serializeFilteredProperties(
  * serializeResourceProperties walks the props object passed in, awaiting all interior promises besides those for `id`
  * and `urn`, creating a reasonable POJO object that can be remoted over to registerResource.
  */
-export async function serializeResourceProperties(label: string, props: Inputs) {
-    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn");
+export async function serializeResourceProperties(label: string, props: Inputs, opts?: SerializationOptions) {
+    return serializeFilteredProperties(label, props, key => key !== "id" && key !== "urn", opts);
 }
 
 /**
  * serializeProperties walks the props object passed in, awaiting all interior promises, creating a reasonable
  * POJO object that can be remoted over to registerResource.
  */
-export async function serializeProperties(label: string, props: Inputs) {
-    const [result] = await serializeFilteredProperties(label, props, _ => true);
+export async function serializeProperties(label: string, props: Inputs, opts?: SerializationOptions) {
+    const [result] = await serializeFilteredProperties(label, props, _ => true, opts);
     return result;
 }
 
 /** @internal */
-export async function serializePropertiesReturnDeps(label: string, props: Inputs) {
-    return serializeFilteredProperties(label, props, _ => true);
+export async function serializePropertiesReturnDeps(label: string, props: Inputs, opts?: SerializationOptions) {
+    return serializeFilteredProperties(label, props, _ => true, opts);
 }
 
 /**
@@ -254,31 +267,39 @@ export function resolveProperties(
  */
 export const unknownValue = "04da6b54-80e4-46f7-96ec-b56ff0331ba9";
 /**
- * specialSigKey is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go.
+ * specialSigKey is sometimes used to encode type identity inside of a map. See sdk/go/common/resource/properties.go.
  */
 export const specialSigKey = "4dabf18193072939515e22adb298388d";
 /**
- * specialAssetSig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go.
+ * specialAssetSig is a randomly assigned hash used to identify assets in maps. See sdk/go/common/resource/asset.go.
  */
 export const specialAssetSig = "c44067f5952c0a294b673a41bacd8c17";
 /**
- * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See pkg/resource/asset.go.
+ * specialArchiveSig is a randomly assigned hash used to identify archives in maps. See sdk/go/common/resource/asset.go.
  */
 export const specialArchiveSig = "0def7320c3a5731c473e5ecbe6d01bc7";
 /**
- * specialSecretSig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go.
+ * specialSecretSig is a randomly assigned hash used to identify secrets in maps.
+ * See sdk/go/common/resource/properties.go.
  */
 export const specialSecretSig = "1b47061264138c4ac30d75fd1eb44270";
 /**
- * specialResourceSig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go.
+ * specialResourceSig is a randomly assigned hash used to identify resources in maps.
+ * See sdk/go/common/resource/properties.go.
  */
 export const specialResourceSig = "5cf8f73096256a8f31e491e813e4eb8e";
+/**
+ * specialOutputValueSig is a randomly assigned hash used to identify outputs in maps.
+ * See sdk/go/common/resource/properties.go.
+ */
+export const specialOutputValueSig = "d0e6a833031e9bbcd3f4e8bde6ca49a4";
 
 /**
  * serializeProperty serializes properties deeply.  This understands how to wait on any unresolved promises, as
  * appropriate, in addition to translating certain "special" values so that they are ready to go on the wire.
  */
-export async function serializeProperty(ctx: string, prop: Input<any>, dependentResources: Set<Resource>): Promise<any> {
+export async function serializeProperty(
+    ctx: string, prop: Input<any>, dependentResources: Set<Resource>, opts?: SerializationOptions): Promise<any> {
     // IMPORTANT:
     // IMPORTANT: Keep this in sync with serializePropertiesSync in invoke.ts
     // IMPORTANT:
@@ -302,7 +323,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
             [specialSigKey]: asset.Asset.isInstance(prop) ? specialAssetSig : specialArchiveSig,
         };
 
-        return await serializeAllKeys(prop, obj);
+        return await serializeAllKeys(prop, obj, { keepOutputValues: false });
     }
 
     if (prop instanceof Promise) {
@@ -313,7 +334,7 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 
         const subctx = `Promise<${ctx}>`;
         return serializeProperty(subctx,
-            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources);
+            await debuggablePromise(prop, `serializeProperty.await(${subctx})`), dependentResources, opts);
     }
 
     if (Output.isInstance(prop)) {
@@ -340,7 +361,34 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         // which will wrap undefined, if it were to be resolved (since `Output` has no member named .isSecret).
         // so we must compare to the literal true instead of just doing await prop.isSecret.
         const isSecret = await prop.isSecret === true;
-        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources);
+        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources, {
+            keepOutputValues: false,
+        });
+
+        if (opts?.keepOutputValues && await monitorSupportsOutputValues()) {
+            const dependencies = new Set<string>();
+            for (const resource of propResources) {
+                const urn = await serializeProperty(`${ctx} dependency`, resource.urn, new Set<Resource>(), {
+                    keepOutputValues: false,
+                });
+                dependencies.add(urn);
+            }
+
+            const obj: any = {
+                [specialSigKey]: specialOutputValueSig,
+            };
+            if (isKnown) {
+                // coerce 'undefined' to 'null' as required by the protobuf system.
+                obj["value"] = value === undefined ? null : value;
+            }
+            if (isSecret) {
+                obj["secret"] = isSecret;
+            }
+            if (dependencies.size > 0) {
+                obj["dependencies"] = Array.from(dependencies);
+            }
+            return obj;
+        }
 
         if (!isKnown) {
             return unknownValue;
@@ -365,11 +413,15 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
         }
 
         dependentResources.add(prop);
-        const id = await serializeProperty(`${ctx}.id`, prop.id, dependentResources);
+        const id = await serializeProperty(`${ctx}.id`, prop.id, dependentResources, {
+            keepOutputValues: false,
+        });
 
         if (await monitorSupportsResourceReferences()) {
             // If we are keeping resources, emit a stronly typed wrapper over the URN
-            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
+                keepOutputValues: false,
+            });
             return {
                 [specialSigKey]: specialResourceSig,
                 urn: urn,
@@ -401,14 +453,18 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
 
         if (await monitorSupportsResourceReferences()) {
             // If we are keeping resources, emit a strongly typed wrapper over the URN
-            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+            const urn = await serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
+                keepOutputValues: false,
+            });
             return {
                 [specialSigKey]: specialResourceSig,
                 urn: urn,
             };
         }
         // Else, return the urn for backward compatibility.
-        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources);
+        return serializeProperty(`${ctx}.urn`, prop.urn, dependentResources, {
+            keepOutputValues: false,
+        });
     }
 
     if (prop instanceof Array) {
@@ -418,22 +474,22 @@ export async function serializeProperty(ctx: string, prop: Input<any>, dependent
                 log.debug(`Serialize property [${ctx}]: array[${i}] element`);
             }
             // When serializing arrays, we serialize any undefined values as `null`. This matches JSON semantics.
-            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources);
+            const elem = await serializeProperty(`${ctx}[${i}]`, prop[i], dependentResources, opts);
             result.push(elem === undefined ? null : elem);
         }
         return result;
     }
 
-    return await serializeAllKeys(prop, {});
+    return await serializeAllKeys(prop, {}, opts);
 
-    async function serializeAllKeys(innerProp: any, obj: any) {
+    async function serializeAllKeys(innerProp: any, obj: any, innerOpts?: SerializationOptions) {
         for (const k of Object.keys(innerProp)) {
             if (excessiveDebugOutput) {
                 log.debug(`Serialize property [${ctx}]: object.${k}`);
             }
 
             // When serializing an object, we omit any keys with undefined values. This matches JSON semantics.
-            const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources);
+            const v = await serializeProperty(`${ctx}.${k}`, innerProp[k], dependentResources, innerOpts);
             if (v !== undefined) {
                 obj[k] = v;
             }

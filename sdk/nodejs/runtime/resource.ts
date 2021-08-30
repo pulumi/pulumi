@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -205,7 +205,7 @@ export function readResource(res: Resource, t: string, name: string, props: Inpu
 
     const preallocError = new Error();
     debuggablePromise(resopAsync.then(async (resop) => {
-        const resolvedID = await serializeProperty(label, id, new Set());
+        const resolvedID = await serializeProperty(label, id, new Set(), { keepOutputValues: false });
         log.debug(`ReadResource RPC prepared: id=${resolvedID}, t=${t}, name=${name}` +
             (excessiveDebugOutput ? `, obj=${JSON.stringify(resop.serializedProps)}` : ``));
 
@@ -510,7 +510,11 @@ async function prepareResource(label: string, res: Resource, custom: boolean, re
 
         // Serialize out all our props to their final values.  In doing so, we'll also collect all
         // the Resources pointed to by any Dependency objects we encounter, adding them to 'propertyDependencies'.
-        const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props);
+        const [serializedProps, propertyToDirectDependencies] = await serializeResourceProperties(label, props, {
+            // To initially scope the use of this new feature, we only keep output values when
+            // remote is true (for multi-lang components).
+            keepOutputValues: remote,
+        });
 
         // Wait for the parent to complete.
         // If no parent was provided, parent to the root resource.
@@ -720,7 +724,7 @@ async function resolveOutputs(res: Resource, t: string, name: string,
                 // input prop the engine didn't give us a final value for.  Just use the value passed into the resource
                 // after round-tripping it through serialization. We do the round-tripping primarily s.t. we ensure that
                 // Output values are handled properly w.r.t. unknowns.
-                const inputProp = await serializeProperty(label, props[key], new Set());
+                const inputProp = await serializeProperty(label, props[key], new Set(), { keepOutputValues: false });
                 if (inputProp === undefined) {
                     continue;
                 }

@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -13,7 +13,8 @@
 // limitations under the License.
 
 import * as assert from "assert";
-import { ComponentResource, CustomResource, Inputs, Resource, ResourceOptions, runtime, secret } from "../../index";
+import { ComponentResource, CustomResource, DependencyResource, Inputs, Output, Resource, ResourceOptions, runtime,
+    secret } from "../../index";
 import { asyncTest } from "../util";
 
 const gstruct = require("google-protobuf/google/protobuf/struct_pb.js");
@@ -131,6 +132,55 @@ describe("runtime", () => {
     });
 
     describe("transferProperties", () => {
+        describe("output values", () => {
+            function* generateTests() {
+                const testValues = [
+                    { value: undefined, expected: null },
+                    { value: null,      expected: null },
+                    { value: 0,         expected: 0 },
+                    { value: 1,         expected: 1 },
+                    { value: "",        expected: "" },
+                    { value: "hi",      expected: "hi" },
+                    { value: {},        expected: {} },
+                    { value: [],        expected: [] },
+                ];
+                for (const tv of testValues) {
+                    for (const deps of [[], ["fakeURN1", "fakeURN2"]]) {
+                        for (const isKnown of [true, false]) {
+                            for (const isSecret of [true, false])
+                            {
+                                const resources = deps.map(dep => new DependencyResource(dep));
+                                yield {
+                                    name: `Output(${JSON.stringify(deps)}, ${JSON.stringify(tv.value)}, ` +
+                                        `isKnown=${isKnown}, isSecret=${isSecret})`,
+                                    input: new Output(resources, Promise.resolve(tv.value), Promise.resolve(isKnown),
+                                        Promise.resolve(isSecret), Promise.resolve([])),
+                                    expected: {
+                                        [runtime.specialSigKey]: runtime.specialOutputValueSig,
+                                        ...isKnown && { value: tv.expected },
+                                        ...isSecret && { secret: isSecret },
+                                        ...(deps.length > 0) && { dependencies: deps },
+                                    },
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            for (const test of generateTests()) {
+                it(`marshals ${test.name} correctly`, asyncTest(async () => {
+                    runtime._setTestModeEnabled(true);
+                    runtime._setFeatureSupport("outputValues", true);
+
+                    const inputs = { value: test.input };
+                    const expected = { value: test.expected };
+
+                    const actual = await runtime.serializeProperties("test", inputs, { keepOutputValues: true });
+                    assert.deepStrictEqual(actual, expected);
+                }));
+            }
+        });
+
         it("marshals basic properties correctly", asyncTest(async () => {
             const inputs: TestInputs = {
                 "aNum": 42,

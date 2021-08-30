@@ -1,4 +1,4 @@
-// Copyright 2016-2018, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -255,7 +255,10 @@ export function call<T>(tok: string, props: Inputs, res?: Resource): Output<T> {
                 version = res.__version;
             }
 
-            const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props);
+            // We keep output values when serializing inputs for call.
+            const [serialized, propertyDepsResources] = await serializePropertiesReturnDeps(`call:${tok}`, props, {
+                keepOutputValues: true,
+            });
             log.debug(`Call RPC prepared: tok=${tok}` + excessiveDebugOutput ? `, obj=${JSON.stringify(serialized)}` : ``);
 
             const req = await createCallRequest(tok, serialized, propertyDepsResources, provider, version);
