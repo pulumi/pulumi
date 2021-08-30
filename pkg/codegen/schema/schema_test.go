@@ -324,7 +324,7 @@ func Test_parseTypeSpecRef(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, diags := typs.parseTypeSpecRef("", tt.ref)
+			got, diags := typs.parseTypeSpecRef("ref", tt.ref)
 			if diags.HasErrors() != tt.wantErr {
 				t.Errorf("parseTypeSpecRef() diags = %v, wantErr %v", diags, tt.wantErr)
 				return
@@ -370,27 +370,27 @@ func TestMethods(t *testing.T) {
 		},
 		{
 			filename:      "bad-methods-1.json",
-			expectedError: "unknown function xyz:index:Foo/bar for method bar",
+			expectedError: "unknown function xyz:index:Foo/bar",
 		},
 		{
 			filename:      "bad-methods-2.json",
-			expectedError: "function xyz:index:Foo/bar for method baz is already a method",
+			expectedError: "function xyz:index:Foo/bar is already a method",
 		},
 		{
 			filename:      "bad-methods-3.json",
-			expectedError: "invalid function token format xyz:index:Foo for method bar",
+			expectedError: "invalid function token format xyz:index:Foo",
 		},
 		{
 			filename:      "bad-methods-4.json",
-			expectedError: "invalid function token format xyz:index:Baz/bar for method bar",
+			expectedError: "invalid function token format xyz:index:Baz/bar",
 		},
 		{
 			filename:      "bad-methods-5.json",
-			expectedError: "function xyz:index:Foo/bar for method bar is missing __self__ parameter",
+			expectedError: "function xyz:index:Foo/bar has no __self__ parameter",
 		},
 		{
 			filename:      "bad-methods-6.json",
-			expectedError: "property and method have the same name bar",
+			expectedError: "xyz:index:Foo already has a property named bar",
 		},
 	}
 	for _, tt := range tests {
