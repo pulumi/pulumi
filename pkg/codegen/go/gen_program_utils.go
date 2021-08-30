@@ -60,20 +60,16 @@ func (p *promptToInputArrayHelper) getInputItemType() string {
 // handling, it is much prettier to encapsulate that error handling boilerplate as its
 // own function in the preamble.
 func getHelperMethodIfNeeded(functionName string) (string, bool) {
-	var methodBody string
-
 	switch functionName {
 	case "readFile":
-		methodBody =
-			`func readFileOrPanic(path string) pulumi.StringPtrInput {
-				if fileData, err := ioutil.ReadFile(path); err == nil {
-					return pulumi.String(string(fileData[:]))
-				} else {
+		return `func readFileOrPanic(path string) pulumi.StringPtrInput {
+				data, err := ioutil.ReadFile(path)
+				if err != nil {
 					panic(err.Error())
 				}
-			}`
+				return pulumi.String(string(data))
+			}`, true
 	default:
-		methodBody = ""
+		return "", false
 	}
-	return methodBody, methodBody != ""
 }

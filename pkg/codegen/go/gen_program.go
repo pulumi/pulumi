@@ -133,7 +133,8 @@ func (g *generator) collectScopeRoots(n hcl2.Node) {
 }
 
 // genPreamble generates package decl, imports, and opens the main func
-func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, pulumiImports, preambleHelperMethods codegen.StringSet) {
+func (g *generator) genPreamble(w io.Writer, program *hcl2.Program, stdImports, pulumiImports,
+	preambleHelperMethods codegen.StringSet) {
 	g.Fprint(w, "package main\n\n")
 	g.Fprintf(w, "import (\n")
 
