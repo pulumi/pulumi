@@ -33,8 +33,8 @@ jobs:
             [1]: ${{ steps.vars.outputs.run-url }}
   go-lint:
     if: |
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-windows) &&
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-unix)
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-windows') &&
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-unix')
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
     strategy:
@@ -52,8 +52,8 @@ jobs:
 
   sdk-lint:
     if: |
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-windows) &&
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-unix)
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-windows') &&
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-unix')
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
@@ -125,8 +125,8 @@ jobs:
     if: |
       (github.event_name == 'repository_dispatch' ||
       github.event.pull_request.head.repo.full_name == github.repository) &&
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-windows) &&
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-lint)
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-windows') &&
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-lint')
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set PULUMI_TEST_SUBSET env var
@@ -224,8 +224,8 @@ jobs:
     if: |
       (github.event_name == 'repository_dispatch' ||
       github.event.pull_request.head.repo.full_name == github.repository) &&
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-unix) &&
-      ! contains(github.event.client_payload.slash_command.args.unamed, only-lint)
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, 'only-unix') &&
+      ! contains(github.event.client_payload.slash_command.args.unamed.all, only-lint')
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
