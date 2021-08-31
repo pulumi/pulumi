@@ -1147,13 +1147,6 @@ func TestAboutNodeJS(t *testing.T) {
 		}
 	}()
 	e.ImportDirectory(dir)
-	if runtime.GOOS == WindowsOS {
-		// Because there is a package-lock.json file, and we delete the yarn
-		// file, pulumi will use the package-lock file for the about.
-		assert.NoError(t, os.Remove(filepath.Join(e.RootPath, "yarn.lock")),
-			"removing yarn.lock")
-	}
-
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())

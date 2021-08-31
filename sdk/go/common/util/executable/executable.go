@@ -17,9 +17,20 @@ const unableToFindProgramTemplate = "unable to find program: %s"
 // FindExecutable attempts to find the needed executable in various locations on the
 // filesystem, eventually resorting to searching in $PATH.
 func FindExecutable(program string) (string, error) {
+	var err error
+	var ex string
 	if runtime.GOOS == "windows" && !strings.HasSuffix(program, ".exe") {
-		program = fmt.Sprintf("%s.exe", program)
+		exe := fmt.Sprintf("%s.exe", program)
+		ex, err = findExecutableNoExe(exe)
+		if err != nil {
+			return ex, nil
+		}
 	}
+	return findExecutableNoExe(program)
+}
+
+func findExecutableNoExe(program string) (string, error) {
+
 	// look in the same directory
 	cwd, err := os.Getwd()
 	if err != nil {
