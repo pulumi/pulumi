@@ -1223,11 +1223,26 @@ func TestNestedConfig(t *testing.T) {
 		t.FailNow()
 	}
 
+	// Also retrieve the stack settings directly from the yaml file and
+	// make sure the config agrees with the config loaded by Pulumi.
+	stackSettings, err := s.Workspace().StackSettings(ctx, stackName)
+	require.NoError(t, err)
+	confKeys := map[string]bool{}
+	for k := range stackSettings.Config {
+		confKeys[k.String()] = true
+	}
+
 	allConfig, err := s.GetAllConfig(ctx)
 	if err != nil {
 		t.Errorf("failed to get config, err: %v", err)
 		t.FailNow()
 	}
+	allConfKeys := map[string]bool{}
+	for k := range allConfig {
+		allConfKeys[k] = true
+	}
+	assert.Equal(t, confKeys, allConfKeys)
+	assert.NotEmpty(t, confKeys)
 
 	outerVal, ok := allConfig["nested_config:outer"]
 	assert.True(t, ok)
