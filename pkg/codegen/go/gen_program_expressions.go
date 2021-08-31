@@ -77,7 +77,7 @@ func (g *generator) genAnonymousFunctionExpression(
 	leadingSep := ""
 	for _, param := range expr.Signature.Parameters {
 		isInput := isInputty(param.Type)
-		g.Fgenf(w, "%s%s %s", leadingSep, param.Name, g.argumentTypeName(nil, param.Type, isInput))
+		g.Fgenf(w, "%s%s %s", leadingSep, makeValidIdentifier(param.Name), g.argumentTypeName(nil, param.Type, isInput))
 		leadingSep = ", "
 	}
 
