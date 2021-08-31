@@ -10,6 +10,9 @@
   easier to compose functions/datasources with Pulumi resources.
   [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
+- [codegen] - Add `replaceOnChange` to schema.
+  [#7874](https://github.com/pulumi/pulumi/pull/7874)
+
 ### Bug Fixes
 
 - [cli] - Avoid `missing go.sum entry for module` for new Go projects.
