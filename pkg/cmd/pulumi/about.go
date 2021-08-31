@@ -56,7 +56,7 @@ const (
 
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
-	var transitive Dependencies bool
+	var transitiveDependencies bool
 	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
@@ -80,8 +80,7 @@ func newAboutCmd() *cobra.Command {
 				}
 				summary.Print()
 				return nil
-			},
-			),
+			}),
 		}
 	cmd.PersistentFlags().BoolVarP(
 		&jsonOut, "json", "j", false, "Emit output as JSON")
