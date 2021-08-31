@@ -13,6 +13,18 @@ namespace Pulumi.Example
     {
         public static Task<ArgFunctionResult> InvokeAsync(ArgFunctionArgs? args = null, InvokeOptions? options = null)
             => Pulumi.Deployment.Instance.InvokeAsync<ArgFunctionResult>("example::argFunction", args ?? new ArgFunctionArgs(), options.WithVersion());
+
+        public static Output<ArgFunctionResult> Invoke(ArgFunctionOutputArgs? args = null, InvokeOptions? options = null)
+        {
+            args = args ?? new ArgFunctionOutputArgs();
+            return Pulumi.Output.All(
+                args.Name.Box()
+            ).Apply(a => {
+                    var args = new ArgFunctionArgs();
+                    a[0].Set(args, nameof(args.Name));
+                    return InvokeAsync(args, options);
+            });
+        }
     }
 
 
@@ -22,6 +34,16 @@ namespace Pulumi.Example
         public Pulumi.Random.RandomPet? Name { get; set; }
 
         public ArgFunctionArgs()
+        {
+        }
+    }
+
+    public sealed class ArgFunctionOutputArgs
+    {
+        [Input("name")]
+        public Input<Pulumi.Random.RandomPet>? Name { get; set; }
+
+        public ArgFunctionOutputArgs()
         {
         }
     }

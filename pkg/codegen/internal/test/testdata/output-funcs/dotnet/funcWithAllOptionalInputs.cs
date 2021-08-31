@@ -35,9 +35,15 @@ namespace Pulumi.MadeupPackage.Codegentest
 
     public sealed class FuncWithAllOptionalInputsArgs : Pulumi.InvokeArgs
     {
+        /// <summary>
+        /// Property A
+        /// </summary>
         [Input("a")]
         public string? A { get; set; }
 
+        /// <summary>
+        /// Property B
+        /// </summary>
         [Input("b")]
         public string? B { get; set; }
 
@@ -48,9 +54,15 @@ namespace Pulumi.MadeupPackage.Codegentest
 
     public sealed class FuncWithAllOptionalInputsOutputArgs
     {
+        /// <summary>
+        /// Property A
+        /// </summary>
         [Input("a")]
         public Input<string>? A { get; set; }
 
+        /// <summary>
+        /// Property B
+        /// </summary>
         [Input("b")]
         public Input<string>? B { get; set; }
 

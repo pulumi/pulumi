@@ -2,6 +2,8 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Reflection;
 using Pulumi;
@@ -58,6 +60,57 @@ namespace Pulumi.Example
                 Provider = options?.Provider,
                 Version = Version,
             };
+        }
+
+        public static Input<Dictionary<string,T>> ToDict<T>(this InputMap<T> inputList)
+        {
+            return inputList.Apply(v => new Dictionary<string,T>(v));
+        }
+
+        public static List<T> ToList<T>(this IEnumerable<T> elements)
+        {
+            return new List<T>(elements);
+        }
+
+        public static Input<List<T>> ToList<T>(this InputList<T> inputList)
+        {
+            return inputList.Apply(v => v.ToList());
+        }
+
+        public class Boxed
+        {
+            [AllowNull]
+            public Object Value { get; }
+
+            public Boxed([AllowNull] Object value)
+            {
+                Value = value;
+            }
+
+            public void Set(Object target, string propertyName)
+            {
+                var v = this.Value;
+                if (v != null)
+                {
+                    var p = target.GetType().GetProperty(propertyName);
+                    if (p != null)
+                    {
+                        p.SetValue(target, v);
+                    }
+                }
+            }
+        }
+
+        public static Output<Boxed> Box<T>([AllowNull] this Input<T> input)
+        {
+            if (input == null)
+            {
+                return Output.Create(new Boxed(null));
+            }
+            else
+            {
+                return input.Apply(v => new Boxed(v));
+            }
         }
 
         private readonly static string version;
