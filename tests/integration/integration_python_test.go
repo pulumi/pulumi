@@ -1132,7 +1132,7 @@ func TestAboutPython(t *testing.T) {
 	e := ptesting.NewEnvironment(t)
 	defer func() {
 		if !t.Failed() {
-			e.DeleteEnvironment()
+			e.DeleteEnvironmentFallible()
 		}
 	}()
 	e.ImportDirectory(dir)

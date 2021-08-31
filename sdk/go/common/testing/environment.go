@@ -123,6 +123,13 @@ func (e *Environment) DeleteEnvironment() {
 	assert.NoErrorf(e, err, "cleaning up test directory %q", e.RootPath)
 }
 
+// DeleteEnvironment deletes the environment's RootPath, and everything
+// underneath it. It tolerates failing to delete the environment.
+func (e *Environment) DeleteEnviromentFallible() error {
+	e.Helper()
+	return os.RemoveAll(e.RootPath)
+}
+
 // DeleteIfNotFailed deletes the environment's RootPath if the test hasn't failed. Otherwise
 // keeps the files around for aiding debugging.
 func (e *Environment) DeleteIfNotFailed() {
