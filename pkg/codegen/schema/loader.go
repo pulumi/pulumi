@@ -94,9 +94,12 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return nil, err
 	}
 
-	p, err := importSpec(spec, nil, l)
+	p, diags, err := bindSpec(spec, nil, l)
 	if err != nil {
 		return nil, err
+	}
+	if diags.HasErrors() {
+		return nil, diags
 	}
 
 	l.m.Lock()
