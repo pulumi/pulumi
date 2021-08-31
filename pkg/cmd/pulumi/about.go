@@ -1,6 +1,5 @@
 // Copyright 2016-2021, Pulumi Corporation.
 //
-//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
@@ -57,7 +56,7 @@ const (
 
 func newAboutCmd() *cobra.Command {
 	var jsonOut bool
-	var transitiveDependencies bool
+	var transitive Dependencies bool
 	short := "Print information about the Pulumi environment."
 	cmd :=
 		&cobra.Command{
@@ -514,9 +513,9 @@ func callPythonCommandNoEnviroment(args ...string) (string, error) {
 }
 
 func getPythonProgramDependencies(proj *workspace.Project, rootDir string,
-	transative bool) ([]programDependencieAbout, error) {
+	transitive bool) ([]programDependencieAbout, error) {
 	cmdArgs := []string{"-m", "pip", "list", "--format=json"}
-	if !transative {
+	if !transitive {
 		cmdArgs = append(cmdArgs, "--not-required")
 
 	}
@@ -533,7 +532,7 @@ func getPythonProgramDependencies(proj *workspace.Project, rootDir string,
 	return result, nil
 }
 
-func getDotNetProgramDependencies(proj *workspace.Project, transative bool) ([]programDependencieAbout, error) {
+func getDotNetProgramDependencies(proj *workspace.Project, transitive bool) ([]programDependencieAbout, error) {
 	// dotnet list package
 
 	var err error
@@ -550,7 +549,7 @@ func getDotNetProgramDependencies(proj *workspace.Project, transative bool) ([]p
 		return nil, err
 	}
 	cmdArgs := []string{"list", "package"}
-	if transative {
+	if transitive {
 		cmdArgs = append(cmdArgs, "--include-transitive")
 	}
 	cmd := exec.Command(ex, cmdArgs...)
@@ -593,7 +592,7 @@ func getDotNetProgramDependencies(proj *workspace.Project, transative bool) ([]p
 func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDependencieAbout, error) {
 	// Neither "yarn list" or "npm ls" can describe what packages are required
 	// (direct dependencies). Only what packages they have installed (transitive
-	// dependencies). This means that to accuratly report only direct
+	// dependencies). This means that to accurately report only direct
 	// dependencies, we need to also parse "package.json" and intersect it with
 	// reported dependencies.
 	var err error
