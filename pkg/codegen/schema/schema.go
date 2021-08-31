@@ -401,15 +401,22 @@ type Resource struct {
 // A.ReplaceOnChanges() == [[B, D], [C]]
 func (r *Resource) ReplaceOnChanges() (replaceOnChanges [][]*Property) {
 	for _, p := range r.Properties {
-		if child, ok := p.Type.(*ResourceType); ok {
+		if p.ReplaceOnChanges {
+			replaceOnChanges = append(replaceOnChanges, []*Property{p})
+		} else if child, ok := p.Type.(*ResourceType); ok {
 			childReplaceOnChanges := child.Resource.ReplaceOnChanges()
 			for i, childP := range childReplaceOnChanges {
 				childReplaceOnChanges[i] = append([]*Property{p}, childP...)
 			}
 			replaceOnChanges = append(replaceOnChanges, childReplaceOnChanges...)
-		}
-		if p.ReplaceOnChanges {
-			replaceOnChanges = append(replaceOnChanges, []*Property{p})
+		} else if option, ok := p.Type.(*OptionalType); ok {
+			if tk, ok := option.ElementType.(*TokenType); ok {
+				if resource, ok := r.Package.GetResource(tk.String()); ok {
+					for _, path := range resource.ReplaceOnChanges() {
+						replaceOnChanges = append(replaceOnChanges, append([]*Property{p}, path...))
+					}
+				}
+			}
 		}
 	}
 	return replaceOnChanges
