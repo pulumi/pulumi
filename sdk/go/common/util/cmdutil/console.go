@@ -126,12 +126,20 @@ type TableRow struct {
 // the max length of the items in each column.  A default gap of two spaces is printed between each
 // column.
 func PrintTable(table Table) {
-	PrintTableWithGap(table, "  ")
+	fmt.Print(table)
 }
 
 // PrintTableWithGap prints a grid of rows and columns.  Width of columns is automatically determined
 // by the max length of the items in each column.  A gap can be specified between the columns.
 func PrintTableWithGap(table Table, columnGap string) {
+	fmt.Print(table.ToStringWithGap(columnGap))
+}
+
+func (table Table) String() string {
+	return table.ToStringWithGap("  ")
+}
+
+func (table *Table) ToStringWithGap(columnGap string) string {
 	columnCount := len(table.Headers)
 
 	// Figure out the preferred column width for each column.  It will be set to the max length of
@@ -168,7 +176,7 @@ func PrintTableWithGap(table Table, columnGap string) {
 		}
 	}
 	format += "\n"
-
+	result := ""
 	columns := make([]interface{}, columnCount)
 	for _, row := range allRows {
 		for columnIndex, value := range row.Columns {
@@ -180,11 +188,12 @@ func PrintTableWithGap(table Table, columnGap string) {
 			columns[columnIndex] = value
 		}
 
-		fmt.Printf(table.Prefix+format, columns...)
+		result += fmt.Sprintf(table.Prefix+format, columns...)
 		if row.AdditionalInfo != "" {
-			fmt.Print(row.AdditionalInfo)
+			result += fmt.Sprint(row.AdditionalInfo)
 		}
 	}
+	return result
 }
 
 func max(a, b int) int {
