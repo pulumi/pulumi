@@ -184,4 +184,11 @@ func TestGenerateOutputFuncsDotnet(t *testing.T) {
 		cmd.Dir = dotnetDir
 		assert.NoError(t, cmd.Run())
 	})
+
+	t.Run("testGeneratedCode", func(t *testing.T) {
+		t.Logf("cd %s && dotnet test", dotnetDir)
+		cmd := exec.Command("dotnet", "test")
+		cmd.Dir = dotnetDir
+		assert.NoError(t, cmd.Run())
+	})
 }
