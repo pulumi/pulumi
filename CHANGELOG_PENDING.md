@@ -13,4 +13,7 @@
 - [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
   [#7865](https://github.com/pulumi/pulumi/pull/7865)
 
+- [sdk/python] - Automation API: Enable JSON output for stack preview.
+  [#7868](https://github.com/pulumi/pulumi/pull/7868)
+
 ### Bug Fixes
