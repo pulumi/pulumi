@@ -1428,7 +1428,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 
 	// Setup replaceOnChange
 	replaceOnChangesProps := r.ReplaceOnChanges()
-	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps, ".",
+	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
 		func(x string) string { return x })
 	if len(replaceOnChangesProps) > 0 {
 		fmt.Fprint(w, "\treplaceOnChanges := pulumi.ReplaceOnChanges([]string{\n")

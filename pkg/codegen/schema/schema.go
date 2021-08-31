@@ -399,41 +399,67 @@ type Resource struct {
 // }
 //
 // A.ReplaceOnChanges() == [[B, D], [C]]
-func (r *Resource) ReplaceOnChanges() (replaceOnChanges [][]*Property) {
+func (r *Resource) ReplaceOnChanges() (changes [][]*Property) {
 	for _, p := range r.Properties {
 		if p.ReplaceOnChanges {
-			replaceOnChanges = append(replaceOnChanges, []*Property{p})
-		} else if child, ok := p.Type.(*ResourceType); ok {
-			childReplaceOnChanges := child.Resource.ReplaceOnChanges()
-			for i, childP := range childReplaceOnChanges {
-				childReplaceOnChanges[i] = append([]*Property{p}, childP...)
-			}
-			replaceOnChanges = append(replaceOnChanges, childReplaceOnChanges...)
-		} else if option, ok := p.Type.(*OptionalType); ok {
-			if tk, ok := option.ElementType.(*TokenType); ok {
-				if resource, ok := r.Package.GetResource(tk.String()); ok {
-					for _, path := range resource.ReplaceOnChanges() {
-						replaceOnChanges = append(replaceOnChanges, append([]*Property{p}, path...))
-					}
-				}
+			changes = append(changes, []*Property{p})
+		} else {
+			for _, c := range replaceOnChangesType(p.Type, p) {
+				changes = append(changes, append([]*Property{p}, c...))
 			}
 		}
 	}
-	return replaceOnChanges
+	return changes
+}
+
+func replaceOnChangesType(t Type, parrent *Property) (changes [][]*Property) {
+	if o, ok := t.(*OptionalType); ok {
+		changes = replaceOnChangesType(o.ElementType, parrent)
+	} else if o, ok := t.(*ObjectType); ok {
+		for _, p := range o.Properties {
+			if p.ReplaceOnChanges {
+				changes = append(changes, []*Property{p})
+			} else {
+				for _, path := range replaceOnChangesType(p.Type, p) {
+					changes = append(changes, append([]*Property{p}, path...))
+				}
+			}
+		}
+	} else if a, ok := t.(*ArrayType); ok {
+		// This looks for types internal to the array, not a property of the array.
+		changes = replaceOnChangesType(a.ElementType, parrent)
+	} else if m, ok := t.(*MapType); ok {
+		// This looks for types internal to the map, not a property of the array.
+		changes = replaceOnChangesType(m.ElementType, parrent)
+	}
+	return changes
 }
 
 // Joins the output of `ReplaceOnChanges` into property path names.
 //
 // For example, given an input [[B, D], [C]] where each property has a name
 // equivalent to it's variable, this function should yield: ["B.D", "C"]
-func PropertyListJoinToString(propertyList [][]*Property, join string, nameConverter func(string) string) []string {
+func PropertyListJoinToString(propertyList [][]*Property, nameConverter func(string) string) []string {
+	var nonOptional func(Type) Type
+	nonOptional = func(t Type) Type {
+		if o, ok := t.(*OptionalType); ok {
+			return nonOptional(o.ElementType)
+		}
+		return t
+	}
 	out := make([]string, len(propertyList))
 	for i, p := range propertyList {
 		names := make([]string, len(p))
 		for j, n := range p {
-			names[j] = nameConverter(n.Name)
+			if _, ok := nonOptional(n.Type).(*ArrayType); ok {
+				names[j] = nameConverter(n.Name) + "[*]"
+			} else if _, ok := nonOptional(n.Type).(*MapType); ok {
+				names[j] = nameConverter(n.Name) + ".*"
+			} else {
+				names[j] = nameConverter(n.Name)
+			}
 		}
-		out[i] = strings.Join(names, join)
+		out[i] = strings.Join(names, ".")
 	}
 	return out
 }

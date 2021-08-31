@@ -1021,7 +1021,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	if len(replaceOnChangesProps) > 0 {
 		fmt.Fprint(w, "                ReplaceOnChanges =\n")
 		fmt.Fprintf(w, "                {\n")
-		for _, n := range schema.PropertyListJoinToString(replaceOnChangesProps, ".",
+		for _, n := range schema.PropertyListJoinToString(replaceOnChangesProps,
 			func(s string) string { return s }) {
 			fmt.Fprintf(w, "                    ")
 			fmt.Fprintf(w, "%q,\n", n)

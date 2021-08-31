@@ -705,7 +705,7 @@ func (mod *modContext) genResource(w io.Writer, r *schema.Resource) error {
 	}
 
 	replaceOnChanges := r.ReplaceOnChanges()
-	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChanges, ".",
+	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChanges,
 		func(x string) string { return x })
 	if len(replaceOnChanges) > 0 {
 		fmt.Fprintf(w, `        const replaceOnChanges = { replaceOnChanges: ["%s"] };`, strings.Join(replaceOnChangesStrings, `", "`))
