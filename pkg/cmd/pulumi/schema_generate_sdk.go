@@ -68,6 +68,9 @@ func newSchemaGenerateSDKCommand() *cobra.Command {
 					return fmt.Errorf("too many errors")
 				}
 			}
+			if err != nil {
+				return err
+			}
 
 			var files map[string][]byte
 			switch target {
