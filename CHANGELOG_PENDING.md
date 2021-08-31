@@ -1,22 +1,24 @@
 ### Improvements
 
-- [auto/dotnet] - Add support for `--exact` and `--server` with `pulumi plugin install` via Automation API. BREAKING NOTE: If you are subclassing `Workspace` your `InstallPluginAsync` implementation will need to be updated to reflect the new `PluginInstallOptions` parameter.
-  [#7762](https://github.com/pulumi/pulumi/pull/7796)
+- [build] - make lint returns an accurate status code
+  [#7844](https://github.com/pulumi/pulumi/pull/7844)
 
-- [codegen/go] - Add helper function forms `$fnOutput` that accept
-  `Input`s, return an `Output`, and wrap the underlying `$fn` call.
-  This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/) for Go, making it
-  easier to compose functions/datasources with Pulumi resources.
-  [#7784](https://github.com/pulumi/pulumi/pull/7784)
+- [codegen/python] - Add helper function forms `$fn_output` that
+  accept `Input`s, return an `Output`, and wrap the underlying `$fn`
+  call. This change addreses
+  [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
+  making it easier to compose functions/datasources with Pulumi
+  resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
 - [codegen] - Add `replaceOnChange` to schema.
   [#7874](https://github.com/pulumi/pulumi/pull/7874)
 
+- [cli/about] - Add comand for debug information
+  [#7817](https://github.com/pulumi/pulumi/pull/7817)
+
+- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
+  [#7865](https://github.com/pulumi/pulumi/pull/7865)
+
 ### Bug Fixes
-
-- [cli] - Avoid `missing go.sum entry for module` for new Go projects.
-  [#7808](https://github.com/pulumi/pulumi/pull/7808)
-
-- [codegen/schema] - Allow hyphen in schema path reference.
-  [#7824](https://github.com/pulumi/pulumi/pull/7824)
+- [automation/go] Fix loading of stack settings/configs from yaml files.
+  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)

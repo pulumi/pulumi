@@ -21,7 +21,9 @@ func FuncWithAllOptionalInputs(ctx *pulumi.Context, args *FuncWithAllOptionalInp
 }
 
 type FuncWithAllOptionalInputsArgs struct {
+	// Property A
 	A *string `pulumi:"a"`
+	// Property B
 	B *string `pulumi:"b"`
 }
 
@@ -41,7 +43,9 @@ func FuncWithAllOptionalInputsOutput(ctx *pulumi.Context, args FuncWithAllOption
 }
 
 type FuncWithAllOptionalInputsOutputArgs struct {
+	// Property A
 	A pulumi.StringPtrInput `pulumi:"a"`
+	// Property B
 	B pulumi.StringPtrInput `pulumi:"b"`
 }
 
