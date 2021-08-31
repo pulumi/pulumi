@@ -9,7 +9,9 @@
     <EmbeddedResource Include="version.txt" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="Pulumi" Version="3.10.0" />
+    <ProjectReference Include="..\..\..\..\..\..\..\sdk\dotnet\Pulumi\Pulumi.csproj" />
+  </ItemGroup>
+  <ItemGroup>
     <PackageReference Include="FluentAssertions" Version="5.10.2" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="16.5.0" />
     <PackageReference Include="Moq" Version="4.13.1" />
