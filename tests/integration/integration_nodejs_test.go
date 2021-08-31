@@ -1139,6 +1139,10 @@ func TestCompilerOptionsNode(t *testing.T) {
 // results of each runtime independently, we have an integration test in each
 // language.
 func TestAboutNodeJS(t *testing.T) {
+	if runtime.GOOS == WindowsOS {
+		t.Skip("Skip on windows because we lack yarn")
+	}
+
 	dir := filepath.Join("about", "nodejs")
 	e := ptesting.NewEnvironment(t)
 	defer func() {
@@ -1147,6 +1151,7 @@ func TestAboutNodeJS(t *testing.T) {
 		}
 	}()
 	e.ImportDirectory(dir)
+
 	e.RunCommand("yarn", "link", "@pulumi/pulumi")
 	e.RunCommand("yarn", "install")
 	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())

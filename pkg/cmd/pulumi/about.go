@@ -604,7 +604,7 @@ func getNodeProgramDependencies(rootDir string, transitive bool) ([]programDepen
 	if _, err = os.Stat(yarnFile); err == nil {
 		ex, err = executable.FindExecutable("yarn")
 		if err != nil {
-			return nil, errors.Wrapf(err, "Found %s but not %s", yarnFile, ex)
+			return nil, errors.Wrapf(err, "Found %s but no yarn executable", yarnFile)
 		}
 		cmdArgs := []string{"list", "--json"}
 		cmd := exec.Command(ex, cmdArgs...)
