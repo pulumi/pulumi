@@ -14,3 +14,5 @@
   [#7865](https://github.com/pulumi/pulumi/pull/7865)
 
 ### Bug Fixes
+- [automation/go] Fix loading of stack settings/configs from yaml files.
+  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
