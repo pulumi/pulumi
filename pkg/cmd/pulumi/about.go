@@ -477,11 +477,11 @@ func callPythonCommand(proj *workspace.Project, root string, args ...string) (st
 	}
 	options := proj.Runtime.Options()
 	if options == nil {
-		return callPythonCommandNoEnviroment(args...)
+		return callPythonCommandNoEnvironment(args...)
 	}
 	virtualEnv, exists := options["virtualenv"]
 	if !exists {
-		return callPythonCommandNoEnviroment(args...)
+		return callPythonCommandNoEnvironment(args...)
 	}
 	virtualEnvPath := virtualEnv.(string)
 	// We now know that a virtual environment exists.
@@ -498,7 +498,7 @@ func callPythonCommand(proj *workspace.Project, root string, args ...string) (st
 
 // Call a python command in a runtime agnostic way. Call python from the path.
 // Do not use a virtual environment.
-func callPythonCommandNoEnviroment(args ...string) (string, error) {
+func callPythonCommandNoEnvironment(args ...string) (string, error) {
 	cmd, err := python.Command(args...)
 	if err != nil {
 		return "", err

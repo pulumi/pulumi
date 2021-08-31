@@ -125,7 +125,7 @@ func (e *Environment) DeleteEnvironment() {
 
 // DeleteEnvironment deletes the environment's RootPath, and everything
 // underneath it. It tolerates failing to delete the environment.
-func (e *Environment) DeleteEnviromentFallible() error {
+func (e *Environment) DeleteEnvironmentFallible() error {
 	e.Helper()
 	return os.RemoveAll(e.RootPath)
 }
