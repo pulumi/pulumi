@@ -13,4 +13,7 @@
 - [cli/about] - Add comand for debug information
   [#7817](https://github.com/pulumi/pulumi/pull/7817)
 
+- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
+  [#7865](https://github.com/pulumi/pulumi/pull/7865)
+
 ### Bug Fixes
