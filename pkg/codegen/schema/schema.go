@@ -421,7 +421,8 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property) {
 		if p.ReplaceOnChanges {
 			changes = append(changes, []*Property{p})
 		} else {
-			for _, c := range replaceOnChangesType(p.Type, p) {
+			stack := make(map[*Property]struct{})
+			for _, c := range replaceOnChangesType(p.Type, p, stack) {
 				changes = append(changes, append([]*Property{p}, c...))
 			}
 		}
@@ -429,25 +430,35 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property) {
 	return changes
 }
 
-func replaceOnChangesType(t Type, parrent *Property) (changes [][]*Property) {
+func replaceOnChangesType(t Type, parrent *Property, stack map[*Property]struct{}) (changes [][]*Property) {
 	if o, ok := t.(*OptionalType); ok {
-		changes = replaceOnChangesType(o.ElementType, parrent)
+		changes = replaceOnChangesType(o.ElementType, parrent, stack)
 	} else if o, ok := t.(*ObjectType); ok {
 		for _, p := range o.Properties {
 			if p.ReplaceOnChanges {
 				changes = append(changes, []*Property{p})
 			} else {
-				for _, path := range replaceOnChangesType(p.Type, p) {
+				// We handle recursizve objects
+				if _, ok := stack[parrent]; ok {
+					panic(fmt.Sprintf("Found recursion with repeat = %q", parrent.Name))
+				} else {
+					stack[parrent] = struct{}{}
+				}
+				defer func() {
+					delete(stack, parrent)
+				}()
+
+				for _, path := range replaceOnChangesType(p.Type, p, stack) {
 					changes = append(changes, append([]*Property{p}, path...))
 				}
 			}
 		}
 	} else if a, ok := t.(*ArrayType); ok {
 		// This looks for types internal to the array, not a property of the array.
-		changes = replaceOnChangesType(a.ElementType, parrent)
+		changes = replaceOnChangesType(a.ElementType, parrent, stack)
 	} else if m, ok := t.(*MapType); ok {
 		// This looks for types internal to the map, not a property of the array.
-		changes = replaceOnChangesType(m.ElementType, parrent)
+		changes = replaceOnChangesType(m.ElementType, parrent, stack)
 	}
 	return changes
 }
