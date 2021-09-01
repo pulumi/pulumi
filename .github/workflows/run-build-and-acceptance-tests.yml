@@ -54,7 +54,7 @@ jobs:
         uses: actions/github-script@v4
         with:
           script: |
-            octokit.rest.issues.removeLabel({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, name: "ci/lint"});
+            github.removeLabel({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, name: "ci/lint"});
   sdk-lint:
     if: |
       github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
