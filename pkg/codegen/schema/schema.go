@@ -442,24 +442,25 @@ func replaceOnChangesType(t Type, parrent *Property, stack map[*Property]struct{
 	} else if o, ok := t.(*ObjectType); ok {
 		changes := [][]*Property{}
 		err := []error{}
-		for _, p := range o.Properties {
-			if p.ReplaceOnChanges {
-				changes = append(changes, []*Property{p})
-			} else {
-				// We handle recursizve objects
-				if _, ok := stack[parrent]; ok {
-					err = append(err, errors.Errorf("Found recursive object %q", parrent.Name))
+		if _, ok := stack[parrent]; ok {
+			err = append(err, errors.Errorf("Found recursive object %q", parrent.Name))
+			panic("TODO: for testing purposes only; Should only blow up for kubernetes")
+		} else {
+			stack[parrent] = struct{}{}
+			for _, p := range o.Properties {
+				if p.ReplaceOnChanges {
+					changes = append(changes, []*Property{p})
 				} else {
-					stack[parrent] = struct{}{}
+					// We handle recursizve objects
 					var object [][]*Property
 					object, errTmp = replaceOnChangesType(p.Type, p, stack)
 					err = append(err, errTmp...)
 					for _, path := range object {
 						changes = append(changes, append([]*Property{p}, path...))
 					}
-					delete(stack, parrent)
 				}
 			}
+			delete(stack, parrent)
 		}
 		return changes, err
 	} else if a, ok := t.(*ArrayType); ok {
