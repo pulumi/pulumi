@@ -13,6 +13,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -569,4 +570,24 @@ func TestGetResourceDotnet(t *testing.T) {
 		Dir:                      filepath.Join("get_resource", "dotnet"),
 		AllowEmptyPreviewChanges: true,
 	})
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutDotnet(t *testing.T) {
+	dir := filepath.Join("about", "dotnet")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	_, stderr := e.RunCommand("pulumi", "about")
+	// This one doesn't have a current stack. Assert that we caught it.
+	assert.Contains(t, stderr, "No current stack")
 }

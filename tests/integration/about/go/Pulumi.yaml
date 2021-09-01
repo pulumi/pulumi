@@ -1,0 +1,3 @@
+name: about-go
+runtime: go
+description: An integration test for the about command
