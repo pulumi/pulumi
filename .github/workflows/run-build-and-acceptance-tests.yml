@@ -35,7 +35,7 @@ jobs:
             [1]: ${{ steps.vars.outputs.run-url }}
   go-lint:
     if: |
-      github.event.label.name == 'ci/lint' || github.event.type != labeled
+      github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
     strategy:
@@ -52,7 +52,7 @@ jobs:
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
   sdk-lint:
     if: |
-      github.event.label.name == 'ci/lint' || github.event.type != labeled
+      github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
@@ -124,7 +124,7 @@ jobs:
 
     if: |
       (github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) &&
-      (github.event.label.name == 'ci/build-unix' || github.event.type != labeled)
+      (github.event.label.name == 'ci/build-unix' || github.event.action != 'labeled')
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set PULUMI_TEST_SUBSET env var
@@ -222,7 +222,7 @@ jobs:
         dotnet: [3.1.x]
     if: |
       (github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) &&
-      (github.event.label.name == 'ci/build-windows' || github.event.type != labeled)
+      (github.event.label.name == 'ci/build-windows' || github.event.action != 'labeled')
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
