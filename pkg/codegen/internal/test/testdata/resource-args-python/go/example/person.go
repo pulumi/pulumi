@@ -14,7 +14,7 @@ type Person struct {
 	pulumi.CustomResourceState
 
 	Name pulumi.StringPtrOutput `pulumi:"name"`
-	Pets PetArrayOutput         `pulumi:"pets"`
+	Pets PetTypeArrayOutput     `pulumi:"pets"`
 }
 
 // NewPerson registers a new resource with the given unique name, arguments, and options.
@@ -56,14 +56,14 @@ func (PersonState) ElementType() reflect.Type {
 }
 
 type personArgs struct {
-	Name *string `pulumi:"name"`
-	Pets []Pet   `pulumi:"pets"`
+	Name *string   `pulumi:"name"`
+	Pets []PetType `pulumi:"pets"`
 }
 
 // The set of arguments for constructing a Person resource.
 type PersonArgs struct {
 	Name pulumi.StringPtrInput
-	Pets PetArrayInput
+	Pets PetTypeArrayInput
 }
 
 func (PersonArgs) ElementType() reflect.Type {
