@@ -33,26 +33,6 @@ jobs:
             Please view the results of the PR Build + Acceptance Tests Run [Here][1]
 
             [1]: ${{ steps.vars.outputs.run-url }}
-  cleanup-lint:
-    runs-on: ubuntu-latest
-    name: Cleanup ci/lint Tag
-    needs: [ sdk-lint, go-lint]
-    if: always()
-    steps:
-      - name: Cleanup ci/lint Tag
-        uses: actions/github-script@v4
-        with:
-          script: |
-            try {
-              github.issues.removeLabel({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                name: 'ci/lint'
-                })
-            } catch (error) {
-                console.log(error)
-            }
   go-lint:
     if: |
       github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
@@ -320,3 +300,67 @@ jobs:
         run: |
           cd src\github.com\${{ github.repository }}
           dotnet msbuild /t:Tests /v:Detailed build.proj /p:PulumiRoot="D:\\Pulumi"
+
+  cleanup-lint:
+    runs-on: ubuntu-latest
+    name: Cleanup ci/lint Tag
+    needs: [ sdk-lint, go-lint ]
+    if: github.event.label.name == 'ci/lint'
+    steps:
+      - name: Cleanup ci/lint Tag
+        uses: actions/github-script@v4
+        with:
+          script: |
+            try {
+              github.issues.removeLabel({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci/lint'
+                })
+            } catch (error) {
+                console.log(error)
+            }
+
+  cleanup-unix:
+    runs-on: ubuntu-latest
+    name: Cleanup ci/build-unix Tag
+    needs: [ build_and_test ]
+    if: github.event.label.name == 'ci/build-unix'
+    steps:
+      - name: Cleanup ci/build-unix Tag
+        uses: actions/github-script@v4
+        with:
+          script: |
+            try {
+              github.issues.removeLabel({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci/build-unix'
+                })
+            } catch (error) {
+                console.log(error)
+            }
+
+  cleanup-windows:
+    runs-on: ubuntu-latest
+    name: Cleanup ci/build-windows Tag
+    needs: [ windows-build ]
+    if: github.event.label.name == 'ci/build-windows'
+    steps:
+      - name: Cleanup ci/build-windows Tag
+        uses: actions/github-script@v4
+        with:
+          script: |
+            try {
+              github.issues.removeLabel({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci/build-windows'
+                })
+            } catch (error) {
+                console.log(error)
+            }
+ 
