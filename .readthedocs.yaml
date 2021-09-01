@@ -1,0 +1,22 @@
+# .readthedocs.yaml
+
+# Read the Docs configuration file
+# See https://docs.readthedocs.io/en/stable/config-file/v2.html for details
+
+# Required
+version: 2
+
+# Build documentation in the developer-docs/ directory with Sphinx
+sphinx:
+   configuration: developer-docs/conf.py
+
+formats:
+   - pdf
+
+# Optionally set the version of Python and requirements required to build your docs
+python:
+   version: "3.6"
+   install:
+   - requirements: developer-docs/requirements.txt
+
+
