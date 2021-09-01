@@ -33,6 +33,26 @@ jobs:
             Please view the results of the PR Build + Acceptance Tests Run [Here][1]
 
             [1]: ${{ steps.vars.outputs.run-url }}
+  cleanup-lint:
+    runs-on: ubuntu-latest
+    name: Cleanup ci/lint Tag
+    needs: [ sdk-lint, go-lint]
+    if: always()
+    steps:
+      - name: Cleanup ci/lint Tag
+        uses: actions/github-script@v4
+        with:
+          script: |
+            try {
+              github.issues.removeLabel({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: 'ci/lint'
+                })
+            } catch (error) {
+                console.log(error)
+            }
   go-lint:
     if: |
       github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
@@ -51,15 +71,6 @@ jobs:
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
       - name: Remove Label ci/lint
-        uses: actions/github-script@v4
-        with:
-          script: |
-            github.issues.removeLabel({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              name: 'ci/lint'
-            })
   sdk-lint:
     if: |
       github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
