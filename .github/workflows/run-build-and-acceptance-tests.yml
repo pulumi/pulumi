@@ -70,7 +70,6 @@ jobs:
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
-      - name: Remove Label ci/lint
   sdk-lint:
     if: |
       github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
