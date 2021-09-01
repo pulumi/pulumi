@@ -16,6 +16,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	ptesting "github.com/pulumi/pulumi/sdk/v3/go/common/testing"
 )
 
 // TestEmptyGo simply tests that we can build and run an empty Go project.
@@ -736,4 +737,27 @@ func TestTracePropagationGo(t *testing.T) {
 	if foundTrace == nil {
 		t.Errorf("Did not find a trace for `go list -m -json -mod=mod all` command")
 	}
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutGo(t *testing.T) {
+	dir := filepath.Join("about", "go")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	e.RunCommand("pulumi", "login", "--cloud-url", e.LocalURL())
+	e.RunCommand("pulumi", "stack", "init", "about-stack")
+	e.RunCommand("pulumi", "stack", "select", "about-stack")
+	stdout, _ := e.RunCommand("pulumi", "about", "-t")
+
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "github.com/BurntSushi/toml")
 }

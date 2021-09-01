@@ -6,10 +6,12 @@
         "type": "object",
         "properties": {
           "a": {
-            "type": "string"
+            "type": "string",
+            "description": "Property A"
           },
           "b": {
-            "type": "string"
+            "type": "string",
+            "description": "Property B"
           }
         }
       },

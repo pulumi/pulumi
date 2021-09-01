@@ -139,7 +139,7 @@ class MockMonitor:
 
     def __init__(self, mocks: Mocks):
         self.mocks = mocks
-        self.resources = dict()
+        self.resources = {}
 
     def make_urn(self, parent: str, type_: str, name: str) -> str:
         if parent != "":

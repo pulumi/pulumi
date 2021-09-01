@@ -94,6 +94,16 @@ namespace Pulumi
         private readonly ImmutableDictionary<string, ProviderResource> _providers;
 
         /// <summary>
+        /// The specified provider or provider determined from the parent for custom resources.
+        /// </summary>
+        internal readonly ProviderResource? _provider;
+
+        /// <summary>
+        /// The specified provider version.
+        /// </summary>
+        internal readonly string? _version;
+
+        /// <summary>
         /// Creates and registers a new resource object.  <paramref name="type"/> is the fully
         /// qualified type token and <paramref name="name"/> is the "name" part to use in creating a
         /// stable and globally unique URN for the object. dependsOn is an optional list of other
@@ -241,6 +251,8 @@ namespace Pulumi
             }
 
             this._protect = options.Protect == true;
+            this._provider = custom ? options.Provider : null;
+            this._version = options.Version;
 
             // Collapse any 'Alias'es down to URNs. We have to wait until this point to do so
             // because we do not know the default 'name' and 'type' to apply until we are inside the

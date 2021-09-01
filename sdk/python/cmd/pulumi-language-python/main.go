@@ -24,6 +24,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -188,8 +189,7 @@ func (host *pythonLanguageHost) GetRequiredPlugins(ctx context.Context,
 
 	plugins := []*pulumirpc.PluginDependency{}
 	for _, pkg := range pulumiPackages {
-
-		plugin, err := determinePluginDependency(host.virtualenvPath, host.cwd, pkg.Name, pkg.Version)
+		plugin, err := determinePluginDependency(host.virtualenvPath, host.cwd, pkg)
 		if err != nil {
 			return nil, err
 		}
@@ -318,23 +318,27 @@ var packagesWithoutPlugins = map[string]struct{}{
 }
 
 type pythonPackage struct {
-	Name    string `json:"name"`
-	Version string `json:"version"`
+	Name     string `json:"name"`
+	Version  string `json:"version"`
+	Location string `json:"location"`
 }
 
 func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 	logging.V(5).Infof("GetRequiredPlugins: Determining pulumi packages")
 
-	// Run the `python -m pip list --format json` command.
-	args := []string{"-m", "pip", "list", "--format", "json"}
+	// Run the `python -m pip list -v --format json` command.
+	args := []string{"-m", "pip", "list", "-v", "--format", "json"}
 	output, err := runPythonCommand(virtualenv, cwd, args...)
 	if err != nil {
 		return nil, err
 	}
 
-	// Parse the JSON output.
+	// Parse the JSON output; on some systems pip -v verbose mode
+	// follows JSON with non-JSON trailer, so we need to be
+	// careful when parsing and ignore the trailer.
 	var packages []pythonPackage
-	if err := json.Unmarshal(output, &packages); err != nil {
+	jsonDecoder := json.NewDecoder(bytes.NewBuffer(output))
+	if err := jsonDecoder.Decode(&packages); err != nil {
 		return nil, errors.Wrapf(err, "parsing `python %s` output", strings.Join(args, " "))
 	}
 
@@ -365,23 +369,17 @@ func determinePulumiPackages(virtualenv, cwd string) ([]pythonPackage, error) {
 // are derived from the package name and version. If the plugin version cannot be determined from the package version,
 // nil is returned.
 func determinePluginDependency(
-	virtualenv, cwd, packageName, packageVersion string) (*pulumirpc.PluginDependency, error) {
+	virtualenv, cwd string, pkg pythonPackage) (*pulumirpc.PluginDependency, error) {
 
-	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v", packageName, packageVersion)
-
-	// Determine the location of the installed package.
-	packageLocation, err := determinePackageLocation(virtualenv, cwd, packageName)
-	if err != nil {
-		return nil, err
-	}
+	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %v, %v", pkg.Name, pkg.Version)
 
 	// The name of the module inside the package can be different from the package name.
 	// However, our convention is to always use the same name, e.g. a package name of
 	// "pulumi-aws" will have a module named "pulumi_aws", so we can determine the module
 	// by replacing hyphens with underscores.
-	packageModuleName := strings.ReplaceAll(packageName, "-", "_")
+	packageModuleName := strings.ReplaceAll(pkg.Name, "-", "_")
 
-	pulumiPluginFilePath := filepath.Join(packageLocation, packageModuleName, "pulumiplugin.json")
+	pulumiPluginFilePath := filepath.Join(pkg.Location, packageModuleName, "pulumiplugin.json")
 	logging.V(5).Infof("GetRequiredPlugins: pulumiplugin.json file path: %s", pulumiPluginFilePath)
 
 	var name, version, server string
@@ -390,7 +388,7 @@ func determinePluginDependency(
 		// If `resource` is set to false, the Pulumi package has indicated that there is no associated plugin.
 		// Ignore it.
 		if !plugin.Resource {
-			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", packageName)
+			logging.V(5).Infof("GetRequiredPlugins: Ignoring package %s with resource set to false", pkg.Name)
 			return nil, nil
 		}
 
@@ -403,7 +401,7 @@ func determinePluginDependency(
 	}
 
 	if name == "" {
-		name = strings.TrimPrefix(packageName, "pulumi-")
+		name = strings.TrimPrefix(pkg.Name, "pulumi-")
 	}
 
 	if version == "" {
@@ -413,11 +411,11 @@ func determinePluginDependency(
 		// "3.31.0a1605189729" will have an associated plugin with a version of "3.31.0-alpha.1605189729+42435656".
 		// The "+42435656" suffix cannot be determined so the plugin version cannot be determined. In such cases,
 		// log the issue and skip the package.
-		version, err = determinePluginVersion(packageVersion)
+		version, err = determinePluginVersion(pkg.Version)
 		if err != nil {
 			logging.V(5).Infof(
 				"GetRequiredPlugins: Could not determine plugin version for package %s with version %s",
-				packageName, packageVersion)
+				pkg.Name, pkg.Version)
 			return nil, nil
 		}
 	}
@@ -435,16 +433,6 @@ func determinePluginDependency(
 
 	logging.V(5).Infof("GetRequiredPlugins: Determining plugin dependency: %#v", result)
 	return &result, nil
-}
-
-// determinePackageLocation determines the location on disk of the package by running `python -m pip show <package>`
-// and parsing the output.
-func determinePackageLocation(virtualenv, cwd, packageName string) (string, error) {
-	b, err := runPythonCommand(virtualenv, cwd, "-m", "pip", "show", packageName)
-	if err != nil {
-		return "", err
-	}
-	return parseLocation(packageName, string(b))
 }
 
 func parseLocation(packageName, pipShowOutput string) (string, error) {

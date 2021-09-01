@@ -1,17 +1,24 @@
 ### Improvements
 
+- [build] - make lint returns an accurate status code
+  [#7844](https://github.com/pulumi/pulumi/pull/7844)
 
-- [codegen/go] - Add helper function forms `$fnOutput` that accept
-  `Input`s, return an `Output`, and wrap the underlying `$fn` call.
-  This change addreses
-  [#5758](https://github.com/pulumi/pulumi/issues/) for Go, making it
-  easier to compose functions/datasources with Pulumi resources.
-  [#7784](https://github.com/pulumi/pulumi/pull/7784)
+- [codegen/python] - Add helper function forms `$fn_output` that
+  accept `Input`s, return an `Output`, and wrap the underlying `$fn`
+  call. This change addreses
+  [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
+  making it easier to compose functions/datasources with Pulumi
+  resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
+
+- [cli/about] - Add comand for debug information
+  [#7817](https://github.com/pulumi/pulumi/pull/7817)
+
+- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
+  [#7865](https://github.com/pulumi/pulumi/pull/7865)
 
 - [build] - Remove the need for `/opt/pulumi` when building.
   [#7838](https://github.com/pulumi/pulumi/pull/7838)
 
 ### Bug Fixes
-
-- [cli] - Avoid `missing go.sum entry for module` for new Go projects.
-  [#7808](https://github.com/pulumi/pulumi/pull/7808)
+- [automation/go] Fix loading of stack settings/configs from yaml files.
+  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
