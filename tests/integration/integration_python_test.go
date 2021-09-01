@@ -416,7 +416,6 @@ func TestDynamicPythonNonMain(t *testing.T) {
 	})
 }
 
-
 // Tests custom resource type name of dynamic provider in Python.
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
@@ -432,7 +431,6 @@ func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 		},
 	})
 }
-
 
 func TestPartialValuesPython(t *testing.T) {
 	if runtime.GOOS == WindowsOS {
@@ -1123,4 +1121,23 @@ func TestBrokenDynamicProvider(t *testing.T) {
 		Quick:         true,
 		ExpectFailure: true,
 	})
+}
+
+// Test that the about command works as expected. Because about parses the
+// results of each runtime independently, we have an integration test in each
+// language.
+func TestAboutPython(t *testing.T) {
+	dir := filepath.Join("about", "python")
+
+	e := ptesting.NewEnvironment(t)
+	defer func() {
+		if !t.Failed() {
+			e.DeleteEnvironmentFallible()
+		}
+	}()
+	e.ImportDirectory(dir)
+
+	stdout, _ := e.RunCommand("pulumi", "about", "--json")
+	// Assert we parsed the dependencies
+	assert.Contains(t, stdout, "pulumi-kubernetes")
 }
