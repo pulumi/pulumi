@@ -70,9 +70,9 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 				return pulumi.String(string(data))
 			}`, true
 	case "sha1":
-		return `func sha1(input string) pulumi.StringPtrInput {
-				inputBytes := []byte(input)
-				return pulumi.String(fmt.Sprintf("%x", sha1.Sum(inputBytes)))
+		return `func sha1Hash(input string) string {
+				hash := sha1.Sum([]byte(input))
+				return hex.EncodeToString(hash[:])
 			}`, true
 	default:
 		return "", false

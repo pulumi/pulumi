@@ -237,7 +237,7 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 	case "mimeType":
 		g.Fgenf(w, "mime.TypeByExtension(path.Ext(%.v))", expr.Args[0])
 	case "sha1":
-		g.Fgenf(w, "sha1(%v)", expr.Args[0])
+		g.Fgenf(w, "sha1Hash(%v)", expr.Args[0])
 	default:
 		g.genNYI(w, "call %v", expr.Name)
 	}
