@@ -416,51 +416,60 @@ type Resource struct {
 // }
 //
 // A.ReplaceOnChanges() == [[B, D], [C]]
-func (r *Resource) ReplaceOnChanges() (changes [][]*Property) {
+func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
 	for _, p := range r.Properties {
 		if p.ReplaceOnChanges {
 			changes = append(changes, []*Property{p})
 		} else {
-			stack := make(map[*Property]struct{})
-			for _, c := range replaceOnChangesType(p.Type, p, stack) {
+			stack := map[*Property]struct{}{}
+			var childChanges [][]*Property
+			childChanges, err = replaceOnChangesType(p.Type, p, stack)
+			for _, c := range childChanges {
 				changes = append(changes, append([]*Property{p}, c...))
 			}
 		}
 	}
-	return changes
+	for i, e := range err {
+		err[i] = errors.Wrapf(e, "Failed to genereate full `ReplaceOnChanges`")
+	}
+	return changes, err
 }
 
-func replaceOnChangesType(t Type, parrent *Property, stack map[*Property]struct{}) (changes [][]*Property) {
+func replaceOnChangesType(t Type, parrent *Property, stack map[*Property]struct{}) ([][]*Property, []error) {
+	var errTmp []error
 	if o, ok := t.(*OptionalType); ok {
-		changes = replaceOnChangesType(o.ElementType, parrent, stack)
+		return replaceOnChangesType(o.ElementType, parrent, stack)
 	} else if o, ok := t.(*ObjectType); ok {
+		changes := [][]*Property{}
+		err := []error{}
 		for _, p := range o.Properties {
 			if p.ReplaceOnChanges {
 				changes = append(changes, []*Property{p})
 			} else {
 				// We handle recursizve objects
 				if _, ok := stack[parrent]; ok {
-					panic(fmt.Sprintf("Found recursion with repeat = %q", parrent.Name))
+					err = append(err, errors.Errorf("Found recursive object %q", parrent.Name))
 				} else {
 					stack[parrent] = struct{}{}
-				}
-				defer func() {
+					var object [][]*Property
+					object, errTmp = replaceOnChangesType(p.Type, p, stack)
+					err = append(err, errTmp...)
+					for _, path := range object {
+						changes = append(changes, append([]*Property{p}, path...))
+					}
 					delete(stack, parrent)
-				}()
-
-				for _, path := range replaceOnChangesType(p.Type, p, stack) {
-					changes = append(changes, append([]*Property{p}, path...))
 				}
 			}
 		}
+		return changes, err
 	} else if a, ok := t.(*ArrayType); ok {
 		// This looks for types internal to the array, not a property of the array.
-		changes = replaceOnChangesType(a.ElementType, parrent, stack)
+		return replaceOnChangesType(a.ElementType, parrent, stack)
 	} else if m, ok := t.(*MapType); ok {
 		// This looks for types internal to the map, not a property of the array.
-		changes = replaceOnChangesType(m.ElementType, parrent, stack)
+		return replaceOnChangesType(m.ElementType, parrent, stack)
 	}
-	return changes
+	return [][]*Property{}, []error{}
 }
 
 // Joins the output of `ReplaceOnChanges` into property path names.
