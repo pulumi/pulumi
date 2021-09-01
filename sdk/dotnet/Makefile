@@ -34,10 +34,6 @@ install_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install:: build install_plugin
-	echo "Copying NuGet packages to ${PULUMI_NUGET}"
-	[ ! -e "$(PULUMI_NUGET)" ] || rm -rf "$(PULUMI_NUGET)/*"
-	rm -f $(PULUMI_NUGET)/*.nupkg
-	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_NUGET} \;
 
 dotnet_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file

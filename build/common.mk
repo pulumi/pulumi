@@ -105,8 +105,8 @@ endif
 PYTHON ?= python3
 PIP ?= pip3
 
-ifeq ($(PULUMI_NUGET),)
-	PULUMI_NUGET        := $(TMP_DIR)/nuget
+ifeq ($(PULUMI_LOCAL_NUGET),)
+	PULUMI_LOCAL_NUGET        := $(TMP_DIR)/nuget
 endif
 
 RUN_TESTSUITE = python3 ${PROJECT_ROOT}/scripts/run-testsuite.py
@@ -168,7 +168,7 @@ test_fast::
 install::
 	$(call STEP_MESSAGE)
 	@mkdir -p $(GOBIN)
-	@mkdir -p $(PULUMI_NUGET)
+	@mkdir -p $(PULUMI_LOCAL_NUGET)
 
 dist::
 	$(call STEP_MESSAGE)
