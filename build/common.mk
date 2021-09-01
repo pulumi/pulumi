@@ -105,7 +105,7 @@ endif
 PYTHON ?= python3
 PIP ?= pip3
 
-ifeq (($PULUMI_NUGET),)
+ifeq ($(PULUMI_NUGET),)
 	PULUMI_NUGET        := $(TMP_DIR)/nuget
 endif
 
