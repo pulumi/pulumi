@@ -421,9 +421,10 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
 		if p.ReplaceOnChanges {
 			changes = append(changes, []*Property{p})
 		} else {
-			stack := map[*Property]struct{}{}
-			var childChanges [][]*Property
-			childChanges, err = replaceOnChangesType(p.Type, p, stack)
+			stack := map[string]struct{}{p.Type.String(): {}}
+			childChanges, errList := replaceOnChangesType(p.Type, &stack)
+			err = append(err, errList...)
+
 			for _, c := range childChanges {
 				changes = append(changes, append([]*Property{p}, c...))
 			}
@@ -435,40 +436,38 @@ func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
 	return changes, err
 }
 
-func replaceOnChangesType(t Type, parrent *Property, stack map[*Property]struct{}) ([][]*Property, []error) {
+func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []error) {
 	var errTmp []error
 	if o, ok := t.(*OptionalType); ok {
-		return replaceOnChangesType(o.ElementType, parrent, stack)
+		return replaceOnChangesType(o.ElementType, stack)
 	} else if o, ok := t.(*ObjectType); ok {
 		changes := [][]*Property{}
 		err := []error{}
-		if _, ok := stack[parrent]; ok {
-			err = append(err, errors.Errorf("Found recursive object %q", parrent.Name))
-			panic("TODO: for testing purposes only; Should only blow up for kubernetes")
-		} else {
-			stack[parrent] = struct{}{}
-			for _, p := range o.Properties {
-				if p.ReplaceOnChanges {
-					changes = append(changes, []*Property{p})
-				} else {
-					// We handle recursizve objects
-					var object [][]*Property
-					object, errTmp = replaceOnChangesType(p.Type, p, stack)
-					err = append(err, errTmp...)
-					for _, path := range object {
-						changes = append(changes, append([]*Property{p}, path...))
-					}
+		for _, p := range o.Properties {
+			if p.ReplaceOnChanges {
+				changes = append(changes, []*Property{p})
+			} else if _, ok := (*stack)[p.Type.String()]; !ok {
+				// We handle recursive objects
+				(*stack)[p.Type.String()] = struct{}{}
+				var object [][]*Property
+				object, errTmp = replaceOnChangesType(p.Type, stack)
+				err = append(err, errTmp...)
+				for _, path := range object {
+					changes = append(changes, append([]*Property{p}, path...))
 				}
+
+				delete(*stack, p.Type.String())
+			} else {
+				err = append(err, errors.Errorf("Found recursive object %q", p.Name))
 			}
-			delete(stack, parrent)
 		}
 		return changes, err
 	} else if a, ok := t.(*ArrayType); ok {
 		// This looks for types internal to the array, not a property of the array.
-		return replaceOnChangesType(a.ElementType, parrent, stack)
+		return replaceOnChangesType(a.ElementType, stack)
 	} else if m, ok := t.(*MapType); ok {
 		// This looks for types internal to the map, not a property of the array.
-		return replaceOnChangesType(m.ElementType, parrent, stack)
+		return replaceOnChangesType(m.ElementType, stack)
 	}
 	return [][]*Property{}, []error{}
 }
