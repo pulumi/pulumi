@@ -50,6 +50,11 @@ jobs:
       - name: Lint ${{ matrix.directory }}
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
+      - name: Remove Label ci/lint
+        uses: actions/github-script@v4
+        with:
+          script: |
+            octokit.rest.issues.removeLabel({owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, name: "ci/lint"});
   sdk-lint:
     if: |
       github.event.label.name == 'ci/lint' || github.event.action != 'labeled'
