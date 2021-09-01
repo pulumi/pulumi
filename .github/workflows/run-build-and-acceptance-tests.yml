@@ -2,6 +2,8 @@ on:
   repository_dispatch:
     types: [ run-acceptance-tests-command ]
   pull_request:
+    # types defaults to [ opened, synchronize, reopened ]
+    types: [ labeled, opened, synchronize, reopened ]
     paths-ignore:
       - 'CHANGELOG.md'
       - 'CHANGELOG_PENDING.md'
@@ -32,6 +34,8 @@ jobs:
 
             [1]: ${{ steps.vars.outputs.run-url }}
   go-lint:
+    if: |
+      github.event.label.name == 'ci/lint' || github.event.type != labeled
     container: golangci/golangci-lint:latest
     name: Lint ${{ matrix.directory }}
     strategy:
@@ -47,6 +51,8 @@ jobs:
         run: |
           cd ${{ matrix.directory }} && golangci-lint run -c ../.golangci.yml
   sdk-lint:
+    if: |
+      github.event.label.name == 'ci/lint' || github.event.type != labeled
     name: Lint SDKs
     runs-on: ubuntu-latest
     steps:
@@ -103,6 +109,7 @@ jobs:
         run: |
           cd sdk/dotnet && make lint
   build_and_test:
+      
     name: Build & Test
     strategy:
       matrix:
@@ -115,7 +122,9 @@ jobs:
         # See scripts/tests_subsets.py when editing
         test-subset: [ integration, auto-and-lifecycletest, native, etc ]
 
-    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: |
+      (github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event.label.name == 'ci/build-unix' || github.event.type != labeled)
     runs-on: ${{ matrix.platform }}
     steps:
       - name: Set PULUMI_TEST_SUBSET env var
@@ -211,7 +220,9 @@ jobs:
         node-version: [14.x]
         python-version: [3.9.x]
         dotnet: [3.1.x]
-    if: github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: |
+      (github.event_name == 'repository_dispatch' || github.event.pull_request.head.repo.full_name == github.repository) &&
+      (github.event.label.name == 'ci/build-windows' || github.event.type != labeled)
     runs-on: windows-latest
     env:
       GOPATH: ${{ github.workspace }}
