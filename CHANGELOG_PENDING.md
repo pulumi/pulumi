@@ -15,6 +15,9 @@
 
 - [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
   [#7865](https://github.com/pulumi/pulumi/pull/7865)
+  
+- [ci] Add a tag that will run parts of the test system. 
+  [#7885](https://github.com/pulumi/pulumi/pull/7885)
 
 ### Bug Fixes
 - [automation/go] Fix loading of stack settings/configs from yaml files.

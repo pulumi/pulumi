@@ -305,7 +305,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Cleanup ci/lint Tag
     needs: [ sdk-lint, go-lint ]
-    if: github.event.label.name == 'ci/lint'
+    if: |
+      always() && github.event.label.name == 'ci/lint'
     steps:
       - name: Cleanup ci/lint Tag
         uses: actions/github-script@v4
@@ -326,7 +327,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Cleanup ci/build-unix Tag
     needs: [ build_and_test ]
-    if: github.event.label.name == 'ci/build-unix'
+    if: |
+      always() && github.event.label.name == 'ci/build-unix'
     steps:
       - name: Cleanup ci/build-unix Tag
         uses: actions/github-script@v4
@@ -347,7 +349,8 @@ jobs:
     runs-on: ubuntu-latest
     name: Cleanup ci/build-windows Tag
     needs: [ windows-build ]
-    if: github.event.label.name == 'ci/build-windows'
+    if: |
+      always() && github.event.label.name == 'ci/build-windows'
     steps:
       - name: Cleanup ci/build-windows Tag
         uses: actions/github-script@v4
