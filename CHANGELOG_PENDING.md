@@ -8,6 +8,9 @@
   easier to compose functions/datasources with Pulumi resources.
   [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
+- [build] - Remove the need for `/opt/pulumi` when building.
+  [#7838](https://github.com/pulumi/pulumi/pull/7838)
+
 ### Bug Fixes
 
 - [cli] - Avoid `missing go.sum entry for module` for new Go projects.
