@@ -14,3 +14,8 @@
   [#7865](https://github.com/pulumi/pulumi/pull/7865)
 
 ### Bug Fixes
+
+- [sdk/python] - Fix Pulumi programs hanging when dependency graph
+  forms a cycle, as when `eks.NodeGroup` declaring `eks.Cluster` as a
+  parent while also depending on it indirectly via properties
+  [#7887](https://github.com/pulumi/pulumi/pull/7887)
