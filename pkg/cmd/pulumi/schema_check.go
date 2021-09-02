@@ -71,6 +71,11 @@ func newSchemaCheckCommand() *cobra.Command {
 			diagWriter := hcl.NewDiagnosticTextWriter(os.Stderr, nil, 0, true)
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
+			if err == nil && len(diags) != 0 {
+				// We don't want to print an error, but we do want to indicate
+				// that the check was not successful
+				os.Exit(1)
+			}
 			return err
 		}),
 	}
