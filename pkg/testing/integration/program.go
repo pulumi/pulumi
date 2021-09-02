@@ -1984,7 +1984,7 @@ func (pt *ProgramTester) prepareDotNetProject(projinfo *engine.Projinfo) error {
 
 	localNuget := os.Getenv("PULUMI_LOCAL_NUGET")
 	if localNuget == "" {
-		localNuget = "/opt/pulumi/nuget"
+		localNuget = filepath.Join(os.TempDir(), "nuget")
 	}
 
 	for _, dep := range pt.opts.Dependencies {

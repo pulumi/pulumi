@@ -34,6 +34,10 @@ install_plugin::
 	go install -ldflags "-X github.com/pulumi/pulumi/sdk/v3/go/common/version.Version=${DOTNET_VERSION}" ${LANGHOST_PKG}
 
 install:: build install_plugin
+	echo "Copying NuGet packages to ${PULUMI_LOCAL_NUGET}"
+	[ ! -e "$(PULUMI_LOCAL_NUGET)" ] || rm -rf "$(PULUMI_LOCAL_NUGET)/*"
+	rm -f $(PULUMI_LOCAL_NUGET)/*.nupkg
+	find . -name '*${VERSION_PREFIX}*.nupkg' -exec cp -p {} ${PULUMI_LOCAL_NUGET} \;
 
 dotnet_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
@@ -54,5 +58,5 @@ brew::
 
 publish:: build install
 	echo "Publishing .nupkgs to nuget.org:"
-	find /opt/pulumi/nuget -name 'Pulumi*.nupkg' \
+	find ${PULUMI_LOCAL_NUGET} -name 'Pulumi*.nupkg' \
 		-exec dotnet nuget push -k ${NUGET_PUBLISH_KEY} -s https://api.nuget.org/v3/index.json {} ';'
