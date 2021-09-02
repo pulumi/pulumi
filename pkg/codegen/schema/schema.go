@@ -1825,10 +1825,11 @@ func (t *types) bindTypeSpecRef(path string, spec TypeSpec, inputShape bool) (Ty
 		if !ok {
 			typ = &TokenType{Token: ref.Token}
 			if spec.Type != "" {
-				ut, primDiags := t.bindPrimitiveType(path, spec.Type)
-				diags = diags.Extend(primDiags)
+				panic("Is this feature actually used")
+				// ut, primDiags := t.bindPrimitiveType(path, spec.Type)
+				// diags = diags.Extend(primDiags)
 
-				typ.UnderlyingType = ut
+				// typ.UnderlyingType = ut
 			}
 			t.tokens[ref.Token] = typ
 		}

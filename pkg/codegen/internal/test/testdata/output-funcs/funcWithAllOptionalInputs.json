@@ -1,4 +1,6 @@
 {
+  "name": "funcWithAllOptionalInputs",
+  "version": "0.0.1",
   "functions": {
     "madeup-package:codegentest:funcWithAllOptionalInputs": {
       "description": "Check codegen of functions with all optional inputs.",
@@ -22,9 +24,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "r"
-        ]
+        "required": ["r"]
       }
     }
   }

@@ -1,12 +1,12 @@
 {
+  "name": "funcWithDefaultValue",
+  "version": "0.0.1",
   "functions": {
     "madeup-package:codegentest:funcWithDefaultValue": {
       "description": "Check codegen of functions with default values.",
       "inputs": {
         "type": "object",
-        "required": [
-          "a"
-        ],
+        "required": ["a"],
         "properties": {
           "a": {
             "type": "string"
@@ -24,9 +24,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "r"
-        ]
+        "required": ["r"]
       }
     }
   }

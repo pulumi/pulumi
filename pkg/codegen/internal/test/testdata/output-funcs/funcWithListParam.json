@@ -1,4 +1,6 @@
 {
+  "name": "funcWithListParam",
+  "version": "0.0.1",
   "functions": {
     "madeup-package:codegentest:funcWithListParam": {
       "description": "Check codegen of functions with a List parameter.",
@@ -6,10 +8,10 @@
         "type": "object",
         "properties": {
           "a": {
-              "type": "array",
-              "items": {
-                  "type": "string"
-              }
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "b": {
             "type": "string"
@@ -23,9 +25,7 @@
           }
         },
         "type": "object",
-        "required": [
-          "r"
-        ]
+        "required": ["r"]
       }
     }
   }

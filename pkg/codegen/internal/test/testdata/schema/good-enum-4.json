@@ -1,4 +1,6 @@
 {
+  "name": "good-enum-4",
+  "version": "0.0.1",
   "types": {
     "fake-provider:module1:Number2": {
       "type": "number",

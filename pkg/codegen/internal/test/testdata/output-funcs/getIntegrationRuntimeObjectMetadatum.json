@@ -1,4 +1,6 @@
 {
+  "name": "getIntegrationRuntimeObjectMetadatum",
+  "version": "0.0.1",
   "functions": {
     "azure-native:codegentest:getIntegrationRuntimeObjectMetadatum": {
       "description": "A list of SSIS object metadata.\nAPI Version: 2018-06-01.",
@@ -108,9 +110,7 @@
         }
       },
       "type": "object",
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "azure-native:codegentest:SsisFolderResponse": {
       "description": "Ssis folder.",
@@ -134,9 +134,7 @@
         }
       },
       "type": "object",
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "azure-native:codegentest:SsisPackageResponse": {
       "description": "Ssis Package.",
@@ -180,9 +178,7 @@
         }
       },
       "type": "object",
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "azure-native:codegentest:SsisProjectResponse": {
       "description": "Ssis project.",
@@ -230,9 +226,7 @@
         }
       },
       "type": "object",
-      "required": [
-        "type"
-      ]
+      "required": ["type"]
     },
     "azure-native:codegentest:SsisEnvironmentReferenceResponse": {
       "description": "Ssis environment reference.",
