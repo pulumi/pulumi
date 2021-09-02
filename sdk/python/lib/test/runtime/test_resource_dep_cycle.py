@@ -42,6 +42,28 @@ class MockComponentResource(pulumi.ComponentResource):
         self.register_outputs({'output1': self.output1})
 
 
+@pytest.mark.timeout(1)
+@pulumi.runtime.test
+def test_pulumi_does_not_hang_on_dependency_cycle_with_components(my_mocks):
+    c = MockComponentWithSubResource(name='c')
+    r = MockResource(name='r', input1=c.output1, opts=pulumi.ResourceOptions(parent=c))
+    return pulumi.Output.all(c.urn, r.urn).apply(print)
+
+
+class MockComponentWithSubResource(pulumi.ComponentResource):
+    output1: pulumi.Output[str]
+
+    def __init__(self, name: str, opts: Optional[pulumi.ResourceOptions] = None):
+        super().__init__("python:test_resource_dep_cycle:MockComponentWithSubResource", name,
+                         props=None, opts=opts, remote=True)
+
+        c = MockResource(name=f'{name}-c', input1='foo',
+                         opts=pulumi.ResourceOptions(depends_on=[self]))
+
+        self.output1 = c.urn
+        self.register_outputs({'output1': self.output1})
+
+
 @pytest.fixture
 def my_mocks():
     old_settings = settings.SETTINGS
