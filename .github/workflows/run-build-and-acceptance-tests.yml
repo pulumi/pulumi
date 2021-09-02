@@ -75,7 +75,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "${{ runner.temp }}/go/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
         with:
@@ -146,7 +146,6 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
           echo "${{ runner.temp }}/go/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
@@ -181,7 +180,6 @@ jobs:
           make dist
         env:
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
           GOPATH: ${{ runner.temp }}/go
       - name: Install
         run: |
@@ -192,14 +190,12 @@ jobs:
         env:
           GOPATH: ${{ runner.temp }}/go
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
         run: |
           make TEST_ALL_DEPS= test_all
         env:
           GOPATH: ${{ runner.temp }}/go
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
-          PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Summarize Test Time by Package
         run: |
           mkdir -p test-results

@@ -27,12 +27,11 @@ RUN groupadd --gid $USER_GID $USER_NAME \
 
 RUN mkdir -p /go/bin \
     && chown -R $USER_NAME: /go \
-    && mkdir -p /opt/pulumi/bin \
     && chown -R $USER_NAME: /opt/pulumi
 
 USER $USER_NAME
 
-RUN echo "export PATH=/opt/pulumi:/opt/pulumi/bin:$GOPATH/bin:/usr/local/go/bin:$PATH" >> ~/.bashrc \
+RUN echo "export PATH=/opt/pulumi:$GOPATH/bin:/usr/local/go/bin:$PATH" >> ~/.bashrc \
     && echo "unset XDG_CACHE_HOME XDG_CONFIG_HOME" >> ~/.bashrc \
     && echo "alias l='ls -aF'" >> ~/.bash_aliases \
     && echo "alias ll='ls -ahlF'" >> ~/.bash_aliases \

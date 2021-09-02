@@ -1,7 +1,7 @@
 FROM gitpod/workspace-full
 USER gitpod
 
-ENV PATH="/opt/pulumi:/opt/pulumi/bin:$PATH"
+ENV PATH="/opt/pulumi:$PATH"
 
 # Install .NET Core 3.1 SDK binaries on Ubuntu 20.04
 # Source: https://dev.to/carlos487/installing-dotnet-core-in-ubuntu-20-04-6jh

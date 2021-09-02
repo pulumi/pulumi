@@ -171,7 +171,7 @@ jobs:
           git fetch --quiet --prune --unshallow --tags
       - name: Update path
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "${{ runner.temp }}/go/bin" >> $GITHUB_PATH
       - name: Set Go Dep path
         run: |
           echo "PULUMI_GO_DEP_ROOT=$(dirname $(pwd))" >> $GITHUB_ENV
@@ -264,7 +264,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "${{ runner.temp }}/go/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
@@ -332,7 +332,7 @@ jobs:
           git config --global user.name "Your Name"
       - name: Update path
         run: |
-          echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "${{ runner.temp }}/go/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
       - name: Fetch Tags
