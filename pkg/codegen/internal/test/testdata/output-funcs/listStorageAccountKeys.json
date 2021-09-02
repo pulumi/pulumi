@@ -1,4 +1,6 @@
 {
+  "name": "listStorageAccountKeys",
+  "version": "0.0.1",
   "functions": {
     "azure-native:codegentest:listStorageAccountKeys": {
       "description": "The response from the ListKeys operation.\nAPI Version: 2021-02-01.",
