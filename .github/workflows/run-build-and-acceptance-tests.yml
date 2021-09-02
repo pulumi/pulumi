@@ -174,7 +174,7 @@ jobs:
       - name: Ensure
         run: |
           make ensure
-        env: |
+        env:
           GOPATH: ${{ runner.temp }}/go
       - name: Dist
         run: |
