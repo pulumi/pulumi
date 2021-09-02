@@ -147,6 +147,7 @@ jobs:
       - name: Update path
         run: |
           echo "${{ runner.temp }}/opt/pulumi/bin" >> $GITHUB_PATH
+          echo "${{ runner.temp }}/go/bin" >> $GITHUB_PATH
       - name: Checkout Repo
         uses: actions/checkout@v2
         with:
@@ -173,24 +174,30 @@ jobs:
       - name: Ensure
         run: |
           make ensure
+        env: |
+          GOPATH: ${{ runner.temp }}/go
       - name: Dist
         run: |
           make dist
         env:
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
+          GOPATH: ${{ runner.temp }}/go
       - name: Install
         run: |
           make install_all
+          echo $PATH
           which pulumi
           pulumi version
         env:
+          GOPATH: ${{ runner.temp }}/go
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Test
         run: |
           make TEST_ALL_DEPS= test_all
         env:
+          GOPATH: ${{ runner.temp }}/go
           PULUMI_LOCAL_NUGET: ${{ runner.temp }}/opt/pulumi/nuget
           PULUMI_ROOT: ${{ runner.temp }}/opt/pulumi
       - name: Summarize Test Time by Package
@@ -201,7 +208,6 @@ jobs:
       - name: Summarize Test Times by Indivudal Test
         run: |
           goteststats -statistic test-time test-results/*.json | head -n 100
-
 
   windows-build:
     name: Windows Build + Test
