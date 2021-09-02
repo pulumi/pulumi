@@ -22,3 +22,6 @@
 
 - [automation/go] Fix loading of stack settings/configs from yaml files.
   [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
+  
+- [codegen/schema] - Correct validation for Package
+  [#7896](https://github.com/pulumi/pulumi/pull/7896)
