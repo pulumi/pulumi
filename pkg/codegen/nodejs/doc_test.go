@@ -27,6 +27,7 @@ import (
 
 var testPackageSpec = schema.PackageSpec{
 	Name:        "aws",
+	Version:     "0.0.1",
 	Description: "A fake provider package used for testing.",
 	Meta: &schema.MetadataSpec{
 		ModuleFormat: "(.*)(?:/[^/]*)",
