@@ -7,7 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-import pulumi_py_tests
+import pulumi_listStorageAccountKeys
 
 __all__ = [
     'ListStorageAccountKeysResult',
@@ -28,7 +28,7 @@ class ListStorageAccountKeysResult:
 
     @property
     @pulumi.getter
-    def keys(self) -> Sequence['pulumi_py_tests.codegentest.outputs.StorageAccountKeyResponse']:
+    def keys(self) -> Sequence['pulumi_listStorageAccountKeys.codegentest.outputs.StorageAccountKeyResponse']:
         """
         Gets the list of storage account keys and their properties for the specified storage account.
         """
