@@ -66,8 +66,6 @@ class ResourceInput(pulumi.CustomResource):
             __props__ = ResourceInputArgs.__new__(ResourceInputArgs)
 
             __props__.__dict__["bar"] = None
-        secret_opts = pulumi.ResourceOptions(additional_secret_outputs=["bar"])
-        opts = pulumi.ResourceOptions.merge(opts, secret_opts)
         super(ResourceInput, __self__).__init__(
             'example::ResourceInput',
             resource_name,

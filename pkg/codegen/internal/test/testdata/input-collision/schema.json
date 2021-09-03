@@ -23,16 +23,14 @@
     "example::Resource": {
       "properties": {
         "bar": {
-          "type": "string",
-          "secret": true
+          "type": "string"
         }
       }
     },
     "example::ResourceInput": {
       "properties": {
         "bar": {
-          "type": "string",
-          "secret": true
+          "type": "string"
         }
       }
     }

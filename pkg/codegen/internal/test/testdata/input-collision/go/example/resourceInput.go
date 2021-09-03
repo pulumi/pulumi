@@ -23,13 +23,6 @@ func NewResourceInputResource(ctx *pulumi.Context,
 		args = &ResourceInputResourceArgs{}
 	}
 
-	if args.Bar != nil {
-		args.Bar = pulumi.ToSecret(args.Bar).(pulumi.StringPtrOutput)
-	}
-	secrets := pulumi.AdditionalSecretOutputs([]string{
-		"bar",
-	})
-	opts = append(opts, secrets)
 	var resource ResourceInputResource
 	err := ctx.RegisterResource("example::ResourceInput", name, args, &resource, opts...)
 	if err != nil {

@@ -23,7 +23,7 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 	case "example::Resource":
 		r = &Resource{}
 	case "example::ResourceInput":
-		r = &ResourceInput{}
+		r = &ResourceInputResource{}
 	default:
 		return nil, fmt.Errorf("unknown resource type: %s", typ)
 	}

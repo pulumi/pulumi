@@ -51,8 +51,6 @@ export class ResourceInput extends pulumi.CustomResource {
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        const secretOpts = { additionalSecretOutputs: ["bar"] };
-        opts = pulumi.mergeOptions(opts, secretOpts);
         super(ResourceInput.__pulumiType, name, inputs, opts);
     }
 }
