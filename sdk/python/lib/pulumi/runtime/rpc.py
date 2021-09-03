@@ -40,19 +40,40 @@ UNKNOWN = "04da6b54-80e4-46f7-96ec-b56ff0331ba9"
 """If a value is None, we serialize as UNKNOWN, which tells the engine that it may be computed later."""
 
 _special_sig_key = "4dabf18193072939515e22adb298388d"
-"""_special_sig_key is sometimes used to encode type identity inside of a map. See pkg/resource/properties.go."""
+"""
+_special_sig_key is sometimes used to encode type identity inside of a map.
+See sdk/go/common/resource/properties.go.
+"""
 
 _special_asset_sig = "c44067f5952c0a294b673a41bacd8c17"
-"""special_asset_sig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go."""
+"""
+special_asset_sig is a randomly assigned hash used to identify assets in maps.
+See sdk/go/common/resource/asset.go.
+"""
 
 _special_archive_sig = "0def7320c3a5731c473e5ecbe6d01bc7"
-"""special_archive_sig is a randomly assigned hash used to identify assets in maps. See pkg/resource/asset.go."""
+"""
+special_archive_sig is a randomly assigned hash used to identify assets in maps.
+See sdk/go/common/resource/asset.go.
+"""
 
 _special_secret_sig = "1b47061264138c4ac30d75fd1eb44270"
-"""special_secret_sig is a randomly assigned hash used to identify secrets in maps. See pkg/resource/properties.go"""
+"""
+special_secret_sig is a randomly assigned hash used to identify secrets in maps.
+See sdk/go/common/resource/properties.go.
+"""
 
 _special_resource_sig = "5cf8f73096256a8f31e491e813e4eb8e"
-"""special_resource_sig is a randomly assigned hash used to identify resources in maps. See pkg/resource/properties.go"""
+"""
+special_resource_sig is a randomly assigned hash used to identify resources in maps.
+See sdk/go/common/resource/properties.go.
+"""
+
+_special_output_value_sig = "d0e6a833031e9bbcd3f4e8bde6ca49a4"
+"""
+_special_output_value_sig is a randomly assigned hash used to identify outputs in maps.
+See sdk/go/common/resource/properties.go.
+"""
 
 _INT_OR_FLOAT = six.integer_types + (float,)
 
@@ -88,7 +109,8 @@ def _get_list_element_type(typ: Optional[type]) -> Optional[type]:
 async def serialize_properties(inputs: 'Inputs',
                                property_deps: Dict[str, List['Resource']],
                                input_transformer: Optional[Callable[[str], str]] = None,
-                               typ: Optional[type] = None) -> struct_pb2.Struct:
+                               typ: Optional[type] = None,
+                               keep_output_values: Optional[bool] = None) -> struct_pb2.Struct:
     """
     Serializes an arbitrary Input bag into a Protobuf structure, keeping track of the list
     of dependent resources in the `deps` list. Serializing properties is inherently async
@@ -124,7 +146,7 @@ async def serialize_properties(inputs: 'Inputs',
     for k in inputs:
         v = inputs[k]
         deps: List['Resource'] = []
-        result = await serialize_property(v, deps, input_transformer, get_type(k))
+        result = await serialize_property(v, deps, input_transformer, get_type(k), keep_output_values)
         # We treat properties that serialize to None as if they don't exist.
         if result is not None:
             # While serializing to a pb struct, we must "translate" all key names to be what the
@@ -145,13 +167,16 @@ async def serialize_properties(inputs: 'Inputs',
 async def serialize_property(value: 'Input[Any]',
                              deps: List['Resource'],
                              input_transformer: Optional[Callable[[str], str]] = None,
-                             typ: Optional[type] = None) -> Any:
+                             typ: Optional[type] = None,
+                             keep_output_values: Optional[bool] = None) -> Any:
     """
     Serializes a single Input into a form suitable for remoting to the engine, awaiting
     any futures required to do so.
 
     When `typ` is specified, the metadata from the type is used to translate Python snake_case
     names to Pulumi camelCase names, rather than using the `input_transformer`.
+
+    If `keep_output_values` is true and the monitor supports output values, they will be kept.
     """
 
     # Set typ to T if it's Optional[T], Input[T], or InputType[T].
@@ -168,7 +193,7 @@ async def serialize_property(value: 'Input[Any]',
         element_type = _get_list_element_type(typ)
         props = []
         for elem in value:
-            props.append(await serialize_property(elem, deps, input_transformer, element_type))
+            props.append(await serialize_property(elem, deps, input_transformer, element_type, keep_output_values))
 
         return props
 
@@ -185,14 +210,15 @@ async def serialize_property(value: 'Input[Any]',
         if await settings.monitor_supports_resource_references():
             res = {
                 _special_sig_key: _special_resource_sig,
-                "urn": await serialize_property(resource.urn, deps, input_transformer)
+                "urn": await serialize_property(resource.urn, deps, input_transformer, keep_output_values=False)
             }
             if is_custom:
-                res["id"] = await serialize_property(resource_id, deps, input_transformer)
+                res["id"] = await serialize_property(resource_id, deps, input_transformer, keep_output_values=False)
             return res
 
         # Otherwise, serialize the resource as either its ID (for custom resources) or its URN (for component resources)
-        return await serialize_property(resource_id if is_custom else resource.urn, deps, input_transformer)
+        return await serialize_property(resource_id if is_custom else resource.urn, deps, input_transformer,
+            keep_output_values=False)
 
     if known_types.is_asset(value):
         # Serializing an asset requires the use of a magical signature key, since otherwise it would
@@ -204,13 +230,13 @@ async def serialize_property(value: 'Input[Any]',
 
         if hasattr(value, "path"):
             file_asset = cast('FileAsset', value)
-            obj["path"] = await serialize_property(file_asset.path, deps, input_transformer)
+            obj["path"] = await serialize_property(file_asset.path, deps, input_transformer, keep_output_values=False)
         elif hasattr(value, "text"):
             str_asset = cast('StringAsset', value)
-            obj["text"] = await serialize_property(str_asset.text, deps, input_transformer)
+            obj["text"] = await serialize_property(str_asset.text, deps, input_transformer, keep_output_values=False)
         elif hasattr(value, "uri"):
             remote_asset = cast('RemoteAsset', value)
-            obj["uri"] = await serialize_property(remote_asset.uri, deps, input_transformer)
+            obj["uri"] = await serialize_property(remote_asset.uri, deps, input_transformer, keep_output_values=False)
         else:
             raise AssertionError(f"unknown asset type: {value!r}")
 
@@ -226,13 +252,14 @@ async def serialize_property(value: 'Input[Any]',
 
         if hasattr(value, "assets"):
             asset_archive = cast('AssetArchive', value)
-            obj["assets"] = await serialize_property(asset_archive.assets, deps, input_transformer)
+            obj["assets"] = await serialize_property(asset_archive.assets, deps, input_transformer,
+                keep_output_values=False)
         elif hasattr(value, "path"):
             file_archive = cast('FileArchive', value)
-            obj["path"] = await serialize_property(file_archive.path, deps, input_transformer)
+            obj["path"] = await serialize_property(file_archive.path, deps, input_transformer, keep_output_values=False)
         elif hasattr(value, "uri"):
             remote_archive = cast('RemoteArchive', value)
-            obj["uri"] = await serialize_property(remote_archive.uri, deps, input_transformer)
+            obj["uri"] = await serialize_property(remote_archive.uri, deps, input_transformer, keep_output_values=False)
         else:
             raise AssertionError(f"unknown archive type: {value!r}")
 
@@ -247,7 +274,7 @@ async def serialize_property(value: 'Input[Any]',
         # serializing.
         awaitable = cast('Any', value)
         future_return = await asyncio.ensure_future(awaitable)
-        return await serialize_property(future_return, deps, input_transformer, typ)
+        return await serialize_property(future_return, deps, input_transformer, typ, keep_output_values)
 
     if known_types.is_output(value):
         output = cast('Output', value)
@@ -260,7 +287,28 @@ async def serialize_property(value: 'Input[Any]',
         # resolved with known values.
         is_known = await output._is_known
         is_secret = await output._is_secret
-        value = await serialize_property(output.future(), deps, input_transformer, typ)
+        value = await serialize_property(output.future(), deps, input_transformer, typ, keep_output_values=False)
+
+        if keep_output_values and await settings.monitor_supports_output_values():
+            # TODO expand the dependencies
+            dependencies: Set[str] = set()
+            for resource in value_resources:
+                urn = await serialize_property(resource.urn, deps, input_transformer, keep_output_values=False)
+                dependencies.add(cast(str, urn))
+
+            output_value: Dict[str, Any] = {
+                _special_sig_key: _special_output_value_sig
+            }
+
+            if is_known:
+                output_value["value"] = value
+            if is_secret:
+                output_value["secret"] = is_secret
+            if dependencies:
+                output_value["dependencies"] = sorted(dependencies)
+
+            return output_value
+
         if not is_known:
             return UNKNOWN
         if is_secret and await settings.monitor_supports_secrets():

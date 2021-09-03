@@ -262,6 +262,10 @@ async def monitor_supports_resource_references() -> bool:
     return await monitor_supports_feature("resourceReferences")
 
 
+async def monitor_supports_output_values() -> bool:
+    return await monitor_supports_feature("outputValues")
+
+
 def reset_options(project: Optional[str] = None,
                   stack: Optional[str] = None,
                   parallel: Optional[int] = None,
