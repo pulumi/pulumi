@@ -209,7 +209,17 @@ func tokenToName(tok string) string {
 	return Title(components[2])
 }
 
-func resourceName(r *schema.Resource) string {
+// disambiguatedResourceName gets the name of a resource as it should appear in source, resolving conflicts in the process.
+func disambiguatedResourceName(r *schema.Resource, pkg *pkgContext) string {
+	name := rawResourceName(r)
+	if renamed, ok := pkg.renamed[name]; ok {
+		name = renamed
+	}
+	return name
+}
+
+// rawResourceName produces raw resource name translated from schema type token without resolving conflicts or dupes.
+func rawResourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
@@ -1292,10 +1302,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 }
 
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) error {
-	name := resourceName(r)
-	if renamed, ok := pkg.renamed[name]; ok {
-		name = renamed
-	}
+	name := disambiguatedResourceName(r, pkg)
 
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
@@ -2290,7 +2297,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 			registrations.Add(tokenToModule(r.Token))
 			fmt.Fprintf(w, "\tcase %q:\n", r.Token)
-			fmt.Fprintf(w, "\t\tr = &%s{}\n", resourceName(r))
+			fmt.Fprintf(w, "\t\tr = &%s{}\n", disambiguatedResourceName(r, pkg))
 		}
 		fmt.Fprintf(w, "\tdefault:\n")
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown resource type: %%s\", typ)\n")
@@ -2496,16 +2503,16 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 		getNames := func(suffix string) []string {
 			names := []string{}
-			names = append(names, resourceName(r)+suffix)
-			names = append(names, resourceName(r)+suffix+"Input")
-			names = append(names, resourceName(r)+suffix+"Output")
-			names = append(names, resourceName(r)+suffix+"Args")
-			names = append(names, camel(resourceName(r))+suffix+"Args")
-			names = append(names, "New"+resourceName(r)+suffix)
+			names = append(names, rawResourceName(r)+suffix)
+			names = append(names, rawResourceName(r)+suffix+"Input")
+			names = append(names, rawResourceName(r)+suffix+"Output")
+			names = append(names, rawResourceName(r)+suffix+"Args")
+			names = append(names, camel(rawResourceName(r))+suffix+"Args")
+			names = append(names, "New"+rawResourceName(r)+suffix)
 			if !r.IsProvider && !r.IsComponent {
-				names = append(names, resourceName(r)+suffix+"State")
-				names = append(names, camel(resourceName(r))+suffix+"State")
-				names = append(names, "Get"+resourceName(r)+suffix)
+				names = append(names, rawResourceName(r)+suffix+"State")
+				names = append(names, camel(rawResourceName(r))+suffix+"State")
+				names = append(names, "Get"+rawResourceName(r)+suffix)
 			}
 			return names
 		}
@@ -2533,7 +2540,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 
 		if !canGenerate {
-			panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping resource: %s", resourceName(r)))
+			panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping resource: %s", rawResourceName(r)))
 		}
 
 		names := getNames(suffix)
@@ -2550,10 +2557,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 		for _, method := range r.Methods {
 			if method.Function.Inputs != nil {
-				pkg.names.Add(resourceName(r) + Title(method.Name) + "Args")
+				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Args")
 			}
 			if method.Function.Outputs != nil {
-				pkg.names.Add(resourceName(r) + Title(method.Name) + "Result")
+				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Result")
 			}
 		}
 	}
@@ -2815,7 +2822,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			setFile(path.Join(mod, camel(resourceName(r))+".go"), buffer.String())
+			setFile(path.Join(mod, camel(rawResourceName(r))+".go"), buffer.String())
 		}
 
 		// Functions
