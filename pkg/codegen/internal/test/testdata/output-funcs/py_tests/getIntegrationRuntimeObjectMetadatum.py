@@ -7,7 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-import pulumi_getIntegrationRuntimeObjectMetadatum
+import pulumi_py_tests
 
 __all__ = [
     'GetIntegrationRuntimeObjectMetadatumResult',

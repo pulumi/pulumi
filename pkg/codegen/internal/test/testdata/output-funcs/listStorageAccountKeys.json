@@ -1,5 +1,5 @@
 {
-  "name": "listStorageAccountKeys",
+  "name": "py_tests",
   "version": "0.0.1",
   "functions": {
     "azure-native:codegentest:listStorageAccountKeys": {

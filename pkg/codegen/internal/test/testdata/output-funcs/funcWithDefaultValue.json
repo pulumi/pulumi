@@ -1,5 +1,5 @@
 {
-  "name": "funcWithDefaultValue",
+  "name": "py_tests",
   "version": "0.0.1",
   "functions": {
     "madeup-package:codegentest:funcWithDefaultValue": {
