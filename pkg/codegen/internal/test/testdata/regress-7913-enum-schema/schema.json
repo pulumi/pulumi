@@ -1,0 +1,48 @@
+{
+  "version": "0.0.1",
+  "name": "regress-7913",
+  "resources": {},
+  "types": {
+    "google-native:gameservices/v1:CloudAuditOptionsLogName": {
+      "description": "The log_name to populate in the Cloud Audit Record.",
+      "type": "string",
+      "enum": [
+        {
+          "name": "UnspecifiedLogName",
+          "description": "Default. Should not be used.",
+          "value": "UNSPECIFIED_LOG_NAME"
+        },
+        {
+          "name": "AdminActivity",
+          "description": "Corresponds to \"cloudaudit.googleapis.com/activity\"",
+          "value": "ADMIN_ACTIVITY"
+        },
+        {
+          "name": "DataAccess",
+          "description": "Corresponds to \"cloudaudit.googleapis.com/data_access\"",
+          "value": "DATA_ACCESS"
+        }
+      ]
+    }
+  },
+  "language": {
+    "csharp": {
+      "namespaces": {
+        "plant": "Plant",
+        "tree/v1": "Tree.V1"
+      }
+    },
+    "go": {
+      "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant",
+      "packageImportAliases": {
+        "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1": "treev1"
+      }
+    },
+    "nodejs": {},
+    "python": {
+      "moduleNameOverrides": {
+        "tree/v1": "tree/v1"
+      }
+    }
+  }
+}
