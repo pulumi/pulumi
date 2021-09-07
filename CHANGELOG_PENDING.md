@@ -15,6 +15,9 @@
 
 - [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
   [#7865](https://github.com/pulumi/pulumi/pull/7865)
+  
+- [cli/diffs] - Add color to indicate if a action is in progress. 
+  [#7918](https://github.com/pulumi/pulumi/pull/7918)
 
 ### Bug Fixes
 
