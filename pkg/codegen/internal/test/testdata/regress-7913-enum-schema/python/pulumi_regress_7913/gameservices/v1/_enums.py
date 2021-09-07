@@ -14,8 +14,14 @@ class CloudAuditOptionsLogName(str, Enum):
     The log_name to populate in the Cloud Audit Record.
     """
     UNSPECIFIED_LOG_NAME = "UNSPECIFIED_LOG_NAME"
-    """Default. Should not be used."""
+    """
+    Default. Should not be used.
+    """
     ADMIN_ACTIVITY = "ADMIN_ACTIVITY"
-    """Corresponds to "cloudaudit.googleapis.com/activity""""
+    """
+    Corresponds to "cloudaudit.googleapis.com/activity"
+    """
     DATA_ACCESS = "DATA_ACCESS"
-    """Corresponds to "cloudaudit.googleapis.com/data_access""""
+    """
+    Corresponds to "cloudaudit.googleapis.com/data_access"
+    """
