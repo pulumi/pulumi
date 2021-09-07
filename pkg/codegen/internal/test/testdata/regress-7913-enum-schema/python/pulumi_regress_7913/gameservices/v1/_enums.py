@@ -25,3 +25,7 @@ class CloudAuditOptionsLogName(str, Enum):
     """
     Corresponds to "cloudaudit.googleapis.com/data_access"
     """
+    SYNTHETIC = "SYNTHETIC"
+    """
+    What if triple quotes \"\"\" are used in the description
+    """
