@@ -116,6 +116,20 @@ func writeDirective(w io.StringWriter, c Colorization, directive string) {
 		writeCodes(w, "38", "5", "13")
 	case BrightCyan: // command("fg 14")
 		writeCodes(w, "38", "5", "14")
+	case DarkGreen: // command("fg 15")
+		writeCodes(w, "38", "5", "70")
+	case DarkerGreen: // command("fg 16")
+		writeCodes(w, "38", "5", "64")
+	case DarkRed: // command("fg 17")
+		writeCodes(w, "38", "5", "124")
+	case DarkerRed: // command("fg 18")
+		writeCodes(w, "38", "5", "88")
+	case DarkYellow: // command("fg 19")
+		writeCodes(w, "38", "5", "220")
+	case DarkMagenta: // command("fg 20")
+		writeCodes(w, "38", "5", "126")
+	case DarkCyan: // command("fg 21")
+		writeCodes(w, "35", "5", "75")
 	case RedBackground: // command("bg 1")
 		writeCodes(w, "48", "5", "1")
 	case GreenBackground: // command("bg 2")
@@ -126,6 +140,8 @@ func writeDirective(w io.StringWriter, c Colorization, directive string) {
 		writeCodes(w, "48", "5", "4")
 	case Black: // command("fg 0") // Only use with background colors.
 		writeCodes(w, "38", "5", "0")
+	default:
+		contract.Failf("Unrecognized color code: %q", directive)
 	}
 }
 
@@ -210,6 +226,14 @@ var (
 	BrightMagenta = command("fg 13")
 	BrightCyan    = command("fg 14")
 
+	DarkGreen   = command("fg 15")
+	DarkerGreen = command("fg 16")
+	DarkRed     = command("fg 17")
+	DarkerRed   = command("fg 18")
+	DarkYellow  = command("fg 19")
+	DarkMagenta = command("fg 20")
+	DarkCyan    = command("fg 21")
+
 	RedBackground    = command("bg 1")
 	GreenBackground  = command("bg 2")
 	YellowBackground = command("bg 3")
@@ -246,11 +270,18 @@ var (
 	// for simple notes.  Just use the standard terminal text color.
 	SpecNote = Reset
 
-	SpecCreate            = Green         // for adds (in the diff sense).
-	SpecUpdate            = Yellow        // for changes (in the diff sense).
-	SpecReplace           = BrightMagenta // for replacements (in the diff sense).
-	SpecDelete            = Red           // for deletes (in the diff sense).
-	SpecCreateReplacement = BrightGreen   // for replacement creates (in the diff sense).
-	SpecDeleteReplaced    = BrightRed     // for replacement deletes (in the diff sense).
-	SpecRead              = BrightCyan    // for reads
+	SpecCreate                    = Green         // for adds (in the diff sense).
+	SpecCreateProgress            = DarkerGreen   // for adds in progress (in the diff sense).
+	SpecUpdate                    = Yellow        // for changes (in the diff sense).
+	SpecUpdateProgress            = DarkYellow    // for changes in progress (in the diff sense).
+	SpecReplace                   = BrightMagenta // for replacements (in the diff sense).
+	SpecReplaceProgress           = DarkMagenta   // for replacements in progress (in the diff sense).
+	SpecDelete                    = Red           // for deletes (in the diff sense).
+	SpecDeleteProgress            = DarkerRed     // for deletes in progress (in the diff sense).
+	SpecCreateReplacement         = BrightGreen   // for replacement creates (in the diff sense).
+	SpecCreateReplacementProgress = DarkGreen     // for replacement creates (in the diff sense).
+	SpecDeleteReplaced            = BrightRed     // for replacement deletes (in the diff sense).
+	SpecDeleteReplacedProgress    = DarkRed       // for replacement deletes (in the diff sense).
+	SpecRead                      = BrightCyan    // for reads
+	SpecReadProgress              = DarkCyan      // for reads in progress
 )

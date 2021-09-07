@@ -1086,9 +1086,47 @@ func (op StepOp) Color() string {
 	}
 }
 
+// ColorProgress returns a suggested color for lines of this of type which are
+// progressing. It defaults to Color.
+func (op StepOp) ColorProgress() string {
+	switch op {
+	case OpSame:
+		return colors.SpecUnimportant
+	case OpCreate, OpImport:
+		return colors.SpecCreateProgress
+	case OpDelete:
+		return colors.SpecDeleteProgress
+	case OpUpdate:
+		return colors.SpecUpdateProgress
+	case OpReplace:
+		return colors.SpecReplaceProgress
+	case OpCreateReplacement:
+		return colors.SpecCreateReplacementProgress
+	case OpDeleteReplaced:
+		return colors.SpecDeleteReplacedProgress
+	case OpRead:
+		return colors.SpecReadProgress
+	case OpReadReplacement, OpImportReplacement:
+		return colors.SpecReplaceProgress
+	case OpRefresh:
+		return colors.SpecUpdateProgress
+	case OpReadDiscard, OpDiscardReplaced:
+		return colors.SpecDeleteProgress
+	default:
+		contract.Failf("Unrecognized resource step op: '%v'", op)
+		return ""
+	}
+}
+
 // Prefix returns a suggested prefix for lines of this op type.
-func (op StepOp) Prefix() string {
-	return op.Color() + op.RawPrefix()
+func (op StepOp) Prefix(done bool) string {
+	var color string
+	if done {
+		color = op.Color()
+	} else {
+		color = op.ColorProgress()
+	}
+	return color + op.RawPrefix()
 }
 
 // RawPrefix returns the uncolorized prefix text.
