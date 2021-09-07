@@ -23,5 +23,7 @@
   parent while also depending on it indirectly via properties
   [#7887](https://github.com/pulumi/pulumi/pull/7887)
 
+- [sdk/python] Fix a regression in Python dynamic providers introduced in #7755.
+
 - [automation/go] Fix loading of stack settings/configs from yaml files.
   [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
