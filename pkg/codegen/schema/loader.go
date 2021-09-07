@@ -1,7 +1,12 @@
 package schema
 
 import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"os"
 	"sync"
+	"time"
 
 	"github.com/blang/semver"
 	jsoniter "github.com/json-iterator/go"
@@ -38,7 +43,7 @@ func (l *pluginLoader) getPackage(key string) (*Package, bool) {
 }
 
 // ensurePlugin downloads and installs the specified plugin if it does not already exist.
-func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
+func ensurePlugin(pkg string, version *semver.Version) error {
 	// TODO: schema and provider versions
 	// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
 	// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
@@ -51,12 +56,66 @@ func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 		Name:    pkg,
 		Version: version,
 	}
+
+	tryDownload := func(dst io.WriteCloser) error {
+		defer dst.Close()
+		tarball, expectedByteCount, err := pkgPlugin.Download()
+		if err != nil {
+			return err
+		}
+		defer tarball.Close()
+		copiedByteCount, err := io.Copy(dst, tarball)
+		if err != nil {
+			return err
+		}
+		if copiedByteCount != expectedByteCount {
+			return fmt.Errorf("Expected %d bytes but copied %d when downloading plugin %s",
+				expectedByteCount, copiedByteCount, pkgPlugin)
+		}
+		return nil
+	}
+
+	tryDownloadToFile := func() (string, error) {
+		file, err := ioutil.TempFile("" /* default temp dir */, "pulumi-plugin-tar")
+		if err != nil {
+			return "", err
+		}
+		err = tryDownload(file)
+		if err != nil {
+			err2 := os.Remove(file.Name())
+			if err2 != nil {
+				return "", fmt.Errorf("Error while removing tempfile: %v. Context: %w", err2, err)
+			}
+			return "", err
+		}
+		return file.Name(), nil
+	}
+
+	downloadToFileWithRetry := func() (string, error) {
+		for attempt := 0; ; attempt++ {
+			tempFile, err := tryDownloadToFile()
+			if err == nil {
+				return tempFile, nil
+			}
+
+			if err != nil && attempt >= 5 {
+				return tempFile, err
+			}
+			time.Sleep(100 * time.Microsecond)
+		}
+	}
+
 	if !workspace.HasPlugin(pkgPlugin) {
-		tarball, _, err := pkgPlugin.Download()
+		tarball, err := downloadToFileWithRetry()
 		if err != nil {
 			return errors.Wrapf(err, "failed to download plugin: %s", pkgPlugin)
 		}
-		if err := pkgPlugin.Install(tarball); err != nil {
+		defer os.Remove(tarball)
+		reader, err := os.Open(tarball)
+		if err != nil {
+			return errors.Wrapf(err, "failed to open downloaded plugin: %s", pkgPlugin)
+		}
+		if err := pkgPlugin.Install(reader); err != nil {
 			return errors.Wrapf(err, "failed to install plugin %s", pkgPlugin)
 		}
 	}
@@ -74,7 +133,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return p, nil
 	}
 
-	if err := l.ensurePlugin(pkg, version); err != nil {
+	if err := ensurePlugin(pkg, version); err != nil {
 		return nil, err
 	}
 
