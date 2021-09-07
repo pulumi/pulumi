@@ -66,5 +66,6 @@ func (o SandwichOutput) Veggies() pulumi.StringArrayOutput {
 }
 
 func init() {
+	pulumi.RegisterInputType(reflect.TypeOf((*SandwichInput)(nil)).Elem(), SandwichArgs{})
 	pulumi.RegisterOutputType(SandwichOutput{})
 }
