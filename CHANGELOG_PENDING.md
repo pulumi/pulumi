@@ -5,12 +5,12 @@
 
 - [codegen/python] - Add helper function forms `$fn_output` that
   accept `Input`s, return an `Output`, and wrap the underlying `$fn`
-  call. This change addreses
+  call. This change addresses
   [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
   making it easier to compose functions/datasources with Pulumi
   resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
 
-- [cli/about] - Add comand for debug information
+- [cli/about] - Add command for debug information
   [#7817](https://github.com/pulumi/pulumi/pull/7817)
 
 - [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
