@@ -96,6 +96,10 @@ var sdkTests = []sdkTest{
 		Directory:   "provider-config-schema",
 		Description: "Simple provider config schema",
 	},
+	{
+		Directory:   "replace-on-change",
+		Description: "Simple use of replaceOnChange in schema",
+	},
 }
 
 // TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code generator.
