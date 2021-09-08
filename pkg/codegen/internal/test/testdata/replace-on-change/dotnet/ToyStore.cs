@@ -51,8 +51,7 @@ namespace Pulumi.Example
                 {
                     "stuff[*].associated.color",
                     "stuff[*].color",
-                    "wanted[*].associated.color",
-                    "wanted[*].color",
+                    "wanted[*]",
                 },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);

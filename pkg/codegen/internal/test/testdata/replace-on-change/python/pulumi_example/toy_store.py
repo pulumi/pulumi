@@ -72,7 +72,7 @@ class ToyStore(pulumi.CustomResource):
             __props__.__dict__["laser"] = None
             __props__.__dict__["stuff"] = None
             __props__.__dict__["wanted"] = None
-        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["stuff[*].associated.color", "stuff[*].color", "wanted[*].associated.color", "wanted[*].color"])
+        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["stuff[*].associated.color", "stuff[*].color", "wanted[*]"])
         opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)
         super(ToyStore, __self__).__init__(
             'example::ToyStore',
