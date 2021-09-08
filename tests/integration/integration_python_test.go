@@ -407,15 +407,6 @@ func TestDynamicPython(t *testing.T) {
 	})
 }
 
-func TestDynamicPythonNonMain(t *testing.T) {
-	integration.ProgramTest(t, &integration.ProgramTestOptions{
-		Dir: filepath.Join("dynamic", "python-non-main"),
-		Dependencies: []string{
-			filepath.Join("..", "..", "sdk", "python", "env", "src"),
-		},
-	})
-}
-
 // Tests custom resource type name of dynamic provider in Python.
 func TestCustomResourceTypeNameDynamicPython(t *testing.T) {
 	integration.ProgramTest(t, &integration.ProgramTestOptions{
