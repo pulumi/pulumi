@@ -35,6 +35,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -1317,6 +1319,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	var secretProps []*schema.Property
+
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type), p.Name)
@@ -1417,6 +1420,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
 	}
+
+	// Setup secrets
 	if len(secretProps) > 0 {
 		for _, p := range secretProps {
 			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
@@ -1429,6 +1434,22 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
+	}
+
+	// Setup replaceOnChange
+	replaceOnChangesProps, errList := r.ReplaceOnChanges()
+	for _, err := range errList {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
+	}
+	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+		func(x string) string { return x })
+	if len(replaceOnChangesProps) > 0 {
+		fmt.Fprint(w, "\treplaceOnChanges := pulumi.ReplaceOnChanges([]string{\n")
+		for _, p := range replaceOnChangesStrings {
+			fmt.Fprintf(w, "\t\t%q,\n", p)
+		}
+		fmt.Fprint(w, "\t})\n")
+		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 	}
 
 	// Finally make the call to registration.
