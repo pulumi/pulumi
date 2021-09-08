@@ -7,6 +7,51 @@ using Pulumi;
 
 namespace Pulumi.Plant
 {
+    /// <summary>
+    /// The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
+    /// </summary>
+    [EnumType]
+    public readonly struct CloudAuditOptionsLogName : IEquatable<CloudAuditOptionsLogName>
+    {
+        private readonly string _value;
+
+        private CloudAuditOptionsLogName(string value)
+        {
+            _value = value ?? throw new ArgumentNullException(nameof(value));
+        }
+
+        /// <summary>
+        /// Default. Should not be used.
+        /// </summary>
+        public static CloudAuditOptionsLogName UnspecifiedLogName { get; } = new CloudAuditOptionsLogName("UNSPECIFIED_LOG_NAME");
+        /// <summary>
+        /// Corresponds to "cloudaudit.googleapis.com/activity"
+        /// </summary>
+        public static CloudAuditOptionsLogName AdminActivity { get; } = new CloudAuditOptionsLogName("ADMIN_ACTIVITY");
+        /// <summary>
+        /// Corresponds to "cloudaudit.googleapis.com/data_access"
+        /// </summary>
+        public static CloudAuditOptionsLogName DataAccess { get; } = new CloudAuditOptionsLogName("DATA_ACCESS");
+        /// <summary>
+        /// What if triple quotes """ are used in the description
+        /// </summary>
+        public static CloudAuditOptionsLogName Synthetic { get; } = new CloudAuditOptionsLogName("SYNTHETIC");
+
+        public static bool operator ==(CloudAuditOptionsLogName left, CloudAuditOptionsLogName right) => left.Equals(right);
+        public static bool operator !=(CloudAuditOptionsLogName left, CloudAuditOptionsLogName right) => !left.Equals(right);
+
+        public static explicit operator string(CloudAuditOptionsLogName value) => value._value;
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override bool Equals(object? obj) => obj is CloudAuditOptionsLogName other && Equals(other);
+        public bool Equals(CloudAuditOptionsLogName other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+
+        [EditorBrowsable(EditorBrowsableState.Never)]
+        public override int GetHashCode() => _value?.GetHashCode() ?? 0;
+
+        public override string ToString() => _value;
+    }
+
     [EnumType]
     public readonly struct ContainerBrightness : IEquatable<ContainerBrightness>
     {

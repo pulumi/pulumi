@@ -14,8 +14,14 @@ class RubberTreeVariety(str, Enum):
     types of rubber trees
     """
     BURGUNDY = "Burgundy"
-    """A burgundy rubber tree."""
+    """
+    A burgundy rubber tree.
+    """
     RUBY = "Ruby"
-    """A ruby rubber tree."""
+    """
+    A ruby rubber tree.
+    """
     TINEKE = "Tineke"
-    """A tineke rubber tree."""
+    """
+    A tineke rubber tree.
+    """
