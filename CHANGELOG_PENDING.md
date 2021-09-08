@@ -30,3 +30,7 @@
 
 - [automation/go] Fix loading of stack settings/configs from yaml files.
   [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
+
+- [codegen/python] - Fix invalid Python docstring generation for enums
+  that contain doc comments with double quotes
+  [#7914](https://github.com/pulumi/pulumi/pull/7914)
