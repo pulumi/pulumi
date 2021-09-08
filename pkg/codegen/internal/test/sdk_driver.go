@@ -65,10 +65,6 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with enum types",
 	},
 	{
-		Directory:   "regress-7913-enum-schema",
-		Description: "Enum schema to regress the 7913 issue with quotes in docstrings",
-	},
-	{
 		Directory:   "simple-plain-schema",
 		Description: "Simple schema with plain properties",
 	},

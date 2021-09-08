@@ -8,6 +8,30 @@ export {
     tree,
 };
 
+export const CloudAuditOptionsLogName = {
+    /**
+     * Default. Should not be used.
+     */
+    UnspecifiedLogName: "UNSPECIFIED_LOG_NAME",
+    /**
+     * Corresponds to "cloudaudit.googleapis.com/activity"
+     */
+    AdminActivity: "ADMIN_ACTIVITY",
+    /**
+     * Corresponds to "cloudaudit.googleapis.com/data_access"
+     */
+    DataAccess: "DATA_ACCESS",
+    /**
+     * What if triple quotes """ are used in the description
+     */
+    Synthetic: "SYNTHETIC",
+} as const;
+
+/**
+ * The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913
+ */
+export type CloudAuditOptionsLogName = (typeof CloudAuditOptionsLogName)[keyof typeof CloudAuditOptionsLogName];
+
 export const ContainerBrightness = {
     ZeroPointOne: 0.1,
     One: 1,
