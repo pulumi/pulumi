@@ -21,7 +21,7 @@
           "items": {
             "$ref": "#/types/example::Toy"
           },
-          "replaceOnChange": true
+          "replaceOnChanges": true
         }
       }
     },
@@ -108,7 +108,7 @@
       "properties": {
         "owner": {
           "$ref": "#/resources/example::Dog",
-          "replaceOnChange": true
+          "replaceOnChanges": true
         }
       }
     }

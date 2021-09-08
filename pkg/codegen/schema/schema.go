@@ -403,7 +403,7 @@ type Resource struct {
 //
 // Resource A {
 // Properties: {
-// 	 Resource B {
+// 	 Object B {
 // 	   Object D: {
 // 	     ReplaceOnChanges: true
 // 	     }
