@@ -43,7 +43,7 @@ func (l *pluginLoader) getPackage(key string) (*Package, bool) {
 }
 
 // ensurePlugin downloads and installs the specified plugin if it does not already exist.
-func ensurePlugin(pkg string, version *semver.Version) error {
+func (l *pluginLoader) ensurePlugin(pkg string, version *semver.Version) error {
 	// TODO: schema and provider versions
 	// hack: Some of the hcl2 code isn't yet handling versions, so bail out if the version is nil to avoid failing
 	// 		 the download. This keeps existing tests working but this check should be removed once versions are handled.
@@ -92,6 +92,7 @@ func ensurePlugin(pkg string, version *semver.Version) error {
 	}
 
 	downloadToFileWithRetry := func() (string, error) {
+		delay := 80 * time.Millisecond
 		for attempt := 0; ; attempt++ {
 			tempFile, err := tryDownloadToFile()
 			if err == nil {
@@ -101,7 +102,8 @@ func ensurePlugin(pkg string, version *semver.Version) error {
 			if err != nil && attempt >= 5 {
 				return tempFile, err
 			}
-			time.Sleep(100 * time.Microsecond)
+			time.Sleep(delay)
+			delay = delay * 2
 		}
 	}
 
@@ -133,7 +135,7 @@ func (l *pluginLoader) LoadPackage(pkg string, version *semver.Version) (*Packag
 		return p, nil
 	}
 
-	if err := ensurePlugin(pkg, version); err != nil {
+	if err := l.ensurePlugin(pkg, version); err != nil {
 		return nil, err
 	}
 
