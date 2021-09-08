@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"reflect"
+	"sort"
 	"testing"
 
 	"github.com/blang/semver"
@@ -406,6 +407,85 @@ func TestMethods(t *testing.T) {
 					t.Error(err)
 				}
 				tt.validator(pkg)
+			}
+		})
+	}
+}
+
+// Tests that the method ReplaceOnChanges works as expected. Does not test
+// codegen.
+func TestReplaceOnChanges(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		filePath string
+		resource string
+		result   []string
+		errors   []string
+	}{
+		{
+			name:     "Simple case",
+			filePath: "replace-on-changes-1.json",
+			resource: "example::Dog",
+			result:   []string{"bone"},
+		},
+		{
+			name:     "No replaceOnChanges",
+			filePath: "replace-on-changes-2.json",
+			resource: "example::Dog",
+		},
+		{
+			name:     "Mutually Recursive",
+			filePath: "replace-on-changes-3.json",
+			resource: "example::Pets",
+			result: []string{
+				"cat.fish",
+				"dog.bone",
+				"dog.cat.fish",
+				"cat.dog.bone"},
+			errors: []string{
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"cat\"",
+				"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+		},
+		{
+			name:     "Singularly Recursive",
+			filePath: "replace-on-changes-4.json",
+			resource: "example::Pets",
+			result:   []string{"dog.bone"},
+			errors:   []string{"Failed to genereate full `ReplaceOnChanges`: Found recursive object \"dog\""},
+		},
+		{
+			name:     "Drill Correctly",
+			filePath: "replace-on-changes-5.json",
+			resource: "example::Pets",
+			result:   []string{"foes.*.color", "friends[*].color", "name", "toy.color"},
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			// We sort each result before comparison. We don't enforce that the
+			// results have the same order, just the same content.
+			sort.Strings(tt.result)
+			sort.Strings(tt.errors)
+			pkgSpec := readSchemaFile(
+				filepath.Join("schema", tt.filePath))
+			pkg, err := ImportSpec(pkgSpec, nil)
+			assert.NoError(t, err, "Import should be successful")
+			resource, found := pkg.GetResource(tt.resource)
+			assert.True(t, found, "The resource should exist")
+			replaceOnChanges, errListErrors := resource.ReplaceOnChanges()
+			errList := make([]string, len(errListErrors))
+			for i, e := range errListErrors {
+				errList[i] = e.Error()
+			}
+			actualResult := PropertyListJoinToString(replaceOnChanges,
+				func(x string) string { return x })
+			sort.Strings(actualResult)
+			if tt.result != nil || len(actualResult) > 0 {
+				assert.Equal(t, tt.result, actualResult,
+					"Get the correct result")
+			}
+			if tt.errors != nil || len(errList) > 0 {
+				assert.Equal(t, tt.errors, errList,
+					"Get correct error messages")
 			}
 		})
 	}

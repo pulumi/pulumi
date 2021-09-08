@@ -118,6 +118,7 @@ func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool
 	ok := true
 	for name, file := range expected {
 		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
+			t.Logf("%s did not agree", name)
 			ok = false
 		}
 	}

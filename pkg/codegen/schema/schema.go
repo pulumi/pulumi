@@ -349,6 +349,8 @@ type Property struct {
 	Language map[string]interface{}
 	// Secret is true if the property is secret (default false).
 	Secret bool
+	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
+	ReplaceOnChanges bool
 }
 
 // IsRequired returns true if this property is required (i.e. its type is not Optional).
@@ -393,6 +395,110 @@ type Resource struct {
 	IsComponent bool
 	// Methods is the list of methods for the resource.
 	Methods []*Method
+}
+
+// The set of resource paths where ReplaceOnChanges is true.
+//
+// For example, if you have the following resource struct:
+//
+// Resource A {
+// Properties: {
+// 	 Resource B {
+// 	   Object D: {
+// 	     ReplaceOnChanges: true
+// 	     }
+// 	   Object F: {}
+//     }
+// 	 Object C {
+// 	   ReplaceOnChanges: true
+// 	   }
+//   }
+// }
+//
+// A.ReplaceOnChanges() == [[B, D], [C]]
+func (r *Resource) ReplaceOnChanges() (changes [][]*Property, err []error) {
+	for _, p := range r.Properties {
+		if p.ReplaceOnChanges {
+			changes = append(changes, []*Property{p})
+		} else {
+			stack := map[string]struct{}{p.Type.String(): {}}
+			childChanges, errList := replaceOnChangesType(p.Type, &stack)
+			err = append(err, errList...)
+
+			for _, c := range childChanges {
+				changes = append(changes, append([]*Property{p}, c...))
+			}
+		}
+	}
+	for i, e := range err {
+		err[i] = errors.Wrapf(e, "Failed to genereate full `ReplaceOnChanges`")
+	}
+	return changes, err
+}
+
+func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []error) {
+	var errTmp []error
+	if o, ok := t.(*OptionalType); ok {
+		return replaceOnChangesType(o.ElementType, stack)
+	} else if o, ok := t.(*ObjectType); ok {
+		changes := [][]*Property{}
+		err := []error{}
+		for _, p := range o.Properties {
+			if p.ReplaceOnChanges {
+				changes = append(changes, []*Property{p})
+			} else if _, ok := (*stack)[p.Type.String()]; !ok {
+				// We handle recursive objects
+				(*stack)[p.Type.String()] = struct{}{}
+				var object [][]*Property
+				object, errTmp = replaceOnChangesType(p.Type, stack)
+				err = append(err, errTmp...)
+				for _, path := range object {
+					changes = append(changes, append([]*Property{p}, path...))
+				}
+
+				delete(*stack, p.Type.String())
+			} else {
+				err = append(err, errors.Errorf("Found recursive object %q", p.Name))
+			}
+		}
+		return changes, err
+	} else if a, ok := t.(*ArrayType); ok {
+		// This looks for types internal to the array, not a property of the array.
+		return replaceOnChangesType(a.ElementType, stack)
+	} else if m, ok := t.(*MapType); ok {
+		// This looks for types internal to the map, not a property of the array.
+		return replaceOnChangesType(m.ElementType, stack)
+	}
+	return [][]*Property{}, []error{}
+}
+
+// Joins the output of `ReplaceOnChanges` into property path names.
+//
+// For example, given an input [[B, D], [C]] where each property has a name
+// equivalent to it's variable, this function should yield: ["B.D", "C"]
+func PropertyListJoinToString(propertyList [][]*Property, nameConverter func(string) string) []string {
+	var nonOptional func(Type) Type
+	nonOptional = func(t Type) Type {
+		if o, ok := t.(*OptionalType); ok {
+			return nonOptional(o.ElementType)
+		}
+		return t
+	}
+	out := make([]string, len(propertyList))
+	for i, p := range propertyList {
+		names := make([]string, len(p))
+		for j, n := range p {
+			if _, ok := nonOptional(n.Type).(*ArrayType); ok {
+				names[j] = nameConverter(n.Name) + "[*]"
+			} else if _, ok := nonOptional(n.Type).(*MapType); ok {
+				names[j] = nameConverter(n.Name) + ".*"
+			} else {
+				names[j] = nameConverter(n.Name)
+			}
+		}
+		out[i] = strings.Join(names, ".")
+	}
+	return out
 }
 
 type Method struct {
@@ -1222,6 +1328,8 @@ type PropertySpec struct {
 	Language map[string]RawMessage `json:"language,omitempty" yaml:"language,omitempty"`
 	// Secret specifies if the property is secret (default false).
 	Secret bool `json:"secret,omitempty" yaml:"secret,omitempty"`
+	// ReplaceOnChanges specifies if the property is to be replaced instead of updated (default false).
+	ReplaceOnChanges bool `json:"replaceOnChanges,omitempty" yaml:"replaceOnChanges,omitempty"`
 }
 
 // ObjectTypeSpec is the serializable form of an object type.
@@ -2068,6 +2176,7 @@ func (t *types) bindProperties(path string, properties map[string]PropertySpec, 
 			DeprecationMessage: spec.DeprecationMessage,
 			Language:           language,
 			Secret:             spec.Secret,
+			ReplaceOnChanges:   spec.ReplaceOnChanges,
 		}
 
 		propertyMap[name], result = p, append(result, p)
