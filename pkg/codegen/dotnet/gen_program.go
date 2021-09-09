@@ -194,7 +194,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 
 	// Emit Stack class signature
 	g.Fprint(w, "class MyStack : Stack\n")
-	g.Fprint(w, "{\n\n")
+	g.Fprint(w, "{\n")
 
 	// If we collected any helper methods that should be added, write them just before the main func
 	for _, preambleHelperMethodBody := range preambleHelperMethods.SortedValues() {
