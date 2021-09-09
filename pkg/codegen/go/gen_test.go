@@ -19,7 +19,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant"
 	tree "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -65,7 +67,19 @@ func TestGeneratePackage(t *testing.T) {
 	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
 		return GeneratePackage(tool, pkg)
 	}
-	test.TestSDKCodegen(t, "go", generatePackage)
+	test.TestSDKCodegen(t, "go", generatePackage, typeCheckGeneratedPackage)
+}
+
+func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+	var err error
+	var ex string
+	ex, err = executable.FindExecutable("go")
+	require.NoError(t, err)
+	cmdOptions := integration.ProgramTestOptions{}
+	err = integration.RunCommand(t, "go get", []string{ex, "get"}, pwd, &cmdOptions)
+	require.NoError(t, err)
+	err = integration.RunCommand(t, "go build", []string{ex, "build"}, pwd, &cmdOptions)
+	require.NoError(t, err)
 }
 
 func TestGenerateTypeNames(t *testing.T) {

@@ -115,7 +115,11 @@
         }
       },
       "required": ["securityGroup"],
-      "requiredInputs": ["requiredMetadata", "requiredMetadataArray", "requiredMetadataMap"]
+      "requiredInputs": [
+        "requiredMetadata",
+        "requiredMetadataArray",
+        "requiredMetadataMap"
+      ]
     }
   },
   "functions": {
@@ -141,7 +145,13 @@
     "go": {
       "generateResourceContainerTypes": true
     },
-    "nodejs": {},
+    "nodejs": {
+      "dependencies": {
+        "@pulumi/random": "^4.2.0",
+        "@pulumi/aws": "^4.19.0",
+        "@pulumi/kubernetes": "^3.7.0"
+      }
+    },
     "python": {}
   }
 }
