@@ -372,3 +372,11 @@ static Pulumi.Urn.Create(Pulumi.Input<string> name, Pulumi.Input<string> type, P
 static readonly Pulumi.CallArgs.Empty -> Pulumi.CallArgs
 static readonly Pulumi.InvokeArgs.Empty -> Pulumi.InvokeArgs
 static readonly Pulumi.ResourceArgs.Empty -> Pulumi.ResourceArgs
+Pulumi.Utilities.CodegenUtilities
+Pulumi.Utilities.CodegenUtilities.Boxed
+Pulumi.Utilities.CodegenUtilities.Boxed.Set(object target, string propertyName) -> void
+static Pulumi.Utilities.CodegenUtilities.Boxed.Create(object value) -> Pulumi.Utilities.CodegenUtilities.Boxed
+Pulumi.Utilities.CodegenUtilities.Boxed.Value.get -> object
+static Pulumi.Utilities.CodegenUtilities.Box<T>(this Pulumi.Input<T> input) -> Pulumi.Output<Pulumi.Utilities.CodegenUtilities.Boxed>
+static Pulumi.Utilities.CodegenUtilities.ToDictionary<T>(this Pulumi.InputMap<T> inputMap) -> Pulumi.Input<System.Collections.Generic.Dictionary<string, T>>
+static Pulumi.Utilities.CodegenUtilities.ToList<T>(this Pulumi.InputList<T> inputList) -> Pulumi.Input<System.Collections.Generic.List<T>>
