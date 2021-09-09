@@ -69,19 +69,12 @@ func (t *ObjectType) Traverse(traverser hcl.Traverser) (Traversable, hcl.Diagnos
 		return t.propertyUnion, nil
 	}
 
-	if keyType == NumberType {
-		// The key is of NumberType, which means that it refers to the legacy HCL indexation syntax (".0", ".1", etc)
-		return t, nil
-	}
-
-	// The key is of PropertyType, which means that it is most likely a property (".skuName", "tenantId", etc)
 	keyString, err := convert.Convert(key, cty.String)
 	contract.Assert(err == nil)
 
 	propertyName := keyString.AsString()
 	propertyType, hasProperty := t.Properties[propertyName]
 	if !hasProperty {
-		// The specific key can't be found in our property list.
 		return DynamicType, hcl.Diagnostics{unknownObjectProperty(propertyName, traverser.SourceRange())}
 	}
 	return propertyType, nil
