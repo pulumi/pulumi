@@ -1896,9 +1896,18 @@ func genPackageMetadata(
 	fmt.Fprintf(w, "from subprocess import check_call\n")
 	fmt.Fprintf(w, "\n\n")
 
-	// Create a constant for the version number to replace during build
-	fmt.Fprintf(w, "VERSION = \"0.0.0\"\n")
-	fmt.Fprintf(w, "PLUGIN_VERSION = \"0.0.0\"\n\n")
+	// If `pkg` supplies a version, use that. Otherwise, create a constant for
+	// the version number to replace during build.
+	pypiVersion := "0.0.0"
+	pkgVersion := "0.0.0"
+	if pkg.Version != nil {
+		pkgVersion = pkg.Version.String()
+	}
+	// TODO: puipyVersion is the pythonic version of pkgVersion. The code to
+	// transform it is in pulumi/pulumictl. Should that be extracted to
+	// somewhere like pulumi/pulumi/sdk/python.go?
+	fmt.Fprintf(w, "VERSION = %q\n", pypiVersion)
+	fmt.Fprintf(w, "PLUGIN_VERSION = %q\n\n", pkgVersion)
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
