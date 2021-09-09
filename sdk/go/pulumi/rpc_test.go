@@ -623,7 +623,7 @@ func (UntypedArgs) ElementType() reflect.Type {
 	return reflect.TypeOf((*map[string]interface{})(nil)).Elem()
 }
 
-func TestMapInputMarhsalling(t *testing.T) {
+func TestMapInputMarshalling(t *testing.T) {
 	var theResource simpleCustomResource
 	out := newOutput(nil, reflect.TypeOf((*StringOutput)(nil)).Elem(), &theResource)
 	out.getState().resolve("outputty", true, false, nil)
@@ -645,17 +645,22 @@ func TestMapInputMarhsalling(t *testing.T) {
 	})
 
 	cases := []struct {
-		inputs  Input
-		depUrns []string
+		inputs            Input
+		depUrns           []string
+		expectOutputValue bool
 	}{
-		{inputs: inputs1, depUrns: []string{""}},
+		{inputs: inputs1, depUrns: []string{""}, expectOutputValue: true},
 		{inputs: inputs2, depUrns: nil},
 	}
 
 	for _, c := range cases {
 		resolved, _, depUrns, err := marshalInputs(c.inputs)
 		assert.NoError(t, err)
-		assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		if c.expectOutputValue {
+			assert.Equal(t, "outputty", resolved["prop"].OutputValue().Element.StringValue())
+		} else {
+			assert.Equal(t, "outputty", resolved["prop"].StringValue())
+		}
 		assert.Equal(t, "foo", resolved["nested"].ObjectValue()["foo"].StringValue())
 		assert.Equal(t, 42.0, resolved["nested"].ObjectValue()["bar"].NumberValue())
 		assert.Equal(t, len(c.depUrns), len(depUrns))
@@ -879,4 +884,57 @@ func TestDependsOnComponent(t *testing.T) {
 
 	_, deps = newResource("resI", DependsOn([]Resource{resG}))
 	assert.Equal(t, []string{"resG"}, deps)
+}
+
+func TestOutputValueMarshalling(t *testing.T) {
+	ctx, err := NewContext(context.Background(), RunInfo{})
+	assert.Nil(t, err)
+
+	values := []struct {
+		value    interface{}
+		expected resource.PropertyValue
+	}{
+		{value: nil, expected: resource.NewNullProperty()},
+		{value: 0, expected: resource.NewNumberProperty(0)},
+		{value: 1, expected: resource.NewNumberProperty(1)},
+		{value: "", expected: resource.NewStringProperty("")},
+		{value: "hi", expected: resource.NewStringProperty("hi")},
+		{value: map[string]string{}, expected: resource.NewObjectProperty(resource.PropertyMap{})},
+		{value: []string{}, expected: resource.NewArrayProperty(nil)},
+	}
+	for _, value := range values {
+		for _, deps := range [][]resource.URN{nil, {"fakeURN1", "fakeURN2"}} {
+			for _, known := range []bool{true, false} {
+				for _, secret := range []bool{true, false} {
+					var resources []Resource
+					if len(deps) > 0 {
+						for _, dep := range deps {
+							resources = append(resources, ctx.newDependencyResource(URN(dep)))
+						}
+					}
+
+					out := ctx.newOutput(anyOutputType, resources...)
+					out.getState().resolve(value.value, known, secret, nil)
+
+					expected := resource.Output{
+						Known:        known,
+						Secret:       secret,
+						Dependencies: deps,
+					}
+					if known {
+						expected.Element = value.expected
+					}
+
+					name := fmt.Sprintf("value=%v, known=%v, secret=%v, deps=%v", value, known, secret, deps)
+					t.Run(name, func(t *testing.T) {
+						inputs := Map{"value": out}
+						expected := resource.PropertyMap{"value": resource.NewOutputProperty(expected)}
+						actual, _, _, err := marshalInputs(inputs)
+						assert.NoError(t, err)
+						assert.Equal(t, expected, actual)
+					})
+				}
+			}
+		}
+	}
 }
