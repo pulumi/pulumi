@@ -75,10 +75,21 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	var ex string
 	ex, err = executable.FindExecutable("go")
 	require.NoError(t, err)
-	cmdOptions := integration.ProgramTestOptions{}
-	err = integration.RunCommand(t, "go get", []string{ex, "get"}, pwd, &cmdOptions)
+
+	// go SDKs live in their own folder:
+	// typecheck/go/$NAME/$FILES
+	// where FILES contains all the project files (including go.mod)
+	dir, err := ioutil.ReadDir(pwd)
 	require.NoError(t, err)
-	err = integration.RunCommand(t, "go build", []string{ex, "build"}, pwd, &cmdOptions)
+	require.True(t, len(dir) == 1)
+	require.True(t, dir[0].IsDir())
+	root := filepath.Join(pwd, dir[0].Name())
+	t.Logf("*** Testing go in dir: %q ***", root)
+
+	cmdOptions := integration.ProgramTestOptions{}
+	err = integration.RunCommand(t, "go get", []string{ex, "get"}, root, &cmdOptions)
+	require.NoError(t, err)
+	err = integration.RunCommand(t, "go build", []string{ex, "build"}, root, &cmdOptions)
 	require.NoError(t, err)
 }
 

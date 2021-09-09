@@ -1,6 +1,6 @@
 {
-  "version": "0.0.1",
   "name": "example",
+  "version": "0.0.1",
   "types": {
     "example::Object": {
       "properties": {
@@ -37,7 +37,11 @@
   },
   "functions": {},
   "language": {
-    "csharp": {},
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.*"
+      }
+    },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/input-collision/go/example"
     },

@@ -67,17 +67,18 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	ex, _, err := python.CommandPath()
 	require.NoError(t, err)
 	cmdOptions := integration.ProgramTestOptions{}
-	filepath.Walk(pwd, func(path string, info filesystem.FileInfo, err error) error {
+	err = filepath.Walk(pwd, func(path string, info filesystem.FileInfo, err error) error {
 		require.NoError(t, err) // an error in the walk
 		if info.Mode().IsRegular() && strings.HasSuffix(info.Name(), ".py") {
 			path, err = filepath.Abs(path)
 			require.NoError(t, err)
-			integration.RunCommand(t, "python syntax check",
+			err = integration.RunCommand(t, "python syntax check",
 				[]string{ex, "-m", "py_compile", path}, pwd, &cmdOptions)
+			require.NoError(t, err)
 		}
 		return nil
 	})
-	return
+	require.NoError(t, err)
 }
 
 func TestGenerateTypeNames(t *testing.T) {
