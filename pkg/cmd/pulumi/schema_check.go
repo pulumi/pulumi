@@ -22,6 +22,7 @@ import (
 	"path/filepath"
 
 	"github.com/hashicorp/hcl/v2"
+	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
@@ -72,9 +73,7 @@ func newSchemaCheckCommand() *cobra.Command {
 			wrErr := diagWriter.WriteDiagnostics(diags)
 			contract.IgnoreError(wrErr)
 			if err == nil && len(diags) != 0 {
-				// We don't want to print an error, but we do want to indicate
-				// that the check was not successful
-				os.Exit(1)
+				return errors.New("schema validation failed")
 			}
 			return err
 		}),
