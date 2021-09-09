@@ -84,6 +84,32 @@
     }
   },
   "types": {
+    "plant::CloudAuditOptionsLogName": {
+      "description": "The log_name to populate in the Cloud Audit Record. This is added to regress pulumi/pulumi issue #7913",
+      "type": "string",
+      "enum": [
+        {
+          "name": "UnspecifiedLogName",
+          "description": "Default. Should not be used.",
+          "value": "UNSPECIFIED_LOG_NAME"
+        },
+        {
+          "name": "AdminActivity",
+          "description": "Corresponds to \"cloudaudit.googleapis.com/activity\"",
+          "value": "ADMIN_ACTIVITY"
+        },
+        {
+          "name": "DataAccess",
+          "description": "Corresponds to \"cloudaudit.googleapis.com/data_access\"",
+          "value": "DATA_ACCESS"
+        },
+        {
+          "name": "Synthetic",
+          "description": "What if triple quotes \"\"\" are used in the description",
+          "value": "SYNTHETIC"
+        }
+      ]
+    },
     "plant::Container": {
       "type": "object",
       "properties": {

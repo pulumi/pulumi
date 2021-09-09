@@ -22,6 +22,10 @@ type sdkTest struct {
 
 var sdkTests = []sdkTest{
 	{
+		Directory:   "input-collision",
+		Description: "Schema with types that could potentially produce collisions (go).",
+	},
+	{
 		Directory:   "dash-named-schema",
 		Description: "Simple schema with a two part name (foo-bar)",
 	},
@@ -87,6 +91,10 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "provider-config-schema",
 		Description: "Simple provider config schema",
+	},
+	{
+		Directory:   "replace-on-change",
+		Description: "Simple use of replaceOnChange in schema",
 	},
 }
 

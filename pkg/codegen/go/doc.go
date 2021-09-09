@@ -140,7 +140,7 @@ func (d DocLanguageHelper) GetMethodName(m *schema.Method) string {
 }
 
 func (d DocLanguageHelper) GetMethodResultName(r *schema.Resource, m *schema.Method) string {
-	return fmt.Sprintf("%s%sResultOutput", resourceName(r), d.GetMethodName(m))
+	return fmt.Sprintf("%s%sResultOutput", rawResourceName(r), d.GetMethodName(m))
 }
 
 // GetModuleDocLink returns the display name and the link for a module.

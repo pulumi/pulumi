@@ -35,6 +35,8 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
@@ -93,13 +95,15 @@ type pkgContext struct {
 	resources       []*schema.Resource
 	functions       []*schema.Function
 	// schemaNames tracks the names of types/resources as specified in the schema
-	schemaNames   codegen.StringSet
-	names         codegen.StringSet
-	renamed       map[string]string
-	functionNames map[*schema.Function]string
-	needsUtils    bool
-	tool          string
-	packages      map[string]*pkgContext
+	schemaNames codegen.StringSet
+	names       codegen.StringSet
+	renamed     map[string]string
+	// duplicateTokens tracks tokens that exist for both types and resources
+	duplicateTokens map[string]bool
+	functionNames   map[*schema.Function]string
+	needsUtils      bool
+	tool            string
+	packages        map[string]*pkgContext
 
 	// Name overrides set in GoPackageInfo
 	modToPkg         map[string]string // Module name -> package name
@@ -145,13 +149,9 @@ func (pkg *pkgContext) tokenToType(tok string) string {
 		newName, renamed := modPkg.renamed[name]
 		if renamed {
 			name = newName
-		} else if modPkg.names.Has(name) {
-			// If the package containing the type's token already has a resource with the
-			// same name, add a `Type` suffix.
-			newName = name + "Type"
-			modPkg.renamed[name] = newName
-			modPkg.names.Add(newName)
-			name = newName
+		} else if modPkg.duplicateTokens[tok] {
+			// maintain support for duplicate tokens for types and resources in Kubernetes
+			name = name + "Type"
 		}
 	}
 
@@ -211,7 +211,17 @@ func tokenToName(tok string) string {
 	return Title(components[2])
 }
 
-func resourceName(r *schema.Resource) string {
+// disambiguatedResourceName gets the name of a resource as it should appear in source, resolving conflicts in the process.
+func disambiguatedResourceName(r *schema.Resource, pkg *pkgContext) string {
+	name := rawResourceName(r)
+	if renamed, ok := pkg.renamed[name]; ok {
+		name = renamed
+	}
+	return name
+}
+
+// rawResourceName produces raw resource name translated from schema type token without resolving conflicts or dupes.
+func rawResourceName(r *schema.Resource) string {
 	if r.IsProvider {
 		return "Provider"
 	}
@@ -1294,7 +1304,7 @@ func (pkg *pkgContext) getDefaultValue(dv *schema.DefaultValue, t schema.Type) (
 }
 
 func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateResourceContainerTypes bool) error {
-	name := resourceName(r)
+	name := disambiguatedResourceName(r, pkg)
 
 	printCommentWithDeprecationMessage(w, r.Comment, r.DeprecationMessage, false)
 	fmt.Fprintf(w, "type %s struct {\n", name)
@@ -1309,6 +1319,7 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 	}
 
 	var secretProps []*schema.Property
+
 	for _, p := range r.Properties {
 		printCommentWithDeprecationMessage(w, p.Comment, p.DeprecationMessage, true)
 		fmt.Fprintf(w, "\t%s %s `pulumi:\"%s\"`\n", Title(p.Name), pkg.outputType(p.Type), p.Name)
@@ -1409,6 +1420,8 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, aliases)\n")
 	}
+
+	// Setup secrets
 	if len(secretProps) > 0 {
 		for _, p := range secretProps {
 			fmt.Fprintf(w, "\tif args.%s != nil {\n", Title(p.Name))
@@ -1421,6 +1434,22 @@ func (pkg *pkgContext) genResource(w io.Writer, r *schema.Resource, generateReso
 		}
 		fmt.Fprintf(w, "\t})\n")
 		fmt.Fprintf(w, "\topts = append(opts, secrets)\n")
+	}
+
+	// Setup replaceOnChange
+	replaceOnChangesProps, errList := r.ReplaceOnChanges()
+	for _, err := range errList {
+		cmdutil.Diag().Warningf(&diag.Diag{Message: err.Error()})
+	}
+	replaceOnChangesStrings := schema.PropertyListJoinToString(replaceOnChangesProps,
+		func(x string) string { return x })
+	if len(replaceOnChangesProps) > 0 {
+		fmt.Fprint(w, "\treplaceOnChanges := pulumi.ReplaceOnChanges([]string{\n")
+		for _, p := range replaceOnChangesStrings {
+			fmt.Fprintf(w, "\t\t%q,\n", p)
+		}
+		fmt.Fprint(w, "\t})\n")
+		fmt.Fprint(w, "\topts = append(opts, replaceOnChanges)\n")
 	}
 
 	// Finally make the call to registration.
@@ -2289,7 +2318,7 @@ func (pkg *pkgContext) genResourceModule(w io.Writer) {
 
 			registrations.Add(tokenToModule(r.Token))
 			fmt.Fprintf(w, "\tcase %q:\n", r.Token)
-			fmt.Fprintf(w, "\t\tr = &%s{}\n", resourceName(r))
+			fmt.Fprintf(w, "\t\tr = &%s{}\n", disambiguatedResourceName(r, pkg))
 		}
 		fmt.Fprintf(w, "\tdefault:\n")
 		fmt.Fprintf(w, "\t\treturn nil, fmt.Errorf(\"unknown resource type: %%s\", typ)\n")
@@ -2368,6 +2397,7 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 				names:            codegen.NewStringSet(),
 				schemaNames:      codegen.NewStringSet(),
 				renamed:          map[string]string{},
+				duplicateTokens:  map[string]bool{},
 				functionNames:    map[*schema.Function]string{},
 				tool:             tool,
 				modToPkg:         goInfo.ModuleToPackage,
@@ -2478,21 +2508,69 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 		}
 	}
 
+	resSeen := map[string]bool{}
+	typeSeen := map[string]bool{}
+
+	// compute set of names generated by a resource
+	// handling any potential collisions via remapping along the way
 	scanResource := func(r *schema.Resource) {
+		if resSeen[r.Token] {
+			return
+		}
+		resSeen[r.Token] = true
 		pkg := getPkgFromToken(r.Token)
 		pkg.resources = append(pkg.resources, r)
 		pkg.schemaNames.Add(tokenToName(r.Token))
 
-		pkg.names.Add(resourceName(r))
-		pkg.names.Add(resourceName(r) + "Input")
-		pkg.names.Add(resourceName(r) + "Output")
-		pkg.names.Add(resourceName(r) + "Args")
-		pkg.names.Add(camel(resourceName(r)) + "Args")
-		pkg.names.Add("New" + resourceName(r))
-		if !r.IsProvider && !r.IsComponent {
-			pkg.names.Add(resourceName(r) + "State")
-			pkg.names.Add(camel(resourceName(r)) + "State")
-			pkg.names.Add("Get" + resourceName(r))
+		getNames := func(suffix string) []string {
+			names := []string{}
+			names = append(names, rawResourceName(r)+suffix)
+			names = append(names, rawResourceName(r)+suffix+"Input")
+			names = append(names, rawResourceName(r)+suffix+"Output")
+			names = append(names, rawResourceName(r)+suffix+"Args")
+			names = append(names, camel(rawResourceName(r))+suffix+"Args")
+			names = append(names, "New"+rawResourceName(r)+suffix)
+			if !r.IsProvider && !r.IsComponent {
+				names = append(names, rawResourceName(r)+suffix+"State")
+				names = append(names, camel(rawResourceName(r))+suffix+"State")
+				names = append(names, "Get"+rawResourceName(r)+suffix)
+			}
+			return names
+		}
+
+		suffixes := []string{"", "Resource", "Res"}
+		suffix := ""
+		suffixIndex := 0
+		canGenerate := false
+
+		for !canGenerate && suffixIndex <= len(suffixes) {
+			suffix = suffixes[suffixIndex]
+			candidates := getNames(suffix)
+			conflict := false
+			for _, c := range candidates {
+				if pkg.names.Has(c) {
+					conflict = true
+				}
+			}
+			if !conflict {
+				canGenerate = true
+				break
+			}
+
+			suffixIndex++
+		}
+
+		if !canGenerate {
+			panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping resource: %s", rawResourceName(r)))
+		}
+
+		names := getNames(suffix)
+		originalNames := getNames("")
+		for i, n := range names {
+			pkg.names.Add(n)
+			if suffix != "" {
+				pkg.renamed[originalNames[i]] = names[i]
+			}
 		}
 
 		populateDetailsForPropertyTypes(seenMap, r.InputProperties, !r.IsProvider)
@@ -2500,10 +2578,10 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 
 		for _, method := range r.Methods {
 			if method.Function.Inputs != nil {
-				pkg.names.Add(resourceName(r) + Title(method.Name) + "Args")
+				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Args")
 			}
 			if method.Function.Outputs != nil {
-				pkg.names.Add(resourceName(r) + Title(method.Name) + "Result")
+				pkg.names.Add(rawResourceName(r) + Title(method.Name) + "Result")
 			}
 		}
 	}
@@ -2511,6 +2589,73 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 	scanResource(pkg.Provider)
 	for _, r := range pkg.Resources {
 		scanResource(r)
+	}
+
+	// compute set of names generated by a type
+	// handling any potential collisions via remapping along the way
+	scanType := func(t schema.Type) {
+		switch t := t.(type) {
+		case *schema.ObjectType:
+			pkg := getPkgFromToken(t.Token)
+			// maintain support for duplicate tokens for types and resources in Kubernetes
+			if resSeen[t.Token] {
+				pkg.duplicateTokens[t.Token] = true
+				return
+			}
+			if typeSeen[t.Token] {
+				return
+			}
+			typeSeen[t.Token] = true
+
+			name := pkg.tokenToType(t.Token)
+			getNames := func(suffix string) []string {
+				names := []string{}
+				names = append(names, name+suffix)
+				names = append(names, name+suffix+"Input")
+				names = append(names, name+suffix+"Output")
+				return names
+			}
+			suffixes := []string{"", "Type", "Typ"}
+			suffix := ""
+			suffixIndex := 0
+			canGenerate := false
+
+			for !canGenerate && suffixIndex <= len(suffixes) {
+				suffix = suffixes[suffixIndex]
+				candidates := getNames(suffix)
+				conflict := false
+				for _, c := range candidates {
+					if pkg.names.Has(c) {
+						conflict = true
+					}
+				}
+				if !conflict {
+					canGenerate = true
+					break
+				}
+
+				suffixIndex++
+			}
+
+			if !canGenerate {
+				panic(fmt.Sprintf("unable to generate Go SDK, schema has unresolvable overlapping type: %s", name))
+			}
+
+			names := getNames(suffix)
+			originalNames := getNames("")
+			for i, n := range names {
+				pkg.names.Add(n)
+				if suffix != "" {
+					pkg.renamed[originalNames[i]] = names[i]
+				}
+			}
+		default:
+			return
+		}
+	}
+
+	for _, t := range pkg.Types {
+		scanType(t)
 	}
 
 	// For fnApply function versions, we need to register any
@@ -2698,7 +2843,7 @@ func GeneratePackage(tool string, pkg *schema.Package) (map[string][]byte, error
 				return nil, err
 			}
 
-			setFile(path.Join(mod, camel(resourceName(r))+".go"), buffer.String())
+			setFile(path.Join(mod, camel(rawResourceName(r))+".go"), buffer.String())
 		}
 
 		// Functions
