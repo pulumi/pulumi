@@ -39,7 +39,7 @@ func (bci buildkiteCI) DetectVars() Vars {
 	v.CommitMessage = os.Getenv("BUILDKITE_MESSAGE")
 	// https://buildkite.com/docs/pipelines/environment-variables#bk-env-vars-buildkite-pull-request
 	// If Buildkite's PR env var it is a pull request of the supplied number, else the build type is
-	// Whatever Buildkite says it is, pull requests are webhooks just like a standard push so this allows
+	// whatever Buildkite says it is. Pull requests are webhooks just like a standard push so this allows
 	// us to differentiate the two.
 	prNumber := os.Getenv("BUILDKITE_PULL_REQUEST")
 	if prNumber != "false" {
