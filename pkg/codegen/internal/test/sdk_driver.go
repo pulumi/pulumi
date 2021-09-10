@@ -136,9 +136,10 @@ func TestSDKCodegen(t *testing.T, language string, genPackage GenPkgSignature, c
 			// type-check, we don't allow the user to run PULUMI_ACCEPT=true and
 			// replace the test files.
 			typeCheckPath := filepath.Join(dirPath, "typecheck")
+			langTypeCheckPath := filepath.Join(typeCheckPath, language)
+			contract.IgnoreError(os.RemoveAll(langTypeCheckPath))
 			WriteTestFiles(t, typeCheckPath, language, files)
-			defer func() { contract.IgnoreError(os.RemoveAll(typeCheckPath)) }()
-			checkPackage(t, filepath.Join(typeCheckPath, language))
+			checkPackage(t, langTypeCheckPath)
 
 			if !RewriteFilesWhenPulumiAccept(t, dirPath, language, files) {
 				expectedFiles, err := LoadBaseline(dirPath, language)

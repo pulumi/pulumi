@@ -141,7 +141,14 @@
     }
   },
   "language": {
-    "csharp": {},
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12",
+        "Pulumi.Aws": "4.20",
+        "Pulumi.Kubernetes": "3.7",
+        "Pulumi.Random": "4.2"
+      }
+    },
     "go": {
       "generateResourceContainerTypes": true
     },
