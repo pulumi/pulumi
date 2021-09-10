@@ -270,6 +270,7 @@ var functionImports = map[string]string{
 	intrinsicInterpolate: "@pulumi/pulumi",
 	"fileArchive":        "@pulumi/pulumi",
 	"fileAsset":          "@pulumi/pulumi",
+	"filebase64":         "fs",
 	"readFile":           "fs",
 	"readDir":            "fs",
 	"sha1":               "crypto",
@@ -319,6 +320,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "new pulumi.asset.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "new pulumi.asset.FileAsset(%.v)", expr.Args[0])
+	case "filebase64":
+		g.Fgenf(w, "Buffer.from(fs.readFileSync(%v), 'binary').toString('base64')", expr.Args[0])
 	case hcl2.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)

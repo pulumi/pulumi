@@ -184,6 +184,7 @@ func functionName(tokenArg model.Expression) (string, string, string, hcl.Diagno
 var functionImports = map[string]string{
 	"fileArchive": "pulumi",
 	"fileAsset":   "pulumi",
+	"filebase64":  "base64",
 	"readDir":     "os",
 	"toBase64":    "base64",
 	"toJSON":      "json",
@@ -219,6 +220,8 @@ func (g *generator) GenFunctionCallExpression(w io.Writer, expr *model.FunctionC
 		g.Fgenf(w, "pulumi.FileArchive(%.v)", expr.Args[0])
 	case "fileAsset":
 		g.Fgenf(w, "pulumi.FileAsset(%.v)", expr.Args[0])
+	case "filebase64":
+		g.Fgenf(w, "(lambda path: base64.b64encode(open(path).read().encode()).decode())(%.v)", expr.Args[0])
 	case hcl2.Invoke:
 		pkg, module, fn, diags := functionName(expr.Args[0])
 		contract.Assert(len(diags) == 0)
