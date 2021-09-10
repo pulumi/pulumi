@@ -214,6 +214,7 @@ func NewPulumiCmd() *cobra.Command {
 	// Less common, and thus hidden, commands:
 	cmd.AddCommand(newGenCompletionCmd(cmd))
 	cmd.AddCommand(newGenMarkdownCmd(cmd))
+	cmd.CompletionOptions.DisableDefaultCmd = true // Disable default completion command
 
 	// We have a set of commands that are still experimental and that are hidden unless PULUMI_EXPERIMENTAL is set
 	// to true.
