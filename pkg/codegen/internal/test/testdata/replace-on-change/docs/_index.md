@@ -17,6 +17,7 @@ menu:
     <li><a href="cat" title="Cat"><span class="symbol resource"></span>Cat</a></li>
     <li><a href="dog" title="Dog"><span class="symbol resource"></span>Dog</a></li>
     <li><a href="god" title="God"><span class="symbol resource"></span>God</a></li>
+    <li><a href="norecursive" title="NoRecursive"><span class="symbol resource"></span>NoRecursive</a></li>
     <li><a href="provider" title="Provider"><span class="symbol resource"></span>Provider</a></li>
     <li><a href="toystore" title="ToyStore"><span class="symbol resource"></span>ToyStore</a></li>
 </ul>

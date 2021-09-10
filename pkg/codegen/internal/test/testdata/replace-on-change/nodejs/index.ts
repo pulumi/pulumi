@@ -8,6 +8,7 @@ import * as utilities from "./utilities";
 export * from "./cat";
 export * from "./dog";
 export * from "./god";
+export * from "./noRecursive";
 export * from "./provider";
 export * from "./toyStore";
 
@@ -22,6 +23,7 @@ export {
 import { Cat } from "./cat";
 import { Dog } from "./dog";
 import { God } from "./god";
+import { NoRecursive } from "./noRecursive";
 import { ToyStore } from "./toyStore";
 
 const _module = {
@@ -34,6 +36,8 @@ const _module = {
                 return new Dog(name, <any>undefined, { urn })
             case "example::God":
                 return new God(name, <any>undefined, { urn })
+            case "example::NoRecursive":
+                return new NoRecursive(name, <any>undefined, { urn })
             case "example::ToyStore":
                 return new ToyStore(name, <any>undefined, { urn })
             default:

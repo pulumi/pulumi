@@ -461,6 +461,10 @@ func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []
 				err = append(err, errors.Errorf("Found recursive object %q", p.Name))
 			}
 		}
+		// We don't want to emit errors where replaceOnChanges is not used.
+		if len(changes) == 0 {
+			return nil, nil
+		}
 		return changes, err
 	} else if a, ok := t.(*ArrayType); ok {
 		// This looks for types internal to the array, not a property of the array.
@@ -469,7 +473,7 @@ func replaceOnChangesType(t Type, stack *map[string]struct{}) ([][]*Property, []
 		// This looks for types internal to the map, not a property of the array.
 		return replaceOnChangesType(m.ElementType, stack)
 	}
-	return [][]*Property{}, []error{}
+	return nil, nil
 }
 
 // Joins the output of `ReplaceOnChanges` into property path names.

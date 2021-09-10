@@ -17,6 +17,7 @@
         "dog.ts",
         "god.ts",
         "index.ts",
+        "noRecursive.ts",
         "provider.ts",
         "toyStore.ts",
         "types/index.ts",
