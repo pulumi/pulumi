@@ -69,6 +69,11 @@ func getHelperMethodIfNeeded(functionName string) (string, bool) {
 				}
 				return pulumi.String(string(data))
 			}`, true
+	case "sha1":
+		return `func sha1Hash(input string) string {
+				hash := sha1.Sum([]byte(input))
+				return hex.EncodeToString(hash[:])
+			}`, true
 	default:
 		return "", false
 	}
