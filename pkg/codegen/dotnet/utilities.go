@@ -124,18 +124,14 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 // necessary. Because many Terraform functions are complex, it is much prettier to
 // encapsulate them as their own function in the preamble.
 func getHelperMethodIfNeeded(functionName string) (string, bool) {
-	var methodBody string
-
 	switch functionName {
 	case "sha1":
-		methodBody =
-			`private static string ComputeSHA1(string input) {
+		return `private static string ComputeSHA1(string input) {
 		return BitConverter.ToString(
 			SHA1.Create().ComputeHash(Encoding.UTF8.GetBytes(input))
 		).Replace("-","").ToLowerInvariant());
-	}`
+	}`, true
 	default:
-		methodBody = ""
+		return "", false
 	}
-	return methodBody, methodBody != ""
 }
