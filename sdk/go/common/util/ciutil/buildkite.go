@@ -1,4 +1,4 @@
-// Copyright 2016-2019, Pulumi Corporation.
+// Copyright 2016-2021, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -38,18 +38,19 @@ func (bci buildkiteCI) DetectVars() Vars {
 	// This is usually the commit message but can be other messages.
 	v.CommitMessage = os.Getenv("BUILDKITE_MESSAGE")
 	// https://buildkite.com/docs/pipelines/environment-variables#bk-env-vars-buildkite-pull-request
-	v.PRNumber = os.Getenv("BUILDKITE_PULL_REQUEST")
-	// https://buildkite.com/docs/pipelines/environment-variables#bk-env-vars-buildkite-commit
-	v.SHA = os.Getenv("BUILDKITE_COMMIT")
-
-	// If PRNumber is set to anything but empty string its a pull request, else use the value supplied by buildkite
-	// This is manually set because to buildkite a PR is a webhook which is the same as a manual push.
-	if v.PRNumber != "" {
+	// If Buildkite's PR env var it is a pull request of the supplied number, else the build type is
+	// Whatever Buildkite says it is, pull requests are webhooks just like a standard push so this allows
+	// us to differentiate the two.
+	var prNumber string = os.Getenv("BUILDKITE_PULL_REQUEST")
+	if prNumber != "false" {
+		v.PRNumber = prNumber
 		v.BuildType = "PullRequest"
 	} else {
 		// https://buildkite.com/docs/pipelines/environment-variables#bk-env-vars-buildkite-source
 		v.BuildType = os.Getenv("BUILDKITE_SOURCE")
 	}
+	// https://buildkite.com/docs/pipelines/environment-variables#bk-env-vars-buildkite-commit
+	v.SHA = os.Getenv("BUILDKITE_COMMIT")
 
 	return v
 }
