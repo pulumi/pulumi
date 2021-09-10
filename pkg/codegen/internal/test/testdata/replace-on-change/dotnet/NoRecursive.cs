@@ -9,36 +9,30 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
-    [ExampleResourceType("example::ToyStore")]
-    public partial class ToyStore : Pulumi.CustomResource
+    [ExampleResourceType("example::NoRecursive")]
+    public partial class NoRecursive : Pulumi.CustomResource
     {
-        [Output("chew")]
-        public Output<Pulumi.Example.Chew?> Chew { get; private set; } = null!;
+        [Output("rec")]
+        public Output<Pulumi.Example.Rec?> Rec { get; private set; } = null!;
 
-        [Output("laser")]
-        public Output<Pulumi.Example.Laser?> Laser { get; private set; } = null!;
-
-        [Output("stuff")]
-        public Output<ImmutableArray<Outputs.Toy>> Stuff { get; private set; } = null!;
-
-        [Output("wanted")]
-        public Output<ImmutableArray<Outputs.Toy>> Wanted { get; private set; } = null!;
+        [Output("replace")]
+        public Output<string?> Replace { get; private set; } = null!;
 
 
         /// <summary>
-        /// Create a ToyStore resource with the given unique name, arguments, and options.
+        /// Create a NoRecursive resource with the given unique name, arguments, and options.
         /// </summary>
         ///
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public ToyStore(string name, ToyStoreArgs? args = null, CustomResourceOptions? options = null)
-            : base("example::ToyStore", name, args ?? new ToyStoreArgs(), MakeResourceOptions(options, ""))
+        public NoRecursive(string name, NoRecursiveArgs? args = null, CustomResourceOptions? options = null)
+            : base("example::NoRecursive", name, args ?? new NoRecursiveArgs(), MakeResourceOptions(options, ""))
         {
         }
 
-        private ToyStore(string name, Input<string> id, CustomResourceOptions? options = null)
-            : base("example::ToyStore", name, null, MakeResourceOptions(options, id))
+        private NoRecursive(string name, Input<string> id, CustomResourceOptions? options = null)
+            : base("example::NoRecursive", name, null, MakeResourceOptions(options, id))
         {
         }
 
@@ -49,9 +43,7 @@ namespace Pulumi.Example
                 Version = Utilities.Version,
                 ReplaceOnChanges =
                 {
-                    "stuff[*].associated.color",
-                    "stuff[*].color",
-                    "wanted[*]",
+                    "replace",
                 },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
@@ -60,22 +52,22 @@ namespace Pulumi.Example
             return merged;
         }
         /// <summary>
-        /// Get an existing ToyStore resource's state with the given name, ID, and optional extra
+        /// Get an existing NoRecursive resource's state with the given name, ID, and optional extra
         /// properties used to qualify the lookup.
         /// </summary>
         ///
         /// <param name="name">The unique name of the resulting resource.</param>
         /// <param name="id">The unique provider ID of the resource to lookup.</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public static ToyStore Get(string name, Input<string> id, CustomResourceOptions? options = null)
+        public static NoRecursive Get(string name, Input<string> id, CustomResourceOptions? options = null)
         {
-            return new ToyStore(name, id, options);
+            return new NoRecursive(name, id, options);
         }
     }
 
-    public sealed class ToyStoreArgs : Pulumi.ResourceArgs
+    public sealed class NoRecursiveArgs : Pulumi.ResourceArgs
     {
-        public ToyStoreArgs()
+        public NoRecursiveArgs()
         {
         }
     }

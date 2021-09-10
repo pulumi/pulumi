@@ -29,8 +29,7 @@ func NewToyStore(ctx *pulumi.Context,
 	replaceOnChanges := pulumi.ReplaceOnChanges([]string{
 		"stuff[*].associated.color",
 		"stuff[*].color",
-		"wanted[*].associated.color",
-		"wanted[*].color",
+		"wanted[*]",
 	})
 	opts = append(opts, replaceOnChanges)
 	var resource ToyStore

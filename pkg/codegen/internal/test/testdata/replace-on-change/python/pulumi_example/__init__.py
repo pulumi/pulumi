@@ -8,6 +8,7 @@ import typing
 from .cat import *
 from .dog import *
 from .god import *
+from .no_recursive import *
 from .provider import *
 from .toy_store import *
 from . import outputs
@@ -22,6 +23,7 @@ _utilities.register(
    "example::Cat": "Cat",
    "example::Dog": "Dog",
    "example::God": "God",
+   "example::NoRecursive": "NoRecursive",
    "example::ToyStore": "ToyStore"
   }
  }
