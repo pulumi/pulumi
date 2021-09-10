@@ -286,7 +286,7 @@ type ResourceType struct {
 }
 
 func (t *ResourceType) String() string {
-	return t.Token
+	return fmt.Sprintf("Resource<%s>", t.Token)
 }
 
 func (t *ResourceType) isType() {}

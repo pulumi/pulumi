@@ -36,7 +36,7 @@ func CRDTypes(tool string, pkg *schema.Package) (map[string]*bytes.Buffer, error
 			pkg.getImports(r, importsAndAliases)
 			pkg.genHeader(buffer, []string{"context", "reflect"}, importsAndAliases)
 
-			if err := pkg.genResource(buffer, r, goPkgInfo.GenerateResourceContainerTypes); err != nil {
+			if err := pkg.genResource(buffer, r); err != nil {
 				return nil, fmt.Errorf("generating resource %s: %w", mod, err)
 			}
 		}
