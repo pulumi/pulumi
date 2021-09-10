@@ -126,10 +126,9 @@ func makeSafeEnumName(name, typeName string) (string, error) {
 func getHelperMethodIfNeeded(functionName string) (string, bool) {
 	switch functionName {
 	case "filebase64":
-		methodBody =
-			`private static string ReadFileBase64(string path) {
+		return `private static string ReadFileBase64(string path) {
 		return Convert.ToBase64String(System.Text.UTF8.GetBytes(File.ReadAllText(path)))
-	}`
+	}`, true
 	case "sha1":
 		return `private static string ComputeSHA1(string input) {
 		return BitConverter.ToString(
