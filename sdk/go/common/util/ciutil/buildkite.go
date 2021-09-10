@@ -41,7 +41,7 @@ func (bci buildkiteCI) DetectVars() Vars {
 	// If Buildkite's PR env var it is a pull request of the supplied number, else the build type is
 	// Whatever Buildkite says it is, pull requests are webhooks just like a standard push so this allows
 	// us to differentiate the two.
-	var prNumber string = os.Getenv("BUILDKITE_PULL_REQUEST")
+	prNumber := os.Getenv("BUILDKITE_PULL_REQUEST")
 	if prNumber != "false" {
 		v.PRNumber = prNumber
 		v.BuildType = "PullRequest"
