@@ -11,6 +11,7 @@ require (
 	cloud.google.com/go/logging v1.0.0
 	cloud.google.com/go/storage v1.15.0
 	github.com/StackExchange/wmi v1.2.1 // indirect
+	github.com/alecthomas/chroma v0.9.2
 	github.com/aws/aws-sdk-go v1.38.35
 	github.com/blang/semver v3.5.1+incompatible
 	github.com/djherbis/times v1.2.0
@@ -32,7 +33,9 @@ require (
 	github.com/mxschmitt/golang-combinations v1.0.0
 	github.com/nbutton23/zxcvbn-go v0.0.0-20180912185939-ae427f1e4c1d
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/pgavlin/goldmark v1.1.33-0.20200616210433-b5eb04559386
+	github.com/pgavlin/goldmark v1.1.33-0.20201111182858-dba88a1da006
+	github.com/pgavlin/markdown-kit v0.0.0-20210214162619-9f437a9f5480
+	github.com/pgavlin/svg2 v0.0.0-20210914172005-2613eda1399a
 	github.com/pkg/errors v0.9.1
 	github.com/pulumi/pulumi/sdk/v3 v3.3.1
 	github.com/rjeczalik/notify v0.9.2
@@ -42,7 +45,7 @@ require (
 	github.com/shurcooL/vfsgen v0.0.0-20200824052919-0d455de96546 // indirect
 	github.com/skratchdot/open-golang v0.0.0-20200116055534-eef842397966
 	github.com/spf13/cobra v1.0.0
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/tklauser/go-sysconf v0.3.8 // indirect
 	github.com/tweekmonster/luser v0.0.0-20161003172636-3fa38070dbd7
 	github.com/xeipuuv/gojsonschema v1.2.0
@@ -53,6 +56,7 @@ require (
 	golang.org/x/net v0.0.0-20210505214959-0714010a04ed
 	golang.org/x/oauth2 v0.0.0-20210427180440-81ed05c6b58c
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	golang.org/x/term v0.0.0-20201210144234-2321bbc49cbf
 	google.golang.org/api v0.46.0
 	google.golang.org/genproto v0.0.0-20210506142907-4a47615972c2
 	google.golang.org/grpc v1.37.0
