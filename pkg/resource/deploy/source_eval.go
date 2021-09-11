@@ -984,6 +984,7 @@ func (rm *resmon) RegisterResource(ctx context.Context,
 		// Invoke the provider's Construct RPC method.
 		options := plugin.ConstructOptions{
 			Aliases:              aliases,
+			Dependencies:         dependencies,
 			Protect:              protect,
 			PropertyDependencies: propertyDependencies,
 			Providers:            providerRefs,

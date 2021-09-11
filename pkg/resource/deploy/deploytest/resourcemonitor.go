@@ -101,6 +101,7 @@ type ResourceOptions struct {
 	CustomTimeouts        *resource.CustomTimeouts
 	SupportsPartialValues *bool
 	Remote                bool
+	Providers             map[string]string
 
 	DisableSecrets            bool
 	DisableResourceReferences bool
@@ -187,6 +188,7 @@ func (rm *ResourceMonitor) RegisterResource(t tokens.Type, name string, custom b
 		SupportsPartialValues:      supportsPartialValues,
 		Remote:                     opts.Remote,
 		ReplaceOnChanges:           opts.ReplaceOnChanges,
+		Providers:                  opts.Providers,
 	}
 
 	// submit request
