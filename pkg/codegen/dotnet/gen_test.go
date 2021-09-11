@@ -24,7 +24,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 
 	// TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
 	version := "0.0.0\n"
-	err = os.WriteFile(filepath.Join(pwd, "version.txt"), []byte(version), 0644)
+	err = os.WriteFile(filepath.Join(pwd, "version.txt"), []byte(version), 0600)
 	if !os.IsExist(err) {
 		require.NoError(t, err)
 	}
