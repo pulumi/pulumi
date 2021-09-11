@@ -16,11 +16,17 @@ import (
 type ThenFunc func(t *testing.T, testDir string)
 
 type sdkTest struct {
-	Directory   string
-	Description string
-	Skip        codegen.StringSet
-	Then        map[string]ThenFunc
+	Directory        string
+	Description      string
+	SkipCompileCheck codegen.StringSet
+	Then             map[string]ThenFunc
 }
+
+const (
+	nodejs = "nodejs"
+	dotnet = "dotnet"
+	golang = "go"
+)
 
 var sdkTests = []sdkTest{
 	{
@@ -32,16 +38,19 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with a two part name (foo-bar)",
 	},
 	{
-		Directory:   "external-resource-schema",
-		Description: "External resource schema",
+		Directory:        "external-resource-schema",
+		Description:      "External resource schema",
+		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
 	},
 	{
-		Directory:   "nested-module",
-		Description: "Nested module",
+		Directory:        "nested-module",
+		Description:      "Nested module",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 	{
-		Directory:   "nested-module-thirdparty",
-		Description: "Third-party nested module",
+		Directory:        "nested-module-thirdparty",
+		Description:      "Third-party nested module",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 	{
 		Directory:   "plain-schema-gh6957",
@@ -83,16 +92,18 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with local resource properties and custom Python package name",
 	},
 	{
-		Directory:   "simple-methods-schema",
-		Description: "Simple schema with methods",
+		Directory:        "simple-methods-schema",
+		Description:      "Simple schema with methods",
+		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet),
 	},
 	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 	},
 	{
-		Directory:   "provider-config-schema",
-		Description: "Simple provider config schema",
+		Directory:        "provider-config-schema",
+		Description:      "Simple provider config schema",
+		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 }
 
@@ -117,11 +128,6 @@ func TestSDKCodegen(t *testing.T, language string, genPackage GenPkgSignature, c
 
 	for _, tt := range sdkTests {
 		t.Run(tt.Description, func(t *testing.T) {
-			if tt.Skip.Has(language) {
-				t.Skip()
-				return
-			}
-
 			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
 
 			schemaPath := filepath.Join(dirPath, "schema.json")
@@ -135,11 +141,13 @@ func TestSDKCodegen(t *testing.T, language string, genPackage GenPkgSignature, c
 			// Check output is valid code (will type-check). If code will not
 			// type-check, we don't allow the user to run PULUMI_ACCEPT=true and
 			// replace the test files.
-			typeCheckPath := filepath.Join(dirPath, "typecheck")
-			langTypeCheckPath := filepath.Join(typeCheckPath, language)
-			contract.IgnoreError(os.RemoveAll(langTypeCheckPath))
-			WriteTestFiles(t, typeCheckPath, language, files)
-			checkPackage(t, langTypeCheckPath)
+			if !tt.SkipCompileCheck.Has(language) {
+				typeCheckPath := filepath.Join(dirPath, "typecheck")
+				langTypeCheckPath := filepath.Join(typeCheckPath, language)
+				contract.IgnoreError(os.RemoveAll(langTypeCheckPath))
+				WriteTestFiles(t, typeCheckPath, language, files)
+				checkPackage(t, langTypeCheckPath)
+			}
 
 			if !RewriteFilesWhenPulumiAccept(t, dirPath, language, files) {
 				expectedFiles, err := LoadBaseline(dirPath, language)

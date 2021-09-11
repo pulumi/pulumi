@@ -79,11 +79,15 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	// go SDKs live in their own folder:
 	// typecheck/go/$NAME/$FILES
 	// where FILES contains all the project files (including go.mod)
+	//
+	// This is not true when `package.language.go.rootPackageName` is set.
 	dir, err := ioutil.ReadDir(pwd)
 	require.NoError(t, err)
-	require.True(t, len(dir) == 1)
-	require.True(t, dir[0].IsDir())
-	root := filepath.Join(pwd, dir[0].Name())
+	root := pwd
+	if len(dir) == 1 {
+		require.True(t, dir[0].IsDir())
+		root = filepath.Join(pwd, dir[0].Name())
+	}
 	t.Logf("*** Testing go in dir: %q ***", root)
 
 	cmdOptions := integration.ProgramTestOptions{}
