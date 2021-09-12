@@ -209,6 +209,13 @@ var pulumiBuiltins = map[string]*model.Function{
 		}},
 		ReturnType: model.StringType,
 	}),
+	"filebase64": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "path",
+			Type: model.StringType,
+		}},
+		ReturnType: model.StringType,
+	}),
 	"secret": model.NewFunction(model.GenericFunctionSignature(
 		func(args []model.Expression) (model.StaticFunctionSignature, hcl.Diagnostics) {
 			valueType := model.Type(model.DynamicType)
@@ -224,6 +231,13 @@ var pulumiBuiltins = map[string]*model.Function{
 				ReturnType: model.NewOutputType(valueType),
 			}, nil
 		})),
+	"sha1": model.NewFunction(model.StaticFunctionSignature{
+		Parameters: []model.Parameter{{
+			Name: "input",
+			Type: model.StringType,
+		}},
+		ReturnType: model.StringType,
+	}),
 	"split": model.NewFunction(model.StaticFunctionSignature{
 		Parameters: []model.Parameter{
 			{

@@ -1,6 +1,45 @@
 CHANGELOG
 =========
 
+## 3.12.0 (2021-09-08)
+
+### Improvements
+
+- [build] - make lint returns an accurate status code
+  [#7844](https://github.com/pulumi/pulumi/pull/7844)
+
+- [codegen/python] - Add helper function forms `$fn_output` that
+  accept `Input`s, return an `Output`, and wrap the underlying `$fn`
+  call. This change addresses
+  [#5758](https://github.com/pulumi/pulumi/issues/) for Python,
+  making it easier to compose functions/datasources with Pulumi
+  resources. [#7784](https://github.com/pulumi/pulumi/pull/7784)
+
+- [codegen] - Add `replaceOnChange` to schema.
+  [#7874](https://github.com/pulumi/pulumi/pull/7874)
+
+- [cli/about] - Add command for debug information
+  [#7817](https://github.com/pulumi/pulumi/pull/7817)
+
+- [codegen/schema] Add a `pulumi schema check` command to validate package schemas.
+  [#7865](https://github.com/pulumi/pulumi/pull/7865)
+
+### Bug Fixes
+
+- [sdk/python] - Fix Pulumi programs hanging when dependency graph
+  forms a cycle, as when `eks.NodeGroup` declaring `eks.Cluster` as a
+  parent while also depending on it indirectly via properties
+  [#7887](https://github.com/pulumi/pulumi/pull/7887)
+
+- [sdk/python] Fix a regression in Python dynamic providers introduced in #7755.
+
+- [automation/go] Fix loading of stack settings/configs from yaml files.
+  [#pulumi-kubernetes-operator/183](https://github.com/pulumi/pulumi-kubernetes-operator/issues/183)
+
+- [codegen/python] - Fix invalid Python docstring generation for enums
+  that contain doc comments with double quotes
+  [#7914](https://github.com/pulumi/pulumi/pull/7914)
+
 ## 3.11.0 (2021-08-25)
 
 ### Improvements
@@ -31,6 +70,7 @@ CHANGELOG
   [#7824](https://github.com/pulumi/pulumi/pull/7824)
 
 ## 3.10.3 (2021-08-19)
+
 ### Improvements
 
 - [sdk/python] - Add support for custom naming of dynamic provider resource.
@@ -50,6 +90,7 @@ CHANGELOG
 
 
 ## 3.10.2 (2021-08-16)
+
 ### Improvements
 
 - [cli] Stop printing secret value on `pulumi config set` if it looks like a secret.
@@ -74,6 +115,7 @@ CHANGELOG
   [#7755](https://github.com/pulumi/pulumi/pull/7755)
 
 ## 3.10.1 (2021-08-12)
+
 ### Improvements
 
 - [sdk/go] - Depending on a component now depends on the transitive closure of its

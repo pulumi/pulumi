@@ -105,6 +105,10 @@ var sdkTests = []sdkTest{
 		Description:      "Simple provider config schema",
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
+	{
+		Directory:   "replace-on-change",
+		Description: "Simple use of replaceOnChange in schema",
+	},
 }
 
 type checkPackageSignature = func(t *testing.T, pwd string)

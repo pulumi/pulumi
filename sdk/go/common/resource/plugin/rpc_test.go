@@ -26,8 +26,8 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
 )
 
-func setProperty(s *structpb.Value, k string, v interface{}) {
-	marshaled, err := MarshalPropertyValue(resource.NewPropertyValue(v), MarshalOptions{})
+func setProperty(key resource.PropertyKey, s *structpb.Value, k string, v interface{}) {
+	marshaled, err := MarshalPropertyValue(key, resource.NewPropertyValue(v), MarshalOptions{})
 	contract.Assert(err == nil)
 	s.GetStructValue().Fields[k] = marshaled
 }
@@ -35,14 +35,15 @@ func setProperty(s *structpb.Value, k string, v interface{}) {
 func TestAssetSerialize(t *testing.T) {
 	// Ensure that asset and archive serialization round trips.
 	text := "a test asset"
+	pk := resource.PropertyKey("a test asset uri")
 	asset, err := resource.NewTextAsset(text)
 	assert.Nil(t, err)
 	assert.Equal(t, text, asset.Text)
 	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", asset.Hash)
-	assetProps, err := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
+	assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
 	assert.Nil(t, err)
 	fmt.Printf("%v\n", assetProps)
-	assetValue, err := UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	assetValue, err := UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Nil(t, err)
 	assert.True(t, assetValue.IsAsset())
 	assetDes := assetValue.AssetValue()
@@ -51,25 +52,25 @@ func TestAssetSerialize(t *testing.T) {
 	assert.Equal(t, "e34c74529110661faae4e121e57165ff4cb4dbdde1ef9770098aa3695e6b6704", assetDes.Hash)
 
 	// Ensure that an invalid asset produces an error.
-	setProperty(assetProps, resource.AssetHashProperty, 0)
-	_, err = UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	setProperty(pk, assetProps, resource.AssetHashProperty, 0)
+	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(assetProps, resource.AssetHashProperty, asset.Hash)
+	setProperty(pk, assetProps, resource.AssetHashProperty, asset.Hash)
 
-	setProperty(assetProps, resource.AssetTextProperty, 0)
-	_, err = UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	setProperty(pk, assetProps, resource.AssetTextProperty, 0)
+	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(assetProps, resource.AssetTextProperty, "")
+	setProperty(pk, assetProps, resource.AssetTextProperty, "")
 
-	setProperty(assetProps, resource.AssetPathProperty, 0)
-	_, err = UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	setProperty(pk, assetProps, resource.AssetPathProperty, 0)
+	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(assetProps, resource.AssetPathProperty, "")
+	setProperty(pk, assetProps, resource.AssetPathProperty, "")
 
-	setProperty(assetProps, resource.AssetURIProperty, 0)
-	_, err = UnmarshalPropertyValue(assetProps, MarshalOptions{})
+	setProperty(pk, assetProps, resource.AssetURIProperty, 0)
+	_, err = UnmarshalPropertyValue("", assetProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(assetProps, resource.AssetURIProperty, "")
+	setProperty(pk, assetProps, resource.AssetURIProperty, "")
 
 	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
 	assert.Nil(t, err)
@@ -80,9 +81,9 @@ func TestAssetSerialize(t *testing.T) {
 		// Go 1.10 introduced breaking changes to archive/zip and archive/tar headers
 		assert.Equal(t, "27ab4a14a617df10cff3e1cf4e30cf510302afe56bf4cc91f84041c9f7b62fd8", arch.Hash)
 	}
-	archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
+	archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
 	assert.Nil(t, err)
-	archValue, err := UnmarshalPropertyValue(archProps, MarshalOptions{})
+	archValue, err := UnmarshalPropertyValue("", archProps, MarshalOptions{})
 	assert.Nil(t, err)
 	assert.True(t, archValue.IsArchive())
 	archDes := archValue.ArchiveValue()
@@ -99,46 +100,47 @@ func TestAssetSerialize(t *testing.T) {
 	}
 
 	// Ensure that an invalid archive produces an error.
-	setProperty(archProps, resource.ArchiveHashProperty, 0)
-	_, err = UnmarshalPropertyValue(archProps, MarshalOptions{})
+	setProperty(pk, archProps, resource.ArchiveHashProperty, 0)
+	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(archProps, resource.ArchiveHashProperty, arch.Hash)
+	setProperty(pk, archProps, resource.ArchiveHashProperty, arch.Hash)
 
-	setProperty(archProps, resource.ArchiveAssetsProperty, 0)
-	_, err = UnmarshalPropertyValue(archProps, MarshalOptions{})
+	setProperty(pk, archProps, resource.ArchiveAssetsProperty, 0)
+	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(archProps, resource.ArchiveAssetsProperty, nil)
+	setProperty(pk, archProps, resource.ArchiveAssetsProperty, nil)
 
-	setProperty(archProps, resource.ArchivePathProperty, 0)
-	_, err = UnmarshalPropertyValue(archProps, MarshalOptions{})
+	setProperty(pk, archProps, resource.ArchivePathProperty, 0)
+	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(archProps, resource.ArchivePathProperty, "")
+	setProperty(pk, archProps, resource.ArchivePathProperty, "")
 
-	setProperty(archProps, resource.ArchiveURIProperty, 0)
-	_, err = UnmarshalPropertyValue(archProps, MarshalOptions{})
+	setProperty(pk, archProps, resource.ArchiveURIProperty, 0)
+	_, err = UnmarshalPropertyValue("", archProps, MarshalOptions{})
 	assert.Error(t, err)
-	setProperty(archProps, resource.ArchiveURIProperty, "")
+	setProperty(pk, archProps, resource.ArchiveURIProperty, "")
 }
 
 func TestComputedSerialize(t *testing.T) {
 	// Ensure that computed properties survive round trips.
 	opts := MarshalOptions{KeepUnknowns: true}
+	pk := resource.PropertyKey("pk")
 	{
-		cprop, err := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
 		assert.Nil(t, err)
-		cpropU, err := UnmarshalPropertyValue(cprop, opts)
+		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.Input().Element.IsString())
 	}
 	{
-		cprop, err := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
 		assert.Nil(t, err)
-		cpropU, err := UnmarshalPropertyValue(cprop, opts)
+		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		assert.Nil(t, err)
 		assert.True(t, cpropU.IsComputed())
 		assert.True(t, cpropU.Input().Element.IsNumber())
@@ -148,15 +150,16 @@ func TestComputedSerialize(t *testing.T) {
 func TestComputedSkip(t *testing.T) {
 	// Ensure that computed properties are skipped when KeepUnknowns == false.
 	opts := MarshalOptions{KeepUnknowns: false}
+	pk := resource.PropertyKey("pk")
 	{
-		cprop, err := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
 		assert.Nil(t, err)
 		assert.Nil(t, cprop)
 	}
 	{
-		cprop, err := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewNumberProperty(0)}), opts)
 		assert.Nil(t, err)
@@ -167,19 +170,20 @@ func TestComputedSkip(t *testing.T) {
 func TestComputedReject(t *testing.T) {
 	// Ensure that computed properties produce errors when RejectUnknowns == true.
 	opts := MarshalOptions{RejectUnknowns: true}
+	pk := resource.PropertyKey("pk")
 	{
-		cprop, err := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), opts)
 		assert.NotNil(t, err)
 		assert.Nil(t, cprop)
 	}
 	{
-		cprop, err := MarshalPropertyValue(
+		cprop, err := MarshalPropertyValue(pk,
 			resource.NewComputedProperty(
 				resource.Computed{Element: resource.NewStringProperty("")}), MarshalOptions{KeepUnknowns: true})
 		assert.Nil(t, err)
-		cpropU, err := UnmarshalPropertyValue(cprop, opts)
+		cpropU, err := UnmarshalPropertyValue(pk, cprop, opts)
 		assert.NotNil(t, err)
 		assert.Nil(t, cpropU)
 	}
@@ -191,17 +195,18 @@ func TestAssetReject(t *testing.T) {
 	opts := MarshalOptions{RejectAssets: true}
 
 	text := "a test asset"
+	pk := resource.PropertyKey("an asset URI")
 	asset, err := resource.NewTextAsset(text)
 	assert.Nil(t, err)
 	{
-		assetProps, err := MarshalPropertyValue(resource.NewAssetProperty(asset), opts)
+		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), opts)
 		assert.NotNil(t, err)
 		assert.Nil(t, assetProps)
 	}
 	{
-		assetProps, err := MarshalPropertyValue(resource.NewAssetProperty(asset), MarshalOptions{})
+		assetProps, err := MarshalPropertyValue(pk, resource.NewAssetProperty(asset), MarshalOptions{})
 		assert.Nil(t, err)
-		assetPropU, err := UnmarshalPropertyValue(assetProps, opts)
+		assetPropU, err := UnmarshalPropertyValue(pk, assetProps, opts)
 		assert.NotNil(t, err)
 		assert.Nil(t, assetPropU)
 	}
@@ -209,14 +214,14 @@ func TestAssetReject(t *testing.T) {
 	arch, err := resource.NewAssetArchive(map[string]interface{}{"foo": asset})
 	assert.Nil(t, err)
 	{
-		archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), opts)
+		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), opts)
 		assert.NotNil(t, err)
 		assert.Nil(t, archProps)
 	}
 	{
-		archProps, err := MarshalPropertyValue(resource.NewArchiveProperty(arch), MarshalOptions{})
+		archProps, err := MarshalPropertyValue(pk, resource.NewArchiveProperty(arch), MarshalOptions{})
 		assert.Nil(t, err)
-		archValue, err := UnmarshalPropertyValue(archProps, opts)
+		archValue, err := UnmarshalPropertyValue(pk, archProps, opts)
 		assert.NotNil(t, err)
 		assert.Nil(t, archValue)
 	}
@@ -228,9 +233,10 @@ func TestUnsupportedSecret(t *testing.T) {
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
 	}))
-	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{})
+	pk := resource.PropertyKey("pk")
+	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{})
 	assert.Nil(t, err)
-	val, err := UnmarshalPropertyValue(prop, MarshalOptions{})
+	val, err := UnmarshalPropertyValue(pk, prop, MarshalOptions{})
 	assert.Nil(t, err)
 	assert.True(t, val.IsString())
 	assert.False(t, val.IsSecret())
@@ -242,9 +248,11 @@ func TestSupportedSecret(t *testing.T) {
 		resource.SigKey: resource.SecretSig,
 		"value":         "foo",
 	}))
-	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{KeepSecrets: true})
+	pk := resource.PropertyKey("pk")
+
+	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{KeepSecrets: true})
 	assert.Nil(t, err)
-	val, err := UnmarshalPropertyValue(prop, MarshalOptions{KeepSecrets: true})
+	val, err := UnmarshalPropertyValue(pk, prop, MarshalOptions{KeepSecrets: true})
 	assert.Nil(t, err)
 	assert.False(t, val.IsString())
 	assert.True(t, val.IsSecret())
@@ -255,9 +263,11 @@ func TestUnknownSig(t *testing.T) {
 	rawProp := resource.NewObjectProperty(resource.NewPropertyMapFromMap(map[string]interface{}{
 		resource.SigKey: "foobar",
 	}))
-	prop, err := MarshalPropertyValue(rawProp, MarshalOptions{})
+	pk := resource.PropertyKey("pk")
+
+	prop, err := MarshalPropertyValue(pk, rawProp, MarshalOptions{})
 	assert.Nil(t, err)
-	_, err = UnmarshalPropertyValue(prop, MarshalOptions{})
+	_, err = UnmarshalPropertyValue(pk, prop, MarshalOptions{})
 	assert.Error(t, err)
 
 }
@@ -290,40 +300,41 @@ func TestResourceReference(t *testing.T) {
 	// Test round-trip
 	opts := MarshalOptions{KeepResources: true}
 	rawProp := resource.MakeCustomResourceReference("fakeURN", "fakeID", "fakeVersion")
-	prop, err := MarshalPropertyValue(rawProp, opts)
+	pk := resource.PropertyKey("pk")
+	prop, err := MarshalPropertyValue(pk, rawProp, opts)
 	assert.NoError(t, err)
-	actual, err := UnmarshalPropertyValue(prop, opts)
+	actual, err := UnmarshalPropertyValue(pk, prop, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, rawProp, *actual)
 
 	// Test unmarshaling as an ID
 	opts.KeepResources = false
-	actual, err = UnmarshalPropertyValue(prop, opts)
+	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
 
 	// Test marshaling as an ID
-	prop, err = MarshalPropertyValue(rawProp, opts)
+	prop, err = MarshalPropertyValue(pk, rawProp, opts)
 	assert.NoError(t, err)
 	opts.KeepResources = true
-	actual, err = UnmarshalPropertyValue(prop, opts)
+	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(rawProp.ResourceReferenceValue().ID.StringValue()), *actual)
 
 	// Test unmarshaling as a URN
 	rawProp = resource.MakeComponentResourceReference("fakeURN", "fakeVersion")
-	prop, err = MarshalPropertyValue(rawProp, opts)
+	prop, err = MarshalPropertyValue(pk, rawProp, opts)
 	assert.NoError(t, err)
 	opts.KeepResources = false
-	actual, err = UnmarshalPropertyValue(prop, opts)
+	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
 
 	// Test marshaling as a URN
-	prop, err = MarshalPropertyValue(rawProp, opts)
+	prop, err = MarshalPropertyValue(pk, rawProp, opts)
 	assert.NoError(t, err)
 	opts.KeepResources = true
-	actual, err = UnmarshalPropertyValue(prop, opts)
+	actual, err = UnmarshalPropertyValue(pk, prop, opts)
 	assert.NoError(t, err)
 	assert.Equal(t, resource.NewStringProperty(string(rawProp.ResourceReferenceValue().URN)), *actual)
 }

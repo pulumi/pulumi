@@ -1,0 +1,29 @@
+{
+  "name": "example",
+  "version": "0.0.1",
+  "resources": {
+    "example::Child": {
+      "properties": {
+        "parent": {
+          "$ref": "#/resources/example::Person"
+        },
+        "happy": {
+          "type": "boolean"
+        }
+      }
+    }
+  },
+  "types": {
+    "example::Person": {
+      "type": "object",
+      "properties": {
+        "parent": {
+          "$ref": "#/resources/example::Person"
+        },
+        "alive": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

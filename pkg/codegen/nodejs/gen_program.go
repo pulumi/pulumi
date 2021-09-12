@@ -179,7 +179,7 @@ func (g *generator) genPreamble(w io.Writer, program *hcl2.Program) {
 			continue
 		}
 		as := makeValidIdentifier(path.Base(pkg))
-		if as != pkg {
+		if as != pkg || pkg == "crypto" {
 			imports = append(imports, fmt.Sprintf("import * as %v from \"%v\";", as, pkg))
 		} else {
 			imports = append(imports, fmt.Sprintf("import * from \"%v\";", pkg))
