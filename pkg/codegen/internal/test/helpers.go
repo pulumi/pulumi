@@ -1,4 +1,4 @@
-// Copyright 2016-2021, Pulumi Corporation.
+// Copyright 2016-2020, Pulumi Corporation.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -22,11 +22,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"gopkg.in/yaml.v3"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 )
 
 // GenPkgSignature corresponds to the shape of the codegen GeneratePackage functions.
@@ -40,8 +42,14 @@ func GeneratePackageFilesFromSchema(schemaPath string, genPackageFunc GenPkgSign
 		return nil, err
 	}
 
+	ext := filepath.Ext(schemaPath)
+
 	var pkgSpec schema.PackageSpec
-	err = json.Unmarshal(schemaBytes, &pkgSpec)
+	if ext == ".yaml" || ext == ".yml" {
+		err = yaml.Unmarshal(schemaBytes, &pkgSpec)
+	} else {
+		err = json.Unmarshal(schemaBytes, &pkgSpec)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -69,11 +77,7 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	return result, nil
 }
 
-// Recursively loads files from a directory into the `fs` map. Ignores
-// entries that match `ignore(path)==true`, also skips descending into
-// directories that are ignored. This is useful for example to avoid
-// `node_modules`.
-func loadDirectory(fs map[string][]byte, root, path string, ignore func(path string) bool) error {
+func loadDirectory(fs map[string][]byte, root, path string) error {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return err
@@ -81,12 +85,8 @@ func loadDirectory(fs map[string][]byte, root, path string, ignore func(path str
 
 	for _, e := range entries {
 		entryPath := filepath.Join(path, e.Name())
-		relativeEntryPath := entryPath[len(root)+1:]
-		baseName := filepath.Base(relativeEntryPath)
-		if ignore != nil && (ignore(relativeEntryPath) || ignore(baseName)) {
-			// pass
-		} else if e.IsDir() {
-			if err = loadDirectory(fs, root, entryPath, ignore); err != nil {
+		if e.IsDir() {
+			if err = loadDirectory(fs, root, entryPath); err != nil {
 				return err
 			}
 		} else {
@@ -94,7 +94,7 @@ func loadDirectory(fs map[string][]byte, root, path string, ignore func(path str
 			if err != nil {
 				return err
 			}
-			name := filepath.ToSlash(relativeEntryPath)
+			name := filepath.ToSlash(entryPath[len(root)+1:])
 			fs[name] = contents
 		}
 	}
@@ -181,35 +181,24 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	dir = filepath.Join(dir, lang)
 
 	fs := map[string][]byte{}
-
-	ignore, err := loadIgnoreMap(dir)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := loadDirectory(fs, dir, dir, ignore); err != nil {
+	if err := loadDirectory(fs, dir, dir); err != nil {
 		return nil, err
 	}
 	return fs, nil
 }
 
 // ValidateFileEquality compares maps of files for equality.
-func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) {
+func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
+	ok := true
 	for name, file := range expected {
-		_, inActual := actual[name]
-		if inActual {
-			if !assert.Equal(t, string(file), string(actual[name]), name) {
-				t.Logf("%s did not agree", name)
-				ok = false
-			}
-		} else {
-			t.Logf("File %s was expected but is missing from the actual fileset", name)
+		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
+			t.Logf("%s did not agree", name)
 			ok = false
 		}
 	}
 	for name := range actual {
-		if _, inExpected := expected[name]; !inExpected {
-			t.Logf("File %s from the actual fileset was not expected", name)
+		if _, has := expected[name]; !has {
+			t.Logf("missing data for %s", name)
 			ok = false
 		}
 	}
@@ -319,8 +308,6 @@ func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
 
 	for s := range seen {
 		assert.Fail(t, "No content generated for expected file %s", s)
-		assert.Contains(t, actual, name)
-		assert.Equal(t, string(file), string(actual[name]), name)
 	}
 }
 
@@ -366,38 +353,4 @@ func ValidateFileTransformer(
 	expected := map[string][]byte{expectedOutputFile: expectedBytes}
 
 	ValidateFileEquality(t, actual, expected)
-}
-
-// If PULUMI_ACCEPT is set, writes out actual output to th expected
-// file set, so we can continue enjoying golden tests without manually
-// modifying the expected output.
-func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[string][]byte, expected []string) {
-	if os.Getenv("PULUMI_ACCEPT") != "" {
-		for _, file := range expected {
-			bytes := actual[file]
-			err := ioutil.WriteFile(filepath.Join(dir, lang, file), bytes, 0600)
-			if err != nil {
-				t.Fatal(err)
-			}
-		}
-	}
-}
-
-// CheckAllFilesGenerated ensures that the set of expected and actual files generated
-// are exactly equivalent.
-func CheckAllFilesGenerated(t *testing.T, actual, expected map[string][]byte) {
-	seen := map[string]bool{}
-	for x := range expected {
-		seen[x] = true
-	}
-	for a := range actual {
-		assert.Contains(t, seen, a, "Unexpected file generated: %s", a)
-		if seen[a] {
-			delete(seen, a)
-		}
-	}
-
-	for s := range seen {
-		assert.Fail(t, "No content generated for expected file %s", s)
-	}
 }
