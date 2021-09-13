@@ -24,16 +24,26 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	require.NoError(t, err)
 
 	var stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{Verbose: true, Stderr: &stderr}
+	var stdout bytes.Buffer
+	cmdOptions := integration.ProgramTestOptions{
+		Verbose: true,
+		Stderr:  &stderr,
+		Stdout:  &stdout,
+	}
 	err = integration.RunCommand(t, "npm install", []string{npm, "install"}, pwd, &cmdOptions)
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "typecheck ts",
-		[]string{npm, "exec", "--yes", "--", "ts-node", "--type-check", "."}, pwd, &cmdOptions)
+		[]string{npm, "exec", "--yes", "--", "ts-node@7.0.1", "--type-check", "."}, pwd, &cmdOptions)
 	if err != nil {
 		stderr := stderr.String()
 		if len(stderr) > 0 {
 			t.Logf("stderr: %s", stderr)
 		}
+		stdout := stdout.String()
+		if len(stdout) > 0 {
+			t.Logf("stdout: %s", stdout)
+		}
+
 	}
 	require.NoError(t, err)
 }
