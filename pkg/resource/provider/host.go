@@ -37,9 +37,9 @@ type HostClient struct {
 
 // NewHostClient dials the target address, connects over gRPC, and returns a client interface.
 func NewHostClient(addr string) (*HostClient, error) {
-	// GRPC info logging to stdout introduces a race condition with the printing of the port, so drop them.
+	// Provider client is sensitive to GRPC info logging to stdout, so ensure they are dropped.
 	// See https://github.com/pulumi/pulumi/issues/7156
-	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, os.Stderr, os.Stderr))
+	grpclog.SetLoggerV2(grpclog.NewLoggerV2(ioutil.Discard, ioutil.Discard, os.Stderr))
 	conn, err := grpc.Dial(
 		addr,
 		grpc.WithInsecure(),
