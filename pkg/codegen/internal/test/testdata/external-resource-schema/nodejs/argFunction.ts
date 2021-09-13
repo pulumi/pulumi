@@ -34,5 +34,5 @@ export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.In
 }
 
 export interface ArgFunctionOutputArgs {
-    name?: pulumiRandom.RandomPet;
+    name?: pulumi.Input<pulumiRandom.RandomPet>;
 }

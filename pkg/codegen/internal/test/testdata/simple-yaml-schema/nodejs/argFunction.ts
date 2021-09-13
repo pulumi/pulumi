@@ -34,5 +34,5 @@ export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.In
 }
 
 export interface ArgFunctionOutputArgs {
-    arg1?: Resource;
+    arg1?: pulumi.Input<Resource>;
 }

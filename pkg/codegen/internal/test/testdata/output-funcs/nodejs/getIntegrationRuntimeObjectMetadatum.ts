@@ -61,17 +61,17 @@ export interface GetIntegrationRuntimeObjectMetadatumOutputArgs {
     /**
      * The factory name.
      */
-    factoryName: string;
+    factoryName: pulumi.Input<string>;
     /**
      * The integration runtime name.
      */
-    integrationRuntimeName: string;
+    integrationRuntimeName: pulumi.Input<string>;
     /**
      * Metadata path.
      */
-    metadataPath?: string;
+    metadataPath?: pulumi.Input<string>;
     /**
      * The resource group name.
      */
-    resourceGroupName: string;
+    resourceGroupName: pulumi.Input<string>;
 }

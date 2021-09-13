@@ -41,9 +41,9 @@ export interface FuncWithAllOptionalInputsOutputArgs {
     /**
      * Property A
      */
-    a?: string;
+    a?: pulumi.Input<string>;
     /**
      * Property B
      */
-    b?: string;
+    b?: pulumi.Input<string>;
 }

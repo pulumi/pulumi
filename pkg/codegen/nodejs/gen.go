@@ -971,7 +971,11 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 }
 `, fnOutput, argsig, functionReturnType(fun), originalName)
 	fmt.Fprintf(w, "\n")
-	mod.genPlainType(w, argTypeName, fun.Inputs.Comment, fun.Inputs.Properties,
+
+	mod.genPlainType(w,
+		argTypeName,
+		fun.Inputs.Comment,
+		fun.Inputs.InputShape.Properties,
 		true,  /* input */
 		false, /* readonly */
 		0 /* level */)

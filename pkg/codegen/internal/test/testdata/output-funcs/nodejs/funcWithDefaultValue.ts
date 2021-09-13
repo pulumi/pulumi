@@ -31,6 +31,6 @@ export function funcWithDefaultValueOutput(args: FuncWithDefaultValueOutputArgs,
 }
 
 export interface FuncWithDefaultValueOutputArgs {
-    a: string;
-    b?: string;
+    a: pulumi.Input<string>;
+    b?: pulumi.Input<string>;
 }
