@@ -189,7 +189,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#chew_csharp" style="color: inherit; text-decoration: inherit;">Chew</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Chew</span>
+        <span class="property-type"><a href="#chew">Chew</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -197,7 +197,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#laser_csharp" style="color: inherit; text-decoration: inherit;">Laser</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Pulumi.<wbr>Example.<wbr>Laser</span>
+        <span class="property-type"><a href="#laser">Laser</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -233,7 +233,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#chew_go" style="color: inherit; text-decoration: inherit;">Chew</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Chew</span>
+        <span class="property-type"><a href="#chew">Chew</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -241,7 +241,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#laser_go" style="color: inherit; text-decoration: inherit;">Laser</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Laser</span>
+        <span class="property-type"><a href="#laser">Laser</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -277,7 +277,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#chew_nodejs" style="color: inherit; text-decoration: inherit;">chew</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Chew</span>
+        <span class="property-type"><a href="#chew">Chew</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -285,7 +285,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#laser_nodejs" style="color: inherit; text-decoration: inherit;">laser</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Laser</span>
+        <span class="property-type"><a href="#laser">Laser</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -321,7 +321,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#chew_python" style="color: inherit; text-decoration: inherit;">chew</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Chew</span>
+        <span class="property-type"><a href="#chew">Chew</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -329,7 +329,7 @@ All [input](#inputs) properties are implicitly available as output properties. A
 <a href="#laser_python" style="color: inherit; text-decoration: inherit;">laser</a>
 </span>
         <span class="property-indicator"></span>
-        <span class="property-type">Laser</span>
+        <span class="property-type"><a href="#laser">Laser</a></span>
     </dt>
     <dd>{{% md %}}{{% /md %}}</dd><dt class="property-"
             title="">
@@ -359,6 +359,170 @@ All [input](#inputs) properties are implicitly available as output properties. A
 ## Supporting Types
 
 
+
+<h4 id="chew">Chew</h4>
+
+{{% choosable language csharp %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="owner_csharp">
+<a href="#owner_csharp" style="color: inherit; text-decoration: inherit;">Owner</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Dog</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="owner_go">
+<a href="#owner_go" style="color: inherit; text-decoration: inherit;">Owner</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dog</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="owner_nodejs">
+<a href="#owner_nodejs" style="color: inherit; text-decoration: inherit;">owner</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dog</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="owner_python">
+<a href="#owner_python" style="color: inherit; text-decoration: inherit;">owner</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Dog</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+<h4 id="laser">Laser</h4>
+
+{{% choosable language csharp %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="animal_csharp">
+<a href="#animal_csharp" style="color: inherit; text-decoration: inherit;">Animal</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Pulumi.<wbr>Example.<wbr>Cat</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="batteries_csharp">
+<a href="#batteries_csharp" style="color: inherit; text-decoration: inherit;">Batteries</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">bool</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="light_csharp">
+<a href="#light_csharp" style="color: inherit; text-decoration: inherit;">Light</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">double</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language go %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="animal_go">
+<a href="#animal_go" style="color: inherit; text-decoration: inherit;">Animal</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Cat</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="batteries_go">
+<a href="#batteries_go" style="color: inherit; text-decoration: inherit;">Batteries</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">bool</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="light_go">
+<a href="#light_go" style="color: inherit; text-decoration: inherit;">Light</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">float64</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language nodejs %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="animal_nodejs">
+<a href="#animal_nodejs" style="color: inherit; text-decoration: inherit;">animal</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Cat</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="batteries_nodejs">
+<a href="#batteries_nodejs" style="color: inherit; text-decoration: inherit;">batteries</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">boolean</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="light_nodejs">
+<a href="#light_nodejs" style="color: inherit; text-decoration: inherit;">light</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">number</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
+
+{{% choosable language python %}}
+<dl class="resources-properties"><dt class="property-optional"
+            title="Optional">
+        <span id="animal_python">
+<a href="#animal_python" style="color: inherit; text-decoration: inherit;">animal</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">Cat</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="batteries_python">
+<a href="#batteries_python" style="color: inherit; text-decoration: inherit;">batteries</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">bool</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd><dt class="property-optional"
+            title="Optional">
+        <span id="light_python">
+<a href="#light_python" style="color: inherit; text-decoration: inherit;">light</a>
+</span>
+        <span class="property-indicator"></span>
+        <span class="property-type">float</span>
+    </dt>
+    <dd>{{% md %}}{{% /md %}}</dd></dl>
+{{% /choosable %}}
 
 <h4 id="toy">Toy</h4>
 

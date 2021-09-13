@@ -5,7 +5,7 @@
     "example::NoRecursive": {
       "properties": {
         "rec": {
-          "$ref": "#/resources/example::Rec"
+          "$ref": "#/types/example::Rec"
         },
         "replace": {
           "type": "string",
@@ -16,10 +16,10 @@
     "example::ToyStore": {
       "properties": {
         "chew": {
-          "$ref": "#/resources/example::Chew"
+          "$ref": "#/types/example::Chew"
         },
         "laser": {
-          "$ref": "#/resources/example::Laser"
+          "$ref": "#/types/example::Laser"
         },
         "stuff": {
           "type": "array",
@@ -126,14 +126,18 @@
     "example::Rec": {
       "type": "object",
       "properties": {
-        "rec": {
-          "$ref": "#/resources/example::Rec"
+        "rec1": {
+          "$ref": "#/types/example::Rec"
         }
       }
     }
   },
   "language": {
-    "csharp": {},
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
     "go": {
       "generateResourceContainerTypes": true
     },

@@ -106,8 +106,14 @@ var sdkTests = []sdkTest{
 		SkipCompileCheck: codegen.NewStringSet(dotnet),
 	},
 	{
-		Directory:   "replace-on-change",
-		Description: "Simple use of replaceOnChange in schema",
+		Directory:        "replace-on-change",
+		Description:      "Simple use of replaceOnChange in schema",
+		SkipCompileCheck: codegen.NewStringSet(golang),
+	},
+	{
+		Directory:        "resource-property-overlap",
+		Description:      "A resource with the same name as it's property",
+		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
 	},
 }
 

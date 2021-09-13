@@ -9,30 +9,27 @@ using Pulumi.Serialization;
 
 namespace Pulumi.Example
 {
-    [ExampleResourceType("example::NoRecursive")]
-    public partial class NoRecursive : Pulumi.CustomResource
+    [ExampleResourceType("example::Rec")]
+    public partial class Rec : Pulumi.CustomResource
     {
         [Output("rec")]
-        public Output<Outputs.Rec?> Rec { get; private set; } = null!;
-
-        [Output("replace")]
-        public Output<string?> Replace { get; private set; } = null!;
+        public Output<Pulumi.Example.Outputs.Rec?> Rec { get; private set; } = null!;
 
 
         /// <summary>
-        /// Create a NoRecursive resource with the given unique name, arguments, and options.
+        /// Create a Rec resource with the given unique name, arguments, and options.
         /// </summary>
         ///
         /// <param name="name">The unique name of the resource</param>
         /// <param name="args">The arguments used to populate this resource's properties</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public NoRecursive(string name, NoRecursiveArgs? args = null, CustomResourceOptions? options = null)
-            : base("example::NoRecursive", name, args ?? new NoRecursiveArgs(), MakeResourceOptions(options, ""))
+        public Rec(string name, RecArgs? args = null, CustomResourceOptions? options = null)
+            : base("example::Rec", name, args ?? new RecArgs(), MakeResourceOptions(options, ""))
         {
         }
 
-        private NoRecursive(string name, Input<string> id, CustomResourceOptions? options = null)
-            : base("example::NoRecursive", name, null, MakeResourceOptions(options, id))
+        private Rec(string name, Input<string> id, CustomResourceOptions? options = null)
+            : base("example::Rec", name, null, MakeResourceOptions(options, id))
         {
         }
 
@@ -41,10 +38,6 @@ namespace Pulumi.Example
             var defaultOptions = new CustomResourceOptions
             {
                 Version = Utilities.Version,
-                ReplaceOnChanges =
-                {
-                    "replace",
-                },
             };
             var merged = CustomResourceOptions.Merge(defaultOptions, options);
             // Override the ID if one was specified for consistency with other language SDKs.
@@ -52,22 +45,22 @@ namespace Pulumi.Example
             return merged;
         }
         /// <summary>
-        /// Get an existing NoRecursive resource's state with the given name, ID, and optional extra
+        /// Get an existing Rec resource's state with the given name, ID, and optional extra
         /// properties used to qualify the lookup.
         /// </summary>
         ///
         /// <param name="name">The unique name of the resulting resource.</param>
         /// <param name="id">The unique provider ID of the resource to lookup.</param>
         /// <param name="options">A bag of options that control this resource's behavior</param>
-        public static NoRecursive Get(string name, Input<string> id, CustomResourceOptions? options = null)
+        public static Rec Get(string name, Input<string> id, CustomResourceOptions? options = null)
         {
-            return new NoRecursive(name, id, options);
+            return new Rec(name, id, options);
         }
     }
 
-    public sealed class NoRecursiveArgs : Pulumi.ResourceArgs
+    public sealed class RecArgs : Pulumi.ResourceArgs
     {
-        public NoRecursiveArgs()
+        public RecArgs()
         {
         }
     }

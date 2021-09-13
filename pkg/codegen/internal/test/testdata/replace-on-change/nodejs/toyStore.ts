@@ -5,6 +5,8 @@ import * as pulumi from "@pulumi/pulumi";
 import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
+import {Cat, Dog} from "./index";
+
 export class ToyStore extends pulumi.CustomResource {
     /**
      * Get an existing ToyStore resource's state with the given name, ID, and optional extra
@@ -32,8 +34,8 @@ export class ToyStore extends pulumi.CustomResource {
         return obj['__pulumiType'] === ToyStore.__pulumiType;
     }
 
-    public /*out*/ readonly chew!: pulumi.Output<Chew | undefined>;
-    public /*out*/ readonly laser!: pulumi.Output<Laser | undefined>;
+    public /*out*/ readonly chew!: pulumi.Output<outputs.Chew | undefined>;
+    public /*out*/ readonly laser!: pulumi.Output<outputs.Laser | undefined>;
     public /*out*/ readonly stuff!: pulumi.Output<outputs.Toy[] | undefined>;
     public /*out*/ readonly wanted!: pulumi.Output<outputs.Toy[] | undefined>;
 
@@ -61,7 +63,7 @@ export class ToyStore extends pulumi.CustomResource {
         if (!opts.version) {
             opts = pulumi.mergeOptions(opts, { version: utilities.getVersion()});
         }
-        const replaceOnChanges = { replaceOnChanges: ["stuff[*].associated.color", "stuff[*].color", "wanted[*]"] };
+        const replaceOnChanges = { replaceOnChanges: ["chew.owner", "laser.batteries", "stuff[*].associated.color", "stuff[*].color", "wanted[*]"] };
         opts = pulumi.mergeOptions(opts, replaceOnChanges);
         super(ToyStore.__pulumiType, name, inputs, opts);
     }
