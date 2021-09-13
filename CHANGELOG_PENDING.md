@@ -8,3 +8,5 @@
 
 ### Bug Fixes
 
+- [cli] Use json.Unmarshal instead of custom parser
+  [#7954](https://github.com/pulumi/pulumi/pull/7954)
