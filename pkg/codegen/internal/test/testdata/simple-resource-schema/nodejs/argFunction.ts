@@ -29,10 +29,10 @@ export interface ArgFunctionResult {
     readonly result?: Resource;
 }
 
-export function argFunctionApply(args?: ArgFunctionApplyArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ArgFunctionResult> {
+export function argFunctionOutput(args?: ArgFunctionOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ArgFunctionResult> {
     return pulumi.output(args).apply(a => argFunction(a, opts))
 }
 
-export interface ArgFunctionApplyArgs {
-    arg1?: pulumi.Input<Resource>;
+export interface ArgFunctionOutputArgs {
+    arg1?: Resource;
 }
