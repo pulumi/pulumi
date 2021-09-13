@@ -11,7 +11,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
@@ -102,16 +105,24 @@ func TestGenerateTypeNames(t *testing.T) {
 	})
 }
 
-func TestGenerateOutputFuncs(t *testing.T) {
+func TestGenerateOutputFuncsNode(t *testing.T) {
 	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
 
-	examples := []string{
-		"funcWithAllOptionalInputs",
-		"funcWithDefaultValue",
-		"funcWithDictParam",
-		"funcWithListParam",
-		"listStorageAccountKeys",
+	files, err := ioutil.ReadDir(testDir)
+	if err != nil {
+		require.NoError(t, err)
+		return
 	}
+
+	var examples []string
+	for _, f := range files {
+		name := f.Name()
+		if strings.HasSuffix(name, ".json") {
+			examples = append(examples, strings.TrimSuffix(name, ".json"))
+		}
+	}
+
+	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
 
 	gen := func(reader io.Reader, writer io.Writer) error {
 		var pkgSpec schema.PackageSpec
