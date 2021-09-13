@@ -160,7 +160,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			if v.OutputValue().Secret {
 				result = resource.MakeSecret(result)
 			}
-			return MarshalPropertyValue(result, opts)
+			return MarshalPropertyValue(key, result, opts)
 		}
 		obj := resource.PropertyMap{
 			resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
@@ -179,7 +179,7 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 			obj["dependencies"] = resource.NewArrayProperty(deps)
 		}
 		output := resource.NewObjectProperty(obj)
-		return MarshalPropertyValue(output, opts)
+		return MarshalPropertyValue(key, output, opts)
 	} else if v.IsSecret() {
 		if !opts.KeepSecrets {
 			logging.V(5).Infof("marshalling secret value as raw value as opts.KeepSecrets is false")
@@ -450,7 +450,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			var secret bool
 			if secretProp, ok := obj["secret"]; ok {
 				if !secretProp.IsBool() {
-					return nil, errors.New("malformed output value: secret not a bool")
+					return nil, fmt.Errorf("malformed output value for %q: secret not a bool", key)
 				}
 				secret = secretProp.BoolValue()
 			}
@@ -458,7 +458,7 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			if !opts.KeepOutputValues {
 				result := &value
 				if !known {
-					result, err = UnmarshalPropertyValue(&structpb.Value{
+					result, err = UnmarshalPropertyValue(key, &structpb.Value{
 						Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
 					}, opts)
 					if err != nil {
@@ -474,12 +474,13 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			var dependencies []resource.URN
 			if dependenciesProp, ok := obj["dependencies"]; ok {
 				if !dependenciesProp.IsArray() {
-					return nil, errors.New("malformed output value: dependencies not an array")
+					return nil, fmt.Errorf("malformed output value for %q: dependencies not an array", key)
 				}
 				dependencies = make([]resource.URN, len(dependenciesProp.ArrayValue()))
 				for i, dep := range dependenciesProp.ArrayValue() {
 					if !dep.IsString() {
-						return nil, errors.New("malformed output value: element in dependencies not a string")
+						return nil, fmt.Errorf(
+							"malformed output value for %q: element in dependencies not a string", key)
 					}
 					dependencies[i] = resource.URN(dep.StringValue())
 				}

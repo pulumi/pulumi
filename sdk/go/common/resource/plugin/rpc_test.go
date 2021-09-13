@@ -815,9 +815,9 @@ func TestOutputValueRoundTrip(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts := MarshalOptions{KeepOutputValues: true}
-			prop, err := MarshalPropertyValue(tt.raw, opts)
+			prop, err := MarshalPropertyValue("", tt.raw, opts)
 			assert.NoError(t, err)
-			actual, err := UnmarshalPropertyValue(prop, opts)
+			actual, err := UnmarshalPropertyValue("", prop, opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.raw, *actual)
 		})
@@ -1096,7 +1096,7 @@ func TestOutputValueMarshaling(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			actual, err := MarshalPropertyValue(tt.raw, tt.opts)
+			actual, err := MarshalPropertyValue("", tt.raw, tt.opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, actual)
 		})
@@ -1521,7 +1521,7 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			prop, err := UnmarshalPropertyValue(tt.raw, tt.opts)
+			prop, err := UnmarshalPropertyValue("", tt.raw, tt.opts)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.expected, prop)
 		})

@@ -67,12 +67,12 @@ func TestOutputValueTurnaround(t *testing.T) {
 		v := resource.NewOutputProperty(out)
 
 		opts := MarshalOptions{KeepOutputValues: true}
-		pb, err := MarshalPropertyValue(v, opts)
+		pb, err := MarshalPropertyValue("", v, opts)
 		assert.NoError(t, err)
 		if err != nil {
 			t.FailNow()
 		}
-		v2, err := UnmarshalPropertyValue(pb, opts)
+		v2, err := UnmarshalPropertyValue("", pb, opts)
 		assert.NoError(t, err)
 		if err != nil {
 			t.FailNow()
