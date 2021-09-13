@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -90,12 +91,23 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	}
 	t.Logf("*** Testing go in dir: %q ***", root)
 
-	cmdOptions := integration.ProgramTestOptions{}
+	var stdout, stderr bytes.Buffer
+	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout}
 	// We don't want to corrupt the global go.mod and go.sum with packages we
 	// don't actually depend on. For this, we need to have each go package be
 	// it's own module.
 	err = integration.RunCommand(t, "mod init", []string{ex, "mod", "init"}, root, &cmdOptions)
-	require.NoError(t, err)
+	if err != nil {
+		stdout := stdout.String()
+		stderr := stderr.String()
+		if len(stdout) > 0 {
+			t.Logf("stdout: %s", stdout)
+		}
+		if len(stderr) > 0 {
+			t.Logf("stderr: %s", stderr)
+		}
+		t.FailNow()
+	}
 	err = integration.RunCommand(t, "get", []string{ex, "get"}, root, &cmdOptions)
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "go build", []string{ex, "build"}, root, &cmdOptions)

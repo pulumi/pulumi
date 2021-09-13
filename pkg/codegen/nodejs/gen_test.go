@@ -26,8 +26,7 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	npm, err = executable.FindExecutable("npm")
 	require.NoError(t, err)
 
-	var stderr bytes.Buffer
-	var stdout bytes.Buffer
+	var stdout, stderr bytes.Buffer
 	cmdOptions := integration.ProgramTestOptions{
 		Verbose: true,
 		Stderr:  &stderr,
