@@ -1033,6 +1033,51 @@ func TestOutputValueMarshaling(t *testing.T) {
 			},
 		},
 		{
+			name: "unknown secret (KeepUnknowns, KeepSecrets)",
+			opts: MarshalOptions{KeepUnknowns: true, KeepSecrets: true},
+			raw: resource.NewOutputProperty(resource.Output{
+				Element: resource.NewStringProperty("shhh"),
+				Secret:  true,
+			}),
+			expected: &structpb.Value{
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							resource.SigKey: {
+								Kind: &structpb.Value_StringValue{StringValue: resource.SecretSig},
+							},
+							"value": {
+								Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "unknown secret with deps (KeepUnknowns, KeepSecrets)",
+			opts: MarshalOptions{KeepUnknowns: true, KeepSecrets: true},
+			raw: resource.NewOutputProperty(resource.Output{
+				Element:      resource.NewStringProperty("shhh"),
+				Secret:       true,
+				Dependencies: []resource.URN{"fakeURN1", "fakeURN2"},
+			}),
+			expected: &structpb.Value{
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							resource.SigKey: {
+								Kind: &structpb.Value_StringValue{StringValue: resource.SecretSig},
+							},
+							"value": {
+								Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
 			name: "unknown value (KeepOutputValues)",
 			opts: MarshalOptions{KeepOutputValues: true},
 			raw:  resource.MakeOutput(resource.NewStringProperty("")),
@@ -1424,6 +1469,54 @@ func TestOutputValueUnmarshaling(t *testing.T) {
 				},
 			},
 			expected: ptr(resource.MakeSecret(resource.NewStringProperty("shhh"))),
+		},
+		{
+			name: "unknown secret (KeepUnknowns, KeepSecrets)",
+			opts: MarshalOptions{KeepUnknowns: true, KeepSecrets: true},
+			raw: &structpb.Value{
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							resource.SigKey: {
+								Kind: &structpb.Value_StringValue{StringValue: resource.OutputValueSig},
+							},
+							"secret": {
+								Kind: &structpb.Value_BoolValue{BoolValue: true},
+							},
+						},
+					},
+				},
+			},
+			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty("")))),
+		},
+		{
+			name: "unknown secret with deps (KeepUnknowns, KeepSecrets)",
+			opts: MarshalOptions{KeepUnknowns: true, KeepSecrets: true},
+			raw: &structpb.Value{
+				Kind: &structpb.Value_StructValue{
+					StructValue: &structpb.Struct{
+						Fields: map[string]*structpb.Value{
+							resource.SigKey: {
+								Kind: &structpb.Value_StringValue{StringValue: resource.OutputValueSig},
+							},
+							"secret": {
+								Kind: &structpb.Value_BoolValue{BoolValue: true},
+							},
+							"dependencies": {
+								Kind: &structpb.Value_ListValue{
+									ListValue: &structpb.ListValue{
+										Values: []*structpb.Value{
+											{Kind: &structpb.Value_StringValue{StringValue: "fakeURN1"}},
+											{Kind: &structpb.Value_StringValue{StringValue: "fakeURN2"}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: ptr(resource.MakeSecret(resource.MakeComputed(resource.NewStringProperty("")))),
 		},
 	}
 	for _, tt := range tests {

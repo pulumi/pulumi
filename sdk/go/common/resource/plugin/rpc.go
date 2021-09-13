@@ -152,15 +152,15 @@ func MarshalPropertyValue(key resource.PropertyKey, v resource.PropertyValue,
 		return nil, nil // return nil and the caller will ignore it.
 	} else if v.IsOutput() {
 		if !opts.KeepOutputValues {
+			result := v.OutputValue().Element
 			if !v.OutputValue().Known {
 				// Unknown outputs are marshaled the same as Computed.
-				computed := resource.MakeComputed(v.OutputValue().Element)
-				return MarshalPropertyValue(computed, opts)
-			} else if v.OutputValue().Secret {
-				secret := resource.MakeSecret(v.OutputValue().Element)
-				return MarshalPropertyValue(secret, opts)
+				result = resource.MakeComputed(result)
 			}
-			return MarshalPropertyValue(v.OutputValue().Element, opts)
+			if v.OutputValue().Secret {
+				result = resource.MakeSecret(result)
+			}
+			return MarshalPropertyValue(result, opts)
 		}
 		obj := resource.PropertyMap{
 			resource.SigKey: resource.NewStringProperty(resource.OutputValueSig),
@@ -456,15 +456,19 @@ func UnmarshalPropertyValue(key resource.PropertyKey, v *structpb.Value,
 			}
 
 			if !opts.KeepOutputValues {
+				result := &value
 				if !known {
-					v := structpb.Value{
+					result, err = UnmarshalPropertyValue(&structpb.Value{
 						Kind: &structpb.Value_StringValue{StringValue: UnknownStringValue},
+					}, opts)
+					if err != nil {
+						return nil, err
 					}
-					return UnmarshalPropertyValue(&v, opts)
-				} else if secret {
-					return unmarshalSecretPropertyValue(value, opts), nil
 				}
-				return &value, nil
+				if secret && result != nil {
+					result = unmarshalSecretPropertyValue(*result, opts)
+				}
+				return result, nil
 			}
 
 			var dependencies []resource.URN
