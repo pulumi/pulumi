@@ -3,6 +3,9 @@ package nodejs
 
 import (
 	"bytes"
+	"io/ioutil"
+	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -30,10 +33,19 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 		Stderr:  &stderr,
 		Stdout:  &stdout,
 	}
-	err = integration.RunCommand(t, "npm install", []string{npm, "install"}, pwd, &cmdOptions)
+
+	// TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
+	file := filepath.Join(pwd, "package.json")
+	oldFile, err := ioutil.ReadFile(file)
+	require.NoError(t, err)
+	newFile := strings.ReplaceAll(string(oldFile), "${VERSION}", "0.0.1")
+	err = ioutil.WriteFile(file, []byte(newFile), 0600)
+	require.NoError(t, err)
+
+	err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "typecheck ts",
-		[]string{npm, "exec", "--yes", "--", "ts-node@7.0.1", "--type-check", "."}, pwd, &cmdOptions)
+		[]string{filepath.Join(".", "node_modules", ".bin", "tsc"), "--noEmit"}, pwd, &cmdOptions)
 	if err != nil {
 		stderr := stderr.String()
 		if len(stderr) > 0 {
