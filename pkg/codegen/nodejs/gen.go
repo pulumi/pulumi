@@ -926,7 +926,7 @@ func functionArgsOptional(fun *schema.Function) bool {
 	argsOptional := true
 	if fun.Inputs != nil {
 		for _, p := range fun.Inputs.Properties {
-			if p.IsRequired {
+			if p.IsRequired() {
 				argsOptional = false
 				break
 			}
@@ -971,11 +971,10 @@ export function %s(%sopts?: pulumi.InvokeOptions): pulumi.Output<%s> {
 }
 `, fnOutput, argsig, functionReturnType(fun), originalName)
 	fmt.Fprintf(w, "\n")
-	input := true
-	arg := true
-	readonly := false
-	level := 0
-	mod.genPlainType(w, argTypeName, fun.Inputs.Comment, fun.Inputs.Properties, input, arg, readonly, level)
+	mod.genPlainType(w, argTypeName, fun.Inputs.Comment, fun.Inputs.Properties,
+		true,  /* input */
+		false, /* readonly */
+		0 /* level */)
 }
 
 func visitObjectTypes(properties []*schema.Property, visitor func(*schema.ObjectType)) {
