@@ -72,7 +72,7 @@ func MarshalProperties(props resource.PropertyMap, opts MarshalOptions) (*struct
 	for _, key := range props.StableKeys() {
 		v := props[key]
 		logging.V(9).Infof("Marshaling property for RPC[%s]: %s=%v", opts.Label, key, v)
-		if v.IsOutput() && !opts.KeepOutputValues {
+		if v.IsOutput() && !v.OutputValue().Known && !opts.KeepOutputValues {
 			logging.V(9).Infof("Skipping output property for RPC[%s]: %v", opts.Label, key)
 		} else if opts.SkipNulls && v.IsNull() {
 			logging.V(9).Infof("Skipping null property for RPC[%s]: %s (as requested)", opts.Label, key)

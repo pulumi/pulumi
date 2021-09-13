@@ -342,7 +342,13 @@ func TestMarshalProperties(t *testing.T) {
 				}),
 			},
 			expected: &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
+				Fields: map[string]*structpb.Value{
+					"foo": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "hello",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -355,7 +361,13 @@ func TestMarshalProperties(t *testing.T) {
 				}),
 			},
 			expected: &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
+				Fields: map[string]*structpb.Value{
+					"foo": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "hello",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -368,7 +380,13 @@ func TestMarshalProperties(t *testing.T) {
 				}),
 			},
 			expected: &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
+				Fields: map[string]*structpb.Value{
+					"foo": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "hello",
+						},
+					},
+				},
 			},
 		},
 		{
@@ -382,7 +400,13 @@ func TestMarshalProperties(t *testing.T) {
 				}),
 			},
 			expected: &structpb.Struct{
-				Fields: map[string]*structpb.Value{},
+				Fields: map[string]*structpb.Value{
+					"foo": {
+						Kind: &structpb.Value_StringValue{
+							StringValue: "hello",
+						},
+					},
+				},
 			},
 		},
 		{
