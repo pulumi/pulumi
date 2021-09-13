@@ -96,7 +96,8 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	// We don't want to corrupt the global go.mod and go.sum with packages we
 	// don't actually depend on. For this, we need to have each go package be
 	// it's own module.
-	err = integration.RunCommand(t, "mod init", []string{ex, "mod", "init", "github.com/pulumi/test/internal"}, root, &cmdOptions)
+	err = integration.RunCommand(t, "mod init",
+		[]string{ex, "mod", "init", "github.com/pulumi/test/internal"}, root, &cmdOptions)
 	if err != nil {
 		stdout := stdout.String()
 		stderr := stderr.String()
