@@ -19,7 +19,13 @@ export function funcWithAllOptionalInputs(args?: FuncWithAllOptionalInputsArgs, 
 }
 
 export interface FuncWithAllOptionalInputsArgs {
+    /**
+     * Property A
+     */
     a?: string;
+    /**
+     * Property B
+     */
     b?: string;
 }
 
@@ -32,6 +38,12 @@ export function funcWithAllOptionalInputsOutput(args?: FuncWithAllOptionalInputs
 }
 
 export interface FuncWithAllOptionalInputsOutputArgs {
-    a?: pulumi.Input<string>;
-    b?: pulumi.Input<string>;
+    /**
+     * Property A
+     */
+    a?: string;
+    /**
+     * Property B
+     */
+    b?: string;
 }

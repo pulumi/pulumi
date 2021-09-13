@@ -2,6 +2,7 @@ import * as utilities from "./utilities";
 import * as pulumi from "@pulumi/pulumi";
 /**
  * The response from the ListKeys operation.
+ * API Version: 2021-02-01.
  */
 export function listStorageAccountKeys(args: ListStorageAccountKeysArgs, opts?: pulumi.InvokeOptions): Promise<ListStorageAccountKeysResult> {
     if (!opts) {
@@ -11,7 +12,7 @@ export function listStorageAccountKeys(args: ListStorageAccountKeysArgs, opts?: 
     if (!opts.version) {
         opts.version = utilities.getVersion();
     }
-    return pulumi.runtime.invoke("madeup-package:codegentest:listStorageAccountKeys", {
+    return pulumi.runtime.invoke("azure-native:codegentest:listStorageAccountKeys", {
         "accountName": args.accountName,
         "expand": args.expand,
         "resourceGroupName": args.resourceGroupName,
@@ -40,7 +41,7 @@ export interface ListStorageAccountKeysResult {
     /**
      * Gets the list of storage account keys and their properties for the specified storage account.
      */
-    readonly keys: {[key: string]: string}[];
+    readonly keys: pulumi.types.output.codegentest.StorageAccountKeyResponse[];
 }
 
 export function listStorageAccountKeysOutput(args: ListStorageAccountKeysOutputArgs, opts?: pulumi.InvokeOptions): pulumi.Output<ListStorageAccountKeysResult> {
@@ -51,13 +52,13 @@ export interface ListStorageAccountKeysOutputArgs {
     /**
      * The name of the storage account within the specified resource group. Storage account names must be between 3 and 24 characters in length and use numbers and lower-case letters only.
      */
-    accountName: pulumi.Input<string>;
+    accountName: string;
     /**
      * Specifies type of the key to be listed. Possible value is kerb.
      */
-    expand?: pulumi.Input<string>;
+    expand?: string;
     /**
      * The name of the resource group within the user's subscription. The name is case insensitive.
      */
-    resourceGroupName: pulumi.Input<string>;
+    resourceGroupName: string;
 }
