@@ -20,6 +20,7 @@ import { ComponentResource, CustomResource, ProviderResource, Resource, URN } fr
 import { debuggablePromise, errorString, promiseDebugString } from "./debuggable";
 import { excessiveDebugOutput, isDryRun, monitorSupportsOutputValues, monitorSupportsResourceReferences,
     monitorSupportsSecrets } from "./settings";
+import { getAllTransitivelyReferencedResourceURNs } from "./resource";
 
 import * as semver from "semver";
 
@@ -361,18 +362,28 @@ export async function serializeProperty(
         // which will wrap undefined, if it were to be resolved (since `Output` has no member named .isSecret).
         // so we must compare to the literal true instead of just doing await prop.isSecret.
         const isSecret = await prop.isSecret === true;
-        const value = await serializeProperty(`${ctx}.id`, prop.promise(), dependentResources, {
+        const promiseDeps = new Set<Resource>();
+        const value = await serializeProperty(`${ctx}.id`, prop.promise(), promiseDeps, {
             keepOutputValues: false,
         });
+        for (const resource of promiseDeps) {
+            propResources.add(resource);
+            dependentResources.add(resource);
+        }
 
         if (opts?.keepOutputValues && await monitorSupportsOutputValues()) {
-            const dependencies = new Set<string>();
+            const urnDeps = new Set<Resource>();
             for (const resource of propResources) {
-                const urn = await serializeProperty(`${ctx} dependency`, resource.urn, new Set<Resource>(), {
+                await serializeProperty(`${ctx} dependency`, resource.urn, urnDeps, {
                     keepOutputValues: false,
                 });
-                dependencies.add(urn);
             }
+            for (const resource of urnDeps) {
+                propResources.add(resource);
+                dependentResources.add(resource);
+            }
+
+            const dependencies = await getAllTransitivelyReferencedResourceURNs(propResources);
 
             const obj: any = {
                 [specialSigKey]: specialOutputValueSig,
