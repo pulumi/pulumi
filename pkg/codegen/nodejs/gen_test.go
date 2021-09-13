@@ -22,11 +22,17 @@ func typeCheckGeneratedPackage(t *testing.T, pwd string) {
 	npm, err = executable.FindExecutable("npm")
 	require.NoError(t, err)
 
-	cmdOptions := integration.ProgramTestOptions{}
+	stderr := make([]byte, 0)
+	cmdOptions := integration.ProgramTestOptions{Verbose: true, Stderr: stderr}
 	err = integration.RunCommand(t, "npm install", []string{npm, "install"}, pwd, &cmdOptions)
 	require.NoError(t, err)
 	err = integration.RunCommand(t, "typecheck ts",
 		[]string{npm, "exec", "--yes", "--", "ts-node", "--type-check", "."}, pwd, &cmdOptions)
+	if err != nil {
+		if len(stderr) > 0 {
+			t.Logf("stderr: %s", stderr)
+		}
+	}
 	require.NoError(t, err)
 }
 
