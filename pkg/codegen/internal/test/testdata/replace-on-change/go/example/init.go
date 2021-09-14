@@ -26,6 +26,8 @@ func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi
 		r = &Dog{}
 	case "example::God":
 		r = &God{}
+	case "example::NoRecursive":
+		r = &NoRecursive{}
 	case "example::ToyStore":
 		r = &ToyStore{}
 	default:

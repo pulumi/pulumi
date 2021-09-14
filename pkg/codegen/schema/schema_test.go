@@ -459,6 +459,13 @@ func TestReplaceOnChanges(t *testing.T) {
 			resource: "example::Pets",
 			result:   []string{"foes.*.color", "friends[*].color", "name", "toy.color"},
 		},
+		{
+			name:     "No replace on changes and recursive",
+			filePath: "replace-on-changes-6.json",
+			resource: "example::Child",
+			result:   []string{},
+			errors:   []string{},
+		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			// We sort each result before comparison. We don't enforce that the

@@ -2,6 +2,17 @@
   "name": "example",
   "version": "0.0.1",
   "resources": {
+    "example::NoRecursive": {
+      "properties": {
+        "rec": {
+          "$ref": "#/resources/example::Rec"
+        },
+        "replace": {
+          "type": "string",
+          "replaceOnChanges": true
+        }
+      }
+    },
     "example::ToyStore": {
       "properties": {
         "chew": {
@@ -21,7 +32,7 @@
           "items": {
             "$ref": "#/types/example::Toy"
           },
-          "replaceOnChange": true
+          "replaceOnChanges": true
         }
       }
     },
@@ -108,7 +119,15 @@
       "properties": {
         "owner": {
           "$ref": "#/resources/example::Dog",
-          "replaceOnChange": true
+          "replaceOnChanges": true
+        }
+      }
+    },
+    "example::Rec": {
+      "type": "object",
+      "properties": {
+        "rec": {
+          "$ref": "#/resources/example::Rec"
         }
       }
     }
