@@ -13,10 +13,12 @@
         "strict": true
     },
     "files": [
+        "endpoint.ts",
         "index.ts",
         "provider.ts",
         "resource.ts",
         "resourceInput.ts",
+        "types/enums/index.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",

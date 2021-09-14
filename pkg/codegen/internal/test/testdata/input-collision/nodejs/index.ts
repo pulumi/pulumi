@@ -5,9 +5,13 @@ import * as pulumi from "@pulumi/pulumi";
 import * as utilities from "./utilities";
 
 // Export members:
+export * from "./endpoint";
 export * from "./provider";
 export * from "./resource";
 export * from "./resourceInput";
+
+// Export enums:
+export * from "./types/enums";
 
 // Export sub-modules:
 import * as types from "./types";
@@ -17,6 +21,7 @@ export {
 };
 
 // Import resources to register:
+import { Endpoint } from "./endpoint";
 import { Resource } from "./resource";
 import { ResourceInput } from "./resourceInput";
 
@@ -24,6 +29,8 @@ const _module = {
     version: utilities.getVersion(),
     construct: (name: string, type: string, urn: string): pulumi.Resource => {
         switch (type) {
+            case "example::Endpoint":
+                return new Endpoint(name, <any>undefined, { urn })
             case "example::Resource":
                 return new Resource(name, <any>undefined, { urn })
             case "example::ResourceInput":

@@ -17,9 +17,31 @@
         }
       },
       "type": "object"
+    },
+    "example::Endpoint": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
+    "example::EndpointType": {
+      "type": "string",
+      "enum": [
+        {"value":  "haha"},
+        {"value":  "business"}
+      ]
     }
   },
   "resources": {
+    "example::Endpoint": {
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      }
+    },
     "example::Resource": {
       "properties": {
         "bar": {

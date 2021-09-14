@@ -14,6 +14,7 @@ menu:
 
 <h2 id="resources">Resources</h2>
 <ul class="api">
+    <li><a href="endpoint" title="Endpoint"><span class="symbol resource"></span>Endpoint</a></li>
     <li><a href="provider" title="Provider"><span class="symbol resource"></span>Provider</a></li>
     <li><a href="resource" title="Resource"><span class="symbol resource"></span>Resource</a></li>
     <li><a href="resourceinput" title="ResourceInput"><span class="symbol resource"></span>ResourceInput</a></li>

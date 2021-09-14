@@ -10,6 +10,55 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
+type EndpointType struct {
+	Name *string `pulumi:"name"`
+}
+
+// EndpointTypeInput is an input type that accepts EndpointTypeArgs and EndpointTypeOutput values.
+// You can construct a concrete instance of `EndpointTypeInput` via:
+//
+//          EndpointTypeArgs{...}
+type EndpointTypeInput interface {
+	pulumi.Input
+
+	ToEndpointTypeOutput() EndpointTypeOutput
+	ToEndpointTypeOutputWithContext(context.Context) EndpointTypeOutput
+}
+
+type EndpointTypeArgs struct {
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (EndpointTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*EndpointType)(nil)).Elem()
+}
+
+func (i EndpointTypeArgs) ToEndpointTypeOutput() EndpointTypeOutput {
+	return i.ToEndpointTypeOutputWithContext(context.Background())
+}
+
+func (i EndpointTypeArgs) ToEndpointTypeOutputWithContext(ctx context.Context) EndpointTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EndpointTypeOutput)
+}
+
+type EndpointTypeOutput struct{ *pulumi.OutputState }
+
+func (EndpointTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*EndpointType)(nil)).Elem()
+}
+
+func (o EndpointTypeOutput) ToEndpointTypeOutput() EndpointTypeOutput {
+	return o
+}
+
+func (o EndpointTypeOutput) ToEndpointTypeOutputWithContext(ctx context.Context) EndpointTypeOutput {
+	return o
+}
+
+func (o EndpointTypeOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v EndpointType) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
 type Object struct {
 	Bar *string `pulumi:"bar"`
 }
@@ -109,6 +158,7 @@ func (o ObjectInputTypeOutput) Bar() pulumi.StringPtrOutput {
 }
 
 func init() {
+	pulumi.RegisterOutputType(EndpointTypeOutput{})
 	pulumi.RegisterOutputType(ObjectOutput{})
 	pulumi.RegisterOutputType(ObjectInputTypeOutput{})
 }
