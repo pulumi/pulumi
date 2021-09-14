@@ -1,10 +1,26 @@
+// Copyright 2016-2021, Pulumi Corporation.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package python
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/blang/semver"
 	"github.com/hashicorp/hcl/v2"
+
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/hcl2/syntax"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/utils"
@@ -63,5 +79,26 @@ func TestMakeSafeEnumName(t *testing.T) {
 				t.Errorf("makeSafeEnumName() got = %v, want %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestVersionConversion(t *testing.T) {
+	tests := []struct {
+		input    string
+		expected string
+	}{
+		{"0.0.1", "0.0.1"},
+		{"0.0.1-alpha", "0.0.1a"},
+		{"2.3.4-dev", "2.3.4dev"},
+		{"2.3.4-beta", "2.3.4b"},
+		{"2.3.4-rc", "2.3.4rc"},
+		{"3.13.0-alpha.1631222709+d49fd02f.dirty", "3.13.0a"},
+	}
+	for _, tt := range tests {
+		ver := semver.MustParse(tt.input)
+		got := pythonVersion(&ver)
+		if got != tt.expected {
+			t.Errorf("Unexpected version number: got = %q, want %q", got, tt.expected)
+		}
 	}
 }

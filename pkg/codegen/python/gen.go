@@ -36,6 +36,7 @@ import (
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/version"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/diag"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
@@ -1898,16 +1899,18 @@ func genPackageMetadata(
 
 	// If `pkg` supplies a version, use that. Otherwise, create a constant for
 	// the version number to replace during build.
-	pypiVersion := "0.0.0"
-	pkgVersion := "0.0.0"
+	packageVersion := "0.0.0"
 	if pkg.Version != nil {
-		pkgVersion = pkg.Version.String()
+		packageVersion = pythonVersion(pkg.Version)
 	}
-	// TODO: puipyVersion is the pythonic version of pkgVersion. The code to
-	// transform it is in pulumi/pulumictl. Should that be extracted to
-	// somewhere like pulumi/pulumi/sdk/python.go?
-	fmt.Fprintf(w, "VERSION = %q\n", pypiVersion)
-	fmt.Fprintf(w, "PLUGIN_VERSION = %q\n\n", pkgVersion)
+	pluginVersion := "0.0.0"
+	if version.Version != "" {
+		// This happens in test builds
+		pluginVersion = version.Version
+	}
+
+	fmt.Fprintf(w, "VERSION = %q\n", packageVersion)
+	fmt.Fprintf(w, "PLUGIN_VERSION = %q\n\n", pluginVersion)
 
 	// Create a command that will install the Pulumi plugin for this resource provider.
 	fmt.Fprintf(w, "class InstallPluginCommand(install):\n")
