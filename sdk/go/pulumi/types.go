@@ -687,8 +687,13 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 		// but `T` does (https://golang.org/ref/spec#Method_sets).
 		// In this case, dereference the pointer to get at its actual value.
 		if v.Kind() == reflect.Ptr && valueType.Kind() != reflect.Ptr {
-			v = v.Elem()
-			contract.Assert(v.Interface().(Input).ElementType() == valueType)
+			if v.Elem().CanInterface() {
+				input, ok := v.Elem().Interface().(Input)
+				if ok && input.ElementType() == valueType {
+					v = v.Elem()
+					contract.Assert(v.Interface().(Input).ElementType() == valueType)
+				}
+			}
 		}
 
 		// If we are assigning the input value itself, update the value type.
@@ -696,7 +701,7 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 			valueType = v.Type()
 		} else {
 			// Handle pointer inputs.
-			if v.Kind() == reflect.Ptr {
+			if v.Kind() == reflect.Ptr && valueType.Kind() == reflect.Ptr {
 				v, valueType = v.Elem(), valueType.Elem()
 
 				resolved.Set(reflect.New(resolved.Type().Elem()))
@@ -715,7 +720,15 @@ func awaitInputs(ctx context.Context, v, resolved reflect.Value) (bool, bool, []
 	}
 
 	known, secret, deps, err := true, false, make([]Resource, 0), error(nil)
-	switch v.Kind() {
+
+	var shape reflect.Kind
+	if v.Kind() == resolved.Kind() {
+		shape = v.Kind()
+	} else {
+		shape = 9999 // trigger the default case
+	}
+
+	switch shape {
 	case reflect.Interface:
 		if !v.IsNil() {
 			return awaitInputs(ctx, v.Elem(), resolved)

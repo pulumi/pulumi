@@ -649,3 +649,84 @@ func TestMixedWaitGroupsApply(t *testing.T) {
 		})
 	})
 }
+
+// Here we want to have an interface type Example, and build
+// ExampleInput/ExampleOutput types for it in the usual way. Yet
+// something is not quite right, as the failure of this test
+// demonstrates.
+func TestInputOutputWrappersForInterfaces(t *testing.T) {
+	var id = "x"
+	var ex Example = &example{id}
+
+	assert.Equal(t, id, getExampleID(ex))
+
+	var exi ExampleInput = ex
+	assert.Equal(t, id, getExampleID(exi))
+
+	var exOutput ExampleOutput = ToOutput(ex).(ExampleOutput)
+	assert.Equal(t, id, getExampleID(exOutput))
+}
+
+type Example interface {
+	ExampleInput
+	ID() string
+}
+
+var exampleType = reflect.TypeOf((*Example)(nil)).Elem()
+
+type example struct{ id string }
+
+func (e *example) ID() string {
+	return e.id
+}
+
+var _ Example = &example{}
+
+func (*example) ElementType() reflect.Type {
+	return exampleType
+}
+
+func (e *example) ToExampleOutput() ExampleOutput {
+	return ToOutput(e).(ExampleOutput)
+}
+
+func (e *example) ToExampleOutputWithContext(ctx context.Context) ExampleOutput {
+	return ToOutputWithContext(ctx, e).(ExampleOutput)
+}
+
+// ExampleInput is an input type that accepts Example and ExampleOutput values.
+type ExampleInput interface {
+	Input
+
+	ToExampleOutput() ExampleOutput
+	ToExampleOutputWithContext(ctx context.Context) ExampleOutput
+}
+
+// ExampleOutput is an Output that returns Example values.
+type ExampleOutput struct{ *OutputState }
+
+// ElementType returns the element type of this Output (Example).
+func (ExampleOutput) ElementType() reflect.Type {
+	return exampleType
+}
+
+func (o ExampleOutput) ToExampleOutput() ExampleOutput {
+	return o
+}
+
+func (o ExampleOutput) ToExampleOutputWithContext(ctx context.Context) ExampleOutput {
+	return o
+}
+
+func getExampleID(input ExampleInput) string {
+	c := make(chan string)
+	input.ToExampleOutput().ApplyT(func(x Example) int {
+		c <- x.ID()
+		return 0
+	})
+	return <-c
+}
+
+func init() {
+	RegisterOutputType(ExampleOutput{})
+}
