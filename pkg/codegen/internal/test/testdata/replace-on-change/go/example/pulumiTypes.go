@@ -126,6 +126,55 @@ func (o LaserOutput) Light() pulumi.Float64PtrOutput {
 	return o.ApplyT(func(v Laser) *float64 { return v.Light }).(pulumi.Float64PtrOutput)
 }
 
+type Rec struct {
+	Rec *Rec `pulumi:"rec"`
+}
+
+// RecInput is an input type that accepts RecArgs and RecOutput values.
+// You can construct a concrete instance of `RecInput` via:
+//
+//          RecArgs{...}
+type RecInput interface {
+	pulumi.Input
+
+	ToRecOutput() RecOutput
+	ToRecOutputWithContext(context.Context) RecOutput
+}
+
+type RecArgs struct {
+	Rec RecInput `pulumi:"rec"`
+}
+
+func (RecArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*Rec)(nil)).Elem()
+}
+
+func (i RecArgs) ToRecOutput() RecOutput {
+	return i.ToRecOutputWithContext(context.Background())
+}
+
+func (i RecArgs) ToRecOutputWithContext(ctx context.Context) RecOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RecOutput)
+}
+
+type RecOutput struct{ *pulumi.OutputState }
+
+func (RecOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Rec)(nil)).Elem()
+}
+
+func (o RecOutput) ToRecOutput() RecOutput {
+	return o
+}
+
+func (o RecOutput) ToRecOutputWithContext(ctx context.Context) RecOutput {
+	return o
+}
+
+func (o RecOutput) Rec() RecOutput {
+	return o.ApplyT(func(v Rec) *Rec { return v.Rec }).(RecOutput)
+}
+
 // This is a toy
 type Toy struct {
 	Associated *Toy     `pulumi:"associated"`
@@ -385,6 +434,7 @@ func (o ToyMapOutput) MapIndex(k pulumi.StringInput) ToyOutput {
 func init() {
 	pulumi.RegisterOutputType(ChewOutput{})
 	pulumi.RegisterOutputType(LaserOutput{})
+	pulumi.RegisterOutputType(RecOutput{})
 	pulumi.RegisterOutputType(ToyOutput{})
 	pulumi.RegisterOutputType(ToyPtrOutput{})
 	pulumi.RegisterOutputType(ToyArrayOutput{})

@@ -1,3 +1,0 @@
-name: dynamic_broken_py
-description: An intentionally broken (buggy) dynamic provider program.
-runtime: python

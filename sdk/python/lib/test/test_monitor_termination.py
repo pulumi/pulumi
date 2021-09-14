@@ -21,31 +21,7 @@ import pytest
 
 import pulumi
 
-
-# Suppress logs about faulted unobserved tasks. This is similar to
-# Python Pulumi user programs. See rationale in
-# `sdk/python/cmd/pulumi-language-python-exec`.
-#
-# This scope of this setting necessarily bleeds beyond this test; it
-# has to do so because the undesired logs appear after the entire
-# `pytest` program terminates, not after a particular module
-# terminates.
-logging.getLogger('asyncio').setLevel(logging.CRITICAL)
-
-
-def raises(exception_type):
-    """Decorates a test by wrapping its body in `pytest.raises`."""
-
-    def decorator(fn):
-
-        @functools.wraps(fn)
-        def wrapper(*args, **kwargs):
-            with pytest.raises(exception_type):
-                return fn(*args, **kwargs)
-
-        return wrapper
-
-    return decorator
+from .helpers import raises
 
 
 # Verify that when the monitor becomes unavailable (via
