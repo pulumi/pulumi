@@ -24,7 +24,9 @@
           }
         },
         "type": "object",
-        "required": ["r"]
+        "required": [
+          "r"
+        ]
       }
     }
   }

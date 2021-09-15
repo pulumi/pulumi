@@ -110,7 +110,9 @@
         }
       },
       "type": "object",
-      "required": ["type"]
+      "required": [
+        "type"
+      ]
     },
     "azure-native:codegentest:SsisFolderResponse": {
       "description": "Ssis folder.",
@@ -134,7 +136,9 @@
         }
       },
       "type": "object",
-      "required": ["type"]
+      "required": [
+        "type"
+      ]
     },
     "azure-native:codegentest:SsisPackageResponse": {
       "description": "Ssis Package.",
@@ -178,7 +182,9 @@
         }
       },
       "type": "object",
-      "required": ["type"]
+      "required": [
+        "type"
+      ]
     },
     "azure-native:codegentest:SsisProjectResponse": {
       "description": "Ssis project.",
@@ -226,7 +232,9 @@
         }
       },
       "type": "object",
-      "required": ["type"]
+      "required": [
+        "type"
+      ]
     },
     "azure-native:codegentest:SsisEnvironmentReferenceResponse": {
       "description": "Ssis environment reference.",

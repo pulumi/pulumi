@@ -1,11 +1,11 @@
 {
-  "name": "bad-methods-1",
-  "version": "0.0.1",
-  "resources": {
-    "xyz:index:Foo": {
-      "methods": {
-        "bar": "xyz:index:Foo/bar"
-      }
+    "name": "bad-methods-1",
+    "version": "0.0.1",
+    "resources": {
+        "xyz:index:Foo": {
+            "methods": {
+                "bar": "xyz:index:Foo/bar"
+            }
+        }
     }
-  }
 }

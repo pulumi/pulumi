@@ -6,7 +6,9 @@
       "description": "Check codegen of functions with default values.",
       "inputs": {
         "type": "object",
-        "required": ["a"],
+        "required": [
+          "a"
+        ],
         "properties": {
           "a": {
             "type": "string"
@@ -24,7 +26,9 @@
           }
         },
         "type": "object",
-        "required": ["r"]
+        "required": [
+          "r"
+        ]
       }
     }
   }

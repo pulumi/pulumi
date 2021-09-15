@@ -8,10 +8,10 @@
         "type": "object",
         "properties": {
           "a": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
+              "type": "array",
+              "items": {
+                  "type": "string"
+              }
           },
           "b": {
             "type": "string"
@@ -25,7 +25,9 @@
           }
         },
         "type": "object",
-        "required": ["r"]
+        "required": [
+          "r"
+        ]
       }
     }
   }
