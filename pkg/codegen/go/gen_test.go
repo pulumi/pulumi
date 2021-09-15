@@ -1,6 +1,7 @@
 package gen
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -19,7 +20,9 @@ import (
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant"
 	tree "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/simple-enum-schema/go/plant/tree/v1"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
 	"github.com/pulumi/pulumi/sdk/v3/go/common/resource"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
@@ -65,7 +68,51 @@ func TestGeneratePackage(t *testing.T) {
 	generatePackage := func(tool string, pkg *schema.Package, files map[string][]byte) (map[string][]byte, error) {
 		return GeneratePackage(tool, pkg)
 	}
-	test.TestSDKCodegen(t, "go", generatePackage)
+	test.TestSDKCodegen(t, "go", generatePackage, typeCheckGeneratedPackage)
+}
+
+func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+	var err error
+	var ex string
+	ex, err = executable.FindExecutable("go")
+	require.NoError(t, err)
+
+	// go SDKs live in their own folder:
+	// typecheck/go/$NAME/$FILES
+	// where FILES contains all the project files (including go.mod)
+	//
+	// This is not true when `package.language.go.rootPackageName` is set.
+	dir, err := ioutil.ReadDir(pwd)
+	require.NoError(t, err)
+	root := pwd
+	if len(dir) == 1 {
+		require.True(t, dir[0].IsDir())
+		root = filepath.Join(pwd, dir[0].Name())
+	}
+	t.Logf("*** Testing go in dir: %q ***", root)
+
+	var stdout, stderr bytes.Buffer
+	cmdOptions := integration.ProgramTestOptions{Stderr: &stderr, Stdout: &stdout}
+	// We don't want to corrupt the global go.mod and go.sum with packages we
+	// don't actually depend on. For this, we need to have each go package be
+	// it's own module.
+	err = integration.RunCommand(t, "mod init",
+		[]string{ex, "mod", "init", "github.com/pulumi/test/internal"}, root, &cmdOptions)
+	if err != nil {
+		stdout := stdout.String()
+		stderr := stderr.String()
+		if len(stdout) > 0 {
+			t.Logf("stdout: %s", stdout)
+		}
+		if len(stderr) > 0 {
+			t.Logf("stderr: %s", stderr)
+		}
+		t.FailNow()
+	}
+	err = integration.RunCommand(t, "get", []string{ex, "get"}, root, &cmdOptions)
+	require.NoError(t, err)
+	err = integration.RunCommand(t, "go build", []string{ex, "build"}, root, &cmdOptions)
+	require.NoError(t, err)
 }
 
 func TestGenerateTypeNames(t *testing.T) {

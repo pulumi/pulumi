@@ -1,17 +1,40 @@
 package dotnet
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
-	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
 )
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, "dotnet", GeneratePackage)
+	test.TestSDKCodegen(t, "dotnet", GeneratePackage, typeCheckGeneratedPackage)
+}
+
+func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+	var err error
+	var dotnet string
+
+	// TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
+	version := "0.0.0\n"
+	err = os.WriteFile(filepath.Join(pwd, "version.txt"), []byte(version), 0600)
+	if !os.IsExist(err) {
+		require.NoError(t, err)
+	}
+	// endTODO
+
+	dotnet, err = executable.FindExecutable("dotnet")
+	require.NoError(t, err)
+	cmdOptions := integration.ProgramTestOptions{}
+	err = integration.RunCommand(t, "dotnet build", []string{dotnet, "build"}, pwd, &cmdOptions)
+	require.NoError(t, err)
 }
 
 func TestGenerateType(t *testing.T) {

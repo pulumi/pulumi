@@ -51,7 +51,8 @@
     },
     "nodejs": {
       "dependencies": {
-        "@pulumi/aws": "^4.0.0"
+        "@pulumi/pulumi": "^3.12",
+        "@pulumi/aws": "^3.7.0"
       },
       "devDependencies": {
         "typescript": "^3.7.0"

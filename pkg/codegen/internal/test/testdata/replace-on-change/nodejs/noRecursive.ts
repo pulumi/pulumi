@@ -2,6 +2,7 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 import * as pulumi from "@pulumi/pulumi";
+import { input as inputs, output as outputs } from "./types";
 import * as utilities from "./utilities";
 
 export class NoRecursive extends pulumi.CustomResource {
@@ -31,7 +32,7 @@ export class NoRecursive extends pulumi.CustomResource {
         return obj['__pulumiType'] === NoRecursive.__pulumiType;
     }
 
-    public /*out*/ readonly rec!: pulumi.Output<Rec | undefined>;
+    public /*out*/ readonly rec!: pulumi.Output<outputs.Rec | undefined>;
     public /*out*/ readonly replace!: pulumi.Output<string | undefined>;
 
     /**

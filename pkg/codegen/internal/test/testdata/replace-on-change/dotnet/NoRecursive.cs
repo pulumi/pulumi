@@ -13,7 +13,7 @@ namespace Pulumi.Example
     public partial class NoRecursive : Pulumi.CustomResource
     {
         [Output("rec")]
-        public Output<Pulumi.Example.Rec?> Rec { get; private set; } = null!;
+        public Output<Outputs.Rec?> Rec { get; private set; } = null!;
 
         [Output("replace")]
         public Output<string?> Replace { get; private set; } = null!;
