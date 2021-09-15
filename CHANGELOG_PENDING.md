@@ -11,5 +11,5 @@
 - [cli] Use json.Unmarshal instead of custom parser
   [#7954](https://github.com/pulumi/pulumi/pull/7954)
 
-- [sdk] - Thread replaceOnChanges through Go and .NET
+- [sdk/{go,dotnet}] - Thread replaceOnChanges through Go and .NET
   [#7967](https://github.com/pulumi/pulumi/pull/7967)
