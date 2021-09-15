@@ -10,53 +10,53 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type EndpointType struct {
+type Endpoint struct {
 	Name *string `pulumi:"name"`
 }
 
-// EndpointTypeInput is an input type that accepts EndpointTypeArgs and EndpointTypeOutput values.
-// You can construct a concrete instance of `EndpointTypeInput` via:
+// EndpointInput is an input type that accepts EndpointArgs and EndpointOutput values.
+// You can construct a concrete instance of `EndpointInput` via:
 //
-//          EndpointTypeArgs{...}
-type EndpointTypeInput interface {
+//          EndpointArgs{...}
+type EndpointInput interface {
 	pulumi.Input
 
-	ToEndpointTypeOutput() EndpointTypeOutput
-	ToEndpointTypeOutputWithContext(context.Context) EndpointTypeOutput
+	ToEndpointOutput() EndpointOutput
+	ToEndpointOutputWithContext(context.Context) EndpointOutput
 }
 
-type EndpointTypeArgs struct {
+type EndpointArgs struct {
 	Name pulumi.StringPtrInput `pulumi:"name"`
 }
 
-func (EndpointTypeArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*EndpointType)(nil)).Elem()
+func (EndpointArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*Endpoint)(nil)).Elem()
 }
 
-func (i EndpointTypeArgs) ToEndpointTypeOutput() EndpointTypeOutput {
-	return i.ToEndpointTypeOutputWithContext(context.Background())
+func (i EndpointArgs) ToEndpointOutput() EndpointOutput {
+	return i.ToEndpointOutputWithContext(context.Background())
 }
 
-func (i EndpointTypeArgs) ToEndpointTypeOutputWithContext(ctx context.Context) EndpointTypeOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(EndpointTypeOutput)
+func (i EndpointArgs) ToEndpointOutputWithContext(ctx context.Context) EndpointOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(EndpointOutput)
 }
 
-type EndpointTypeOutput struct{ *pulumi.OutputState }
+type EndpointOutput struct{ *pulumi.OutputState }
 
-func (EndpointTypeOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*EndpointType)(nil)).Elem()
+func (EndpointOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*Endpoint)(nil)).Elem()
 }
 
-func (o EndpointTypeOutput) ToEndpointTypeOutput() EndpointTypeOutput {
+func (o EndpointOutput) ToEndpointOutput() EndpointOutput {
 	return o
 }
 
-func (o EndpointTypeOutput) ToEndpointTypeOutputWithContext(ctx context.Context) EndpointTypeOutput {
+func (o EndpointOutput) ToEndpointOutputWithContext(ctx context.Context) EndpointOutput {
 	return o
 }
 
-func (o EndpointTypeOutput) Name() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v EndpointType) *string { return v.Name }).(pulumi.StringPtrOutput)
+func (o EndpointOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v Endpoint) *string { return v.Name }).(pulumi.StringPtrOutput)
 }
 
 type Object struct {
@@ -158,7 +158,7 @@ func (o ObjectInputTypeOutput) Bar() pulumi.StringPtrOutput {
 }
 
 func init() {
-	pulumi.RegisterOutputType(EndpointTypeOutput{})
+	pulumi.RegisterOutputType(EndpointOutput{})
 	pulumi.RegisterOutputType(ObjectOutput{})
 	pulumi.RegisterOutputType(ObjectInputTypeOutput{})
 }

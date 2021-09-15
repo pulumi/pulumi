@@ -20,8 +20,6 @@ func (m *module) Version() semver.Version {
 
 func (m *module) Construct(ctx *pulumi.Context, name, typ, urn string) (r pulumi.Resource, err error) {
 	switch typ {
-	case "example::Endpoint":
-		r = &Endpoint{}
 	case "example::Resource":
 		r = &Resource{}
 	case "example::ResourceInput":

@@ -5,10 +5,22 @@
 from enum import Enum
 
 __all__ = [
-    'EndpointType',
+    'Enum',
+    'EnumInput',
+    'ResourceType',
 ]
 
 
-class EndpointType(str, Enum):
+class Enum(str, Enum):
+    ONE = "one"
+    TWO = "two"
+
+
+class EnumInput(str, Enum):
+    ONE = "one"
+    TWO = "two"
+
+
+class ResourceType(str, Enum):
     HAHA = "haha"
     BUSINESS = "business"

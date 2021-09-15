@@ -13,7 +13,6 @@
         "strict": true
     },
     "files": [
-        "endpoint.ts",
         "index.ts",
         "provider.ts",
         "resource.ts",

@@ -18,7 +18,21 @@
       },
       "type": "object"
     },
-    "example::Endpoint": {
+    "example::Enum": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::EnumInput": {
+      "type": "string",
+      "enum": [
+        {"value": "one"},
+        {"value": "two"}
+      ]
+    },
+    "example::Resource": {
       "type": "object",
       "properties": {
         "name": {
@@ -26,7 +40,7 @@
         }
       }
     },
-    "example::EndpointType": {
+    "example::ResourceType": {
       "type": "string",
       "enum": [
         {"value":  "haha"},
@@ -35,13 +49,6 @@
     }
   },
   "resources": {
-    "example::Endpoint": {
-      "properties": {
-        "name": {
-          "type": "string"
-        }
-      }
-    },
     "example::Resource": {
       "properties": {
         "bar": {

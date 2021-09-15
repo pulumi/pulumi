@@ -6,7 +6,6 @@ from . import _utilities
 import typing
 # Export this package's modules as members:
 from ._enums import *
-from .endpoint import *
 from .provider import *
 from .resource import *
 from .resource_input import *
@@ -18,7 +17,6 @@ _utilities.register(
   "mod": "",
   "fqn": "pulumi_example",
   "classes": {
-   "example::Endpoint": "Endpoint",
    "example::Resource": "Resource",
    "example::ResourceInput": "ResourceInput"
   }

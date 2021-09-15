@@ -42,13 +42,13 @@ const (
 
 var sdkTests = []sdkTest{
 	{
-		Directory:   "dash-named-schema",
-		Description: "Simple schema with a two part name (foo-bar)",
+		Directory:   "naming-collisions",
+		Description: "Schema with types that could potentially produce collisions (go).",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
-		Directory:   "input-collision",
-		Description: "Schema with types that could potentially produce collisions (go).",
+		Directory:   "dash-named-schema",
+		Description: "Simple schema with a two part name (foo-bar)",
 		Skip:        codegen.NewStringSet("python/test"),
 	},
 	{
