@@ -46,9 +46,17 @@ func compileHook() test.SdkTestHook {
 		RunHook: func(env *test.SdkTestEnv) {
 			env.Command("yarn", "install")
 			env.Command("yarn", "link", "@pulumi/pulumi")
-			tsc := env.NewCommand("tsc")
-			tsc.Env = []string{fmt.Sprintf("PATH=%s", filepath.Join(".", "node_modules", ".bin"))}
-			env.RunCommand(tsc)
+			env.Command("yarn", "run", "tsc")
+		},
+	}
+}
+
+// Runs unit tests against the generated code.
+func testHook() test.SdkTestHook {
+	return test.SdkTestHook{
+		Name: "test",
+		RunHook: func(env *test.SdkTestEnv) {
+			env.Command("yarn", "run", "mocha", "-r", "ts-node/register", "tests/**/*.spec.ts")
 		},
 	}
 }
@@ -65,8 +73,9 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		PackageName: "@pulumi/mypkg",
 		DevDependencies: map[string]string{
 			"@types/node":  "latest",
-			"@types/mocha": "^2.2.42",
-			"mocha":        "^3.5.0",
+			"@types/mocha": "latest",
+			"ts-node":      "latest",
+			"mocha":        "latest",
 		},
 	}
 	p.Language["nodejs"] = nodePkgInfo
@@ -75,7 +84,7 @@ func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		Pkg:        &p,
 		ExtraFiles: extraFiles,
 		ExtraFilesInPackageMetadata: []string{
-			"codegenTests.ts",
+			"tests/codegen.spec.ts",
 		},
 	})
 }
@@ -97,11 +106,10 @@ func TestGenerateOutputFuncsNode(t *testing.T) {
 				HooksByLanguage: map[string][]test.SdkTestHook{
 					"nodejs": {
 						compileHook(),
+						testHook(),
 					},
 				},
 			},
 		},
 	})
-
-	// TODO run unit tests
 }

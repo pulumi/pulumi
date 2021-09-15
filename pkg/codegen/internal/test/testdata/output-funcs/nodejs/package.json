@@ -5,9 +5,10 @@
         "build": "tsc"
     },
     "devDependencies": {
-        "@types/mocha": "^2.2.42",
+        "@types/mocha": "latest",
         "@types/node": "latest",
-        "mocha": "^3.5.0",
+        "mocha": "latest",
+        "ts-node": "latest",
         "typescript": "^4.3.5"
     },
     "peerDependencies": {

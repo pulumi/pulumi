@@ -1,4 +1,4 @@
 node_modules
 yarn.lock
 bin
-codegenTests.ts
+tests

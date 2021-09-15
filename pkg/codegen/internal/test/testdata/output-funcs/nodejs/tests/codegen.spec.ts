@@ -1,6 +1,17 @@
+import 'mocha';
+import * as assert from 'assert';
+
+describe('anton 1', () => {
+
+    it('should work', (done) => {
+        assert.equal(2, 1 + 1);
+        done()
+    });
+});
+
 /*
 
-import 'mocha';
+
 import * as assert from 'assert';
 import * as pulumi from '@pulumi/pulumi';
 import { listStorageAccountKeysOutput } from './listStorageAccountKeys';

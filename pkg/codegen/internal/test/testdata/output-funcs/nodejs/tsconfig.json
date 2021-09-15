@@ -13,7 +13,6 @@
         "strict": true
     },
     "files": [
-        "codegenTests.ts",
         "funcWithAllOptionalInputs.ts",
         "funcWithConstInput.ts",
         "funcWithDefaultValue.ts",
@@ -24,6 +23,7 @@
         "index.ts",
         "listStorageAccountKeys.ts",
         "provider.ts",
+        "tests/codegen.spec.ts",
         "types/index.ts",
         "types/input.ts",
         "types/output.ts",
