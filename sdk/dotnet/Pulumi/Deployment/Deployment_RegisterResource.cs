@@ -92,10 +92,12 @@ namespace Pulumi
             };
 
             if (customOpts != null)
+            {
                 request.AdditionalSecretOutputs.AddRange(customOpts.AdditionalSecretOutputs);
+                request.ReplaceOnChanges.AddRange(customOpts.ReplaceOnChanges);
+            }
 
             request.IgnoreChanges.AddRange(options.IgnoreChanges);
-            request.ReplaceOnChanges.AddRange(options.ReplaceOnChanges);
 
             return request;
         }
