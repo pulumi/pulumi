@@ -7,7 +7,7 @@ import pulumi
 import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
-from .rec import Rec
+from . import outputs
 
 __all__ = ['NoRecursiveArgs', 'NoRecursive']
 
@@ -98,7 +98,7 @@ class NoRecursive(pulumi.CustomResource):
 
     @property
     @pulumi.getter
-    def rec(self) -> pulumi.Output[Optional['Rec']]:
+    def rec(self) -> pulumi.Output[Optional['outputs.Rec']]:
         return pulumi.get(self, "rec")
 
     @property

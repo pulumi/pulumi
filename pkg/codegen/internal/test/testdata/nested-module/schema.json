@@ -19,7 +19,11 @@
     }
   },
   "language": {
-    "csharp": {},
+    "csharp": {
+      "packageReferences": {
+        "Pulumi": "3.12"
+      }
+    },
     "go": {
       "importBasePath": "github.com/pulumi/pulumi/pkg/v3/codegen/internal/test/testdata/nested-module/go/foo"
     },

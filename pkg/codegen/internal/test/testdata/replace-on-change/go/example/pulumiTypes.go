@@ -43,6 +43,47 @@ func (i ChewArgs) ToChewOutputWithContext(ctx context.Context) ChewOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(ChewOutput)
 }
 
+func (i ChewArgs) ToChewPtrOutput() ChewPtrOutput {
+	return i.ToChewPtrOutputWithContext(context.Background())
+}
+
+func (i ChewArgs) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ChewOutput).ToChewPtrOutputWithContext(ctx)
+}
+
+// ChewPtrInput is an input type that accepts ChewArgs, ChewPtr and ChewPtrOutput values.
+// You can construct a concrete instance of `ChewPtrInput` via:
+//
+//          ChewArgs{...}
+//
+//  or:
+//
+//          nil
+type ChewPtrInput interface {
+	pulumi.Input
+
+	ToChewPtrOutput() ChewPtrOutput
+	ToChewPtrOutputWithContext(context.Context) ChewPtrOutput
+}
+
+type chewPtrType ChewArgs
+
+func ChewPtr(v *ChewArgs) ChewPtrInput {
+	return (*chewPtrType)(v)
+}
+
+func (*chewPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Chew)(nil)).Elem()
+}
+
+func (i *chewPtrType) ToChewPtrOutput() ChewPtrOutput {
+	return i.ToChewPtrOutputWithContext(context.Background())
+}
+
+func (i *chewPtrType) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ChewPtrOutput)
+}
+
 // A toy for a dog
 type ChewOutput struct{ *pulumi.OutputState }
 
@@ -58,8 +99,51 @@ func (o ChewOutput) ToChewOutputWithContext(ctx context.Context) ChewOutput {
 	return o
 }
 
+func (o ChewOutput) ToChewPtrOutput() ChewPtrOutput {
+	return o.ToChewPtrOutputWithContext(context.Background())
+}
+
+func (o ChewOutput) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Chew) *Chew {
+		return &v
+	}).(ChewPtrOutput)
+}
+
 func (o ChewOutput) Owner() DogOutput {
 	return o.ApplyT(func(v Chew) *Dog { return v.Owner }).(DogOutput)
+}
+
+type ChewPtrOutput struct{ *pulumi.OutputState }
+
+func (ChewPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Chew)(nil)).Elem()
+}
+
+func (o ChewPtrOutput) ToChewPtrOutput() ChewPtrOutput {
+	return o
+}
+
+func (o ChewPtrOutput) ToChewPtrOutputWithContext(ctx context.Context) ChewPtrOutput {
+	return o
+}
+
+func (o ChewPtrOutput) Elem() ChewOutput {
+	return o.ApplyT(func(v *Chew) Chew {
+		if v != nil {
+			return *v
+		}
+		var ret Chew
+		return ret
+	}).(ChewOutput)
+}
+
+func (o ChewPtrOutput) Owner() DogOutput {
+	return o.ApplyT(func(v *Chew) *Dog {
+		if v == nil {
+			return nil
+		}
+		return v.Owner
+	}).(DogOutput)
 }
 
 // A Toy for a cat
@@ -99,6 +183,47 @@ func (i LaserArgs) ToLaserOutputWithContext(ctx context.Context) LaserOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(LaserOutput)
 }
 
+func (i LaserArgs) ToLaserPtrOutput() LaserPtrOutput {
+	return i.ToLaserPtrOutputWithContext(context.Background())
+}
+
+func (i LaserArgs) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LaserOutput).ToLaserPtrOutputWithContext(ctx)
+}
+
+// LaserPtrInput is an input type that accepts LaserArgs, LaserPtr and LaserPtrOutput values.
+// You can construct a concrete instance of `LaserPtrInput` via:
+//
+//          LaserArgs{...}
+//
+//  or:
+//
+//          nil
+type LaserPtrInput interface {
+	pulumi.Input
+
+	ToLaserPtrOutput() LaserPtrOutput
+	ToLaserPtrOutputWithContext(context.Context) LaserPtrOutput
+}
+
+type laserPtrType LaserArgs
+
+func LaserPtr(v *LaserArgs) LaserPtrInput {
+	return (*laserPtrType)(v)
+}
+
+func (*laserPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Laser)(nil)).Elem()
+}
+
+func (i *laserPtrType) ToLaserPtrOutput() LaserPtrOutput {
+	return i.ToLaserPtrOutputWithContext(context.Background())
+}
+
+func (i *laserPtrType) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(LaserPtrOutput)
+}
+
 // A Toy for a cat
 type LaserOutput struct{ *pulumi.OutputState }
 
@@ -114,6 +239,16 @@ func (o LaserOutput) ToLaserOutputWithContext(ctx context.Context) LaserOutput {
 	return o
 }
 
+func (o LaserOutput) ToLaserPtrOutput() LaserPtrOutput {
+	return o.ToLaserPtrOutputWithContext(context.Background())
+}
+
+func (o LaserOutput) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Laser) *Laser {
+		return &v
+	}).(LaserPtrOutput)
+}
+
 func (o LaserOutput) Animal() CatOutput {
 	return o.ApplyT(func(v Laser) *Cat { return v.Animal }).(CatOutput)
 }
@@ -126,8 +261,59 @@ func (o LaserOutput) Light() pulumi.Float64PtrOutput {
 	return o.ApplyT(func(v Laser) *float64 { return v.Light }).(pulumi.Float64PtrOutput)
 }
 
+type LaserPtrOutput struct{ *pulumi.OutputState }
+
+func (LaserPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Laser)(nil)).Elem()
+}
+
+func (o LaserPtrOutput) ToLaserPtrOutput() LaserPtrOutput {
+	return o
+}
+
+func (o LaserPtrOutput) ToLaserPtrOutputWithContext(ctx context.Context) LaserPtrOutput {
+	return o
+}
+
+func (o LaserPtrOutput) Elem() LaserOutput {
+	return o.ApplyT(func(v *Laser) Laser {
+		if v != nil {
+			return *v
+		}
+		var ret Laser
+		return ret
+	}).(LaserOutput)
+}
+
+func (o LaserPtrOutput) Animal() CatOutput {
+	return o.ApplyT(func(v *Laser) *Cat {
+		if v == nil {
+			return nil
+		}
+		return v.Animal
+	}).(CatOutput)
+}
+
+func (o LaserPtrOutput) Batteries() pulumi.BoolPtrOutput {
+	return o.ApplyT(func(v *Laser) *bool {
+		if v == nil {
+			return nil
+		}
+		return v.Batteries
+	}).(pulumi.BoolPtrOutput)
+}
+
+func (o LaserPtrOutput) Light() pulumi.Float64PtrOutput {
+	return o.ApplyT(func(v *Laser) *float64 {
+		if v == nil {
+			return nil
+		}
+		return v.Light
+	}).(pulumi.Float64PtrOutput)
+}
+
 type Rec struct {
-	Rec *Rec `pulumi:"rec"`
+	Rec1 *Rec `pulumi:"rec1"`
 }
 
 // RecInput is an input type that accepts RecArgs and RecOutput values.
@@ -142,7 +328,7 @@ type RecInput interface {
 }
 
 type RecArgs struct {
-	Rec RecInput `pulumi:"rec"`
+	Rec1 RecPtrInput `pulumi:"rec1"`
 }
 
 func (RecArgs) ElementType() reflect.Type {
@@ -155,6 +341,47 @@ func (i RecArgs) ToRecOutput() RecOutput {
 
 func (i RecArgs) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return pulumi.ToOutputWithContext(ctx, i).(RecOutput)
+}
+
+func (i RecArgs) ToRecPtrOutput() RecPtrOutput {
+	return i.ToRecPtrOutputWithContext(context.Background())
+}
+
+func (i RecArgs) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RecOutput).ToRecPtrOutputWithContext(ctx)
+}
+
+// RecPtrInput is an input type that accepts RecArgs, RecPtr and RecPtrOutput values.
+// You can construct a concrete instance of `RecPtrInput` via:
+//
+//          RecArgs{...}
+//
+//  or:
+//
+//          nil
+type RecPtrInput interface {
+	pulumi.Input
+
+	ToRecPtrOutput() RecPtrOutput
+	ToRecPtrOutputWithContext(context.Context) RecPtrOutput
+}
+
+type recPtrType RecArgs
+
+func RecPtr(v *RecArgs) RecPtrInput {
+	return (*recPtrType)(v)
+}
+
+func (*recPtrType) ElementType() reflect.Type {
+	return reflect.TypeOf((**Rec)(nil)).Elem()
+}
+
+func (i *recPtrType) ToRecPtrOutput() RecPtrOutput {
+	return i.ToRecPtrOutputWithContext(context.Background())
+}
+
+func (i *recPtrType) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(RecPtrOutput)
 }
 
 type RecOutput struct{ *pulumi.OutputState }
@@ -171,8 +398,51 @@ func (o RecOutput) ToRecOutputWithContext(ctx context.Context) RecOutput {
 	return o
 }
 
-func (o RecOutput) Rec() RecOutput {
-	return o.ApplyT(func(v Rec) *Rec { return v.Rec }).(RecOutput)
+func (o RecOutput) ToRecPtrOutput() RecPtrOutput {
+	return o.ToRecPtrOutputWithContext(context.Background())
+}
+
+func (o RecOutput) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v Rec) *Rec {
+		return &v
+	}).(RecPtrOutput)
+}
+
+func (o RecOutput) Rec1() RecPtrOutput {
+	return o.ApplyT(func(v Rec) *Rec { return v.Rec1 }).(RecPtrOutput)
+}
+
+type RecPtrOutput struct{ *pulumi.OutputState }
+
+func (RecPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**Rec)(nil)).Elem()
+}
+
+func (o RecPtrOutput) ToRecPtrOutput() RecPtrOutput {
+	return o
+}
+
+func (o RecPtrOutput) ToRecPtrOutputWithContext(ctx context.Context) RecPtrOutput {
+	return o
+}
+
+func (o RecPtrOutput) Elem() RecOutput {
+	return o.ApplyT(func(v *Rec) Rec {
+		if v != nil {
+			return *v
+		}
+		var ret Rec
+		return ret
+	}).(RecOutput)
+}
+
+func (o RecPtrOutput) Rec1() RecPtrOutput {
+	return o.ApplyT(func(v *Rec) *Rec {
+		if v == nil {
+			return nil
+		}
+		return v.Rec1
+	}).(RecPtrOutput)
 }
 
 // This is a toy
@@ -433,8 +703,11 @@ func (o ToyMapOutput) MapIndex(k pulumi.StringInput) ToyOutput {
 
 func init() {
 	pulumi.RegisterOutputType(ChewOutput{})
+	pulumi.RegisterOutputType(ChewPtrOutput{})
 	pulumi.RegisterOutputType(LaserOutput{})
+	pulumi.RegisterOutputType(LaserPtrOutput{})
 	pulumi.RegisterOutputType(RecOutput{})
+	pulumi.RegisterOutputType(RecPtrOutput{})
 	pulumi.RegisterOutputType(ToyOutput{})
 	pulumi.RegisterOutputType(ToyPtrOutput{})
 	pulumi.RegisterOutputType(ToyArrayOutput{})

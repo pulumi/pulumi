@@ -7,6 +7,26 @@ import { input as inputs, output as outputs } from "../types";
 import {Cat, Dog} from "..";
 
 /**
+ * A toy for a dog
+ */
+export interface Chew {
+    owner?: Dog;
+}
+
+/**
+ * A Toy for a cat
+ */
+export interface Laser {
+    animal?: Cat;
+    batteries?: boolean;
+    light?: number;
+}
+
+export interface Rec {
+    rec1?: outputs.Rec;
+}
+
+/**
  * This is a toy
  */
 export interface Toy {

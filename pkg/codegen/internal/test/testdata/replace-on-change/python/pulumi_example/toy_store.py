@@ -8,8 +8,8 @@ import pulumi.runtime
 from typing import Any, Mapping, Optional, Sequence, Union, overload
 from . import _utilities
 from . import outputs
-from .chew import Chew
-from .laser import Laser
+from .cat import Cat
+from .dog import Dog
 
 __all__ = ['ToyStoreArgs', 'ToyStore']
 
@@ -72,7 +72,7 @@ class ToyStore(pulumi.CustomResource):
             __props__.__dict__["laser"] = None
             __props__.__dict__["stuff"] = None
             __props__.__dict__["wanted"] = None
-        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["stuff[*].associated.color", "stuff[*].color", "wanted[*]"])
+        replace_on_changes = pulumi.ResourceOptions(replace_on_changes=["chew.owner", "laser.batteries", "stuff[*].associated.color", "stuff[*].color", "wanted[*]"])
         opts = pulumi.ResourceOptions.merge(opts, replace_on_changes)
         super(ToyStore, __self__).__init__(
             'example::ToyStore',
@@ -104,12 +104,12 @@ class ToyStore(pulumi.CustomResource):
 
     @property
     @pulumi.getter
-    def chew(self) -> pulumi.Output[Optional['Chew']]:
+    def chew(self) -> pulumi.Output[Optional['outputs.Chew']]:
         return pulumi.get(self, "chew")
 
     @property
     @pulumi.getter
-    def laser(self) -> pulumi.Output[Optional['Laser']]:
+    def laser(self) -> pulumi.Output[Optional['outputs.Laser']]:
         return pulumi.get(self, "laser")
 
     @property

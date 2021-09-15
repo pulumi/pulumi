@@ -13,8 +13,8 @@ import (
 type ToyStore struct {
 	pulumi.CustomResourceState
 
-	Chew   ChewOutput     `pulumi:"chew"`
-	Laser  LaserOutput    `pulumi:"laser"`
+	Chew   ChewPtrOutput  `pulumi:"chew"`
+	Laser  LaserPtrOutput `pulumi:"laser"`
 	Stuff  ToyArrayOutput `pulumi:"stuff"`
 	Wanted ToyArrayOutput `pulumi:"wanted"`
 }
@@ -27,6 +27,8 @@ func NewToyStore(ctx *pulumi.Context,
 	}
 
 	replaceOnChanges := pulumi.ReplaceOnChanges([]string{
+		"chew.owner",
+		"laser.batteries",
 		"stuff[*].associated.color",
 		"stuff[*].color",
 		"wanted[*]",
