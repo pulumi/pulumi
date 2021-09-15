@@ -95,6 +95,7 @@ namespace Pulumi
                 request.AdditionalSecretOutputs.AddRange(customOpts.AdditionalSecretOutputs);
 
             request.IgnoreChanges.AddRange(options.IgnoreChanges);
+            request.ReplaceOnChanges.AddRange(options.ReplaceOnChanges);
 
             return request;
         }
