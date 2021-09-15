@@ -177,11 +177,6 @@ func TestSDKCodegen(t *testing.T, opts *TestSDKCodegenOptions) {
 				expectedFiles, err := LoadBaseline(dirPath, opts.Language)
 				require.NoError(t, err)
 
-				t.Logf("Enumerating expectedFiles")
-				for f, _ := range expectedFiles {
-					t.Logf("Expecting %s", f)
-				}
-
 				if !ValidateFileEquality(t, files, expectedFiles) {
 					return
 				}
