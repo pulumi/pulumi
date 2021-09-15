@@ -21,6 +21,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -76,7 +77,11 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	return result, nil
 }
 
-func loadDirectory(fs map[string][]byte, root, path string) error {
+// Recursively loads files from a directory into the `fs` map. Ignores
+// entries that match `ignore(path)==true`, also skips descending into
+// directores that are ignored. This is useful for example to avoid
+// `node_modules`.
+func loadDirectory(fs map[string][]byte, root, path string, ignore func(path string) bool) error {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return err
@@ -84,8 +89,12 @@ func loadDirectory(fs map[string][]byte, root, path string) error {
 
 	for _, e := range entries {
 		entryPath := filepath.Join(path, e.Name())
-		if e.IsDir() {
-			if err = loadDirectory(fs, root, entryPath); err != nil {
+		relativeEntryPath := entryPath[len(root)+1:]
+		baseName := filepath.Base(relativeEntryPath)
+		if ignore != nil && (ignore(relativeEntryPath) || ignore(baseName)) {
+			// pass
+		} else if e.IsDir() {
+			if err = loadDirectory(fs, root, entryPath, ignore); err != nil {
 				return err
 			}
 		} else {
@@ -93,8 +102,7 @@ func loadDirectory(fs map[string][]byte, root, path string) error {
 			if err != nil {
 				return err
 			}
-			name := filepath.ToSlash(entryPath[len(root)+1:])
-
+			name := filepath.ToSlash(relativeEntryPath)
 			fs[name] = contents
 		}
 	}
@@ -102,12 +110,120 @@ func loadDirectory(fs map[string][]byte, root, path string) error {
 	return nil
 }
 
+// Removes files from directory recursively unless the are ignored.
+func removeFilesFromDirUnlessIgnored(root, path string, ignore func(path string) bool) error {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range entries {
+		entryPath := filepath.Join(path, e.Name())
+		relativeEntryPath := entryPath[len(root)+1:]
+
+		if ignore != nil && ignore(relativeEntryPath) {
+			// pass
+		} else if e.IsDir() {
+			if err = removeFilesFromDirUnlessIgnored(root, entryPath, ignore); err != nil {
+				return err
+			}
+		} else {
+			if err = os.Remove(path); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+// Reads `.sdkcodegenignore` file if present to use as loadDirectory ignore func.
+func loadIgnoreMap(dir string) (func(path string) bool, error) {
+
+	pathExists := func(path string) (bool, error) {
+		_, err := os.Stat(path)
+
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+
+		if err == nil {
+			return true, nil
+		}
+
+		return false, err
+
+	}
+
+	load1 := func(dir string, ignoredPathSet map[string]bool) error {
+		p := filepath.Join(dir, ".sdkcodegenignore")
+
+		gotIgnore, err := pathExists(p)
+		if err != nil {
+			return err
+		}
+
+		if gotIgnore {
+			contents, err := os.ReadFile(p)
+			if err != nil {
+				return err
+			}
+			for _, s := range strings.Split(string(contents), "\n") {
+				s = strings.Trim(s, " \r\n\t")
+
+				if s != "" {
+					ignoredPathSet[s] = true
+				}
+			}
+		}
+		return nil
+	}
+
+	loadAll := func(dir string, ignoredPathSet map[string]bool) error {
+		for {
+			atTopOfRepo, err := pathExists(filepath.Join(dir, ".git"))
+			if err != nil {
+				return err
+			}
+
+			err = load1(dir, ignoredPathSet)
+			if err != nil {
+				return err
+			}
+
+			if atTopOfRepo || dir == "." {
+				return nil
+			}
+
+			dir = filepath.Dir(dir)
+		}
+	}
+
+	ignoredPathSet := make(map[string]bool)
+	err := loadAll(dir, ignoredPathSet)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(path string) bool {
+		path = strings.ReplaceAll(path, "\\", "/")
+		_, ignoredPath := ignoredPathSet[path]
+		return ignoredPath
+	}, nil
+}
+
 // LoadBaseline loads the contents of the given baseline directory.
 func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	dir = filepath.Join(dir, lang)
 
 	fs := map[string][]byte{}
-	if err := loadDirectory(fs, dir, dir); err != nil {
+
+	ignore, err := loadIgnoreMap(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := loadDirectory(fs, dir, dir, ignore); err != nil {
 		return nil, err
 	}
 	return fs, nil
@@ -117,14 +233,20 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
 	ok := true
 	for name, file := range expected {
-		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
-			t.Logf("%s did not agree", name)
+		_, inActual := actual[name]
+		if inActual {
+			if !assert.Equal(t, string(file), string(actual[name]), name) {
+				t.Logf("%s did not agree", name)
+				ok = false
+			}
+		} else {
+			t.Logf("File %s was expected but is missing from the actual fileset", name)
 			ok = false
 		}
 	}
 	for name := range actual {
-		if _, has := expected[name]; !has {
-			t.Logf("missing data for %s", name)
+		if _, inExpected := expected[name]; !inExpected {
+			t.Logf("File %s from the actual fileset was not expected", name)
 			ok = false
 		}
 	}
@@ -142,28 +264,19 @@ func RewriteFilesWhenPulumiAccept(t *testing.T, dir, lang string, actual map[str
 	baseline := filepath.Join(dir, lang)
 
 	// Remove the baseline directory's current contents.
-	entries, err := os.ReadDir(baseline)
+	_, err := os.ReadDir(baseline)
 	switch {
 	case err == nil:
-		for _, e := range entries {
-			err = os.RemoveAll(filepath.Join(baseline, e.Name()))
-			require.NoError(t, err)
-		}
+		ignore, err := loadIgnoreMap(baseline)
+		require.NoError(t, err)
+		removeFilesFromDirUnlessIgnored(baseline, baseline, ignore)
 	case os.IsNotExist(err):
 		// OK
 	default:
 		require.NoError(t, err)
 	}
 
-	WriteTestFiles(t, dir, lang, actual)
-
-	return true
-}
-
-// WriteTestFiles writes out the files generated by GeneratePackage to a directory.
-func WriteTestFiles(t *testing.T, dir, lang string, files map[string][]byte) {
-	var err error
-	for file, bytes := range files {
+	for file, bytes := range actual {
 		relPath := filepath.FromSlash(file)
 		path := filepath.Join(dir, lang, relPath)
 
@@ -174,6 +287,8 @@ func WriteTestFiles(t *testing.T, dir, lang string, files map[string][]byte) {
 		err = ioutil.WriteFile(path, bytes, 0600)
 		require.NoError(t, err)
 	}
+
+	return true
 }
 
 // CheckAllFilesGenerated ensures that the set of expected and actual files generated
