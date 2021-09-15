@@ -121,7 +121,7 @@ func (mod *modContext) tokenToModName(tok string) string {
 
 func (mod *modContext) namingContext(pkg *schema.Package) (namingCtx *modContext, pkgName string, external bool) {
 	namingCtx = mod
-	if pkg != nil && pkg != mod.pkg {
+	if pkg != nil && pkg.Name != mod.pkg.Name {
 		external = true
 		pkgName = pkg.Name + "."
 
@@ -1075,7 +1075,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return true
 	case *schema.ObjectType:
 		// If it's from another package, add an import for the external package.
-		if t.Package != nil && t.Package != mod.pkg {
+		if t.Package != nil && t.Package.Name != mod.pkg.Name {
 			pkg := t.Package.Name
 			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
@@ -1091,7 +1091,7 @@ func (mod *modContext) getTypeImportsForResource(t schema.Type, recurse bool, ex
 		return true
 	case *schema.ResourceType:
 		// If it's from another package, add an import for the external package.
-		if t.Resource != nil && t.Resource.Package != mod.pkg {
+		if t.Resource != nil && t.Resource.Package.Name != mod.pkg.Name {
 			pkg := t.Resource.Package.Name
 			if imp, ok := nodePackageInfo.ProviderNameToModuleName[pkg]; ok {
 				externalImports.Add(fmt.Sprintf("import * as %s from \"%s\";", fmt.Sprintf("pulumi%s", title(pkg)), imp))
@@ -1796,12 +1796,18 @@ func (mod *modContext) genEnums(buffer *bytes.Buffer, enums []*schema.EnumType) 
 }
 
 // genPackageMetadata generates all the non-code metadata required by a Pulumi package.
-func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs) {
+func genPackageMetadata(pkg *schema.Package, info NodePackageInfo, files fs, extraFiles []string) {
 	// The generator already emitted Pulumi.yaml, so that leaves two more files to write out:
 	//     1) package.json: minimal NPM package metadata
 	//     2) tsconfig.json: instructions for TypeScript compilation
 	files.add("package.json", []byte(genNPMPackageMetadata(pkg, info)))
-	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, files)))
+
+	var allFiles []string
+	for f := range files {
+		allFiles = append(allFiles, f)
+	}
+	allFiles = append(allFiles, extraFiles...)
+	files.add("tsconfig.json", []byte(genTypeScriptProjectFile(info, allFiles)))
 }
 
 type npmPackage struct {
@@ -1913,7 +1919,7 @@ func genNPMPackageMetadata(pkg *schema.Package, info NodePackageInfo) string {
 	return string(npmjson) + "\n"
 }
 
-func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
+func genTypeScriptProjectFile(info NodePackageInfo, files []string) string {
 	w := &bytes.Buffer{}
 
 	fmt.Fprintf(w, `{
@@ -1934,7 +1940,7 @@ func genTypeScriptProjectFile(info NodePackageInfo, files fs) string {
 `)
 
 	var tsFiles []string
-	for f := range files {
+	for _, f := range files {
 		if path.Ext(f) == ".ts" {
 			tsFiles = append(tsFiles, f)
 		}
@@ -2146,14 +2152,34 @@ func LanguageResources(pkg *schema.Package) (map[string]LanguageResource, error)
 }
 
 func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
-	modules, info, err := generateModuleContextMap(tool, pkg, extraFiles)
+	return GeneratePackageWithOptions(&GeneratePackageOptions{
+		Tool:       tool,
+		Pkg:        pkg,
+		ExtraFiles: extraFiles,
+	})
+}
+
+type GeneratePackageOptions struct {
+	Tool       string
+	Pkg        *schema.Package
+	ExtraFiles map[string][]byte
+
+	// Include files in package metadata for TSC compilation in
+	// that are not generated but expected to be hand-edited, such
+	// as test files.
+	ExtraFilesInPackageMetadata []string
+}
+
+func GeneratePackageWithOptions(opts *GeneratePackageOptions) (map[string][]byte, error) {
+	pkg := opts.Pkg
+	modules, info, err := generateModuleContextMap(opts.Tool, pkg, opts.ExtraFiles)
 	if err != nil {
 		return nil, err
 	}
 	pkg.Language["nodejs"] = info
 
 	files := fs{}
-	for p, f := range extraFiles {
+	for p, f := range opts.ExtraFiles {
 		files.add(p, f)
 	}
 	for _, mod := range modules {
@@ -2162,8 +2188,7 @@ func GeneratePackage(tool string, pkg *schema.Package, extraFiles map[string][]b
 		}
 	}
 
-	// Finally emit the package metadata (NPM, TypeScript, and so on).
-	genPackageMetadata(pkg, info, files)
+	genPackageMetadata(pkg, info, files, opts.ExtraFilesInPackageMetadata)
 	return files, nil
 }
 

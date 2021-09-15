@@ -1,10 +1,4 @@
-__pycache__
-bin
 node_modules
-tests
 yarn.lock
-package-lock.json
-obj
-command-output
-go.sum
-go.mod
+bin
+codegenTests.ts

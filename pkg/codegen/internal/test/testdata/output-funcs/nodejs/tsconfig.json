@@ -1,6 +1,5 @@
 {
     "compilerOptions": {
-        "strict": true,
         "outDir": "bin",
         "target": "es2016",
         "module": "commonjs",
@@ -9,18 +8,25 @@
         "sourceMap": true,
         "stripInternal": true,
         "experimentalDecorators": true,
-        "pretty": true,
         "noFallthroughCasesInSwitch": true,
-        "noImplicitReturns": true,
-        "forceConsistentCasingInFileNames": true
+        "forceConsistentCasingInFileNames": true,
+        "strict": true
     },
     "files": [
+        "codegenTests.ts",
         "funcWithAllOptionalInputs.ts",
+        "funcWithConstInput.ts",
         "funcWithDefaultValue.ts",
         "funcWithDictParam.ts",
         "funcWithListParam.ts",
+        "getClientConfig.ts",
+        "getIntegrationRuntimeObjectMetadatum.ts",
+        "index.ts",
         "listStorageAccountKeys.ts",
-        "utilities.ts",
-        "codegenTests.ts"
+        "provider.ts",
+        "types/index.ts",
+        "types/input.ts",
+        "types/output.ts",
+        "utilities.ts"
     ]
 }

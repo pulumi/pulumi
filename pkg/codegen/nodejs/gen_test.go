@@ -2,91 +2,24 @@
 package nodejs
 
 import (
-	"bytes"
-	"path/filepath"
-	"testing"
-
-	"github.com/stretchr/testify/require"
-
-	"encoding/json"
+	// "encoding/json"
+	// "fmt"
+	// "io"
+	// "io/ioutil"
+	// "os/exec"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"path/filepath"
-	"sort"
-	"strings"
+	// "sort"
+	// "strings"
 	"testing"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen/internal/test"
 	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
-	"github.com/pulumi/pulumi/pkg/v3/testing/integration"
-	"github.com/pulumi/pulumi/sdk/v3/go/common/util/executable"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGeneratePackage(t *testing.T) {
-	test.TestSDKCodegen(t, &test.SDKCodegenOptions{
-		Language:   "nodejs",
-		GenPackage: GeneratePackage,
-		Checks: map[string]test.CodegenCheck{
-			"nodejs/compile": typeCheckGeneratedPackage,
-		},
-	})
-}
-
-func typeCheckGeneratedPackage(t *testing.T, pwd string) {
-	var err error
-	var stdout, stderr bytes.Buffer
-	cmdOptions := integration.ProgramTestOptions{
-		Verbose: true,
-		Stderr:  &stderr,
-		Stdout:  &stdout,
-	}
-
-	// TODO: previous attempt used npm. It may be more popular and
-	// better target than yarn, however our build uses yarn in
-	// other places at the moment, and yarn does not run into the
-	// ${VERSION} problem; use yarn for now.
-	//
-	// var npm string
-	// npm, err = executable.FindExecutable("npm")
-	// require.NoError(t, err)
-	// // TODO remove when https://github.com/pulumi/pulumi/pull/7938 lands
-	// file := filepath.Join(pwd, "package.json")
-	// oldFile, err := ioutil.ReadFile(file)
-	// require.NoError(t, err)
-	// newFile := strings.ReplaceAll(string(oldFile), "${VERSION}", "0.0.1")
-	// err = ioutil.WriteFile(file, []byte(newFile), 0600)
-	// require.NoError(t, err)
-	// err = integration.RunCommand(t, "npm install", []string{npm, "i"}, pwd, &cmdOptions)
-	// require.NoError(t, err)
-
-	var yarn string
-	yarn, err = executable.FindExecutable("yarn")
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "yarn link @pulumi/pulumi",
-		[]string{yarn, "link", "@pulumi/pulumi"}, pwd, &cmdOptions)
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "yarn install",
-		[]string{yarn, "install"}, pwd, &cmdOptions)
-	require.NoError(t, err)
-
-	err = integration.RunCommand(t, "tsc --noEmit",
-		[]string{filepath.Join(".", "node_modules", ".bin", "tsc"), "--noEmit"}, pwd, &cmdOptions)
-
-	if err != nil {
-		stderr := stderr.String()
-		if len(stderr) > 0 {
-			t.Logf("stderr: %s", stderr)
-		}
-		stdout := stdout.String()
-		if len(stdout) > 0 {
-			t.Logf("stdout: %s", stdout)
-		}
-
-	}
-	require.NoError(t, err)
+	test.TestSDKCodegen(t, "nodejs", GeneratePackage)
 }
 
 func TestGenerateTypeNames(t *testing.T) {
@@ -105,50 +38,70 @@ func TestGenerateTypeNames(t *testing.T) {
 	})
 }
 
+// Resolves modules via Yarn and compiles the code with TypeScript
+// linking against in-repo Pulumi Node SDK.
+func compileHook() test.SdkTestHook {
+	return test.SdkTestHook{
+		Name: "compile",
+		RunHook: func(env *test.SdkTestEnv) {
+			env.Command("yarn", "install")
+			env.Command("yarn", "link", "@pulumi/pulumi")
+			tsc := env.NewCommand("tsc")
+			tsc.Env = []string{fmt.Sprintf("PATH=%s", filepath.Join(".", "node_modules", ".bin"))}
+			env.RunCommand(tsc)
+		},
+	}
+}
+
+func generatePackage(tool string, pkg *schema.Package, extraFiles map[string][]byte) (map[string][]byte, error) {
+	p := *pkg
+	if len(p.Language) > 0 {
+		panic(fmt.Sprintf("%v", p.Language))
+	}
+	if extraFiles == nil {
+		extraFiles = make(map[string][]byte)
+	}
+	nodePkgInfo := NodePackageInfo{
+		PackageName: "@pulumi/mypkg",
+		DevDependencies: map[string]string{
+			"@types/node":  "latest",
+			"@types/mocha": "^2.2.42",
+			"mocha":        "^3.5.0",
+		},
+	}
+	p.Language["nodejs"] = nodePkgInfo
+	return GeneratePackageWithOptions(&GeneratePackageOptions{
+		Tool:       tool,
+		Pkg:        &p,
+		ExtraFiles: extraFiles,
+		ExtraFilesInPackageMetadata: []string{
+			"codegenTests.ts",
+		},
+	})
+}
+
 func TestGenerateOutputFuncsNode(t *testing.T) {
-	testDir := filepath.Join("..", "internal", "test", "testdata", "output-funcs")
+	testRootDir := filepath.Join("..", "internal", "test", "testdata")
 
-	files, err := ioutil.ReadDir(testDir)
-	if err != nil {
-		require.NoError(t, err)
-		return
-	}
+	test.TestSDKCodegenWithOptions(t, &test.TestSDKCodegenOptions{
+		Language:    "nodejs",
+		GenPackage:  generatePackage,
+		TestRootDir: testRootDir,
+		SDKTests: []test.SdkTest{
+			{
+				Directory:   "output-funcs",
+				Description: "output-funcs",
+				IncludeLanguage: func(lang string) bool {
+					return lang == "nodejs"
+				},
+				HooksByLanguage: map[string][]test.SdkTestHook{
+					"nodejs": {
+						compileHook(),
+					},
+				},
+			},
+		},
+	})
 
-	var examples []string
-	for _, f := range files {
-		name := f.Name()
-		if strings.HasSuffix(name, ".json") {
-			examples = append(examples, strings.TrimSuffix(name, ".json"))
-		}
-	}
-
-	sort.Slice(examples, func(i, j int) bool { return examples[i] < examples[j] })
-
-	gen := func(reader io.Reader, writer io.Writer) error {
-		var pkgSpec schema.PackageSpec
-		err := json.NewDecoder(reader).Decode(&pkgSpec)
-		if err != nil {
-			return err
-		}
-		pkg, err := schema.ImportSpec(pkgSpec, nil)
-		if err != nil {
-			return err
-		}
-		fun := pkg.Functions[0]
-
-		fmt.Fprintf(writer, `import * as utilities from "./utilities";`+"\n")
-		fmt.Fprintf(writer, `import * as pulumi from "@pulumi/pulumi";`+"\n")
-
-		mod := &modContext{}
-		mod.genFunction(writer, fun)
-		return nil
-	}
-
-	for _, ex := range examples {
-		t.Run(ex, func(t *testing.T) {
-			inputFile := filepath.Join(testDir, fmt.Sprintf("%s.json", ex))
-			expectedOutputFile := filepath.Join(testDir, "nodejs", fmt.Sprintf("%s.ts", ex))
-			test.ValidateFileTransformer(t, inputFile, expectedOutputFile, gen)
-		})
-	}
+	// TODO run unit tests
 }

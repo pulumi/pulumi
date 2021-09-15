@@ -1,46 +1,76 @@
 package test
 
 import (
-	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
 
+	//"github.com/pulumi/pulumi/pkg/v3/codegen"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"github.com/pulumi/pulumi/pkg/v3/codegen"
 )
 
-// Defines an extra check logic that accepts the directory with the
-// generated code, typically `$TestDir/$test.Directory/$language`.
-type CodegenCheck func(t *testing.T, codedir string)
+type SdkTest struct {
+	// Short name of the directory, relative to `TestDir`.
+	Directory string
 
-type sdkTest struct {
-	Directory   string
 	Description string
 
-	// Extra checks for this test. They keys of this map
-	// are of the form "$language/$check" such as "go/compile".
-	Checks map[string]CodegenCheck
+	// Decides which programming languages to test the code
+	// generation for; defaults to all supported languages.
+	IncludeLanguage func(lang string) bool
 
-	// Skip checks, identified by "$language/$check".
-	Skip codegen.StringSet
-
-	// Do not compile the generated code for the languages in this set.
-	// This is a helper form of `Skip`.
-	SkipCompileCheck codegen.StringSet
+	// Hooks that run additional validations after the code has
+	// been generated. Hooks are usually language-specific and are
+	// included in this map by language.
+	HooksByLanguage map[string][]SdkTestHook
 }
 
-const (
-	// python = "python"
-	nodejs = "nodejs"
-	dotnet = "dotnet"
-	golang = "go"
-)
+type SdkTestHook struct {
+	// Name such as "compile", "test".
+	Name string
 
-var sdkTests = []sdkTest{
+	// Checks to run.
+	RunHook func(env *SdkTestEnv)
+}
+
+type SdkTestEnv struct {
+	T *testing.T
+
+	// The directory with the generated code, typically `$TestDir/$Language`.
+	CodeDir string
+}
+
+func (env *SdkTestEnv) NewCommandInDir(dir string, name string, arg ...string) *exec.Cmd {
+	d := filepath.Join(env.CodeDir, dir)
+	env.T.Logf("cd %s && %s %s", d, name, strings.Join(arg, " "))
+	cmd := exec.Command(name, arg...)
+	cmd.Dir = d
+	return cmd
+}
+
+func (env *SdkTestEnv) NewCommand(name string, arg ...string) *exec.Cmd {
+	return env.NewCommandInDir(".", name, arg...)
+}
+
+func (env *SdkTestEnv) RunCommand(cmd *exec.Cmd) {
+	out, err := cmd.CombinedOutput()
+	if !assert.NoError(env.T, err) {
+		env.T.Logf("output: %v", string(out))
+	}
+}
+
+func (env *SdkTestEnv) CommandInDir(dir string, name string, arg ...string) {
+	env.RunCommand(env.NewCommandInDir(dir, name, arg...))
+}
+
+func (env *SdkTestEnv) Command(name string, arg ...string) {
+	env.CommandInDir(".", name, arg...)
+}
+
+var defaultSdkTests = []SdkTest{
 	{
 		Directory:   "input-collision",
 		Description: "Schema with types that could potentially produce collisions (go).",
@@ -50,19 +80,16 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with a two part name (foo-bar)",
 	},
 	{
-		Directory:        "external-resource-schema",
-		Description:      "External resource schema",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, golang),
+		Directory:   "external-resource-schema",
+		Description: "External resource schema",
 	},
 	{
-		Directory:        "nested-module",
-		Description:      "Nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		Directory:   "nested-module",
+		Description: "Nested module",
 	},
 	{
-		Directory:        "nested-module-thirdparty",
-		Description:      "Third-party nested module",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		Directory:   "nested-module-thirdparty",
+		Description: "Third-party nested module",
 	},
 	{
 		Directory:   "plain-schema-gh6957",
@@ -71,6 +98,16 @@ var sdkTests = []sdkTest{
 	{
 		Directory:   "resource-args-python",
 		Description: "Resource args with same named resource and type",
+		HooksByLanguage: map[string][]SdkTestHook{
+			"go": []SdkTestHook{
+				SdkTestHook{
+					Name: "test",
+					RunHook: func(env *SdkTestEnv) {
+						env.CommandInDir("go-program", "go", "test", "./...")
+					},
+				},
+			},
+		},
 	},
 	{
 		Directory:   "simple-enum-schema",
@@ -93,46 +130,24 @@ var sdkTests = []sdkTest{
 		Description: "Simple schema with local resource properties and custom Python package name",
 	},
 	{
-		Directory:        "simple-methods-schema",
-		Description:      "Simple schema with methods",
-		SkipCompileCheck: codegen.NewStringSet(nodejs, dotnet, golang),
+		Directory:   "simple-methods-schema",
+		Description: "Simple schema with methods",
 	},
 	{
 		Directory:   "simple-yaml-schema",
 		Description: "Simple schema encoded using YAML",
 	},
 	{
-		Directory:        "provider-config-schema",
-		Description:      "Simple provider config schema",
-		SkipCompileCheck: codegen.NewStringSet(dotnet),
+		Directory:   "provider-config-schema",
+		Description: "Simple provider config schema",
 	},
 	{
-		Directory:        "replace-on-change",
-		Description:      "Simple use of replaceOnChange in schema",
-		SkipCompileCheck: codegen.NewStringSet(golang),
-	},
-	{
-		Directory:        "resource-property-overlap",
-		Description:      "A resource with the same name as it's property",
-		SkipCompileCheck: codegen.NewStringSet(dotnet, nodejs),
+		Directory:   "replace-on-change",
+		Description: "Simple use of replaceOnChange in schema",
 	},
 }
 
-type SDKCodegenOptions struct {
-	// Name of the programming language.
-	Language string
-
-	// Language-aware code generator; such as `GeneratePackage`.
-	// from `codgen/dotnet`.
-	GenPackage GenPkgSignature
-
-	// Extra checks for all the tests. They keys of this map are
-	// of the form "$language/$check" such as "go/compile".
-	Checks map[string]CodegenCheck
-}
-
-// TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code
-// generator. It also verifies that the generated code is structurally sound.
+// TestSDKCodegen runs the complete set of SDK code generation tests against a particular language's code generator.
 //
 // An SDK code generation test consists of a schema and a set of expected outputs for each language. Each test is
 // structured as a directory that contains that information:
@@ -145,23 +160,35 @@ type SDKCodegenOptions struct {
 //
 // The schema is the only piece that must be manually authored. Once the schema has been written, the expected outputs
 // can be generated by running `PULUMI_ACCEPT=true go test ./..." from the `pkg/codegen` directory.
-func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
-	testDir := filepath.Join("..", "internal", "test", "testdata")
+func TestSDKCodegen(t *testing.T, language string, genPackage GenPkgSignature) {
+	TestSDKCodegenWithOptions(t, &TestSDKCodegenOptions{
+		Language:   language,
+		GenPackage: genPackage,
+	})
+}
 
-	for _, tt := range sdkTests {
+// A variant of TestSDKCodegen with more options.
+func TestSDKCodegenWithOptions(t *testing.T, rawOptions *TestSDKCodegenOptions) {
+	options := rawOptions.WithDefaults()
+	for _, tt := range options.SDKTests {
 		t.Run(tt.Description, func(t *testing.T) {
-			dirPath := filepath.Join(testDir, filepath.FromSlash(tt.Directory))
-
-			schemaPath := filepath.Join(dirPath, "schema.json")
-			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
-				schemaPath = filepath.Join(dirPath, "schema.yaml")
+			if tt.IncludeLanguage != nil && !tt.IncludeLanguage(options.Language) {
+				t.Skip()
+				return
 			}
 
-			files, err := GeneratePackageFilesFromSchema(schemaPath, opts.GenPackage)
+			testDir := filepath.Join(options.TestRootDir, filepath.FromSlash(tt.Directory))
+
+			schemaPath := filepath.Join(testDir, "schema.json")
+			if _, err := os.Stat(schemaPath); err != nil && os.IsNotExist(err) {
+				schemaPath = filepath.Join(testDir, "schema.yaml")
+			}
+
+			files, err := GeneratePackageFilesFromSchema(schemaPath, options.GenPackage)
 			require.NoError(t, err)
 
-			if !RewriteFilesWhenPulumiAccept(t, dirPath, opts.Language, files) {
-				expectedFiles, err := LoadBaseline(dirPath, opts.Language)
+			if !RewriteFilesWhenPulumiAccept(t, testDir, options.Language, files) {
+				expectedFiles, err := LoadBaseline(testDir, options.Language)
 				require.NoError(t, err)
 
 				if !ValidateFileEquality(t, files, expectedFiles) {
@@ -184,48 +211,54 @@ func TestSDKCodegen(t *testing.T, opts *SDKCodegenOptions) {
 
 			// Define check filter.
 			shouldSkipCheck := func(check string) bool {
-
-				// Only language-specific checks.
-				if !strings.HasPrefix(check, opts.Language+"/") {
-					return true
-				}
-
-				// Obey SkipCompileCheck to skip compile and test targets.
-				if tt.SkipCompileCheck != nil &&
-					tt.SkipCompileCheck.Has(opts.Language) &&
-					(check == fmt.Sprintf("%s/compile", opts.Language) ||
-						check == fmt.Sprintf("%s/test", opts.Language)) {
-					return true
-				}
-
-				// Obey Skip.
-				if tt.Skip != nil && tt.Skip.Has(check) {
-					return true
-				}
-
 				return false
 			}
 
-			// Sort the checks in alphabetical order.
-			var checkOrder []string
-			for check := range allChecks {
-				checkOrder = append(checkOrder, check)
-			}
-			sort.Strings(checkOrder)
+			codeDir := filepath.Join(testDir, options.Language)
 
-			codeDir := filepath.Join(dirPath, opts.Language)
+			if hooks, ok := tt.HooksByLanguage[options.Language]; ok {
+				runOne := func(hook SdkTestHook) {
+					t.Run(hook.Name, func(t *testing.T) {
+						hook.RunHook(&SdkTestEnv{
+							T:       t,
+							CodeDir: codeDir,
+						})
+					})
+				}
 
-			// Perform the checks.
-			for _, checkVar := range checkOrder {
-				check := checkVar
-				t.Run(check, func(t *testing.T) {
-					if shouldSkipCheck(check) {
-						t.Skip()
-					}
-					checkFun := allChecks[check]
-					checkFun(t, codeDir)
-				})
+				for _, hook := range hooks {
+					runOne(hook)
+				}
 			}
 		})
 	}
+}
+
+type TestSDKCodegenOptions struct {
+	// Name of the programming language.
+	Language string
+
+	// Language-aware code generator; such as `GeneratePackage`.
+	// from `codgen/dotnet`.
+	GenPackage GenPkgSignature
+
+	// Tests to run; defaults to `defaultSdkTests`.
+	SDKTests []SdkTest
+
+	// Root folder to find tests in, if empty defaults to `../internal/test/testdata`.
+	TestRootDir string
+}
+
+func (opts *TestSDKCodegenOptions) WithDefaults() *TestSDKCodegenOptions {
+	o := *opts
+
+	if len(o.SDKTests) == 0 {
+		o.SDKTests = defaultSdkTests
+	}
+
+	if o.TestRootDir == "" {
+		o.TestRootDir = filepath.Join("..", "internal", "test", "testdata")
+	}
+
+	return &o
 }

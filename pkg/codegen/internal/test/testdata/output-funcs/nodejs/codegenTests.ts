@@ -1,3 +1,5 @@
+/*
+
 import 'mocha';
 import * as assert from 'assert';
 import * as pulumi from '@pulumi/pulumi';
@@ -115,3 +117,5 @@ describe('funcWithDictParamOutput', () => {
         })
     });
 });
+
+*/

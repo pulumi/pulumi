@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -77,7 +78,11 @@ func LoadFiles(dir, lang string, files []string) (map[string][]byte, error) {
 	return result, nil
 }
 
-func loadDirectory(fs map[string][]byte, root, path string) error {
+// Recursively loads files from a directory into the `fs` map. Ignores
+// entries that match `ignore(path)==true`, also skips descending into
+// directores that are ignored. This is useful for example to avoid
+// `node_modules`.
+func loadDirectory(fs map[string][]byte, root, path string, ignore func(path string) bool) error {
 	entries, err := os.ReadDir(path)
 	if err != nil {
 		return err
@@ -85,8 +90,12 @@ func loadDirectory(fs map[string][]byte, root, path string) error {
 
 	for _, e := range entries {
 		entryPath := filepath.Join(path, e.Name())
-		if e.IsDir() {
-			if err = loadDirectory(fs, root, entryPath); err != nil {
+		relativeEntryPath := entryPath[len(root)+1:]
+
+		if ignore != nil && ignore(relativeEntryPath) {
+			// pass
+		} else if e.IsDir() {
+			if err = loadDirectory(fs, root, entryPath, ignore); err != nil {
 				return err
 			}
 		} else {
@@ -94,7 +103,7 @@ func loadDirectory(fs map[string][]byte, root, path string) error {
 			if err != nil {
 				return err
 			}
-			name := filepath.ToSlash(entryPath[len(root)+1:])
+			name := filepath.ToSlash(relativeEntryPath)
 			fs[name] = contents
 		}
 	}
@@ -114,6 +123,33 @@ func PathExists(path string) (bool, error) {
 	}
 
 	return false, err
+}
+
+// Removes files from directory recursively unless the are ignored.
+func removeFilesFromDirUnlessIgnored(root, path string, ignore func(path string) bool) error {
+	entries, err := os.ReadDir(path)
+	if err != nil {
+		return err
+	}
+
+	for _, e := range entries {
+		entryPath := filepath.Join(path, e.Name())
+		relativeEntryPath := entryPath[len(root)+1:]
+
+		if ignore != nil && ignore(relativeEntryPath) {
+			// pass
+		} else if e.IsDir() {
+			if err = removeFilesFromDirUnlessIgnored(root, entryPath, ignore); err != nil {
+				return err
+			}
+		} else {
+			if err = os.Remove(path); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }
 
 // Reads `.sdkcodegenignore` file if present to use as loadDirectory ignore func.
@@ -168,7 +204,6 @@ func loadIgnoreMap(dir string) (func(path string) bool, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return func(path string) bool {
 		path = strings.ReplaceAll(path, "\\", "/")
 		_, ignoredPath := ignoredPathSet[path]
@@ -181,7 +216,13 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 	dir = filepath.Join(dir, lang)
 
 	fs := map[string][]byte{}
-	if err := loadDirectory(fs, dir, dir); err != nil {
+
+	ignore, err := loadIgnoreMap(dir)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := loadDirectory(fs, dir, dir, ignore); err != nil {
 		return nil, err
 	}
 	return fs, nil
@@ -191,14 +232,20 @@ func LoadBaseline(dir, lang string) (map[string][]byte, error) {
 func ValidateFileEquality(t *testing.T, actual, expected map[string][]byte) bool {
 	ok := true
 	for name, file := range expected {
-		if !assert.Contains(t, actual, name) || !assert.Equal(t, string(file), string(actual[name]), name) {
-			t.Logf("%s did not agree", name)
+		_, inActual := actual[name]
+		if inActual {
+			if !assert.Equal(t, string(file), string(actual[name]), name) {
+				t.Logf("%s did not agree", name)
+				ok = false
+			}
+		} else {
+			t.Logf("File %s was expected but is missing from the actual fileset", name)
 			ok = false
 		}
 	}
 	for name := range actual {
-		if _, has := expected[name]; !has {
-			t.Logf("missing data for %s", name)
+		if _, inExpected := expected[name]; !inExpected {
+			t.Logf("File %s from the actual fileset was not expected", name)
 			ok = false
 		}
 	}
