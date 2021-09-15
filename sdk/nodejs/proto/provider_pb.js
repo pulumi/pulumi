@@ -1218,7 +1218,8 @@ proto.pulumirpc.ConfigureResponse.toObject = function(includeInstance, msg) {
   var f, obj = {
     acceptsecrets: jspb.Message.getBooleanFieldWithDefault(msg, 1, false),
     supportspreview: jspb.Message.getBooleanFieldWithDefault(msg, 2, false),
-    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 3, false)
+    acceptresources: jspb.Message.getBooleanFieldWithDefault(msg, 3, false),
+    acceptoutputs: jspb.Message.getBooleanFieldWithDefault(msg, 4, false)
   };
 
   if (includeInstance) {
@@ -1267,6 +1268,10 @@ proto.pulumirpc.ConfigureResponse.deserializeBinaryFromReader = function(msg, re
       var value = /** @type {boolean} */ (reader.readBool());
       msg.setAcceptresources(value);
       break;
+    case 4:
+      var value = /** @type {boolean} */ (reader.readBool());
+      msg.setAcceptoutputs(value);
+      break;
     default:
       reader.skipField();
       break;
@@ -1314,6 +1319,13 @@ proto.pulumirpc.ConfigureResponse.serializeBinaryToWriter = function(message, wr
   if (f) {
     writer.writeBool(
       3,
+      f
+    );
+  }
+  f = message.getAcceptoutputs();
+  if (f) {
+    writer.writeBool(
+      4,
       f
     );
   }
@@ -1371,6 +1383,24 @@ proto.pulumirpc.ConfigureResponse.prototype.getAcceptresources = function() {
  */
 proto.pulumirpc.ConfigureResponse.prototype.setAcceptresources = function(value) {
   return jspb.Message.setProto3BooleanField(this, 3, value);
+};
+
+
+/**
+ * optional bool acceptOutputs = 4;
+ * @return {boolean}
+ */
+proto.pulumirpc.ConfigureResponse.prototype.getAcceptoutputs = function() {
+  return /** @type {boolean} */ (jspb.Message.getBooleanFieldWithDefault(this, 4, false));
+};
+
+
+/**
+ * @param {boolean} value
+ * @return {!proto.pulumirpc.ConfigureResponse} returns this
+ */
+proto.pulumirpc.ConfigureResponse.prototype.setAcceptoutputs = function(value) {
+  return jspb.Message.setProto3BooleanField(this, 4, value);
 };
 
 
