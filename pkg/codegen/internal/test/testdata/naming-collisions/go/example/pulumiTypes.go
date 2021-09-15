@@ -10,55 +10,6 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type Endpoint struct {
-	Name *string `pulumi:"name"`
-}
-
-// EndpointInput is an input type that accepts EndpointArgs and EndpointOutput values.
-// You can construct a concrete instance of `EndpointInput` via:
-//
-//          EndpointArgs{...}
-type EndpointInput interface {
-	pulumi.Input
-
-	ToEndpointOutput() EndpointOutput
-	ToEndpointOutputWithContext(context.Context) EndpointOutput
-}
-
-type EndpointArgs struct {
-	Name pulumi.StringPtrInput `pulumi:"name"`
-}
-
-func (EndpointArgs) ElementType() reflect.Type {
-	return reflect.TypeOf((*Endpoint)(nil)).Elem()
-}
-
-func (i EndpointArgs) ToEndpointOutput() EndpointOutput {
-	return i.ToEndpointOutputWithContext(context.Background())
-}
-
-func (i EndpointArgs) ToEndpointOutputWithContext(ctx context.Context) EndpointOutput {
-	return pulumi.ToOutputWithContext(ctx, i).(EndpointOutput)
-}
-
-type EndpointOutput struct{ *pulumi.OutputState }
-
-func (EndpointOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Endpoint)(nil)).Elem()
-}
-
-func (o EndpointOutput) ToEndpointOutput() EndpointOutput {
-	return o
-}
-
-func (o EndpointOutput) ToEndpointOutputWithContext(ctx context.Context) EndpointOutput {
-	return o
-}
-
-func (o EndpointOutput) Name() pulumi.StringPtrOutput {
-	return o.ApplyT(func(v Endpoint) *string { return v.Name }).(pulumi.StringPtrOutput)
-}
-
 type Object struct {
 	Bar *string `pulumi:"bar"`
 }
@@ -157,8 +108,57 @@ func (o ObjectInputTypeOutput) Bar() pulumi.StringPtrOutput {
 	return o.ApplyT(func(v ObjectInputType) *string { return v.Bar }).(pulumi.StringPtrOutput)
 }
 
+type ResourceType struct {
+	Name *string `pulumi:"name"`
+}
+
+// ResourceTypeInput is an input type that accepts ResourceTypeArgs and ResourceTypeOutput values.
+// You can construct a concrete instance of `ResourceTypeInput` via:
+//
+//          ResourceTypeArgs{...}
+type ResourceTypeInput interface {
+	pulumi.Input
+
+	ToResourceTypeOutput() ResourceTypeOutput
+	ToResourceTypeOutputWithContext(context.Context) ResourceTypeOutput
+}
+
+type ResourceTypeArgs struct {
+	Name pulumi.StringPtrInput `pulumi:"name"`
+}
+
+func (ResourceTypeArgs) ElementType() reflect.Type {
+	return reflect.TypeOf((*ResourceType)(nil)).Elem()
+}
+
+func (i ResourceTypeArgs) ToResourceTypeOutput() ResourceTypeOutput {
+	return i.ToResourceTypeOutputWithContext(context.Background())
+}
+
+func (i ResourceTypeArgs) ToResourceTypeOutputWithContext(ctx context.Context) ResourceTypeOutput {
+	return pulumi.ToOutputWithContext(ctx, i).(ResourceTypeOutput)
+}
+
+type ResourceTypeOutput struct{ *pulumi.OutputState }
+
+func (ResourceTypeOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ResourceType)(nil)).Elem()
+}
+
+func (o ResourceTypeOutput) ToResourceTypeOutput() ResourceTypeOutput {
+	return o
+}
+
+func (o ResourceTypeOutput) ToResourceTypeOutputWithContext(ctx context.Context) ResourceTypeOutput {
+	return o
+}
+
+func (o ResourceTypeOutput) Name() pulumi.StringPtrOutput {
+	return o.ApplyT(func(v ResourceType) *string { return v.Name }).(pulumi.StringPtrOutput)
+}
+
 func init() {
-	pulumi.RegisterOutputType(EndpointOutput{})
 	pulumi.RegisterOutputType(ObjectOutput{})
 	pulumi.RegisterOutputType(ObjectInputTypeOutput{})
+	pulumi.RegisterOutputType(ResourceTypeOutput{})
 }
