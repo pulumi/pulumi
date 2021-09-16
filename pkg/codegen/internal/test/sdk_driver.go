@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/pulumi/pulumi/pkg/v3/codegen"
@@ -77,9 +76,9 @@ var sdkTests = []sdkTest{
 			"go/test": func(t *testing.T, codeDir string) {
 				cmd := exec.Command("go", "test", "./...")
 				cmd.Dir = filepath.Join(codeDir, "go-program")
-
 				out, err := cmd.CombinedOutput()
-				if !assert.NoError(t, err) {
+				require.NoError(t, err)
+				if err != nil {
 					t.Logf("output: %v", string(out))
 				}
 			},

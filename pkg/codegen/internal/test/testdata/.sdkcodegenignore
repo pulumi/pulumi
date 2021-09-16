@@ -6,3 +6,5 @@ yarn.lock
 package-lock.json
 obj
 command-output
+go.sum
+go.mod
