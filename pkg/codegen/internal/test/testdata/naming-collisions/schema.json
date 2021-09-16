@@ -18,14 +18,14 @@
       },
       "type": "object"
     },
-    "example::Enum": {
+    "example::ExampleEnum": {
       "type": "string",
       "enum": [
         {"value": "one"},
         {"value": "two"}
       ]
     },
-    "example::EnumInput": {
+    "example::ExampleEnumInput": {
       "type": "string",
       "enum": [
         {"value": "one"},

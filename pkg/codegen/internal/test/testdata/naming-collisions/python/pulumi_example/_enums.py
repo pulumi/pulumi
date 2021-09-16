@@ -5,18 +5,18 @@
 from enum import Enum
 
 __all__ = [
-    'Enum',
-    'EnumInput',
+    'ExampleEnum',
+    'ExampleEnumInput',
     'ResourceType',
 ]
 
 
-class Enum(str, Enum):
+class ExampleEnum(str, Enum):
     ONE = "one"
     TWO = "two"
 
 
-class EnumInput(str, Enum):
+class ExampleEnumInput(str, Enum):
     ONE = "one"
     TWO = "two"
 

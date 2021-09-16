@@ -2605,7 +2605,6 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			// maintain support for duplicate tokens for types and resources in Kubernetes
 			if resSeen[strings.ToLower(t.Token)] {
 				pkg.duplicateTokens[strings.ToLower(t.Token)] = true
-				return
 			}
 			if typeSeen[strings.ToLower(t.Token)] {
 				return
@@ -2651,7 +2650,6 @@ func generatePackageContextMap(tool string, pkg *schema.Package, goInfo GoPackag
 			pkg := getPkgFromToken(t.Token)
 			if resSeen[t.Token] {
 				pkg.duplicateTokens[t.Token] = true
-				return
 			}
 			if typeSeen[t.Token] {
 				return

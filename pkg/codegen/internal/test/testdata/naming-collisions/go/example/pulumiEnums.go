@@ -10,124 +10,124 @@ import (
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
 )
 
-type Enum string
+type ExampleEnum string
 
 const (
-	EnumOne = Enum("one")
-	EnumTwo = Enum("two")
+	ExampleEnumOne = ExampleEnum("one")
+	ExampleEnumTwo = ExampleEnum("two")
 )
 
-func (Enum) ElementType() reflect.Type {
-	return reflect.TypeOf((*Enum)(nil)).Elem()
+func (ExampleEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*ExampleEnum)(nil)).Elem()
 }
 
-func (e Enum) ToEnumOutput() EnumOutput {
-	return pulumi.ToOutput(e).(EnumOutput)
+func (e ExampleEnum) ToExampleEnumOutput() ExampleEnumOutput {
+	return pulumi.ToOutput(e).(ExampleEnumOutput)
 }
 
-func (e Enum) ToEnumOutputWithContext(ctx context.Context) EnumOutput {
-	return pulumi.ToOutputWithContext(ctx, e).(EnumOutput)
+func (e ExampleEnum) ToExampleEnumOutputWithContext(ctx context.Context) ExampleEnumOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(ExampleEnumOutput)
 }
 
-func (e Enum) ToEnumPtrOutput() EnumPtrOutput {
-	return e.ToEnumPtrOutputWithContext(context.Background())
+func (e ExampleEnum) ToExampleEnumPtrOutput() ExampleEnumPtrOutput {
+	return e.ToExampleEnumPtrOutputWithContext(context.Background())
 }
 
-func (e Enum) ToEnumPtrOutputWithContext(ctx context.Context) EnumPtrOutput {
-	return Enum(e).ToEnumOutputWithContext(ctx).ToEnumPtrOutputWithContext(ctx)
+func (e ExampleEnum) ToExampleEnumPtrOutputWithContext(ctx context.Context) ExampleEnumPtrOutput {
+	return ExampleEnum(e).ToExampleEnumOutputWithContext(ctx).ToExampleEnumPtrOutputWithContext(ctx)
 }
 
-func (e Enum) ToStringOutput() pulumi.StringOutput {
+func (e ExampleEnum) ToStringOutput() pulumi.StringOutput {
 	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
 }
 
-func (e Enum) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+func (e ExampleEnum) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
 	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
 }
 
-func (e Enum) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (e ExampleEnum) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
 }
 
-func (e Enum) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+func (e ExampleEnum) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
-type EnumOutput struct{ *pulumi.OutputState }
+type ExampleEnumOutput struct{ *pulumi.OutputState }
 
-func (EnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*Enum)(nil)).Elem()
+func (ExampleEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ExampleEnum)(nil)).Elem()
 }
 
-func (o EnumOutput) ToEnumOutput() EnumOutput {
+func (o ExampleEnumOutput) ToExampleEnumOutput() ExampleEnumOutput {
 	return o
 }
 
-func (o EnumOutput) ToEnumOutputWithContext(ctx context.Context) EnumOutput {
+func (o ExampleEnumOutput) ToExampleEnumOutputWithContext(ctx context.Context) ExampleEnumOutput {
 	return o
 }
 
-func (o EnumOutput) ToEnumPtrOutput() EnumPtrOutput {
-	return o.ToEnumPtrOutputWithContext(context.Background())
+func (o ExampleEnumOutput) ToExampleEnumPtrOutput() ExampleEnumPtrOutput {
+	return o.ToExampleEnumPtrOutputWithContext(context.Background())
 }
 
-func (o EnumOutput) ToEnumPtrOutputWithContext(ctx context.Context) EnumPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v Enum) *Enum {
+func (o ExampleEnumOutput) ToExampleEnumPtrOutputWithContext(ctx context.Context) ExampleEnumPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ExampleEnum) *ExampleEnum {
 		return &v
-	}).(EnumPtrOutput)
+	}).(ExampleEnumPtrOutput)
 }
 
-func (o EnumOutput) ToStringOutput() pulumi.StringOutput {
+func (o ExampleEnumOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
 
-func (o EnumOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e Enum) string {
+func (o ExampleEnumOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ExampleEnum) string {
 		return string(e)
 	}).(pulumi.StringOutput)
 }
 
-func (o EnumOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (o ExampleEnumOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
-func (o EnumOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e Enum) *string {
+func (o ExampleEnumOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ExampleEnum) *string {
 		v := string(e)
 		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
-type EnumPtrOutput struct{ *pulumi.OutputState }
+type ExampleEnumPtrOutput struct{ *pulumi.OutputState }
 
-func (EnumPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**Enum)(nil)).Elem()
+func (ExampleEnumPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**ExampleEnum)(nil)).Elem()
 }
 
-func (o EnumPtrOutput) ToEnumPtrOutput() EnumPtrOutput {
+func (o ExampleEnumPtrOutput) ToExampleEnumPtrOutput() ExampleEnumPtrOutput {
 	return o
 }
 
-func (o EnumPtrOutput) ToEnumPtrOutputWithContext(ctx context.Context) EnumPtrOutput {
+func (o ExampleEnumPtrOutput) ToExampleEnumPtrOutputWithContext(ctx context.Context) ExampleEnumPtrOutput {
 	return o
 }
 
-func (o EnumPtrOutput) Elem() EnumOutput {
-	return o.ApplyT(func(v *Enum) Enum {
+func (o ExampleEnumPtrOutput) Elem() ExampleEnumOutput {
+	return o.ApplyT(func(v *ExampleEnum) ExampleEnum {
 		if v != nil {
 			return *v
 		}
-		var ret Enum
+		var ret ExampleEnum
 		return ret
-	}).(EnumOutput)
+	}).(ExampleEnumOutput)
 }
 
-func (o EnumPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (o ExampleEnumPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
-func (o EnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e *Enum) *string {
+func (o ExampleEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *ExampleEnum) *string {
 		if e == nil {
 			return nil
 		}
@@ -136,162 +136,162 @@ func (o EnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.
 	}).(pulumi.StringPtrOutput)
 }
 
-// EnumInput is an input type that accepts EnumArgs and EnumOutput values.
-// You can construct a concrete instance of `EnumInput` via:
+// ExampleEnumInput is an input type that accepts ExampleEnumArgs and ExampleEnumOutput values.
+// You can construct a concrete instance of `ExampleEnumInput` via:
 //
-//          EnumArgs{...}
-type EnumInput interface {
+//          ExampleEnumArgs{...}
+type ExampleEnumInput interface {
 	pulumi.Input
 
-	ToEnumOutput() EnumOutput
-	ToEnumOutputWithContext(context.Context) EnumOutput
+	ToExampleEnumOutput() ExampleEnumOutput
+	ToExampleEnumOutputWithContext(context.Context) ExampleEnumOutput
 }
 
-var enumPtrType = reflect.TypeOf((**Enum)(nil)).Elem()
+var exampleEnumPtrType = reflect.TypeOf((**ExampleEnum)(nil)).Elem()
 
-type EnumPtrInput interface {
+type ExampleEnumPtrInput interface {
 	pulumi.Input
 
-	ToEnumPtrOutput() EnumPtrOutput
-	ToEnumPtrOutputWithContext(context.Context) EnumPtrOutput
+	ToExampleEnumPtrOutput() ExampleEnumPtrOutput
+	ToExampleEnumPtrOutputWithContext(context.Context) ExampleEnumPtrOutput
 }
 
-type enumPtr string
+type exampleEnumPtr string
 
-func EnumPtr(v string) EnumPtrInput {
-	return (*enumPtr)(&v)
+func ExampleEnumPtr(v string) ExampleEnumPtrInput {
+	return (*exampleEnumPtr)(&v)
 }
 
-func (*enumPtr) ElementType() reflect.Type {
-	return enumPtrType
+func (*exampleEnumPtr) ElementType() reflect.Type {
+	return exampleEnumPtrType
 }
 
-func (in *enumPtr) ToEnumPtrOutput() EnumPtrOutput {
-	return pulumi.ToOutput(in).(EnumPtrOutput)
+func (in *exampleEnumPtr) ToExampleEnumPtrOutput() ExampleEnumPtrOutput {
+	return pulumi.ToOutput(in).(ExampleEnumPtrOutput)
 }
 
-func (in *enumPtr) ToEnumPtrOutputWithContext(ctx context.Context) EnumPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, in).(EnumPtrOutput)
+func (in *exampleEnumPtr) ToExampleEnumPtrOutputWithContext(ctx context.Context) ExampleEnumPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(ExampleEnumPtrOutput)
 }
 
-type EnumInputEnum string
+type ExampleEnumInputEnum string
 
 const (
-	EnumInputEnumOne = EnumInputEnum("one")
-	EnumInputEnumTwo = EnumInputEnum("two")
+	ExampleEnumInputEnumOne = ExampleEnumInputEnum("one")
+	ExampleEnumInputEnumTwo = ExampleEnumInputEnum("two")
 )
 
-func (EnumInputEnum) ElementType() reflect.Type {
-	return reflect.TypeOf((*EnumInputEnum)(nil)).Elem()
+func (ExampleEnumInputEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*ExampleEnumInputEnum)(nil)).Elem()
 }
 
-func (e EnumInputEnum) ToEnumInputEnumOutput() EnumInputEnumOutput {
-	return pulumi.ToOutput(e).(EnumInputEnumOutput)
+func (e ExampleEnumInputEnum) ToExampleEnumInputEnumOutput() ExampleEnumInputEnumOutput {
+	return pulumi.ToOutput(e).(ExampleEnumInputEnumOutput)
 }
 
-func (e EnumInputEnum) ToEnumInputEnumOutputWithContext(ctx context.Context) EnumInputEnumOutput {
-	return pulumi.ToOutputWithContext(ctx, e).(EnumInputEnumOutput)
+func (e ExampleEnumInputEnum) ToExampleEnumInputEnumOutputWithContext(ctx context.Context) ExampleEnumInputEnumOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(ExampleEnumInputEnumOutput)
 }
 
-func (e EnumInputEnum) ToEnumInputEnumPtrOutput() EnumInputEnumPtrOutput {
-	return e.ToEnumInputEnumPtrOutputWithContext(context.Background())
+func (e ExampleEnumInputEnum) ToExampleEnumInputEnumPtrOutput() ExampleEnumInputEnumPtrOutput {
+	return e.ToExampleEnumInputEnumPtrOutputWithContext(context.Background())
 }
 
-func (e EnumInputEnum) ToEnumInputEnumPtrOutputWithContext(ctx context.Context) EnumInputEnumPtrOutput {
-	return EnumInputEnum(e).ToEnumInputEnumOutputWithContext(ctx).ToEnumInputEnumPtrOutputWithContext(ctx)
+func (e ExampleEnumInputEnum) ToExampleEnumInputEnumPtrOutputWithContext(ctx context.Context) ExampleEnumInputEnumPtrOutput {
+	return ExampleEnumInputEnum(e).ToExampleEnumInputEnumOutputWithContext(ctx).ToExampleEnumInputEnumPtrOutputWithContext(ctx)
 }
 
-func (e EnumInputEnum) ToStringOutput() pulumi.StringOutput {
+func (e ExampleEnumInputEnum) ToStringOutput() pulumi.StringOutput {
 	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
 }
 
-func (e EnumInputEnum) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+func (e ExampleEnumInputEnum) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
 	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
 }
 
-func (e EnumInputEnum) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (e ExampleEnumInputEnum) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
 }
 
-func (e EnumInputEnum) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+func (e ExampleEnumInputEnum) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
-type EnumInputEnumOutput struct{ *pulumi.OutputState }
+type ExampleEnumInputEnumOutput struct{ *pulumi.OutputState }
 
-func (EnumInputEnumOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*EnumInputEnum)(nil)).Elem()
+func (ExampleEnumInputEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ExampleEnumInputEnum)(nil)).Elem()
 }
 
-func (o EnumInputEnumOutput) ToEnumInputEnumOutput() EnumInputEnumOutput {
+func (o ExampleEnumInputEnumOutput) ToExampleEnumInputEnumOutput() ExampleEnumInputEnumOutput {
 	return o
 }
 
-func (o EnumInputEnumOutput) ToEnumInputEnumOutputWithContext(ctx context.Context) EnumInputEnumOutput {
+func (o ExampleEnumInputEnumOutput) ToExampleEnumInputEnumOutputWithContext(ctx context.Context) ExampleEnumInputEnumOutput {
 	return o
 }
 
-func (o EnumInputEnumOutput) ToEnumInputEnumPtrOutput() EnumInputEnumPtrOutput {
-	return o.ToEnumInputEnumPtrOutputWithContext(context.Background())
+func (o ExampleEnumInputEnumOutput) ToExampleEnumInputEnumPtrOutput() ExampleEnumInputEnumPtrOutput {
+	return o.ToExampleEnumInputEnumPtrOutputWithContext(context.Background())
 }
 
-func (o EnumInputEnumOutput) ToEnumInputEnumPtrOutputWithContext(ctx context.Context) EnumInputEnumPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v EnumInputEnum) *EnumInputEnum {
+func (o ExampleEnumInputEnumOutput) ToExampleEnumInputEnumPtrOutputWithContext(ctx context.Context) ExampleEnumInputEnumPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ExampleEnumInputEnum) *ExampleEnumInputEnum {
 		return &v
-	}).(EnumInputEnumPtrOutput)
+	}).(ExampleEnumInputEnumPtrOutput)
 }
 
-func (o EnumInputEnumOutput) ToStringOutput() pulumi.StringOutput {
+func (o ExampleEnumInputEnumOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
 
-func (o EnumInputEnumOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e EnumInputEnum) string {
+func (o ExampleEnumInputEnumOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ExampleEnumInputEnum) string {
 		return string(e)
 	}).(pulumi.StringOutput)
 }
 
-func (o EnumInputEnumOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (o ExampleEnumInputEnumOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
-func (o EnumInputEnumOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e EnumInputEnum) *string {
+func (o ExampleEnumInputEnumOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ExampleEnumInputEnum) *string {
 		v := string(e)
 		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
-type EnumInputEnumPtrOutput struct{ *pulumi.OutputState }
+type ExampleEnumInputEnumPtrOutput struct{ *pulumi.OutputState }
 
-func (EnumInputEnumPtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**EnumInputEnum)(nil)).Elem()
+func (ExampleEnumInputEnumPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**ExampleEnumInputEnum)(nil)).Elem()
 }
 
-func (o EnumInputEnumPtrOutput) ToEnumInputEnumPtrOutput() EnumInputEnumPtrOutput {
+func (o ExampleEnumInputEnumPtrOutput) ToExampleEnumInputEnumPtrOutput() ExampleEnumInputEnumPtrOutput {
 	return o
 }
 
-func (o EnumInputEnumPtrOutput) ToEnumInputEnumPtrOutputWithContext(ctx context.Context) EnumInputEnumPtrOutput {
+func (o ExampleEnumInputEnumPtrOutput) ToExampleEnumInputEnumPtrOutputWithContext(ctx context.Context) ExampleEnumInputEnumPtrOutput {
 	return o
 }
 
-func (o EnumInputEnumPtrOutput) Elem() EnumInputEnumOutput {
-	return o.ApplyT(func(v *EnumInputEnum) EnumInputEnum {
+func (o ExampleEnumInputEnumPtrOutput) Elem() ExampleEnumInputEnumOutput {
+	return o.ApplyT(func(v *ExampleEnumInputEnum) ExampleEnumInputEnum {
 		if v != nil {
 			return *v
 		}
-		var ret EnumInputEnum
+		var ret ExampleEnumInputEnum
 		return ret
-	}).(EnumInputEnumOutput)
+	}).(ExampleEnumInputEnumOutput)
 }
 
-func (o EnumInputEnumPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (o ExampleEnumInputEnumPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
-func (o EnumInputEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e *EnumInputEnum) *string {
+func (o ExampleEnumInputEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *ExampleEnumInputEnum) *string {
 		if e == nil {
 			return nil
 		}
@@ -300,162 +300,162 @@ func (o EnumInputEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context
 	}).(pulumi.StringPtrOutput)
 }
 
-// EnumInputEnumInput is an input type that accepts EnumInputEnumArgs and EnumInputEnumOutput values.
-// You can construct a concrete instance of `EnumInputEnumInput` via:
+// ExampleEnumInputEnumInput is an input type that accepts ExampleEnumInputEnumArgs and ExampleEnumInputEnumOutput values.
+// You can construct a concrete instance of `ExampleEnumInputEnumInput` via:
 //
-//          EnumInputEnumArgs{...}
-type EnumInputEnumInput interface {
+//          ExampleEnumInputEnumArgs{...}
+type ExampleEnumInputEnumInput interface {
 	pulumi.Input
 
-	ToEnumInputEnumOutput() EnumInputEnumOutput
-	ToEnumInputEnumOutputWithContext(context.Context) EnumInputEnumOutput
+	ToExampleEnumInputEnumOutput() ExampleEnumInputEnumOutput
+	ToExampleEnumInputEnumOutputWithContext(context.Context) ExampleEnumInputEnumOutput
 }
 
-var enumInputEnumPtrType = reflect.TypeOf((**EnumInputEnum)(nil)).Elem()
+var exampleEnumInputEnumPtrType = reflect.TypeOf((**ExampleEnumInputEnum)(nil)).Elem()
 
-type EnumInputEnumPtrInput interface {
+type ExampleEnumInputEnumPtrInput interface {
 	pulumi.Input
 
-	ToEnumInputEnumPtrOutput() EnumInputEnumPtrOutput
-	ToEnumInputEnumPtrOutputWithContext(context.Context) EnumInputEnumPtrOutput
+	ToExampleEnumInputEnumPtrOutput() ExampleEnumInputEnumPtrOutput
+	ToExampleEnumInputEnumPtrOutputWithContext(context.Context) ExampleEnumInputEnumPtrOutput
 }
 
-type enumInputEnumPtr string
+type exampleEnumInputEnumPtr string
 
-func EnumInputEnumPtr(v string) EnumInputEnumPtrInput {
-	return (*enumInputEnumPtr)(&v)
+func ExampleEnumInputEnumPtr(v string) ExampleEnumInputEnumPtrInput {
+	return (*exampleEnumInputEnumPtr)(&v)
 }
 
-func (*enumInputEnumPtr) ElementType() reflect.Type {
-	return enumInputEnumPtrType
+func (*exampleEnumInputEnumPtr) ElementType() reflect.Type {
+	return exampleEnumInputEnumPtrType
 }
 
-func (in *enumInputEnumPtr) ToEnumInputEnumPtrOutput() EnumInputEnumPtrOutput {
-	return pulumi.ToOutput(in).(EnumInputEnumPtrOutput)
+func (in *exampleEnumInputEnumPtr) ToExampleEnumInputEnumPtrOutput() ExampleEnumInputEnumPtrOutput {
+	return pulumi.ToOutput(in).(ExampleEnumInputEnumPtrOutput)
 }
 
-func (in *enumInputEnumPtr) ToEnumInputEnumPtrOutputWithContext(ctx context.Context) EnumInputEnumPtrOutput {
-	return pulumi.ToOutputWithContext(ctx, in).(EnumInputEnumPtrOutput)
+func (in *exampleEnumInputEnumPtr) ToExampleEnumInputEnumPtrOutputWithContext(ctx context.Context) ExampleEnumInputEnumPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(ExampleEnumInputEnumPtrOutput)
 }
 
-type ResourceType string
+type ResourceTypeEnum string
 
 const (
-	ResourceTypeHaha     = ResourceType("haha")
-	ResourceTypeBusiness = ResourceType("business")
+	ResourceTypeEnumHaha     = ResourceTypeEnum("haha")
+	ResourceTypeEnumBusiness = ResourceTypeEnum("business")
 )
 
-func (ResourceType) ElementType() reflect.Type {
-	return reflect.TypeOf((*ResourceType)(nil)).Elem()
+func (ResourceTypeEnum) ElementType() reflect.Type {
+	return reflect.TypeOf((*ResourceTypeEnum)(nil)).Elem()
 }
 
-func (e ResourceType) ToResourceTypeOutput() ResourceTypeOutput {
-	return pulumi.ToOutput(e).(ResourceTypeOutput)
+func (e ResourceTypeEnum) ToResourceTypeEnumOutput() ResourceTypeEnumOutput {
+	return pulumi.ToOutput(e).(ResourceTypeEnumOutput)
 }
 
-func (e ResourceType) ToResourceTypeOutputWithContext(ctx context.Context) ResourceTypeOutput {
-	return pulumi.ToOutputWithContext(ctx, e).(ResourceTypeOutput)
+func (e ResourceTypeEnum) ToResourceTypeEnumOutputWithContext(ctx context.Context) ResourceTypeEnumOutput {
+	return pulumi.ToOutputWithContext(ctx, e).(ResourceTypeEnumOutput)
 }
 
-func (e ResourceType) ToResourceTypePtrOutput() ResourceTypePtrOutput {
-	return e.ToResourceTypePtrOutputWithContext(context.Background())
+func (e ResourceTypeEnum) ToResourceTypeEnumPtrOutput() ResourceTypeEnumPtrOutput {
+	return e.ToResourceTypeEnumPtrOutputWithContext(context.Background())
 }
 
-func (e ResourceType) ToResourceTypePtrOutputWithContext(ctx context.Context) ResourceTypePtrOutput {
-	return ResourceType(e).ToResourceTypeOutputWithContext(ctx).ToResourceTypePtrOutputWithContext(ctx)
+func (e ResourceTypeEnum) ToResourceTypeEnumPtrOutputWithContext(ctx context.Context) ResourceTypeEnumPtrOutput {
+	return ResourceTypeEnum(e).ToResourceTypeEnumOutputWithContext(ctx).ToResourceTypeEnumPtrOutputWithContext(ctx)
 }
 
-func (e ResourceType) ToStringOutput() pulumi.StringOutput {
+func (e ResourceTypeEnum) ToStringOutput() pulumi.StringOutput {
 	return pulumi.ToOutput(pulumi.String(e)).(pulumi.StringOutput)
 }
 
-func (e ResourceType) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+func (e ResourceTypeEnum) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
 	return pulumi.ToOutputWithContext(ctx, pulumi.String(e)).(pulumi.StringOutput)
 }
 
-func (e ResourceType) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (e ResourceTypeEnum) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringPtrOutputWithContext(context.Background())
 }
 
-func (e ResourceType) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+func (e ResourceTypeEnum) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
 	return pulumi.String(e).ToStringOutputWithContext(ctx).ToStringPtrOutputWithContext(ctx)
 }
 
-type ResourceTypeOutput struct{ *pulumi.OutputState }
+type ResourceTypeEnumOutput struct{ *pulumi.OutputState }
 
-func (ResourceTypeOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((*ResourceType)(nil)).Elem()
+func (ResourceTypeEnumOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((*ResourceTypeEnum)(nil)).Elem()
 }
 
-func (o ResourceTypeOutput) ToResourceTypeOutput() ResourceTypeOutput {
+func (o ResourceTypeEnumOutput) ToResourceTypeEnumOutput() ResourceTypeEnumOutput {
 	return o
 }
 
-func (o ResourceTypeOutput) ToResourceTypeOutputWithContext(ctx context.Context) ResourceTypeOutput {
+func (o ResourceTypeEnumOutput) ToResourceTypeEnumOutputWithContext(ctx context.Context) ResourceTypeEnumOutput {
 	return o
 }
 
-func (o ResourceTypeOutput) ToResourceTypePtrOutput() ResourceTypePtrOutput {
-	return o.ToResourceTypePtrOutputWithContext(context.Background())
+func (o ResourceTypeEnumOutput) ToResourceTypeEnumPtrOutput() ResourceTypeEnumPtrOutput {
+	return o.ToResourceTypeEnumPtrOutputWithContext(context.Background())
 }
 
-func (o ResourceTypeOutput) ToResourceTypePtrOutputWithContext(ctx context.Context) ResourceTypePtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, v ResourceType) *ResourceType {
+func (o ResourceTypeEnumOutput) ToResourceTypeEnumPtrOutputWithContext(ctx context.Context) ResourceTypeEnumPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, v ResourceTypeEnum) *ResourceTypeEnum {
 		return &v
-	}).(ResourceTypePtrOutput)
+	}).(ResourceTypeEnumPtrOutput)
 }
 
-func (o ResourceTypeOutput) ToStringOutput() pulumi.StringOutput {
+func (o ResourceTypeEnumOutput) ToStringOutput() pulumi.StringOutput {
 	return o.ToStringOutputWithContext(context.Background())
 }
 
-func (o ResourceTypeOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e ResourceType) string {
+func (o ResourceTypeEnumOutput) ToStringOutputWithContext(ctx context.Context) pulumi.StringOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ResourceTypeEnum) string {
 		return string(e)
 	}).(pulumi.StringOutput)
 }
 
-func (o ResourceTypeOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (o ResourceTypeEnumOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
-func (o ResourceTypeOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e ResourceType) *string {
+func (o ResourceTypeEnumOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e ResourceTypeEnum) *string {
 		v := string(e)
 		return &v
 	}).(pulumi.StringPtrOutput)
 }
 
-type ResourceTypePtrOutput struct{ *pulumi.OutputState }
+type ResourceTypeEnumPtrOutput struct{ *pulumi.OutputState }
 
-func (ResourceTypePtrOutput) ElementType() reflect.Type {
-	return reflect.TypeOf((**ResourceType)(nil)).Elem()
+func (ResourceTypeEnumPtrOutput) ElementType() reflect.Type {
+	return reflect.TypeOf((**ResourceTypeEnum)(nil)).Elem()
 }
 
-func (o ResourceTypePtrOutput) ToResourceTypePtrOutput() ResourceTypePtrOutput {
+func (o ResourceTypeEnumPtrOutput) ToResourceTypeEnumPtrOutput() ResourceTypeEnumPtrOutput {
 	return o
 }
 
-func (o ResourceTypePtrOutput) ToResourceTypePtrOutputWithContext(ctx context.Context) ResourceTypePtrOutput {
+func (o ResourceTypeEnumPtrOutput) ToResourceTypeEnumPtrOutputWithContext(ctx context.Context) ResourceTypeEnumPtrOutput {
 	return o
 }
 
-func (o ResourceTypePtrOutput) Elem() ResourceTypeOutput {
-	return o.ApplyT(func(v *ResourceType) ResourceType {
+func (o ResourceTypeEnumPtrOutput) Elem() ResourceTypeEnumOutput {
+	return o.ApplyT(func(v *ResourceTypeEnum) ResourceTypeEnum {
 		if v != nil {
 			return *v
 		}
-		var ret ResourceType
+		var ret ResourceTypeEnum
 		return ret
-	}).(ResourceTypeOutput)
+	}).(ResourceTypeEnumOutput)
 }
 
-func (o ResourceTypePtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
+func (o ResourceTypeEnumPtrOutput) ToStringPtrOutput() pulumi.StringPtrOutput {
 	return o.ToStringPtrOutputWithContext(context.Background())
 }
 
-func (o ResourceTypePtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
-	return o.ApplyTWithContext(ctx, func(_ context.Context, e *ResourceType) *string {
+func (o ResourceTypeEnumPtrOutput) ToStringPtrOutputWithContext(ctx context.Context) pulumi.StringPtrOutput {
+	return o.ApplyTWithContext(ctx, func(_ context.Context, e *ResourceTypeEnum) *string {
 		if e == nil {
 			return nil
 		}
@@ -464,49 +464,49 @@ func (o ResourceTypePtrOutput) ToStringPtrOutputWithContext(ctx context.Context)
 	}).(pulumi.StringPtrOutput)
 }
 
-// ResourceTypeInput is an input type that accepts ResourceTypeArgs and ResourceTypeOutput values.
-// You can construct a concrete instance of `ResourceTypeInput` via:
+// ResourceTypeEnumInput is an input type that accepts ResourceTypeEnumArgs and ResourceTypeEnumOutput values.
+// You can construct a concrete instance of `ResourceTypeEnumInput` via:
 //
-//          ResourceTypeArgs{...}
-type ResourceTypeInput interface {
+//          ResourceTypeEnumArgs{...}
+type ResourceTypeEnumInput interface {
 	pulumi.Input
 
-	ToResourceTypeOutput() ResourceTypeOutput
-	ToResourceTypeOutputWithContext(context.Context) ResourceTypeOutput
+	ToResourceTypeEnumOutput() ResourceTypeEnumOutput
+	ToResourceTypeEnumOutputWithContext(context.Context) ResourceTypeEnumOutput
 }
 
-var resourceTypePtrType = reflect.TypeOf((**ResourceType)(nil)).Elem()
+var resourceTypeEnumPtrType = reflect.TypeOf((**ResourceTypeEnum)(nil)).Elem()
 
-type ResourceTypePtrInput interface {
+type ResourceTypeEnumPtrInput interface {
 	pulumi.Input
 
-	ToResourceTypePtrOutput() ResourceTypePtrOutput
-	ToResourceTypePtrOutputWithContext(context.Context) ResourceTypePtrOutput
+	ToResourceTypeEnumPtrOutput() ResourceTypeEnumPtrOutput
+	ToResourceTypeEnumPtrOutputWithContext(context.Context) ResourceTypeEnumPtrOutput
 }
 
-type resourceTypePtr string
+type resourceTypeEnumPtr string
 
-func ResourceTypePtr(v string) ResourceTypePtrInput {
-	return (*resourceTypePtr)(&v)
+func ResourceTypeEnumPtr(v string) ResourceTypeEnumPtrInput {
+	return (*resourceTypeEnumPtr)(&v)
 }
 
-func (*resourceTypePtr) ElementType() reflect.Type {
-	return resourceTypePtrType
+func (*resourceTypeEnumPtr) ElementType() reflect.Type {
+	return resourceTypeEnumPtrType
 }
 
-func (in *resourceTypePtr) ToResourceTypePtrOutput() ResourceTypePtrOutput {
-	return pulumi.ToOutput(in).(ResourceTypePtrOutput)
+func (in *resourceTypeEnumPtr) ToResourceTypeEnumPtrOutput() ResourceTypeEnumPtrOutput {
+	return pulumi.ToOutput(in).(ResourceTypeEnumPtrOutput)
 }
 
-func (in *resourceTypePtr) ToResourceTypePtrOutputWithContext(ctx context.Context) ResourceTypePtrOutput {
-	return pulumi.ToOutputWithContext(ctx, in).(ResourceTypePtrOutput)
+func (in *resourceTypeEnumPtr) ToResourceTypeEnumPtrOutputWithContext(ctx context.Context) ResourceTypeEnumPtrOutput {
+	return pulumi.ToOutputWithContext(ctx, in).(ResourceTypeEnumPtrOutput)
 }
 
 func init() {
-	pulumi.RegisterOutputType(EnumOutput{})
-	pulumi.RegisterOutputType(EnumPtrOutput{})
-	pulumi.RegisterOutputType(EnumInputEnumOutput{})
-	pulumi.RegisterOutputType(EnumInputEnumPtrOutput{})
-	pulumi.RegisterOutputType(ResourceTypeOutput{})
-	pulumi.RegisterOutputType(ResourceTypePtrOutput{})
+	pulumi.RegisterOutputType(ExampleEnumOutput{})
+	pulumi.RegisterOutputType(ExampleEnumPtrOutput{})
+	pulumi.RegisterOutputType(ExampleEnumInputEnumOutput{})
+	pulumi.RegisterOutputType(ExampleEnumInputEnumPtrOutput{})
+	pulumi.RegisterOutputType(ResourceTypeEnumOutput{})
+	pulumi.RegisterOutputType(ResourceTypeEnumPtrOutput{})
 }

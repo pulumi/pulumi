@@ -8,26 +8,26 @@ using Pulumi;
 namespace Pulumi.Example
 {
     [EnumType]
-    public readonly struct Enum : IEquatable<Enum>
+    public readonly struct ExampleEnum : IEquatable<ExampleEnum>
     {
         private readonly string _value;
 
-        private Enum(string value)
+        private ExampleEnum(string value)
         {
             _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public static Enum One { get; } = new Enum("one");
-        public static Enum Two { get; } = new Enum("two");
+        public static ExampleEnum One { get; } = new ExampleEnum("one");
+        public static ExampleEnum Two { get; } = new ExampleEnum("two");
 
-        public static bool operator ==(Enum left, Enum right) => left.Equals(right);
-        public static bool operator !=(Enum left, Enum right) => !left.Equals(right);
+        public static bool operator ==(ExampleEnum left, ExampleEnum right) => left.Equals(right);
+        public static bool operator !=(ExampleEnum left, ExampleEnum right) => !left.Equals(right);
 
-        public static explicit operator string(Enum value) => value._value;
+        public static explicit operator string(ExampleEnum value) => value._value;
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public override bool Equals(object? obj) => obj is Enum other && Equals(other);
-        public bool Equals(Enum other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+        public override bool Equals(object? obj) => obj is ExampleEnum other && Equals(other);
+        public bool Equals(ExampleEnum other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override int GetHashCode() => _value?.GetHashCode() ?? 0;
@@ -36,26 +36,26 @@ namespace Pulumi.Example
     }
 
     [EnumType]
-    public readonly struct EnumInput : IEquatable<EnumInput>
+    public readonly struct ExampleEnumInput : IEquatable<ExampleEnumInput>
     {
         private readonly string _value;
 
-        private EnumInput(string value)
+        private ExampleEnumInput(string value)
         {
             _value = value ?? throw new ArgumentNullException(nameof(value));
         }
 
-        public static EnumInput One { get; } = new EnumInput("one");
-        public static EnumInput Two { get; } = new EnumInput("two");
+        public static ExampleEnumInput One { get; } = new ExampleEnumInput("one");
+        public static ExampleEnumInput Two { get; } = new ExampleEnumInput("two");
 
-        public static bool operator ==(EnumInput left, EnumInput right) => left.Equals(right);
-        public static bool operator !=(EnumInput left, EnumInput right) => !left.Equals(right);
+        public static bool operator ==(ExampleEnumInput left, ExampleEnumInput right) => left.Equals(right);
+        public static bool operator !=(ExampleEnumInput left, ExampleEnumInput right) => !left.Equals(right);
 
-        public static explicit operator string(EnumInput value) => value._value;
+        public static explicit operator string(ExampleEnumInput value) => value._value;
 
         [EditorBrowsable(EditorBrowsableState.Never)]
-        public override bool Equals(object? obj) => obj is EnumInput other && Equals(other);
-        public bool Equals(EnumInput other) => string.Equals(_value, other._value, StringComparison.Ordinal);
+        public override bool Equals(object? obj) => obj is ExampleEnumInput other && Equals(other);
+        public bool Equals(ExampleEnumInput other) => string.Equals(_value, other._value, StringComparison.Ordinal);
 
         [EditorBrowsable(EditorBrowsableState.Never)]
         public override int GetHashCode() => _value?.GetHashCode() ?? 0;

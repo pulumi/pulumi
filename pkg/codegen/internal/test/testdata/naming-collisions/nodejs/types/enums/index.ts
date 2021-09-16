@@ -2,19 +2,19 @@
 // *** Do not edit by hand unless you're certain you know what you are doing! ***
 
 
-export const Enum = {
+export const ExampleEnum = {
     One: "one",
     Two: "two",
 } as const;
 
-export type Enum = (typeof Enum)[keyof typeof Enum];
+export type ExampleEnum = (typeof ExampleEnum)[keyof typeof ExampleEnum];
 
-export const EnumInput = {
+export const ExampleEnumInput = {
     One: "one",
     Two: "two",
 } as const;
 
-export type EnumInput = (typeof EnumInput)[keyof typeof EnumInput];
+export type ExampleEnumInput = (typeof ExampleEnumInput)[keyof typeof ExampleEnumInput];
 
 export const ResourceType = {
     Haha: "haha",
