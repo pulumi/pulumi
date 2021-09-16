@@ -16,3 +16,326 @@
 // profiling, and environmental config options. All of the command logic is dispatched using the Cobra CLI package and
 // is wrapped in a panic handler.
 package main
+
+import (
+	_ "embed"
+	"fmt"
+	"io"
+	"os"
+	"strings"
+	"text/template"
+
+	"github.com/alecthomas/chroma"
+	"github.com/pgavlin/goldmark"
+	"github.com/pgavlin/goldmark/extension"
+	goldmark_parser "github.com/pgavlin/goldmark/parser"
+	goldmark_renderer "github.com/pgavlin/goldmark/renderer"
+	"github.com/pgavlin/goldmark/text"
+	"github.com/pgavlin/goldmark/util"
+	"github.com/pgavlin/markdown-kit/renderer"
+	"github.com/pgavlin/markdown-kit/styles"
+	"github.com/spf13/cobra"
+	"golang.org/x/term"
+
+	"github.com/pulumi/pulumi/pkg/v3/codegen"
+	dotnetgen "github.com/pulumi/pulumi/pkg/v3/codegen/dotnet"
+	gogen "github.com/pulumi/pulumi/pkg/v3/codegen/go"
+	nodejsgen "github.com/pulumi/pulumi/pkg/v3/codegen/nodejs"
+	pythongen "github.com/pulumi/pulumi/pkg/v3/codegen/python"
+	"github.com/pulumi/pulumi/pkg/v3/codegen/schema"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/resource/plugin"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/tokens"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/cmdutil"
+	"github.com/pulumi/pulumi/sdk/v3/go/common/util/contract"
+)
+
+func newDocCmd() *cobra.Command {
+	var cmd = &cobra.Command{
+		Use:   "doc <member>[#/<json-pointer>]",
+		Args:  cmdutil.ExactArgs(1),
+		Short: "Display docs for a package member",
+		Long: "Display docs for a package member.\n" +
+			"\n" +
+			"This command prints the documentation associated with the package\n" +
+			"member identified by a JSON pointer. Package members include object\n" +
+			"or enum type definitions, resource type definitions, function\n" +
+			"definitions, property definitions, config value defintiions, and\n" +
+			"provider definitions.",
+		Run: cmdutil.RunFunc(func(cmd *cobra.Command, args []string) error {
+			pointer := args[0]
+
+			// Fetch the project and filter examples to the project's language.
+			proj, _, err := readProject()
+			if err != nil {
+				return err
+			}
+
+			lang, helper := "", codegen.DocLanguageHelper(nil)
+			switch proj.Runtime.Name() {
+			case "dotnet":
+				lang, helper = "csharp", dotnetgen.DocLanguageHelper{}
+			case "go":
+				lang, helper = "go", gogen.DocLanguageHelper{}
+			case "python":
+				lang, helper = "python", pythongen.DocLanguageHelper{}
+			default:
+				lang, helper = "typescript", nodejsgen.DocLanguageHelper{}
+			}
+
+			docstring, ok, err := findDocstring(pointer, lang, helper)
+			if err != nil {
+				return err
+			}
+			if !ok {
+				return fmt.Errorf("could not find package member %v", pointer)
+			}
+			docstring = codegen.FilterExamples(docstring, lang)
+
+			return renderDocstring(os.Stdout, docstring)
+		}),
+	}
+
+	return cmd
+}
+
+func getPackageSchema(pkg string) (*schema.Package, error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	ctx, err := plugin.NewContext(nil, nil, nil, nil, cwd, nil, false, nil)
+	if err != nil {
+		return nil, err
+	}
+	defer contract.IgnoreClose(ctx)
+
+	loader := schema.NewPluginLoader(ctx.Host)
+	return loader.LoadPackage(string(pkg), nil)
+}
+
+func findDocstring(pointer, lang string, helper codegen.DocLanguageHelper) (string, bool, error) {
+	// path should be in `member` or `member#/pointer` format.
+	pkgName, member := "", pointer
+	if hash := strings.Index(pointer, "#"); hash != -1 {
+		member, pointer = pointer[:hash], pointer[hash+1:]
+	} else {
+		pointer = ""
+	}
+	if memberToken, err := tokens.ParseModuleMember(member); err == nil {
+		pkgName = string(memberToken.Package())
+		if pkgName == "pulumi" && memberToken.Module() == "providers" {
+			pkgName, member = string(memberToken.Name()), "provider"
+		}
+	} else {
+		pkgName, member = member, ""
+	}
+
+	// get the package's schema
+	pkg, err := getPackageSchema(pkgName)
+	if err != nil {
+		return "", false, err
+	}
+
+	object := interface{}(pkg)
+	if member != "" {
+		// find the referenced member
+		if member == "provider" {
+			object = pkg.Provider
+		} else if res, ok := pkg.GetResource(member); ok {
+			object = res
+		} else if fn, ok := pkg.GetFunction(member); ok {
+			object = fn
+		} else if typ, ok := pkg.GetType(member); ok {
+			object = typ.(schema.HasMembers)
+		}
+	}
+
+	// resolve the JSON pointer, if any
+	if pointer != "" {
+		member, ok := object.(schema.HasMembers).GetMember(pointer)
+		if !ok {
+			return "", false, err
+		}
+		object = member
+	}
+
+	switch object := object.(type) {
+	case *schema.Property:
+		docstring, err := genPropertyDocstring(object, pkg, lang, helper)
+		return docstring, true, err
+	case *schema.Enum:
+		return object.Comment, true, nil
+	case *schema.EnumType:
+		return object.Comment, true, nil
+	case *schema.ObjectType:
+		return object.Comment, true, nil
+	case *schema.Resource:
+		docstring, err := genResourceDocstring(object, lang, helper)
+		return docstring, true, err
+	case *schema.Function:
+		return object.Comment, true, nil
+	default:
+		return "", false, fmt.Errorf("unexpected member of type %T", member)
+	}
+}
+
+type propertySummary struct {
+	Name string
+	Type string
+}
+
+func summarizeProperty(property *schema.Property, pkg *schema.Package, helper codegen.DocLanguageHelper) (propertySummary, error) {
+	name, err := helper.GetPropertyName(property)
+	if err != nil {
+		return propertySummary{}, err
+	}
+
+	typ := helper.GetLanguageTypeString(pkg, "", property.Type, false)
+
+	return propertySummary{
+		Name: name,
+		Type: typ,
+	}, nil
+}
+
+func summarizeProperties(properties []*schema.Property, pkg *schema.Package, helper codegen.DocLanguageHelper) ([]propertySummary, error) {
+	summaries := make([]propertySummary, len(properties))
+	for i, p := range properties {
+		summary, err := summarizeProperty(p, pkg, helper)
+		if err != nil {
+			return nil, err
+		}
+		summaries[i] = summary
+	}
+	return summaries, nil
+}
+
+func summarizeObjectProperties(object *schema.ObjectType, pkg *schema.Package, helper codegen.DocLanguageHelper) ([]propertySummary, error) {
+	if object != nil {
+		return summarizeProperties(object.Properties, pkg, helper)
+	}
+	return nil, nil
+}
+
+//go:embed doc_property.tmpl
+var propertyTemplateText string
+var propertyTemplate = template.Must(template.New("property").Parse(propertyTemplateText))
+
+func genPropertyDocstring(property *schema.Property, pkg *schema.Package, lang string, helper codegen.DocLanguageHelper) (string, error) {
+	summary, err := summarizeProperty(property, pkg, helper)
+	if err != nil {
+		return "", err
+	}
+
+	context := map[string]interface{}{
+		"Language":           lang,
+		"Name":               summary.Name,
+		"Type":               summary.Type,
+		"DeprecationMessage": property.DeprecationMessage,
+		"Secret":             property.Secret,
+		"Comment":            property.Comment,
+	}
+	if property.ConstValue != nil {
+		context["Constant"] = property.ConstValue
+	} else {
+		context["Constant"] = "<none>"
+	}
+	if property.DefaultValue != nil {
+		context["Default"] = property.DefaultValue.Value
+	} else {
+		context["Default"] = "<none>"
+	}
+
+	var buf strings.Builder
+	if err := propertyTemplate.Execute(&buf, context); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func genEnumDocstring(enum *schema.Enum, lang string, helper codegen.DocLanguageHelper) string {
+	return enum.Comment
+}
+
+func genEnumTypeDocstring(enumType *schema.EnumType, lang string, helper codegen.DocLanguageHelper) string {
+	return enumType.Comment
+}
+
+func genObjectTypeDocstring(object *schema.ObjectType, lang string, helper codegen.DocLanguageHelper) string {
+	return object.Comment
+}
+
+//go:embed doc_resource.tmpl
+var resourceTemplateText string
+var resourceTemplate = template.Must(template.New("resource").Parse(resourceTemplateText))
+
+func genResourceDocstring(resource *schema.Resource, lang string, helper codegen.DocLanguageHelper) (string, error) {
+	properties, err := summarizeProperties(resource.Properties, resource.Package, helper)
+	if err != nil {
+		return "", err
+	}
+	inputProperties, err := summarizeProperties(resource.InputProperties, resource.Package, helper)
+	if err != nil {
+		return "", err
+	}
+	stateInputs, err := summarizeObjectProperties(resource.StateInputs, resource.Package, helper)
+	if err != nil {
+		return "", err
+	}
+
+	methods := make([]string, len(resource.Methods))
+	for i, m := range resource.Methods {
+		methods[i] = helper.GetMethodName(m)
+	}
+
+	context := map[string]interface{}{
+		"Name":                 resource.Token,
+		"Language":             lang,
+		"DeprecationMessage":   resource.DeprecationMessage,
+		"Comment":              resource.Comment,
+		"Properties":           properties,
+		"InputProperties":      inputProperties,
+		"StateInputProperties": stateInputs,
+		"Methods":              methods,
+	}
+
+	var buf strings.Builder
+	if err := resourceTemplate.Execute(&buf, context); err != nil {
+		return "", err
+	}
+	return buf.String(), nil
+}
+
+func genFunctionDocstring(function *schema.Function, lang string, helper codegen.DocLanguageHelper) string {
+	return function.Comment
+}
+
+func renderDocstring(w io.Writer, docstring string) error {
+	var termWidth int
+	var theme *chroma.Style
+	if f, ok := w.(*os.File); ok && term.IsTerminal(int(f.Fd())) {
+		theme = styles.Pulumi
+
+		if termWidth == 0 {
+			w, _, err := term.GetSize(int(os.Stdout.Fd()))
+			if err == nil {
+				termWidth = int(w)
+			}
+		}
+	}
+
+	source := []byte(docstring)
+	parser := goldmark.DefaultParser()
+	parser.AddOptions(goldmark_parser.WithParagraphTransformers(
+		util.Prioritized(extension.NewTableParagraphTransformer(), 200),
+	))
+
+	document := parser.Parse(text.NewReader(source))
+
+	r := renderer.New(
+		renderer.WithTheme(theme),
+		renderer.WithWordWrap(termWidth),
+		renderer.WithSoftBreak(termWidth != 0))
+	renderer := goldmark_renderer.NewRenderer(goldmark_renderer.WithNodeRenderers(util.Prioritized(r, 100)))
+	return renderer.Render(w, source, document)
+}

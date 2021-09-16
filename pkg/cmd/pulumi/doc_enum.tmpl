@@ -1,0 +1,11 @@
+# {{.Name}}
+
+```{{.Language}}
+{{.Value}}
+```
+{{- with .DeprecationMessage}}
+
+*Deprecated*: {{.}}
+{{- end}}
+
+{{.Comment}}
