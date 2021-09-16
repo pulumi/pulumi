@@ -45,7 +45,7 @@ dotnet_test:: $(TEST_ALL_DEPS)
 
 auto_test:: $(TEST_ALL_DEPS)
 	# include the version prefix/suffix to avoid generating a separate nupkg file
-	$(RUN_TESTSUITE) dotnet-test dotnet test --no-build --filter --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}
+	$(RUN_TESTSUITE) auto-dotnet dotnet test --no-build --filter --filter FullyQualifiedName~Pulumi.Automation.Tests /p:Version=${DOTNET_VERSION}
 
 test_fast:: dotnet_test
 	$(GO_TEST_FAST) ${PROJECT_PKGS}

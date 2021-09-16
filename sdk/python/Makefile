@@ -57,7 +57,7 @@ test_fast:: $(TEST_ALL_DEPS)
 
 test_auto:: test_fast $(TEST_ALL_DEPS)
 	# Note that this target depends on test-fast for the call to `pipenv run pip install`
-	pipenv run pytest lib/test/automation
+	$(RUN_TESTSUITE) auto-python pipenv run pytest lib/test/automation
 
 test_all:: test_fast test_auto
 

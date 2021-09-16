@@ -53,7 +53,7 @@ istanbul_tests:: $(TEST_ALL_DEPS)
 	$(RUN_TESTSUITE) istanbul-with-mocks ./node_modules/.bin/istanbul test --print none _mocha -- 'bin/tests_with_mocks/**/*.spec.js'
 
 auto_tests:: $(TEST_ALL_DEPS)
-	$(RUN_TESTSUITE) istanbul ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
+	$(RUN_TESTSUITE) auto-nodejs ./node_modules/.bin/istanbul test --print none _mocha -- --timeout 120000 'bin/tests/automation/**/*.spec.js'
 	./node_modules/.bin/istanbul report text-summary
 	./node_modules/.bin/istanbul report text
 
