@@ -84,24 +84,32 @@ func TestGeneratePackage(t *testing.T) {
 	})
 }
 
-func typeCheckGeneratedPackage(t *testing.T, pwd string) {
+func typeCheckGeneratedPackage(t *testing.T, codeDir string) {
+	// For example for this path:
+	//
+	// codeDir = "../internal/test/testdata/external-resource-schema/go/"
+	//
+	// We will generate "$codeDir/go.mod" using
+	// `external-resource-schema` as the module name so that it
+	// can compile independently.
+
+	modName := filepath.Base(filepath.Dir(codeDir))
+
 	goExe, err := executable.FindExecutable("go")
 	require.NoError(t, err)
 
-	goMod := filepath.Join(pwd, "go.mod")
+	// Remove existing `go.mod` first otherise `go mod init` fails.
+	goMod := filepath.Join(codeDir, "go.mod")
 	alreadyHaveGoMod, err := test.PathExists(goMod)
 	require.NoError(t, err)
-
 	if alreadyHaveGoMod {
 		err := os.Remove(goMod)
 		require.NoError(t, err)
 	}
 
-	mod := "github.com/pulumi/pulumi-plant"
-
-	runCommand(t, "go_mod_init", pwd, goExe, "mod", "init", mod)
-	runCommand(t, "go_mod_tidy", pwd, goExe, "mod", "tidy")
-	runCommand(t, "go_build", pwd, goExe, "build", "-v", "all")
+	runCommand(t, "go_mod_init", codeDir, goExe, "mod", "init", modName)
+	runCommand(t, "go_mod_tidy", codeDir, goExe, "mod", "tidy")
+	runCommand(t, "go_build", codeDir, goExe, "build", "-v", "all")
 }
 
 func runCommand(t *testing.T, name string, cwd string, executable string, args ...string) {

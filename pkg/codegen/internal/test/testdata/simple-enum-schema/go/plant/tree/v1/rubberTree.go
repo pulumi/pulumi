@@ -9,7 +9,7 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/pulumi/pulumi/sdk/v3/go/pulumi"
-	"plant/plant"
+	"simple-enum-schema/plant"
 )
 
 type RubberTree struct {

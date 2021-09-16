@@ -254,7 +254,7 @@
       }
     },
     "go": {
-      "importBasePath": "github.com/pulumi/pulumi-plant"
+      "importBasePath": "simple-enum-schema/plant"
     },
     "nodejs": {
       "dependencies": {
